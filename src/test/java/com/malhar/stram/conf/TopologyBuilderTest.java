@@ -5,10 +5,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.apache.commons.beanutils.BeanUtils;
@@ -96,6 +99,20 @@ public class TopologyBuilderTest {
       }
   }
 
+  @Test
+  public void testLoadFromPropertiesFile() throws IOException {
+      Properties props = new Properties();
+      String resourcePath = "/testTopology.properties";
+      InputStream is = this.getClass().getResourceAsStream(resourcePath);
+      if (is == null) {
+        fail("Could not load " + resourcePath);
+      }
+      props.load(is);
+      TopologyBuilder b = new TopologyBuilder(new Configuration());
+      b.addFromProperties(props);
+      assertEquals("number of node confs", 2, b.getAllNodes().size());
+  }
+  
   @Test
   public void testCycleDetection() {
      // blank configuration w/o default stram resources

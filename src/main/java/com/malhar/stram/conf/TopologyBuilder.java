@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
 
@@ -122,7 +123,6 @@ public class TopologyBuilder {
 
   private Map<String, NodeConf> nodeConfs;
   private Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
-  private Configuration conf;
   private int nodeIndex = 0; // used for cycle validation
   private Stack<NodeConf> stack = new Stack<NodeConf>(); // used for cycle validation
   
@@ -132,10 +132,9 @@ public class TopologyBuilder {
    * @param conf
    */
   public TopologyBuilder(Configuration conf) {
-    this.conf = conf;
     this.nodeConfs = new HashMap<String, NodeConf>();
     this.rootNodes = new HashSet<NodeConf>();
-    readNodeConfig();
+    addFromConfiguration(conf);
   }
   
   public NodeConf getOrAddNode(String nodeId) {
@@ -147,23 +146,39 @@ public class TopologyBuilder {
     }
     return nc;
   }
-  
+
   /**
-   * Read all node configurations from the configuration object.
+   * Add nodes from flattened name value pairs in configuration object.
    * @param conf
-   * @return
    */
-  private void readNodeConfig() {
-    
+  public void addFromConfiguration(Configuration conf) {
+    // turn relevant entries into properties
     Iterator<Entry<String, String>> it = conf.iterator();
+    Properties props = new Properties();
     while (it.hasNext()) {
       Entry<String, String> e = it.next();
       if (e.getKey().startsWith(NODE_PREFIX)) {
+         props.put(e.getKey(), e.getValue());
+      }
+    }
+    addFromProperties(props);   
+  }
+  
+  /**
+   * Read node configurations from properties.
+   * @param conf
+   * @return
+   */
+  public void addFromProperties(Properties props) {
+    
+    for (final String propertyName : props.stringPropertyNames()) {
+      String propertyValue = props.getProperty(propertyName);
+      if (propertyName.startsWith(NODE_PREFIX)) {
          // get the node id
-         String[] keyComps = e.getKey().split("\\.");
+         String[] keyComps = propertyName.split("\\.");
          // must have at least id and single component property
          if (keyComps.length < 4) {
-           LOG.warn("Invalid configuration key: {}", e.getKey());
+           LOG.warn("Invalid configuration key: {}", propertyName);
            continue;
          }
          String nodeId = keyComps[2];
@@ -174,7 +189,7 @@ public class TopologyBuilder {
          if (NODE_INPUT.equals(propertyKey)) {
             if (keyComps.length == 4) {
                 // list of input nodes
-                String[] nodeIds = StringUtils.splitByWholeSeparator(e.getValue(), ",");
+                String[] nodeIds = StringUtils.splitByWholeSeparator(propertyValue, ",");
                 // merge to input containers
                 for (String inputNodeId : nodeIds) {
                     nc.addInput(getOrAddNode(inputNodeId));
@@ -185,16 +200,16 @@ public class TopologyBuilder {
                 StreamConf sconf = nc.addInput(inputNode);
                 if (keyComps.length > 5) {
                   if (keyComps[5].equals(NODE_INPUT_NAME)) {
-                      sconf.name = e.getValue();
+                      sconf.name = propertyValue;
                   } else {
                     // next key component is interpreted as input property key
-                    sconf.addProperty(keyComps[5], e.getValue());
+                    sconf.addProperty(keyComps[5], propertyValue);
                   }
                 }
             }
          } else {
            // simple property
-           nc.properties.put(propertyKey, e.getValue());
+           nc.properties.put(propertyKey, propertyValue);
          }
       }
     }
