@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ClientRMProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
@@ -780,4 +781,21 @@ public class StramClient {
     return envClassPath;
   }			
 
+  
+  /**
+   * Find out about the currently available cluster resources
+   */
+  void discoverResources() {
+    // some of this needs to happen in the app master? some in order to decide where to request the app master?
+     // get NodeReports from RM: 
+     //GetClusterNodesRequest request = 
+     //   recordFactory.newRecordInstance(GetClusterNodesRequest.class);
+     // GetClusterNodesResponse response = 
+     //   applicationsManager.getClusterNodes(request);
+     // return TypeConverter.fromYarnNodes(response.getNodeReports());    
+  }
+  
+  
+  
+  
 }

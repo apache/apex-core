@@ -4,7 +4,7 @@
 
 <configuration>
 
-  <!-- sample for defining Stram topology within Hadoop configuration framework -->
+  <!-- sample for defining Stram topology as Hadoop configuration -->
 
   <!--  Node 1 -->
   
@@ -29,22 +29,24 @@
     <description>Another node, which gets input from root</description>
   </property>
 
+  <!--  Stream connecting node1 and node2 -->
+
   <property>
-    <name>stram.node.node2.input</name>
+    <name>stram.stream.n1n2.inputNode</name>
     <value>node1</value>
-    <description>Comma separated list of inputs, each input can be further configured as shown below.</description>
+    <description></description>
   </property>
 
   <property>
-    <name>stram.node.node2.input.node1.partitionPolicy</name>
+    <name>stram.stream.n1n2.outputNode</name>
+    <value>node2</value>
+    <description></description>
+  </property>
+
+  <property>
+    <name>stram.stream.n1n2.partitionPolicy</name>
     <value>someTargetPolicy</value>
-    <description>The partition policy for this input.</description>
-  </property>
-
-  <property>
-    <name>stram.node.node2.input.node1.name</name>
-    <value>streamNameNode1Node2</value>
-    <description>Application specified stream name.</description>
+    <description>The partition policy for this stream.</description>
   </property>
 
   <!-- Node 3, receives input from node 2 -->
@@ -56,8 +58,14 @@
   </property>
 
   <property>
-    <name>stram.node.node3.input</name>
+    <name>stram.stream.n2n3.inputNode</name>
     <value>node2</value>
+    <description>Node 3 receives input from node 2.</description>
+  </property>
+
+  <property>
+    <name>stram.stream.n2n3.outputNode</name>
+    <value>node3</value>
     <description>Node 3 receives input from node 2.</description>
   </property>
 
@@ -70,9 +78,15 @@
   </property>
 
   <property>
-    <name>stram.node.node4.input</name>
+    <name>stram.stream.n2n4.inputNode</name>
     <value>node2</value>
-    <description>Node 4 receives also input from node 2.</description>
+    <description>Node 2 sends to node 4.</description>
+  </property>
+
+  <property>
+    <name>stram.stream.n2n4.outputNode</name>
+    <value>node4</value>
+    <description>Node 4 receives from node 2.</description>
   </property>
 
   <!-- Node 5 -->
@@ -84,12 +98,19 @@
   </property>
 
   <property>
-    <name>stram.node.node5.input</name>
+    <name>stram.stream.n4n5.inputNode</name>
     <value>node4</value>
     <description>Node 5 receives input from node 4.</description>
   </property>
 
-  <!-- Node 6, a single node w/o links -->
+  <property>
+    <name>stram.stream.n4n5.outputNode</name>
+    <value>node5</value>
+    <description>Node 5 receives input from node 4.</description>
+  </property>
+
+
+  <!-- Node 6, single node w/o links -->
 
   <property>
     <name>stram.node.node6.classname</name>

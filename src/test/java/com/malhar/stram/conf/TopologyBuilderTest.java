@@ -41,37 +41,39 @@ public class TopologyBuilderTest {
     Map<String, NodeConf> nodeConfs = topConf.getAllNodes();
     assertEquals("number of node confs", 6, nodeConfs.size());
     
-    NodeConf rootNode = assertNode(nodeConfs, "node1");
+    NodeConf node1 = assertNode(nodeConfs, "node1");
     NodeConf node2 = assertNode(nodeConfs, "node2");
     NodeConf node3 = assertNode(nodeConfs, "node3");
     NodeConf node4 = assertNode(nodeConfs, "node4");
 
-    assertNotNull("nodeConf for root", rootNode);
-    assertEquals("nodeId set", "node1", rootNode.id);
+    assertNotNull("nodeConf for root", node1);
+    assertEquals("nodeId set", "node1", node1.id);
     
     // verify node instantiation
-    DNode dNode = initNode(rootNode, conf);
+    DNode dNode = initNode(node1, conf);
     assertNotNull(dNode);
     assertEquals(dNode.getClass(), EchoNode.class);
     EchoNode echoNode = (EchoNode)dNode;
     assertEquals("myStringPropertyValue", echoNode.getMyStringProperty());
 
     // check links
-    assertEquals("rootNode inputs", rootNode.inputs.size(), 0);
-    assertEquals("rootNode outputs", rootNode.outputs.size(), 1);
-    StreamConf rootNodeOut = rootNode.outputs.get(node2);
-    StreamConf node2In = node2.inputs.get(rootNode);
+    assertEquals("node1 inputs", 0, node1.inputs.size());
+    assertEquals("node1 outputs", 1, node1.outputs.size());
+    StreamConf n1n2 = node2.getInput("n1n2");
+    assertNotNull("n1n2", n1n2);
    
     // output/input stream object same
-    assertEquals("rootNode out is node2 in", rootNodeOut, node2In);
-    assertEquals("partitionPolicy", node2In.getProperty("partitionPolicy"), "someTargetPolicy");
-    assertEquals("stream name", "streamNameNode1Node2", node2In.getName());
+    assertEquals("rootNode out is node2 in", n1n2, node1.getOutput("n1n2"));
+    assertEquals("n1n2 source", node1, n1n2.getSourceNode());
+    assertEquals("n1n2 target", node2, n1n2.getTargetNode());
+    assertEquals("partitionPolicy", n1n2.getProperty("partitionPolicy"), "someTargetPolicy");
+    assertEquals("stream name", "n1n2", n1n2.getId());
 
     
     // node 2 streams to node 3 and node 4
     assertEquals("node 2 number of outputs", 2, node2.outputs.size());
-    assertNotNull(node2.outputs.get(node3));
-    assertNotNull(node2.outputs.get(node4));
+    assertNotNull(node2.getOutput("n2n3"));
+    assertNotNull(node2.getOutput("n2n4"));
 
     topConf.validate();
 
@@ -79,7 +81,7 @@ public class TopologyBuilderTest {
     
     Set<NodeConf> rootNodes = topConf.getRootNodes();
     assertEquals("number root nodes", 2, rootNodes.size());
-    assertTrue("root node2", rootNodes.contains(rootNode));
+    assertTrue("root node2", rootNodes.contains(node1));
     assertTrue("root node6", rootNodes.contains(node6));
     
     for (NodeConf n : rootNodes) {
@@ -94,8 +96,10 @@ public class TopologyBuilderTest {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17); 
       }
       System.out.println(prefix + node.id);
-      for (NodeConf downStreamNode : node.outputs.keySet()) {
-          printTopology(downStreamNode, allNodes, level+1);
+      for (StreamConf downStream : node.outputs.values()) {
+          if (downStream.getTargetNode() != null) {
+            printTopology(downStream.getTargetNode(), allNodes, level+1);
+          }
       }
   }
 
@@ -111,6 +115,7 @@ public class TopologyBuilderTest {
       TopologyBuilder b = new TopologyBuilder(new Configuration());
       b.addFromProperties(props);
       assertEquals("number of node confs", 2, b.getAllNodes().size());
+      assertEquals("number of root nodes", 1, b.getRootNodes().size());
   }
   
   @Test
@@ -123,17 +128,29 @@ public class TopologyBuilderTest {
      NodeConf node2 = b.getOrAddNode("node2");
      NodeConf node3 = b.getOrAddNode("node3");
      NodeConf node4 = b.getOrAddNode("node4");
-     //odeConf node5 = b.getOrAddNode("node5");
+     //NodeConf node5 = b.getOrAddNode("node5");
      //NodeConf node6 = b.getOrAddNode("node6");
      NodeConf node7 = b.getOrAddNode("node7");
 
      // strongly connect n2-n3-n4-n2
-     node3.addInput(node2);
-     node4.addInput(node3);
-     node2.addInput(node4);
+     node2.addOutput(b.getOrAddStream("n2n3"));
+     node3.addInput(b.getOrAddStream("n2n3"));
 
+     node3.addOutput(b.getOrAddStream("n3n4"));
+     node4.addInput(b.getOrAddStream("n3n4"));
+
+     node4.addOutput(b.getOrAddStream("n4n2"));
+     node2.addInput(b.getOrAddStream("n4n2"));
+     
      // self referencing node cycle
-     node7.addInput(node7);
+     node7.addInput(b.getOrAddStream("n7n7"));
+     try {
+       node7.addInput(b.getOrAddStream("n7n7"));
+       fail("cannot add to stream again");
+     } catch (Exception e) {
+       // expected, stream can have single input/output only
+     }
+     node7.addOutput(b.getOrAddStream("n7n7"));
 
      List<List<String>> cycles = new ArrayList<List<String>>();
      b.findStronglyConnected(node7, cycles);
@@ -144,8 +161,8 @@ public class TopologyBuilderTest {
      // 3 node cycle
      cycles.clear();
      b.findStronglyConnected(node4, cycles);
-     assertEquals("node self reference", 1, cycles.size());
-     assertEquals("node self reference", 3, cycles.get(0).size());
+     assertEquals("3 node cycle", 1, cycles.size());
+     assertEquals("3 node cycle", 3, cycles.get(0).size());
      assertTrue("node2", cycles.get(0).contains(node2.id));
      assertTrue("node3", cycles.get(0).contains(node3.id));
      assertTrue("node4", cycles.get(0).contains(node4.id));

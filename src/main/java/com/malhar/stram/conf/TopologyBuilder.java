@@ -12,7 +12,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
@@ -31,12 +30,12 @@ public class TopologyBuilder {
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
   private static final String STRAM_SITE_XML_FILE = "stram-site.xml";
 
-  public static final String ROOT_NODE_ID = "stram.rootnode";
-  public static final String NODE_PREFIX = "stram.node.no";
+  public static final String STREAM_PREFIX = "stram.stream";
+  public static final String STREAM_SOURCENODE = "inputNode";
+  public static final String STREAM_TARGETNODE = "outputNode";
   
+  public static final String NODE_PREFIX = "stram.node";
   public static final String NODE_CLASSNAME = "classname";
-  public static final String NODE_INPUT = "input";
-  public static final String NODE_INPUT_NAME = "name";
   
   
   public static Configuration addStramResources(Configuration conf) {
@@ -46,18 +45,28 @@ public class TopologyBuilder {
   }
 
   public class StreamConf {
-    //private String sourceNodeId;
-    private String name;
+    private String id;
+    private NodeConf sourceNode;
+    private NodeConf targetNode;
+    
     private Map<String, String> properties = new HashMap<String, String>();
     
-    private StreamConf(NodeConf inputNode, NodeConf outputNode) {
-      //this.sourceNodeId = sourceNodeId;
+    private StreamConf(String id) {
+      this.id = id;
     }
 
-    public String getName() {
-      return name;
+    public String getId() {
+      return id;
     }
-    
+
+    public NodeConf getSourceNode() {
+      return sourceNode;
+    }
+
+    public NodeConf getTargetNode() {
+      return targetNode;
+    }
+
     public String getProperty(String key) {
       return properties.get(key);
     }
@@ -82,47 +91,62 @@ public class TopologyBuilder {
     /**
      * The inputs for the node
      */
-    Map<NodeConf, StreamConf> inputs = new HashMap<NodeConf, StreamConf>();
+    Map<String, StreamConf> inputs = new HashMap<String, StreamConf>();
     /**
-     * The inputs for the node
+     * The outputs for the node
      */
-    Map<NodeConf, StreamConf> outputs = new HashMap<NodeConf, StreamConf>();
+    Map<String, StreamConf> outputs = new HashMap<String, StreamConf>();
 
     private Integer nindex; // for cycle detection
     private Integer lowlink; // for cycle detection   
     
-    /**
-     * Declare another node as upstream
-     * Currently only used for topology unit testing, to be included into topology builder API later
-     * @param inputNode
-     */
-    public StreamConf addInput(NodeConf inputNode) {
-      if (nodeConfs.get(inputNode.id) != inputNode) {
-        // attempt to link node from another instance?
-        throw new IllegalArgumentException("Can only link nodes within one topology: " + inputNode);
-      }
-      StreamConf sconf = inputs.get(inputNode);
-      if (sconf == null) {
-        sconf = new StreamConf(inputNode, this);
-        inputs.put(inputNode, sconf);
-        rootNodes.remove(this);
-      }
-      // add reverse output link
-      inputNode.outputs.put(this, sconf);
-      return sconf;
-    }
-
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
           append("id", this.id).
           toString();
     }
+
+    public NodeConf addInput(StreamConf stream) {
+      if (stream.targetNode != null) {
+        // multiple targets not allowed
+        throw new IllegalArgumentException("Stream already connected to target " + stream.targetNode);
+      }
+      inputs.put(stream.id, stream);
+      stream.targetNode = this;
+      if (stream.sourceNode != null) {
+        // root nodes don't receive input from another node
+        rootNodes.remove(stream.targetNode);
+      }
+      return this;
+    }
+
+    public StreamConf getInput(String streamId) {
+      return inputs.get(streamId);
+    }
     
+    public NodeConf addOutput(StreamConf stream) {
+      if (stream.sourceNode != null) {
+        // multiple targets not allowed
+        throw new IllegalArgumentException("Stream already connected to source " + stream.sourceNode);
+      }
+      outputs.put(stream.id, stream);
+      stream.sourceNode = this;
+      if (stream.targetNode != null) {
+        // root nodes don't receive input from another node
+        rootNodes.remove(stream.targetNode);
+      }
+      return this;
+    }
+    
+    public StreamConf getOutput(String streamId) {
+      return outputs.get(streamId);
+    }
   }
 
-  private Map<String, NodeConf> nodeConfs;
-  private Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
+  final private Map<String, NodeConf> nodes;
+  final private Map<String, StreamConf> streams;
+  final private Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
   private int nodeIndex = 0; // used for cycle validation
   private Stack<NodeConf> stack = new Stack<NodeConf>(); // used for cycle validation
   
@@ -132,21 +156,31 @@ public class TopologyBuilder {
    * @param conf
    */
   public TopologyBuilder(Configuration conf) {
-    this.nodeConfs = new HashMap<String, NodeConf>();
+    this.nodes = new HashMap<String, NodeConf>();
+    this.streams = new HashMap<String, StreamConf>();
     this.rootNodes = new HashSet<NodeConf>();
     addFromConfiguration(conf);
   }
   
   public NodeConf getOrAddNode(String nodeId) {
-    NodeConf nc = nodeConfs.get(nodeId);
+    NodeConf nc = nodes.get(nodeId);
     if (nc == null) {
       nc = new NodeConf(nodeId);
-      nodeConfs.put(nodeId, nc);
+      nodes.put(nodeId, nc);
       rootNodes.add(nc);
     }
     return nc;
   }
 
+  public StreamConf getOrAddStream(String id) {
+    StreamConf sc = streams.get(id);
+    if (sc == null) {
+      sc = new StreamConf(id);
+      streams.put(id, sc);
+    }
+    return sc;
+  }
+  
   /**
    * Add nodes from flattened name value pairs in configuration object.
    * @param conf
@@ -157,7 +191,7 @@ public class TopologyBuilder {
     Properties props = new Properties();
     while (it.hasNext()) {
       Entry<String, String> e = it.next();
-      if (e.getKey().startsWith(NODE_PREFIX)) {
+      if (e.getKey().startsWith("stram.")) {
          props.put(e.getKey(), e.getValue());
       }
     }
@@ -173,7 +207,34 @@ public class TopologyBuilder {
     
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
-      if (propertyName.startsWith(NODE_PREFIX)) {
+      if (propertyName.startsWith(STREAM_PREFIX)) {
+         // stream definition 
+        String[] keyComps = propertyName.split("\\.");
+        // must have at least id and single component property
+        if (keyComps.length < 4) {
+          LOG.warn("Invalid configuration key: {}", propertyName);
+          continue;
+        }
+        String streamId = keyComps[2];
+        String propertyKey = keyComps[3];
+        StreamConf stream = getOrAddStream(streamId);
+        if (STREAM_SOURCENODE.equals(propertyKey)) {
+            if (stream.sourceNode != null) {
+              // multiple sources not allowed
+              throw new IllegalArgumentException("Duplicate " + propertyName);
+            }
+            getOrAddNode(propertyValue).addOutput(stream);
+        } else if (STREAM_TARGETNODE.equals(propertyKey)) {
+          if (stream.targetNode != null) {
+              // multiple targets not allowed
+              throw new IllegalArgumentException("Duplicate " + propertyName);
+            }
+            getOrAddNode(propertyValue).addInput(stream);
+        } else {
+           // all other stream properties
+          stream.properties.put(propertyKey, propertyValue);
+        }
+      } else if (propertyName.startsWith(NODE_PREFIX)) {
          // get the node id
          String[] keyComps = propertyName.split("\\.");
          // must have at least id and single component property
@@ -184,33 +245,8 @@ public class TopologyBuilder {
          String nodeId = keyComps[2];
          String propertyKey = keyComps[3];
          NodeConf nc = getOrAddNode(nodeId);
-
-         // distinguish input declarations and other properties
-         if (NODE_INPUT.equals(propertyKey)) {
-            if (keyComps.length == 4) {
-                // list of input nodes
-                String[] nodeIds = StringUtils.splitByWholeSeparator(propertyValue, ",");
-                // merge to input containers
-                for (String inputNodeId : nodeIds) {
-                    nc.addInput(getOrAddNode(inputNodeId));
-                }
-            } else {
-                // get or add the input
-                NodeConf inputNode = getOrAddNode(keyComps[4]);
-                StreamConf sconf = nc.addInput(inputNode);
-                if (keyComps.length > 5) {
-                  if (keyComps[5].equals(NODE_INPUT_NAME)) {
-                      sconf.name = propertyValue;
-                  } else {
-                    // next key component is interpreted as input property key
-                    sconf.addProperty(keyComps[5], propertyValue);
-                  }
-                }
-            }
-         } else {
-           // simple property
-           nc.properties.put(propertyKey, propertyValue);
-         }
+         // simple property
+         nc.properties.put(propertyKey, propertyValue);
       }
     }
   }
@@ -220,7 +256,7 @@ public class TopologyBuilder {
    * @return
    */
   public Map<String, NodeConf> getAllNodes() {
-    return Collections.unmodifiableMap(this.nodeConfs);
+    return Collections.unmodifiableMap(this.nodes);
   }
 
   public Set<NodeConf> getRootNodes() {
@@ -240,7 +276,15 @@ public class TopologyBuilder {
     stack.push(n);
 
     // depth first successors traversal
-    for (NodeConf successor : n.outputs.keySet()) {
+    for (StreamConf downStream : n.outputs.values()) {
+       NodeConf successor = downStream.targetNode;
+       if (successor == null) {
+         continue;
+       }
+       // check for self referencing node
+       if (n == successor) {
+         cycles.add(Collections.singletonList(n.id));
+       }
        if (successor.nindex == null) {
           // not visited yet
           findStronglyConnected(successor, cycles);
@@ -260,8 +304,8 @@ public class TopologyBuilder {
             break; // collected all connected nodes
          }
        }
-       // cycle if more than one node in stack       
-       if (connectedIds.size() > 1 || n.outputs.containsKey(n)) {
+       // strongly connected (cycle) if more than one node in stack       
+       if (connectedIds.size() > 1) {
          LOG.debug("detected cycle from node {}: {}", n.id, connectedIds);
          cycles.add(connectedIds);
        }
@@ -270,13 +314,13 @@ public class TopologyBuilder {
 
   public void validate() {   
     // clear visited on all nodes
-    for (NodeConf n : nodeConfs.values()) {
+    for (NodeConf n : nodes.values()) {
       n.nindex = null;
       n.lowlink = null;
     }
     
     List<List<String>> cycles = new ArrayList<List<String>>();
-    for (NodeConf n : nodeConfs.values()) {
+    for (NodeConf n : nodes.values()) {
       if (n.nindex == null) {
         findStronglyConnected(n, cycles);
       }
