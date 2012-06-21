@@ -36,7 +36,9 @@ public class TopologyBuilder {
   
   public static final String NODE_PREFIX = "stram.node";
   public static final String NODE_CLASSNAME = "classname";
+  public static final String NODE_TEMPLATE = "template";
   
+  public static final String TEMPLATE_PREFIX = "stram.template";
   
   public static Configuration addStramResources(Configuration conf) {
     conf.addResource(STRAM_DEFAULT_XML_FILE);
@@ -44,6 +46,28 @@ public class TopologyBuilder {
     return conf;
   }
 
+  /**
+   * Named set of properties that can be used to instantiate streams or nodes
+   * with common settings.
+   */
+  public class TemplateConf {
+    private String id;
+    private Properties properties = new Properties();
+    
+    private TemplateConf(String id) {
+      this.id = id;
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public void addProperty(String key, String value) {
+      properties.setProperty(key, value);
+    }
+  }
+  
+  
   public class StreamConf {
     private String id;
     private NodeConf sourceNode;
@@ -75,9 +99,17 @@ public class TopologyBuilder {
       properties.put(key, value);
     }
   }
+
+  class PropertiesWithModifiableDefaults extends Properties {
+    private static final long serialVersionUID = -4675421720308249982L;
+
+    void setDefaultProperties(Properties defaults) {
+        super.defaults = defaults;
+    }
+  }
   
   /**
-   * DNode configuration, serializable to node container 
+   * Node configuration 
    */
   public class NodeConf {
     public NodeConf(String id) {
@@ -87,7 +119,7 @@ public class TopologyBuilder {
     /**
      * The properties of the node, can be subclass properties which will be set via reflection.
      */
-    Map<String, String> properties = new HashMap<String, String>();
+    PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
     /**
      * The inputs for the node
      */
@@ -97,6 +129,8 @@ public class TopologyBuilder {
      */
     Map<String, StreamConf> outputs = new HashMap<String, StreamConf>();
 
+    private TemplateConf template;
+    
     private Integer nindex; // for cycle detection
     private Integer lowlink; // for cycle detection   
     
@@ -146,6 +180,7 @@ public class TopologyBuilder {
 
   final private Map<String, NodeConf> nodes;
   final private Map<String, StreamConf> streams;
+  final private Map<String, TemplateConf> templates;
   final private Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
   private int nodeIndex = 0; // used for cycle validation
   private Stack<NodeConf> stack = new Stack<NodeConf>(); // used for cycle validation
@@ -158,6 +193,7 @@ public class TopologyBuilder {
   public TopologyBuilder(Configuration conf) {
     this.nodes = new HashMap<String, NodeConf>();
     this.streams = new HashMap<String, StreamConf>();
+    this.templates = new HashMap<String,TemplateConf>();
     this.rootNodes = new HashSet<NodeConf>();
     addFromConfiguration(conf);
   }
@@ -181,6 +217,15 @@ public class TopologyBuilder {
     return sc;
   }
   
+  public TemplateConf getOrAddTemplate(String id) {
+    TemplateConf sc = templates.get(id);
+    if (sc == null) {
+      sc = new TemplateConf(id);
+      templates.put(id, sc);
+    }
+    return sc;
+  }
+
   /**
    * Add nodes from flattened name value pairs in configuration object.
    * @param conf
@@ -245,8 +290,24 @@ public class TopologyBuilder {
          String nodeId = keyComps[2];
          String propertyKey = keyComps[3];
          NodeConf nc = getOrAddNode(nodeId);
-         // simple property
-         nc.properties.put(propertyKey, propertyValue);
+         if (NODE_TEMPLATE.equals(propertyKey)) {
+           nc.template = getOrAddTemplate(propertyValue);
+           // TODO: defer until all keys are read?
+           nc.properties.setDefaultProperties(nc.template.properties);
+         } else {
+           // simple property
+           nc.properties.put(propertyKey, propertyValue);
+         }
+      } else if (propertyName.startsWith(TEMPLATE_PREFIX)) {
+        String[] keyComps = propertyName.split("\\.");
+        // must have at least id and single component property
+        if (keyComps.length < 4) {
+          LOG.warn("Invalid configuration key: {}", propertyName);
+          continue;
+        }
+        String propertyKey = keyComps[3];
+        TemplateConf tc = getOrAddTemplate(keyComps[2]);
+        tc.properties.setProperty(propertyKey, propertyValue);
       }
     }
   }
