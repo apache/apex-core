@@ -18,6 +18,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Maps;
+
 /**
  * Builder for the DAG logical representation of nodes and streams.
  * Supports reading as name-value pairs from Hadoop Configuration
@@ -33,6 +35,7 @@ public class TopologyBuilder {
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCENODE = "inputNode";
   public static final String STREAM_TARGETNODE = "outputNode";
+  public static final String STREAM_TEMPLATE = "template";
   
   public static final String NODE_PREFIX = "stram.node";
   public static final String NODE_CLASSNAME = "classname";
@@ -73,7 +76,9 @@ public class TopologyBuilder {
     private NodeConf sourceNode;
     private NodeConf targetNode;
     
-    private Map<String, String> properties = new HashMap<String, String>();
+    private PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
+    private TemplateConf template;
+
     
     private StreamConf(String id) {
       this.id = id;
@@ -92,7 +97,7 @@ public class TopologyBuilder {
     }
 
     public String getProperty(String key) {
-      return properties.get(key);
+      return properties.getProperty(key);
     }
     
     public void addProperty(String key, String value) {
@@ -119,7 +124,7 @@ public class TopologyBuilder {
     /**
      * The properties of the node, can be subclass properties which will be set via reflection.
      */
-    PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
+    private PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
     /**
      * The inputs for the node
      */
@@ -176,6 +181,15 @@ public class TopologyBuilder {
     public StreamConf getOutput(String streamId) {
       return outputs.get(streamId);
     }
+    
+    /**
+     * Properties for the node. Template values (if set) become property defaults. 
+     * @return
+     */
+    public Map<String, String> getProperties() {
+      return Maps.fromProperties(properties);
+    }
+    
   }
 
   final private Map<String, NodeConf> nodes;
@@ -244,8 +258,11 @@ public class TopologyBuilder {
   }
   
   /**
-   * Read node configurations from properties.
-   * @param conf
+   * Read node configurations from properties. The properties can be in any
+   * random order, as long as they represent a consistent configuration in their
+   * entirety.
+   * 
+   * @param props
    * @return
    */
   public void addFromProperties(Properties props) {
@@ -275,6 +292,10 @@ public class TopologyBuilder {
               throw new IllegalArgumentException("Duplicate " + propertyName);
             }
             getOrAddNode(propertyValue).addInput(stream);
+        } else if (STREAM_TEMPLATE.equals(propertyKey)) {
+          stream.template = getOrAddTemplate(propertyValue);
+          // TODO: defer until all keys are read?
+          stream.properties.setDefaultProperties(stream.template.properties);
         } else {
            // all other stream properties
           stream.properties.put(propertyKey, propertyValue);

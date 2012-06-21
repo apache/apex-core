@@ -20,7 +20,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.junit.Test;
 
-import com.google.common.collect.Maps;
 import com.malhar.node.DNode;
 import com.malhar.stram.conf.TopologyBuilder.NodeConf;
 import com.malhar.stram.conf.TopologyBuilder.StreamConf;
@@ -118,18 +117,21 @@ public class TopologyBuilderTest {
       assertEquals("number of node confs", 4, b.getAllNodes().size());
       assertEquals("number of root nodes", 3, b.getRootNodes().size());
 
+      StreamConf s1 = b.getOrAddStream("n1n2");
+      assertNotNull(s1);
+      assertEquals("n1n2 policy default", "defaultStreamPolicy", s1.getProperty("partitionPolicy"));
       
       NodeConf node3 = b.getOrAddNode("node3");
-      Map<String, String> node3Props = Maps.fromProperties(node3.properties);
+      Map<String, String> node3Props = node3.getProperties();
       
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", node3Props.get("myStringProperty"));
-      assertEquals("node3.classname", EchoNode.class.getName(), node3.properties.getProperty(TopologyBuilder.NODE_CLASSNAME));
+      assertEquals("node3.classname", EchoNode.class.getName(), node3Props.get(TopologyBuilder.NODE_CLASSNAME));
 
       EchoNode dnode3 = (EchoNode)initNode(node3, new Configuration());
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", dnode3.myStringProperty);
       
       NodeConf node4 = b.getOrAddNode("node4");
-      assertEquals("node4.myStringProperty", "overrideNode4", node4.properties.getProperty("myStringProperty"));
+      assertEquals("node4.myStringProperty", "overrideNode4", node4.getProperties().get("myStringProperty"));
       EchoNode dnode4 = (EchoNode)initNode(node4, new Configuration());
       assertEquals("node4.myStringProperty", "overrideNode4", dnode4.myStringProperty);
       
@@ -201,7 +203,8 @@ public class TopologyBuilderTest {
    * @param conf
    */
   public static DNode initNode(NodeConf nodeConf, Configuration conf) {
-    String className = nodeConf.properties.getProperty(TopologyBuilder.NODE_CLASSNAME);
+    Map<String, String> properties = nodeConf.getProperties();
+    String className = properties.get(TopologyBuilder.NODE_CLASSNAME);
     if (className == null) {
       throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", nodeConf.id, TopologyBuilder.NODE_CLASSNAME));
     }
@@ -209,7 +212,7 @@ public class TopologyBuilderTest {
       Class<? extends DNode> nodeClass = Class.forName(className).asSubclass(DNode.class);    
       DNode node = ReflectionUtils.newInstance(nodeClass, conf);
       // populate the custom properties
-      BeanUtils.populate(node, Maps.fromProperties(nodeConf.properties));
+      BeanUtils.populate(node, properties);
       return node;
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("Node class not found: " + className, e);
