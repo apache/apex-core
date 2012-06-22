@@ -25,7 +25,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ClientRMProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
@@ -36,13 +35,12 @@ import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.GetQueueInfoRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetQueueInfoResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.KillApplicationRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.SubmitApplicationRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.api.records.ApplicationMaster;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.ApplicationSubmissionContext;
 import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
@@ -53,7 +51,6 @@ import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.QueueACL;
-import org.apache.hadoop.yarn.api.records.QueueInfo;
 import org.apache.hadoop.yarn.api.records.QueueUserACLInfo;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
@@ -145,6 +142,8 @@ public class StramClient {
   // No. of containers in which the shell script needs to be executed
   private int numContainers = 1;
 
+  public String javaCmd = "${JAVA_HOME}" + "/bin/java";
+  
   // log4j.properties file 
   // if available, add to local resources and set into classpath 
   private String log4jPropFile = "";	
@@ -510,7 +509,8 @@ public class StramClient {
     classPathEnv.append(testRuntimeClassPath);
 
     env.put("CLASSPATH", classPathEnv.toString());
-
+    env.put(StramConstants.STRAM_TEST_CLASSPATH, testRuntimeClassPath);
+    
     amContainer.setEnvironment(env);
 
     // Set the necessary command to execute the application master 
@@ -518,7 +518,7 @@ public class StramClient {
 
     // Set java executable command 
     LOG.info("Setting up app master command");
-    vargs.add("${JAVA_HOME}" + "/bin/java");
+    vargs.add(javaCmd);
     // Set Xmx based on am memory size
     vargs.add("-Xmx" + amMemory + "m");
     // Set class name 
@@ -749,7 +749,7 @@ public class StramClient {
       // Works if compile time env is same as runtime. Mainly tests.
       ClassLoader thisClassLoader =
           Thread.currentThread().getContextClassLoader();
-      String generatedClasspathFile = "yarn-apps-ds-generated-classpath";
+      String generatedClasspathFile = "mrapp-generated-classpath";
       classpathFileStream =
           thisClassLoader.getResourceAsStream(generatedClasspathFile);
       if (classpathFileStream == null) {
@@ -781,21 +781,4 @@ public class StramClient {
     return envClassPath;
   }			
 
-  
-  /**
-   * Find out about the currently available cluster resources
-   */
-  void discoverResources() {
-    // some of this needs to happen in the app master? some in order to decide where to request the app master?
-     // get NodeReports from RM: 
-     //GetClusterNodesRequest request = 
-     //   recordFactory.newRecordInstance(GetClusterNodesRequest.class);
-     // GetClusterNodesResponse response = 
-     //   applicationsManager.getClusterNodes(request);
-     // return TypeConverter.fromYarnNodes(response.getNodeReports());    
-  }
-  
-  
-  
-  
 }

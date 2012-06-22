@@ -25,4 +25,6 @@ public class StramConstants {
   public static final String DISTRIBUTEDSHELLSCRIPTLEN = "DISTRIBUTEDSHELLSCRIPTLEN";
   
   
+  public static final String STRAM_TEST_CLASSPATH = "STRAM_TEST_CLASSPATH";
+  
 }

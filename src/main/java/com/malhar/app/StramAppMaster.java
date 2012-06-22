@@ -19,6 +19,7 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -263,9 +264,9 @@ public class StramAppMaster {
 	        + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
 	        + ", attemptId=" + appAttemptID.getAttemptId());
 
-	    if (!cliParser.hasOption("shell_command")) {
-	      throw new IllegalArgumentException("No shell command specified to be executed by application master");
-	    }
+	    //if (!cliParser.hasOption("shell_command")) {
+	    //  throw new IllegalArgumentException("No shell command specified to be executed by application master");
+	    //}
 	    shellCommand = cliParser.getOptionValue("shell_command");
 
 	    if (cliParser.hasOption("shell_args")) {
@@ -594,6 +595,11 @@ public class StramAppMaster {
 	      }
 	      classPathEnv.append(":./log4j.properties");
 
+	      if (System.getenv(StramConstants.STRAM_TEST_CLASSPATH) != null) {
+	        // when running unit tests we need to pass on the hadoop dependencies (yarn.application.classpath not set) 
+	        classPathEnv.append(":" + System.getenv(StramConstants.STRAM_TEST_CLASSPATH));
+	      }
+	      
 	      env.put("CLASSPATH", classPathEnv.toString());	      
 	      LOG.info("CLASSPATH: {}", classPathEnv);
 	    }
@@ -769,7 +775,11 @@ LOG.info("Final command is: {}", command);
 	      List<CharSequence> vargs = new ArrayList<CharSequence>(8);
 
 	      //vargs.add("exec");
-	      vargs.add(Environment.JAVA_HOME.$() + "/bin/java");
+	      if (!StringUtils.isBlank(System.getenv(Environment.JAVA_HOME.$()))) {
+	        vargs.add(Environment.JAVA_HOME.$() + "/bin/java");
+	      } else {
+	        vargs.add("java");
+	      }
 	    
 	      Path childTmpDir = new Path(Environment.PWD.$(),
 	          YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
