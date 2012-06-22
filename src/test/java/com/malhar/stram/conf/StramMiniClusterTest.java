@@ -44,8 +44,10 @@ public class StramMiniClusterTest {
     conf.setInt("yarn.nodemanager.vmem-pmem-ratio", 10); // workaround to avoid containers being killed because java allocated too much vmem
     
     StringBuilder adminEnv = new StringBuilder();
-    adminEnv.append("JAVA_HOME=").append(System.getProperty("java.home"));
-    adminEnv.append(",");
+    if (System.getenv("JAVA_HOME") == null) {
+      adminEnv.append("JAVA_HOME=").append(System.getProperty(System.getProperty("java.home")));
+      adminEnv.append(",");
+    }
     adminEnv.append("MALLOC_ARENA_MAX=4"); // see MAPREDUCE-3068, MAPREDUCE-3065
     adminEnv.append(",");
     adminEnv.append("CLASSPATH=").append(getTestRuntimeClasspath());
