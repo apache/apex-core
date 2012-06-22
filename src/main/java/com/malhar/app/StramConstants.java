@@ -23,8 +23,5 @@ public class StramConstants {
    * Used to validate the local resource. 
    */
   public static final String DISTRIBUTEDSHELLSCRIPTLEN = "DISTRIBUTEDSHELLSCRIPTLEN";
-  
-  
-  public static final String STRAM_TEST_CLASSPATH = "STRAM_TEST_CLASSPATH";
-  
+    
 }

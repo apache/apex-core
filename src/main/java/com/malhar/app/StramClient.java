@@ -1,10 +1,7 @@
 
 package com.malhar.app;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -126,16 +123,7 @@ public class StramClient {
   // Main class to invoke application master
   private String appMasterMainClass = "";
 
-  // Shell command to be executed 
-  private String shellCommand = ""; 
-  // Location of shell script 
-  private String shellScriptPath = ""; 
-  // Args to be passed to the shell command
-  private String shellArgs = "";
-  // Env variables to be setup for the shell command 
-  private Map<String, String> shellEnv = new HashMap<String, String>();
-  // Shell Command Container priority 
-  private int shellCmdPriority = 0;
+//  private Map<String, String> shellEnv = new HashMap<String, String>();
 
   // Amt of memory to request for container in which shell script will be executed
   private int containerMemory = 10; 
@@ -219,11 +207,6 @@ public class StramClient {
     opts.addOption("master_memory", true, "Amount of memory in MB to be requested to run the application master");
     opts.addOption("jar", true, "Jar file containing the application master");
     opts.addOption("class", true, "Main class to  be run for the Application Master.");
-    opts.addOption("shell_command", true, "Shell command to be executed by the Application Master");
-    opts.addOption("shell_script", true, "Location of the shell script to be executed");
-    opts.addOption("shell_args", true, "Command line args for the shell script");
-    opts.addOption("shell_env", true, "Environment for shell script. Specified as env_key=env_val pairs");
-    opts.addOption("shell_cmd_priority", true, "Priority for the shell command containers");		
     opts.addOption("container_memory", true, "Amount of memory in MB to be requested to run the shell command");
     opts.addOption("num_containers", true, "No. of containers on which the shell command needs to be executed");
     opts.addOption("log_properties", true, "log4j.properties file");
@@ -263,36 +246,6 @@ public class StramClient {
     appMasterJar = cliParser.getOptionValue("jar");
     appMasterMainClass = cliParser.getOptionValue("class",
         StramAppMaster.class.getName());		
-
-   // if (!cliParser.hasOption("shell_command")) {
-   //   throw new IllegalArgumentException("No shell command specified to be executed by application master");
-   // }
-    shellCommand = cliParser.getOptionValue("shell_command");
-
-    if (cliParser.hasOption("shell_script")) {
-      shellScriptPath = cliParser.getOptionValue("shell_script");
-    }
-    if (cliParser.hasOption("shell_args")) {
-      shellArgs = cliParser.getOptionValue("shell_args");
-    }
-    if (cliParser.hasOption("shell_env")) { 
-      String envs[] = cliParser.getOptionValues("shell_env");
-      for (String env : envs) {
-        env = env.trim();
-        int index = env.indexOf('=');
-        if (index == -1) {
-          shellEnv.put(env, "");
-          continue;
-        }
-        String key = env.substring(0, index);
-        String val = "";
-        if (index < (env.length()-1)) {
-          val = env.substring(index+1);
-        }
-        shellEnv.put(key, val);
-      }
-    }
-    shellCmdPriority = Integer.parseInt(cliParser.getOptionValue("shell_cmd_priority", "0"));
 
     containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", "10"));
     numContainers = Integer.parseInt(cliParser.getOptionValue("num_containers", "1"));
@@ -452,26 +405,6 @@ public class StramClient {
       localResources.put("log4j.properties", log4jRsrc);
     }			
 
-    // The shell script has to be made available on the final container(s)
-    // where it will be executed. 
-    // To do this, we need to first copy into the filesystem that is visible 
-    // to the yarn framework. 
-    // We do not need to set this as a local resource for the application 
-    // master as the application master does not need it. 		
-    String hdfsShellScriptLocation = ""; 
-    long hdfsShellScriptLen = 0;
-    long hdfsShellScriptTimestamp = 0;
-    if (!shellScriptPath.isEmpty()) {
-      Path shellSrc = new Path(shellScriptPath);
-      String shellPathSuffix = appName + "/" + appId.getId() + "/ExecShellScript.sh";
-      Path shellDst = new Path(fs.getHomeDirectory(), shellPathSuffix);
-      fs.copyFromLocalFile(false, true, shellSrc, shellDst);
-      hdfsShellScriptLocation = shellDst.toUri().toString(); 
-      FileStatus shellFileStatus = fs.getFileStatus(shellDst);
-      hdfsShellScriptLen = shellFileStatus.getLen();
-      hdfsShellScriptTimestamp = shellFileStatus.getModificationTime();
-    }
-
     // Set local resource info into app master container launch context
     amContainer.setLocalResources(localResources);
 
@@ -481,13 +414,6 @@ public class StramClient {
     // Set the env variables to be setup in the env where the application master will be run
     LOG.info("Set the environment for the application master");
     Map<String, String> env = new HashMap<String, String>();
-
-    // put location of shell script into env
-    // using the env info, the application master will create the correct local resource for the 
-    // eventual containers that will be launched to execute the shell scripts
-    env.put(StramConstants.DISTRIBUTEDSHELLSCRIPTLOCATION, hdfsShellScriptLocation);
-    env.put(StramConstants.DISTRIBUTEDSHELLSCRIPTTIMESTAMP, Long.toString(hdfsShellScriptTimestamp));
-    env.put(StramConstants.DISTRIBUTEDSHELLSCRIPTLEN, Long.toString(hdfsShellScriptLen));
 
     // Add AppMaster.jar location to classpath 		
     // At some point we should not be required to add 
@@ -503,13 +429,7 @@ public class StramClient {
     }
     classPathEnv.append(":./log4j.properties");
 
-    // add the runtime classpath needed for tests to work
-    String testRuntimeClassPath = StramClient.getTestRuntimeClasspath();
-    classPathEnv.append(':');
-    classPathEnv.append(testRuntimeClassPath);
-
     env.put("CLASSPATH", classPathEnv.toString());
-    env.put(StramConstants.STRAM_TEST_CLASSPATH, testRuntimeClassPath);
     
     amContainer.setEnvironment(env);
 
@@ -526,16 +446,6 @@ public class StramClient {
     // Set params for Application Master
     vargs.add("--container_memory " + String.valueOf(containerMemory));
     vargs.add("--num_containers " + String.valueOf(numContainers));
-    vargs.add("--priority " + String.valueOf(shellCmdPriority));
-    if (shellCommand != null && !shellCommand.isEmpty()) {
-      vargs.add("--shell_command " + shellCommand + "");
-    }
-    if (!shellArgs.isEmpty()) {
-      vargs.add("--shell_args " + shellArgs + "");
-    }
-    for (Map.Entry<String, String> entry : shellEnv.entrySet()) {
-      vargs.add("--shell_env " + entry.getKey() + "=" + entry.getValue());
-    }			
     if (debugFlag) {
       vargs.add("--debug");
     }
@@ -735,50 +645,5 @@ public class StramClient {
     return response;		
   }
 
-  private static String getTestRuntimeClasspath() {
-
-    InputStream classpathFileStream = null;
-    BufferedReader reader = null;
-    String envClassPath = "";
-
-    LOG.info("Trying to generate classpath for app master from current thread's classpath");
-    try {
-
-      // Create classpath from generated classpath
-      // Check maven ppom.xml for generated classpath info
-      // Works if compile time env is same as runtime. Mainly tests.
-      ClassLoader thisClassLoader =
-          Thread.currentThread().getContextClassLoader();
-      String generatedClasspathFile = "mrapp-generated-classpath";
-      classpathFileStream =
-          thisClassLoader.getResourceAsStream(generatedClasspathFile);
-      if (classpathFileStream == null) {
-        LOG.info("Could not classpath resource from class loader");
-        return envClassPath;
-      }
-      LOG.info("Readable bytes from stream=" + classpathFileStream.available());
-      reader = new BufferedReader(new InputStreamReader(classpathFileStream));
-      String cp = reader.readLine();
-      if (cp != null) {
-        envClassPath += cp.trim() + ":";
-      }
-      // Put the file itself on classpath for tasks.
-      envClassPath += thisClassLoader.getResource(generatedClasspathFile).getFile();
-    } catch (IOException e) {
-      LOG.info("Could not find the necessary resource to generate class path for tests. Error=" + e.getMessage());
-    } 
-
-    try {
-      if (classpathFileStream != null) {
-        classpathFileStream.close();
-      }
-      if (reader != null) {
-        reader.close();
-      }
-    } catch (IOException e) {
-      LOG.info("Failed to close class path file stream or reader. Error=" + e.getMessage());
-    } 
-    return envClassPath;
-  }			
 
 }

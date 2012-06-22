@@ -3,6 +3,7 @@ package com.malhar.app;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -146,6 +147,13 @@ public class StramAppMaster {
 	   */
 	  public static void main(String[] args) {
 	    boolean result = false;
+
+	    StringWriter sw = new StringWriter();
+	    for (Map.Entry<String, String> e : System.getenv().entrySet()) {
+	        sw.append("\n").append(e.getKey()).append("=").append(e.getValue());
+	    }
+      LOG.info("appmaster env:" + sw.toString());
+
 	    try {
 	      StramAppMaster appMaster = new StramAppMaster();
 	      LOG.info("Initializing ApplicationMaster");
@@ -595,11 +603,6 @@ public class StramAppMaster {
 	      }
 	      classPathEnv.append(":./log4j.properties");
 
-	      if (System.getenv(StramConstants.STRAM_TEST_CLASSPATH) != null) {
-	        // when running unit tests we need to pass on the hadoop dependencies (yarn.application.classpath not set) 
-	        classPathEnv.append(":" + System.getenv(StramConstants.STRAM_TEST_CLASSPATH));
-	      }
-	      
 	      env.put("CLASSPATH", classPathEnv.toString());	      
 	      LOG.info("CLASSPATH: {}", classPathEnv);
 	    }
