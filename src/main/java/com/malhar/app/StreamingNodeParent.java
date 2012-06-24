@@ -27,9 +27,11 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
   private SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;
   private Configuration conf;
+  private DNodeManager dnodeManager;
   
-  public StreamingNodeParent(String name) {
+  public StreamingNodeParent(String name, DNodeManager dnodeMgr) {
     super(name);
+    this.dnodeManager = dnodeMgr;
   }
 
   @Override
@@ -100,8 +102,13 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
 
 
   @Override
-  public void echo(String msg) throws IOException {
-    LOG.info("child msg: {}", msg);
+  public void echo(String containerId, String msg) throws IOException {
+    LOG.info("child msg: {} context: {}", msg, dnodeManager.getContext(containerId));
   }
 
+  @Override
+  public StreamingNodeContext getNodeContext(String containerId) throws IOException {
+    return dnodeManager.getContext(containerId);
+  }
+  
 }

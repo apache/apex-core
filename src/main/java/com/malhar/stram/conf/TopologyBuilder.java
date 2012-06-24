@@ -120,7 +120,7 @@ public class TopologyBuilder {
     public NodeConf(String id) {
       this.id = id;
     }
-    String id;
+    private String id;
     /**
      * The properties of the node, can be subclass properties which will be set via reflection.
      */
@@ -138,7 +138,11 @@ public class TopologyBuilder {
     
     private Integer nindex; // for cycle detection
     private Integer lowlink; // for cycle detection   
-    
+
+    public String getId() {
+      return id;
+    }
+
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
@@ -180,6 +184,10 @@ public class TopologyBuilder {
     
     public StreamConf getOutput(String streamId) {
       return outputs.get(streamId);
+    }
+    
+    public void setClassName(String className) {
+      this.properties.put(NODE_CLASSNAME, className);
     }
     
     /**

@@ -2,9 +2,11 @@ package com.malhar.app;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSError;
 import org.apache.hadoop.ipc.RPC;
@@ -12,16 +14,20 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
+import com.malhar.node.DNode;
+
 /**
  * The main() for streaming node processes launched by {@link com.malhar.app.StramAppMaster}.
  */
-class StramChild {
+public class StramChild {
 
   private static Logger LOG = LoggerFactory.getLogger(StramChild.class);
   
@@ -69,21 +75,24 @@ class StramChild {
       childUGI.doAs(new PrivilegedExceptionAction<Object>() {
         @Override
         public Object run() throws Exception {
+          StreamingNodeContext streamingNodeCtx = umbilical.getNodeContext(childId);
+          LOG.info("Got context: " + streamingNodeCtx);
+          initNode(streamingNodeCtx, defaultConf);
           // TODO: run node in doAs block
-          umbilical.echo("[" + childId + "] Nothing to do as of yet!");
+          umbilical.echo(childId, "[" + childId + "] Nothing to do as of yet!");
           return null;
         }
       });
     } catch (FSError e) {
       LOG.error("FSError from child", e);
-      umbilical.echo(e.getMessage());
+      umbilical.echo(childId, e.getMessage());
     } catch (Exception exception) {
       LOG.warn("Exception running child : "
           + StringUtils.stringifyException(exception));
       // Report back any failures, for diagnostic purposes
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       exception.printStackTrace(new PrintStream(baos));
-      umbilical.echo("FATAL: " + baos.toString());
+      umbilical.echo(childId, "FATAL: " + baos.toString());
     } catch (Throwable throwable) {
       LOG.error("Error running child : "
     	        + StringUtils.stringifyException(throwable));
@@ -91,7 +100,7 @@ class StramChild {
         String cause = tCause == null
                                  ? throwable.getMessage()
                                  : StringUtils.stringifyException(tCause);
-        umbilical.echo(cause);
+        umbilical.echo(childId, cause);
     } finally {
       RPC.stopProxy(umbilical);
       DefaultMetricsSystem.shutdown();
@@ -102,4 +111,27 @@ class StramChild {
     }
   }
 
+  /**
+   * TODO: Move to Stram initialization
+   * Instantiate node from configuration. 
+   * (happens in the execution container, not the stram master process.)
+   * @param nodeConf
+   * @param conf
+   */
+  public static DNode initNode(StreamingNodeContext nodeCtx, Configuration conf) {
+    try {
+      Class<? extends DNode> nodeClass = Class.forName(nodeCtx.dnodeClassName).asSubclass(DNode.class);    
+      DNode node = ReflectionUtils.newInstance(nodeClass, conf);
+      // populate the custom properties
+      BeanUtils.populate(node, nodeCtx.properties);
+      return node;
+    } catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException("Node class not found: " + nodeCtx.dnodeClassName, e);
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    } catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    }
+  }
+  
 }

@@ -5,13 +5,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,35 +16,22 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
-import org.apache.hadoop.yarn.api.ContainerManager;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.StartContainerRequest;
 import org.apache.hadoop.yarn.api.records.AMResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.ContainerId;
-import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.ContainerState;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.LocalResource;
-import org.apache.hadoop.yarn.api.records.LocalResourceType;
-import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
+import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
@@ -60,6 +43,11 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
+import com.malhar.stram.conf.TopologyBuilder;
+import com.malhar.stram.conf.TopologyBuilder.NodeConf;
+import com.malhar.stram.conf.TopologyBuilderTest;
+
 /**
  * see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster}  
  *
@@ -67,7 +55,6 @@ import org.slf4j.LoggerFactory;
 public class StramAppMaster {
 
   private static Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
-  boolean runShell = false;	  
 
 	  // Configuration 
 	  private Configuration conf;
@@ -113,24 +100,6 @@ public class StramAppMaster {
 	  // Needed as once requested, we should not request for containers again and again. 
 	  // Only request for more if the original requirement changes. 
 	  private AtomicInteger numRequestedContainers = new AtomicInteger();
-
-	  // Shell command to be executed 
-	  private String shellCommand = ""; 
-	  // Args to be passed to the shell command
-	  private String shellArgs = "";
-	  // Env variables to be setup for the shell command 
-	  private Map<String, String> shellEnv = new HashMap<String, String>();
-
-	  // Location of shell script ( obtained from info set in env )
-	  // Shell script path in fs
-	  private String shellScriptPath = ""; 
-	  // Timestamp needed for creating a local resource
-	  private long shellScriptPathTimestamp = 0;
-	  // File length needed for local resource
-	  private long shellScriptPathLen = 0;
-
-	  // Hardcoded path to shell script in launch container's local env
-	  private final String ExecShellStringPath = "ExecShellScript.sh";
 
 	  // Containers to be released
 	  private CopyOnWriteArrayList<ContainerId> releasedContainers = new CopyOnWriteArrayList<ContainerId>();
@@ -214,6 +183,7 @@ public class StramAppMaster {
 	    conf = new Configuration();
 	    rpc = YarnRPC.create(conf);
 	  }
+
 	  /**
 	   * Parse command line options
 	   * @param args Command line args 
@@ -272,64 +242,25 @@ public class StramAppMaster {
 	        + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
 	        + ", attemptId=" + appAttemptID.getAttemptId());
 
-	    //if (!cliParser.hasOption("shell_command")) {
-	    //  throw new IllegalArgumentException("No shell command specified to be executed by application master");
-	    //}
-	    shellCommand = cliParser.getOptionValue("shell_command");
-
-	    if (cliParser.hasOption("shell_args")) {
-	      shellArgs = cliParser.getOptionValue("shell_args");
-	    }
-	    if (cliParser.hasOption("shell_env")) { 
-	      String shellEnvs[] = cliParser.getOptionValues("shell_env");
-	      for (String env : shellEnvs) {
-	        env = env.trim();
-	        int index = env.indexOf('=');
-	        if (index == -1) {
-	          shellEnv.put(env, "");
-	          continue;
-	        }
-	        String key = env.substring(0, index);
-	        String val = "";
-	        if (index < (env.length()-1)) {
-	          val = env.substring(index+1);
-	        }
-	        shellEnv.put(key, val);
-	      }
-	    }
-
-	    
-	    if (envs.containsKey(StramConstants.DISTRIBUTEDSHELLSCRIPTLOCATION)) {
-	      shellScriptPath = envs.get(StramConstants.DISTRIBUTEDSHELLSCRIPTLOCATION);
-
-	      if (envs.containsKey(StramConstants.DISTRIBUTEDSHELLSCRIPTTIMESTAMP)) {
-	        shellScriptPathTimestamp = Long.valueOf(envs.get(StramConstants.DISTRIBUTEDSHELLSCRIPTTIMESTAMP));
-	      }
-	      if (envs.containsKey(StramConstants.DISTRIBUTEDSHELLSCRIPTLEN)) {
-	        shellScriptPathLen = Long.valueOf(envs.get(StramConstants.DISTRIBUTEDSHELLSCRIPTLEN));
-	      }
-
-	      if (!shellScriptPath.isEmpty()
-	          && (shellScriptPathTimestamp <= 0 
-	          || shellScriptPathLen <= 0)) {
-	        LOG.error("Illegal values in env for shell script path"
-	            + ", path=" + shellScriptPath
-	            + ", len=" + shellScriptPathLen
-	            + ", timestamp=" + shellScriptPathTimestamp);
-	        throw new IllegalArgumentException("Illegal values in env for shell script path");
-	      }
-	    }
-
-
 	    containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", "10"));
 	    numTotalContainers = Integer.parseInt(cliParser.getOptionValue("num_containers", "1"));
 	    requestPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
 
 	    // start RPC server
-	    rpcImpl = new StreamingNodeParent(this.getClass().getName());
+	    rpcImpl = new StreamingNodeParent(this.getClass().getName(), dnmgr);
 	    rpcImpl.init(conf);
 	    rpcImpl.start();
 	    LOG.info("Container callback server listening at " + rpcImpl.getAddress());
+
+	    // set topology - TODO: read from dfs location populated by submit client
+	    TopologyBuilder b = new TopologyBuilder(conf);
+	    // generate specified number of nodes
+	    for (int i=0; i<numTotalContainers; i++) {
+  	    NodeConf node = b.getOrAddNode("node"+i);
+  	    node.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+        this.dnmgr.unassignedNodes.add(node);
+	    }
+	    
 	    return true;
 	  }
 
@@ -341,6 +272,9 @@ public class StramAppMaster {
 	    new HelpFormatter().printHelp("ApplicationMaster", opts);
 	  }
 
+	  DNodeManager dnmgr = new DNodeManager();
+	  
+	  
 	  /**
 	   * Main run function for the application master
 	   * @throws YarnRemoteException
@@ -450,13 +384,32 @@ public class StramAppMaster {
 	            + ", containerResourceMemory" + allocatedContainer.getResource().getMemory());
 	        //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
-	        LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer);
+	        LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, rpcImpl.getAddress());
+	        // assign dnode to new container
+	        StreamingNodeContext ctx = dnmgr.assignNodesToContainer(allocatedContainer.getId().toString());
 	        Thread launchThread = new Thread(runnableLaunchContainer);
-
+	        
 	        // launch and start the container on a separate thread to keep the main thread unblocked
 	        // as all containers may not be allocated at one go.
 	        launchThreads.add(launchThread);
 	        launchThread.start();
+
+
+	        // TODO: we need to obtain the initial list...
+          // keep track of updated nodes - we use this info to make decisions about where to request new containers
+          List<NodeReport> nodeReports = amResp.getUpdatedNodes();
+          LOG.info("Got {} updated node reports.", nodeReports.size());
+          for (NodeReport nr : nodeReports) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("rackName=").append(nr.getRackName())
+              .append("nodeid=").append(nr.getNodeId())
+              .append("numContainers=").append(nr.getNumContainers())
+              .append("capability=").append(nr.getCapability())
+              .append("used=").append(nr.getUsed())
+              .append("state=").append(nr.getNodeState());
+            LOG.info("Node report: " + sb);
+          }
+	      
 	      }
 
 	      // Check what the current available resources in the cluster are
@@ -558,259 +511,6 @@ public class StramAppMaster {
 	    return isSuccess;
 	  }
 
-	  /**
-	   * Thread to connect to the {@link ContainerManager} and 
-	   * launch the container that will execute the shell command. 
-	   */
-	  private class LaunchContainerRunnable implements Runnable {
-
-	    // Allocated container 
-	    Container container;
-	    // Handle to communicate with ContainerManager
-	    ContainerManager cm;
-
-	    /**
-	     * @param lcontainer Allocated container
-	     */
-	    public LaunchContainerRunnable(Container lcontainer) {
-	      this.container = lcontainer;
-	    }
-
-	    /**
-	     * Helper function to connect to CM
-	     */
-	    private void connectToCM() {
-	      LOG.debug("Connecting to ContainerManager for containerid=" + container.getId());
-	      String cmIpPortStr = container.getNodeId().getHost() + ":"
-	          + container.getNodeId().getPort();
-	      InetSocketAddress cmAddress = NetUtils.createSocketAddr(cmIpPortStr);
-	      LOG.info("Connecting to ContainerManager at " + cmIpPortStr);
-	      this.cm = ((ContainerManager) rpc.getProxy(ContainerManager.class, cmAddress, conf));
-	    }
-
-	    private void setClasspath(Map<String, String> env) {
-	      // add localized application jar files to classpath    
-	      // At some point we should not be required to add 
-	      // the hadoop specific classpaths to the env. 
-	      // It should be provided out of the box. 
-	      // For now setting all required classpaths including
-	      // the classpath to "." for the application jar
-	      StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
-	      for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH)
-	          .split(",")) {
-	        classPathEnv.append(':');
-	        classPathEnv.append(c.trim());
-	      }
-	      classPathEnv.append(":./log4j.properties");
-
-	      env.put("CLASSPATH", classPathEnv.toString());	      
-	      LOG.info("CLASSPATH: {}", classPathEnv);
-	    }
-	    
-	    private void addLocalResources(Map<String, LocalResource> resources) throws IOException {
-        // child VM dependencies
-        // make our own jar file available to new container, in the location that CLASSPATH references
-        // same as when launching the appMaster, except that the file is already distributed to dfs
-        
-        // Create a local resource to point to the destination jar path 
-        FileSystem fs = FileSystem.get(conf);
-        ApplicationId appId = container.getId().getApplicationAttemptId().getApplicationId();
-        String pathSuffix = StramConstants.APPNAME + "/" + appId.getId() + "/Stram.jar";     
-        LOG.info("localize application jar from: " + pathSuffix);
-        Path dst = new Path(fs.getHomeDirectory(), pathSuffix);
-        LocalResource appJarRsrc = Records.newRecord(LocalResource.class);
-        appJarRsrc.setType(LocalResourceType.FILE);
-        appJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);    
-        appJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(dst)); 
-        // Set timestamp and length of file so that the framework 
-        // can do basic sanity checks for the local resource 
-        // after it has been copied over to ensure it is the same 
-        // resource the client intended to use with the application
-        FileStatus destStatus = fs.getFileStatus(dst);
-        appJarRsrc.setTimestamp(destStatus.getModificationTime());
-        appJarRsrc.setSize(destStatus.getLen());
-        resources.put("Stram.jar",  appJarRsrc);
-	    }
-	    
-
-	    @Override
-	    /**
-	     * Connects to CM, sets up container launch context 
-	     * for shell command and eventually dispatches the container 
-	     * start request to the CM. 
-	     */
-	    public void run() {
-	      // Connect to ContainerManager 
-	      connectToCM();
-
-	      LOG.info("Setting up container launch container for containerid=" + container.getId());
-	      ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
-
-	      ctx.setContainerId(container.getId());
-	      ctx.setResource(container.getResource());
-
-	      try {
-	        ctx.setUser(UserGroupInformation.getCurrentUser().getShortUserName());
-	      } catch (IOException e) {
-	        LOG.info("Getting current user info failed when trying to launch the container"
-	            + e.getMessage());
-	      }
-	      
-	      setClasspath(shellEnv);
-	      
-	      // Set the environment 
-	      ctx.setEnvironment(shellEnv);
-
-	      // Set the local resources 
-	      Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
-
-	      
-        // The container for the eventual shell commands needs its own local resources too. 
-        // In this scenario, if a shell script is specified, we need to have it copied 
-        // and made available to the container. 
-        if (!shellScriptPath.isEmpty()) {
-          LocalResource shellRsrc = Records.newRecord(LocalResource.class);
-          shellRsrc.setType(LocalResourceType.FILE);
-          shellRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
-          try {
-            shellRsrc.setResource(ConverterUtils.getYarnUrlFromURI(new URI(shellScriptPath)));
-          } catch (URISyntaxException e) {
-            LOG.error("Error when trying to use shell script path specified in env"
-                + ", path=" + shellScriptPath);
-            e.printStackTrace();
-
-            // A failure scenario on bad input such as invalid shell script path 
-            // We know we cannot continue launching the container 
-            // so we should release it.
-            // TODO
-            numCompletedContainers.incrementAndGet();
-            numFailedContainers.incrementAndGet();
-            return;
-          }
-          shellRsrc.setTimestamp(shellScriptPathTimestamp);
-          shellRsrc.setSize(shellScriptPathLen);
-          localResources.put(ExecShellStringPath, shellRsrc);
-        }
-       
-        // add resources for child VM
-        try {
-  	      addLocalResources(localResources);
-  	      ctx.setLocalResources(localResources);
-        } catch (IOException e) {
-          LOG.error("Failed to prepare local resources.", e);
-          return;
-        }
-
-	      // Set the necessary command to execute on the allocated container 
-	      List<CharSequence> vargs = new Vector<CharSequence>(5);
-	      // Set executable command 
-        vargs.add(shellCommand);
-
-        // Set shell script path 
-	      if (!shellScriptPath.isEmpty()) {
-	        vargs.add(ExecShellStringPath);
-	      }
-	      // Set args for the shell command if any
-	      vargs.add(shellArgs);
-	      // Add log redirect params
-	      // TODO
-	      // We should redirect the output to hdfs instead of local logs 
-	      // so as to be able to look at the final output after the containers 
-	      // have been released. 
-	      // Could use a path suffixed with /AppId/AppAttempId/ContainerId/std[out|err] 
-	      vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
-	      vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
-
-if (!runShell) {
-  vargs = getChildVMCommand(container.getId().toString());
-}
-	      
-	      // Get final commmand
-	      StringBuilder command = new StringBuilder();
-	      for (CharSequence str : vargs) {
-	        command.append(str).append(" ");
-	      }
-LOG.info("Final command is: {}", command);
-	      
-	      List<String> commands = new ArrayList<String>();
-	      commands.add(command.toString());
-	      ctx.setCommands(commands);
-
-	      StartContainerRequest startReq = Records.newRecord(StartContainerRequest.class);
-	      startReq.setContainerLaunchContext(ctx);
-	      try {
-	        cm.startContainer(startReq);
-	      } catch (YarnRemoteException e) {
-	        LOG.error("Start container failed for :"
-	            + ", containerId=" + container.getId());
-	        e.printStackTrace();
-	        // TODO do we need to release this container? 
-	      }
-
-	      // Get container status?
-	      // Left commented out as the shell scripts are short lived 
-	      // and we are relying on the status for completed containers from RM to detect status
-
-	      //    GetContainerStatusRequest statusReq = Records.newRecord(GetContainerStatusRequest.class);
-	      //    statusReq.setContainerId(container.getId());
-	      //    GetContainerStatusResponse statusResp;
-	      //try {
-	      //statusResp = cm.getContainerStatus(statusReq);
-	      //    LOG.info("Container Status"
-	      //    + ", id=" + container.getId()
-	      //    + ", status=" +statusResp.getStatus());
-	      //} catch (YarnRemoteException e) {
-	      //e.printStackTrace();
-	      //}
-	    }
-	    
-	    /**
-	     * Build the command to launch the child VM in the container
-	     * TODO: Build based on streaming node configuration
-	     * @param callbackListenerAddr
-	     * @param task
-	     * @param jvmID
-	     * @return
-	     */
-	    public List<CharSequence> getChildVMCommand(
-	        String jvmID) {
-
-	      List<CharSequence> vargs = new ArrayList<CharSequence>(8);
-
-	      //vargs.add("exec");
-	      if (!StringUtils.isBlank(System.getenv(Environment.JAVA_HOME.$()))) {
-	        vargs.add(Environment.JAVA_HOME.$() + "/bin/java");
-	      } else {
-	        vargs.add("java");
-	      }
-	    
-	      Path childTmpDir = new Path(Environment.PWD.$(),
-	          YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
-	      vargs.add("-Djava.io.tmpdir=" + childTmpDir);
-	      
-	      // Add main class and its arguments 
-	      vargs.add(StramChild.class.getName());  // main of Child
-	      // pass TaskAttemptListener's address
-	      vargs.add(rpcImpl.getAddress().getAddress().getHostAddress()); 
-	      vargs.add(Integer.toString(rpcImpl.getAddress().getPort())); 
-
-	      // Finally add the jvmID
-	      vargs.add(String.valueOf(jvmID));
-        vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
-        vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
-
-	      // Final commmand
-	      StringBuilder mergedCommand = new StringBuilder();
-	      for (CharSequence str : vargs) {
-	        mergedCommand.append(str).append(" ");
-	      }
-	      List<CharSequence> vargsFinal = new ArrayList<CharSequence>(1);
-	      vargsFinal.add(mergedCommand.toString());
-	      return vargsFinal;	      
-	      	      
-	    }
-	    
-	  }
 
 	  /**
 	   * Connect to the Resource Manager

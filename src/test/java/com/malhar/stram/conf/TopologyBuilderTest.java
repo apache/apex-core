@@ -7,19 +7,19 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.util.ReflectionUtils;
 import org.junit.Test;
 
+import com.malhar.app.DNodeManager;
+import com.malhar.app.StramChild;
+import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
 import com.malhar.node.DNode;
 import com.malhar.stram.conf.TopologyBuilder.NodeConf;
 import com.malhar.stram.conf.TopologyBuilder.StreamConf;
@@ -47,8 +47,8 @@ public class TopologyBuilderTest {
     NodeConf node4 = assertNode(nodeConfs, "node4");
 
     assertNotNull("nodeConf for root", node1);
-    assertEquals("nodeId set", "node1", node1.id);
-    
+    assertEquals("nodeId set", "node1", node1.getId());
+
     // verify node instantiation
     DNode dNode = initNode(node1, conf);
     assertNotNull(dNode);
@@ -90,12 +90,17 @@ public class TopologyBuilderTest {
     
   }
 
+  private DNode initNode(NodeConf nodeConf, Configuration conf) {
+    StreamingNodeContext snc = DNodeManager.createNodeContext(nodeConf.getId(), nodeConf, "dummyContainerId");
+    return StramChild.initNode(snc, conf);
+  }
+  
   public void printTopology(NodeConf node, Map<String, NodeConf> allNodes, int level) {
       String prefix = "";
       if (level > 0) {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17); 
       }
-      System.out.println(prefix + node.id);
+      System.out.println(prefix + node.getId());
       for (StreamConf downStream : node.outputs.values()) {
           if (downStream.getTargetNode() != null) {
             printTopology(downStream.getTargetNode(), allNodes, level+1);
@@ -175,16 +180,16 @@ public class TopologyBuilderTest {
      b.findStronglyConnected(node7, cycles);
      assertEquals("node self reference", 1, cycles.size());
      assertEquals("node self reference", 1, cycles.get(0).size());
-     assertEquals("node self reference", node7.id, cycles.get(0).get(0));
+     assertEquals("node self reference", node7.getId(), cycles.get(0).get(0));
 
      // 3 node cycle
      cycles.clear();
      b.findStronglyConnected(node4, cycles);
      assertEquals("3 node cycle", 1, cycles.size());
      assertEquals("3 node cycle", 3, cycles.get(0).size());
-     assertTrue("node2", cycles.get(0).contains(node2.id));
-     assertTrue("node3", cycles.get(0).contains(node3.id));
-     assertTrue("node4", cycles.get(0).contains(node4.id));
+     assertTrue("node2", cycles.get(0).contains(node2.getId()));
+     assertTrue("node3", cycles.get(0).contains(node3.getId()));
+     assertTrue("node4", cycles.get(0).contains(node4.getId()));
      
      try {
        b.validate();
@@ -195,33 +200,6 @@ public class TopologyBuilderTest {
      
   }
   
-  /**
-   * TODO: Move to Stram initialization
-   * Instantiate node from configuration. 
-   * (happens in the execution container, not the stram master process.)
-   * @param nodeConf
-   * @param conf
-   */
-  public static DNode initNode(NodeConf nodeConf, Configuration conf) {
-    Map<String, String> properties = nodeConf.getProperties();
-    String className = properties.get(TopologyBuilder.NODE_CLASSNAME);
-    if (className == null) {
-      throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", nodeConf.id, TopologyBuilder.NODE_CLASSNAME));
-    }
-    try {
-      Class<? extends DNode> nodeClass = Class.forName(className).asSubclass(DNode.class);    
-      DNode node = ReflectionUtils.newInstance(nodeClass, conf);
-      // populate the custom properties
-      BeanUtils.populate(node, properties);
-      return node;
-    } catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Node class not found: " + className, e);
-    } catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Error setting node properties", e);
-    } catch (InvocationTargetException e) {
-      throw new IllegalArgumentException("Error setting node properties", e);
-    }
-  }
   
   public static class EchoNode extends DNode {
 
