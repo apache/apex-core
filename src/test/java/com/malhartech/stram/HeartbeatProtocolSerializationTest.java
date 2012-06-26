@@ -1,4 +1,4 @@
-package com.malhar.stram.conf;
+package com.malhartech.stram;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -9,8 +9,8 @@ import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
-import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
 
 public class HeartbeatProtocolSerializationTest {
 

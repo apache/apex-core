@@ -1,4 +1,4 @@
-package com.malhar.app;
+package com.malhartech.stram;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -46,9 +46,9 @@ public class LaunchContainerRunnable implements Runnable {
   private InetSocketAddress heartbeatAddress;
   
   // Allocated container 
-  Container container;
+  private Container container;
   // Handle to communicate with ContainerManager
-  ContainerManager cm;
+  private ContainerManager cm;
 
   /**
    * @param lcontainer Allocated container

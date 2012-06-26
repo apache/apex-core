@@ -1,4 +1,4 @@
-package com.malhar.stram.conf;
+package com.malhartech.stram;
 
 import static junit.framework.Assert.fail;
 import static org.junit.Assert.assertEquals;
@@ -17,12 +17,11 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 
-import com.malhar.app.DNodeManager;
-import com.malhar.app.StramChild;
-import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
-import com.malhar.node.DNode;
-import com.malhar.stram.conf.TopologyBuilder.NodeConf;
-import com.malhar.stram.conf.TopologyBuilder.StreamConf;
+import com.malhartech.dag.DNode;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
+import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
+import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 public class TopologyBuilderTest {
 
@@ -57,8 +56,8 @@ public class TopologyBuilderTest {
     assertEquals("myStringPropertyValue", echoNode.getMyStringProperty());
 
     // check links
-    assertEquals("node1 inputs", 0, node1.inputs.size());
-    assertEquals("node1 outputs", 1, node1.outputs.size());
+    assertEquals("node1 inputs", 0, node1.getInputStreams().size());
+    assertEquals("node1 outputs", 1, node1.getOutputStreams().size());
     StreamConf n1n2 = node2.getInput("n1n2");
     assertNotNull("n1n2", n1n2);
    
@@ -71,7 +70,7 @@ public class TopologyBuilderTest {
 
     
     // node 2 streams to node 3 and node 4
-    assertEquals("node 2 number of outputs", 2, node2.outputs.size());
+    assertEquals("node 2 number of outputs", 2, node2.getOutputStreams().size());
     assertNotNull(node2.getOutput("n2n3"));
     assertNotNull(node2.getOutput("n2n4"));
 
@@ -101,7 +100,7 @@ public class TopologyBuilderTest {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17); 
       }
       System.out.println(prefix + node.getId());
-      for (StreamConf downStream : node.outputs.values()) {
+      for (StreamConf downStream : node.getOutputStreams()) {
           if (downStream.getTargetNode() != null) {
             printTopology(downStream.getTargetNode(), allNodes, level+1);
           }

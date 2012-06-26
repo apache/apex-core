@@ -1,4 +1,4 @@
-package com.malhar.app;
+package com.malhartech.stram;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -24,13 +24,13 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamContext;
-import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
-import com.malhar.node.DNode;
+import com.malhartech.dag.DNode;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
 
 /**
- * The main() for streaming node processes launched by {@link com.malhar.app.StramAppMaster}.
+ * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
  */
 public class StramChild {
 
@@ -66,7 +66,7 @@ public class StramChild {
           DNode target = nodeList.get(sc.getTargetNodeId());
 
           LOG.info("inline connection from {} to {}", source, target);
-          // TODO: link nodes directly
+          // TODO: link nodes directly via blocking queue
         } else {
           if (sc.getSourceNodeId() != null) {
             DNode sourceNode = nodeList.get(sc.getSourceNodeId());

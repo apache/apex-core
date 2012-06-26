@@ -8,7 +8,20 @@
   <packaging>jar</packaging>
 
   <name>stramproto</name>
-  <url>http://maven.apache.org</url>
+  <url>http://malhar-inc.com</url>
+
+  <organization>
+    <name>Malhar Inc</name>
+    <url>http://www.malhar-inc.com/</url>
+  </organization>
+
+  <licenses>
+    <license>
+      <name>Malhar Inc 0.9</name>
+      <url>http://www.malhar-inc.com/licenses/LICENSE-0.9</url>
+    </license>
+  </licenses>
+  <inceptionYear>2012</inceptionYear>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

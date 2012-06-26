@@ -1,5 +1,5 @@
 
-package com.malhar.app;
+package com.malhartech.stram;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -90,7 +90,7 @@ import org.apache.hadoop.yarn.util.Records;
  *
  * 
  * Run as:
- * hadoop jar stramproto-0.1-SNAPSHOT.jar com.malhar.app.StramClient --jar stramproto-0.1-SNAPSHOT.jar --shell_command date --num_containers 1
+ * hadoop jar stramproto-0.1-SNAPSHOT.jar com.malhartech.stram.StramClient --jar stramproto-0.1-SNAPSHOT.jar --shell_command date --num_containers 1
  */
 @InterfaceAudience.Public
 @InterfaceStability.Unstable

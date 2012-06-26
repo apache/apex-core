@@ -1,4 +1,4 @@
-package com.malhar.stram.conf;
+package com.malhartech.stram.conf;
 
 import java.util.ArrayList;
 import java.util.Collection;

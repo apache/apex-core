@@ -1,4 +1,4 @@
-package com.malhar.stram.conf;
+package com.malhartech.stram;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -29,8 +29,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhar.app.StramAppMaster;
-import com.malhar.app.StramClient;
+import com.malhartech.stram.StramAppMaster;
+import com.malhartech.stram.StramClient;
 
 public class StramMiniClusterTest {
   
@@ -87,7 +87,6 @@ public class StramMiniClusterTest {
   
   @Test
   public void test1() throws Exception {
-    System.out.println("test");
 
     /**
      * Find out about the currently available cluster resources

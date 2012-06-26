@@ -1,4 +1,4 @@
-package com.malhar.app;
+package com.malhartech.stram;
 
 /**
  * Placeholder for constants

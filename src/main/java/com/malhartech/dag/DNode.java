@@ -1,4 +1,4 @@
-package com.malhar.node;
+package com.malhartech.dag;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -6,7 +6,7 @@ import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 
 /**
- * Placeholder for topology builder test
+ * Placeholder for stram unit testing
  */
 public abstract class DNode implements Configurable {
   protected Configuration conf;

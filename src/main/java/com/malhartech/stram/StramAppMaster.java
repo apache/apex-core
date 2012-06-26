@@ -1,4 +1,4 @@
-package com.malhar.app;
+package com.malhartech.stram;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -46,7 +46,7 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhar.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
  * see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster}  
@@ -389,9 +389,9 @@ public class StramAppMaster {
 	            + ", containerResourceMemory" + allocatedContainer.getResource().getMemory());
 	        //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
-	        LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, rpcImpl.getAddress());
-	        // assign dnode to new container
+	        // assign streaming node(s) to new container
 	        dnmgr.assignContainer(allocatedContainer.getId().toString());
+          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, rpcImpl.getAddress());
 	        Thread launchThread = new Thread(runnableLaunchContainer);
 	        
 	        // launch and start the container on a separate thread to keep the main thread unblocked
@@ -463,6 +463,7 @@ public class StramAppMaster {
 	        }
 
 	      }
+	      
 	      if (numCompletedContainers.get() == numTotalContainers) {
 	        appDone = true;
 	      }
@@ -476,8 +477,7 @@ public class StramAppMaster {
 	          + ", currentAllocated=" + numAllocatedContainers);
 
 	      // TODO 
-	      // Add a timeout handling layer 
-	      // for misbehaving shell commands
+	      // Add monitoring for child containers
 	    }
 
 	    // Join all launched threads
