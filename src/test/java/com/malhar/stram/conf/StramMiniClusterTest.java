@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URL;
 import java.util.List;
+import java.util.Properties;
 
 import junit.framework.Assert;
 
@@ -112,6 +113,24 @@ public class StramMiniClusterTest {
     String testJar = JarFinder.getJar(StramMiniClusterTest.class);   
     LOG.info("testJar: " + testJar);
 
+    // create test topology
+    Properties props = new Properties();
+    props.put("stram.stream.n1n2.inputNode", "node1");
+    props.put("stram.stream.n1n2.outputNode", "node2");
+    props.put("stram.stream.n1n2.template", "defaultstream");
+
+    props.put("stram.node.node1.classname", TopologyBuilderTest.EchoNode.class.getName());
+    props.put("stram.node.node1.myStringProperty", "myStringPropertyValue");
+
+    props.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
+    File tmpFile = File.createTempFile("stram-junit", ".properties");
+    tmpFile.deleteOnExit();
+    props.store(new FileOutputStream(tmpFile), "StramMiniClusterTest.test1");
+    LOG.info("topology: " + tmpFile);
+    
+    //URL location =  this.getClass().getResource("/testTopology.properties");
+    //String topologyPath = location.getPath();    
+    
     String[] args = {
         "--jar",
         appMasterJar,
@@ -120,7 +139,9 @@ public class StramMiniClusterTest {
         "--master_memory",
         "256",
         "--container_memory",
-        "64"
+        "64",
+        "--topologyProperties",
+        tmpFile.getAbsolutePath()
     };
 
     LOG.info("Initializing DS Client");
@@ -135,65 +156,7 @@ public class StramMiniClusterTest {
 
     LOG.info("Client run completed. Result=" + result);
     Assert.assertTrue(result);
-    
-    
-/*    
-    
-    // allocate container
-    Configuration yarnConf = yarnCluster.getConfig();
-    final YarnRPC yarnRPC = YarnRPC.create(conf);    
-    InetSocketAddress rmAddress = yarnConf.getSocketAddr(
-          YarnConfiguration.RM_SCHEDULER_ADDRESS,
-          YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
-          YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
-    LOG.info("Connecting to ResourceManager at " + rmAddress);
-    AMRMProtocol amRmProptocol = ((AMRMProtocol) yarnRPC.getProxy(AMRMProtocol.class, rmAddress, yarnConf));
-
-
-    ResourceRequest resourceReq = Records.newRecord(ResourceRequest.class);
-    // setup requirements for hosts 
-    // whether a particular rack/host is needed 
-    // Refer to apis under org.apache.hadoop.net for more 
-    // details on how to get figure out rack/host mapping.
-    // using * as any host will do for the distributed shell app
-    resourceReq.setHostName("*");
-    resourceReq.setNumContainers(1);
-    Priority pri = Records.newRecord(Priority.class);
-    // TODO - what is the range for priority? how to decide? 
-    pri.setPriority(1);
-    resourceReq.setPriority(pri);
-    // Set up resource type requirements
-    // For now, only memory is supported so we set memory requirements
-    Resource capability = Records.newRecord(Resource.class);
-    capability.setMemory(500);
-    resourceReq.setCapability(capability);
-    
-    List<ResourceRequest> requestedContainers = Collections.singletonList(resourceReq);
-    List<ContainerId> releaseContainers = new ArrayList<ContainerId>();
-    AllocateRequest req = Records.newRecord(AllocateRequest.class);
-    req.setResponseId(1); // TODO: sequence
-    req.setApplicationAttemptId(ConverterUtils.toApplicationAttemptId("appAttemptID"));
-    req.addAllAsks(requestedContainers);
-    req.addAllReleases(releaseContainers);
-    //req.setProgress((float)numCompletedContainers.get()/numTotalContainers);
-
-    LOG.info("Sending request to RM for containers"
-        + ", requestedSet=" + requestedContainers.size()
-        + ", releasedSet=" + releaseContainers.size()
-        + ", progress=" + req.getProgress());
-
-    for (ResourceRequest  rsrcReq : requestedContainers) {
-      LOG.info("Requested container ask: " + rsrcReq.toString());
-    }
-    for (ContainerId id : releaseContainers) {
-      LOG.info("Released container, id=" + id.getId());
-    }
-
-    AllocateResponse resp = amRmProptocol.allocate(req);
-    resp.getAMResponse();
-*/    
-    
-  
+      
   }
 
   private static String getTestRuntimeClasspath() {

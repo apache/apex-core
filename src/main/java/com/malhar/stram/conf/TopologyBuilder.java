@@ -1,6 +1,7 @@
 package com.malhar.stram.conf;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -167,6 +168,10 @@ public class TopologyBuilder {
     public StreamConf getInput(String streamId) {
       return inputs.get(streamId);
     }
+
+    public Collection<StreamConf> getInputStreams() {
+      return inputs.values();
+    }
     
     public NodeConf addOutput(StreamConf stream) {
       if (stream.sourceNode != null) {
@@ -185,6 +190,11 @@ public class TopologyBuilder {
     public StreamConf getOutput(String streamId) {
       return outputs.get(streamId);
     }
+    
+    public Collection<StreamConf> getOutputStreams() {
+      return outputs.values();
+    }
+    
     
     public void setClassName(String className) {
       this.properties.put(NODE_CLASSNAME, className);

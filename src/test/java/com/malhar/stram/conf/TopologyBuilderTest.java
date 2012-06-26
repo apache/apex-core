@@ -91,7 +91,7 @@ public class TopologyBuilderTest {
   }
 
   private DNode initNode(NodeConf nodeConf, Configuration conf) {
-    StreamingNodeContext snc = DNodeManager.createNodeContext(nodeConf.getId(), nodeConf, "dummyContainerId");
+    StreamingNodeContext snc = DNodeManager.createNodeContext(nodeConf.getId(), nodeConf);
     return StramChild.initNode(snc, conf);
   }
   

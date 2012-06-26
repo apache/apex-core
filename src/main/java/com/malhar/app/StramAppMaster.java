@@ -1,13 +1,16 @@
 package com.malhar.app;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,10 +46,7 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
 import com.malhar.stram.conf.TopologyBuilder;
-import com.malhar.stram.conf.TopologyBuilder.NodeConf;
-import com.malhar.stram.conf.TopologyBuilderTest;
 
 /**
  * see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster}  
@@ -252,15 +252,20 @@ public class StramAppMaster {
 	    rpcImpl.start();
 	    LOG.info("Container callback server listening at " + rpcImpl.getAddress());
 
-	    // set topology - TODO: read from dfs location populated by submit client
-	    TopologyBuilder b = new TopologyBuilder(conf);
-	    // generate specified number of nodes
-	    for (int i=0; i<numTotalContainers; i++) {
-  	    NodeConf node = b.getOrAddNode("node"+i);
-  	    node.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-        this.dnmgr.unassignedNodes.add(node);
-	    }
-	    
+	    // set topology - read from dfs location populated by submit client
+      String resourcePath = "./stram.properties";
+      LOG.info("Reading topology from " + resourcePath);
+      InputStream is = new FileInputStream(resourcePath);
+      Properties props = new Properties();
+      props.load(is);
+      is.close();
+
+      TopologyBuilder b = new TopologyBuilder(conf);
+      b.addFromProperties(props);
+      numTotalContainers = b.getAllNodes().size(); // TODO
+      LOG.info("Initializing {} nodes in {} containers", b.getAllNodes().size(), numTotalContainers);
+      dnmgr.unassignedNodes.addAll(b.getAllNodes().values());
+      
 	    return true;
 	  }
 
@@ -386,7 +391,7 @@ public class StramAppMaster {
 
 	        LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, rpcImpl.getAddress());
 	        // assign dnode to new container
-	        StreamingNodeContext ctx = dnmgr.assignNodesToContainer(allocatedContainer.getId().toString());
+	        dnmgr.assignContainer(allocatedContainer.getId().toString());
 	        Thread launchThread = new Thread(runnableLaunchContainer);
 	        
 	        // launch and start the container on a separate thread to keep the main thread unblocked

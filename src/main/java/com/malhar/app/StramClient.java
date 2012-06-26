@@ -123,7 +123,7 @@ public class StramClient {
   // Main class to invoke application master
   private String appMasterMainClass = "";
 
-//  private Map<String, String> shellEnv = new HashMap<String, String>();
+  private String topologyPropertyFile;
 
   // Amt of memory to request for container in which shell script will be executed
   private int containerMemory = 10; 
@@ -199,7 +199,7 @@ public class StramClient {
   public boolean init(String[] args) throws ParseException {
 
     Options opts = new Options();
-    opts.addOption("appname", true, "Application Name. Default value - DistributedShell");
+    opts.addOption("appname", true, "Application Name. Default value - Stram");
     opts.addOption("priority", true, "Application Priority. Default 0");
     opts.addOption("queue", true, "RM Queue in which this application is to be submitted");
     opts.addOption("user", true, "User to run the application as");
@@ -207,6 +207,7 @@ public class StramClient {
     opts.addOption("master_memory", true, "Amount of memory in MB to be requested to run the application master");
     opts.addOption("jar", true, "Jar file containing the application master");
     opts.addOption("class", true, "Main class to  be run for the Application Master.");
+    opts.addOption("topologyProperties", true, "File defining the topology");
     opts.addOption("container_memory", true, "Amount of memory in MB to be requested to run the shell command");
     opts.addOption("num_containers", true, "No. of containers on which the shell command needs to be executed");
     opts.addOption("log_properties", true, "log4j.properties file");
@@ -246,7 +247,11 @@ public class StramClient {
     appMasterJar = cliParser.getOptionValue("jar");
     appMasterMainClass = cliParser.getOptionValue("class",
         StramAppMaster.class.getName());		
-
+    topologyPropertyFile = cliParser.getOptionValue("topologyProperties");
+    if (topologyPropertyFile == null) {
+      throw new IllegalArgumentException("No topology property file specified, exiting.");
+    }
+    
     containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", "10"));
     numContainers = Integer.parseInt(cliParser.getOptionValue("num_containers", "1"));
 
@@ -367,7 +372,7 @@ public class StramClient {
     // Create a local resource to point to the destination jar path 
     FileSystem fs = FileSystem.get(conf);
     Path src = new Path(appMasterJar);
-    String pathSuffix = appName + "/" + appId.getId() + "/Stram.jar";	    
+    String pathSuffix = appName + "/" + appId.getId() + "/stram.jar";	    
     Path dst = new Path(fs.getHomeDirectory(), pathSuffix);
     fs.copyFromLocalFile(false, true, src, dst);
     FileStatus destStatus = fs.getFileStatus(dst);
@@ -405,6 +410,19 @@ public class StramClient {
       localResources.put("log4j.properties", log4jRsrc);
     }			
 
+    // topology properties
+    Path topologySrc = new Path(topologyPropertyFile);
+    Path topologyDst = new Path(fs.getHomeDirectory(), appName + "/" + appId.getId() + "/stram.properties");
+    fs.copyFromLocalFile(false, true, topologySrc, topologyDst);
+    FileStatus topologyFileStatus = fs.getFileStatus(topologyDst);
+    LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
+    topologyRsrc.setType(LocalResourceType.FILE);
+    topologyRsrc.setVisibility(LocalResourceVisibility.APPLICATION);    
+    topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(topologyDst.toUri()));
+    topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
+    topologyRsrc.setSize(topologyFileStatus.getLen());
+    localResources.put("stram.properties", topologyRsrc);
+    
     // Set local resource info into app master container launch context
     amContainer.setLocalResources(localResources);
 

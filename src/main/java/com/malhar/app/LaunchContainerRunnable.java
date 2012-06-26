@@ -99,7 +99,7 @@ public class LaunchContainerRunnable implements Runnable {
     // Create a local resource to point to the destination jar path 
     FileSystem fs = FileSystem.get(conf);
     ApplicationId appId = container.getId().getApplicationAttemptId().getApplicationId();
-    String pathSuffix = StramConstants.APPNAME + "/" + appId.getId() + "/Stram.jar";     
+    String pathSuffix = StramConstants.APPNAME + "/" + appId.getId() + "/stram.jar";     
     LOG.info("localize application jar from: " + pathSuffix);
     Path dst = new Path(fs.getHomeDirectory(), pathSuffix);
     LocalResource appJarRsrc = Records.newRecord(LocalResource.class);
@@ -113,7 +113,7 @@ public class LaunchContainerRunnable implements Runnable {
     FileStatus destStatus = fs.getFileStatus(dst);
     appJarRsrc.setTimestamp(destStatus.getModificationTime());
     appJarRsrc.setSize(destStatus.getLen());
-    resources.put("Stram.jar",  appJarRsrc);
+    resources.put("stram.jar",  appJarRsrc);
   }
   
 

@@ -26,7 +26,6 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
   private Server server;
   private SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;
-  private Configuration conf;
   private DNodeManager dnodeManager;
   
   public StreamingNodeParent(String name, DNodeManager dnodeMgr) {
@@ -103,12 +102,18 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
 
   @Override
   public void echo(String containerId, String msg) throws IOException {
-    LOG.info("child msg: {} context: {}", msg, dnodeManager.getContext(containerId));
+    LOG.info("child msg: {} context: {}", msg, dnodeManager.getContainerContext(containerId));
   }
 
   @Override
-  public StreamingNodeContext getNodeContext(String containerId) throws IOException {
-    return dnodeManager.getContext(containerId);
+  public StreamingContainerContext getInitContext(String containerId)
+      throws IOException {
+    return dnodeManager.getContainerContext(containerId);
+  }
+
+  @Override
+  public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) {
+    return dnodeManager.processHeartbeat(msg);
   }
   
 }

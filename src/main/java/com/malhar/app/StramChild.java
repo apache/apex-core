@@ -1,10 +1,13 @@
 package com.malhar.app;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -21,6 +24,8 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamContext;
+import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhar.app.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
 import com.malhar.node.DNode;
 
@@ -30,6 +35,59 @@ import com.malhar.node.DNode;
 public class StramChild {
 
   private static Logger LOG = LoggerFactory.getLogger(StramChild.class);
+
+  final private String containerId;
+  final private Configuration conf;
+  final private StreamingNodeUmbilicalProtocol umbilical;
+  final private Map<String, DNode> nodeList = new ConcurrentHashMap<String, DNode>();
+
+  
+  protected StramChild(String containerId, Configuration conf, StreamingNodeUmbilicalProtocol umbilical) {
+    this.umbilical = umbilical;
+    this.containerId = containerId;
+    this.conf = conf;
+  }
+  
+  private void init() throws IOException {
+    StreamingContainerContext ctx = umbilical.getInitContext(containerId);
+    LOG.info("Got context: " + ctx);
+    
+    // create nodes
+    for (StreamingNodeContext snc : ctx.getNodes()) {
+        DNode dnode = initNode(snc, conf);
+        nodeList.put(snc.getDnodeId(), dnode);
+    }
+    
+    // wire nodes (inline streams and buffer server connections
+    // TODO: this looks too complicated
+    for (StreamContext sc : ctx.getStreams()) {
+        if (sc.isInline()) {
+          DNode source = nodeList.get(sc.getSourceNodeId());
+          DNode target = nodeList.get(sc.getTargetNodeId());
+
+          LOG.info("inline connection from {} to {}", source, target);
+          // TODO: link nodes directly
+        } else {
+          if (sc.getSourceNodeId() != null) {
+            DNode sourceNode = nodeList.get(sc.getSourceNodeId());
+            if (sourceNode != null) {
+              LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
+            }
+          }
+          
+          if (sc.getTargetNodeId() != null) {
+            DNode targetNode = nodeList.get(sc.getTargetNodeId());
+            if (targetNode != null) {
+              LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
+            }
+          }
+        }
+    }
+  }
+
+  private void heartbeatLoop() throws IOException {
+    umbilical.echo(containerId, "[" + containerId + "] Doing nothing as of yet!");
+  }
   
   public static void main(String[] args) throws Throwable {
     LOG.debug("Child starting");
@@ -75,11 +133,11 @@ public class StramChild {
       childUGI.doAs(new PrivilegedExceptionAction<Object>() {
         @Override
         public Object run() throws Exception {
-          StreamingNodeContext streamingNodeCtx = umbilical.getNodeContext(childId);
-          LOG.info("Got context: " + streamingNodeCtx);
-          initNode(streamingNodeCtx, defaultConf);
-          // TODO: run node in doAs block
-          umbilical.echo(childId, "[" + childId + "] Nothing to do as of yet!");
+          StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
+          stramChild.init();
+          // main thread enters heartbeat loop
+          stramChild.heartbeatLoop();
+          
           return null;
         }
       });
@@ -110,7 +168,7 @@ public class StramChild {
       LogManager.shutdown();
     }
   }
-
+  
   /**
    * TODO: Move to Stram initialization
    * Instantiate node from configuration. 
@@ -120,13 +178,14 @@ public class StramChild {
    */
   public static DNode initNode(StreamingNodeContext nodeCtx, Configuration conf) {
     try {
-      Class<? extends DNode> nodeClass = Class.forName(nodeCtx.dnodeClassName).asSubclass(DNode.class);    
+      Class<? extends DNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(DNode.class);    
       DNode node = ReflectionUtils.newInstance(nodeClass, conf);
+      node.setId(nodeCtx.getDnodeId());
       // populate the custom properties
-      BeanUtils.populate(node, nodeCtx.properties);
+      BeanUtils.populate(node, nodeCtx.getProperties());
       return node;
     } catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Node class not found: " + nodeCtx.dnodeClassName, e);
+      throw new IllegalArgumentException("Node class not found: " + nodeCtx.getDnodeClassName(), e);
     } catch (IllegalAccessException e) {
       throw new IllegalArgumentException("Error setting node properties", e);
     } catch (InvocationTargetException e) {
