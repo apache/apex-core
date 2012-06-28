@@ -3,20 +3,16 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.malhartech</groupId>
-  <artifactId>server</artifactId>
   <packaging>jar</packaging>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
-  <version>1.0-SNAPSHOT</version>
+  <version>0.1-SNAPSHOT</version>
 
   <name>Buffer Server</name>
   <url>http://www.malhartech.com/</url>
-  <description>
-    Blah Blah
-  </description>
 
   <organization>
     <name>Malhar Inc</name>
@@ -124,5 +120,6 @@
       </plugin>
      </plugins>
    </build>
-
+    <artifactId>bufferserver</artifactId>
+    <description>Interface for nodes from 2 different containers to talk to each other.</description>
 </project>
