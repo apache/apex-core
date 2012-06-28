@@ -2,11 +2,11 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.malhartech;
+package com.malhartech.bufferserver;
 
-import com.malhartech.Buffer.Data;
-import com.malhartech.policy.Policy;
-import com.malhartech.policy.PolicyContext;
+import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.policy.GiveAll;
+import com.malhartech.bufferserver.policy.Policy;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashSet;
@@ -20,10 +20,10 @@ import org.jboss.netty.channel.Channel;
  *
  * @author chetan
  */
-public class LogicalNode implements PolicyContext, DataListener {
+public class LogicalNode implements DataListener {
 
     private final String group;
-    private final HashSet<Channel> physicalNodes;
+    private final HashSet<PhysicalNode> physicalNodes;
     private final HashSet<ByteBuffer> partitions;
     private final Policy policy;
     private final Iterator<Data> iterator;
@@ -32,7 +32,7 @@ public class LogicalNode implements PolicyContext, DataListener {
     public LogicalNode(String group, Iterator<Data> iterator, Policy policy) {
         this.group = group;
         this.policy = policy;
-        this.physicalNodes = new HashSet<Channel>();
+        this.physicalNodes = new HashSet<PhysicalNode>();
         this.partitions = new HashSet<ByteBuffer>();
         this.iterator = iterator;
     }
@@ -46,32 +46,25 @@ public class LogicalNode implements PolicyContext, DataListener {
     }
 
     public void addChannel(Channel channel) {
-        physicalNodes.add(channel);
+        PhysicalNode pn = new PhysicalNode(channel);
+        if (!physicalNodes.contains(pn)) {
+            physicalNodes.add(pn);
+        }
     }
 
     public void addPartition(ByteBuffer partition) {
         partitions.add(partition);
     }
 
+    /*
     public void injectData(Data data) {
-        for (Channel node : physicalNodes) {
+        for (Channel pn : physicalNodes) {
             if (policy.confirms(this, data)) {
                 node.write(data);
             }
         }
     }
-
-    public void setAttachment(Object o) {
-        attachment = o;
-    }
-
-    public Object getAttachment() {
-        return attachment;
-    }
-
-    public Channel getChannel() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
+    */
 
     public void catchUp(long windowId) {
         
@@ -80,10 +73,7 @@ public class LogicalNode implements PolicyContext, DataListener {
             Data data = iterator.next();
             if (data.getType() == Data.DataType.BEGIN_WINDOW) {
                 if (data.getBeginwindow().getWindowId() >= windowId) {
-                    for (Channel node : physicalNodes) {
-                        node.write(data);
-                        break;
-                    }
+                    policy.distribute(physicalNodes, data);
                 }
             }
         }
@@ -101,28 +91,18 @@ public class LogicalNode implements PolicyContext, DataListener {
             switch (data.getType()) {
                 case PARTITIONED_DATA:
                     if (partitions.contains(data.getPartitioneddata().getPartition().asReadOnlyByteBuffer())) {
-                        for (Channel node : physicalNodes) {
-                            if (policy.confirms(this, data)) {
-                                node.write(data);
-                            }
-                        }
+                        policy.distribute(physicalNodes, data);
                     }
                     break;
 
                 case SIMPLE_DATA:
                     if (partitions.isEmpty()) {
-                        for (Channel node : physicalNodes) {
-                            if (policy.confirms(this, data)) {
-                                node.write(data);
-                            }
-                        }
+                        policy.distribute(physicalNodes, data);
                     }
                     break;
 
                 default:
-                    for (Channel node : physicalNodes) {
-                        node.write(data);
-                    }
+                    GiveAll.getInstance().distribute(physicalNodes, data);
                     break;
             }
         }

@@ -2,9 +2,11 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.malhartech.policy;
+package com.malhartech.bufferserver.policy;
 
-import com.malhartech.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.PhysicalNode;
+import java.util.Set;
 
 /**
  *
@@ -12,13 +14,7 @@ import com.malhartech.Buffer.Data;
  */
 public class AbstractPolicy implements Policy {
 
-    public boolean confirms(PolicyContext pc, Data d) {
+    public void distribute(Set<PhysicalNode> nodes, Data data) {
         throw new UnsupportedOperationException("Not supported yet.");
-    }
-    
-    public static Policy getInstance()
-    {
-        return null;
-    }
-    
+    }    
 }

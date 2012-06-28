@@ -2,9 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.malhartech;
+package com.malhartech.bufferserver;
 
-import com.malhartech.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data;
 import org.jboss.netty.channel.Channel;
 
 /**

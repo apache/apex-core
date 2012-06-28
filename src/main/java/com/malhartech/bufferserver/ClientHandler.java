@@ -13,12 +13,13 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.malhartech;
+package com.malhartech.bufferserver;
 
 import com.google.protobuf.ByteString;
-import com.malhartech.Buffer.Data;
-import com.malhartech.Buffer.SubscriberRequest;
+import com.malhartech.bufferserver.Buffer.Data;
 import java.util.Collection;
+import java.util.Date;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.channel.*;
@@ -35,9 +36,43 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
     // Stateful properties
     private volatile Channel channel;
 
-    public void registerPartitions(String node, Collection<String> partitions) {
-        SubscriberRequest.Builder srb = SubscriberRequest.newBuilder();
-        srb.setNode(node);
+    public void publish(String identifier, String type) {
+        Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
+        prb.setIdentifier(identifier).setType(type);
+
+        Data.Builder db = Data.newBuilder();
+        db.setType(Data.DataType.PUBLISHER_REQUEST);
+        db.setPublish(prb);
+
+        final ChannelFutureListener cfl = new ChannelFutureListener() {
+
+            public void operationComplete(ChannelFuture cf) throws Exception {
+                Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
+                pdb.setWindowId(new Date().getTime());
+                pdb.setData(ByteString.EMPTY);
+
+                byte[] bytes = String.valueOf(new Random().nextInt() % 10).getBytes();
+                pdb.setPartition(ByteString.copyFrom(bytes));
+
+
+                Buffer.Data.Builder db = Data.newBuilder();
+                db.setType(Data.DataType.PARTITIONED_DATA);
+                db.setPartitioneddata(pdb);
+
+                Thread.sleep(500);
+                cf.getChannel().write(db).addListener(this);
+            }
+        };
+
+        channel.write(db).addListener(cfl);
+    }
+
+    public void registerPartitions(String id, String down_type, String node, String type, Collection<String> partitions) {
+        Buffer.SubscriberRequest.Builder srb = Buffer.SubscriberRequest.newBuilder();
+        srb.setIdentifier(id);
+        srb.setType(down_type);
+        srb.setUpstreamIdentifier(node);
+        srb.setUpstreamType(type);
 
         for (String c : partitions) {
             srb.addPartition(ByteString.copyFromUtf8(c));
@@ -56,6 +91,9 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
         if (e instanceof ChannelStateEvent) {
             logger.info(e.toString());
         }
+
+        System.out.println(e);
+
         super.handleUpstream(ctx, e);
     }
 
@@ -81,5 +119,11 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
                 "Unexpected exception from downstream.",
                 e.getCause());
         e.getChannel().close();
+    }
+
+    @Override
+    public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        //compiled code
+        throw new RuntimeException("Compiled Code");
     }
 }

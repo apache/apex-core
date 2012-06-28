@@ -1,4 +1,4 @@
-package com.malhartech;
+package com.malhartech.bufferserver;
 /*
  * Copyright 2011 The Netty Project
  *
@@ -15,8 +15,12 @@ package com.malhartech;
  * the License.
  */
 
+import com.malhartech.netty.ServerPipelineFactory;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
+import java.util.logging.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
@@ -25,11 +29,17 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
  * the local times of the specified cities.
  */
 public class Server {
+        private static final Logger logger = Logger.getLogger(
+            ClientHandler.class.getName());
+
 
     private final int port;
 
     public Server(int port) {
         this.port = port;
+        
+        Handler ch = new ConsoleHandler();
+        Logger.getLogger("").addHandler(ch);
     }
 
     public void run() {
