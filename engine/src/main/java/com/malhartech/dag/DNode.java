@@ -15,6 +15,12 @@ public abstract class DNode implements Configurable {
     PROCESSING,
     IDLE  // the node stopped processing (no more input etc.)
   }
+
+  public static class HeartbeatCounters {
+    public long tuplesProcessed;
+    public long bytesProcessed;
+  }
+  
   
   protected Configuration conf;
   private String id;
@@ -45,12 +51,12 @@ public abstract class DNode implements Configurable {
   public abstract DNodeState getState();
   
   /**
-   * Transfers processed tuple count to platform.
+   * Transfers to platform and resets counts for next interval.
    * This is called as part of the heartbeat processing.
    * @return
    */
-  public long getResetTupleCount() {
-     return 0;
+  public HeartbeatCounters getResetCounters() {
+     return new HeartbeatCounters();
   }
   
   

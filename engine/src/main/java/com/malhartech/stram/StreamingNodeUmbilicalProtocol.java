@@ -428,6 +428,19 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     }
 
     /**
+     * Number of bytes processed during the heartbeat interval.
+     */
+    private int numberBytesProcessed;
+    
+    public int getNumberBytesProcessed() {
+      return numberBytesProcessed;
+    }
+
+    public void setNumberBytesProcessed(int numberBytesProcessed) {
+      this.numberBytesProcessed = numberBytesProcessed;
+    }
+
+    /**
      * The current window being processed by the node.
      * To be used by stram to monitor window synchronization.
      */

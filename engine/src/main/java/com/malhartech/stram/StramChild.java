@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.DNode;
+import com.malhartech.dag.DNode.HeartbeatCounters;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -114,9 +115,10 @@ public class StramChild {
       // gather heartbeat info for all nodes
       for (Map.Entry<String, DNode> e : nodeList.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
+        HeartbeatCounters counters = e.getValue().getResetCounters();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
-        hb.setNumberTuplesProcessed((int)e.getValue().getResetTupleCount());
+        hb.setNumberTuplesProcessed((int)counters.tuplesProcessed);
         hb.setIntervalMs(heartbeatIntervalMillis);
         hb.setState(e.getValue().getState().name());
         heartbeats.add(hb);

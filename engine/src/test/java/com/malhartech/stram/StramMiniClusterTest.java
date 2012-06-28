@@ -215,12 +215,15 @@ public class StramMiniClusterTest {
     }
 
     @Override
-    public long getResetTupleCount() {
+    public HeartbeatCounters getResetCounters() {
+      HeartbeatCounters stats = new HeartbeatCounters();
       if (tupleCounts.length == 0) {
-        return 0;
+          stats.tuplesProcessed = 0;
+      } else {
+        int count = getResetCount++ % (tupleCounts.length);
+        stats.tuplesProcessed = tupleCounts[count];
       }
-      int count = getResetCount++ % (tupleCounts.length);
-      return tupleCounts[count];
+      return stats;
     }
 
     public String getTupleCounts() {
