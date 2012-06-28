@@ -3,11 +3,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.malhar.app</groupId>
-  <artifactId>stramproto</artifactId>
+  <artifactId>stram</artifactId>
   <version>0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>stramproto</name>
+  <name>Streaming Application Manager</name>
   <url>http://malhar-inc.com</url>
 
   <organization>
