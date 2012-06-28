@@ -38,6 +38,7 @@
   <modules>
 
     <module>stram</module>
+    <module>bufferserver</module>
   </modules>
     <artifactId>framework</artifactId>
 </project>
