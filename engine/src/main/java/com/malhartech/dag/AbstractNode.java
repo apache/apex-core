@@ -107,7 +107,7 @@ public abstract class AbstractNode implements Runnable, Node
 
   public void run()
   {
-    setup(ctx);
+    setup();
 
     int canStartNewWindow = 0;
     boolean shouldWait = false;
@@ -205,6 +205,6 @@ public abstract class AbstractNode implements Runnable, Node
       }
     }
 
-    teardown(ctx);
+    teardown();
   }
 }
