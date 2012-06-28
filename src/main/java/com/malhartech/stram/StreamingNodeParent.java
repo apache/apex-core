@@ -115,5 +115,10 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) {
     return dnodeManager.processHeartbeat(msg);
   }
+
+  @Override
+  public StramToNodeRequest processPartioningDetails() {
+    throw new RuntimeException("processPartioningDetails not implemented");
+  }
   
 }

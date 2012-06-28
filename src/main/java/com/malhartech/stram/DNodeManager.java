@@ -8,11 +8,19 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.DNode.DNodeState;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
@@ -21,7 +29,8 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
  * Tracks topology provisioning to containers.
  */
 public class DNodeManager {
-
+  private static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
+  
   private AtomicInteger nodeSequence = new AtomicInteger();
   
   public List<NodeConf> unassignedNodes = new ArrayList<NodeConf>();
@@ -126,7 +135,35 @@ public class DNodeManager {
   }
 
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat) {
-    return null;
+    boolean containerIdle = true;
+    String idleNodeId = null;
+    
+    for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
+      ReflectionToStringBuilder b = new ReflectionToStringBuilder(shb);
+      LOG.info("node {} heartbeat: {}", shb.getNodeId(), b.toString());
+
+      if (!DNodeState.IDLE.name().equals(shb.getState())) {
+        // container is active if at least one streaming node is active
+        // TODO; this should be: container is active if at least on input node is active
+        containerIdle = false;
+      } else {
+        // find the node
+        idleNodeId = shb.getNodeId();
+      }
+    }
+    
+    List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>(); 
+    if (containerIdle == true) {
+      // TODO: should be at container, not node level
+      LOG.info("sending shutdown request for nodes in container {}", heartbeat.getContainerId());
+      StramToNodeRequest req = new StramToNodeRequest();
+      req.setNodeId(idleNodeId);
+      req.setRequestType(RequestType.SHUTDOWN);
+      requests.add(req);
+    }
+    ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
+    rsp.setNodeRequests(requests);
+    return rsp;
   }
   
 }

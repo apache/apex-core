@@ -6,6 +6,8 @@ import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,9 +27,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.DNode;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
 
 /**
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
@@ -40,7 +46,8 @@ public class StramChild {
   final private Configuration conf;
   final private StreamingNodeUmbilicalProtocol umbilical;
   final private Map<String, DNode> nodeList = new ConcurrentHashMap<String, DNode>();
-
+  private long heartbeatIntervalMillis = 1000;
+  private boolean exitHeartbeatLoop = false;
   
   protected StramChild(String containerId, Configuration conf, StreamingNodeUmbilicalProtocol umbilical) {
     this.umbilical = umbilical;
@@ -51,6 +58,8 @@ public class StramChild {
   private void init() throws IOException {
     StreamingContainerContext ctx = umbilical.getInitContext(containerId);
     LOG.info("Got context: " + ctx);
+
+    this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
     
     // create nodes
     for (StreamingNodeContext snc : ctx.getNodes()) {
@@ -86,7 +95,78 @@ public class StramChild {
   }
 
   private void heartbeatLoop() throws IOException {
-    umbilical.echo(containerId, "[" + containerId + "] Doing nothing as of yet!");
+    umbilical.echo(containerId, "[" + containerId + "] Entering heartbeat loop..");
+    LOG.info("Entering hearbeat loop");
+    while (!exitHeartbeatLoop) {
+      
+      try {
+        Thread.sleep(heartbeatIntervalMillis);
+      } catch (InterruptedException e1) {
+        LOG.warn("Interrupted in heartbeat loop, exiting..");
+        break;
+      }
+    
+      long currentTime = System.currentTimeMillis();
+      ContainerHeartbeat msg = new ContainerHeartbeat();
+      msg.setContainerId(this.containerId);
+      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.size());
+  
+      // gather heartbeat info for all nodes
+      for (Map.Entry<String, DNode> e : nodeList.entrySet()) {
+        StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
+        hb.setNodeId(e.getKey());
+        hb.setGeneratedTms(currentTime);
+        hb.setNumberTuplesProcessed((int)e.getValue().getResetTupleCount());
+        hb.setIntervalMs(heartbeatIntervalMillis);
+        hb.setState(e.getValue().getState().name());
+        heartbeats.add(hb);
+      }
+      msg.setDnodeEntries(heartbeats);
+
+      // heartbeat call and follow-up processing
+      ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
+      if (rsp != null) {
+        processHeartbeatResponse(rsp);
+      }
+    }
+    LOG.info("Exiting hearbeat loop");
+    umbilical.echo(containerId, "[" + containerId + "] Exiting heartbeat loop..");
+  }
+
+  private void processHeartbeatResponse(ContainerHeartbeatResponse rsp) {
+    if (rsp.getNodeRequests() != null) {
+      // extended processing per node
+      for (StramToNodeRequest req : rsp.getNodeRequests()) {
+        DNode n = nodeList.get(req.getNodeId());
+        if (n == null) {
+          LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
+        } else {
+          LOG.info("Stram request: {}", req);
+          processStramRequest(n, req);
+        }
+      }
+    }
+  }
+
+  /**
+   * Process request from stram for further communication through the protocol.
+   * Extended reporting is on a per node basis (won't occur under regular operation)
+   * @param n
+   * @param snr
+   */
+  private void processStramRequest(DNode n, StramToNodeRequest snr) {
+      switch (snr.getRequestType()) {
+      case SHUTDOWN:
+        LOG.info("Received shutdown request");
+        this.exitHeartbeatLoop = true;
+        break;
+      case REPORT_PARTION_STATS:
+      case RECONFIGURE:
+        LOG.warn("Ignoring stram request {}", snr);
+        break;
+      default: 
+        LOG.error("Unknown request from stram {}", snr);
+      }
   }
   
   public static void main(String[] args) throws Throwable {

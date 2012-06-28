@@ -37,6 +37,19 @@ public class HeartbeatProtocolSerializationTest {
     Assert.assertEquals("node1", clone.getNodes().get(0).getLogicalId());
     
   }
+
+  @Test
+  public void testMiniClusterTestNode() {
+    StramMiniClusterTest.TestDNode d = new StramMiniClusterTest.TestDNode();
+    d.setTupleCounts("100, 100, 1000");
+    Assert.assertEquals("100,100,1000", d.getTupleCounts());
+
+    Assert.assertEquals("heartbeat1", 100, d.getResetTupleCount());
+    Assert.assertEquals("heartbeat2", 100, d.getResetTupleCount());
+    Assert.assertEquals("heartbeat3", 1000, d.getResetTupleCount());
+    Assert.assertEquals("heartbeat4", 100, d.getResetTupleCount());
+    
+  }
   
   
 }

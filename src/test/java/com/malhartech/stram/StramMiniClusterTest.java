@@ -29,8 +29,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.stram.StramAppMaster;
-import com.malhartech.stram.StramClient;
+import com.malhartech.dag.DNode;
 
 public class StramMiniClusterTest {
   
@@ -205,4 +204,43 @@ public class StramMiniClusterTest {
   }     
 
 
+  public static class TestDNode extends DNode {
+
+    int getResetCount = 0;
+    Long[] tupleCounts = new Long[0];
+    
+    @Override
+    public DNodeState getState() {
+      return DNodeState.PROCESSING;
+    }
+
+    @Override
+    public long getResetTupleCount() {
+      if (tupleCounts.length == 0) {
+        return 0;
+      }
+      int count = getResetCount++ % (tupleCounts.length);
+      return tupleCounts[count];
+    }
+
+    public String getTupleCounts() {
+      return StringUtils.join(tupleCounts, ",");
+    }
+
+    /**
+     * used to parameterize test node for heartbeat reporting
+     * @param tupleCounts
+     */
+    public void setTupleCounts(String tupleCounts) {
+      String[] scounts = StringUtils.splitByWholeSeparator(tupleCounts, ",");
+      Long[] counts = new Long[scounts.length];
+      for (int i=0; i<scounts.length; i++) {
+        counts[i] = new Long(scounts[i].trim());
+      }
+      this.tupleCounts = counts;
+    }
+    
+  }
+  
+  
 }

@@ -18,6 +18,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 
 import com.malhartech.dag.DNode;
+import com.malhartech.dag.DNode.DNodeState;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
@@ -210,6 +211,11 @@ public class TopologyBuilderTest {
 
     public void setMyStringProperty(String myStringProperty) {
       this.myStringProperty = myStringProperty;
+    }
+
+    @Override
+    public DNodeState getState() {
+      return DNodeState.IDLE; // idle input to cause stram to exit
     }
     
   }
