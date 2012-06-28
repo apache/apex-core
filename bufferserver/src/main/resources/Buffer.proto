@@ -1,0 +1,137 @@
+/*
+ * Copyright 2011 The Netty Project
+ *
+ * The Netty Project licenses this file to you under the Apache License,
+ * version 2.0 (the "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at:
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+package com.malhartech.bufferserver;
+
+// How to generate
+// ===============
+// $ protoc src/main/java/org/jboss/netty/example/localtime/Buffer.proto \
+//          --java_out=src/main/java
+//
+// Add @SuppressWarnings("all") to the generated code not to pollute IDE task list.
+
+option optimize_for = SPEED;
+
+enum PolicyType {
+    CUSTOM = 0;
+    ROUND_ROBIN = 1;
+    RANDOM_ONE = 2;
+    LEAST_BUSY = 3;
+    GIVE_ALL = 4;
+}
+
+
+message HeartbeatData {
+    required string node = 1;
+    required uint64 timestamp = 2;
+}
+
+message SimpleData {
+    required bytes data = 1;
+    required uint64 window_id = 2;
+}
+
+message PartitionedData {
+    required bytes data = 1;
+    required uint64 window_id = 2;
+    required bytes partition = 3;
+}
+
+message BeginWindow {
+    required string node = 1;
+    required uint64 window_id = 2;
+}
+
+message EndWindow {
+    required string node = 1;
+    required uint64 window_id = 2;
+    required uint64 tuple_count = 3;
+}
+
+
+message SerdeCode {
+    required bytes code = 1;
+}
+
+message SubscriberRequest {
+    required string identifier = 1;
+    required string type = 2;
+    optional string upstream_identifier = 3;
+    required string upstream_type = 4;
+    repeated bytes partition = 5;
+    optional PolicyType policy = 6 [default = GIVE_ALL ];
+    optional uint64 starting_windowid = 7; 
+}
+
+message PublisherRequest {
+     required string identifier = 1;
+     required string type = 2;
+     optional uint64 time = 3;
+}
+
+message PublisherDisconnect {
+     required string identifier = 1;
+     required string type = 2;
+     required uint64 time = 3;
+}
+
+message Data {
+    enum DataType {
+        NO_DATA = 0;
+        RESERVED1 = 1;
+        HEARTBEAT_DATA = 2;
+        SIMPLE_DATA = 3;
+        PARTITIONED_DATA = 4;
+        BEGIN_WINDOW = 5;
+        END_WINDOW = 6;
+        SERDE_CODE = 7;
+        PUBLISHER_REQUEST = 8;
+        PUBLISHER_DISCONNECT = 9;
+        SUBSCRIBER_REQUEST = 10;
+    }
+
+
+    required DataType type = 1;
+
+    optional HeartbeatData heartbeat = 2;
+    optional SimpleData simpledata = 3;
+    optional PartitionedData partitioneddata = 4;
+    optional BeginWindow beginwindow = 5;
+    optional EndWindow endwindow = 6;
+    optional SerdeCode codec = 7;
+    optional PublisherRequest publish = 8;
+    optional PublisherDisconnect disconnect = 9;
+    optional SubscriberRequest subscribe = 10;
+}
+
+/*
+
+message Pair {
+  required string key = 1;
+  required Value value = 3;
+}
+
+message Value {
+  required int32 type = 1;
+  optional string string = 2;
+  optional int32  int32 = 3;
+  optional Tuple tuple = 4;
+}
+
+message Tuple {
+  repeated Pair entry = 1;
+}
+
+*/

@@ -1,0 +1,128 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.malhartech</groupId>
+  <artifactId>server</artifactId>
+  <packaging>jar</packaging>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <version>1.0-SNAPSHOT</version>
+
+  <name>Buffer Server</name>
+  <url>http://www.malhartech.com/</url>
+  <description>
+    Blah Blah
+  </description>
+
+  <organization>
+    <name>Malhar Inc</name>
+    <url>http://www.malhar-inc.com/</url>
+  </organization>
+
+  <licenses>
+    <license>
+      <name>Malhar Inc 0.9</name>
+      <url>http://www.malhar-inc.com/licenses/LICENSE-0.9</url>
+    </license>
+  </licenses>
+  <inceptionYear>2012</inceptionYear>
+
+  <dependencies>
+    <!-- Google Protocol Buffers - completely optional -->
+	<dependency>
+		<groupId>io.netty</groupId>
+		<artifactId>netty</artifactId>
+		<version>3.4.5.Final</version>
+	</dependency>
+            
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>2.4.1</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>1.0.1</version>
+        <executions>
+          <execution>
+            <id>enforce-tools</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <!-- Enforce java 1.7 as minimum for compiling -->
+                  <!-- This is needed because of the Unsafe detection code
+                       and java.util.zip.Deflater.deflate(). -->
+                  <version>[1.6.0,)</version>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.0.2,)</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <source>1.5</source>
+          <target>1.5</target>
+          <debug>true</debug>
+          <optimize>true</optimize>
+          <showDeprecation>true</showDeprecation>
+          <showWarnings>true</showWarnings>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- ensure that only methods available in java 1.5 can
+             be used even when compiling with java 1.6+ -->
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>animal-sniffer-maven-plugin</artifactId>
+        <version>1.7</version>
+        <configuration>
+          <signature>
+            <groupId>org.codehaus.mojo.signature</groupId>
+            <artifactId>java15</artifactId>
+            <version>1.0</version>
+          </signature>
+          <ignores>
+            <ignore>sun.misc.Unsafe</ignore>
+            <ignore>java.util.zip.Deflater</ignore>
+            <ignore>java.util.concurrent.LinkedTransferQueue</ignore>
+          </ignores>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+     </plugins>
+   </build>
+
+</project>
