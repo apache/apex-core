@@ -3,11 +3,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.malhartech</groupId>
-  <artifactId>streamingplatform</artifactId>
   <version>0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>streamingplatform</name>
+  <name>Realtime Stream Processing Framework</name>
   <url>http://malhar-inc.com</url>
 
   <organization>
@@ -39,7 +38,6 @@
   <modules>
 
     <module>stram</module>
-
   </modules>
-
+    <artifactId>framework</artifactId>
 </project>
