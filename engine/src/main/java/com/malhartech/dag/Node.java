@@ -4,14 +4,16 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.stram.StreamingNodeContext;
+
 /**
  *
  * @author chetan
  */
 public interface Node {
-    public void setup();
+    public void setup(StreamingNodeContext ctx);
     public void beginWindow(long window);
     public void endWidndow(long window);
     public void process(Tuple t);
-    public void teardown();
+    public void teardown(StreamingNodeContext ctx);
 }
