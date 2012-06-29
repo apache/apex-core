@@ -6,6 +6,7 @@ package com.malhartech.dag;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data.Builder;
 import com.malhartech.bufferserver.Buffer.PartitionedData;
 import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.netty.ClientPipelineFactory;
@@ -62,7 +63,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler
 
       db.setType(Data.DataType.SIMPLE_DATA);
       db.setSimpledata(sdb);
-      //db.setWindowId(t.data.getWindowId());
+      db.setWindowId(t.data.getWindowId());
     }
     else {
       PartitionedData.Builder pdb = PartitionedData.newBuilder();

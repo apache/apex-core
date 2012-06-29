@@ -50,19 +50,19 @@ public abstract class AbstractNode implements Runnable, Node
 
     switch (d.getType()) {
       case BEGIN_WINDOW:
-        windowId = d.getBeginwindow().getWindowId();
+        windowId = d.getWindowId();
         break;
 
       case END_WINDOW:
-        windowId = d.getEndwindow().getWindowId();
+        windowId = d.getWindowId();
         break;
 
       case SIMPLE_DATA:
-        windowId = d.getSimpledata().getWindowId();
+        windowId = d.getWindowId();
         break;
 
       case PARTITIONED_DATA:
-        windowId = d.getPartitioneddata().getWindowId();
+        windowId = d.getWindowId();
         break;
 
       default:
@@ -79,8 +79,8 @@ public abstract class AbstractNode implements Runnable, Node
     public int compare(Tuple t, Tuple t1)
     {
 
-      Data d = (Data) t.data;
-      Data d1 = (Data) t1.data;
+      Data d = t.data;
+      Data d1 = t1.data;
       if (d != d1) {
         long tid = getWindowId(d);
         long t1id = getWindowId(d1);
@@ -132,10 +132,10 @@ public abstract class AbstractNode implements Runnable, Node
                 tupleCount = 0;
                 canStartNewWindow = streamCount;
                 inputQueue.poll();
-                currentWindow = d.getBeginwindow().getWindowId();
+                currentWindow = d.getWindowId();
                 shouldWait = false;
               }
-              else if (d.getBeginwindow().getWindowId() == currentWindow) {
+              else if (d.getWindowId() == currentWindow) {
                 shouldWait = false;
               }
               else {
@@ -144,7 +144,7 @@ public abstract class AbstractNode implements Runnable, Node
               break;
 
             case END_WINDOW:
-              if (d.getEndwindow().getWindowId() == currentWindow
+              if (d.getWindowId() == currentWindow
                   && d.getEndwindow().getTupleCount() <= tupleCount) {
                 tupleCount -= d.getEndwindow().getTupleCount();
                 if (tupleCount == 0) {
@@ -160,13 +160,13 @@ public abstract class AbstractNode implements Runnable, Node
 
             default:
               if (d.getType() == Data.DataType.SIMPLE_DATA
-                  && d.getSimpledata().getWindowId() == currentWindow) {
+                  && d.getWindowId() == currentWindow) {
                 tupleCount++;
                 inputQueue.poll();
                 shouldWait = false;
               }
               else if (d.getType() == Data.DataType.PARTITIONED_DATA
-                       && d.getPartitioneddata().getWindowId() == currentWindow) {
+                       && d.getWindowId() == currentWindow) {
                 tupleCount++;
                 inputQueue.poll();
                 shouldWait = false;
