@@ -2,7 +2,9 @@ package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.netty.ClientPipelineFactory;
+import com.malhartech.stram.StreamContext;
 import java.net.InetSocketAddress;
+import java.security.InvalidParameterException;
 import java.util.Collection;
 import java.util.concurrent.Executors;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -22,16 +24,22 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 public class InputSocketStream extends SimpleChannelUpstreamHandler
 {
 
-  String host;
-  int port;
-  final Collection<Tuple> queue;
+  final StreamContext context;
+  final Collection<Tuple> collection;
   SerDe serde;
 
-  InputSocketStream(String host, int port, Collection<Tuple> queue)
+  InputSocketStream(StreamContext context, Collection<Tuple> collection)
   {
-    this.host = host;
-    this.port = port;
-    this.queue = queue;
+    this.context = context;
+    if (context.getBufferServerHost() == null
+        || context.getBufferServerPort() == null) {
+      throw new InvalidParameterException("null host or port passed for socket stream context");
+    }
+    else {
+      // do addtional validation
+    }
+
+    this.collection = collection;
   }
 
   public void setSerDe(SerDe serde)
@@ -50,7 +58,8 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler
     bootstrap.setPipelineFactory(new ClientPipelineFactory(InputSocketStream.class));
 
     // Make a new connection.
-    bootstrap.connect(new InetSocketAddress(host, port));
+    bootstrap.connect(new InetSocketAddress(context.getBufferServerHost(),
+                                            Integer.valueOf(context.getBufferServerPort())));
 
 
     // send the subscribe request.
@@ -71,11 +80,11 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler
       o = null;
     }
 
-    Tuple t = new Tuple(o, this);
+    Tuple t = new Tuple(o, context);
     t.setData(d);
-    synchronized (queue) {
-      queue.add(t);
-      queue.notify();
+    synchronized (collection) {
+      collection.add(t);
+      collection.notify();
     }
   }
 }

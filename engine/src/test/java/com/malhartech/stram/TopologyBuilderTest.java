@@ -1,28 +1,17 @@
 package com.malhartech.stram;
 
-import static junit.framework.Assert.fail;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Test;
-
 import com.malhartech.dag.DNode;
 import com.malhartech.dag.DNode.DNodeState;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+import static org.junit.Assert.*;
+import org.junit.Test;
 
 public class TopologyBuilderTest {
 

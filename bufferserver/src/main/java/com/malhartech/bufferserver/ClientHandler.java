@@ -48,7 +48,6 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
 
             public void operationComplete(ChannelFuture cf) throws Exception {
                 Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
-                pdb.setWindowId(new Date().getTime());
                 pdb.setData(ByteString.EMPTY);
 
                 byte[] bytes = String.valueOf(new Random().nextInt() % 10).getBytes();
@@ -57,6 +56,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler {
 
                 Buffer.Data.Builder db = Data.newBuilder();
                 db.setType(Data.DataType.PARTITIONED_DATA);
+                db.setWindowId(new Date().getTime());
                 db.setPartitioneddata(pdb);
 
                 Thread.sleep(500);

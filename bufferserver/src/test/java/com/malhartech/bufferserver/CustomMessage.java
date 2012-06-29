@@ -4,12 +4,9 @@
  */
 package com.malhartech.bufferserver;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.CodedOutputStream;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.GeneratedMessage.Builder;
-import com.google.protobuf.MessageOrBuilder;
 import com.malhartech.bufferserver.Buffer.BeginWindow;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -39,7 +36,6 @@ public class CustomMessage
     {
       Buffer.BeginWindow.Builder builder = Buffer.BeginWindow.newBuilder();
       builder.setNode("chetan narsude");
-      builder.setWindowId(5033);
       
       return builder.build().toByteArray();
     }
@@ -71,7 +67,7 @@ public class CustomMessage
       System.out.println("read " + fstream.read(bytes) + " bytes");
       DynamicMessage dm = DynamicMessage.parseFrom(sc.getMessageDescriptor(), bytes);
       BeginWindow bw = (BeginWindow) sc.getBuilder().mergeFrom(dm).build();
-      System.out.println("name = " + bw.getNode() + " window = " + bw.getWindowId());
+      System.out.println("name = " + bw.getNode());
     }
   }
 }

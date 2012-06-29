@@ -72,7 +72,7 @@ public class LogicalNode implements DataListener {
         while (iterator.hasNext()) {
             Data data = iterator.next();
             if (data.getType() == Data.DataType.BEGIN_WINDOW) {
-                if (data.getBeginwindow().getWindowId() >= windowId) {
+                if (data.getWindowId() >= windowId) {
                     policy.distribute(physicalNodes, data);
                 }
             }

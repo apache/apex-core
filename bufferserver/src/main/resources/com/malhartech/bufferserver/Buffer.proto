@@ -24,15 +24,6 @@ package com.malhartech.bufferserver;
 
 option optimize_for = SPEED;
 
-enum PolicyType {
-    CUSTOM = 0;
-    ROUND_ROBIN = 1;
-    RANDOM_ONE = 2;
-    LEAST_BUSY = 3;
-    GIVE_ALL = 4;
-}
-
-
 message HeartbeatData {
     required string node = 1;
     required uint64 timestamp = 2;
@@ -40,23 +31,19 @@ message HeartbeatData {
 
 message SimpleData {
     required bytes data = 1;
-    required uint64 window_id = 2;
 }
 
 message PartitionedData {
     required bytes data = 1;
-    required uint64 window_id = 2;
     required bytes partition = 3;
 }
 
 message BeginWindow {
     required string node = 1;
-    required uint64 window_id = 2;
 }
 
 message EndWindow {
     required string node = 1;
-    required uint64 window_id = 2;
     required uint64 tuple_count = 3;
 }
 
@@ -66,13 +53,20 @@ message SerdeCode {
 }
 
 message SubscriberRequest {
+  enum PolicyType {
+      CUSTOM = 0;
+      ROUND_ROBIN = 1;
+      RANDOM_ONE = 2;
+      LEAST_BUSY = 3;
+      GIVE_ALL = 4;
+  }
+
     required string identifier = 1;
     required string type = 2;
     optional string upstream_identifier = 3;
     required string upstream_type = 4;
     repeated bytes partition = 5;
     optional PolicyType policy = 6 [default = GIVE_ALL ];
-    optional uint64 starting_windowid = 7; 
 }
 
 message PublisherRequest {
@@ -104,34 +98,16 @@ message Data {
 
 
     required DataType type = 1;
+    required uint64 window_id = 2;
 
-    optional HeartbeatData heartbeat = 2;
-    optional SimpleData simpledata = 3;
-    optional PartitionedData partitioneddata = 4;
-    optional BeginWindow beginwindow = 5;
-    optional EndWindow endwindow = 6;
-    optional SerdeCode codec = 7;
-    optional PublisherRequest publish = 8;
-    optional PublisherDisconnect disconnect = 9;
-    optional SubscriberRequest subscribe = 10;
+
+    optional HeartbeatData heartbeat = 3;
+    optional SimpleData simpledata = 4;
+    optional PartitionedData partitioneddata = 5;
+    optional BeginWindow beginwindow = 6;
+    optional EndWindow endwindow = 7;
+    optional SerdeCode codec = 8;
+    optional PublisherRequest publish = 9;
+    optional PublisherDisconnect disconnect = 10;
+    optional SubscriberRequest subscribe = 11;
 }
-
-/*
-
-message Pair {
-  required string key = 1;
-  required Value value = 3;
-}
-
-message Value {
-  required int32 type = 1;
-  optional string string = 2;
-  optional int32  int32 = 3;
-  optional Tuple tuple = 4;
-}
-
-message Tuple {
-  repeated Pair entry = 1;
-}
-
-*/

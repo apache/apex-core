@@ -5,6 +5,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.stram.StreamingNodeContext;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.PriorityQueue;
@@ -17,13 +18,15 @@ import java.util.logging.Logger;
 public abstract class AbstractNode implements Runnable, Node
 {
 
+  final StreamingNodeContext ctx;
   final PriorityQueue<Tuple> inputQueue;
   int streamCount;
   boolean alive;
 
-  public AbstractNode()
+  public AbstractNode(StreamingNodeContext ctx)
   {
     // initial capacity should be some function of the window length
+    this.ctx = ctx;
     this.inputQueue = new PriorityQueue<Tuple>(1024 * 1024, new DataComparator());
     this.alive = true;
   }
@@ -32,8 +35,8 @@ public abstract class AbstractNode implements Runnable, Node
   public void emit(Object o, byte[] partition)
   {
     // identify the output queue 
-    Tuple t = new Tuple(o, this);
-    t.setData(currentData);
+    Tuple t = null; //new Tuple(o, this);
+    //t.setData(currentData);
     final Collection<Tuple> outputQueue = null;
     synchronized (outputQueue) {
       outputQueue.add(t);
@@ -107,7 +110,7 @@ public abstract class AbstractNode implements Runnable, Node
 
   public void run()
   {
-    setup();
+    setup(ctx);
 
     int canStartNewWindow = 0;
     boolean shouldWait = false;
@@ -205,6 +208,6 @@ public abstract class AbstractNode implements Runnable, Node
       }
     }
 
-    teardown();
+    teardown(ctx);
   }
 }

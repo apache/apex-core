@@ -1,16 +1,12 @@
 package com.malhartech.stram;
 
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import java.io.IOException;
 import java.util.Collections;
-
 import junit.framework.Assert;
-
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
-
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
 
 public class HeartbeatProtocolSerializationTest {
 
