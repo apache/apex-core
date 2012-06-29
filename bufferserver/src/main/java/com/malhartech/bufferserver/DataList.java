@@ -65,9 +65,9 @@ public class DataList {
 
                 if (d.getType() == Data.DataType.BEGIN_WINDOW) {
                     if (starting_window == 0) {
-                        starting_window = d.getBeginwindow().getWindowId();
+                        starting_window = d.getWindowId();
                     }
-                    ending_window = d.getBeginwindow().getWindowId();
+                    ending_window = d.getWindowId();
                 }
             } finally {
                 w.unlock();
@@ -195,7 +195,7 @@ public class DataList {
                 int offset = 0;
                 while (offset < capacity) {
                     Data d = first.data[offset++];
-                    if (d.getType() == DataType.END_WINDOW && d.getEndwindow().getWindowId() == ending_id) {
+                    if (d.getType() == DataType.END_WINDOW && d.getWindowId() == ending_id) {
                         break;
                     }
                 }
@@ -204,7 +204,7 @@ public class DataList {
                 while (offset < capacity) {
                     Data d = first.data[offset++];
                     if (d.getType() == DataType.BEGIN_WINDOW) {
-                        first.starting_window = d.getBeginwindow().getWindowId();
+                        first.starting_window = d.getWindowId();
                     }
                 }
             } else {

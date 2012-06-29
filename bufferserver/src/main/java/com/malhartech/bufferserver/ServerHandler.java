@@ -120,21 +120,21 @@ public class ServerHandler extends SimpleChannelUpstreamHandler {
             groups.put(type, ln);
             ln.addChannel(ctx.getChannel());
             dl.addDataListener(ln);
-            if (request.hasStartingWindowid()) {
-                ln.catchUp(request.getStartingWindowid());
-            }
+//            if (request.hasStartingWindowid()) {
+//                ln.catchUp(request.getStartingWindowid());
+//            }
         }
 
         ctx.setAttachment(ln);
     }
 
-    public Policy getPolicy(Buffer.PolicyType policytype, String type) {
+    public Policy getPolicy(Buffer.SubscriberRequest.PolicyType policytype, String type) {
         Policy p = null;
 
         switch (policytype) {
             case CUSTOM:
                 try {
-                    Class customclass = Class.forName(type);
+                    Class<?> customclass = Class.forName(type);
                     p = (Policy) customclass.newInstance();
                 } catch (InstantiationException ex) {
                     Logger.getLogger(ServerHandler.class.getName()).log(Level.SEVERE, null, ex);
