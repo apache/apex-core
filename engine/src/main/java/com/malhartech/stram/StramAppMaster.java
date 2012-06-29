@@ -264,7 +264,7 @@ public class StramAppMaster {
       b.addFromProperties(props);
       numTotalContainers = b.getAllNodes().size(); // TODO
       LOG.info("Initializing {} nodes in {} containers", b.getAllNodes().size(), numTotalContainers);
-      dnmgr.unassignedNodes.addAll(b.getAllNodes().values());
+      dnmgr.addNodes(b.getAllNodes().values());
       
 	    return true;
 	  }

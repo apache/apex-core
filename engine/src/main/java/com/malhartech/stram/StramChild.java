@@ -136,6 +136,11 @@ public class StramChild {
   }
 
   private void processHeartbeatResponse(ContainerHeartbeatResponse rsp) {
+    if (rsp.isShutdown()) {
+      LOG.info("Received shutdown request");
+      this.exitHeartbeatLoop = true;
+      return;
+    }
     if (rsp.getNodeRequests() != null) {
       // extended processing per node
       for (StramToNodeRequest req : rsp.getNodeRequests()) {
@@ -159,9 +164,9 @@ public class StramChild {
   private void processStramRequest(DNode n, StramToNodeRequest snr) {
       switch (snr.getRequestType()) {
       case SHUTDOWN:
-        LOG.info("Received shutdown request");
-        this.exitHeartbeatLoop = true;
-        break;
+        //LOG.info("Received shutdown request");
+        //this.exitHeartbeatLoop = true;
+        //break;
       case REPORT_PARTION_STATS:
       case RECONFIGURE:
         LOG.warn("Ignoring stram request {}", snr);

@@ -41,6 +41,9 @@ public class TopologyBuilder {
   public static final String NODE_PREFIX = "stram.node";
   public static final String NODE_CLASSNAME = "classname";
   public static final String NODE_TEMPLATE = "template";
+
+  public static final String NODE_LB_TUPLECOUNT_MIN = "lb.tuplecount.min";
+  public static final String NODE_LB_TUPLECOUNT_MAX = "lb.tuplecount.max";
   
   public static final String TEMPLATE_PREFIX = "stram.template";
   

@@ -522,6 +522,20 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
 
   public static class ContainerHeartbeatResponse extends WritableAdapter {
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Indicate container to exit heartbeat loop and shutdown.
+     */
+    private boolean shutdown;
+    
+    public boolean isShutdown() {
+      return shutdown;
+    }
+    
+    public void setShutdown(boolean shutdown) {
+      this.shutdown = shutdown;
+    }
+    
     /**
      * Optional list of responses for nodes in the container.
      */

@@ -1,6 +1,7 @@
 package com.malhartech.stram;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +17,6 @@ import com.malhartech.dag.DNode.DNodeState;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeContext;
@@ -26,19 +26,34 @@ import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 /**
- * Tracks topology provisioning to containers.
+ * Tracks topology provisioning/allocation to containers.
  */
 public class DNodeManager {
   private static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
   
   private AtomicInteger nodeSequence = new AtomicInteger();
-  
-  public List<NodeConf> unassignedNodes = new ArrayList<NodeConf>();
-  public List<NodeConf> runningNodes = new ArrayList<NodeConf>();
 
+  private class NodeStatus {
+    private NodeStatus(StreamingNodeContext ctx) {
+      this.context = ctx;
+    }
+    final StreamingNodeContext context;
+    StreamingNodeHeartbeat lastHeartbeat;
+
+    boolean isIdle() {
+      return (lastHeartbeat != null && DNodeState.IDLE.name().equals(lastHeartbeat.getState()));
+    }
+  
+  }
+  
+  private List<NodeConf> unassignedNodes = new ArrayList<NodeConf>();
+  private List<NodeConf> runningNodes = new ArrayList<NodeConf>();
+  private Map<String, NodeStatus> allNodes = new ConcurrentHashMap<String, NodeStatus>();
+  
   private Map<String, StreamingContainerContext> containerContextMap = new HashMap<String, StreamingContainerContext>();
   private Map<NodeConf, List<StreamingNodeContext>> logical2PhysicalMap = new ConcurrentHashMap<NodeConf, List<StreamingNodeContext>>();
-
+  private Map<String, NodeConf> nodeId2NodeConfMap = new ConcurrentHashMap<String, NodeConf>();
+  
   /**
    * Create node tracking context for logical node. Exposed here for tests.
    * @param dnodeId
@@ -55,6 +70,10 @@ public class DNodeManager {
     snc.setLogicalId(nodeConf.getId());
     snc.setDnodeId(dnodeId);
     return snc;
+  }
+
+  public void addNodes(Collection<NodeConf> nodes) {
+    this.unassignedNodes.addAll(nodes);
   }
   
   /**
@@ -122,6 +141,8 @@ public class DNodeManager {
       }
       StreamingNodeContext scc = createNodeContext(""+nodeSequence.incrementAndGet(), nodeConf);
       logical2PhysicalMap.put(nodeConf, Collections.singletonList(scc));
+      nodeId2NodeConfMap.put(scc.getDnodeId(), nodeConf);
+      allNodes.put(scc.getDnodeId(), new NodeStatus(scc));
       return scc;
     }
   }
@@ -136,34 +157,67 @@ public class DNodeManager {
 
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat) {
     boolean containerIdle = true;
-    String idleNodeId = null;
     
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
       ReflectionToStringBuilder b = new ReflectionToStringBuilder(shb);
       LOG.info("node {} heartbeat: {}", shb.getNodeId(), b.toString());
 
-      if (!DNodeState.IDLE.name().equals(shb.getState())) {
-        // container is active if at least one streaming node is active
-        // TODO; this should be: container is active if at least on input node is active
+      NodeStatus nodeStatus = allNodes.get(shb.getNodeId());
+      if (nodeStatus == null) {
+         LOG.error("Heartbeat for unknown node {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
+         continue;
+      }
+      nodeStatus.lastHeartbeat = shb;
+      if (!nodeStatus.isIdle()) {
         containerIdle = false;
-      } else {
-        // find the node
-        idleNodeId = shb.getNodeId();
+        checkNodeLoad(shb);
       }
     }
     
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>(); 
-    if (containerIdle == true) {
-      // TODO: should be at container, not node level
-      LOG.info("sending shutdown request for nodes in container {}", heartbeat.getContainerId());
-      StramToNodeRequest req = new StramToNodeRequest();
-      req.setNodeId(idleNodeId);
-      req.setRequestType(RequestType.SHUTDOWN);
-      requests.add(req);
-    }
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
+    if (containerIdle && isApplicationIdle()) {
+      LOG.info("requesting shutdown for container {}", heartbeat.getContainerId());
+      rsp.setShutdown(true);
+    }
     rsp.setNodeRequests(requests);
     return rsp;
   }
+
+  private boolean isApplicationIdle() {
+    for (NodeStatus nodeStatus : this.allNodes.values()) {
+      if (!nodeStatus.isIdle()) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  private void checkNodeLoad(StreamingNodeHeartbeat shb) {
+      NodeConf nodeConf = nodeId2NodeConfMap.get(shb.getNodeId());
+      // TODO: synchronization
+      if (nodeConf == null) {
+          LOG.warn("Cannot find the configuration for node {}", shb.getNodeId());
+          return;
+      }
+      // check load constraints
+      int tuplesProcessed = shb.getNumberTuplesProcessed();
+      // TODO: populate into bean at initialization time
+      Map<String, String> properties = nodeConf.getProperties();
+      if (properties.containsKey(TopologyBuilder.NODE_LB_TUPLECOUNT_MIN)) {
+         int minTuples = new Integer(properties.get(TopologyBuilder.NODE_LB_TUPLECOUNT_MIN));
+         if (tuplesProcessed < minTuples) {
+           LOG.warn("Node {} processed {} messages below configured min {}", new Object[] { shb.getNodeId(), tuplesProcessed, minTuples });
+         }
+      }
+      if (properties.containsKey(TopologyBuilder.NODE_LB_TUPLECOUNT_MAX)) {
+        int maxTuples = new Integer(properties.get(TopologyBuilder.NODE_LB_TUPLECOUNT_MAX));
+        if (tuplesProcessed > maxTuples) {
+           LOG.warn("Node {} processed {} messages and exceeds configured max {}", new Object[] { shb.getNodeId(), tuplesProcessed, maxTuples });
+        }
+     }
+      
+  }
+  
   
 }
