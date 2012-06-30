@@ -27,7 +27,7 @@ public class LogicalNode implements DataListener {
     private final HashSet<ByteBuffer> partitions;
     private final Policy policy;
     private final Iterator<Data> iterator;
-    Object attachment;
+    private Object attachment;
 
     public LogicalNode(String group, Iterator<Data> iterator, Policy policy) {
         this.group = group;
