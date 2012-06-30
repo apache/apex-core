@@ -96,14 +96,14 @@ public class StreamContext extends StreamingNodeUmbilicalProtocol.WritableAdapte
   {
     this.bufferServerHost = bufferServerHost;
   }
-  private String bufferServerPort;
+  private int bufferServerPort;
 
-  public String getBufferServerPort()
+  public int getBufferServerPort()
   {
     return bufferServerPort;
   }
 
-  public void setBufferServerPort(String bufferServerPort)
+  public void setBufferServerPort(int bufferServerPort)
   {
     this.bufferServerPort = bufferServerPort;
   }

@@ -1,5 +1,6 @@
 package com.malhartech.stram;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -75,17 +76,68 @@ public class DNodeManager {
   }
   
   /**
-   * Assign streaming nodes to newly available container. Multiple nodes can run in a container.  
-   * @param containerId
+   * Find unassigned streaming node. This can be a start node or a node that has
+   * all inputs satisfied (node can only be initialized with upstream buffer servers known).
+   */
+  private NodeConf findDeployableNode() {
+    
+    for (NodeConf nodeConf : unassignedNodes) {
+      if (nodeConf.getInputStreams().size() == 0) {
+        // no input dependency
+        return nodeConf;
+      } else {
+        boolean allInputsReady = true;
+        // check if all inputs are allocated
+        for (StreamConf streamConf : nodeConf.getInputStreams()) {
+            NodeConf sourceNode = streamConf.getSourceNode();
+            if (sourceNode != null && unassignedNodes.contains(sourceNode)) {
+                LOG.debug("Cannot allocate node {} because input dependency {} is not satisfied", nodeConf, sourceNode);
+                allInputsReady = false;
+                break;
+            }
+        }
+        if (allInputsReady) {
+          return nodeConf;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Find the publisher for the given stream.
+   * Upstream nodes must be deployed first.
+   * @param streamConf
+   * @param nodeConf
    * @return
    */
-  public StreamingContainerContext assignContainer(String containerId) {
+  private StreamContext findInputStreamContext(StreamConf streamConf) {
+    for (StreamingContainerContext scc : this.containerContextMap.values()) {
+        for (StreamContext sc : scc.getStreams()) {
+            if (sc.getId().equals(streamConf.getId()) && sc.getTargetNodeLogicalId().equals(streamConf.getTargetNode().getId())) {
+              return sc;
+            }
+        }
+    }
+    return null;
+  }
+  
+  /**
+   * Assign streaming nodes to newly available container. Multiple nodes can run in a container.  
+   * @param containerId
+   * @param defaultbufferServerAddress Buffer server for publishers on the container.
+   * @return
+   */
+  public synchronized StreamingContainerContext assignContainer(String containerId, InetSocketAddress defaultbufferServerAddress) {
     if (unassignedNodes.isEmpty()) {
       throw new IllegalStateException("There are no nodes waiting for launch.");
     }
-    
-    // TODO: policy for assigning node(s) to containers
-    NodeConf nodeConf = unassignedNodes.remove(0);
+    NodeConf nodeConf = findDeployableNode();
+    if (nodeConf == null) {
+      throw new IllegalStateException("Cannot find a streaming node for new container, remaining unassgined nodes are " + this.unassignedNodes);
+    }
+    unassignedNodes.remove(nodeConf);
+   
     StreamingNodeContext snc = getNodeContext(nodeConf);
 
     StreamingContainerContext scc = new StreamingContainerContext();
@@ -99,6 +151,16 @@ public class DNodeManager {
       StreamContext sc = new StreamContext();
       sc.setId(input.getId());
       sc.setInline(false); // TODO
+      
+      // get buffer server for input
+      StreamContext inputStreamContext = findInputStreamContext(input);
+      if (inputStreamContext == null) {
+        // should not happen as upstream nodes are deployed first
+        throw new IllegalStateException("Cannot find the input container for stream " + input.getId());
+      }
+      sc.setBufferServerHost(inputStreamContext.getBufferServerHost());
+      sc.setBufferServerPort(inputStreamContext.getBufferServerPort());
+
       // map the logical node id to assigned sequences for source and target
       sc.setTargetNodeId(snc.getDnodeId());
       if (input.getSourceNode() != null) {
@@ -115,13 +177,15 @@ public class DNodeManager {
         StreamContext sc = new StreamContext();
         sc.setId(output.getId());
         sc.setInline(false); // TODO
+        sc.setBufferServerHost(defaultbufferServerAddress.getHostName());
+        sc.setBufferServerPort(defaultbufferServerAddress.getPort());
         // map the logical node id to assigned sequences for source and target
         sc.setSourceNodeId(snc.getDnodeId());
         if (output.getTargetNode() != null) {
           sc.setTargetNodeId(getNodeContext(output.getTargetNode()).getDnodeId());
           sc.setTargetNodeLogicalId(output.getTargetNode().getId());
         } else {
-          throw new UnsupportedOperationException("only input from node implemented");
+          throw new UnsupportedOperationException("only output to node implemented");
         }
         streams.add(sc);
     }

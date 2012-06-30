@@ -18,9 +18,8 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
  * the local times of the specified cities.
  */
 public class Server {
-        private static final Logger logger = Logger.getLogger(
-            ClientHandler.class.getName());
 
+    public static int DEFAULT_PORT = 9080;
 
     private final int port;
 
@@ -50,7 +49,7 @@ public class Server {
         if (args.length > 0) {
             port = Integer.parseInt(args[0]);
         } else {
-            port = 8080;
+            port = DEFAULT_PORT;
         }
         new Server(port).run();
     }

@@ -46,6 +46,7 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.bufferserver.Server;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
@@ -328,7 +329,7 @@ public class StramAppMaster {
 	    // Setup ask for containers from RM
 	    // Send request for containers to RM
 	    // Until we get our fully allocated quota, we keep on polling RM for containers
-	    // Keep looping until all the containers are launched and shell script executed on them 
+	    // Keep looping until all containers finished processing 
 	    // ( regardless of success/failure). 
 
 	    int loopCounter = -1;
@@ -390,7 +391,8 @@ public class StramAppMaster {
 	        //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
 	        // assign streaming node(s) to new container
-	        dnmgr.assignContainer(allocatedContainer.getId().toString());
+	        InetSocketAddress defaultBufferServerAddr = new InetSocketAddress(allocatedContainer.getNodeId().getHost(), Server.DEFAULT_PORT);
+	        dnmgr.assignContainer(allocatedContainer.getId().toString(), defaultBufferServerAddr);
           LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, rpcImpl.getAddress());
 	        Thread launchThread = new Thread(runnableLaunchContainer);
 	        
@@ -398,24 +400,22 @@ public class StramAppMaster {
 	        // as all containers may not be allocated at one go.
 	        launchThreads.add(launchThread);
 	        launchThread.start();
-
-
-	        // TODO: we need to obtain the initial list...
-          // keep track of updated nodes - we use this info to make decisions about where to request new containers
-          List<NodeReport> nodeReports = amResp.getUpdatedNodes();
-          LOG.info("Got {} updated node reports.", nodeReports.size());
-          for (NodeReport nr : nodeReports) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("rackName=").append(nr.getRackName())
-              .append("nodeid=").append(nr.getNodeId())
-              .append("numContainers=").append(nr.getNumContainers())
-              .append("capability=").append(nr.getCapability())
-              .append("used=").append(nr.getUsed())
-              .append("state=").append(nr.getNodeState());
-            LOG.info("Node report: " + sb);
-          }
-	      
 	      }
+
+        // TODO: we need to obtain the initial list...
+        // keep track of updated nodes - we use this info to make decisions about where to request new containers
+        List<NodeReport> nodeReports = amResp.getUpdatedNodes();
+        LOG.info("Got {} updated node reports.", nodeReports.size());
+        for (NodeReport nr : nodeReports) {
+          StringBuilder sb = new StringBuilder();
+          sb.append("rackName=").append(nr.getRackName())
+            .append("nodeid=").append(nr.getNodeId())
+            .append("numContainers=").append(nr.getNumContainers())
+            .append("capability=").append(nr.getCapability())
+            .append("used=").append(nr.getUsed())
+            .append("state=").append(nr.getNodeState());
+          LOG.info("Node report: " + sb);
+        }
 
 	      // Check what the current available resources in the cluster are
 	      // TODO should we do anything if the available resources are not enough? 
