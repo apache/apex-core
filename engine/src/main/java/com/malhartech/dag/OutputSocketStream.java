@@ -32,7 +32,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler
   {
     this.context = context;
     if (this.context.getBufferServerHost() == null
-        || this.context.getBufferServerPort() == null) {
+        || this.context.getBufferServerPort() == 0) {
       throw new InvalidParameterException("null host or port passed for socket stream context!");
     }
   }
