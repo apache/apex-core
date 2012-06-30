@@ -20,11 +20,12 @@ import java.util.logging.Logger;
  */
 public abstract class AbstractNode implements Runnable, Node
 {
+  class Blah {}
+  
   final StreamingNodeContext ctx;
   final PriorityQueue<Tuple> inputQueue;
   final HashMap<StreamContext, Sink> outputStreams = new HashMap<StreamContext, Sink>();
-
-  int streamCount;
+  final HashMap<StreamContext, Blah> inputStreams  = new HashMap<StreamContext, Blah>();
   
 
   public AbstractNode(StreamingNodeContext ctx)
@@ -59,6 +60,14 @@ public abstract class AbstractNode implements Runnable, Node
     for (Sink stream : streams) {
       outputStreams.put(stream.getStreamContext(), stream);
     }
+  }
+  
+  public void connectInputStreams(Collection<StreamContext> streams)
+  {
+    for (StreamContext stream : streams) {
+      inputStreams.put(stream, new Blah());
+    }
+    
   }
   
   public long getWindowId(Data d)
@@ -154,7 +163,7 @@ public abstract class AbstractNode implements Runnable, Node
             case BEGIN_WINDOW:
               if (canStartNewWindow == 0) {
                 tupleCount = 0;
-                canStartNewWindow = streamCount;
+                canStartNewWindow = inputStreams.size();
                 inputQueue.poll();
                 currentWindow = d.getWindowId();
                 shouldWait = false;
