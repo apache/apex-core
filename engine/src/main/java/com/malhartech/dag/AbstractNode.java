@@ -5,9 +5,12 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.stram.StreamContext;
 import com.malhartech.stram.StreamingNodeContext;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -17,33 +20,47 @@ import java.util.logging.Logger;
  */
 public abstract class AbstractNode implements Runnable, Node
 {
-
   final StreamingNodeContext ctx;
   final PriorityQueue<Tuple> inputQueue;
+  final HashMap<StreamContext, Sink> outputStreams = new HashMap<StreamContext, Sink>();
+
   int streamCount;
-  boolean alive;
+  
 
   public AbstractNode(StreamingNodeContext ctx)
   {
     // initial capacity should be some function of the window length
     this.ctx = ctx;
     this.inputQueue = new PriorityQueue<Tuple>(1024 * 1024, new DataComparator());
-    this.alive = true;
   }
-  private Data currentData = null;
 
-  public void emit(Object o, byte[] partition)
+  // i feel that we may just want to push the data out from here and depending upon
+  // whether the data needs to flow on the stream (as per partitions), the streams
+  // create tuples or drop the data on the floor.
+  private Data currentData = null;
+  public void emit(Object o)
   {
-    // identify the output queue 
-    Tuple t = null; //new Tuple(o, this);
-    //t.setData(currentData);
-    final Collection<Tuple> outputQueue = null;
-    synchronized (outputQueue) {
-      outputQueue.add(t);
-      outputQueue.notify();
+    for (Entry<StreamContext, Sink> entry : outputStreams.entrySet()) {
+      Tuple t = new Tuple(o, entry.getKey());
+      t.data = currentData;
+      entry.getValue().doSomething(t);
     }
   }
+  
+  public void emitStream(Object o, StreamContext ctx)
+  {
+    Tuple t = new Tuple(o, ctx);
+    t.data = currentData;
+    outputStreams.get(ctx).doSomething(t);
+  }
 
+  public void connectOutputStreams(Collection<Sink> streams)
+  {
+    for (Sink stream : streams) {
+      outputStreams.put(stream.getStreamContext(), stream);
+    }
+  }
+  
   public long getWindowId(Data d)
   {
     long windowId;
@@ -108,8 +125,15 @@ public abstract class AbstractNode implements Runnable, Node
     }
   }
 
+  private boolean alive;
+  public void stopSafely() {
+    alive = false;
+  }
+  
   public void run()
   {
+    alive = true;
+
     setup(ctx);
 
     int canStartNewWindow = 0;
