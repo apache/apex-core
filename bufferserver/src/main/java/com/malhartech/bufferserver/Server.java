@@ -17,40 +17,44 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
  * Receives a list of continent/city pairs from a {@link LocalTimeClient} to get
  * the local times of the specified cities.
  */
-public class Server {
+public class Server
+{
 
-    public static int DEFAULT_PORT = 9080;
+  public static int DEFAULT_PORT = 9080;
+  private final int port;
 
-    private final int port;
+  public Server(int port)
+  {
+    this.port = port;
 
-    public Server(int port) {
-        this.port = port;
-        
-        Handler ch = new ConsoleHandler();
-        Logger.getLogger("").addHandler(ch);
+    Handler ch = new ConsoleHandler();
+    Logger.getLogger("").addHandler(ch);
+  }
+
+  public void run()
+  {
+    // Configure the server.
+    ServerBootstrap bootstrap = new ServerBootstrap(
+            new NioServerSocketChannelFactory(
+            Executors.newCachedThreadPool(),
+            Executors.newCachedThreadPool()));
+
+    // Set up the event pipeline factory.
+    bootstrap.setPipelineFactory(new ServerPipelineFactory());
+
+    // Bind and start to accept incoming connections.
+    bootstrap.bind(new InetSocketAddress(port));
+  }
+
+  public static void main(String[] args) throws Exception
+  {
+    int port;
+    if (args.length > 0) {
+      port = Integer.parseInt(args[0]);
     }
-
-    public void run() {
-        // Configure the server.
-        ServerBootstrap bootstrap = new ServerBootstrap(
-                new NioServerSocketChannelFactory(
-                Executors.newCachedThreadPool(),
-                Executors.newCachedThreadPool()));
-
-        // Set up the event pipeline factory.
-        bootstrap.setPipelineFactory(new ServerPipelineFactory());
-
-        // Bind and start to accept incoming connections.
-        bootstrap.bind(new InetSocketAddress(port));
+    else {
+      port = DEFAULT_PORT;
     }
-
-    public static void main(String[] args) throws Exception {
-        int port;
-        if (args.length > 0) {
-            port = Integer.parseInt(args[0]);
-        } else {
-            port = DEFAULT_PORT;
-        }
-        new Server(port).run();
-    }
+    new Server(port).run();
+  }
 }

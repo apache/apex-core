@@ -1,6 +1,6 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
  */
 package com.malhartech.bufferserver.policy;
 
@@ -12,6 +12,8 @@ import java.util.Set;
  *
  * @author chetan
  */
-public interface Policy {
-    public void distribute(Set<PhysicalNode> nodes, Data data);
+public interface Policy
+{
+
+  public void distribute(Set<PhysicalNode> nodes, Data data);
 }

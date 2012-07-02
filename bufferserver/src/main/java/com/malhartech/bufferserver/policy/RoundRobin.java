@@ -1,6 +1,6 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
  */
 package com.malhartech.bufferserver.policy;
 
@@ -12,25 +12,26 @@ import java.util.Set;
  *
  * @author chetan
  */
-public class RoundRobin extends AbstractPolicy {
-    
-    int index;
-    
-    public RoundRobin() {
-        index = 0;
-    }
-            
+public class RoundRobin extends AbstractPolicy
+{
 
-    @Override
-    public void distribute(Set<PhysicalNode> nodes, Data data) {
-        index %= nodes.size();
-        int count = index++;
-        for (PhysicalNode node : nodes) {
-            if (count-- == 0) {
-                node.send(data);
-                break;
-            }
-        }
+  int index;
+
+  public RoundRobin()
+  {
+    index = 0;
+  }
+
+  @Override
+  public void distribute(Set<PhysicalNode> nodes, Data data)
+  {
+    index %= nodes.size();
+    int count = index++;
+    for (PhysicalNode node : nodes) {
+      if (count-- == 0) {
+        node.send(data);
+        break;
+      }
     }
-    
+  }
 }
