@@ -16,7 +16,10 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 /**
  * Receives a list of continent/city pairs from a {@link LocalTimeClient} to get
  * the local times of the specified cities.
+ * 
+ * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+
 public class Server
 {
 

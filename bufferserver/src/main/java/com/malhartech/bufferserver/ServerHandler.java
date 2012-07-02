@@ -12,6 +12,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.channel.*;
 
+/**
+ * Handler to serve connections accepted by the server.
+ * 
+ * @author Chetan Narsude <chetan@malhar-inc.com>
+ */
+
 public class ServerHandler extends SimpleChannelUpstreamHandler
 {
 
