@@ -51,14 +51,14 @@ public class DNodeManagerTest {
     String container2Id = "container2";
     
     // node1 needs to be deployed first, regardless in which order they were given
-    StreamingContainerContext c1 = dnm.assignContainer(container1Id, new InetSocketAddress(container1Id+"Host", 9001));
+    StreamingContainerContext c1 = dnm.assignContainer(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("one node assigned to container", 1, c1.getNodes().size());
     Assert.assertEquals("first node assigned to container", "node1", c1.getNodes().get(0).getLogicalId());
     Assert.assertEquals("one stream connection for container1", "n1n2", c1.getStreams().get(0).getId());
     Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1.getStreams().get(0).getBufferServerHost());
     Assert.assertEquals("stream connects to upstream port", 9001, c1.getStreams().get(0).getBufferServerPort());
     
-    StreamingContainerContext c2 = dnm.assignContainer(container2Id, new InetSocketAddress(container2Id+"Host", 9002));
+    StreamingContainerContext c2 = dnm.assignContainer(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
     Assert.assertEquals("one node assigned to container", 1, c2.getNodes().size());
     Assert.assertEquals("first node assigned to container", "node2", c2.getNodes().get(0).getLogicalId());
     Assert.assertEquals("one stream connection for container2", "n1n2", c2.getStreams().get(0).getId());
