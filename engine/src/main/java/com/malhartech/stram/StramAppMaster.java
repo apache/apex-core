@@ -59,6 +59,7 @@ public class StramAppMaster {
 
 	  // Configuration 
 	  private Configuration conf;
+	  private Properties topologyProperties;
 	  // YARN RPC to communicate with the Resource Manager or Node Manager
 	  private YarnRPC rpc;
 
@@ -253,21 +254,26 @@ public class StramAppMaster {
 	    rpcImpl.start();
 	    LOG.info("Container callback server listening at " + rpcImpl.getAddress());
 
-	    // set topology - read from dfs location populated by submit client
-      String resourcePath = "./stram.properties";
-      LOG.info("Reading topology from " + resourcePath);
-      InputStream is = new FileInputStream(resourcePath);
-      Properties props = new Properties();
-      props.load(is);
-      is.close();
+	    // set topology - read from localized dfs location populated by submit client
+      this.topologyProperties = readProperties("./stram.properties");
 
       TopologyBuilder b = new TopologyBuilder(conf);
-      b.addFromProperties(props);
+      b.addFromProperties(this.topologyProperties);
+
       numTotalContainers = b.getAllNodes().size(); // TODO
       LOG.info("Initializing {} nodes in {} containers", b.getAllNodes().size(), numTotalContainers);
       dnmgr.addNodes(b.getAllNodes().values());
       
 	    return true;
+	  }
+
+
+	  public static Properties readProperties(String filePath) throws IOException {
+      InputStream is = new FileInputStream(filePath);
+      Properties props = new Properties(System.getProperties());
+      props.load(is);
+      is.close();
+      return props;
 	  }
 
 	  /**
@@ -393,7 +399,7 @@ public class StramAppMaster {
 	        // assign streaming node(s) to new container
 	        InetSocketAddress defaultBufferServerAddr = new InetSocketAddress(allocatedContainer.getNodeId().getHost(), Server.DEFAULT_PORT);
 	        dnmgr.assignContainer(allocatedContainer.getId().toString(), defaultBufferServerAddr);
-          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, rpcImpl.getAddress());
+          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, this.topologyProperties, rpcImpl.getAddress());
 	        Thread launchThread = new Thread(runnableLaunchContainer);
 	        
 	        // launch and start the container on a separate thread to keep the main thread unblocked

@@ -4,9 +4,11 @@ package com.malhartech.stram;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Vector;
 
 import org.apache.commons.cli.CommandLine;
@@ -14,14 +16,15 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ClientRMProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
@@ -56,6 +59,10 @@ import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.malhartech.stram.conf.TopologyBuilder;
 
 
 /**
@@ -96,7 +103,7 @@ import org.apache.hadoop.yarn.util.Records;
 @InterfaceStability.Unstable
 public class StramClient {
 
-  private static final Log LOG = LogFactory.getLog(StramClient.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
 
   // Configuration
   private Configuration conf;
@@ -118,8 +125,6 @@ public class StramClient {
   // Amt. of memory resource to request for to run the App Master
   private int amMemory = 10; 
 
-  // Application master jar file
-  private String appMasterJar = ""; 
   // Main class to invoke application master
   private String appMasterMainClass = "";
 
@@ -158,7 +163,7 @@ public class StramClient {
       }
       result = client.run();
     } catch (Throwable t) {
-      LOG.fatal("Error running CLient", t);
+      LOG.error("Error running CLient", t);
       System.exit(1);
     }
     if (result) {
@@ -205,8 +210,6 @@ public class StramClient {
     opts.addOption("user", true, "User to run the application as");
     opts.addOption("timeout", true, "Application timeout in milliseconds");
     opts.addOption("master_memory", true, "Amount of memory in MB to be requested to run the application master");
-    opts.addOption("jar", true, "Jar file containing the application master");
-    opts.addOption("class", true, "Main class to  be run for the Application Master.");
     opts.addOption("topologyProperties", true, "File defining the topology");
     opts.addOption("container_memory", true, "Amount of memory in MB to be requested to run the shell command");
     opts.addOption("num_containers", true, "No. of containers on which the shell command needs to be executed");
@@ -240,13 +243,7 @@ public class StramClient {
           + " Specified memory=" + amMemory);
     }
 
-    if (!cliParser.hasOption("jar")) {
-      throw new IllegalArgumentException("No jar file specified for application master");
-    }		
-
-    appMasterJar = cliParser.getOptionValue("jar");
-    appMasterMainClass = cliParser.getOptionValue("class",
-        StramAppMaster.class.getName());		
+    appMasterMainClass = StramAppMaster.class.getName();		
     topologyPropertyFile = cliParser.getOptionValue("topologyProperties");
     if (topologyPropertyFile == null) {
       throw new IllegalArgumentException("No topology property file specified, exiting.");
@@ -361,40 +358,52 @@ public class StramClient {
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
+    
+    // platform jar files
+    Class<?>[] jarClasses = new Class<?>[] {
+        com.malhartech.bufferserver.Server.class,
+        com.malhartech.stram.StramAppMaster.class,
+        //com.malhartech.bufferserver.Server.class
+    };
 
+    FileSystem fs = FileSystem.get(conf);
+    List<String> localJarFiles = new ArrayList<String>();
+
+    for (Class<?> jarClass : jarClasses) {
+      localJarFiles.add(JarFinder.getJar(jarClass));
+    }
+    
+    // topology properties
+    Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
+    if (topologyProperties.getProperty(TopologyBuilder.LIBJARS) != null) {
+      String[] libJars = StringUtils.splitByWholeSeparator(topologyProperties.getProperty(TopologyBuilder.LIBJARS), ",");
+      localJarFiles.addAll(Arrays.asList(libJars));
+    }
+    
+    // copy required jar files to dfs, to be localized for containers
+    String libJarsCsv = "";
+    for (String localJarFile : localJarFiles) {
+      Path src = new Path(localJarFile);
+      String jarName = src.getName();
+      String pathSuffix = appName + "/" + appId.getId() + "/" + jarName;	    
+      Path dst = new Path(fs.getHomeDirectory(), pathSuffix);
+      LOG.info("Copy {} from local filesystem to {}", localJarFile, dst);
+      fs.copyFromLocalFile(false, true, src, dst);
+      if (libJarsCsv.length() > 0) {
+        libJarsCsv += ",";
+      }
+      libJarsCsv += dst.toString();
+    }
+    
+    LOG.info("libjars: {}", libJarsCsv);
+    topologyProperties.put(TopologyBuilder.LIBJARS, libJarsCsv);
+    
     // set local resources for the application master
     // local files or archives as needed
-    // In this scenario, the jar file for the application master is part of the local resources			
+    // In this scenario, the jar file for the application master is part of the local resources     
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
-
-    LOG.info("Copy App Master jar from local filesystem and add to local environment");
-    // Copy the application master jar to the filesystem 
-    // Create a local resource to point to the destination jar path 
-    FileSystem fs = FileSystem.get(conf);
-    Path src = new Path(appMasterJar);
-    String pathSuffix = appName + "/" + appId.getId() + "/stram.jar";	    
-    Path dst = new Path(fs.getHomeDirectory(), pathSuffix);
-    fs.copyFromLocalFile(false, true, src, dst);
-    FileStatus destStatus = fs.getFileStatus(dst);
-    LocalResource amJarRsrc = Records.newRecord(LocalResource.class);
-
-    // Set the type of resource - file or archive
-    // archives are untarred at destination
-    // we don't need the jar file to be untarred for now
-    amJarRsrc.setType(LocalResourceType.FILE);
-    // Set visibility of the resource 
-    // Setting to most private option
-    amJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);	   
-    // Set the resource to be copied over
-    amJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(dst)); 
-    // Set timestamp and length of file so that the framework 
-    // can do basic sanity checks for the local resource 
-    // after it has been copied over to ensure it is the same 
-    // resource the client intended to use with the application
-    amJarRsrc.setTimestamp(destStatus.getModificationTime());
-    amJarRsrc.setSize(destStatus.getLen());
-    localResources.put("AppMaster.jar",  amJarRsrc);
-
+    LaunchContainerRunnable.addLibJarsToLocalResources(libJarsCsv, localResources, fs);
+    
     // Set the log4j properties if needed 
     if (!log4jPropFile.isEmpty()) {
       Path log4jSrc = new Path(log4jPropFile);
@@ -409,11 +418,13 @@ public class StramClient {
       log4jRsrc.setSize(log4jFileStatus.getLen());
       localResources.put("log4j.properties", log4jRsrc);
     }			
-
-    // topology properties
-    Path topologySrc = new Path(topologyPropertyFile);
+    
+    // write the topology properties to the dfs location
     Path topologyDst = new Path(fs.getHomeDirectory(), appName + "/" + appId.getId() + "/stram.properties");
-    fs.copyFromLocalFile(false, true, topologySrc, topologyDst);
+    FSDataOutputStream outStream = fs.create(topologyDst, true);
+    topologyProperties.store(outStream, "topology for " + appId.getId());
+    outStream.close();
+    
     FileStatus topologyFileStatus = fs.getFileStatus(topologyDst);
     LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
     topologyRsrc.setType(LocalResourceType.FILE);

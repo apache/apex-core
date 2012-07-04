@@ -33,6 +33,11 @@ public class TopologyBuilder {
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
   private static final String STRAM_SITE_XML_FILE = "stram-site.xml";
 
+  /**
+   * Comma separated list of jar files that will be made available to stram app master and child containers
+   */
+  public static final String LIBJARS = "stram.libjars";
+  
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCENODE = "inputNode";
   public static final String STREAM_TARGETNODE = "outputNode";

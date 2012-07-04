@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -15,10 +16,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.ContainerManager;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
+import org.apache.hadoop.yarn.api.ContainerManager;
 import org.apache.hadoop.yarn.api.protocolrecords.StartContainerRequest;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.LocalResource;
@@ -32,6 +32,8 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.conf.TopologyBuilder;
+
 /**
  * Runnable to connect to the {@link ContainerManager} and 
  * launch the container that will host streaming node.
@@ -44,6 +46,7 @@ public class LaunchContainerRunnable implements Runnable {
   private YarnRPC rpc;  
   private Map<String, String> containerEnv = new HashMap<String, String>();
   private InetSocketAddress heartbeatAddress;
+  private Properties topologyProps;
   
   // Allocated container 
   private Container container;
@@ -53,11 +56,12 @@ public class LaunchContainerRunnable implements Runnable {
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, YarnRPC rpc, Configuration conf, InetSocketAddress heartbeatAddress) {
+  public LaunchContainerRunnable(Container lcontainer, YarnRPC rpc, Configuration conf, Properties topologyProps, InetSocketAddress heartbeatAddress) {
     this.container = lcontainer;
     this.rpc = rpc;
     this.conf = conf;
     this.heartbeatAddress = heartbeatAddress;
+    this.topologyProps = topologyProps;
   }
 
   /**
@@ -90,33 +94,31 @@ public class LaunchContainerRunnable implements Runnable {
     env.put("CLASSPATH", classPathEnv.toString());        
     LOG.info("CLASSPATH: {}", classPathEnv);
   }
-  
-  private void addLocalResources(Map<String, LocalResource> resources) throws IOException {
-    // child VM dependencies
-    // make our own jar file available to new container, in the location that CLASSPATH references
-    // same as when launching the appMaster, except that the file is already distributed to dfs
-    
-    // Create a local resource to point to the destination jar path 
-    FileSystem fs = FileSystem.get(conf);
-    ApplicationId appId = container.getId().getApplicationAttemptId().getApplicationId();
-    String pathSuffix = StramConstants.APPNAME + "/" + appId.getId() + "/stram.jar";     
-    LOG.info("localize application jar from: " + pathSuffix);
-    Path dst = new Path(fs.getHomeDirectory(), pathSuffix);
-    LocalResource appJarRsrc = Records.newRecord(LocalResource.class);
-    appJarRsrc.setType(LocalResourceType.FILE);
-    appJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);    
-    appJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(dst)); 
-    // Set timestamp and length of file so that the framework 
-    // can do basic sanity checks for the local resource 
-    // after it has been copied over to ensure it is the same 
-    // resource the client intended to use with the application
-    FileStatus destStatus = fs.getFileStatus(dst);
-    appJarRsrc.setTimestamp(destStatus.getModificationTime());
-    appJarRsrc.setSize(destStatus.getLen());
-    resources.put("stram.jar",  appJarRsrc);
+
+  public static void addLibJarsToLocalResources(String libJars, Map<String, LocalResource> localResources, FileSystem fs) throws IOException {
+    String[] jarPathList = StringUtils.splitByWholeSeparator(libJars, ",");
+    for (String jarPath : jarPathList) {
+      Path dst = new Path(jarPath);
+      // Create a local resource to point to the destination jar path 
+      FileStatus destStatus = fs.getFileStatus(dst);
+      LocalResource amJarRsrc = Records.newRecord(LocalResource.class);
+      // Set the type of resource - file or archive
+      amJarRsrc.setType(LocalResourceType.FILE);
+      // Set visibility of the resource 
+      // Setting to most private option
+      amJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);    
+      // Set the resource to be copied over
+      amJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(dst)); 
+      // Set timestamp and length of file so that the framework 
+      // can do basic sanity checks for the local resource 
+      // after it has been copied over to ensure it is the same 
+      // resource the client intended to use with the application
+      amJarRsrc.setTimestamp(destStatus.getModificationTime());
+      amJarRsrc.setSize(destStatus.getLen());
+      localResources.put(dst.getName(),  amJarRsrc);
+    }
   }
   
-
   @Override
   /**
    * Connects to CM, sets up container launch context 
@@ -149,7 +151,9 @@ public class LaunchContainerRunnable implements Runnable {
    
     // add resources for child VM
     try {
-      addLocalResources(localResources);
+      // child VM dependencies
+      FileSystem fs = FileSystem.get(conf);
+      addLibJarsToLocalResources(topologyProps.getProperty(TopologyBuilder.LIBJARS, ""), localResources, fs);
       ctx.setLocalResources(localResources);
     } catch (IOException e) {
       LOG.error("Failed to prepare local resources.", e);

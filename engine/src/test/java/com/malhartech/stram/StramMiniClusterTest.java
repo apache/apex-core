@@ -130,8 +130,6 @@ public class StramMiniClusterTest {
     //String topologyPath = location.getPath();    
     
     String[] args = {
-        "--jar",
-        appMasterJar,
         "--num_containers",
         "2",
         "--master_memory",
@@ -149,7 +147,7 @@ public class StramMiniClusterTest {
     }
     boolean initSuccess = client.init(args);
     Assert.assertTrue(initSuccess);
-    LOG.info("Running DS Client");
+    LOG.info("Running client");
     boolean result = client.run();
 
     LOG.info("Client run completed. Result=" + result);
