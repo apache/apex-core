@@ -1,6 +1,6 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
  */
 package com.malhartech.bufferserver;
 
