@@ -82,7 +82,7 @@
       <build>
         <plugins>
       <!-- Publish tests jar -->
-      <!--plugin>
+      <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <executions>
           <execution>
@@ -92,7 +92,7 @@
             <phase>test-compile</phase>
           </execution>
         </executions>
-      </plugin-->        
+      </plugin>        
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
