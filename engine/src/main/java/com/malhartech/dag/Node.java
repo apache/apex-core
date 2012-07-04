@@ -1,19 +1,18 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
  */
-package com.malhartech.dag;
 
-import com.malhartech.stram.StreamingNodeContext;
+package com.malhartech.dag;
 
 /**
  *
  * @author chetan
  */
-public interface Node {
-    public void setup(StreamingNodeContext ctx);
-    public void beginWindow(long window);
-    public void endWidndow(long window);
-    public void process(Tuple t);
-    public void teardown(StreamingNodeContext ctx);
+public interface Node extends DAGPart<NodeConfiguration, NodeContext> {
+    public void setup(NodeConfiguration config);
+    public void beginWindow(NodeContext context);
+    public void endWidndow(NodeContext context);
+    public void process(NodeContext context);
+    public void teardown(NodeConfiguration config);
 }

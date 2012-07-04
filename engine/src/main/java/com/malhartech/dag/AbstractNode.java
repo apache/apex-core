@@ -5,71 +5,74 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.stram.StreamContext;
-import com.malhartech.stram.StreamingNodeContext;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map.Entry;
+import java.util.HashSet;
 import java.util.PriorityQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * @author chetan
+ * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode implements Runnable, Node
+public abstract class AbstractNode implements Runnable, Node, Sink
 {
-  class Blah {}
-  
-  final StreamingNodeContext ctx;
-  final PriorityQueue<Tuple> inputQueue;
-  final HashMap<StreamContext, Sink> outputStreams = new HashMap<StreamContext, Sink>();
-  final HashMap<StreamContext, Blah> inputStreams  = new HashMap<StreamContext, Blah>();
-  
+  // this class is needed to do some bookkeeping to ensure that once a end of 
+  // window tuple is received on a stream, it does not send any more tuples for
+  // the window. A loose system will work w/o it, but through this object we
+  // should tighten it.
 
-  public AbstractNode(StreamingNodeContext ctx)
+  private final PriorityQueue<Tuple> inputQueue;
+  final HashSet<Sink> outputStreams = new HashSet<Sink>();
+  final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
+  final NodeContext ctx;
+
+  public void doSomething(Tuple t)
+  {
+    synchronized (inputQueue) {
+      inputQueue.add(t);
+      inputQueue.notify();
+    }
+  }
+  
+  public Sink getSink(StreamContext context)
+  {
+    inputStreams.add(context);
+    return this;
+  }
+
+  public AbstractNode(NodeContext ctx)
   {
     // initial capacity should be some function of the window length
     this.ctx = ctx;
     this.inputQueue = new PriorityQueue<Tuple>(1024 * 1024, new DataComparator());
   }
-
   // i feel that we may just want to push the data out from here and depending upon
   // whether the data needs to flow on the stream (as per partitions), the streams
   // create tuples or drop the data on the floor.
-  private Data currentData = null;
   public void emit(Object o)
   {
-    for (Entry<StreamContext, Sink> entry : outputStreams.entrySet()) {
-      Tuple t = new Tuple(o, entry.getKey());
-      t.data = currentData;
-      entry.getValue().doSomething(t);
+    for (Sink sink : outputStreams) {
+      Tuple t = new Tuple(o);
+      t.setData(ctx.getData());
+      sink.doSomething(t);
     }
-  }
-  
-  public void emitStream(Object o, StreamContext ctx)
-  {
-    Tuple t = new Tuple(o, ctx);
-    t.data = currentData;
-    outputStreams.get(ctx).doSomething(t);
   }
 
-  public void connectOutputStreams(Collection<Sink> streams)
+  public void emitStream(Object o, Sink sink)
   {
-    for (Sink stream : streams) {
-      outputStreams.put(stream.getStreamContext(), stream);
+    Tuple t = new Tuple(o);
+    t.setData(ctx.getData());
+    sink.doSomething(t);
+  }
+
+  public void connectOutputStreams(Collection<Sink> sinks)
+  {
+    for (Sink sink : sinks) {
+      outputStreams.add(sink);
     }
   }
-  
-  public void connectInputStreams(Collection<StreamContext> streams)
-  {
-    for (StreamContext stream : streams) {
-      inputStreams.put(stream, new Blah());
-    }
-    
-  }
-  
+
   public long getWindowId(Data d)
   {
     long windowId;
@@ -99,14 +102,14 @@ public abstract class AbstractNode implements Runnable, Node
     return windowId;
   }
 
-  final class DataComparator implements Comparator<Tuple>
+  final private class DataComparator implements Comparator<Tuple>
   {
 
     public int compare(Tuple t, Tuple t1)
     {
 
-      Data d = t.data;
-      Data d1 = t1.data;
+      Data d = t.getData();
+      Data d1 = t1.getData();
       if (d != d1) {
         long tid = getWindowId(d);
         long t1id = getWindowId(d1);
@@ -133,17 +136,16 @@ public abstract class AbstractNode implements Runnable, Node
       return 0;
     }
   }
-
   private boolean alive;
-  public void stopSafely() {
+
+  public void stopSafely()
+  {
     alive = false;
   }
-  
+
   public void run()
   {
     alive = true;
-
-    setup(ctx);
 
     int canStartNewWindow = 0;
     boolean shouldWait = false;
@@ -220,27 +222,29 @@ public abstract class AbstractNode implements Runnable, Node
           }
         }
         else {
-          currentData = t.data;
+          ctx.setData(t.getData());
           /*
            * we process this outside to keep the critical region free.
            */
-          switch (currentData.getType()) {
+          switch (t.getData().getType()) {
             case BEGIN_WINDOW:
-              beginWindow(currentWindow);
+              beginWindow(ctx);
+              emit(null);
               break;
 
             case END_WINDOW:
-              endWidndow(currentWindow);
+              endWidndow(ctx);
+              emit(null);
               break;
 
             default:
-              process(t);
+              process(ctx);
+              // this is where we increase the heartbeat counters;
               break;
           }
         }
       }
     }
 
-    teardown(ctx);
   }
 }

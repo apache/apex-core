@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.Context;
 import java.util.Map;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -12,7 +13,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
  *
  * @author thomas
  */
-public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.WritableAdapter
+public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.WritableAdapter implements Context
 {
 
   private static final long serialVersionUID = 1L;
@@ -112,5 +113,10 @@ public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.Writabl
             append("logicalId", this.logicalId).
             append("dnodeClassName", this.dnodeClassName).
             toString();
+  }
+
+  public Object getAttachment()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }

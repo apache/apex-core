@@ -5,28 +5,50 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.stram.StreamContext;
 
 /**
  *
  * @author chetan
  */
 public class Tuple {
-    StreamContext ctx;
-    Data data;
-    Object object;
+    private StreamContext context;
+    private Data data;
+    final Object object;
 
-    Tuple(Object object, StreamContext stream) {
+    Tuple(Object object) {
         this.object = object;
-        this.ctx = stream;
     }
     
-    public void setData(Data data) {
-      this.data = data;
-    }
-    
-    public Data getData()
-    {
-      return data;
-    }
+  /**
+   * @return the context
+   */
+  public StreamContext getContext()
+  {
+    return context;
+  }
+
+  /**
+   * @param context the context to set
+   */
+  public void setContext(StreamContext context)
+  {
+    this.context = context;
+  }
+
+  /**
+   * @return the data
+   */
+  public Data getData()
+  {
+    return data;
+  }
+
+  /**
+   * @param data the data to set
+   */
+  public void setData(Data data)
+  {
+    this.data = data;
+  }
+
 }

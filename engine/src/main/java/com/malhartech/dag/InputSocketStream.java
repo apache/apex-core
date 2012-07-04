@@ -5,51 +5,48 @@ import com.malhartech.netty.ClientPipelineFactory;
 import com.malhartech.stram.StreamContext;
 import java.net.InetSocketAddress;
 import java.security.InvalidParameterException;
-import java.util.Collection;
 import java.util.concurrent.Executors;
 import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
-/*
- * To change this template, choose Tools | Templates and open the template in
- * the editor.
- */
 /**
  *
  * @author chetan
  */
-public class InputSocketStream extends SimpleChannelUpstreamHandler
+public class InputSocketStream extends SimpleChannelUpstreamHandler implements Stream
 {
+  private com.malhartech.dag.StreamContext context;
+  private ClientBootstrap bootstrap;
+  private ChannelFuture future;
 
-  final StreamContext context;
-  final Collection<Tuple> collection;
-  SerDe serde;
-
-  InputSocketStream(StreamContext context, Collection<Tuple> collection)
+  @Override
+  public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
   {
-    this.context = context;
-    if (context.getBufferServerHost() == null
-        || context.getBufferServerPort() == 0) {
-      throw new InvalidParameterException("null host or port passed for socket stream context");
+    Data d = (Data) e.getMessage();
+    Object o;
+    if (d.getType() == Data.DataType.SIMPLE_DATA) {
+      o = context.getSerDe().fromByteArray(d.getSimpledata().toByteArray());
+    }
+    else if (d.getType() == Data.DataType.PARTITIONED_DATA) {
+      o = context.getSerDe().fromByteArray(d.getPartitioneddata().toByteArray());
     }
     else {
-      // do addtional validation
+      o = null;
     }
 
-    this.collection = collection;
+    Tuple t = new Tuple(o);
+    t.setContext(context);
+    t.setData(d);
+    context.getSink().doSomething(t);
   }
-
-  public void setSerDe(SerDe serde)
+  
+  public void setup(StreamConfiguration config)
   {
-    this.serde = serde;
-  }
-
-  void connect()
-  {
-    ClientBootstrap bootstrap = new ClientBootstrap(
+    bootstrap = new ClientBootstrap(
             new NioClientSocketChannelFactory(
             Executors.newCachedThreadPool(),
             Executors.newCachedThreadPool()));
@@ -58,33 +55,20 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler
     bootstrap.setPipelineFactory(new ClientPipelineFactory(InputSocketStream.class));
 
     // Make a new connection.
-    bootstrap.connect(new InetSocketAddress(context.getBufferServerHost(),
-                                            Integer.valueOf(context.getBufferServerPort())));
+    future = bootstrap.connect(config.getSourceSocketAddress());
+    future.awaitUninterruptibly();
+  }
 
-
+  public void process(com.malhartech.dag.StreamContext context)
+  {
+    this.context = context;
     // send the subscribe request.
   }
 
-  @Override
-  public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
+  public void teardown(StreamConfiguration config)
   {
-    Data d = (Data) e.getMessage();
-    Object o;
-    if (d.getType() == Data.DataType.SIMPLE_DATA) {
-      o = serde.fromByteArray(d.getSimpledata().toByteArray());
-    }
-    else if (d.getType() == Data.DataType.PARTITIONED_DATA) {
-      o = serde.fromByteArray(d.getPartitioneddata().toByteArray());
-    }
-    else {
-      o = null;
-    }
-
-    Tuple t = new Tuple(o, context);
-    t.setData(d);
-    synchronized (collection) {
-      collection.add(t);
-      collection.notify();
-    }
+    future.getChannel().close();
+    future.getChannel().getCloseFuture().awaitUninterruptibly();
+    bootstrap.releaseExternalResources();
   }
 }

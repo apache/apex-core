@@ -12,6 +12,5 @@ import com.malhartech.stram.StreamContext;
  */
 public interface Sink
 {
-  public StreamContext getStreamContext();
   public void doSomething(Tuple t);
 }
