@@ -16,6 +16,7 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
+import org.mortbay.log.Log;
 
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeContext;
@@ -218,9 +219,8 @@ public class TopologyBuilderTest {
     }
 
     @Override
-    public void process(NodeContext context) {
-      // TODO Auto-generated method stub
-      
+    public void process(NodeContext context, Object o) {
+      Log.info("Got some work: " + o);
     }
 
     @Override

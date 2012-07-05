@@ -21,19 +21,15 @@ public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.Writabl
   private String dnodeClassName;
   private String dnodeId;
   private String logicalId;
+
   /**
-   * The window sequence initial value. Since nodes can be dynamically
-   * allocated, they may start their processing at any window boundary.
-   */
-  public int startWindowSeq;
-  /**
-   * Window size. Start nodes in the DAG generate BEGIN_WINDOW at this interval.
+   * Window size. Inputs in the DAG generate BEGIN_WINDOW at this interval.
    */
   public long windowSizeMillis;
   /**
    * Node should start processing the initial window at this time.
    */
-  public long startWindowBeginMillis;
+  public long startWindowMillis;
 
 
   public Map<String, String> getProperties()
@@ -76,16 +72,6 @@ public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.Writabl
     this.logicalId = logicalId;
   }
 
-  public int getStartWindowSeq()
-  {
-    return startWindowSeq;
-  }
-
-  public void setStartWindowSeq(int startWindowSeq)
-  {
-    this.startWindowSeq = startWindowSeq;
-  }
-
   public long getWindowSizeMillis()
   {
     return windowSizeMillis;
@@ -96,14 +82,14 @@ public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.Writabl
     this.windowSizeMillis = windowSizeMillis;
   }
 
-  public long getStartWindowBeginMillis()
+  public long getStartWindowMillis()
   {
-    return startWindowBeginMillis;
+    return startWindowMillis;
   }
 
-  public void setStartWindowBeginMillis(long startWindowBeginMillis)
+  public void setStartWindowMillis(long startWindowBeginMillis)
   {
-    this.startWindowBeginMillis = startWindowBeginMillis;
+    this.startWindowMillis = startWindowBeginMillis;
   }
 
   @Override

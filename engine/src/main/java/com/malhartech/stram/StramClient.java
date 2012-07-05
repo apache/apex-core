@@ -387,7 +387,7 @@ public class StramClient {
       localResources.put("log4j.properties", log4jRsrc);
     }			
     
-    // write the topology properties to the dfs location
+    // push topology properties to run specific dfs location
     Path topologyDst = new Path(fs.getHomeDirectory(), appName + "/" + appId.getId() + "/stram.properties");
     FSDataOutputStream outStream = fs.create(topologyDst, true);
     topologyProperties.store(outStream, "topology for " + appId.getId());
@@ -412,20 +412,18 @@ public class StramClient {
     LOG.info("Set the environment for the application master");
     Map<String, String> env = new HashMap<String, String>();
 
-    // Add AppMaster.jar location to classpath 		
+    // Add application jar(s) location to classpath 		
     // At some point we should not be required to add 
     // the hadoop specific classpaths to the env. 
     // It should be provided out of the box. 
     // For now setting all required classpaths including
-    // the classpath to "." for the application jar
+    // the classpath to "." for the application jar(s)
     StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
     for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH)
         .split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
-    classPathEnv.append(":./log4j.properties");
-
     env.put("CLASSPATH", classPathEnv.toString());
     
     amContainer.setEnvironment(env);

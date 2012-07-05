@@ -13,6 +13,6 @@ public interface Node extends DAGPart<NodeConfiguration, NodeContext> {
     public void setup(NodeConfiguration config);
     public void beginWindow(NodeContext context);
     public void endWidndow(NodeContext context);
-    public void process(NodeContext context);
+    public void process(NodeContext context, Object payload);
     public void teardown(NodeConfiguration config);
 }
