@@ -51,4 +51,8 @@ public class Tuple {
     this.data = data;
   }
 
+  public Object getObject() {
+    return object;
+  }
+  
 }

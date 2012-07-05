@@ -52,7 +52,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   }
 
   @Override
-  public abstract void process(NodeContext context);
+  public abstract void process(NodeContext context, Object payload);
 
 
   @Override
@@ -283,7 +283,8 @@ public abstract class AbstractNode implements Node, Sink, Runnable
               break;
 
             default:
-              process(ctx);
+              // process payload
+              process(ctx, t.getObject());
               // update heartbeat counters;
               ctx.countProcessed(t);
               break;
