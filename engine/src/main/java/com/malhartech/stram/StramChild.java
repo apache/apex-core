@@ -1,15 +1,9 @@
 package com.malhartech.stram;
 
-import com.malhartech.dag.DNode;
-import com.malhartech.dag.DNode.HeartbeatCounters;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
@@ -17,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSError;
@@ -25,12 +20,21 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 
 /**
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
@@ -42,7 +46,9 @@ public class StramChild {
   final private String containerId;
   final private Configuration conf;
   final private StreamingNodeUmbilicalProtocol umbilical;
-  final private Map<String, DNode> nodeList = new ConcurrentHashMap<String, DNode>();
+  final private Map<String, AbstractNode> nodeList = new ConcurrentHashMap<String, AbstractNode>();
+  final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
+
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   
@@ -60,7 +66,7 @@ public class StramChild {
     
     // create nodes
     for (StreamingNodeContext snc : ctx.getNodes()) {
-        DNode dnode = initNode(snc, conf);
+        AbstractNode dnode = initNode(snc, conf);
         nodeList.put(snc.getDnodeId(), dnode);
     }
     
@@ -68,27 +74,43 @@ public class StramChild {
     // TODO: this looks too complicated
     for (StreamContext sc : ctx.getStreams()) {
         if (sc.isInline()) {
-          DNode source = nodeList.get(sc.getSourceNodeId());
-          DNode target = nodeList.get(sc.getTargetNodeId());
+          AbstractNode source = nodeList.get(sc.getSourceNodeId());
+          AbstractNode target = nodeList.get(sc.getTargetNodeId());
 
           LOG.info("inline connection from {} to {}", source, target);
           // TODO: link nodes directly via blocking queue
         } else {
           if (sc.getSourceNodeId() != null) {
-            DNode sourceNode = nodeList.get(sc.getSourceNodeId());
+            AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
             if (sourceNode != null) {
               LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
             }
           }
           
           if (sc.getTargetNodeId() != null) {
-            DNode targetNode = nodeList.get(sc.getTargetNodeId());
+            AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
             if (targetNode != null) {
               LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
             }
           }
         }
     }
+    
+    for (final AbstractNode node : nodeList.values()) {
+      // launch nodes
+      Runnable nodeRunnable = new Runnable() {
+        @Override
+        public void run() {
+          node.run();
+          // processing has ended
+          activeNodeList.remove(node.getContext().getId());
+        }
+      };
+      Thread launchThread = new Thread(nodeRunnable);
+      activeNodeList.put(node.getContext().getId(), launchThread);
+      launchThread.start();
+    }
+    
   }
 
   private void heartbeatLoop() throws IOException {
@@ -109,14 +131,18 @@ public class StramChild {
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.size());
   
       // gather heartbeat info for all nodes
-      for (Map.Entry<String, DNode> e : nodeList.entrySet()) {
+      for (Map.Entry<String, AbstractNode> e : nodeList.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
-        HeartbeatCounters counters = e.getValue().getResetCounters();
+        HeartbeatCounters counters = e.getValue().resetHeartbeatCounters();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setNumberTuplesProcessed((int)counters.tuplesProcessed);
         hb.setIntervalMs(heartbeatIntervalMillis);
-        hb.setState(e.getValue().getState().name());
+        DNodeState state = DNodeState.PROCESSING;
+        if (!activeNodeList.containsKey(e.getKey())) {
+          state = DNodeState.IDLE;
+        }
+        hb.setState(state.name());
         heartbeats.add(hb);
       }
       msg.setDnodeEntries(heartbeats);
@@ -140,7 +166,7 @@ public class StramChild {
     if (rsp.getNodeRequests() != null) {
       // extended processing per node
       for (StramToNodeRequest req : rsp.getNodeRequests()) {
-        DNode n = nodeList.get(req.getNodeId());
+        AbstractNode n = nodeList.get(req.getNodeId());
         if (n == null) {
           LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         } else {
@@ -157,7 +183,7 @@ public class StramChild {
    * @param n
    * @param snr
    */
-  private void processStramRequest(DNode n, StramToNodeRequest snr) {
+  private void processStramRequest(AbstractNode n, StramToNodeRequest snr) {
       switch (snr.getRequestType()) {
       case SHUTDOWN:
         //LOG.info("Received shutdown request");
@@ -253,18 +279,18 @@ public class StramChild {
   }
   
   /**
-   * TODO: Move to Stram initialization
    * Instantiate node from configuration. 
-   * (happens in the execution container, not the stram master process.)
+   * (happens in the child container, not the stram master process.)
    * @param nodeConf
    * @param conf
    */
-  public static DNode initNode(StreamingNodeContext nodeCtx, Configuration conf) {
+  public static AbstractNode initNode(StreamingNodeContext nodeCtx, Configuration conf) {
     try {
-      Class<? extends DNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(DNode.class);    
-      DNode node = ReflectionUtils.newInstance(nodeClass, conf);
-      node.setId(nodeCtx.getDnodeId());
-      // populate the custom properties
+      Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(AbstractNode.class);    
+      Constructor<? extends AbstractNode> c = nodeClass.getConstructor(NodeContext.class);
+      AbstractNode node = c.newInstance(new NodeContext(nodeCtx.getDnodeId()));
+      //DNode node = ReflectionUtils.newInstance(nodeClass, conf);
+      // populate custom properties
       BeanUtils.populate(node, nodeCtx.getProperties());
       return node;
     } catch (ClassNotFoundException e) {
@@ -273,6 +299,12 @@ public class StramChild {
       throw new IllegalArgumentException("Error setting node properties", e);
     } catch (InvocationTargetException e) {
       throw new IllegalArgumentException("Error setting node properties", e);
+    } catch (SecurityException e) {
+      throw new IllegalArgumentException("Error creating instance of class: " + nodeCtx.getDnodeClassName(), e);
+    } catch (NoSuchMethodException e) {
+      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeCtx.getDnodeClassName(), e);
+    } catch (InstantiationException e) {
+      throw new IllegalArgumentException("Failed to instantiate: " + nodeCtx.getDnodeClassName(), e);
     }
   }
   

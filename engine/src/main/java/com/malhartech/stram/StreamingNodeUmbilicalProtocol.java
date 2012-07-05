@@ -159,6 +159,12 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
   public static class StreamingNodeHeartbeat extends WritableAdapter {
     private static final long serialVersionUID = 1L;
 
+    public static enum DNodeState {
+      NEW, // node instantiated but not processing yet
+      PROCESSING,
+      IDLE  // the node stopped processing (no more input etc.)
+    }
+    
     /**
      * The originating node. There can be multiple nodes in a container.
      */

@@ -5,12 +5,17 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.PriorityQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -27,6 +32,47 @@ public abstract class AbstractNode implements Runnable, Node, Sink
   final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   final NodeContext ctx;
 
+  public AbstractNode(NodeContext ctx)
+  {
+    // initial capacity should be some function of the window length
+    this.inputQueue = new PriorityQueue<Tuple>(1024 * 1024, new DataComparator());
+    this.ctx = ctx;
+  }
+
+  final public NodeContext getContext() {
+    return ctx;
+  }
+  
+  @Override
+  public void setup(NodeConfiguration config) {
+  }
+
+  @Override
+  public void beginWindow(NodeContext context) {
+  }
+
+  @Override
+  public void endWidndow(NodeContext context) {
+  }
+
+  @Override
+  public abstract void process(NodeContext context);
+
+
+  @Override
+  public void teardown(NodeConfiguration config) {
+  }
+
+  /**
+   * Return and reset counts for next heartbeat interval.
+   * This is called as part of the heartbeat processing.
+   * Providing this hook in node implementation so it can be mocked for testing.
+   * @return
+   */
+  public HeartbeatCounters resetHeartbeatCounters() {
+    return ctx.resetHeartbeatCounters();
+  }
+  
   public void doSomething(Tuple t)
   {
     synchronized (inputQueue) {
@@ -40,13 +86,7 @@ public abstract class AbstractNode implements Runnable, Node, Sink
     inputStreams.add(context);
     return this;
   }
-
-  public AbstractNode(NodeContext ctx)
-  {
-    // initial capacity should be some function of the window length
-    this.ctx = ctx;
-    this.inputQueue = new PriorityQueue<Tuple>(1024 * 1024, new DataComparator());
-  }
+  
   // i feel that we may just want to push the data out from here and depending upon
   // whether the data needs to flow on the stream (as per partitions), the streams
   // create tuples or drop the data on the floor.
@@ -138,12 +178,20 @@ public abstract class AbstractNode implements Runnable, Node, Sink
   }
   private boolean alive;
 
-  public void stopSafely()
+  final public void stopSafely()
   {
     alive = false;
   }
 
-  public void run()
+  /**
+   * Hook for node implementation to define custom exit condition.
+   * Complementary to external control provided by stopSafely()
+   */
+  protected boolean shouldShutdown() {
+    return false;
+  }
+  
+  final public void run()
   {
     alive = true;
 
@@ -152,7 +200,7 @@ public abstract class AbstractNode implements Runnable, Node, Sink
     long currentWindow = 0;
     int tupleCount = 0;
 
-    while (alive) {
+    while (alive && !shouldShutdown()) {
       Tuple t;
       synchronized (inputQueue) {
 
@@ -239,7 +287,8 @@ public abstract class AbstractNode implements Runnable, Node, Sink
 
             default:
               process(ctx);
-              // this is where we increase the heartbeat counters;
+              // update heartbeat counters;
+              ctx.countProcessed(t);
               break;
           }
         }
@@ -247,4 +296,12 @@ public abstract class AbstractNode implements Runnable, Node, Sink
     }
 
   }
+  
+  @Override
+  public String toString() {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+        append("id", this.ctx.getId()).
+        toString();
+  }  
+  
 }

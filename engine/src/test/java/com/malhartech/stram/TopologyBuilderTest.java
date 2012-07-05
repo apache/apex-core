@@ -1,17 +1,27 @@
 package com.malhartech.stram;
 
-import com.malhartech.dag.DNode;
-import com.malhartech.dag.DNode.DNodeState;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Test;
+
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.NodeContext;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
-import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-import static org.junit.Assert.*;
-import org.junit.Test;
 
 public class TopologyBuilderTest {
 
@@ -39,7 +49,7 @@ public class TopologyBuilderTest {
     assertEquals("nodeId set", "node1", node1.getId());
 
     // verify node instantiation
-    DNode dNode = initNode(node1, conf);
+    AbstractNode dNode = initNode(node1, conf);
     assertNotNull(dNode);
     assertEquals(dNode.getClass(), EchoNode.class);
     EchoNode echoNode = (EchoNode)dNode;
@@ -79,9 +89,10 @@ public class TopologyBuilderTest {
     
   }
 
-  private DNode initNode(NodeConf nodeConf, Configuration conf) {
+  @SuppressWarnings("unchecked")
+  private <T extends AbstractNode> T initNode(NodeConf nodeConf, Configuration conf) {
     StreamingNodeContext snc = DNodeManager.createNodeContext(nodeConf.getId(), nodeConf);
-    return StramChild.initNode(snc, conf);
+    return (T)StramChild.initNode(snc, conf);
   }
   
   public void printTopology(NodeConf node, Map<String, NodeConf> allNodes, int level) {
@@ -121,7 +132,7 @@ public class TopologyBuilderTest {
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", node3Props.get("myStringProperty"));
       assertEquals("node3.classname", EchoNode.class.getName(), node3Props.get(TopologyBuilder.NODE_CLASSNAME));
 
-      EchoNode dnode3 = (EchoNode)initNode(node3, new Configuration());
+      EchoNode dnode3 = initNode(node3, new Configuration());
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", dnode3.myStringProperty);
       
       NodeConf node4 = b.getOrAddNode("node4");
@@ -190,7 +201,11 @@ public class TopologyBuilderTest {
   }
   
   
-  public static class EchoNode extends DNode {
+  public static class EchoNode extends AbstractNode {
+
+    public EchoNode(NodeContext ctx) {
+      super(ctx);
+    }
 
     private String myStringProperty;
 
@@ -203,10 +218,16 @@ public class TopologyBuilderTest {
     }
 
     @Override
-    public DNodeState getState() {
-      return DNodeState.IDLE; // idle input to cause stram to exit
+    public void process(NodeContext context) {
+      // TODO Auto-generated method stub
+      
     }
-    
+
+    @Override
+    protected boolean shouldShutdown() {
+      return true; // cause stram to exit
+    }
+
   }
   
 }

@@ -29,7 +29,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.DNode;
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
 
 public class StramMiniClusterTest {
   
@@ -202,18 +204,17 @@ public class StramMiniClusterTest {
   }     
 
 
-  public static class TestDNode extends DNode {
+  public static class TestDNode extends AbstractNode {
+
+    public TestDNode(NodeContext ctx) {
+      super(ctx);
+    }
 
     int getResetCount = 0;
     Long[] tupleCounts = new Long[0];
     
     @Override
-    public DNodeState getState() {
-      return DNodeState.PROCESSING;
-    }
-
-    @Override
-    public HeartbeatCounters getResetCounters() {
+    public HeartbeatCounters resetHeartbeatCounters() {
       HeartbeatCounters stats = new HeartbeatCounters();
       if (tupleCounts.length == 0) {
           stats.tuplesProcessed = 0;
@@ -239,6 +240,19 @@ public class StramMiniClusterTest {
         counts[i] = new Long(scounts[i].trim());
       }
       this.tupleCounts = counts;
+    }
+
+    @Override
+    public void process(NodeContext context) {
+      LOG.info("Designed to do nothing!");
+    }
+
+    /**
+     * Node will exit processing loop immediately and report not processing in heartbeat.
+     */
+    @Override
+    protected boolean shouldShutdown() {
+      return true;
     }
     
   }

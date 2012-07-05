@@ -41,6 +41,13 @@
       <artifactId>bufferserver</artifactId>
       <version>0.1-SNAPSHOT</version>
     </dependency>
+
+<!--dependency>
+  <groupId>org.apache.activemq</groupId>
+  <artifactId>activemq-core</artifactId>
+  <version>5.6.0</version>
+</dependency-->
+
   </dependencies>
 
 

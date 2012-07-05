@@ -1,5 +1,6 @@
 package com.malhartech.stram;
 
+import com.malhartech.dag.NodeContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import java.io.IOException;
 import java.util.Collections;
@@ -36,14 +37,14 @@ public class HeartbeatProtocolSerializationTest {
 
   @Test
   public void testMiniClusterTestNode() {
-    StramMiniClusterTest.TestDNode d = new StramMiniClusterTest.TestDNode();
+    StramMiniClusterTest.TestDNode d = new StramMiniClusterTest.TestDNode(new NodeContext("1"));
     d.setTupleCounts("100, 100, 1000");
     Assert.assertEquals("100,100,1000", d.getTupleCounts());
 
-    Assert.assertEquals("heartbeat1", 100, d.getResetCounters().tuplesProcessed);
-    Assert.assertEquals("heartbeat2", 100, d.getResetCounters().tuplesProcessed);
-    Assert.assertEquals("heartbeat3", 1000, d.getResetCounters().tuplesProcessed);
-    Assert.assertEquals("heartbeat4", 100, d.getResetCounters().tuplesProcessed);
+    Assert.assertEquals("heartbeat1", 100, d.resetHeartbeatCounters().tuplesProcessed);
+    Assert.assertEquals("heartbeat2", 100, d.resetHeartbeatCounters().tuplesProcessed);
+    Assert.assertEquals("heartbeat3", 1000, d.resetHeartbeatCounters().tuplesProcessed);
+    Assert.assertEquals("heartbeat4", 100, d.resetHeartbeatCounters().tuplesProcessed);
     
   }
   
