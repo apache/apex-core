@@ -4,18 +4,15 @@
  */
 package com.malhartech.stram;
 
-import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.Collection;
-
-import junit.framework.Assert;
-
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Test;
-
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.Collection;
+import junit.framework.Assert;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Test;
 
 public class DNodeManagerTest {
 
