@@ -136,18 +136,6 @@ public abstract class AbstractInputActiveMQStream implements Stream, MessageList
     logger.log(Level.SEVERE, "Exception thrown by ActiveMQ consumer setup.", jmse.getCause());
   }
 
-  private void consumeMessagesAndClose(Connection connection, Session session, MessageConsumer consumer)
-  {
-    System.out.print("consumeMessagesAndClose 1 = ");
-    System.out.println(Thread.currentThread());
-  }
-
-  private void consumeMessagesAndClose(Connection connection, Session session, MessageConsumer consumer, int receiveTimeOut)
-  {
-    System.out.print("consumeMessagesAndClose 2 = ");
-    System.out.println(Thread.currentThread());
-  }
-
   public void onMessage(Message message)
   {
     /**
