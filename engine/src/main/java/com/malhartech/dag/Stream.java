@@ -12,7 +12,7 @@ public interface Stream extends DAGPart<StreamConfiguration, StreamContext>
 {
   public void setup(StreamConfiguration config);
 
-  public void process(StreamContext context);
+  public void setContext(StreamContext context);
 
   public void teardown(StreamConfiguration config);
 }

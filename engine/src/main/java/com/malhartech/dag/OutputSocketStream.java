@@ -69,7 +69,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
     channel = future.getChannel();
   }
 
-  public void process(com.malhartech.dag.StreamContext context)
+  public void setContext(com.malhartech.dag.StreamContext context)
   {
     this.context = context;
     // send publisher request

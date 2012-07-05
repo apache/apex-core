@@ -102,7 +102,7 @@ public abstract class AbstractInputActiveMQStream implements Stream, MessageList
     }
   }
 
-  public void process(StreamContext context)
+  public void setContext(StreamContext context)
   {
     this.context = context;
     try {

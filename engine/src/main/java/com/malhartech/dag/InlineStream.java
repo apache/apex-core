@@ -4,8 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.stram.StreamContext;
-
 /**
  *
  * @author chetan
@@ -24,7 +22,7 @@ public class InlineStream implements Sink, Stream
     // nothing to do?
   }
 
-  public void process(com.malhartech.dag.StreamContext context)
+  public void setContext(com.malhartech.dag.StreamContext context)
   {
     this.context = context;
   }
