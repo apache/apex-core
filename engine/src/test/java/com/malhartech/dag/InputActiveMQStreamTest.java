@@ -43,12 +43,13 @@ public class InputActiveMQStreamTest
     }
   }
 
-  private static final class MyStreamContext implements StreamContext, Sink
+  private static final class MyStreamContext extends StreamContext implements Sink
   {
     MySerDe myserde;
 
     public MyStreamContext()
     {
+      super(null); // TODO
       myserde = new MySerDe();
     }
     
@@ -171,7 +172,7 @@ public class InputActiveMQStreamTest
   public void testProcess()
   {
     System.out.println("process");
-    instance.process(context);
+    instance.setContext(context);
     try {
       Thread.sleep(10000);
     }
