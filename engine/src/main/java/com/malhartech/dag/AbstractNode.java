@@ -52,7 +52,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   }
 
   @Override
-  public abstract void process(NodeContext context, Object payload);
+  public abstract void process(NodeContext context, StreamContext streamContext, Object payload);
 
 
   @Override
@@ -91,7 +91,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   {
     for (Sink sink : outputStreams) {
       Tuple t = new Tuple(o);
-//      t.setData(ctx.getData());
+      t.setData(ctx.getData());
       sink.doSomething(t);
     }
   }
@@ -99,11 +99,12 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   public void emitStream(Object o, Sink sink)
   {
     Tuple t = new Tuple(o);
-//    t.setData(ctx.getData());
+    // data is never used, except for window id
+    t.setData(ctx.getData());
     sink.doSomething(t);
   }
 
-  public void connectOutputStreams(Collection<Sink> sinks)
+  public void connectOutputStreams(Collection<? extends Sink> sinks)
   {
     for (Sink sink : sinks) {
       outputStreams.add(sink);
@@ -189,8 +190,10 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   }
 
   /**
-   * Hook for node implementation to define custom exit condition.
-   * Complementary to external control provided by stopSafely()
+   * Hook for node implementation to define custom exit condition. Complementary
+   * to external control provided by stopSafely(). For example, node may request
+   * shutdown based on external condition unrelated to processing state. Used
+   * for testing.
    */
   protected boolean shouldShutdown() {
     return false;
@@ -275,7 +278,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
           }
         }
         else {
-//          ctx.setData(t.getData());
+          ctx.setData(t.getData());
           /*
            * we process this outside to keep the critical region free.
            */
@@ -292,7 +295,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
 
             default:
               // process payload
-              process(ctx, t.getObject());
+              process(ctx, t.getContext(), t.getObject());
               // update heartbeat counters;
               ctx.countProcessed(t);
               break;

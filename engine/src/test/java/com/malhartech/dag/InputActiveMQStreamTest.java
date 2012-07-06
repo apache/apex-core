@@ -43,12 +43,13 @@ public class InputActiveMQStreamTest
     }
   }
 
-  private static final class MyStreamContext implements StreamContext, Sink
+  private static final class MyStreamContext extends StreamContext implements Sink
   {
     MySerDe myserde;
 
     public MyStreamContext()
     {
+      super(null); // TODO
       myserde = new MySerDe();
     }
     

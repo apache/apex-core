@@ -243,7 +243,7 @@ public class StramMiniClusterTest {
     }
 
     @Override
-    public void process(NodeContext context, Object payload) {
+    public void process(NodeContext context, com.malhartech.dag.StreamContext sc, Object payload) {
       LOG.info("Designed to do nothing!");
     }
 

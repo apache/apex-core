@@ -219,7 +219,7 @@ public class TopologyBuilderTest {
     }
 
     @Override
-    public void process(NodeContext context, Object o) {
+    public void process(NodeContext context, com.malhartech.dag.StreamContext sc, Object o) {
       Log.info("Got some work: " + o);
     }
 

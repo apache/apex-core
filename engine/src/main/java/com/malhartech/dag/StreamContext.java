@@ -5,12 +5,22 @@
 package com.malhartech.dag;
 
 /**
- *
+ * Defines the destination for tuples processed.
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface StreamContext extends Context
+public class StreamContext implements Context
 {
-
-  SerDe getSerDe();
-  Sink getSink();
+  final Sink sink;
+  
+  StreamContext(Sink sink) {
+    this.sink = sink;
+  }
+  
+  SerDe getSerDe() {
+    return null;
+  }
+  
+  Sink getSink() {
+    return sink;
+  }
 }
