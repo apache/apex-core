@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import scala.actors.threadpool.AtomicInteger;
@@ -67,6 +68,14 @@ public class DataProcessingTest {
       synchronized(s) {
         s.wait(500 + totalTupleCount/500);
       }
+
+      Assert.assertEquals("tuples received", totalTupleCount, tupleCount.get());
+      Assert.assertEquals("active nodes", 2, activeNodes.size());
+      
+      node1.stopSafely();
+      node2.stopSafely();
+      Thread.sleep(100);
+      Assert.assertEquals("active nodes", 0, activeNodes.size());
       
   }
 
