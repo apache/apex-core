@@ -23,8 +23,8 @@ import org.apache.commons.lang.builder.ToStringStyle;
 public abstract class AbstractNode implements Node, Sink, Runnable
 {
 
-  final HashSet<Sink> outputStreams = new HashSet<Sink>();
-  final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
+  private final HashSet<Sink> outputStreams = new HashSet<Sink>();
+  private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final PriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
   
