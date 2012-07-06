@@ -4,10 +4,11 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.bufferserver.Server;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
+
 import org.apache.hadoop.conf.Configuration;
+
+import com.malhartech.bufferserver.Server;
 
 /**
  *
@@ -15,13 +16,11 @@ import org.apache.hadoop.conf.Configuration;
  */
 public class StreamConfiguration extends Configuration
 {
-  public InetSocketAddress getSourceSocketAddress()
+  public static final String SERVER_ADDRESS = "bufferserver";
+
+  public InetSocketAddress getBufferServerAddress()
   {
-    return this.getSocketAddr("source", "localhost", Server.DEFAULT_PORT);
+    return this.getSocketAddr(SERVER_ADDRESS, "localhost", Server.DEFAULT_PORT);
   }
 
-  SocketAddress getSinkSocketAddress()
-  {
-    return this.getSocketAddr("sink", "localhost", Server.DEFAULT_PORT);
-  }
 }

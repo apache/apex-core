@@ -12,12 +12,15 @@ public class StreamContext implements Context
 {
   final Sink sink;
   
-  StreamContext(Sink sink) {
+  /**
+   * @param sink - target node, not required for output adapter
+   */
+  public StreamContext(Sink sink) {
     this.sink = sink;
   }
   
   SerDe getSerDe() {
-    return null;
+    return null; // required for socket connection
   }
   
   Sink getSink() {

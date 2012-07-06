@@ -4,18 +4,19 @@
  */
 package com.malhartech.dag;
 
-import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.PartitionedData;
-import com.malhartech.bufferserver.Buffer.SimpleData;
-import com.malhartech.netty.ClientPipelineFactory;
-import java.nio.channels.NotYetConnectedException;
 import java.util.concurrent.Executors;
+
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.SimpleChannelDownstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+
+import com.google.protobuf.ByteString;
+import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.PartitionedData;
+import com.malhartech.bufferserver.Buffer.SimpleData;
+import com.malhartech.netty.ClientPipelineFactory;
 
 /**
  *
@@ -64,7 +65,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
     bootstrap.setPipelineFactory(new ClientPipelineFactory(OutputSocketStream.class));
 
     // Make a new connection.
-    ChannelFuture future = bootstrap.connect(config.getSinkSocketAddress());
+    ChannelFuture future = bootstrap.connect(config.getBufferServerAddress());
     future.awaitUninterruptibly();
     channel = future.getChannel();
   }

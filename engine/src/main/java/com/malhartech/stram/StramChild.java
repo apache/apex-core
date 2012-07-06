@@ -27,8 +27,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.InlineStream;
+import com.malhartech.dag.InputSocketStream;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.OutputSocketStream;
+import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -70,28 +74,47 @@ public class StramChild {
         nodeList.put(snc.getDnodeId(), dnode);
     }
     
-    // wire nodes (inline streams and buffer server connections
-    // TODO: this looks too complicated
+    // wire stream connections to above nodes
     for (StreamContext sc : ctx.getStreams()) {
         if (sc.isInline()) {
           AbstractNode source = nodeList.get(sc.getSourceNodeId());
           AbstractNode target = nodeList.get(sc.getTargetNodeId());
-
           LOG.info("inline connection from {} to {}", source, target);
-          // TODO: link nodes directly via blocking queue
-        } else {
-          if (sc.getSourceNodeId() != null) {
-            AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
-            if (sourceNode != null) {
-              LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
-            }
+          InlineStream stream = new InlineStream();
+          stream.setContext(new com.malhartech.dag.StreamContext(target));
+          // operation is additive - there can be multiple output streams
+          source.addSink(stream);
+        } else if (sc.getSourceNodeId() != null && sc.getTargetNodeId() != null) {
+          // buffer server connection between nodes
+          LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
+          AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
+          AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
+          // TODO: context SerDe
+          com.malhartech.dag.StreamContext streamContext = new com.malhartech.dag.StreamContext(targetNode); // sink is null for output
+          StreamConfiguration streamConf = new StreamConfiguration();
+          streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
+          if (sourceNode != null) {
+            // setup output stream as sink for source node
+            LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
+            OutputSocketStream oss = new OutputSocketStream();
+            oss.setup(streamConf);
+            oss.setContext(streamContext);
+            sourceNode.addSink(oss);
           }
-          
-          if (sc.getTargetNodeId() != null) {
-            AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
-            if (targetNode != null) {
-              LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
-            }
+          if (targetNode != null) {
+            // setup input stream for target node
+            LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
+            InputSocketStream iss = new InputSocketStream();
+            iss.setup(streamConf);
+            iss.setContext(streamContext);
+          }
+        } else {
+          if (sc.getSourceNodeId() == null) {
+            // input adapter
+            LOG.error("input adapter not implemented");
+          } else {
+            // output adapter
+            LOG.error("output adapter not implemented");
           }
         }
     }
