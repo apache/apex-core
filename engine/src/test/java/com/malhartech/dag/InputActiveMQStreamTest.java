@@ -171,7 +171,7 @@ public class InputActiveMQStreamTest
   public void testProcess()
   {
     System.out.println("process");
-    instance.process(context);
+    instance.setContext(context);
     try {
       Thread.sleep(10000);
     }

@@ -178,6 +178,14 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   final public void stopSafely()
   {
     alive = false;
+    
+    /*
+     * Since the thread may be waiting for data to come on the queue, we need to
+     * notify. We do not need notifyAll since the queue is not exposed outside.
+     */
+    synchronized (inputQueue) {
+      inputQueue.notify();
+    }
   }
 
   /**
