@@ -13,6 +13,7 @@ import org.junit.*;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+@Ignore
 public class InputKafkaStreamTest
 {
 
