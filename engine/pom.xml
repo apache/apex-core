@@ -99,6 +99,16 @@
           <version>${hadoop.version}</version>
           <scope>compile</scope>
         </dependency>
+        <dependency>
+          <!-- Since Kafka is not published on the standard mvn repository,
+               you will need to download it, compile it and install using
+               mvn install:install-file -Dfile=kafka-0.7.1.jar -DgroupId=kafka
+               -DartifactId=kafka -Dversion=0.7.1 -Dpackaging=jar
+          -->
+          <groupId>kafka</groupId>
+          <artifactId>kafka</artifactId>
+          <version>0.7.1</version>
+        </dependency>
       </dependencies>
       <build>
         <plugins>
