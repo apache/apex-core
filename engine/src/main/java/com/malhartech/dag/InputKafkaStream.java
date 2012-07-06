@@ -26,10 +26,11 @@ import kafka.message.Message;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class InputKafkaStream implements Stream, Runnable
+public class InputKafkaStream
+        extends AbstractInputObjectStream
+        implements Runnable
 {
 
-  private StreamContext context;
   private ConsumerConnector consumer;
   private String topic;
 
@@ -37,25 +38,25 @@ public class InputKafkaStream implements Stream, Runnable
   {
     Properties props = new Properties();
     String interesting[] = {
-      "zk.connect", 
-      "zk.connectiontimeout.ms", 
+      "zk.connect",
+      "zk.connectiontimeout.ms",
       "groupid",
       "topic"
     };
-    
+
     for (String s : interesting) {
       if (config.get(s) != null) {
         props.put(s, config.get(s));
       }
     }
-    
-    topic = props.containsKey("topic")? props.getProperty("topic"): "";
+
+    topic = props.containsKey("topic") ? props.getProperty("topic") : "";
     consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(props));
   }
 
   public void setContext(StreamContext context)
   {
-    this.context = context;
+    super.setContext(context);
     new Thread(this).start();
   }
 
@@ -67,54 +68,11 @@ public class InputKafkaStream implements Stream, Runnable
     KafkaStream<Message> stream = consumerMap.get(topic).get(0);
     ConsumerIterator<Message> it = stream.iterator();
     while (it.hasNext()) {
-      Message message = it.next().message();
-      Tuple t = getTuple(message);
-      context.getSink().doSomething(t);
+      Object o = getObject(it.next().message());
+      if (o != null) {
+        context.getSink().doSomething(getTuple(o));
+      }
     }
-  }
-
-  public Tuple getTuple(Message message)
-  {
-    /*
-     * get the object from message
-     */
-    ByteBuffer buffer = message.payload();
-    byte[] bytes = new byte[buffer.remaining()];
-    buffer.get(bytes);
-
-
-    SerDe serde = context.getSerDe();
-    Object o = serde.fromByteArray(bytes);
-    byte[] partition = serde.getPartition(o);
-
-    Data.Builder db = Data.newBuilder();
-    db.setWindowId(0); // set it to appropriate window Id
-    if (partition == null) {
-      SimpleData.Builder sdb = SimpleData.newBuilder();
-      sdb.setData(ByteString.EMPTY);
-
-      /*
-       * we dont care about byte array
-       */
-      db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(sdb);
-    }
-    else {
-      PartitionedData.Builder pdb = PartitionedData.newBuilder();
-      pdb.setPartition(ByteString.copyFrom(partition));
-
-      /*
-       * we dont care about byte array
-       */
-      pdb.setData(ByteString.EMPTY);
-      db.setType(Data.DataType.PARTITIONED_DATA);
-      db.setPartitioneddata(pdb);
-    }
-
-    Tuple t = new Tuple(o);
-    t.setContext(context);
-    t.setData(db.build());
-    return t;
   }
 
   public void teardown(StreamConfiguration config)
@@ -122,5 +80,22 @@ public class InputKafkaStream implements Stream, Runnable
     consumer.shutdown();
     consumer = null;
     topic = null;
+  }
+
+  @Override
+  public Object getObject(Object message)
+  {
+    /*
+     * get the object from message
+     */
+    if (message instanceof Message) {
+      ByteBuffer buffer = ((Message) message).payload();
+      byte[] bytes = new byte[buffer.remaining()];
+      buffer.get(bytes);
+
+      return context.getSerDe().fromByteArray(bytes);
+    }
+    
+    return null;
   }
 }

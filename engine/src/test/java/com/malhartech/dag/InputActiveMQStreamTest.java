@@ -75,11 +75,11 @@ public class InputActiveMQStreamTest
   {
 
     @Override
-    public Object getObject(Message message)
+    public Object getObject(Object object)
     {
-      if (message instanceof TextMessage) {
+      if (object instanceof TextMessage) {
         try {
-          return ((TextMessage) message).getText();
+          return ((TextMessage) object).getText();
         }
         catch (JMSException ex) {
           Logger.getLogger(InputActiveMQStreamTest.class.getName()).log(Level.SEVERE, null, ex);

@@ -16,13 +16,14 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputActiveMQStream implements Stream, MessageListener, ExceptionListener
+public abstract class AbstractInputActiveMQStream
+        extends AbstractInputObjectStream
+        implements MessageListener, ExceptionListener
 {
 
   private static final Logger logger = Logger.getLogger(
           AbstractInputActiveMQStream.class.getName());
   private boolean transacted;
-  private StreamContext context;
   private int maxiumMessages;
   private int receiveTimeOut;
   private MessageConsumer consumer;
@@ -30,7 +31,7 @@ public abstract class AbstractInputActiveMQStream implements Stream, MessageList
   private Session session;
   private MessageProducer replyProducer;
 
-  public abstract Object getObject(Message message);
+  public abstract Object getObject(Object object);
 
   private void internalSetup(StreamConfiguration config) throws Exception
   {
@@ -102,9 +103,10 @@ public abstract class AbstractInputActiveMQStream implements Stream, MessageList
     }
   }
 
+  @Override
   public void setContext(StreamContext context)
   {
-    this.context = context;
+    super.setContext(context);
     try {
       getConsumer().setMessageListener(this);
     }
@@ -155,31 +157,10 @@ public abstract class AbstractInputActiveMQStream implements Stream, MessageList
 
 
     Object o = getObject(message);
-    byte[] partition = context.getSerDe().getPartition(o);
-
-    Data.Builder db = Data.newBuilder();
-    db.setWindowId(0); // set it to appropriate window id
-
-    if (partition == null) {
-      SimpleData.Builder sdb = SimpleData.newBuilder();
-      sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(o)));
-
-      db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(sdb);
-    }
-    else {
-      PartitionedData.Builder pdb = PartitionedData.newBuilder();
-      pdb.setPartition(ByteString.copyFrom(partition));
-      pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(o)));
-
-      db.setType(Data.DataType.PARTITIONED_DATA);
-      db.setPartitioneddata(pdb);
+    if (o != null) {
+      context.getSink().doSomething(getTuple(o));
     }
 
-    Tuple t = new Tuple(o);
-    t.setData(db.build());
-    t.setContext(context);
-    context.getSink().doSomething(t);
     try {
       if (message.getJMSReplyTo() != null) {
         replyProducer.send(message.getJMSReplyTo(), session.createTextMessage("Reply: " + message.getJMSMessageID()));
@@ -201,8 +182,6 @@ public abstract class AbstractInputActiveMQStream implements Stream, MessageList
     catch (JMSException ex) {
       Logger.getLogger(AbstractInputActiveMQStream.class.getName()).log(Level.SEVERE, null, ex);
     }
-
-
   }
 
   /**
