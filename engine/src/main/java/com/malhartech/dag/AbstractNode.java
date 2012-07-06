@@ -104,6 +104,10 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     sink.doSomething(t);
   }
 
+  public void addSink(Sink sink) {
+    outputStreams.add(sink);
+  }
+  
   public void connectOutputStreams(Collection<? extends Sink> sinks)
   {
     for (Sink sink : sinks) {

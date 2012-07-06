@@ -150,7 +150,6 @@ public class DNodeManager {
     for (StreamConf input : nodeConf.getInputStreams()) {
       StreamContext sc = new StreamContext();
       sc.setId(input.getId());
-      sc.setInline(false); // TODO
       
       // get buffer server for input
       StreamContext inputStreamContext = findInputStreamContext(input);
@@ -164,9 +163,12 @@ public class DNodeManager {
       // map the logical node id to assigned sequences for source and target
       sc.setTargetNodeId(snc.getDnodeId());
       if (input.getSourceNode() != null) {
+        // connection through buffer server
         sc.setTargetNodeId(getNodeContext(input.getSourceNode()).getDnodeId());
         sc.setTargetNodeLogicalId(input.getSourceNode().getId());
+        sc.setInline(false); // TODO
       } else {
+        // external input, need implementation class
         throw new UnsupportedOperationException("only input from node implemented");
       }
       streams.add(sc);
@@ -184,7 +186,9 @@ public class DNodeManager {
         if (output.getTargetNode() != null) {
           sc.setTargetNodeId(getNodeContext(output.getTargetNode()).getDnodeId());
           sc.setTargetNodeLogicalId(output.getTargetNode().getId());
+          sc.setInline(true); // TODO
         } else {
+          // external output, need implementation class
           throw new UnsupportedOperationException("only output to node implemented");
         }
         streams.add(sc);

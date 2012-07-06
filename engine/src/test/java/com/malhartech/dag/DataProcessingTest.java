@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import scala.actors.threadpool.AtomicInteger;
 
@@ -23,7 +25,8 @@ import com.malhartech.bufferserver.Buffer.SimpleData;
  * Test for message flow through DAG
  */
 public class DataProcessingTest {
-
+  private static Logger LOG = LoggerFactory.getLogger(DataProcessingTest.class);
+  
   @Test
   public void test() throws Exception {
 
@@ -34,10 +37,11 @@ public class DataProcessingTest {
       Sink node2Sink = new Sink() {
         @Override
         public void doSomething(Tuple t) {
-          System.out.println("Received: " + t.getObject() + ", total so far: " + tupleCount.incrementAndGet());
+          int count = tupleCount.incrementAndGet();
+          //LOG.info("Received: " + t.getObject() + ", total so far: " + count);
           synchronized(s) {
-            if (tupleCount.get() == totalTupleCount) {
-              System.out.println("notify done");
+            if (count == totalTupleCount) {
+              LOG.info("notify done");
               s.notify();
             }
           }
@@ -66,7 +70,7 @@ public class DataProcessingTest {
       }
 
       synchronized(s) {
-        s.wait(500 + totalTupleCount/500);
+        s.wait(1500 + totalTupleCount/500);
       }
 
       Assert.assertEquals("tuples received", totalTupleCount, tupleCount.get());
@@ -117,8 +121,7 @@ public class DataProcessingTest {
 
     @Override
     public void process(NodeContext context, StreamContext sc, Object o) {
-      emit(o);
-      
+      emit(o + " > node" + context.getId());
     }
 
   }

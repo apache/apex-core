@@ -52,7 +52,7 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     bootstrap.setPipelineFactory(new ClientPipelineFactory(InputSocketStream.class));
 
     // Make a new connection.
-    future = bootstrap.connect(config.getSourceSocketAddress());
+    future = bootstrap.connect(config.getBufferServerAddress());
     future.awaitUninterruptibly();
   }
 
