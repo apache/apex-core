@@ -46,6 +46,7 @@ public class InputActiveMQStreamTest
 
   private static final class MyStreamContext extends StreamContext implements Sink
   {
+
     MySerDe myserde;
 
     public MyStreamContext()
@@ -53,7 +54,7 @@ public class InputActiveMQStreamTest
       super(null); // TODO
       myserde = new MySerDe();
     }
-    
+
     public SerDe getSerDe()
     {
       return myserde;

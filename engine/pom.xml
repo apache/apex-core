@@ -55,12 +55,26 @@
           <artifactId>geronimo-jms_1.1_spec</artifactId>
           <groupId>org.apache.geronimo.specs</groupId>
         </exclusion>
+        <exclusion>
+          <artifactId>scala-library</artifactId>
+          <groupId>org.scala-lang</groupId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
       <groupId>javax.jms</groupId>
       <artifactId>jms-api</artifactId>
       <version>1.1-rev-1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.sgroschupf</groupId>
+      <artifactId>zkclient</artifactId>
+      <version>0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+      <version>2.8.0</version>
     </dependency>
   </dependencies>
 
@@ -98,6 +112,16 @@
           <artifactId>hadoop-minicluster</artifactId>
           <version>${hadoop.version}</version>
           <scope>compile</scope>
+        </dependency>
+        <dependency>
+          <!-- Since Kafka is not published on the standard mvn repository,
+               you will need to download it, compile it and install using
+               mvn install:install-file -Dfile=kafka-0.7.1.jar -DgroupId=kafka
+               -DartifactId=kafka -Dversion=0.7.1 -Dpackaging=jar
+          -->
+          <groupId>kafka</groupId>
+          <artifactId>kafka</artifactId>
+          <version>0.7.1</version>
         </dependency>
       </dependencies>
       <build>
@@ -139,6 +163,29 @@
               </execution>
             </executions>
           </plugin>
+          <!-- plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+              <source>1.5</source>
+              <target>1.5</target>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <excludes>
+                <exclude>
+                  test/InputActiveMQStreamTest.java
+                </exclude>
+                <exclude>
+                  test/com/malhartech/dag/InputKafkaStreamTest.java
+                </exclude>
+                
+              </excludes>
+            </configuration>
+          </plugin -->          
           <plugin>
             <artifactId>maven-dependency-plugin</artifactId>
             <executions>
