@@ -14,10 +14,9 @@ import org.jboss.netty.channel.*;
 
 /**
  * Handler to serve connections accepted by the server.
- * 
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-
 public class ServerHandler extends SimpleChannelUpstreamHandler
 {
 
@@ -48,7 +47,13 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
       case SERDE_CODE:
-        ((DataList) ctx.getAttachment()).add(data);
+        DataList dl = (DataList) ctx.getAttachment();
+        if (dl == null) {
+          logger.log(Level.INFO, "Attempt to send data w/o talking protocol");
+        }
+        else {
+          dl.add(data);
+        }
         break;
     }
   }
