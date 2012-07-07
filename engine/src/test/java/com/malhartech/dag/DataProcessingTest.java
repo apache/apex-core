@@ -83,7 +83,7 @@ public class DataProcessingTest {
       
   }
 
-  private Tuple generateTuple(Object payload, StreamContext sc) {
+  static Tuple generateTuple(Object payload, StreamContext sc) {
     Tuple t = new Tuple(payload);
     Data.Builder db = Data.newBuilder();
     db.setType(Data.DataType.SIMPLE_DATA);

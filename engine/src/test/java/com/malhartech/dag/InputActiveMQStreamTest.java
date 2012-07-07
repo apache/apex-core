@@ -17,6 +17,7 @@ import org.junit.*;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+@Ignore
 public class InputActiveMQStreamTest
 {
 
@@ -24,7 +25,7 @@ public class InputActiveMQStreamTest
   static AbstractInputActiveMQStream instance;
   static StreamContext context;
 
-  private static final class MySerDe implements SerDe
+  static final class MySerDe implements SerDe
   {
 
     public Object fromByteArray(byte[] bytes)

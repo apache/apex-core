@@ -11,6 +11,7 @@ package com.malhartech.dag;
 public class StreamContext implements Context
 {
   final Sink sink;
+  private SerDe serde;
   
   /**
    * @param sink - target node, not required for output adapter
@@ -19,11 +20,15 @@ public class StreamContext implements Context
     this.sink = sink;
   }
   
-  SerDe getSerDe() {
-    return null; // required for socket connection
+  public SerDe getSerDe() {
+    return serde; // required for socket connection
   }
-  
-  Sink getSink() {
+
+  public void setSerde(SerDe serde) {
+    this.serde = serde;
+  }
+
+  public Sink getSink() {
     return sink;
   }
 }
