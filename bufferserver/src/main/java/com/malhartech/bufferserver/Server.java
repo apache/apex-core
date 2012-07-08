@@ -4,14 +4,18 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.netty.ServerPipelineFactory;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.Executors;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Logger;
+
 import org.jboss.netty.bootstrap.ServerBootstrap;
+import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+
+import com.malhartech.netty.ServerPipelineFactory;
 
 /**
  * Receives a list of continent/city pairs from a {@link LocalTimeClient} to get
@@ -22,19 +26,20 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
 public class Server
 {
-
+  private static final Logger LOGGER = Logger.getLogger(Server.class.getName());
+  
   public static int DEFAULT_PORT = 9080;
   private final int port;
 
+  /**
+   * @param port - port number to bind to or 0 to auto select a free port
+   */
   public Server(int port)
   {
     this.port = port;
-
-    Handler ch = new ConsoleHandler();
-    Logger.getLogger("").addHandler(ch);
   }
 
-  public void run()
+  public SocketAddress run()
   {
     // Configure the server.
     ServerBootstrap bootstrap = new ServerBootstrap(
@@ -46,11 +51,16 @@ public class Server
     bootstrap.setPipelineFactory(new ServerPipelineFactory());
 
     // Bind and start to accept incoming connections.
-    bootstrap.bind(new InetSocketAddress(port));
+    Channel c = bootstrap.bind(new InetSocketAddress(port));
+    LOGGER.info("bound to : " + c.getLocalAddress());
+    return c.getLocalAddress();
   }
 
   public static void main(String[] args) throws Exception
   {
+    Handler ch = new ConsoleHandler();
+    Logger.getLogger("").addHandler(ch);
+
     int port;
     if (args.length > 0) {
       port = Integer.parseInt(args[0]);

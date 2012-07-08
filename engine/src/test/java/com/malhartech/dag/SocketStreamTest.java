@@ -5,6 +5,7 @@
 package com.malhartech.dag;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 
 import org.junit.Test;
 
@@ -16,6 +17,11 @@ import com.malhartech.bufferserver.Server;
  */
 public class SocketStreamTest {
 
+  static {
+ //   java.util.logging.Logger.getLogger("").setLevel(java.util.logging.Level.FINEST);
+ //    java.util.logging.Logger.getLogger("").info("test");
+  }
+  
   /**
    * Send tuple on outputstream and receive tuple from inputstream
    * @throws Exception
@@ -33,10 +39,11 @@ public class SocketStreamTest {
     
     SerDe serde = new InputActiveMQStreamTest.MySerDe();
     
-    int port = 50001; // TODO: find random port
+    int port = 0; //50001; // TODO: find random port
     com.malhartech.bufferserver.Server s = new Server(port);
-    s.run();
-
+    SocketAddress bindAddr  = s.run();
+    port = ((InetSocketAddress)bindAddr).getPort();
+    
     StreamContext issContext = new StreamContext(sink);
     issContext.setSerde(serde);
     StreamConfiguration sconf = new StreamConfiguration();

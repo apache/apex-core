@@ -116,8 +116,9 @@
         <dependency>
           <!-- Since Kafka is not published on the standard mvn repository,
                you will need to download it, compile it and install using
-               mvn install:install-file -Dfile=kafka-0.7.1.jar -DgroupId=kafka
-               -DartifactId=kafka -Dversion=0.7.1 -Dpackaging=jar
+               mvn install:install-file -Dfile=kafka-0.7.1.jar -DgroupId=kafka -DartifactId=kafka -Dversion=0.7.1 -Dpackaging=jar
+              Download:
+              https://www.apache.org/dyn/closer.cgi/incubator/kafka/kafka-0.7.1-incubating/kafka-0.7.1-incubating-src.tgz
           -->
           <groupId>kafka</groupId>
           <artifactId>kafka</artifactId>

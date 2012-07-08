@@ -40,6 +40,7 @@ public class Client {
         this.partitions.addAll(partitions);
     }
 
+    // publisher
     private Client(String host, int port, String node, String type) {
         this.host = host;
         this.port = port;
