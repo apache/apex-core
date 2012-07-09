@@ -25,7 +25,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
   private StreamContext context;
   private ClientBootstrap bootstrap;
-  private Channel channel;
+  protected Channel channel;
 
 
   public void doSomething(Tuple t)
@@ -53,6 +53,10 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
     channel.write(db.build());
   }
 
+  public ClientPipelineFactory getClientPipelineFactory() {
+    return new ClientPipelineFactory(OutputSocketStream.class);    
+  }  
+  
   public void setup(StreamConfiguration config)
   {
     bootstrap = new ClientBootstrap(
@@ -60,7 +64,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
                                               Executors.newCachedThreadPool()));
 
     // Configure the event pipeline factory.
-    bootstrap.setPipelineFactory(new ClientPipelineFactory(OutputSocketStream.class));
+    bootstrap.setPipelineFactory(getClientPipelineFactory());
 
     // Make a new connection.
     ChannelFuture future = bootstrap.connect(config.getBufferServerAddress());

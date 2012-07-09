@@ -34,7 +34,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
     Data.Builder db = Data.newBuilder();
     db.setType(Data.DataType.PUBLISHER_REQUEST);
     db.setPublish(prb);
-
+    db.setWindowId(0L); // TODO Message missing required fields: window_id
+    
     final ChannelFutureListener cfl = new ChannelFutureListener()
     {
 
@@ -79,7 +80,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
     Data.Builder builder = Data.newBuilder();
     builder.setType(Data.DataType.SUBSCRIBER_REQUEST);
     builder.setSubscribe(srb);
-
+    builder.setWindowId(0L); // TODO Message missing required fields: window_id
+    
     channel.write(builder.build());
   }
 
