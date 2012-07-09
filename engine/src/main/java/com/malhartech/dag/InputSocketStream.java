@@ -1,14 +1,16 @@
 package com.malhartech.dag;
 
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.netty.ClientPipelineFactory;
 import java.util.concurrent.Executors;
+
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+
+import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.netty.ClientPipelineFactory;
 
 /**
  *
@@ -18,7 +20,7 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
 {
   private com.malhartech.dag.StreamContext context;
   private ClientBootstrap bootstrap;
-  private ChannelFuture future;
+  protected ChannelFuture future;
 
   @Override
   public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
@@ -41,6 +43,10 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     context.getSink().doSomething(t);
   }
   
+  public ClientPipelineFactory getClientPipelineFactory() {
+    return new ClientPipelineFactory(InputSocketStream.class);    
+  }
+  
   public void setup(StreamConfiguration config)
   {
     bootstrap = new ClientBootstrap(
@@ -49,7 +55,7 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
             Executors.newCachedThreadPool()));
 
     // Configure the event pipeline factory.
-    bootstrap.setPipelineFactory(new ClientPipelineFactory(InputSocketStream.class));
+    bootstrap.setPipelineFactory(getClientPipelineFactory());
 
     // Make a new connection.
     future = bootstrap.connect(config.getBufferServerAddress());
