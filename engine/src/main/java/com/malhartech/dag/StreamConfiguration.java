@@ -4,11 +4,9 @@
  */
 package com.malhartech.dag;
 
-import java.net.InetSocketAddress;
-
-import org.apache.hadoop.conf.Configuration;
-
 import com.malhartech.bufferserver.Server;
+import java.net.InetSocketAddress;
+import org.apache.hadoop.conf.Configuration;
 
 /**
  *
