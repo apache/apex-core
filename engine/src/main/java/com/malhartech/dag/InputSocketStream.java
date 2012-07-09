@@ -1,16 +1,14 @@
 package com.malhartech.dag;
 
-import java.util.concurrent.Executors;
-
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.netty.ClientPipelineFactory;
+import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.jboss.netty.channel.*;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 /**
  *
@@ -18,35 +16,54 @@ import com.malhartech.netty.ClientPipelineFactory;
  */
 public class InputSocketStream extends SimpleChannelUpstreamHandler implements Stream
 {
-  private com.malhartech.dag.StreamContext context;
+
+  private static final Logger logger =
+                              Logger.getLogger(ClientHandler.class.getName());
   private ClientBootstrap bootstrap;
-  protected ChannelFuture future;
+  public static final ChannelLocal<StreamContext> contexts = new ChannelLocal<StreamContext>()
+  {
+
+    @Override
+    protected StreamContext initialValue(Channel channel)
+    {
+      return null;
+    }
+  };
+  protected Channel channel;
 
   @Override
   public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
   {
-    Data d = (Data) e.getMessage();
-    Object o;
-    if (d.getType() == Data.DataType.SIMPLE_DATA) {
-      o = context.getSerDe().fromByteArray(d.getSimpledata().toByteArray());
-    }
-    else if (d.getType() == Data.DataType.PARTITIONED_DATA) {
-      o = context.getSerDe().fromByteArray(d.getPartitioneddata().toByteArray());
+    StreamContext context = contexts.get(ctx.getChannel());
+    if (context == null) {
+      logger.log(Level.WARNING, "Contexts is not setup for the InputSocketStream");
     }
     else {
-      o = null;
-    }
+      Data d = (Data) e.getMessage();
 
-    Tuple t = new Tuple(o);
-    t.setContext(context);
-    t.setData(d);
-    context.getSink().doSomething(t);
+      Object o;
+      if (d.getType() == Data.DataType.SIMPLE_DATA) {
+        o = context.getSerDe().fromByteArray(d.getSimpledata().toByteArray());
+      }
+      else if (d.getType() == Data.DataType.PARTITIONED_DATA) {
+        o = context.getSerDe().fromByteArray(d.getPartitioneddata().toByteArray());
+      }
+      else {
+        o = null;
+      }
+
+      Tuple t = new Tuple(o);
+      t.setContext(context);
+      t.setData(d);
+      context.getSink().doSomething(t);
+    }
   }
-  
-  public ClientPipelineFactory getClientPipelineFactory() {
-    return new ClientPipelineFactory(InputSocketStream.class);    
+
+  public ClientPipelineFactory getClientPipelineFactory()
+  {
+    return new ClientPipelineFactory(InputSocketStream.class);
   }
-  
+
   public void setup(StreamConfiguration config)
   {
     bootstrap = new ClientBootstrap(
@@ -58,20 +75,20 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     bootstrap.setPipelineFactory(getClientPipelineFactory());
 
     // Make a new connection.
-    future = bootstrap.connect(config.getBufferServerAddress());
-    future.awaitUninterruptibly();
+    ChannelFuture future = bootstrap.connect(config.getBufferServerAddress());
+    channel = future.awaitUninterruptibly().getChannel();
   }
 
   public void setContext(com.malhartech.dag.StreamContext context)
   {
-    this.context = context;
-    // send the subscribe request.
+    contexts.set(channel, context);
   }
 
   public void teardown(StreamConfiguration config)
   {
-    future.getChannel().close();
-    future.getChannel().getCloseFuture().awaitUninterruptibly();
+    contexts.remove(channel);
+    channel.close();
+    channel.getCloseFuture().awaitUninterruptibly();
     bootstrap.releaseExternalResources();
   }
 }
