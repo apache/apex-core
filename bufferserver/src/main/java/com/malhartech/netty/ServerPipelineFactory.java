@@ -17,7 +17,7 @@ import org.jboss.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepend
 public class ServerPipelineFactory implements ChannelPipelineFactory
 {
 
-  ServerHandler sh = new ServerHandler();
+  private ServerHandler sh = new ServerHandler();
 
   public ChannelPipeline getPipeline() throws Exception
   {
@@ -28,7 +28,23 @@ public class ServerPipelineFactory implements ChannelPipelineFactory
     p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
     p.addLast("protobufEncoder", new ProtobufEncoder());
 
-    p.addLast("handler", sh);
+    p.addLast("handler", getSh());
     return p;
+  }
+
+  /**
+   * @return the sh
+   */
+  public ServerHandler getSh()
+  {
+    return sh;
+  }
+
+  /**
+   * @param sh the sh to set
+   */
+  public void setSh(ServerHandler sh)
+  {
+    this.sh = sh;
   }
 }

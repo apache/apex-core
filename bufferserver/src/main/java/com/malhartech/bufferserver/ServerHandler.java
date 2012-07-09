@@ -33,11 +33,13 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
     switch (data.getType()) {
       case PUBLISHER_REQUEST:
+        logger.log(Level.FINEST, "received pushisher request");
         handlePublisherRequest(data.getPublish(), ctx);
         break;
 
 
       case SUBSCRIBER_REQUEST:
+        logger.log(Level.FINEST, "received subscriber request");
         handleSubscriberRequest(data.getSubscribe(), ctx);
         break;
 
@@ -67,7 +69,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
     synchronized (publisher_bufffers) {
       if (publisher_bufffers.containsKey(identifier)) {
-        dl = (DataList) publisher_bufffers.get(identifier);
+        dl = publisher_bufffers.get(identifier);
         // if this is the case some readers might be waiting already
         // activate them
       }
@@ -103,7 +105,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       DataList dl;
       synchronized (publisher_bufffers) {
         if (publisher_bufffers.containsKey(upstream_identifier)) {
-          dl = (DataList) publisher_bufffers.get(upstream_identifier);
+          dl = publisher_bufffers.get(upstream_identifier);
         }
         else {
           dl = new DataList(upstream_identifier, type, 1024 * 1024);

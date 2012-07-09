@@ -13,6 +13,7 @@ import java.util.concurrent.Executors;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 /**
@@ -68,14 +69,10 @@ public class Client {
         // Wait until the connection is made successfully.
         Channel channel = connectFuture.awaitUninterruptibly().getChannel();
 
-        // Get the handler instance to initiate the request.
-        ClientHandler handler =
-                channel.getPipeline().get(ClientHandler.class);
-
         if (id == null) {
-            handler.publish(node, type);
+            ClientHandler.publish(channel, node, type);
         } else {
-            handler.registerPartitions(id, down_type, node, type, partitions);
+            ClientHandler.registerPartitions(channel, id, down_type, node, type, partitions);
         }
     }
 
