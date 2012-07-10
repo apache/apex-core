@@ -17,7 +17,7 @@ import org.jboss.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepend
 public class ClientPipelineFactory implements ChannelPipelineFactory
 {
 
-  Class<? extends ChannelHandler> handler;
+  final Class<? extends ChannelHandler> handler;
 
   public ClientPipelineFactory(Class<? extends ChannelHandler> handler)
   {

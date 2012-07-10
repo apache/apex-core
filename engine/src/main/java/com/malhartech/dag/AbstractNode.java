@@ -6,14 +6,12 @@ package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
-
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.PriorityQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 

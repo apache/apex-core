@@ -335,6 +335,18 @@ public class DataList
         set.add(dl);
       }
     }
+    else {
+      HashSet<DataListener> set;
+      if (listeners.containsKey(DataListener.NULL_PARTITION)) {
+        set = listeners.get(DataListener.NULL_PARTITION);
+      }
+      else {
+        set = new HashSet<DataListener>();
+        listeners.put(DataListener.NULL_PARTITION, set);
+      }
+      
+      set.add(dl);
+    }
   }
 
   public void removeDataListener(DataListener dl)
@@ -346,7 +358,13 @@ public class DataList
           listeners.get(partition).remove(dl);
         }
       }
+    } else {
+      if (listeners.containsKey(DataListener.NULL_PARTITION)) {
+        listeners.get(DataListener.NULL_PARTITION).remove(dl);
+      }
     }
+    
+    
     all_listeners.remove(dl);
   }
 

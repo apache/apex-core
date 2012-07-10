@@ -26,7 +26,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
   // Stateful properties
   private volatile Channel channel;
 
-  public void publish(String identifier, String type)
+  public static void publish(Channel channel, String identifier, String type)
   {
     Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
     prb.setIdentifier(identifier).setType(type);
@@ -58,10 +58,10 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
       }
     };
 
-    channel.write(db).addListener(cfl);
+    channel.write(db);//.addListener(cfl);
   }
 
-  public void registerPartitions(String id,
+  public static void registerPartitions(Channel channel, String id,
                                  String down_type,
                                  String node,
                                  String type,

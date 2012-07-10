@@ -16,6 +16,7 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
 import com.malhartech.netty.ServerPipelineFactory;
+import java.util.logging.Level;
 
 /**
  * Receives a list of continent/city pairs from a {@link LocalTimeClient} to get
@@ -52,7 +53,7 @@ public class Server
 
     // Bind and start to accept incoming connections.
     Channel c = bootstrap.bind(new InetSocketAddress(port));
-    LOGGER.info("bound to : " + c.getLocalAddress());
+    LOGGER.log(Level.INFO, "bound to : {0}", c.getLocalAddress());
     return c.getLocalAddress();
   }
 

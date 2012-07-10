@@ -4,19 +4,17 @@
  */
 package com.malhartech.dag;
 
-import java.util.concurrent.Executors;
-
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.SimpleChannelDownstreamHandler;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.PartitionedData;
 import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.netty.ClientPipelineFactory;
+import java.util.concurrent.Executors;
+import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.SimpleChannelDownstreamHandler;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 /**
  *
