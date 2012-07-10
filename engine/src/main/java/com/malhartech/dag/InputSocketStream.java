@@ -36,7 +36,7 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
   {
     StreamContext context = contexts.get(ctx.getChannel());
     if (context == null) {
-      logger.log(Level.WARNING, "Contexts is not setup for the InputSocketStream");
+      logger.log(Level.WARNING, "Context is not setup for the InputSocketStream");
     }
     else {
       Data d = (Data) e.getMessage();
