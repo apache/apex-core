@@ -71,7 +71,7 @@ public class InputKafkaStream
     }
   }
 
-  public void teardown(StreamConfiguration config)
+  public void teardown()
   {
     consumer.shutdown();
     consumer = null;

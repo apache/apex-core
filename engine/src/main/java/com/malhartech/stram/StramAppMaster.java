@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
@@ -111,7 +113,8 @@ public class StramAppMaster {
 
 	  // child container callback
 	  private StreamingNodeParent rpcImpl;
-	  
+    private DNodeManager dnmgr;
+	  private InetSocketAddress bufferServerAddress;
 	  
 	  /**
 	   * @param args Command line args
@@ -248,21 +251,26 @@ public class StramAppMaster {
 	    numTotalContainers = Integer.parseInt(cliParser.getOptionValue("num_containers", "1"));
 	    requestPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
 
+      // set topology - read from localized dfs location populated by submit client
+      this.topologyProperties = readProperties("./stram.properties");
+      TopologyBuilder b = new TopologyBuilder(conf);
+      b.addFromProperties(this.topologyProperties);
+	    this.dnmgr = new DNodeManager(b);
+	    
 	    // start RPC server
 	    rpcImpl = new StreamingNodeParent(this.getClass().getName(), dnmgr);
 	    rpcImpl.init(conf);
 	    rpcImpl.start();
 	    LOG.info("Container callback server listening at " + rpcImpl.getAddress());
 
-	    // set topology - read from localized dfs location populated by submit client
-      this.topologyProperties = readProperties("./stram.properties");
-
-      TopologyBuilder b = new TopologyBuilder(conf);
-      b.addFromProperties(this.topologyProperties);
-
-      numTotalContainers = b.getAllNodes().size(); // TODO
+      numTotalContainers = dnmgr.getNumRequiredContainers();
       LOG.info("Initializing {} nodes in {} containers", b.getAllNodes().size(), numTotalContainers);
-      dnmgr.addNodes(b.getAllNodes().values());
+
+      // start buffer server
+      com.malhartech.bufferserver.Server s = new Server(0);
+      SocketAddress bindAddr  = s.run();
+      this.bufferServerAddress = ((InetSocketAddress)bindAddr); 
+      LOG.info("Buffer server started: {}", bufferServerAddress);
       
 	    return true;
 	  }
@@ -284,9 +292,6 @@ public class StramAppMaster {
 	    new HelpFormatter().printHelp("ApplicationMaster", opts);
 	  }
 
-	  DNodeManager dnmgr = new DNodeManager();
-	  
-	  
 	  /**
 	   * Main run function for the application master
 	   * @throws YarnRemoteException
@@ -397,8 +402,7 @@ public class StramAppMaster {
 	        //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
 	        // assign streaming node(s) to new container
-	        InetSocketAddress defaultBufferServerAddr = new InetSocketAddress(allocatedContainer.getNodeId().getHost(), Server.DEFAULT_PORT);
-	        dnmgr.assignContainer(allocatedContainer.getId().toString(), defaultBufferServerAddr);
+	        dnmgr.assignContainer(allocatedContainer.getId().toString(), NetUtils.getConnectAddress(this.bufferServerAddress));
           LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, this.topologyProperties, rpcImpl.getAddress());
 	        Thread launchThread = new Thread(runnableLaunchContainer);
 	        

@@ -59,11 +59,12 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     }
   }
 
-  public ClientPipelineFactory getClientPipelineFactory()
+  protected ClientPipelineFactory getClientPipelineFactory()
   {
     return new ClientPipelineFactory(InputSocketStream.class);
   }
 
+  @Override
   public void setup(StreamConfiguration config)
   {
     bootstrap = new ClientBootstrap(
@@ -79,12 +80,14 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     channel = future.awaitUninterruptibly().getChannel();
   }
 
+  @Override
   public void setContext(com.malhartech.dag.StreamContext context)
   {
     contexts.set(channel, context);
   }
 
-  public void teardown(StreamConfiguration config)
+  @Override
+  public void teardown()
   {
     contexts.remove(channel);
     channel.close();

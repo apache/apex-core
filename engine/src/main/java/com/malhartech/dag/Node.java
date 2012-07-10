@@ -14,5 +14,5 @@ public interface Node extends DAGPart<NodeConfiguration, NodeContext> {
     public void beginWindow(NodeContext context);
     public void endWidndow(NodeContext context);
     public void process(NodeContext context,  StreamContext streamContext, Object payload);
-    public void teardown(NodeConfiguration config);
+    public void teardown();
 }

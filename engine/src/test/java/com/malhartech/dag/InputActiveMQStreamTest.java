@@ -4,14 +4,23 @@
  */
 package com.malhartech.dag;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.TextMessage;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import org.junit.*;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.jms.JMSException;
+import javax.jms.TextMessage;
+
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+
+import com.malhartech.dag.StramTestSupport.MySerDe;
 
 /**
  *
@@ -25,24 +34,6 @@ public class InputActiveMQStreamTest
   static AbstractInputActiveMQStream instance;
   static StreamContext context;
 
-  static final class MySerDe implements SerDe
-  {
-
-    public Object fromByteArray(byte[] bytes)
-    {
-      return new String(bytes);
-    }
-
-    public byte[] toByteArray(Object o)
-    {
-      return ((String) o).getBytes();
-    }
-
-    public byte[] getPartition(Object o)
-    {
-      return null;
-    }
-  }
 
   private static final class MyStreamContext extends StreamContext implements Sink
   {
@@ -137,7 +128,7 @@ public class InputActiveMQStreamTest
   @After
   public void tearDown()
   {
-    instance.teardown(config);
+    instance.teardown();
   }
 
   /**
@@ -161,7 +152,7 @@ public class InputActiveMQStreamTest
   {
     System.out.println("teardown");
 
-    instance.teardown(config);
+    instance.teardown();
     assertNull(instance.getConnection());
     assertNull(instance.getConsumer());
     assertNull(instance.getSession());

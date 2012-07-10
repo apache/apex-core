@@ -4,9 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.SimpleData;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -20,8 +17,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Test for message flow through DAG
  */
-public class DataProcessingTest {
-  private static Logger LOG = LoggerFactory.getLogger(DataProcessingTest.class);
+public class InlineStreamTest {
+  private static Logger LOG = LoggerFactory.getLogger(InlineStreamTest.class);
   private Object prev;
   
   @Test
@@ -75,7 +72,7 @@ public class DataProcessingTest {
       StreamContext streamContext = new StreamContext(node1);
       
       for (int i=0; i<totalTupleCount; i++) {
-        node1.doSomething(generateTuple(i, streamContext));
+        node1.doSomething(StramTestSupport.generateTuple(i, streamContext));
       }
 
       synchronized(s) {
@@ -90,16 +87,6 @@ public class DataProcessingTest {
       Thread.sleep(100);
       Assert.assertEquals("active nodes", 0, activeNodes.size());
       
-  }
-
-  static Tuple generateTuple(Object payload, StreamContext sc) {
-    Tuple t = new Tuple(payload);
-    Data.Builder db = Data.newBuilder();
-    db.setType(Data.DataType.SIMPLE_DATA);
-    db.setSimpledata(SimpleData.newBuilder().setData(ByteString.EMPTY)).setWindowId(0);
-    t.setData(db.build());
-    t.setContext(sc);
-    return t;
   }
   
   private void launchNodeThreads(Collection<? extends AbstractNode> nodes, final Map<String, Thread> activeNodes) {

@@ -71,8 +71,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   public abstract void process(NodeContext context, StreamContext streamContext, Object payload);
 
   @Override
-  public void teardown(NodeConfiguration config)
-  {
+  public void teardown() {
   }
 
   /**

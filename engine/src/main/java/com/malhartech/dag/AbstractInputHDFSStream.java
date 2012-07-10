@@ -17,10 +17,10 @@ import org.apache.hadoop.fs.Path;
  */
 public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream implements Runnable
 {
-  private static final long serialVersionUID = 201207061218L;
 
   private FSDataInputStream input;
 
+  @Override
   public void setup(StreamConfiguration config)
   {
     try {
@@ -50,7 +50,8 @@ public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream 
     }
   }
 
-  public void teardown(StreamConfiguration config)
+  @Override
+  public void teardown()
   {
     try {
       input.close();

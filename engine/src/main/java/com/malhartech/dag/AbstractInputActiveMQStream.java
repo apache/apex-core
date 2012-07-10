@@ -111,7 +111,8 @@ public abstract class AbstractInputActiveMQStream
     }
   }
 
-  public void teardown(StreamConfiguration config)
+  @Override
+  public void teardown()
   {
     try {
       replyProducer.close();

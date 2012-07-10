@@ -15,6 +15,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
 import org.junit.Test;
 import org.mortbay.log.Log;
 
@@ -68,7 +69,7 @@ public class TopologyBuilderTest {
     assertEquals("n1n2 target", node2, n1n2.getTargetNode());
     assertEquals("partitionPolicy", n1n2.getProperty("partitionPolicy"), "someTargetPolicy");
     assertEquals("stream name", "n1n2", n1n2.getId());
-
+    Assert.assertFalse("n1n2 not inline (default)", n1n2.isInline());
     
     // node 2 streams to node 3 and node 4
     assertEquals("node 2 number of outputs", 2, node2.getOutputStreams().size());
@@ -126,6 +127,7 @@ public class TopologyBuilderTest {
       StreamConf s1 = b.getOrAddStream("n1n2");
       assertNotNull(s1);
       assertEquals("n1n2 policy default", "defaultStreamPolicy", s1.getProperty("partitionPolicy"));
+      assertTrue("n1n2 inline", s1.isInline());
       
       NodeConf node3 = b.getOrAddNode("node3");
       Map<String, String> node3Props = node3.getProperties();

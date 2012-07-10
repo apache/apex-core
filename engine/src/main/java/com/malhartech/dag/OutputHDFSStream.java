@@ -22,6 +22,7 @@ public class OutputHDFSStream
   private StreamContext context;
   private FSDataOutputStream output;
 
+  @Override
   public void setup(StreamConfiguration config)
   {
     try {
@@ -47,12 +48,14 @@ public class OutputHDFSStream
 
   }
 
+  @Override
   public void setContext(StreamContext context)
   {
     this.context = context;
   }
 
-  public void teardown(StreamConfiguration config)
+  @Override
+  public void teardown()
   {
     try {
       output.close();
@@ -63,6 +66,7 @@ public class OutputHDFSStream
     }
   }
 
+  @Override
   public void doSomething(Tuple t)
   {
     switch (t.getData().getType()) {

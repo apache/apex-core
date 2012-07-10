@@ -32,6 +32,7 @@ import com.malhartech.dag.InputSocketStream;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.dag.OutputSocketStream;
+import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -52,7 +53,8 @@ public class StramChild {
   final private StreamingNodeUmbilicalProtocol umbilical;
   final private Map<String, AbstractNode> nodeList = new ConcurrentHashMap<String, AbstractNode>();
   final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
-
+  final private Map<String, Stream> streams = new ConcurrentHashMap<String, Stream>();
+  
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   
@@ -71,11 +73,13 @@ public class StramChild {
     // create nodes
     for (StreamingNodeContext snc : ctx.getNodes()) {
         AbstractNode dnode = initNode(snc, conf);
+        LOG.info("Initialized node " + snc.getLogicalId());
         nodeList.put(snc.getDnodeId(), dnode);
     }
     
     // wire stream connections to above nodes
     for (StreamContext sc : ctx.getStreams()) {
+        LOG.debug("Deploy stream " + sc.getId());
         if (sc.isInline()) {
           AbstractNode source = nodeList.get(sc.getSourceNodeId());
           AbstractNode target = nodeList.get(sc.getTargetNodeId());
@@ -100,6 +104,7 @@ public class StramChild {
             oss.setup(streamConf);
             oss.setContext(streamContext);
             sourceNode.addSink(oss);
+            this.streams.put(sc.getId(), oss);
           }
           if (targetNode != null) {
             // setup input stream for target node
@@ -107,6 +112,7 @@ public class StramChild {
             InputSocketStream iss = new InputSocketStream();
             iss.setup(streamConf);
             iss.setContext(streamContext);
+            this.streams.put(sc.getId(), iss);
           }
         } else {
           if (sc.getSourceNodeId() == null) {
@@ -136,6 +142,12 @@ public class StramChild {
     
   }
 
+  private void shutdown() {
+    for (Stream s : this.streams.values()) {
+      s.teardown();
+    }
+  }
+  
   private void heartbeatLoop() throws IOException {
     umbilical.echo(containerId, "[" + containerId + "] Entering heartbeat loop..");
     LOG.info("Entering hearbeat loop");
@@ -269,7 +281,8 @@ public class StramChild {
           stramChild.init();
           // main thread enters heartbeat loop
           stramChild.heartbeatLoop();
-          
+          // shutdown
+          stramChild.shutdown();
           return null;
         }
       });

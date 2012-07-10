@@ -118,7 +118,7 @@ public class StramMiniClusterTest {
     props.put("stram.stream.n1n2.inputNode", "node1");
     props.put("stram.stream.n1n2.outputNode", "node2");
     props.put("stram.stream.n1n2.template", "defaultstream");
-
+    
     props.put("stram.node.node1.classname", TopologyBuilderTest.EchoNode.class.getName());
     props.put("stram.node.node1.myStringProperty", "myStringPropertyValue");
 

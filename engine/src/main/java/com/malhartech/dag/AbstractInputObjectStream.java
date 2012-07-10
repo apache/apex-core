@@ -25,7 +25,6 @@ public abstract class AbstractInputObjectStream implements InputAdapter
   {
     this.context = context;
   }
-
   public abstract Object getObject(Object object);
 
   public Tuple getTuple(Object o)

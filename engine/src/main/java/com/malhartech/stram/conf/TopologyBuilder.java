@@ -42,6 +42,7 @@ public class TopologyBuilder {
   public static final String STREAM_SOURCENODE = "inputNode";
   public static final String STREAM_TARGETNODE = "outputNode";
   public static final String STREAM_TEMPLATE = "template";
+  public static final String STREAM_INLINE = "inline";
   
   public static final String NODE_PREFIX = "stram.node";
   public static final String NODE_CLASSNAME = "classname";
@@ -112,6 +113,15 @@ public class TopologyBuilder {
     public void addProperty(String key, String value) {
       properties.put(key, value);
     }
+    
+    /**
+     * Hint to manager that adjacent nodes should be deployed in same container.
+     * @return
+     */
+    public boolean isInline() {
+      return Boolean.TRUE.toString().equals(properties.getProperty(STREAM_INLINE, Boolean.FALSE.toString()));
+    }
+    
   }
 
   class PropertiesWithModifiableDefaults extends Properties {
