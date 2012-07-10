@@ -4,47 +4,56 @@
  */
 package com.malhartech.dag;
 
+import com.google.protobuf.ByteString;
+import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.SimpleData;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import scala.actors.threadpool.AtomicInteger;
-
-import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.SimpleData;
 
 /**
  * Test for message flow through DAG
  */
 public class DataProcessingTest {
   private static Logger LOG = LoggerFactory.getLogger(DataProcessingTest.class);
+  private Object prev;
   
   @Test
   public void test() throws Exception {
 
       final Object s = new Object();
-      final AtomicInteger tupleCount = new AtomicInteger();
       final int totalTupleCount = 5000;
+      prev = null;
       
       Sink node2Sink = new Sink() {
         @Override
         public void doSomething(Tuple t) {
-          int count = tupleCount.incrementAndGet();
-          //LOG.info("Received: " + t.getObject() + ", total so far: " + count);
-          synchronized(s) {
-            if (count == totalTupleCount) {
-              LOG.info("notify done");
+          if (prev == null) {
+            prev = t.object;
+          }
+          else {
+            if (Integer.valueOf(t.object.toString()) - Integer.valueOf(prev.toString()) != 1) {
+              LOG.info("Got the tuples out of order!");
+              LOG.info(prev + " followed by " + t.object);
+              synchronized (s) {
+                s.notify();
+              }
+            }
+            prev = t.object;
+          }
+          
+          if (Integer.valueOf(t.object.toString()) == totalTupleCount - 1) {
+            LOG.info("last tuple received.");
+            synchronized (s) {
               s.notify();
             }
-          }
+          }          
         }
       };
     
@@ -73,7 +82,7 @@ public class DataProcessingTest {
         s.wait(1500 + totalTupleCount/500);
       }
 
-      Assert.assertEquals("tuples received", totalTupleCount, tupleCount.get());
+      Assert.assertTrue("last tuple", prev != null &&  totalTupleCount - Integer.valueOf(prev.toString()) == 1);
       Assert.assertEquals("active nodes", 2, activeNodes.size());
       
       node1.stopSafely();
@@ -121,7 +130,7 @@ public class DataProcessingTest {
 
     @Override
     public void process(NodeContext context, StreamContext sc, Object o) {
-      emit(o + " > node" + context.getId());
+      emit(o);
     }
 
   }
