@@ -20,57 +20,78 @@ import org.apache.commons.lang.builder.ToStringStyle;
  */
 public abstract class AbstractNode implements Node, Sink, Runnable
 {
+  private static int gorder = 0;
 
+  private class TupleWrapper
+  {
+
+    final int order;
+    Tuple tuple;
+
+    TupleWrapper(Tuple tuple)
+    {
+      this.order = gorder++;
+      this.tuple = tuple;
+    }
+  }
+  
   private final HashSet<Sink> outputStreams = new HashSet<Sink>();
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
-  private final PriorityQueue<Tuple> inputQueue;
+  private final PriorityQueue<TupleWrapper> inputQueue;
   final NodeContext ctx;
-  
+
   public AbstractNode(NodeContext ctx)
   {
     // initial capacity should be some function of the window length
-    this.inputQueue = new PriorityQueue<Tuple>(1024 * 1024, new DataComparator());
+    this.inputQueue = new PriorityQueue<TupleWrapper>(1024 * 1024, new DataComparator());
     this.ctx = ctx;
   }
 
-  final public NodeContext getContext() {
+  final public NodeContext getContext()
+  {
     return ctx;
   }
-  
+
   @Override
-  public void setup(NodeConfiguration config) {
+  public void setup(NodeConfiguration config)
+  {
   }
 
   @Override
-  public void beginWindow(NodeContext context) {
+  public void beginWindow(NodeContext context)
+  {
   }
 
   @Override
-  public void endWidndow(NodeContext context) {
+  public void endWidndow(NodeContext context)
+  {
   }
 
   @Override
   public abstract void process(NodeContext context, StreamContext streamContext, Object payload);
 
-
   @Override
-  public void teardown(NodeConfiguration config) {
+  public void teardown(NodeConfiguration config)
+  {
   }
 
   /**
-   * Return and reset counts for next heartbeat interval.
-   * This is called as part of the heartbeat processing.
-   * Providing this hook in node implementation so it can be mocked for testing.
+   * Return and reset counts for next heartbeat interval. This is called as part
+   * of the heartbeat processing. Providing this hook in node implementation so
+   * it can be mocked for testing.
+   *
    * @return
    */
-  public HeartbeatCounters resetHeartbeatCounters() {
+  public HeartbeatCounters resetHeartbeatCounters()
+  {
     return ctx.resetHeartbeatCounters();
   }
-  
+
   public void doSomething(Tuple t)
   {
     synchronized (inputQueue) {
-      inputQueue.add(t);
+      TupleWrapper tw = new TupleWrapper(t);
+      inputQueue.add(tw);
       inputQueue.notify();
     }
   }
@@ -80,10 +101,6 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     inputStreams.add(context);
     return this;
   }
-
-  // i feel that we may just want to push the data out from here and depending upon
-  // whether the data needs to flow on the stream (as per partitions), the streams
-  // create tuples or drop the data on the floor.
 
   public void emit(Object o)
   {
@@ -97,15 +114,15 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   public void emitStream(Object o, Sink sink)
   {
     Tuple t = new Tuple(o);
-    // data is never used, except for window id
-    t.setData(ctx.getData());
+    t.setData(ctx.getData()); /* only wrapper is used; data is ignored */
     sink.doSomething(t);
   }
 
-  public void addSink(Sink sink) {
+  public void addSink(Sink sink)
+  {
     outputStreams.add(sink);
   }
-  
+
   public void connectOutputStreams(Collection<? extends Sink> sinks)
   {
     for (Sink sink : sinks) {
@@ -142,14 +159,14 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     return windowId;
   }
 
-  final private class DataComparator implements Comparator<Tuple>
+  final private class DataComparator implements Comparator<TupleWrapper>
   {
 
-    public int compare(Tuple t, Tuple t1)
+    public int compare(TupleWrapper tw, TupleWrapper tw1)
     {
 
-      Data d = t.getData();
-      Data d1 = t1.getData();
+      Data d = tw.tuple.getData();
+      Data d1 = tw1.tuple.getData();
       if (d != d1) {
         long tid = getWindowId(d);
         long t1id = getWindowId(d1);
@@ -172,6 +189,17 @@ public abstract class AbstractNode implements Node, Sink, Runnable
           return -1;
         }
       }
+      
+      /*
+       * since the packets are from the same window; we compare their arrival
+       * Ids. Since ensures that we get a stable sort.
+       */
+      if (tw.order < tw1.order) {
+        return -1;
+      }
+      else if (tw.order > tw1.order) {
+        return 1;
+      }
 
       return 0;
     }
@@ -181,7 +209,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   final public void stopSafely()
   {
     alive = false;
-    
+
     /*
      * Since the thread may be waiting for data to come on the queue, we need to
      * notify. We do not need notifyAll since the queue is not exposed outside.
@@ -197,10 +225,11 @@ public abstract class AbstractNode implements Node, Sink, Runnable
    * shutdown based on external condition unrelated to processing state. Used
    * for testing.
    */
-  protected boolean shouldShutdown() {
+  protected boolean shouldShutdown()
+  {
     return false;
   }
-  
+
   final public void run()
   {
     alive = true;
@@ -211,13 +240,15 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     int tupleCount = 0;
 
     while (alive && !shouldShutdown()) {
-      Tuple t;
+      TupleWrapper tw;
+      Tuple t = null;
       synchronized (inputQueue) {
 
-        if ((t = inputQueue.peek()) == null) {
+        if ((tw = inputQueue.peek()) == null) {
           shouldWait = true;
         }
         else {
+          t = tw.tuple;
           Data d = t.getData();
           switch (d.getType()) {
             case BEGIN_WINDOW:
@@ -307,12 +338,11 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     }
 
   }
-  
+
   @Override
-  public String toString() {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-        append("id", this.ctx.getId()).
-        toString();
-  }  
-  
+  public String toString()
+  {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.ctx.getId()).
+            toString();
+  }
 }
