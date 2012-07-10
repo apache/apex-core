@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -34,9 +36,7 @@ public class DNodeManager {
 
   private class NodeStatus {
     private NodeStatus(StreamingNodeContext ctx) {
-      this.context = ctx;
     }
-    final StreamingNodeContext context;
     StreamingNodeHeartbeat lastHeartbeat;
 
     boolean isIdle() {
@@ -44,14 +44,27 @@ public class DNodeManager {
     }
   
   }
+
+  /**
+   * Nodes grouped for deployment, nodes connected with inline streams go to same container
+   */
+  private Map<NodeConf, Set<NodeConf>> nodeGroups = new HashMap<NodeConf, Set<NodeConf>>();
   
-  private List<NodeConf> unassignedNodes = new ArrayList<NodeConf>();
-  private List<NodeConf> runningNodes = new ArrayList<NodeConf>();
+  
+  private List<Set<NodeConf>> deployGroups = new ArrayList<Set<NodeConf>>();
   private Map<String, NodeStatus> allNodes = new ConcurrentHashMap<String, NodeStatus>();
   
   private Map<String, StreamingContainerContext> containerContextMap = new HashMap<String, StreamingContainerContext>();
   private Map<NodeConf, List<StreamingNodeContext>> logical2PhysicalMap = new ConcurrentHashMap<NodeConf, List<StreamingNodeContext>>();
   private Map<String, NodeConf> nodeId2NodeConfMap = new ConcurrentHashMap<String, NodeConf>();
+
+  public DNodeManager(TopologyBuilder topology) {
+      addNodes(topology.getAllNodes().values());
+  }
+
+  public int getNumRequiredContainers() {
+    return deployGroups.size();
+  }
   
   /**
    * Create node tracking context for logical node. Exposed here for tests.
@@ -71,47 +84,101 @@ public class DNodeManager {
     return snc;
   }
 
-  public void addNodes(Collection<NodeConf> nodes) {
-    this.unassignedNodes.addAll(nodes);
+  /**
+   * Group nodes and return the number of required containers
+   */
+  private int addNodes(Collection<NodeConf> nodes) {
+    // group the nodes
+    for (NodeConf nc : nodes) {
+      // if the node has inline links to other nodes, cluster
+      groupNodes(nc.getInputStreams());
+      groupNodes(nc.getOutputStreams());
+    }
+    return nodeGroups.size();
+  }
+
+  private void groupNodes(Collection<StreamConf> streams) {
+    for (StreamConf sc : streams) {
+        if (sc.isInline()) {
+          if (sc.getSourceNode() == null || sc.getTargetNode() == null) {
+            LOG.error("Invalid inline setting on stream {}", sc);
+          } else {
+            groupNodes(sc.getSourceNode(), sc.getTargetNode());
+          }
+        } else {
+          // single node grouping
+          if (sc.getSourceNode() != null) {
+            groupNodes(sc.getSourceNode());
+          }
+          if (sc.getTargetNode() != null) {
+            groupNodes(sc.getTargetNode());
+          }
+        }
+    }
+  }
+
+  private void groupNodes(NodeConf... nodes) {
+    Set<NodeConf> group = null;
+    for (NodeConf node : nodes) {
+      group = nodeGroups.get(node);
+      if (group != null) {
+        break;
+      }
+    }
+    if (group == null) {
+      group = new HashSet<NodeConf>();
+      this.deployGroups.add(group);
+    }
+    for (NodeConf node : nodes) {
+      group.add(node);
+      nodeGroups.put(node, group);
+    }
   }
   
   /**
-   * Find unassigned streaming node. This can be a start node or a node that has
-   * all inputs satisfied (node can only be initialized with upstream buffer servers known).
+   * Find next group of nodes to deploy. There is no deployment dependency between groups of nodes
+   * other than the requirement that buffer servers have to be deployed first. 
+   * Inline stream dependencies are handled through the grouping.
+   * Make best effort to deploy first groups w/o upstream dependencies else pick first group from list 
    */
-  private NodeConf findDeployableNode() {
-    
-    for (NodeConf nodeConf : unassignedNodes) {
-      if (nodeConf.getInputStreams().size() == 0) {
-        // no input dependency
-        return nodeConf;
-      } else {
-        boolean allInputsReady = true;
-        // check if all inputs are allocated
-        for (StreamConf streamConf : nodeConf.getInputStreams()) {
+  private Set<NodeConf> findDeployableNodeGroup() {
+    // preference is to find a group that has no upstream dependencies
+    // or they are already deployed
+    for (Set<NodeConf> nodes : deployGroups) {
+      boolean allInputsReady = true;
+      for (NodeConf nodeConf : nodes) {
+        if (nodeConf.getInputStreams().size() != 0) {
+          // check if all inputs are deployed
+          for (StreamConf streamConf : nodeConf.getInputStreams()) {
             NodeConf sourceNode = streamConf.getSourceNode();
-            if (sourceNode != null && unassignedNodes.contains(sourceNode)) {
-                LOG.debug("Cannot allocate node {} because input dependency {} is not satisfied", nodeConf, sourceNode);
-                allInputsReady = false;
-                break;
+            if (sourceNode != null && !streamConf.isInline()) {
+              Set<NodeConf> sourceGroup = nodeGroups.get(sourceNode);
+              if (nodes != sourceGroup && deployGroups.contains(sourceGroup)) {
+                 LOG.debug("Skipping group {} as input dependency {} is not satisfied", nodes, sourceNode);
+                  allInputsReady = false;
+                  break;
+              }
             }
-        }
-        if (allInputsReady) {
-          return nodeConf;
+          }
         }
       }
+      if (allInputsReady) {
+        return nodes;
+      } else {
+        break; // try next group
+      }
     }
-    return null;
+    return !deployGroups.isEmpty() ? deployGroups.get(0) : null;
   }
 
   /**
-   * Find the publisher for the given stream.
-   * Upstream nodes must be deployed first.
+   * Find the stream context for the given stream, 
+   * regardless of whether publisher or subscriber deploy first.
    * @param streamConf
    * @param nodeConf
    * @return
    */
-  private StreamContext findInputStreamContext(StreamConf streamConf) {
+  private StreamContext getStreamContext(StreamConf streamConf, InetSocketAddress bufferServerAddress) {
     for (StreamingContainerContext scc : this.containerContextMap.values()) {
         for (StreamContext sc : scc.getStreams()) {
             if (sc.getId().equals(streamConf.getId()) && sc.getTargetNodeLogicalId().equals(streamConf.getTargetNode().getId())) {
@@ -119,84 +186,70 @@ public class DNodeManager {
             }
         }
     }
-    return null;
+    StreamContext sc = new StreamContext();
+    sc.setId(streamConf.getId());
+    sc.setBufferServerHost(bufferServerAddress.getHostName());
+    sc.setBufferServerPort(bufferServerAddress.getPort());
+    sc.setInline(streamConf.isInline());
+
+    // map logical node id to assigned sequences for source and target
+    if (streamConf.getSourceNode() != null) {
+      sc.setSourceNodeId(getNodeContext(streamConf.getSourceNode()).getDnodeId());
+    } else {
+      // input adapter, need implementation class
+      throw new UnsupportedOperationException("input adapter not implemented");
+    }
+    if (streamConf.getTargetNode() != null) {
+      sc.setTargetNodeId(getNodeContext(streamConf.getTargetNode()).getDnodeId());
+      sc.setTargetNodeLogicalId(streamConf.getTargetNode().getId());
+    } else {
+      // external output, need implementation class
+      throw new UnsupportedOperationException("only output to node implemented");
+    }
+    return sc;
   }
   
   /**
    * Assign streaming nodes to newly available container. Multiple nodes can run in a container.  
    * @param containerId
-   * @param defaultbufferServerAddress Buffer server for publishers on the container.
+   * @param bufferServerAddress Buffer server for publishers on the container.
    * @return
    */
-  public synchronized StreamingContainerContext assignContainer(String containerId, InetSocketAddress defaultbufferServerAddress) {
-    if (unassignedNodes.isEmpty()) {
-      throw new IllegalStateException("There are no nodes waiting for launch.");
+  public synchronized StreamingContainerContext assignContainer(String containerId, InetSocketAddress bufferServerAddress) {
+    if (deployGroups.isEmpty()) {
+      throw new IllegalStateException("There are no nodes to deploy.");
     }
-    NodeConf nodeConf = findDeployableNode();
-    if (nodeConf == null) {
-      throw new IllegalStateException("Cannot find a streaming node for new container, remaining unassgined nodes are " + this.unassignedNodes);
+    Set<NodeConf> nodes = findDeployableNodeGroup();
+    if (nodes == null) {
+      throw new IllegalStateException("Cannot find a streaming node for new container, remaining unassgined nodes are " + this.deployGroups);
     }
-    unassignedNodes.remove(nodeConf);
+    deployGroups.remove(nodes);
    
-    StreamingNodeContext snc = getNodeContext(nodeConf);
-
-    StreamingContainerContext scc = new StreamingContainerContext();
-    scc.setNodes(Collections.singletonList(snc));
-
-    // assemble connecting streams for the node
-    List<StreamContext> streams = new ArrayList<StreamContext>(nodeConf.getOutputStreams().size());
-
-    // DAG node inputs
-    for (StreamConf input : nodeConf.getInputStreams()) {
-      StreamContext sc = new StreamContext();
-      sc.setId(input.getId());
-      
-      // get buffer server for input
-      StreamContext inputStreamContext = findInputStreamContext(input);
-      if (inputStreamContext == null) {
-        // should not happen as upstream nodes are deployed first
-        throw new IllegalStateException("Cannot find the input container for stream " + input.getId());
-      }
-      sc.setBufferServerHost(inputStreamContext.getBufferServerHost());
-      sc.setBufferServerPort(inputStreamContext.getBufferServerPort());
-
-      // map the logical node id to assigned sequences for source and target
-      sc.setTargetNodeId(snc.getDnodeId());
-      if (input.getSourceNode() != null) {
-        // connection through buffer server
-        sc.setTargetNodeId(getNodeContext(input.getSourceNode()).getDnodeId());
-        sc.setTargetNodeLogicalId(input.getSourceNode().getId());
-        sc.setInline(false); // TODO
-      } else {
-        // external input, need implementation class
-        throw new UnsupportedOperationException("only input from node implemented");
-      }
-      streams.add(sc);
+    List<StreamingNodeContext> nodeContextList = new ArrayList<StreamingNodeContext>(nodes.size());
+    for (NodeConf nodeConf : nodes) {
+      nodeContextList.add(getNodeContext(nodeConf));
     }
     
-    // DAG node outputs
-    for (StreamConf output : nodeConf.getOutputStreams()) {
-        StreamContext sc = new StreamContext();
-        sc.setId(output.getId());
-        sc.setInline(false); // TODO
-        sc.setBufferServerHost(defaultbufferServerAddress.getHostName());
-        sc.setBufferServerPort(defaultbufferServerAddress.getPort());
-        // map the logical node id to assigned sequences for source and target
-        sc.setSourceNodeId(snc.getDnodeId());
-        if (output.getTargetNode() != null) {
-          sc.setTargetNodeId(getNodeContext(output.getTargetNode()).getDnodeId());
-          sc.setTargetNodeLogicalId(output.getTargetNode().getId());
-          sc.setInline(true); // TODO
-        } else {
-          // external output, need implementation class
-          throw new UnsupportedOperationException("only output to node implemented");
-        }
-        streams.add(sc);
+    StreamingContainerContext scc = new StreamingContainerContext();
+    scc.setNodes(nodeContextList);
+
+    // assemble connecting streams for deployment group of node(s)
+    // map to remove duplicates between nodes in same container (inline or not)
+    Map<String, StreamContext> streams = new HashMap<String, StreamContext>();
+    for (StreamingNodeContext snc  : scc.getNodes()) {
+      NodeConf nodeConf = nodeId2NodeConfMap.get(snc.getDnodeId());
+      // DAG node inputs
+      for (StreamConf streamConf : nodeConf.getInputStreams()) {
+        streams.put(streamConf.getId(), getStreamContext(streamConf, bufferServerAddress));
+      }
+      // DAG node outputs
+      for (StreamConf streamConf : nodeConf.getOutputStreams()) {
+        streams.put(streamConf.getId(), getStreamContext(streamConf, bufferServerAddress));
+      }
     }
-        
-    scc.setStreams(streams);
+    scc.setStreams(new ArrayList<StreamContext>(streams.values()));
     containerContextMap.put(containerId, scc);
-    runningNodes.add(nodeConf);
+
     return scc;
   }
  

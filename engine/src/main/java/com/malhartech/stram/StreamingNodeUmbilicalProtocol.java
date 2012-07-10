@@ -11,6 +11,7 @@ import java.io.Serializable;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -114,13 +115,13 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     /**
      * Streams that have input/output from container.
      */
-    private List<StreamContext> streams;
+    private Collection<StreamContext> streams;
 
-    public List<StreamContext> getStreams() {
+    public Collection<StreamContext> getStreams() {
       return streams;
     }
 
-    public void setStreams(List<StreamContext> streams) {
+    public void setStreams(Collection<StreamContext> streams) {
       this.streams = streams;
     }
 

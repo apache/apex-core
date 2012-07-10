@@ -71,11 +71,13 @@ public class StramChild {
     // create nodes
     for (StreamingNodeContext snc : ctx.getNodes()) {
         AbstractNode dnode = initNode(snc, conf);
+        LOG.info("Initialized node " + snc.getLogicalId());
         nodeList.put(snc.getDnodeId(), dnode);
     }
     
     // wire stream connections to above nodes
     for (StreamContext sc : ctx.getStreams()) {
+        LOG.debug("Deploy stream " + sc.getId());
         if (sc.isInline()) {
           AbstractNode source = nodeList.get(sc.getSourceNodeId());
           AbstractNode target = nodeList.get(sc.getTargetNodeId());
@@ -96,17 +98,17 @@ public class StramChild {
           if (sourceNode != null) {
             // setup output stream as sink for source node
             LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
-            OutputSocketStream oss = new OutputSocketStream();
-            oss.setup(streamConf);
-            oss.setContext(streamContext);
-            sourceNode.addSink(oss);
+            //OutputSocketStream oss = new OutputSocketStream();
+            //oss.setup(streamConf);
+            //oss.setContext(streamContext);
+            //sourceNode.addSink(oss);
           }
           if (targetNode != null) {
             // setup input stream for target node
             LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
-            InputSocketStream iss = new InputSocketStream();
-            iss.setup(streamConf);
-            iss.setContext(streamContext);
+            //InputSocketStream iss = new InputSocketStream();
+            //iss.setup(streamConf);
+            //iss.setContext(streamContext);
           }
         } else {
           if (sc.getSourceNodeId() == null) {
