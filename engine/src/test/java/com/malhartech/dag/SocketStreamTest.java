@@ -104,7 +104,7 @@ public class SocketStreamTest
     oss.setup(sconf);
     oss.setContext(ossContext, "upstreamNodeId", "upstreamNodeLogicalId");
 
-    Tuple t = DataProcessingTest.generateTuple("hello", ossContext);
+    Tuple t = InlineStreamTest.generateTuple("hello", ossContext);
     LOG.info("Sending hello message");
     oss.doSomething(t);
     synchronized (SocketStreamTest.this) {

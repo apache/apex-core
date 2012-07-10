@@ -53,7 +53,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
     channel.write(db.build());
   }
 
-  public ClientPipelineFactory getClientPipelineFactory() {
+  protected ClientPipelineFactory getClientPipelineFactory() {
     return new ClientPipelineFactory(OutputSocketStream.class);    
   }  
   
@@ -78,7 +78,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
     // send publisher request
   }
 
-  public void teardown(StreamConfiguration config)
+  public void teardown()
   {
     channel.close();
     channel.getCloseFuture().awaitUninterruptibly();

@@ -137,7 +137,7 @@ public class InputActiveMQStreamTest
   @After
   public void tearDown()
   {
-    instance.teardown(config);
+    instance.teardown();
   }
 
   /**
@@ -161,7 +161,7 @@ public class InputActiveMQStreamTest
   {
     System.out.println("teardown");
 
-    instance.teardown(config);
+    instance.teardown();
     assertNull(instance.getConnection());
     assertNull(instance.getConsumer());
     assertNull(instance.getSession());

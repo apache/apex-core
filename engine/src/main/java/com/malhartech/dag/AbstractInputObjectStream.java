@@ -16,13 +16,13 @@ import com.malhartech.bufferserver.Buffer.SimpleData;
 public abstract class AbstractInputObjectStream implements Stream
 {
   protected StreamContext context;
-  
+
+  @Override
   public void setContext(StreamContext context)
   {
     this.context = context;
   }
   
-
   public abstract Object getObject(Object object);
 
   public Tuple getTuple(Object o)

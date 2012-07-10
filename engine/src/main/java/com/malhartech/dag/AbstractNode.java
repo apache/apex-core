@@ -54,7 +54,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
 
 
   @Override
-  public void teardown(NodeConfiguration config) {
+  public void teardown() {
   }
 
   /**

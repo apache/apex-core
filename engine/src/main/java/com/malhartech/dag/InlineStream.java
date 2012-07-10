@@ -17,17 +17,20 @@ public class InlineStream implements Sink, Stream
     context.getSink().doSomething(t);
   }
 
+  @Override
   public void setup(StreamConfiguration config)
   {
     // nothing to do?
   }
 
+  @Override
   public void setContext(com.malhartech.dag.StreamContext context)
   {
     this.context = context;
   }
 
-  public void teardown(StreamConfiguration config)
+  @Override
+  public void teardown()
   {
     // nothing to do?
   }

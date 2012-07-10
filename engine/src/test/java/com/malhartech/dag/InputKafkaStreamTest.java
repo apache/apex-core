@@ -103,7 +103,7 @@ public class InputKafkaStreamTest
   @After
   public void tearDown()
   {
-    instance.teardown(config);
+    instance.teardown();
   }
 
   /**
@@ -162,9 +162,8 @@ public class InputKafkaStreamTest
   public void testTeardown()
   {
     System.out.println("teardown");
-    StreamConfiguration config = null;
     InputKafkaStream instance = new InputKafkaStream();
-    instance.teardown(config);
+    instance.teardown();
     // TODO review the generated test code and remove the default call to fail.
     fail("The test case is a prototype.");
   }

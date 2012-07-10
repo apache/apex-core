@@ -24,8 +24,8 @@ import com.malhartech.bufferserver.Buffer.SimpleData;
 /**
  * Test for message flow through DAG
  */
-public class DataProcessingTest {
-  private static Logger LOG = LoggerFactory.getLogger(DataProcessingTest.class);
+public class InlineStreamTest {
+  private static Logger LOG = LoggerFactory.getLogger(InlineStreamTest.class);
   
   @Test
   public void test() throws Exception {

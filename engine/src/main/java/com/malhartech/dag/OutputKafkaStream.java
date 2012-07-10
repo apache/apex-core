@@ -15,6 +15,7 @@ public class OutputKafkaStream
         implements Stream, Sink
 {
 
+  @Override
   public void setup(StreamConfiguration config)
   {
     Producer producer;
@@ -22,16 +23,19 @@ public class OutputKafkaStream
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  @Override
   public void setContext(StreamContext context)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
-  public void teardown(StreamConfiguration config)
+  @Override
+  public void teardown()
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  @Override
   public void doSomething(Tuple t)
   {
     throw new UnsupportedOperationException("Not supported yet.");
