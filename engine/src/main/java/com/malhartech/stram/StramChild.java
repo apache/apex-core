@@ -28,12 +28,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.BufferServerInputSocketStream;
+import com.malhartech.dag.BufferServerOutputSocketStream;
 import com.malhartech.dag.InlineStream;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InputSocketStream;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.dag.OutputSocketStream;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
@@ -106,18 +107,18 @@ public class StramChild {
           if (sourceNode != null) {
             // setup output stream as sink for source node
             LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
-            OutputSocketStream oss = new OutputSocketStream();
+            BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();
             oss.setup(streamConf);
-            oss.setContext(streamContext);
+            oss.setContext(streamContext, sc.getSourceNodeId(), sc.getTargetNodeLogicalId());
             sourceNode.addSink(oss);
             this.streams.put(sc.getId(), oss);
           }
           if (targetNode != null) {
             // setup input stream for target node
             LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
-            InputSocketStream iss = new InputSocketStream();
+            BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
             iss.setup(streamConf);
-            iss.setContext(streamContext);
+            iss.setContext(streamContext, sc.getSourceNodeId(), sc.getTargetNodeLogicalId(), sc.getTargetNodeId());
             this.streams.put(sc.getId(), iss);
           }
         } else {

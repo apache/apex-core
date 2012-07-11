@@ -12,8 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.StramTestSupport.BufferServerInputSocketStream;
-import com.malhartech.dag.StramTestSupport.BufferServerOutputSocketStream;
 import com.malhartech.dag.StramTestSupport.MySerDe;
 
 /**
@@ -35,7 +33,7 @@ public class SocketStreamTest
    * @throws Exception
    */
   @Test
-  public void test1() throws Exception
+  public void testBufferServerStream() throws Exception
   {
 
     final AtomicInteger messageCount = new AtomicInteger();

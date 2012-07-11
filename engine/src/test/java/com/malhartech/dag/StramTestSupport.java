@@ -4,13 +4,11 @@
  */
 package com.malhartech.dag;
 
-import java.util.Collections;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.SimpleData;
 
@@ -18,7 +16,6 @@ import com.malhartech.bufferserver.Buffer.SimpleData;
  * Bunch of utilities shared between tests.
  */
 abstract public class StramTestSupport {
-  private static Logger LOG = LoggerFactory.getLogger(StramTestSupport.class);
 
   static final class MySerDe implements SerDe
   {
@@ -39,33 +36,6 @@ abstract public class StramTestSupport {
     }
   }
   
-  public static class BufferServerInputSocketStream extends InputSocketStream
-  {
-
-    /**
-     * Requires upstream node info to setup subscriber TODO: revisit context
-     */
-    public void setContext(StreamContext context, String upstreamNodeId, String upstreamNodeLogicalName, String downstreamNodeId)
-    {
-      super.setContext(context);
-      String downstreamNodeLogicalName = "downstreamNodeLogicalName"; // TODO: why do we need this?
-      ClientHandler.registerPartitions(channel, downstreamNodeId, downstreamNodeLogicalName, upstreamNodeId, upstreamNodeLogicalName, Collections.<String>emptyList());
-    }
-  }
-
-  public static class BufferServerOutputSocketStream extends OutputSocketStream
-  {
-
-    public void setContext(com.malhartech.dag.StreamContext context, String upstreamNodeId, String upstreamNodeLogicalName)
-    {
-      super.setContext(context);
-
-      // send publisher request
-      LOG.info("registering publisher: {} {}", upstreamNodeId, upstreamNodeLogicalName);
-      ClientHandler.publish(channel, upstreamNodeId, upstreamNodeLogicalName);
-    }
-  }
-
   static Tuple generateTuple(Object payload, StreamContext sc) {
     Tuple t = new Tuple(payload);
     Data.Builder db = Data.newBuilder();
