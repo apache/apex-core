@@ -43,10 +43,10 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
 
       Object o;
       if (d.getType() == Data.DataType.SIMPLE_DATA) {
-        o = context.getSerDe().fromByteArray(d.getSimpledata().toByteArray());
+        o = context.getSerDe().fromByteArray(d.getSimpledata().getData().toByteArray());
       }
       else if (d.getType() == Data.DataType.PARTITIONED_DATA) {
-        o = context.getSerDe().fromByteArray(d.getPartitioneddata().toByteArray());
+        o = context.getSerDe().fromByteArray(d.getPartitioneddata().getData().toByteArray());
       }
       else {
         o = null;

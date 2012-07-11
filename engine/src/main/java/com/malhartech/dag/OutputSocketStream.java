@@ -27,36 +27,55 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
   private ClientBootstrap bootstrap;
   protected Channel channel;
 
-
   public void doSomething(Tuple t)
   {
-    Data.Builder db = Data.newBuilder();
-    db.setWindowId(t.getData().getWindowId());
+    Data data = t.getData();
 
-    byte partition[] = context.getSerDe().getPartition(t.object);
-    if (partition == null) {
-      SimpleData.Builder sdb = SimpleData.newBuilder();
-      sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.object)));
+    switch (data.getType()) {
+      case BEGIN_WINDOW:
+        break;
 
-      db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(sdb);
+      case END_WINDOW:
+        break;
+
+
+      case SIMPLE_DATA:
+      case PARTITIONED_DATA:
+        Data.Builder db = Data.newBuilder();
+        db.setWindowId(t.getData().getWindowId());
+
+        byte partition[] = context.getSerDe().getPartition(t.object);
+        if (partition == null) {
+          SimpleData.Builder sdb = SimpleData.newBuilder();
+          sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.object)));
+
+          db.setType(Data.DataType.SIMPLE_DATA);
+          db.setSimpledata(sdb);
+        }
+        else {
+          PartitionedData.Builder pdb = PartitionedData.newBuilder();
+          pdb.setPartition(ByteString.copyFrom(partition));
+          pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.object)));
+
+          db.setType(Data.DataType.PARTITIONED_DATA);
+          db.setPartitioneddata(pdb);
+        }
+        
+        data = db.build();
+        break;
+
+      default:
+        throw new UnsupportedOperationException("this data type is not handled in the stream");
     }
-    else {
-      PartitionedData.Builder pdb = PartitionedData.newBuilder();
-      pdb.setPartition(ByteString.copyFrom(partition));
-      pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.object)));
 
-      db.setType(Data.DataType.PARTITIONED_DATA);
-      db.setPartitioneddata(pdb);
-    }
-
-    channel.write(db.build());
+    channel.write(data);
   }
 
-  protected ClientPipelineFactory getClientPipelineFactory() {
-    return new ClientPipelineFactory(OutputSocketStream.class);    
-  }  
-  
+  protected ClientPipelineFactory getClientPipelineFactory()
+  {
+    return new ClientPipelineFactory(OutputSocketStream.class);
+  }
+
   public void setup(StreamConfiguration config)
   {
     bootstrap = new ClientBootstrap(

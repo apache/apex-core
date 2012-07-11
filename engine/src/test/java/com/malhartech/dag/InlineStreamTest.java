@@ -72,7 +72,7 @@ public class InlineStreamTest {
       StreamContext streamContext = new StreamContext(node1);
       
       for (int i=0; i<totalTupleCount; i++) {
-        node1.doSomething(StramTestSupport.generateTuple(i, streamContext));
+        node1.doSomething(StramTestSupport.generateTuple(i, 0, streamContext));
       }
 
       synchronized(s) {
