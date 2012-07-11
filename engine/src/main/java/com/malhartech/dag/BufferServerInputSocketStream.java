@@ -18,12 +18,12 @@ public class BufferServerInputSocketStream extends InputSocketStream
   /**
    * Requires upstream node info to setup subscriber TODO: revisit context
    */
-  public void setContext(StreamContext context, String upstreamNodeId, String upstreamNodeLogicalName, String downstreamNodeId)
+  public void setContext(StreamContext context, String upstreamNodeId, String streamLogicalName, String downstreamNodeId)
   {
     super.setContext(context);
-    String downstreamNodeLogicalName = "downstreamNodeLogicalNotRequired"; // TODO: why do we need this?
-    LOG.info("registering subscriber: id={} upstreamId={} upstreamLogical={}", new Object[] {downstreamNodeId, upstreamNodeId, upstreamNodeLogicalName});
-    ClientHandler.registerPartitions(channel, downstreamNodeId, downstreamNodeLogicalName, upstreamNodeId, upstreamNodeLogicalName, Collections.<String>emptyList());
+    String type = "paramNotRequired?"; // TODO: why do we need this?
+    LOG.info("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {downstreamNodeId, upstreamNodeId, streamLogicalName});
+    ClientHandler.registerPartitions(channel, downstreamNodeId, streamLogicalName, upstreamNodeId, type, Collections.<String>emptyList());
   }
   
   @Override
