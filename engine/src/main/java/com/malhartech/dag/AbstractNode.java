@@ -6,10 +6,10 @@ package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.util.StablePriorityQueue;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.PriorityQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -20,30 +20,17 @@ import org.apache.commons.lang.builder.ToStringStyle;
  */
 public abstract class AbstractNode implements Node, Sink, Runnable
 {
+
   private static int gorder = 0;
-
-  private class TupleWrapper
-  {
-
-    final int order;
-    Tuple tuple;
-
-    TupleWrapper(Tuple tuple)
-    {
-      this.order = gorder++;
-      this.tuple = tuple;
-    }
-  }
-  
   private final HashSet<Sink> outputStreams = new HashSet<Sink>();
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
-  private final PriorityQueue<TupleWrapper> inputQueue;
+  private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
 
   public AbstractNode(NodeContext ctx)
   {
     // initial capacity should be some function of the window length
-    this.inputQueue = new PriorityQueue<TupleWrapper>(1024 * 1024, new DataComparator());
+    this.inputQueue = new StablePriorityQueue<Tuple>(1024 * 1024, new DataComparator());
     this.ctx = ctx;
   }
 
@@ -71,7 +58,8 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   public abstract void process(NodeContext context, StreamContext streamContext, Object payload);
 
   @Override
-  public void teardown() {
+  public void teardown()
+  {
   }
 
   /**
@@ -89,8 +77,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   public void doSomething(Tuple t)
   {
     synchronized (inputQueue) {
-      TupleWrapper tw = new TupleWrapper(t);
-      inputQueue.add(tw);
+      inputQueue.add(t);
       inputQueue.notify();
     }
   }
@@ -113,7 +100,9 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   public void emitStream(Object o, Sink sink)
   {
     Tuple t = new Tuple(o);
-    t.setData(ctx.getData()); /* only wrapper is used; data is ignored */
+    t.setData(ctx.getData()); /*
+     * only wrapper is used; data is ignored
+     */
     sink.doSomething(t);
   }
 
@@ -158,14 +147,14 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     return windowId;
   }
 
-  final private class DataComparator implements Comparator<TupleWrapper>
+  final private class DataComparator implements Comparator<Tuple>
   {
 
-    public int compare(TupleWrapper tw, TupleWrapper tw1)
+    public int compare(Tuple t, Tuple t1)
     {
 
-      Data d = tw.tuple.getData();
-      Data d1 = tw1.tuple.getData();
+      Data d = t.getData();
+      Data d1 = t1.getData();
       if (d != d1) {
         long tid = getWindowId(d);
         long t1id = getWindowId(d1);
@@ -187,17 +176,6 @@ public abstract class AbstractNode implements Node, Sink, Runnable
         else if (d1.getType() == Data.DataType.END_WINDOW) {
           return -1;
         }
-      }
-      
-      /*
-       * since the packets are from the same window; we compare their arrival
-       * Ids. Since ensures that we get a stable sort.
-       */
-      if (tw.order < tw1.order) {
-        return -1;
-      }
-      else if (tw.order > tw1.order) {
-        return 1;
       }
 
       return 0;
@@ -239,15 +217,12 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     int tupleCount = 0;
 
     while (alive && !shouldShutdown()) {
-      TupleWrapper tw;
       Tuple t = null;
       synchronized (inputQueue) {
-
-        if ((tw = inputQueue.peek()) == null) {
+        if ((t = inputQueue.peek()) == null) {
           shouldWait = true;
         }
         else {
-          t = tw.tuple;
           Data d = t.getData();
           switch (d.getType()) {
             case BEGIN_WINDOW:

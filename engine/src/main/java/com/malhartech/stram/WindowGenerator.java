@@ -4,11 +4,10 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.InputAdapter;
 import java.util.Collection;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
-import com.malhartech.dag.InputAdapter;
 
 public class WindowGenerator {
   
