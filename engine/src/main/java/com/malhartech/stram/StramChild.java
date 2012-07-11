@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.InlineStream;
+import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InputSocketStream;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
@@ -54,9 +56,11 @@ public class StramChild {
   final private Map<String, AbstractNode> nodeList = new ConcurrentHashMap<String, AbstractNode>();
   final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
   final private Map<String, Stream> streams = new ConcurrentHashMap<String, Stream>();
+  final private Map<String, InputAdapter> inputAdapters = new ConcurrentHashMap<String, InputAdapter>();
   
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
+  private WindowGenerator windowGenerator;
   
   protected StramChild(String containerId, Configuration conf, StreamingNodeUmbilicalProtocol umbilical) {
     this.umbilical = umbilical;
@@ -77,7 +81,7 @@ public class StramChild {
         nodeList.put(snc.getDnodeId(), dnode);
     }
     
-    // wire stream connections to above nodes
+    // wire stream connections
     for (StreamContext sc : ctx.getStreams()) {
         LOG.debug("Deploy stream " + sc.getId());
         if (sc.isInline()) {
@@ -94,9 +98,11 @@ public class StramChild {
           AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
           AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
           // TODO: context SerDe
-          com.malhartech.dag.StreamContext streamContext = new com.malhartech.dag.StreamContext(targetNode); // sink is null for output
+          com.malhartech.dag.StreamContext streamContext = new com.malhartech.dag.StreamContext(targetNode);
           StreamConfiguration streamConf = new StreamConfiguration();
           streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
+          streamConf.setLong(StreamConfiguration.START_WINDOW_MILLIS, ctx.getStartWindowMillis());
+          streamConf.setLong(StreamConfiguration.WINDOW_SIZE_MILLIS, ctx.getWindowSizeMillis());
           if (sourceNode != null) {
             // setup output stream as sink for source node
             LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
@@ -115,13 +121,27 @@ public class StramChild {
             this.streams.put(sc.getId(), iss);
           }
         } else {
+          
+          StreamConfiguration streamConf = new StreamConfiguration();
+          streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
+          streamConf.setLong(StreamConfiguration.START_WINDOW_MILLIS, ctx.getStartWindowMillis());
+          streamConf.setLong(StreamConfiguration.WINDOW_SIZE_MILLIS, ctx.getWindowSizeMillis());
           if (sc.getSourceNodeId() == null) {
             // input adapter
-            LOG.error("input adapter not implemented");
+            InputAdapter stream = initStream(streamConf, Collections.<String, String>emptyMap());
+            LOG.debug("Created input adapter {}", sc.getId());
+            this.inputAdapters.put(sc.getId(), stream);
+            stream.setup(streamConf);
+            stream.setContext(new com.malhartech.dag.StreamContext(nodeList.get(sc.getTargetNodeId())));
+            this.streams.put(sc.getId(), stream);
           } else {
             // output adapter
-            LOG.error("output adapter not implemented");
+            Stream stream = initStream(streamConf, Collections.<String, String>emptyMap());
+            stream.setup(streamConf);
+            stream.setContext(new com.malhartech.dag.StreamContext(null)); // no sink
+            this.streams.put(sc.getId(), stream);
           }
+          
         }
     }
     
@@ -139,10 +159,15 @@ public class StramChild {
       activeNodeList.put(node.getContext().getId(), launchThread);
       launchThread.start();
     }
-    
+
+    windowGenerator = new WindowGenerator(this.inputAdapters.values(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
+    if (ctx.getWindowSizeMillis() > 0) {
+      windowGenerator.start();
+    }
   }
 
   private void shutdown() {
+    windowGenerator.stop();
     for (Stream s : this.streams.values()) {
       s.teardown();
     }
@@ -311,6 +336,36 @@ public class StramChild {
       // This assumes that on return from Task.run()
       // there is no more logging done.
       LogManager.shutdown();
+    }
+  }
+
+  public static <T extends Stream> T initStream(Configuration conf, Map<String, String> properties) {
+    String className = conf.get(StreamConfiguration.STREAM_CLASSNAME);
+    if (className == null) {
+      throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", StreamConfiguration.STREAM_CLASSNAME));
+    }
+    try {
+      Class<?> clazz = Class.forName(className);
+      Class<? extends Stream> subClass = clazz.asSubclass(Stream.class);    
+      Constructor<? extends Stream> c = subClass.getConstructor();
+      @SuppressWarnings("unchecked")
+      T instance = (T)c.newInstance();
+      //DNode node = ReflectionUtils.newInstance(nodeClass, conf);
+      // populate custom properties
+      BeanUtils.populate(instance, properties);
+      return instance;
+    } catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException("Node class not found: " + className, e);
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    } catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    } catch (SecurityException e) {
+      throw new IllegalArgumentException("Error creating instance of class: " + className, e);
+    } catch (NoSuchMethodException e) {
+      throw new IllegalArgumentException("Constructor with NodeContext not found: " + className, e);
+    } catch (InstantiationException e) {
+      throw new IllegalArgumentException("Failed to instantiate: " + className, e);
     }
   }
   

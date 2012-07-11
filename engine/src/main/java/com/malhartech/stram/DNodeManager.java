@@ -33,7 +33,9 @@ public class DNodeManager {
   private static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
   
   private AtomicInteger nodeSequence = new AtomicInteger();
-
+  private long windowStartMillis = System.currentTimeMillis();
+  private long windowSizeMillis = 500;
+  
   private class NodeStatus {
     private NodeStatus(StreamingNodeContext ctx) {
     }
@@ -231,6 +233,8 @@ public class DNodeManager {
     }
     
     StreamingContainerContext scc = new StreamingContainerContext();
+    scc.setWindowSizeMillis(this.windowSizeMillis);
+    scc.setStartWindowMillis(this.windowStartMillis);
     scc.setNodes(nodeContextList);
 
     // assemble connecting streams for deployment group of node(s)

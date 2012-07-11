@@ -140,6 +140,35 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
       this.heartbeatIntervalMillis = heartbeatIntervalMillis;
     }
 
+    /**
+     * Window size. Inputs into the DAG propagate BEGIN_WINDOW at this interval.
+     */
+    private long windowSizeMillis;
+    /**
+     * Node should start processing the initial window at this time.
+     */
+    private long startWindowMillis;
+    
+    public long getWindowSizeMillis()
+    {
+      return windowSizeMillis;
+    }
+
+    public void setWindowSizeMillis(long windowSizeMillis)
+    {
+      this.windowSizeMillis = windowSizeMillis;
+    }
+
+    public long getStartWindowMillis()
+    {
+      return startWindowMillis;
+    }
+
+    public void setStartWindowMillis(long startWindowBeginMillis)
+    {
+      this.startWindowMillis = startWindowBeginMillis;
+    }
+    
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).

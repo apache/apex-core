@@ -22,16 +22,6 @@ public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.Writabl
   private String dnodeId;
   private String logicalId;
 
-  /**
-   * Window size. Inputs in the DAG generate BEGIN_WINDOW at this interval.
-   */
-  public long windowSizeMillis;
-  /**
-   * Node should start processing the initial window at this time.
-   */
-  public long startWindowMillis;
-
-
   public Map<String, String> getProperties()
   {
     return properties;
@@ -72,26 +62,6 @@ public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.Writabl
     this.logicalId = logicalId;
   }
 
-  public long getWindowSizeMillis()
-  {
-    return windowSizeMillis;
-  }
-
-  public void setWindowSizeMillis(long windowSizeMillis)
-  {
-    this.windowSizeMillis = windowSizeMillis;
-  }
-
-  public long getStartWindowMillis()
-  {
-    return startWindowMillis;
-  }
-
-  public void setStartWindowMillis(long startWindowBeginMillis)
-  {
-    this.startWindowMillis = startWindowBeginMillis;
-  }
-
   @Override
   public String toString()
   {
@@ -101,8 +71,4 @@ public class StreamingNodeContext extends StreamingNodeUmbilicalProtocol.Writabl
             toString();
   }
 
-  public Object getAttachment()
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
 }

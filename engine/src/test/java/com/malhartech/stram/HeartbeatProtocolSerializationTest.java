@@ -1,13 +1,21 @@
 package com.malhartech.stram;
 
-import com.malhartech.dag.NodeContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
 import junit.framework.Assert;
+
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
+
+import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 
 public class HeartbeatProtocolSerializationTest {
 
@@ -48,5 +56,55 @@ public class HeartbeatProtocolSerializationTest {
     
   }
   
+  @Test
+  public void testWindowGen() throws Exception {
+    final AtomicLong currentWindow = new AtomicLong();
+    final AtomicInteger beginWindowCount = new AtomicInteger();
+    final AtomicInteger endWindowCount = new AtomicInteger();
+    
+    final AtomicLong windowXor = new AtomicLong();
+    
+    InputAdapter ia = new InputAdapter() {
+      @Override
+      public void teardown() {
+      }
+      @Override
+      public void setup(StreamConfiguration config) {
+      }
+      @Override
+      public void setContext(StreamContext context) {
+      }
+      @Override
+      public void endWindow(long timemillis) {
+        endWindowCount.incrementAndGet();
+        windowXor.set(windowXor.get() ^ timemillis);
+        System.out.println("end  : " + timemillis + " (" + System.currentTimeMillis() + ")");
+      }
+      @Override
+      public void beginWindow(long timemillis) {
+        currentWindow.set(timemillis);
+        beginWindowCount.incrementAndGet();
+        windowXor.set(windowXor.get() ^ timemillis);
+        System.out.println("begin: " + timemillis + " (" + System.currentTimeMillis() + ")");
+      }
+    };
+    
+    long startTime = System.currentTimeMillis();
+    startTime = startTime - 1000;
+    long intervalMillis = 200;
+    WindowGenerator wg = new WindowGenerator(Collections.singletonList(ia), startTime, intervalMillis);
+    wg.start();
+    
+    Thread.sleep(300);
+    
+    wg.stop();
+    System.out.println("completed windows: " + endWindowCount.get());
+    Assert.assertEquals("only last window open", currentWindow.get(), windowXor.get());
+    
+    long expectedCnt = (System.currentTimeMillis() - startTime) / intervalMillis;
+    Assert.assertEquals("begin window count", expectedCnt+1, beginWindowCount.get());
+    Assert.assertEquals("end window count", expectedCnt, endWindowCount.get());
+    
+  }
   
 }
