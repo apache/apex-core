@@ -11,6 +11,8 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jboss.netty.channel.Channel;
 
 /**
@@ -23,6 +25,7 @@ import org.jboss.netty.channel.Channel;
 public class LogicalNode implements DataListener
 {
 
+  private static final Logger logger = Logger.getLogger(LogicalNode.class.getName());
   private final String group;
   private final HashSet<PhysicalNode> physicalNodes;
   private final HashSet<ByteBuffer> partitions;
@@ -68,7 +71,7 @@ public class LogicalNode implements DataListener
    */
   public void catchUp(long windowId)
   {
-
+    logger.log(Level.INFO, "trying to catch up to window with id {0}", windowId);
     /*
      * fast forward to catch up with the windowId without consuming
      */
@@ -76,6 +79,7 @@ public class LogicalNode implements DataListener
       Data data = iterator.next();
       if (data.getType() == Data.DataType.BEGIN_WINDOW) {
         if (data.getWindowId() >= windowId) {
+          logger.log(Level.INFO, "distributing to {0} nodes.", physicalNodes.size());
           policy.distribute(physicalNodes, data);
         }
       }

@@ -6,6 +6,7 @@ package com.malhartech.bufferserver;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.policy.*;
 import java.util.HashMap;
 import java.util.logging.Level;
@@ -33,14 +34,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
     switch (data.getType()) {
       case PUBLISHER_REQUEST:
-        logger.log(Level.FINEST, "received pushisher request");
-        handlePublisherRequest(data.getPublish(), ctx);
+        logger.log(Level.INFO, "received pushisher request");
+        handlePublisherRequest(data.getPublish(), ctx, data.getWindowId());
         break;
 
 
       case SUBSCRIBER_REQUEST:
-        logger.log(Level.FINEST, "received subscriber request");
-        handleSubscriberRequest(data.getSubscribe(), ctx);
+        logger.log(Level.INFO, "received subscriber request");
+        handleSubscriberRequest(data.getSubscribe(), ctx, data.getWindowId());
         break;
 
       case BEGIN_WINDOW:
@@ -54,13 +55,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
           logger.log(Level.INFO, "Attempt to send data w/o talking protocol");
         }
         else {
+          logger.log(Level.INFO, "Sent {0} packet", data.getType());
           dl.add(data);
         }
         break;
     }
   }
 
-  public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx)
+  public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, long windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -82,7 +84,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     ctx.setAttachment(dl);
   }
 
-  public void handleSubscriberRequest(Buffer.SubscriberRequest request, ChannelHandlerContext ctx)
+  public void handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, long windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -122,9 +124,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       groups.put(type, ln);
       ln.addChannel(ctx.getChannel());
       dl.addDataListener(ln);
-//            if (request.hasStartingWindowid()) {
-//                ln.catchUp(request.getStartingWindowid());
-//            }
+      ln.catchUp(windowId);
     }
 
     ctx.setAttachment(ln);
