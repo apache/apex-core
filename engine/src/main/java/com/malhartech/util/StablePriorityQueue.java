@@ -18,12 +18,12 @@ public class StablePriorityQueue<E> implements Queue<E>
   private static final long serialVersionUID = 201207091837L;
   private int counter = 0;
 
-  StablePriorityQueue(int initialCapacity)
+  public StablePriorityQueue(int initialCapacity)
   {
     queue = new PriorityQueue<StableWrapper<E>>(initialCapacity, new StableWrapperNaturalComparator<E>());
   }
 
-  StablePriorityQueue(Collection<? extends E> c)
+  public StablePriorityQueue(Collection<? extends E> c)
   {
     queue = new PriorityQueue<StableWrapper<E>>(c.size(), new StableWrapperNaturalComparator<E>());
     for (E e : c) {
@@ -31,18 +31,18 @@ public class StablePriorityQueue<E> implements Queue<E>
     }
   }
 
-  StablePriorityQueue(int initialCapacity, Comparator<? super E> comparator)
+  public StablePriorityQueue(int initialCapacity, Comparator<? super E> comparator)
   {
     queue = new PriorityQueue<StableWrapper<E>>(initialCapacity, new StableWrapperProvidedComparator<E>(comparator));
   }
 
   @SuppressWarnings("unchecked")
-  StablePriorityQueue(StablePriorityQueue<? extends E> c)
+  public StablePriorityQueue(StablePriorityQueue<? extends E> c)
   {
     queue = new PriorityQueue<StableWrapper<E>>(c.size(), (Comparator<? super StableWrapper<E>>) c.comparator());
   }
 
-  StablePriorityQueue(SortedSet<? extends E> c)
+  public StablePriorityQueue(SortedSet<? extends E> c)
   {
     this((Collection<? extends E>) c);
   }
@@ -65,7 +65,12 @@ public class StablePriorityQueue<E> implements Queue<E>
 
   public E peek()
   {
-    return queue.peek().object;
+    StableWrapper<E> sw = queue.peek();
+    if (sw == null) {
+      return null;
+    }
+    
+    return sw.object;
   }
 
   public E remove() throws NoSuchElementException
@@ -81,7 +86,12 @@ public class StablePriorityQueue<E> implements Queue<E>
 
   public E poll()
   {
-    return queue.poll().object;
+    StableWrapper<E> sw = queue.poll();
+    if (sw == null) {
+      return null;
+    }
+    
+    return sw.object;
   }
 
   @SuppressWarnings("unchecked")
