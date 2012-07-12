@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.BufferServerInputSocketStream;
 import com.malhartech.dag.BufferServerOutputSocketStream;
+import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.InlineStream;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.NodeContext;
@@ -125,19 +126,20 @@ public class StramChild {
           streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
           streamConf.setLong(StreamConfiguration.START_WINDOW_MILLIS, ctx.getStartWindowMillis());
           streamConf.setLong(StreamConfiguration.WINDOW_SIZE_MILLIS, ctx.getWindowSizeMillis());
+
+          for (Map.Entry<String, String> e : sc.getProperties().entrySet()) {
+              streamConf.set(e.getKey(), e.getValue());
+          }
+          
           if (sc.getSourceNodeId() == null) {
             // input adapter
-            InputAdapter stream = initStream(streamConf, sc.getProperties());
+            InputAdapter stream = initStream(sc.getProperties(), streamConf, nodeList.get(sc.getTargetNodeId()));
             LOG.debug("Created input adapter {}", sc.getId());
             this.inputAdapters.put(sc.getId(), stream);
-            stream.setup(streamConf);
-            stream.setContext(new com.malhartech.dag.StreamContext(nodeList.get(sc.getTargetNodeId())));
             this.streams.put(sc.getId(), stream);
           } else {
             // output adapter
-            Stream stream = initStream(streamConf, sc.getProperties());
-            stream.setup(streamConf);
-            stream.setContext(new com.malhartech.dag.StreamContext(null)); // no sink
+            Stream stream = initStream(sc.getProperties(), streamConf, null); // no sink
             this.streams.put(sc.getId(), stream);
           }
           
@@ -338,8 +340,8 @@ public class StramChild {
     }
   }
 
-  public static <T extends Stream> T initStream(Configuration conf, Map<String, String> properties) {
-    String className = conf.get(StreamConfiguration.STREAM_CLASSNAME);
+  public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode sink) {
+    String className = properties.get(StreamConfiguration.STREAM_CLASSNAME);
     if (className == null) {
       // should have been caught during submit validation
       throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", StreamConfiguration.STREAM_CLASSNAME));
@@ -352,6 +354,12 @@ public class StramChild {
       T instance = (T)c.newInstance();
       // populate custom properties
       BeanUtils.populate(instance, properties);
+      
+      instance.setup(streamConf);
+      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(sink);
+      ctx.setSerde(new DefaultSerDe());
+      instance.setContext(new com.malhartech.dag.StreamContext(sink));
+
       return instance;
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("Node class not found: " + className, e);

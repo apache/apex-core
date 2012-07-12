@@ -20,7 +20,6 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.malhartech.dag.StramTestSupport.MySerDe;
 
 /**
  *
@@ -38,12 +37,12 @@ public class InputActiveMQStreamTest
   private static final class MyStreamContext extends StreamContext implements Sink
   {
 
-    MySerDe myserde;
+    DefaultSerDe myserde;
 
     public MyStreamContext()
     {
       super(null); // TODO
-      myserde = new MySerDe();
+      myserde = new DefaultSerDe();
     }
 
     public SerDe getSerDe()

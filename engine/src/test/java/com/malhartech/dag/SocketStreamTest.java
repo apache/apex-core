@@ -4,7 +4,6 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.StramTestSupport.MySerDe;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -79,7 +78,7 @@ public class SocketStreamTest
       }
     };
 
-    SerDe serde = new MySerDe();
+    SerDe serde = new DefaultSerDe();
 
 
     StreamContext issContext = new StreamContext(sink);
@@ -108,7 +107,9 @@ public class SocketStreamTest
     oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
     synchronized (SocketStreamTest.this) {
-      SocketStreamTest.this.wait(2000);
+      if (messageCount.get() == 0) {
+        SocketStreamTest.this.wait(2000);
+      }
     }
 
     Assert.assertEquals("Received messages", 1, messageCount.get());
