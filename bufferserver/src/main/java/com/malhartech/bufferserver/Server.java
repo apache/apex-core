@@ -4,19 +4,17 @@
  */
 package com.malhartech.bufferserver;
 
+import com.malhartech.netty.ServerPipelineFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.Executors;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
-
-import com.malhartech.netty.ServerPipelineFactory;
-import java.util.logging.Level;
 
 /**
  * Receives a list of continent/city pairs from a {@link LocalTimeClient} to get
