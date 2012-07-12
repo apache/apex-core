@@ -3,10 +3,11 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.StramTestSupport.MySerDe;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -23,24 +24,26 @@ public class SocketStreamTest
   private static Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
   private static int bufferServerPort = 0;
   private static Server bufferServer = null;
-  
+
   @BeforeClass
-  public static void setup() throws InterruptedException, IOException {
+  public static void setup() throws InterruptedException, IOException
+  {
     //   java.util.logging.Logger.getLogger("").setLevel(java.util.logging.Level.FINEST);
     //    java.util.logging.Logger.getLogger("").info("test");
     bufferServer = new Server(0); // find random port
-    InetSocketAddress bindAddr  = (InetSocketAddress)bufferServer.run();
+    InetSocketAddress bindAddr = (InetSocketAddress) bufferServer.run();
     bufferServerPort = bindAddr.getPort();
-  
+
   }
 
   @AfterClass
-  public static void tearDown() throws IOException {
+  public static void tearDown() throws IOException
+  {
     if (bufferServer != null) {
       bufferServer.shutdown();
     }
   }
-  
+
   /**
    * Send tuple on outputstream and receive tuple from inputstream
    *
@@ -64,13 +67,14 @@ public class SocketStreamTest
 
           case END_WINDOW:
             System.out.println(t.getData().getEndwindow().getNode() + " end window for window " + t.getData().getWindowId());
+            synchronized (SocketStreamTest.this) {
+              SocketStreamTest.this.notifyAll();
+            }
             break;
 
           case SIMPLE_DATA:
             System.out.println("received: " + t.getObject());
-            synchronized (SocketStreamTest.this) {
-              messageCount.incrementAndGet();
-            }
+            messageCount.incrementAndGet();
         }
       }
     };
@@ -80,18 +84,13 @@ public class SocketStreamTest
 
     StreamContext issContext = new StreamContext(sink);
     issContext.setSerde(serde);
-    
+
     String streamName = "streamName"; // AKA "type"
     String upstreamNodeId = "upstreamNodeId";
     String downstreamNodeId = "downStreamNodeId";
-    
+
     StreamConfiguration sconf = new StreamConfiguration();
     sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-
-    String upstreamNodeId = "upstreamId";
-    String upstreamNodeType = "upstreamType";
-    String downstreamNodeId = "downstreamId";
-    String downstreamNodeType = "downstreamType";
 
     BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
     iss.setup(sconf);
@@ -109,9 +108,7 @@ public class SocketStreamTest
     oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
     synchronized (SocketStreamTest.this) {
-      if (messageCount.get() == 0) { // receiver could be done before we get here
-        SocketStreamTest.this.wait(3000);
-      }
+      SocketStreamTest.this.wait(2000);
     }
 
     Assert.assertEquals("Received messages", 1, messageCount.get());
