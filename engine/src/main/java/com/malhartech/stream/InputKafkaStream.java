@@ -2,8 +2,10 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;

@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.BeginWindow;
@@ -10,6 +10,8 @@ import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.EndWindow;
 import com.malhartech.bufferserver.Buffer.SimpleData;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
 
 /**
  * Bunch of utilities shared between tests.

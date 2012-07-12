@@ -2,12 +2,17 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.PartitionedData;
 import com.malhartech.bufferserver.Buffer.SimpleData;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
 import com.malhartech.netty.ClientPipelineFactory;
 import java.util.concurrent.Executors;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -44,10 +49,10 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
         Data.Builder db = Data.newBuilder();
         db.setWindowId(t.getData().getWindowId());
 
-        byte partition[] = context.getSerDe().getPartition(t.object);
+        byte partition[] = context.getSerDe().getPartition(t.getObject());
         if (partition == null) {
           SimpleData.Builder sdb = SimpleData.newBuilder();
-          sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.object)));
+          sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.getObject())));
 
           db.setType(Data.DataType.SIMPLE_DATA);
           db.setSimpledata(sdb);
@@ -55,7 +60,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
         else {
           PartitionedData.Builder pdb = PartitionedData.newBuilder();
           pdb.setPartition(ByteString.copyFrom(partition));
-          pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.object)));
+          pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.getObject())));
 
           db.setType(Data.DataType.PARTITIONED_DATA);
           db.setPartitioneddata(pdb);

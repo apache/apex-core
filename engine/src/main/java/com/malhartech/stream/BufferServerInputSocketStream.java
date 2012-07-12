@@ -2,9 +2,10 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
 import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.dag.StreamContext;
 import java.util.Collections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

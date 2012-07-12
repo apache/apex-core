@@ -10,15 +10,18 @@ import com.malhartech.bufferserver.Buffer.Data;
  *
  * @author chetan
  */
-public class Tuple {
-    private StreamContext context;
-    private Data data;
-    final Object object;
+public class Tuple
+{
 
-    Tuple(Object object) {
-        this.object = object;
-    }
-    
+  private StreamContext context;
+  private Data data;
+  final Object object;
+
+  public Tuple(Object object)
+  {
+    this.object = object;
+  }
+
   /**
    * @return the context
    */
@@ -51,8 +54,8 @@ public class Tuple {
     this.data = data;
   }
 
-  public Object getObject() {
+  public Object getObject()
+  {
     return object;
   }
-  
 }

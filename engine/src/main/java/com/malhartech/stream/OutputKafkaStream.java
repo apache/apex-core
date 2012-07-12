@@ -2,8 +2,13 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
 import kafka.javaapi.producer.Producer;
 
 

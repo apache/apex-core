@@ -1,9 +1,17 @@
 /**
  * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
+import com.malhartech.stream.BufferServerOutputSocketStream;
+import com.malhartech.stream.BufferServerInputSocketStream;
 import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.SerDe;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;

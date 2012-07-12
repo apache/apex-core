@@ -2,8 +2,9 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
+import com.malhartech.dag.*;
 import kafka.message.Message;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -65,7 +66,7 @@ public class InputKafkaStreamTest
 
     public void doSomething(Tuple t)
     {
-      System.out.println("sinking " + t.object);
+      System.out.println("sinking " + t.getObject());
     }
   }
 

@@ -7,7 +7,7 @@ package com.malhartech.stram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.AbstractInputObjectStream;
+import com.malhartech.stream.AbstractInputObjectStream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 

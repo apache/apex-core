@@ -1,8 +1,10 @@
 /*
  * Copyright (c) 2012 Malhar, Inc. All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.jms.*;

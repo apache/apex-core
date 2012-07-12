@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.BeginWindow;
@@ -10,6 +10,10 @@ import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.EndWindow;
 import com.malhartech.bufferserver.Buffer.PartitionedData;
 import com.malhartech.bufferserver.Buffer.SimpleData;
+import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.SerDe;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
 
 /**
  *

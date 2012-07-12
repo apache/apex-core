@@ -2,23 +2,16 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
+import com.malhartech.dag.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import javax.jms.JMSException;
 import javax.jms.TextMessage;
-
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import org.junit.*;
 
 
 /**
@@ -57,7 +50,7 @@ public class InputActiveMQStreamTest
 
     public void doSomething(Tuple t)
     {
-      System.out.println("sinking " + t.object);
+      System.out.println("sinking " + t.getObject());
     }
   }
 

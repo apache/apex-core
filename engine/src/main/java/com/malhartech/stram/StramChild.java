@@ -27,10 +27,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.BufferServerInputSocketStream;
-import com.malhartech.dag.BufferServerOutputSocketStream;
+import com.malhartech.stream.BufferServerInputSocketStream;
+import com.malhartech.stream.BufferServerOutputSocketStream;
 import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.InlineStream;
+import com.malhartech.stream.InlineStream;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;

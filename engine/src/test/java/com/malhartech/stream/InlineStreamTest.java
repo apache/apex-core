@@ -2,8 +2,9 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stream;
 
+import com.malhartech.dag.*;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,20 +33,20 @@ public class InlineStreamTest {
         @Override
         public void doSomething(Tuple t) {
           if (prev == null) {
-            prev = t.object;
+            prev = t.getObject();
           }
           else {
-            if (Integer.valueOf(t.object.toString()) - Integer.valueOf(prev.toString()) != 1) {
+            if (Integer.valueOf(t.getObject().toString()) - Integer.valueOf(prev.toString()) != 1) {
               LOG.info("Got the tuples out of order!");
-              LOG.info(prev + " followed by " + t.object);
+              LOG.info(prev + " followed by " + t.getObject());
               synchronized (s) {
                 s.notify();
               }
             }
-            prev = t.object;
+            prev = t.getObject();
           }
           
-          if (Integer.valueOf(t.object.toString()) == totalTupleCount - 1) {
+          if (Integer.valueOf(t.getObject().toString()) == totalTupleCount - 1) {
             LOG.info("last tuple received.");
             synchronized (s) {
               s.notify();
