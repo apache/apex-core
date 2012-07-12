@@ -21,7 +21,7 @@ public class StreamConfiguration extends Configuration
   /**
    * Stream class name, required for input/output adapter
    */
-  public static final String STREAM_CLASSNAME = "streamClassName";
+  public static final String STREAM_CLASSNAME = "classname";
   
   public InetSocketAddress getBufferServerAddress()
   {

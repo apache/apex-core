@@ -140,6 +140,12 @@
                 <phase>test-compile</phase>
               </execution>
             </executions>
+            <configuration>
+              <excludes>
+                <!-- never include into jar (used in minicluster test) -->
+                <exclude>**/yarn-site.xml</exclude>
+              </excludes>
+            </configuration>
           </plugin>        
           <plugin>
             <groupId>org.codehaus.mojo</groupId>

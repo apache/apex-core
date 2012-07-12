@@ -347,6 +347,9 @@ public class StramClient {
       String[] libJars = StringUtils.splitByWholeSeparator(topologyProperties.getProperty(TopologyBuilder.LIBJARS), ",");
       localJarFiles.addAll(Arrays.asList(libJars));
     }
+    TopologyBuilder tb = new TopologyBuilder(conf);
+    tb.addFromProperties(topologyProperties);
+    tb.validate();
     
     // copy required jar files to dfs, to be localized for containers
     String libJarsCsv = "";

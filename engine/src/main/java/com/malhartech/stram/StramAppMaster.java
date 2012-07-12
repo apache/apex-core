@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -60,7 +61,7 @@ public class StramAppMaster {
   private static Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
 
 	  // Configuration 
-	  private Configuration conf;
+	  private YarnConfiguration conf;
 	  private Properties topologyProperties;
 	  // YARN RPC to communicate with the Resource Manager or Node Manager
 	  private YarnRPC rpc;
@@ -180,12 +181,21 @@ public class StramAppMaster {
 	      e.printStackTrace();
 	    } catch (InterruptedException e) {
 	      e.printStackTrace();
-	    } 
+	    }
+
+      LOG.info("Classpath: {}", System.getProperty("java.class.path"));
+	    LOG.info("Config resources: {}", conf.toString());
+	    try { 
+	      Configuration.dumpConfiguration(conf, new PrintWriter(System.out)); 
+	    } catch (Exception e) {
+	      LOG.error("Error dumping configuration.", e);
+	    };
+	    
 	  }
 
 	  public StramAppMaster() throws Exception {
 	    // Set up the configuration and RPC
-	    conf = new Configuration();
+	    conf = new YarnConfiguration();
 	    rpc = YarnRPC.create(conf);
 	  }
 
@@ -532,8 +542,7 @@ public class StramAppMaster {
 	   * @return Handle to communicate with the RM
 	   */
 	  private AMRMProtocol connectToRM() {
-	    YarnConfiguration yarnConf = new YarnConfiguration(conf);
-	    InetSocketAddress rmAddress = yarnConf.getSocketAddr(
+	    InetSocketAddress rmAddress = conf.getSocketAddr(
 	        YarnConfiguration.RM_SCHEDULER_ADDRESS,
 	        YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
 	        YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
