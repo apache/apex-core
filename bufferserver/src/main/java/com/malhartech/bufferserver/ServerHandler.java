@@ -34,12 +34,12 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
     switch (data.getType()) {
       case PUBLISHER_REQUEST:
-        handlePublisherRequest(data.getPublish(), ctx);
+        handlePublisherRequest(data.getPublish(), ctx, data.getWindowId());
         break;
 
 
       case SUBSCRIBER_REQUEST:
-        handleSubscriberRequest(data.getSubscribe(), ctx);
+        handleSubscriberRequest(data.getSubscribe(), ctx, data.getWindowId());
         break;
 
       case BEGIN_WINDOW:

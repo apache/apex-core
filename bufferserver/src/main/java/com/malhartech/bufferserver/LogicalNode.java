@@ -71,7 +71,6 @@ public class LogicalNode implements DataListener
    */
   public void catchUp(long windowId)
   {
-    logger.log(Level.INFO, "trying to catch up to window with id {0}", windowId);
     /*
      * fast forward to catch up with the windowId without consuming
      */
@@ -79,13 +78,15 @@ public class LogicalNode implements DataListener
       Data data = iterator.next();
       if (data.getType() == Data.DataType.BEGIN_WINDOW) {
         if (data.getWindowId() >= windowId) {
-          logger.log(Level.INFO, "distributing to {0} nodes.", physicalNodes.size());
           policy.distribute(physicalNodes, data);
+          break;
         }
       }
     }
 
-    dataAdded(DataListener.NULL_PARTITION);
+    if (iterator.hasNext()) {
+      dataAdded(DataListener.NULL_PARTITION);
+    }
   }
 
   public void dataAdded(ByteBuffer partition)
