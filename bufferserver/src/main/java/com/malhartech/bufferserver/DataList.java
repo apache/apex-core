@@ -125,6 +125,7 @@ public class DataList
 
   public void add(Data d)
   {
+    logger.log(Level.INFO, "added data of type {0} with windowId {1}", new Object[]{d.getType(), d.getWindowId()});
     last.lockWrite();
     DataArray temp = last;
     try {

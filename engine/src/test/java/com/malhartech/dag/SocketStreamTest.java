@@ -107,7 +107,7 @@ public class SocketStreamTest
     oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
     synchronized (SocketStreamTest.this) {
-      if (messageCount.get() == 0) {
+      if (messageCount.get() == 0) { // don't wait if already notified
         SocketStreamTest.this.wait(2000);
       }
     }
