@@ -29,7 +29,9 @@ public class Server
   
   public static int DEFAULT_PORT = 9080;
   private final int port;
-
+  private ServerBootstrap bootstrap;
+  private Channel serverChannel;
+  
   /**
    * @param port - port number to bind to or 0 to auto select a free port
    */
@@ -41,7 +43,7 @@ public class Server
   public SocketAddress run()
   {
     // Configure the server.
-    ServerBootstrap bootstrap = new ServerBootstrap(
+    bootstrap = new ServerBootstrap(
             new NioServerSocketChannelFactory(
             Executors.newCachedThreadPool(),
             Executors.newCachedThreadPool()));
@@ -50,11 +52,21 @@ public class Server
     bootstrap.setPipelineFactory(new ServerPipelineFactory());
 
     // Bind and start to accept incoming connections.
-    Channel c = bootstrap.bind(new InetSocketAddress(port));
-    LOGGER.log(Level.INFO, "bound to : {0}", c.getLocalAddress());
-    return c.getLocalAddress();
+    serverChannel = bootstrap.bind(new InetSocketAddress(port));
+    LOGGER.log(Level.INFO, "bound to: {0}", serverChannel.getLocalAddress());
+
+    return serverChannel.getLocalAddress();
   }
 
+  public void shutdown() {
+    if (serverChannel !=  null) {
+      LOGGER.log(Level.INFO, "shutting down server at: {0}", serverChannel.getLocalAddress());
+      this.serverChannel.close();
+      //this.bootstrap.releaseExternalResources();
+      this.serverChannel =  null;
+    }
+  }
+  
   public static void main(String[] args) throws Exception
   {
     Handler ch = new ConsoleHandler();

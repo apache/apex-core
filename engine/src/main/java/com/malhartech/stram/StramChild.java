@@ -32,7 +32,6 @@ import com.malhartech.dag.BufferServerInputSocketStream;
 import com.malhartech.dag.BufferServerOutputSocketStream;
 import com.malhartech.dag.InlineStream;
 import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.InputSocketStream;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.dag.Stream;
@@ -109,7 +108,7 @@ public class StramChild {
             LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
             BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();
             oss.setup(streamConf);
-            oss.setContext(streamContext, sc.getSourceNodeId(), sc.getTargetNodeLogicalId());
+            oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
             sourceNode.addSink(oss);
             this.streams.put(sc.getId(), oss);
           }
@@ -118,7 +117,7 @@ public class StramChild {
             LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
             BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
             iss.setup(streamConf);
-            iss.setContext(streamContext, sc.getSourceNodeId(), sc.getTargetNodeLogicalId(), sc.getTargetNodeId());
+            iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.getTargetNodeId());
             this.streams.put(sc.getId(), iss);
           }
         } else {

@@ -34,14 +34,12 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
     switch (data.getType()) {
       case PUBLISHER_REQUEST:
-        logger.log(Level.INFO, "received pushisher request");
-        handlePublisherRequest(data.getPublish(), ctx, data.getWindowId());
+        handlePublisherRequest(data.getPublish(), ctx);
         break;
 
 
       case SUBSCRIBER_REQUEST:
-        logger.log(Level.INFO, "received subscriber request");
-        handleSubscriberRequest(data.getSubscribe(), ctx, data.getWindowId());
+        handleSubscriberRequest(data.getSubscribe(), ctx);
         break;
 
       case BEGIN_WINDOW:
@@ -66,6 +64,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
+    logger.log(Level.INFO, "received publisher request: id=" + request.getIdentifier() + ", type=" + request.getType());
 
     DataList dl;
 
@@ -89,7 +88,8 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     String identifier = request.getIdentifier();
     String type = request.getType();
     String upstream_identifier = request.getUpstreamIdentifier();
-    String upstream_type = request.getUpstreamType();
+    //String upstream_type = request.getUpstreamType();
+    logger.log(Level.INFO, "received subscriber request: id=" + request.getIdentifier() + ", type=" + request.getType() + ", upstreamId=" + request.getUpstreamIdentifier());
 
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;

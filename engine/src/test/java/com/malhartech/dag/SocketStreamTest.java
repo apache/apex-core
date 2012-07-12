@@ -3,11 +3,13 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.StramTestSupport.MySerDe;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,12 +21,26 @@ public class SocketStreamTest
 {
 
   private static Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
-
-  static {
+  private static int bufferServerPort = 0;
+  private static Server bufferServer = null;
+  
+  @BeforeClass
+  public static void setup() throws InterruptedException, IOException {
     //   java.util.logging.Logger.getLogger("").setLevel(java.util.logging.Level.FINEST);
     //    java.util.logging.Logger.getLogger("").info("test");
+    bufferServer = new Server(0); // find random port
+    InetSocketAddress bindAddr  = (InetSocketAddress)bufferServer.run();
+    bufferServerPort = bindAddr.getPort();
+  
   }
 
+  @AfterClass
+  public static void tearDown() throws IOException {
+    if (bufferServer != null) {
+      bufferServer.shutdown();
+    }
+  }
+  
   /**
    * Send tuple on outputstream and receive tuple from inputstream
    *
@@ -61,17 +77,16 @@ public class SocketStreamTest
 
     SerDe serde = new MySerDe();
 
-    int port = 0; // find random port
-    com.malhartech.bufferserver.Server s = new Server(port);
-    InetSocketAddress bindAddr = (InetSocketAddress) s.run();
-    port = bindAddr.getPort();
 
     StreamContext issContext = new StreamContext(sink);
     issContext.setSerde(serde);
-
-
+    
+    String streamName = "streamName"; // AKA "type"
+    String upstreamNodeId = "upstreamNodeId";
+    String downstreamNodeId = "downStreamNodeId";
+    
     StreamConfiguration sconf = new StreamConfiguration();
-    sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", port));
+    sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
     String upstreamNodeId = "upstreamId";
     String upstreamNodeType = "upstreamType";
@@ -80,14 +95,14 @@ public class SocketStreamTest
 
     BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
     iss.setup(sconf);
-    iss.setContext(issContext, upstreamNodeId, upstreamNodeType, downstreamNodeId);
+    iss.setContext(issContext, upstreamNodeId, streamName, downstreamNodeId);
     System.out.println("input stream ready");
 
     BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();
     StreamContext ossContext = new StreamContext(null);
     ossContext.setSerde(serde);
     oss.setup(sconf);
-    oss.setContext(ossContext, upstreamNodeId, upstreamNodeType);
+    oss.setContext(ossContext, upstreamNodeId, streamName);
 
     LOG.info("Sending hello message");
     oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0, ossContext));
@@ -95,7 +110,7 @@ public class SocketStreamTest
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
     synchronized (SocketStreamTest.this) {
       if (messageCount.get() == 0) { // receiver could be done before we get here
-        SocketStreamTest.this.wait(4000);
+        SocketStreamTest.this.wait(3000);
       }
     }
 
