@@ -4,10 +4,17 @@
  */
 package com.malhartech.dag;
 
+import org.objenesis.instantiator.ObjectInstantiator;
+
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.malhartech.stram.conf.ShipContainingJars;
 
+/**
+ * Requires kryo and mockito in deployment
+ */
+@ShipContainingJars (classes={Kryo.class, ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class})
 final public class DefaultSerDe implements SerDe
 {
   private Kryo kryo = new Kryo();

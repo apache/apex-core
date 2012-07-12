@@ -6,9 +6,11 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Vector;
 
 import org.apache.commons.cli.CommandLine;
@@ -61,6 +63,7 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.conf.ShipContainingJars;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 
@@ -327,29 +330,53 @@ public class StramClient {
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
     
-    // platform jar files
-    Class<?>[] jarClasses = new Class<?>[] {
+    // platform jar files - always required
+    Class<?>[] defaultClasses = new Class<?>[] {
         com.malhartech.bufferserver.Server.class,
         com.malhartech.stram.StramAppMaster.class,
-        //com.malhartech.bufferserver.Server.class
+        com.malhartech.dag.DefaultSerDe.class
     };
-
-    FileSystem fs = FileSystem.get(conf);
-    List<String> localJarFiles = new ArrayList<String>();
-
-    for (Class<?> jarClass : jarClasses) {
-      localJarFiles.add(JarFinder.getJar(jarClass));
-    }
+    List<Class<?>> jarClasses = new ArrayList<Class<?>>();
+    jarClasses.addAll(Arrays.asList(defaultClasses));  
     
     // topology properties
     Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
+    TopologyBuilder tb = new TopologyBuilder(conf);
+    tb.addFromProperties(topologyProperties);
+    tb.validate();
+
+    for (String className : tb.getClassNames()) {
+      try {
+        Class<?> clazz = Class.forName(className);
+        jarClasses.add(clazz);
+      } catch (ClassNotFoundException e) {
+        LOG.warn("Failed to load class {}", className);
+      }
+    }
+
+    FileSystem fs = FileSystem.get(conf);
+    Set<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
+
+    for (Class<?> jarClass : jarClasses) {
+      localJarFiles.add(JarFinder.getJar(jarClass));
+      // check for annotated dependencies
+      try {
+        ShipContainingJars shipJars = jarClass.getAnnotation(ShipContainingJars.class);
+        if (shipJars != null) {
+          for (Class<?> depClass : shipJars.classes()) {
+            localJarFiles.add(JarFinder.getJar(depClass));
+            LOG.info("Including {} as dependency of {}", depClass, jarClass);
+          }
+        }
+      } catch (ArrayStoreException e) {
+        LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
+      }
+    }
+    
     if (topologyProperties.getProperty(TopologyBuilder.LIBJARS) != null) {
       String[] libJars = StringUtils.splitByWholeSeparator(topologyProperties.getProperty(TopologyBuilder.LIBJARS), ",");
       localJarFiles.addAll(Arrays.asList(libJars));
     }
-    TopologyBuilder tb = new TopologyBuilder(conf);
-    tb.addFromProperties(topologyProperties);
-    tb.validate();
     
     // copy required jar files to dfs, to be localized for containers
     String libJarsCsv = "";

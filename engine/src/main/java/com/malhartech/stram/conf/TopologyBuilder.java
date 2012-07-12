@@ -467,5 +467,27 @@ public class TopologyBuilder {
     }
     
   }
-    
+
+  /**
+   * Configured class dependencies for the topology. Used to determine jar file dependencies. 
+   * @return
+   */
+  public Set<String> getClassNames() {
+    Set<String> classNames = new HashSet<String>();
+    for (NodeConf n : this.nodes.values()) {
+      String className = n.properties.getProperty(NODE_CLASSNAME);
+      if (className != null) {
+        classNames.add(className);
+      }
+    }
+    for (StreamConf n : this.streams.values()) {
+      String className = n.properties.getProperty(StreamConfiguration.STREAM_CLASSNAME);
+      if (className != null) {
+        classNames.add(className);
+      }
+    }
+    return classNames;
+  }
+  
+  
 }
