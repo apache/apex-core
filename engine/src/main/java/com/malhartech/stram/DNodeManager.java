@@ -199,14 +199,14 @@ public class DNodeManager {
       sc.setSourceNodeId(getNodeContext(streamConf.getSourceNode()).getDnodeId());
     } else {
       // input adapter, need implementation class
-      throw new UnsupportedOperationException("input adapter not implemented");
+      sc.setProperties(streamConf.getProperties());
     }
     if (streamConf.getTargetNode() != null) {
       sc.setTargetNodeId(getNodeContext(streamConf.getTargetNode()).getDnodeId());
       sc.setTargetNodeLogicalId(streamConf.getTargetNode().getId());
     } else {
       // external output, need implementation class
-      throw new UnsupportedOperationException("only output to node implemented");
+      sc.setProperties(streamConf.getProperties());
     }
     return sc;
   }

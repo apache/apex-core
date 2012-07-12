@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.malhartech.dag.StreamConfiguration;
 
 /**
  * Builder for the DAG logical representation of nodes and streams.
@@ -108,6 +109,14 @@ public class TopologyBuilder {
 
     public String getProperty(String key) {
       return properties.getProperty(key);
+    }
+
+    /**
+     * Immutable properties. Template values (if set) become defaults. 
+     * @return
+     */
+    public Map<String, String> getProperties() {
+      return Maps.fromProperties(properties);
     }
     
     public void addProperty(String key, String value) {
@@ -446,6 +455,17 @@ public class TopologyBuilder {
     if (!cycles.isEmpty()) {
       throw new IllegalStateException("Loops detected in the graph: " + cycles);
     }
+    
+    for (StreamConf s : streams.values()) {
+      if (s.getSourceNode() == null && s.getTargetNode() == null) {
+        throw new IllegalStateException(String.format("Source or target needs to be defined for stream %s", s.getId()));
+      } else if (s.getSourceNode() == null || s.getTargetNode() == null) {
+        if (s.getProperty(StreamConfiguration.STREAM_CLASSNAME) == null) {
+          throw new IllegalStateException(String.format("Property %s needs to be defined for adapter stream %s", StreamConfiguration.STREAM_CLASSNAME, s.getId()));
+        }
+      }
+    }
+    
   }
     
 }

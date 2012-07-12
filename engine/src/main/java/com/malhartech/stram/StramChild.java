@@ -8,7 +8,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -128,7 +127,7 @@ public class StramChild {
           streamConf.setLong(StreamConfiguration.WINDOW_SIZE_MILLIS, ctx.getWindowSizeMillis());
           if (sc.getSourceNodeId() == null) {
             // input adapter
-            InputAdapter stream = initStream(streamConf, Collections.<String, String>emptyMap());
+            InputAdapter stream = initStream(streamConf, sc.getProperties());
             LOG.debug("Created input adapter {}", sc.getId());
             this.inputAdapters.put(sc.getId(), stream);
             stream.setup(streamConf);
@@ -136,7 +135,7 @@ public class StramChild {
             this.streams.put(sc.getId(), stream);
           } else {
             // output adapter
-            Stream stream = initStream(streamConf, Collections.<String, String>emptyMap());
+            Stream stream = initStream(streamConf, sc.getProperties());
             stream.setup(streamConf);
             stream.setContext(new com.malhartech.dag.StreamContext(null)); // no sink
             this.streams.put(sc.getId(), stream);
@@ -259,8 +258,8 @@ public class StramChild {
   }
   
   public static void main(String[] args) throws Throwable {
-    LOG.debug("Child starting");
-
+    LOG.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
+    
     final Configuration defaultConf = new Configuration();
     // TODO: streaming node config
     //defaultConf.addResource(MRJobConfig.JOB_CONF_FILE);
@@ -342,6 +341,7 @@ public class StramChild {
   public static <T extends Stream> T initStream(Configuration conf, Map<String, String> properties) {
     String className = conf.get(StreamConfiguration.STREAM_CLASSNAME);
     if (className == null) {
+      // should have been caught during submit validation
       throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", StreamConfiguration.STREAM_CLASSNAME));
     }
     try {
@@ -350,7 +350,6 @@ public class StramChild {
       Constructor<? extends Stream> c = subClass.getConstructor();
       @SuppressWarnings("unchecked")
       T instance = (T)c.newInstance();
-      //DNode node = ReflectionUtils.newInstance(nodeClass, conf);
       // populate custom properties
       BeanUtils.populate(instance, properties);
       return instance;

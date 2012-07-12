@@ -5,6 +5,7 @@
 package com.malhartech.stram;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Definition of stream connecting 2 nodes either inline or via buffer server.
@@ -107,6 +108,19 @@ public class StreamContext extends StreamingNodeUmbilicalProtocol.WritableAdapte
   {
     this.bufferServerPort = bufferServerPort;
   }
+  
+  private Map<String, String> properties;
+
+  public Map<String, String> getProperties()
+  {
+    return properties;
+  }
+
+  public void setProperties(Map<String, String> properties)
+  {
+    this.properties = properties;
+  }
+  
   /**
    * Partition keys for dynamic partitioning. Key set is initially empty (after
    * topology initialization) and will be populated from node processing stats
@@ -127,4 +141,5 @@ public class StreamContext extends StreamingNodeUmbilicalProtocol.WritableAdapte
   {
     this.partitionKeys = partitionKeys;
   }
+    
 }

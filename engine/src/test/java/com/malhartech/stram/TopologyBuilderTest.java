@@ -21,6 +21,7 @@ import org.mortbay.log.Log;
 
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
@@ -142,7 +143,16 @@ public class TopologyBuilderTest {
       assertEquals("node4.myStringProperty", "overrideNode4", node4.getProperties().get("myStringProperty"));
       EchoNode dnode4 = (EchoNode)initNode(node4, new Configuration());
       assertEquals("node4.myStringProperty", "overrideNode4", dnode4.myStringProperty);
-      
+
+      StreamConf input1 = b.getOrAddStream("input1");
+      assertNotNull(input1);
+      assertEquals("n1n2 policy default", "defaultStreamPolicy", s1.getProperty("partitionPolicy"));
+      Assert.assertNull("input1 no source", input1.getSourceNode());
+      Assert.assertEquals("input1 target ", b.getOrAddNode("node1"), input1.getTargetNode());
+      assertEquals("input1.myConfigProperty", "myConfigPropertyValue", input1.getProperty("myConfigProperty"));
+      assertEquals("input1 classname", NumberGeneratorInputAdapter.class.getName(), input1.getProperty(StreamConfiguration.STREAM_CLASSNAME));
+      assertEquals("input1 properties count", 2, input1.getProperties().size());
+      b.validate();
   }
   
   @Test
