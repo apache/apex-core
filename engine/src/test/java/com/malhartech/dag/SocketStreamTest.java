@@ -108,7 +108,7 @@ public class SocketStreamTest
     oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
     synchronized (SocketStreamTest.this) {
-      SocketStreamTest.this.wait(2000);
+      SocketStreamTest.this.wait(5000);
     }
 
     Assert.assertEquals("Received messages", 1, messageCount.get());

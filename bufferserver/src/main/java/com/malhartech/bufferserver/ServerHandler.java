@@ -30,6 +30,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
           ChannelHandlerContext ctx, MessageEvent e)
   {
 
+    logger.log(Level.INFO, "======== entering current thread = {0}", Thread.currentThread());
     final Data data = (Data) e.getMessage();
 
     switch (data.getType()) {
@@ -58,13 +59,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
         }
         break;
     }
+    logger.log(Level.INFO, "========== leaving current thread = {0}", Thread.currentThread());
   }
 
   public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, long windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
-    logger.log(Level.INFO, "received publisher request: id=" + request.getIdentifier() + ", type=" + request.getType());
+    logger.log(Level.INFO, "received publisher request: id={0}, type={1}", new Object[]{request.getIdentifier(), request.getType()});
 
     DataList dl;
 
@@ -89,7 +91,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     String type = request.getType();
     String upstream_identifier = request.getUpstreamIdentifier();
     //String upstream_type = request.getUpstreamType();
-    logger.log(Level.INFO, "received subscriber request: id=" + request.getIdentifier() + ", type=" + request.getType() + ", upstreamId=" + request.getUpstreamIdentifier());
+    logger.log(Level.INFO, "received subscriber request: id={0}, type={1}, upstreamId={2}", new Object[]{request.getIdentifier(), request.getType(), request.getUpstreamIdentifier()});
 
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;

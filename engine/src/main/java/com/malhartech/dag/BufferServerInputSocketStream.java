@@ -4,12 +4,10 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.bufferserver.ClientHandler;
 import java.util.Collections;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.bufferserver.ClientHandler;
 
 public class BufferServerInputSocketStream extends InputSocketStream
 {

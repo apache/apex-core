@@ -65,11 +65,8 @@ public class LogicalNode implements DataListener
     partitions.add(partition);
   }
 
-  /*
-   * public void injectData(Data data) { for (Channel pn : physicalNodes) { if
-   * (policy.confirms(this, data)) { node.write(data); } } }
-   */
-  public void catchUp(long windowId)
+
+  public synchronized void catchUp(long windowId)
   {
     /*
      * fast forward to catch up with the windowId without consuming
@@ -78,7 +75,8 @@ public class LogicalNode implements DataListener
       Data data = iterator.next();
       if (data.getType() == Data.DataType.BEGIN_WINDOW) {
         if (data.getWindowId() >= windowId) {
-          policy.distribute(physicalNodes, data);
+          logger.log(Level.INFO, "catchup data {0} for window {1}", new Object[]{data.getType(), data.getWindowId()});
+          GiveAll.getInstance().distribute(physicalNodes, data);
           break;
         }
       }
@@ -89,7 +87,7 @@ public class LogicalNode implements DataListener
     }
   }
 
-  public void dataAdded(ByteBuffer partition)
+  public synchronized void dataAdded(ByteBuffer partition)
   {
     /*
      * consume as much data as you can before running out of steam
@@ -102,17 +100,20 @@ public class LogicalNode implements DataListener
       switch (data.getType()) {
         case PARTITIONED_DATA:
           if (partitions.contains(data.getPartitioneddata().getPartition().asReadOnlyByteBuffer())) {
+            logger.log(Level.INFO, "distribute partitioned data {0} for window {1}", new Object[]{data.getType(), data.getWindowId()});
             policy.distribute(physicalNodes, data);
           }
           break;
 
         case SIMPLE_DATA:
           if (partitions.isEmpty()) {
+            logger.log(Level.INFO, "distribute simple data {0} for window {1}", new Object[]{data.getType(), data.getWindowId()});
             policy.distribute(physicalNodes, data);
           }
           break;
 
         default:
+          logger.log(Level.INFO, "giveall data {0} for window {1}", new Object[]{data.getType(), data.getWindowId()});
           GiveAll.getInstance().distribute(physicalNodes, data);
           break;
       }
