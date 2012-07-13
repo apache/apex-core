@@ -4,21 +4,34 @@
  */
 package com.malhartech.stram;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
+import org.mortbay.log.Log;
+
 import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
-import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import static org.junit.Assert.*;
-import org.junit.Test;
-import org.mortbay.log.Log;
 
 public class TopologyBuilderTest {
 
@@ -146,7 +159,7 @@ public class TopologyBuilderTest {
       Assert.assertNull("input1 no source", input1.getSourceNode());
       Assert.assertEquals("input1 target ", b.getOrAddNode("node1"), input1.getTargetNode());
       assertEquals("input1.myConfigProperty", "myConfigPropertyValue", input1.getProperty("myConfigProperty"));
-      assertEquals("input1 classname", NumberGeneratorInputAdapter.class.getName(), input1.getProperty(StreamConfiguration.STREAM_CLASSNAME));
+      assertEquals("input1 classname", NumberGeneratorInputAdapter.class.getName(), input1.getProperty(TopologyBuilder.STREAM_CLASSNAME));
       assertEquals("input1 properties count", 2, input1.getProperties().size());
       b.validate();
   }
@@ -209,6 +222,21 @@ public class TopologyBuilderTest {
      
   }
   
+  @Test
+  public void testInitStream() {
+    Map<String, String> properties = new HashMap<String, String>();
+    properties.put(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestSerDe.class.getName());
+    properties.put(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
+    
+    NumberGeneratorInputAdapter s = StramChild.initStream(properties, new StreamConfiguration(), null);
+    Assert.assertNotNull("context serde", s.context.getSerDe());
+    Assert.assertEquals("context serde class", TestSerDe.class, s.context.getSerDe().getClass());
+    s.teardown();
+  }
+
+  public static class TestSerDe extends DefaultSerDe {
+    
+  }
   
   public static class EchoNode extends AbstractNode {
 

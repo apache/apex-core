@@ -15,7 +15,7 @@ import com.malhartech.stram.conf.ShipContainingJars;
  * Requires kryo and mockito in deployment
  */
 @ShipContainingJars (classes={Kryo.class, ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class})
-final public class DefaultSerDe implements SerDe
+public class DefaultSerDe implements SerDe
 {
   private Kryo kryo = new Kryo();
   private Output output = new Output(new byte[4096]);

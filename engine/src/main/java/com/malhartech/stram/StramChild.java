@@ -31,13 +31,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
-import com.malhartech.stream.BufferServerInputSocketStream;
-import com.malhartech.stream.BufferServerOutputSocketStream;
 import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.stream.InlineStream;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.SerDe;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
@@ -46,6 +44,10 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stream.BufferServerInputSocketStream;
+import com.malhartech.stream.BufferServerOutputSocketStream;
+import com.malhartech.stream.InlineStream;
 
 /**
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
@@ -345,10 +347,10 @@ public class StramChild {
   }
 
   public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode sink) {
-    String className = properties.get(StreamConfiguration.STREAM_CLASSNAME);
+    String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
     if (className == null) {
       // should have been caught during submit validation
-      throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", StreamConfiguration.STREAM_CLASSNAME));
+      throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", TopologyBuilder.STREAM_CLASSNAME));
     }
     try {
       Class<?> clazz = Class.forName(className);
@@ -361,7 +363,13 @@ public class StramChild {
       
       instance.setup(streamConf);
       com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(sink);
-      ctx.setSerde(new DefaultSerDe());
+      String serdeClassname = properties.get(TopologyBuilder.STREAM_SERDE_CLASSNAME);
+      if (serdeClassname != null) {
+        Class<? extends SerDe> serdeClass = Class.forName(serdeClassname).asSubclass(SerDe.class);
+        ctx.setSerde(serdeClass.newInstance());
+      } else {
+        ctx.setSerde(new DefaultSerDe());
+      }
       instance.setContext(ctx);
 
       return instance;

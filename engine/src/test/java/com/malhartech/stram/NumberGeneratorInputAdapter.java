@@ -18,7 +18,8 @@ public class NumberGeneratorInputAdapter extends AbstractInputObjectStream
       .getLogger(NumberGeneratorInputAdapter.class);
   private boolean shutdown = false;
   private String myConfigProperty;
-
+  StreamContext context;
+  
   public String getMyConfigProperty() {
     return myConfigProperty;
   }
@@ -34,6 +35,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputObjectStream
   @Override
   public void setContext(StreamContext context) {
     super.setContext(context);
+    this.context = context;
     Thread t = new Thread(this);
     t.start();
   }
