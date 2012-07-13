@@ -112,15 +112,42 @@ public class InlineStreamTest {
    */
   public static class PassThroughNode extends AbstractNode {
 
+    private boolean appendNodeId = false;
+
+    public boolean isAppendNodeId() {
+      return appendNodeId;
+    }
+
+    public void setAppendNodeId(boolean appendNodeId) {
+      LOG.info("appendNodeId=" + appendNodeId);
+      this.appendNodeId = appendNodeId;
+    }
+
+    private boolean logMessages = false;
+    
+    public boolean isLogMessages() {
+      return logMessages;
+    }
+
+    public void setLogMessages(boolean logMessages) {
+      this.logMessages = logMessages;
+    }
+
     public PassThroughNode(NodeContext ctx) {
       super(ctx);
     }
 
     @Override
     public void process(NodeContext context, StreamContext sc, Object o) {
+      if (appendNodeId) {
+        o = this.getContext().getId() + " > " + o;
+      }
       emit(o);
+      if (logMessages) {
+        LOG.info("emit: " + o);
+      }
     }
-
+    
   }
   
 }
