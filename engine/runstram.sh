@@ -10,5 +10,5 @@ HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/esotericsoftware/minlog/
 export HADOOP_CLASSPATH
 
 export HADOOP_CLIENT_OPTS="-Dstram.libjars=$DIR/target/stram-0.1-SNAPSHOT-tests.jar $HADOOP_OPTS"
-$HADOOP_PREFIX/bin/hadoop jar $JAR com.malhartech.stram.StramClient --debug --container_memory 64 --master_memory 256 --num_containers 2 --topologyProperties $DIR/src/test/resources/testTopology.properties
+$HADOOP_PREFIX/bin/hadoop jar $JAR com.malhartech.stram.StramClient --debug --container_memory 64 --master_memory 256 --num_containers 2 --topologyProperties $DIR/src/test/resources/clusterTestTopology.properties
 

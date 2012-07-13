@@ -358,7 +358,7 @@ public class StramChild {
       instance.setup(streamConf);
       com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(sink);
       ctx.setSerde(new DefaultSerDe());
-      instance.setContext(new com.malhartech.dag.StreamContext(sink));
+      instance.setContext(ctx);
 
       return instance;
     } catch (ClassNotFoundException e) {

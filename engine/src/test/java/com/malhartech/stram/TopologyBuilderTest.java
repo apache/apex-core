@@ -128,11 +128,13 @@ public class TopologyBuilderTest {
 
       EchoNode dnode3 = initNode(node3, new Configuration());
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", dnode3.myStringProperty);
+      assertFalse("node3.booleanProperty", dnode3.booleanProperty);
       
       NodeConf node4 = b.getOrAddNode("node4");
       assertEquals("node4.myStringProperty", "overrideNode4", node4.getProperties().get("myStringProperty"));
       EchoNode dnode4 = (EchoNode)initNode(node4, new Configuration());
       assertEquals("node4.myStringProperty", "overrideNode4", dnode4.myStringProperty);
+      assertTrue("node4.booleanProperty", dnode4.booleanProperty);
 
       StreamConf input1 = b.getOrAddStream("input1");
       assertNotNull(input1);
@@ -206,6 +208,8 @@ public class TopologyBuilderTest {
   
   public static class EchoNode extends AbstractNode {
 
+    boolean booleanProperty;
+    
     public EchoNode(NodeContext ctx) {
       super(ctx);
     }
@@ -218,6 +222,14 @@ public class TopologyBuilderTest {
 
     public void setMyStringProperty(String myStringProperty) {
       this.myStringProperty = myStringProperty;
+    }
+
+    public boolean isBooleanProperty() {
+      return booleanProperty;
+    }
+
+    public void setBooleanProperty(boolean booleanProperty) {
+      this.booleanProperty = booleanProperty;
     }
 
     @Override
