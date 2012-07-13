@@ -1,4 +1,8 @@
 /*
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
+ */
+/*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
