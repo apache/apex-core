@@ -20,7 +20,7 @@ import org.apache.hadoop.fs.Path;
 public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream implements Runnable
 {
 
-  private FSDataInputStream input;
+  protected FSDataInputStream input;
 
   @Override
   public void setup(StreamConfiguration config)

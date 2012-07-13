@@ -4,7 +4,10 @@
  */
 package com.malhartech.dag;
 
+import com.google.protobuf.ByteString;
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
 import java.util.Collection;
@@ -21,7 +24,6 @@ import org.apache.commons.lang.builder.ToStringStyle;
 public abstract class AbstractNode implements Node, Sink, Runnable
 {
 
-  private static int gorder = 0;
   private final HashSet<Sink> outputStreams = new HashSet<Sink>();
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
@@ -88,21 +90,49 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     return this;
   }
 
-  public void emit(Object o)
+  protected void emitControl()
   {
     for (Sink sink : outputStreams) {
-      Tuple t = new Tuple(o);
+      Tuple t = new Tuple(null);
       t.setData(ctx.getData());
+      sink.doSomething(t);
+    }
+  }
+
+  public void emit(Object o)
+  {
+    Data data = ctx.getData();
+    if (data.getType() != DataType.SIMPLE_DATA
+        && data.getType() != DataType.PARTITIONED_DATA) {
+      Data.Builder db = Data.newBuilder();
+      db.setType(Data.DataType.SIMPLE_DATA);
+      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).setWindowId(data.getWindowId());
+      data = db.build();
+    }
+
+    for (Sink sink : outputStreams) {
+      Tuple t = new Tuple(o);
+      t.setData(data);
       sink.doSomething(t);
     }
   }
 
   public void emitStream(Object o, Sink sink)
   {
+    Data data = ctx.getData();
+    if (data.getType() != DataType.SIMPLE_DATA
+        && data.getType() != DataType.PARTITIONED_DATA) {
+      Data.Builder db = Data.newBuilder();
+      db.setType(Data.DataType.SIMPLE_DATA);
+      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).setWindowId(data.getWindowId());
+      data = db.build();
+    }
+
     Tuple t = new Tuple(o);
-    t.setData(ctx.getData()); /*
+    /*
      * only wrapper is used; data is ignored
      */
+    t.setData(data);
     sink.doSomething(t);
   }
 
@@ -145,6 +175,8 @@ public abstract class AbstractNode implements Node, Sink, Runnable
     }
 
     return windowId;
+
+
   }
 
   final private class DataComparator implements Comparator<Tuple>
@@ -279,6 +311,8 @@ public abstract class AbstractNode implements Node, Sink, Runnable
         if (shouldWait) {
           try {
             inputQueue.wait();
+
+
           }
           catch (InterruptedException ex) {
             Logger.getLogger(AbstractNode.class.getName()).log(Level.SEVERE, null, ex);
@@ -291,13 +325,13 @@ public abstract class AbstractNode implements Node, Sink, Runnable
            */
           switch (t.getData().getType()) {
             case BEGIN_WINDOW:
-//              beginWindow(ctx);
-              emit(null);
+              beginWindow(ctx);
+              emitControl();
               break;
 
             case END_WINDOW:
-//              endWidndow(ctx);
-              emit(null);
+              endWidndow(ctx);
+              emitControl();
               break;
 
             default:

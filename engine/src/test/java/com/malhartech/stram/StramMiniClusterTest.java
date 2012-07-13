@@ -1,18 +1,13 @@
 package com.malhartech.stram;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import java.io.*;
 import java.net.URL;
 import java.util.List;
 import java.util.Properties;
-
 import junit.framework.Assert;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.JarFinder;
@@ -28,10 +23,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
 
 public class StramMiniClusterTest {
   
