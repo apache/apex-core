@@ -3,15 +3,8 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.stream.BufferServerOutputSocketStream;
-import com.malhartech.stream.BufferServerInputSocketStream;
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -114,6 +107,7 @@ public class SocketStreamTest
     oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0, ossContext));
     oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
+    oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1, ossContext));
     synchronized (SocketStreamTest.this) {
       if (messageCount.get() == 0) { // don't wait if already notified
         SocketStreamTest.this.wait(2000);
