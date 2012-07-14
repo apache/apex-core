@@ -375,12 +375,11 @@ public class StramChild
     }
   }
 
-  public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode node)
-  {
-    String className = properties.get(StreamConfiguration.STREAM_CLASSNAME);
+  public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode sink) {
+    String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
     if (className == null) {
       // should have been caught during submit validation
-      throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", StreamConfiguration.STREAM_CLASSNAME));
+      throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", TopologyBuilder.STREAM_CLASSNAME));
     }
     try {
       Class<?> clazz = Class.forName(className);
@@ -392,10 +391,14 @@ public class StramChild
       BeanUtils.populate(instance, properties);
 
       instance.setup(streamConf);
-      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
-      Sink sink = node.getSink(ctx);
-      ctx.setSink(sink);
-      ctx.setSerde(new DefaultSerDe());
+      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(sink);
+      String serdeClassname = properties.get(TopologyBuilder.STREAM_SERDE_CLASSNAME);
+      if (serdeClassname != null) {
+        Class<? extends SerDe> serdeClass = Class.forName(serdeClassname).asSubclass(SerDe.class);
+        ctx.setSerde(serdeClass.newInstance());
+      } else {
+        ctx.setSerde(new DefaultSerDe());
+      }
       instance.setContext(ctx);
 
       return instance;

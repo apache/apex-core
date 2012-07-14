@@ -18,10 +18,6 @@ public class StreamConfiguration extends Configuration
   public static final String START_WINDOW_MILLIS = "startWindowsMillis";
   public static final String WINDOW_SIZE_MILLIS = "windowSizeMillis";
 
-  /**
-   * Stream class name, required for input/output adapter
-   */
-  public static final String STREAM_CLASSNAME = "classname";
   
   public InetSocketAddress getBufferServerAddress()
   {
