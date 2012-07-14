@@ -82,7 +82,8 @@ public class SocketStreamTest
     SerDe serde = new DefaultSerDe();
 
 
-    StreamContext issContext = new StreamContext(sink);
+    StreamContext issContext = new StreamContext();
+    issContext.setSink(sink);
     issContext.setSerde(serde);
 
     String streamName = "streamName"; // AKA "type"
@@ -98,7 +99,8 @@ public class SocketStreamTest
     System.out.println("input stream ready");
 
     BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();
-    StreamContext ossContext = new StreamContext(null);
+    StreamContext ossContext = new StreamContext();
+    
     ossContext.setSerde(serde);
     oss.setup(sconf);
     oss.setContext(ossContext, upstreamNodeId, streamName);

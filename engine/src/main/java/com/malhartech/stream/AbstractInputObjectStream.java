@@ -68,7 +68,7 @@ public abstract class AbstractInputObjectStream implements InputAdapter
     return t;
   }
 
-  public void beginWindow(long timemillis)
+  public synchronized void beginWindow(long timemillis)
   {
     Data.Builder db = Data.newBuilder();
     db.setWindowId(timemillis);
@@ -87,7 +87,7 @@ public abstract class AbstractInputObjectStream implements InputAdapter
     context.getSink().doSomething(t);
   }
 
-  public void endWindow(long timemillis)
+  public synchronized void endWindow(long timemillis)
   {
     Data.Builder db = Data.newBuilder();
     db.setWindowId(timemillis);

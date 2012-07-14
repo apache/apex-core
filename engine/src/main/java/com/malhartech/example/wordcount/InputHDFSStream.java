@@ -7,7 +7,8 @@ package com.malhartech.example.wordcount;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stream.AbstractInputHDFSStream;
 import java.util.Scanner;
-import org.apache.hadoop.fs.FSDataInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -16,6 +17,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 public class InputHDFSStream extends AbstractInputHDFSStream
 {
 
+  private static final Logger logger = LoggerFactory.getLogger(InputHDFSStream.class);
   Scanner scanner = null;
 
   @Override
@@ -32,8 +34,11 @@ public class InputHDFSStream extends AbstractInputHDFSStream
       WordHolder wh = new WordHolder();
       wh.word = scanner.next();
       wh.count = 1;
+      logger.debug("getObject called returning " + wh.word);
       return wh;
     }
+
+    logger.debug("getObject called returning null");
 
     return null;
   }
