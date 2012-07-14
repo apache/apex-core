@@ -12,6 +12,7 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stream.BufferServerInputSocketStream;
 import com.malhartech.stream.BufferServerOutputSocketStream;
 import com.malhartech.stream.InlineStream;
@@ -375,7 +376,7 @@ public class StramChild
     }
   }
 
-  public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode sink) {
+  public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode node) {
     String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
     if (className == null) {
       // should have been caught during submit validation
@@ -391,7 +392,10 @@ public class StramChild
       BeanUtils.populate(instance, properties);
 
       instance.setup(streamConf);
-      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(sink);
+      
+      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
+      ctx.setSink(node.getSink(ctx));
+      
       String serdeClassname = properties.get(TopologyBuilder.STREAM_SERDE_CLASSNAME);
       if (serdeClassname != null) {
         Class<? extends SerDe> serdeClass = Class.forName(serdeClassname).asSubclass(SerDe.class);
