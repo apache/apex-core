@@ -19,11 +19,12 @@ import org.slf4j.LoggerFactory;
  */
 public class CounterNode extends AbstractNode
 {
+
   private static final Logger logger = LoggerFactory.getLogger(CounterNode.class);
-  
   private HashMap<String, Integer> words = new HashMap<String, Integer>();
   private boolean windowed; // if true the node should clear tuples at window boundary
   private boolean shutdown;
+  private boolean flagUp;
 
   public CounterNode(NodeContext ctx)
   {
@@ -43,7 +44,7 @@ public class CounterNode extends AbstractNode
     logger.debug("teardown called!");
     if (!windowed) {
       logger.debug("sinking " + words.size() + " words");
-              
+
       for (Entry<String, Integer> entry : words.entrySet()) {
         emit(entry.getKey() + "\t" + entry.getValue() + "\n");
       }
@@ -56,24 +57,24 @@ public class CounterNode extends AbstractNode
     logger.debug("returning shutdown = " + shutdown);
     return shutdown;
   }
-  
+
   @Override
   public void process(NodeContext context, StreamContext streamContext, Object payload)
   {
     WordHolder wh = (WordHolder) payload;
-    if (wh == null) {
-      logger.debug("process called with null data");
-      shutdown = true;
+    if (wh.count == 0) {
+      logger.debug("will shutdown at the end of the window");
+      flagUp = true;
+    }
+
+    logger.debug("process called with word " + wh.word + " and count = " + wh.count);
+    Integer i = words.get(wh.word);
+    if (i == null) {
+      words.put(wh.word, new Integer(wh.count));
     }
     else {
-      logger.debug("process called with word " + wh.word + " and count = " + wh.count);
-      Integer i = words.get(wh.word);
-      if (i == null) {
-        words.put(wh.word, new Integer(wh.count));
-      }
-      else {
-        i++;
-      }
+      words.put(wh.word, i + wh.count);
+      logger.debug("counter increased by " + wh.count + " to " + words.get(wh.word) + " for #" + wh.word + "#");
     }
   }
 
@@ -98,6 +99,11 @@ public class CounterNode extends AbstractNode
         logger.debug("emitting " + wh.word + " with count = " + wh.count);
         emit(wh);
       }
+    }
+
+    if (flagUp) {
+      logger.debug("setting shutdown true");
+      shutdown = true;
     }
   }
 }

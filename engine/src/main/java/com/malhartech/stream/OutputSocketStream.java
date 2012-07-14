@@ -11,11 +11,7 @@ import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.PartitionedData;
 import com.malhartech.bufferserver.Buffer.SimpleData;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import com.malhartech.netty.ClientPipelineFactory;
 import java.util.concurrent.Executors;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -23,6 +19,8 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.SimpleChannelDownstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -31,6 +29,7 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 public class OutputSocketStream extends SimpleChannelDownstreamHandler implements Sink, Stream
 {
 
+  private static Logger LOG = LoggerFactory.getLogger(OutputSocketStream.class);
   private StreamContext context;
   private ClientBootstrap bootstrap;
   protected Channel channel;
@@ -41,14 +40,17 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
     switch (data.getType()) {
       case BEGIN_WINDOW:
+        LOG.debug("received tuple for begin window");
         break;
 
       case END_WINDOW:
+        LOG.debug("received tuple for end window");
         break;
 
 
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
+        LOG.debug("received tuple for object " + t.getObject());
         Data.Builder db = Data.newBuilder();
         db.setWindowId(t.getData().getWindowId());
 
@@ -68,7 +70,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
           db.setType(Data.DataType.PARTITIONED_DATA);
           db.setPartitioneddata(pdb);
         }
-        
+
         data = db.build();
         break;
 
@@ -76,6 +78,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
         throw new UnsupportedOperationException("this data type is not handled in the stream");
     }
 
+    LOG.debug(data.toString());
     channel.write(data);
   }
 
@@ -86,6 +89,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
   public void setup(StreamConfiguration config)
   {
+    LOG.info("setup called to talk to " + config.getBufferServerAddress());
     bootstrap = new ClientBootstrap(
             new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
                                               Executors.newCachedThreadPool()));
@@ -95,8 +99,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
     // Make a new connection.
     ChannelFuture future = bootstrap.connect(config.getBufferServerAddress());
-    future.awaitUninterruptibly();
-    channel = future.getChannel();
+    channel = future.awaitUninterruptibly().getChannel();
   }
 
   public void setContext(com.malhartech.dag.StreamContext context)
@@ -107,6 +110,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
   public void teardown()
   {
+    LOG.info("teardown called.");
     channel.close();
     channel.getCloseFuture().awaitUninterruptibly();
     bootstrap.releaseExternalResources();

@@ -20,6 +20,17 @@ public class InputHDFSStream extends AbstractInputHDFSStream
   private static final Logger logger = LoggerFactory.getLogger(InputHDFSStream.class);
   Scanner scanner = null;
 
+  /*
+   * hack to signify the end of job. Later we introduce appropriate message.
+   */
+  WordHolder finalword;
+  public InputHDFSStream()
+  {
+      finalword = new WordHolder();
+      finalword.word = "";
+      finalword.count = 0;
+  }
+  
   @Override
   public void setup(StreamConfiguration config)
   {
@@ -34,12 +45,11 @@ public class InputHDFSStream extends AbstractInputHDFSStream
       WordHolder wh = new WordHolder();
       wh.word = scanner.next();
       wh.count = 1;
-      logger.debug("getObject called returning " + wh.word);
       return wh;
     }
-
-    logger.debug("getObject called returning null");
-
-    return null;
+    
+    WordHolder temp = finalword;
+    finalword = null;
+    return temp;
   }
 }

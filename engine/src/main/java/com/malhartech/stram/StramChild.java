@@ -153,9 +153,13 @@ public class StramChild
           this.streams.put(sc.getId(), stream);
         }
         else {
+          AbstractNode source = nodeList.get(sc.getSourceNodeId());
+
           // output adapter
           Stream stream = initStream(sc.getProperties(), streamConf, null); // no sink
           this.streams.put(sc.getId(), stream);
+          source.addSink((Sink) stream);
+
         }
 
       }
@@ -170,6 +174,7 @@ public class StramChild
         public void run()
         {
           node.run();
+          node.teardown();
           // processing has ended
           activeNodeList.remove(node.getContext().getId());
         }
@@ -376,7 +381,8 @@ public class StramChild
     }
   }
 
-  public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode node) {
+  public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode node)
+  {
     String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
     if (className == null) {
       // should have been caught during submit validation
@@ -392,15 +398,21 @@ public class StramChild
       BeanUtils.populate(instance, properties);
 
       instance.setup(streamConf);
-      
+
       com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
-      ctx.setSink(node.getSink(ctx));
-      
+      if (node != null) {
+        /*
+         * no sink for the output streams.
+         */
+        ctx.setSink(node.getSink(ctx));
+      }
+
       String serdeClassname = properties.get(TopologyBuilder.STREAM_SERDE_CLASSNAME);
       if (serdeClassname != null) {
         Class<? extends SerDe> serdeClass = Class.forName(serdeClassname).asSubclass(SerDe.class);
         ctx.setSerde(serdeClass.newInstance());
-      } else {
+      }
+      else {
         ctx.setSerde(new DefaultSerDe());
       }
       instance.setContext(ctx);

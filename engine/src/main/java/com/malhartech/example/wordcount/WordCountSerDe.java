@@ -34,4 +34,14 @@ public class WordCountSerDe extends DefaultSerDe
     
     return defaultPartition;
   }
+  
+  @Override
+  public byte[] toByteArray(Object o)
+  {
+    if (o instanceof String) {
+      return ((String)o).getBytes();
+    }
+    
+    return super.toByteArray(o);
+  }
 }

@@ -11,8 +11,10 @@ package com.malhartech.dag;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer;
+import com.malhartech.bufferserver.Buffer.BeginWindow;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.EndWindow;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
 import java.util.Collection;
@@ -33,6 +35,11 @@ public abstract class AbstractNode implements Node, Runnable
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
+  
+      // emitted tuples are screwed up so this property should be set with the 
+    // stream instead of with the node.
+
+  private long emittedTuples = 0;
 
   public AbstractNode(NodeContext ctx)
   {
@@ -107,11 +114,38 @@ public abstract class AbstractNode implements Node, Runnable
 
   protected void emitControl()
   {
+    Data.DataType type = ctx.getData().getType();
+
+    Data.Builder data = Data.newBuilder();
+    data.setType(type);
+    data.setWindowId(ctx.getData().getWindowId());
+    switch (type) {
+      case BEGIN_WINDOW:
+        BeginWindow.Builder b = BeginWindow.newBuilder();
+        b.setNode(ctx.getId());
+        data.setBeginwindow(b);
+        break;
+        
+      case END_WINDOW:
+        EndWindow.Builder e  = EndWindow.newBuilder();
+        e.setNode(ctx.getId());
+        e.setTupleCount(emittedTuples);
+        data.setEndwindow(e);
+        break;
+        
+      default:
+        logger.info("found unexpected data type " + type);
+    }
+    
     for (Sink sink : outputStreams) {
       Tuple t = new Tuple(null);
-      t.setData(ctx.getData());
+      t.setData(data.build());
       sink.doSomething(t);
     }
+        // emitted tuples are screwed up so this property should be set with the 
+    // stream instead of with the node.
+
+    emittedTuples = 0;
   }
 
   public void emit(Object o)
@@ -130,6 +164,10 @@ public abstract class AbstractNode implements Node, Runnable
       t.setData(data);
       sink.doSomething(t);
     }
+        // emitted tuples are screwed up so this property should be set with the 
+    // stream instead of with the node.
+
+    emittedTuples++;
   }
 
   public void emitStream(Object o, Sink sink)
@@ -149,6 +187,9 @@ public abstract class AbstractNode implements Node, Runnable
      */
     t.setData(data);
     sink.doSomething(t);
+    
+    // emitted tuples are screwed up so this property should be set with the 
+    // stream instead of with the node.
   }
 
   public void addSink(Sink sink)
@@ -316,7 +357,7 @@ public abstract class AbstractNode implements Node, Runnable
                   && d.getWindowId() == currentWindow) {
                 tupleCount++;
                 inputQueue.poll();
-                logger.debug("plucking the simple data");
+                logger.debug("@@plucked the simple data - " + t.object);
                 shouldWait = false;
               }
               else if (d.getType() == Data.DataType.PARTITIONED_DATA
