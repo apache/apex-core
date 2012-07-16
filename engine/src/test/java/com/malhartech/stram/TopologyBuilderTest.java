@@ -229,8 +229,8 @@ public class TopologyBuilderTest {
     properties.put(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
     
     NumberGeneratorInputAdapter s = StramChild.initStream(properties, new StreamConfiguration(), null);
-    Assert.assertNotNull("context serde", s.context.getSerDe());
-    Assert.assertEquals("context serde class", TestSerDe.class, s.context.getSerDe().getClass());
+    Assert.assertNotNull("context serde", s.getContext().getSerDe());
+    Assert.assertEquals("context serde class", TestSerDe.class, s.getContext().getSerDe().getClass());
     s.teardown();
   }
 
