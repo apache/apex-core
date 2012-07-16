@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Requires kryo and mockito in deployment
  */
-@ShipContainingJars (classes={Kryo.class, ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class})
+@ShipContainingJars (classes={Kryo.class, ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultSerDe implements SerDe
 {
   private static final Logger logger = LoggerFactory.getLogger(DefaultSerDe.class);
@@ -27,17 +27,14 @@ public class DefaultSerDe implements SerDe
   public Object fromByteArray(byte[] bytes)
   {
     input.setBuffer(bytes);
-    Object o = kryo.readClassAndObject(input);
-    return o;
+    return kryo.readClassAndObject(input);
   }
 
   public byte[] toByteArray(Object o)
   {
     output.setPosition(0);
     kryo.writeClassAndObject(output, o);
-    byte[] bytes = output.toBytes();
-    logger.info("~~~~~~ toByteArray length = " + bytes.length);  
-    return bytes;
+    return output.toBytes();
   }
 
   public byte[] getPartition(Object o)

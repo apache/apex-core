@@ -64,7 +64,7 @@ public abstract class AbstractNode implements Node, Runnable
   }
 
   @Override
-  public void endWidndow(NodeContext context)
+  public void endWindow(NodeContext context)
   {
   }
 
@@ -93,12 +93,6 @@ public abstract class AbstractNode implements Node, Runnable
 
     public void doSomething(Tuple t)
     {
-      if (t.getData() == null) {
-        logger.debug("do something called with null data");
-      }
-      else {
-        logger.debug("do something called with tuple data " + t.getData().getType());
-      }
       synchronized (inputQueue) {
         inputQueue.add(t);
         inputQueue.notify();
@@ -306,22 +300,17 @@ public abstract class AbstractNode implements Node, Runnable
 
     while (alive && !shouldShutdown()) {
       Tuple t = null;
-      logger.debug("reading input queue " + currentWindow);
       synchronized (inputQueue) {
         if ((t = inputQueue.peek()) == null) {
-          logger.debug("input queue is empty");
           shouldWait = true;
         }
         else {
-          logger.debug("found data");
           Data d = t.getData();
           switch (d.getType()) {
             case BEGIN_WINDOW:
-              logger.debug("begin window");
               if (canStartNewWindow == 0) {
                 tupleCount = 0;
                 canStartNewWindow = inputStreams.size();
-                logger.debug("plucking the begin window " + canStartNewWindow);
                 inputQueue.poll();
                 currentWindow = d.getWindowId();
                 shouldWait = false;
@@ -335,14 +324,11 @@ public abstract class AbstractNode implements Node, Runnable
               break;
 
             case END_WINDOW:
-              logger.debug("end window");
               if (d.getWindowId() == currentWindow
                   && d.getEndwindow().getTupleCount() <= tupleCount) {
-                logger.debug("end wundow tuplecount = " + d.getEndwindow().getTupleCount() + " tuples = " + tupleCount);
                 tupleCount -= d.getEndwindow().getTupleCount();
                 if (tupleCount == 0) {
                   canStartNewWindow--;
-                  logger.debug("plucking the end window " + canStartNewWindow);
                   inputQueue.poll();
                   shouldWait = false;
                 }
@@ -357,14 +343,12 @@ public abstract class AbstractNode implements Node, Runnable
                   && d.getWindowId() == currentWindow) {
                 tupleCount++;
                 inputQueue.poll();
-                logger.debug("@@plucked the simple data - " + t.object);
                 shouldWait = false;
               }
               else if (d.getType() == Data.DataType.PARTITIONED_DATA
                        && d.getWindowId() == currentWindow) {
                 tupleCount++;
                 inputQueue.poll();
-                logger.debug("plucking the partitioned data");
                 shouldWait = false;
               }
               else {
@@ -374,7 +358,6 @@ public abstract class AbstractNode implements Node, Runnable
           }
         }
 
-        logger.debug("currentwindow = " + currentWindow + " should wait = " + shouldWait + " tuples = " + tupleCount);
         if (shouldWait) {
           try {
             inputQueue.wait();
@@ -395,7 +378,7 @@ public abstract class AbstractNode implements Node, Runnable
               break;
 
             case END_WINDOW:
-              endWidndow(ctx);
+              endWindow(ctx);
               emitControl();
               break;
 
@@ -403,7 +386,6 @@ public abstract class AbstractNode implements Node, Runnable
               // process payload
               process(ctx, t.getContext(), t.getObject());
               // update heartbeat counters;
-              logger.debug("processed called for " + t.getObject());
               ctx.countProcessed(t);
               break;
           }

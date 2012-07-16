@@ -35,16 +35,12 @@ public class CounterNode extends AbstractNode
   public void setup(NodeConfiguration config)
   {
     windowed = config.getBoolean("windowed", true);
-    logger.debug("setup called here TTTT " + windowed);
   }
 
   @Override
   public void teardown()
   {
-    logger.debug("teardown called!");
     if (!windowed) {
-      logger.debug("sinking " + words.size() + " words");
-
       for (Entry<String, Integer> entry : words.entrySet()) {
         emit(entry.getKey() + "\t" + entry.getValue() + "\n");
       }
@@ -54,7 +50,6 @@ public class CounterNode extends AbstractNode
   @Override
   public boolean shouldShutdown()
   {
-    logger.debug("returning shutdown = " + shutdown);
     return shutdown;
   }
 
@@ -63,46 +58,40 @@ public class CounterNode extends AbstractNode
   {
     WordHolder wh = (WordHolder) payload;
     if (wh.count == 0) {
-      logger.debug("will shutdown at the end of the window");
+      logger.info("finalword received, so would shutdown on completion of this window");
       flagUp = true;
     }
 
-    logger.debug("process called with word " + wh.word + " and count = " + wh.count);
     Integer i = words.get(wh.word);
     if (i == null) {
       words.put(wh.word, new Integer(wh.count));
     }
     else {
       words.put(wh.word, i + wh.count);
-      logger.debug("counter increased by " + wh.count + " to " + words.get(wh.word) + " for #" + wh.word + "#");
     }
   }
 
   @Override
   public void beginWindow(NodeContext context)
   {
-    logger.debug("begin down called when window = " + windowed);
     if (windowed) {
       words.clear();
     }
   }
 
   @Override
-  public void endWidndow(NodeContext context)
+  public void endWindow(NodeContext context)
   {
-    logger.debug("endwindow called with " + words.size() + " entries and windowed = " + windowed);
     if (windowed) {
       for (Entry<String, Integer> entry : words.entrySet()) {
         WordHolder wh = new WordHolder();
         wh.word = entry.getKey();
         wh.count = entry.getValue();
-        logger.debug("emitting " + wh.word + " with count = " + wh.count);
         emit(wh);
       }
     }
 
     if (flagUp) {
-      logger.debug("setting shutdown true");
       shutdown = true;
     }
   }

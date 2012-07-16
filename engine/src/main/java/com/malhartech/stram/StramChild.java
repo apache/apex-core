@@ -111,6 +111,8 @@ public class StramChild
           Sink sink = targetNode.getSink(streamContext);
           streamContext.setSink(sink);
         }
+        streamContext.setSerde(new DefaultSerDe());
+        streamContext.setWindowId(ctx.getStartWindowMillis());
 
         StreamConfiguration streamConf = new StreamConfiguration();
         streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));

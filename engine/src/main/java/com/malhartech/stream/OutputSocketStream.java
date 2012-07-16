@@ -29,9 +29,9 @@ import org.slf4j.LoggerFactory;
 public class OutputSocketStream extends SimpleChannelDownstreamHandler implements Sink, Stream
 {
 
-  private static Logger LOG = LoggerFactory.getLogger(OutputSocketStream.class);
+  private static Logger logger = LoggerFactory.getLogger(OutputSocketStream.class);
   private StreamContext context;
-  private ClientBootstrap bootstrap;
+  protected ClientBootstrap bootstrap;
   protected Channel channel;
 
   public void doSomething(Tuple t)
@@ -40,17 +40,14 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
     switch (data.getType()) {
       case BEGIN_WINDOW:
-        LOG.debug("received tuple for begin window");
         break;
 
       case END_WINDOW:
-        LOG.debug("received tuple for end window");
         break;
 
 
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
-        LOG.debug("received tuple for object " + t.getObject());
         Data.Builder db = Data.newBuilder();
         db.setWindowId(t.getData().getWindowId());
 
@@ -78,7 +75,6 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
         throw new UnsupportedOperationException("this data type is not handled in the stream");
     }
 
-    LOG.debug(data.toString());
     channel.write(data);
   }
 
@@ -89,7 +85,6 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
   public void setup(StreamConfiguration config)
   {
-    LOG.info("setup called to talk to " + config.getBufferServerAddress());
     bootstrap = new ClientBootstrap(
             new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
                                               Executors.newCachedThreadPool()));
@@ -107,12 +102,17 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
     this.context = context;
     // send publisher request
   }
+  
+  public StreamContext getContext()
+  {
+    return context;
+  }
 
   public void teardown()
   {
-    LOG.info("teardown called.");
     channel.close();
     channel.getCloseFuture().awaitUninterruptibly();
     bootstrap.releaseExternalResources();
   }
+
 }
