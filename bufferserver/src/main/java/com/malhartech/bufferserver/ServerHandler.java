@@ -29,8 +29,6 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   public void messageReceived(
           ChannelHandlerContext ctx, MessageEvent e)
   {
-
-    logger.log(Level.INFO, "======== entering current thread = {0}", Thread.currentThread());
     final Data data = (Data) e.getMessage();
 
     switch (data.getType()) {
@@ -54,12 +52,10 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
           logger.log(Level.INFO, "Attempt to send data w/o talking protocol");
         }
         else {
-          logger.log(Level.INFO, "Sent {0} packet", data.getType());
           dl.add(data);
         }
         break;
     }
-    logger.log(Level.INFO, "========== leaving current thread = {0}", Thread.currentThread());
   }
 
   public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, long windowId)
