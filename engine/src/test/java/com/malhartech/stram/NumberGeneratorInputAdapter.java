@@ -6,12 +6,12 @@ package com.malhartech.stram;
 
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
-import com.malhartech.stream.AbstractInputObjectStream;
+import com.malhartech.stream.AbstractObjectInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class NumberGeneratorInputAdapter extends AbstractInputObjectStream
+public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
     implements Runnable {
   private static Logger LOG = LoggerFactory
       .getLogger(NumberGeneratorInputAdapter.class);

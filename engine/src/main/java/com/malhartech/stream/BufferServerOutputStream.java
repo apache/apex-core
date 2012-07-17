@@ -9,9 +9,9 @@ import com.malhartech.dag.StreamContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BufferServerOutputSocketStream extends OutputSocketStream
+public class BufferServerOutputStream extends SocketOutputStream
 {
-  private static Logger LOG = LoggerFactory.getLogger(BufferServerOutputSocketStream.class);
+  private static Logger LOG = LoggerFactory.getLogger(BufferServerOutputStream.class);
 
   public void setContext(StreamContext context, String upstreamNodeId, String streamLogicalName)
   {

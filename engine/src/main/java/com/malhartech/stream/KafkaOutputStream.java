@@ -16,7 +16,7 @@ import kafka.javaapi.producer.Producer;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class OutputKafkaStream
+public class KafkaOutputStream
         implements Stream, Sink
 {
 

@@ -24,8 +24,8 @@ import kafka.message.Message;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class InputKafkaStream
-        extends AbstractInputObjectStream
+public class KafkaInputStream
+        extends AbstractObjectInputStream
         implements Runnable
 {
 

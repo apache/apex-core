@@ -46,8 +46,8 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerCon
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stream.BufferServerInputSocketStream;
-import com.malhartech.stream.BufferServerOutputSocketStream;
+import com.malhartech.stream.BufferServerInputStream;
+import com.malhartech.stream.BufferServerOutputStream;
 import com.malhartech.stream.InlineStream;
 
 
@@ -131,7 +131,7 @@ public class StramChild
         if (sourceNode != null) {
           // setup output stream as sink for source node
           LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
-          BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();
+          BufferServerOutputStream oss = new BufferServerOutputStream();
           oss.setup(streamConf);
           oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
           sourceNode.addSink(oss);
@@ -140,7 +140,7 @@ public class StramChild
         if (targetNode != null) {
           // setup input stream for target node
           LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
-          BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
+          BufferServerInputStream iss = new BufferServerInputStream();
           iss.setup(streamConf);
           List<String> partitions = Collections.emptyList();
           if (sc.getPartitionKeys() != null) {

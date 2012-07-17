@@ -19,7 +19,7 @@ import com.malhartech.dag.Tuple;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputObjectStream implements InputAdapter
+public abstract class AbstractObjectInputStream implements InputAdapter
 {
 
   protected StreamContext context = null;
