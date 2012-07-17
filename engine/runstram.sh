@@ -49,15 +49,14 @@ HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/esotericsoftware/kryo/kr
 HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/org/mockito/mockito-all/1.8.5/mockito-all-1.8.5.jar
 HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/esotericsoftware/minlog/minlog/1.2/minlog-1.2.jar
 
-export HADOOP_CLASSPATH
-export HADOOP_CLIENT_OPTS=" $HADOOP_OPTS"
+export HADOOP_CLIENT_OPTS="$HADOOP_OPTS"
 
 PROJECT=$1
 JAR="$PROJECT/target/*.jar"
 pick_one "$JAR" JAR
+export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$JAR
 
 TPLG="$PROJECT/src/main/resources/*.tplg.properties $PROJECT/src/test/resources/*.tplg.properties"
 pick_one "$TPLG" TPLG
 
-$HADOOP_PREFIX/bin/hadoop jar "$JAR" com.malhartech.stram.StramClient --debug --container_memory 64 --master_memory 256 --num_containers 2 --topologyProperties "$TPLG"
-
+$HADOOP_PREFIX/bin/hadoop com.malhartech.stram.StramClient --debug --container_memory 64 --master_memory 256 --num_containers 2 --topologyProperties "$TPLG"
