@@ -271,7 +271,7 @@ public class DNodeManager {
         } 
       }
     } else {
-      // adapters
+      // adapters - TOD0: inline connection to source/target does not work with partitioning
       if (streamConf.getSourceNode() == null) {
         // input adapter, need implementation class
         Map<String, StreamingNodeContext> subscribers = getPhysicalNodes(streamConf.getTargetNode());
