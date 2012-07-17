@@ -47,7 +47,6 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     }
     else {
       Data d = (Data) e.getMessage();
-      logger.log(Level.INFO, "received {0} with windowid {1}", new Object[]{d.getType(), d.getWindowId()});
 
       Object o;
       if (d.getType() == Data.DataType.SIMPLE_DATA) {

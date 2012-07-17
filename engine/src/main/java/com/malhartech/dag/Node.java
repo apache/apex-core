@@ -12,7 +12,7 @@ package com.malhartech.dag;
 public interface Node extends DAGPart<NodeConfiguration, NodeContext> {
     public void setup(NodeConfiguration config);
     public void beginWindow(NodeContext context);
-    public void endWidndow(NodeContext context);
+    public void endWindow(NodeContext context);
     public void process(NodeContext context,  StreamContext streamContext, Object payload);
     public void teardown();
 }

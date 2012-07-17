@@ -4,18 +4,12 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -25,6 +19,7 @@ public class OutputHDFSStream
         implements Stream, Sink
 {
 
+  private static org.slf4j.Logger LOG = LoggerFactory.getLogger(OutputHDFSStream.class);
   private StreamContext context;
   private FSDataOutputStream output;
 
@@ -49,7 +44,7 @@ public class OutputHDFSStream
       }
     }
     catch (IOException ex) {
-      Logger.getLogger(AbstractInputHDFSStream.class.getName()).log(Level.SEVERE, null, ex);
+      LOG.info("", ex);
     }
 
   }
@@ -68,7 +63,7 @@ public class OutputHDFSStream
       output = null;
     }
     catch (IOException ex) {
-      Logger.getLogger(OutputHDFSStream.class.getName()).log(Level.SEVERE, null, ex);
+      LOG.info("", ex);
     }
   }
 
@@ -78,14 +73,19 @@ public class OutputHDFSStream
     switch (t.getData().getType()) {
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
+        LOG.debug("writing out " + t.getObject());
         SerDe serde = context.getSerDe();
         byte[] serialized = serde.toByteArray(t.getObject());
         try {
           output.write(serialized);
         }
         catch (IOException ex) {
-          Logger.getLogger(OutputHDFSStream.class.getName()).log(Level.SEVERE, null, ex);
+          LOG.info("", ex);
         }
+        break;
+
+      default:
+        LOG.debug("ignoring tuple of the type " + t.getData().getType());
         break;
     }
   }

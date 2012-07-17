@@ -11,11 +11,7 @@ import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.PartitionedData;
 import com.malhartech.bufferserver.Buffer.SimpleData;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import com.malhartech.netty.ClientPipelineFactory;
 import java.util.concurrent.Executors;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -23,6 +19,8 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.SimpleChannelDownstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -31,8 +29,9 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 public class OutputSocketStream extends SimpleChannelDownstreamHandler implements Sink, Stream
 {
 
+  private static Logger logger = LoggerFactory.getLogger(OutputSocketStream.class);
   private StreamContext context;
-  private ClientBootstrap bootstrap;
+  protected ClientBootstrap bootstrap;
   protected Channel channel;
 
   public void doSomething(Tuple t)
@@ -68,7 +67,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
           db.setType(Data.DataType.PARTITIONED_DATA);
           db.setPartitioneddata(pdb);
         }
-        
+
         data = db.build();
         break;
 
@@ -95,14 +94,18 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
     // Make a new connection.
     ChannelFuture future = bootstrap.connect(config.getBufferServerAddress());
-    future.awaitUninterruptibly();
-    channel = future.getChannel();
+    channel = future.awaitUninterruptibly().getChannel();
   }
 
   public void setContext(com.malhartech.dag.StreamContext context)
   {
     this.context = context;
     // send publisher request
+  }
+  
+  public StreamContext getContext()
+  {
+    return context;
   }
 
   public void teardown()
@@ -111,4 +114,5 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
     channel.getCloseFuture().awaitUninterruptibly();
     bootstrap.releaseExternalResources();
   }
+
 }

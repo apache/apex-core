@@ -15,21 +15,10 @@ import org.apache.hadoop.conf.Configuration;
 public class StreamConfiguration extends Configuration
 {
   public static final String SERVER_ADDRESS = "bufferserver";
-  public static final String START_WINDOW_MILLIS = "startWindowsMillis";
-  public static final String WINDOW_SIZE_MILLIS = "windowSizeMillis";
-
   
   public InetSocketAddress getBufferServerAddress()
   {
     return this.getSocketAddr(SERVER_ADDRESS, "localhost", Server.DEFAULT_PORT);
   }
 
-  public long getWindowSizeMillis() {
-    return this.getLong(WINDOW_SIZE_MILLIS, 0);
-  }
-  
-  public long getStartWindowMillis() {
-    return this.getLong(START_WINDOW_MILLIS, 0);
-  }
-  
 }

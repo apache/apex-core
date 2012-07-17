@@ -72,6 +72,11 @@ public class DNodeManager {
 
   public DNodeManager(TopologyBuilder topology) {
       addNodes(topology.getAllNodes().values());
+      
+      /*
+       * try to align to it pleases eyes.
+       */
+      windowStartMillis -= (windowStartMillis % windowSizeMillis);
   }
 
   public int getNumRequiredContainers() {

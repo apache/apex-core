@@ -11,28 +11,35 @@ package com.malhartech.dag;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer;
+import com.malhartech.bufferserver.Buffer.BeginWindow;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.EndWindow;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode implements Node, Sink, Runnable
+public abstract class AbstractNode implements Node, Runnable
 {
 
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
   private final HashSet<Sink> outputStreams = new HashSet<Sink>();
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
+  
+      // emitted tuples are screwed up so this property should be set with the 
+    // stream instead of with the node.
+
+  private long emittedTuples = 0;
 
   public AbstractNode(NodeContext ctx)
   {
@@ -57,7 +64,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   }
 
   @Override
-  public void endWidndow(NodeContext context)
+  public void endWindow(NodeContext context)
   {
   }
 
@@ -80,28 +87,59 @@ public abstract class AbstractNode implements Node, Sink, Runnable
   {
     return ctx.resetHeartbeatCounters();
   }
-
-  public void doSomething(Tuple t)
+  
+  private final Sink sink = new Sink()
   {
-    synchronized (inputQueue) {
-      inputQueue.add(t);
-      inputQueue.notify();
+
+    public void doSomething(Tuple t)
+    {
+      synchronized (inputQueue) {
+        inputQueue.add(t);
+        inputQueue.notify();
+      }
     }
-  }
+  };
 
   public Sink getSink(StreamContext context)
   {
     inputStreams.add(context);
-    return this;
+    return sink;
   }
 
   protected void emitControl()
   {
+    Data.DataType type = ctx.getData().getType();
+
+    Data.Builder data = Data.newBuilder();
+    data.setType(type);
+    data.setWindowId(ctx.getData().getWindowId());
+    switch (type) {
+      case BEGIN_WINDOW:
+        BeginWindow.Builder b = BeginWindow.newBuilder();
+        b.setNode(ctx.getId());
+        data.setBeginwindow(b);
+        break;
+        
+      case END_WINDOW:
+        EndWindow.Builder e  = EndWindow.newBuilder();
+        e.setNode(ctx.getId());
+        e.setTupleCount(emittedTuples);
+        data.setEndwindow(e);
+        break;
+        
+      default:
+        logger.info("found unexpected data type " + type);
+    }
+    
     for (Sink sink : outputStreams) {
       Tuple t = new Tuple(null);
-      t.setData(ctx.getData());
+      t.setData(data.build());
       sink.doSomething(t);
     }
+        // emitted tuples are screwed up so this property should be set with the 
+    // stream instead of with the node.
+
+    emittedTuples = 0;
   }
 
   public void emit(Object o)
@@ -120,6 +158,10 @@ public abstract class AbstractNode implements Node, Sink, Runnable
       t.setData(data);
       sink.doSomething(t);
     }
+        // emitted tuples are screwed up so this property should be set with the 
+    // stream instead of with the node.
+
+    emittedTuples++;
   }
 
   public void emitStream(Object o, Sink sink)
@@ -139,6 +181,9 @@ public abstract class AbstractNode implements Node, Sink, Runnable
      */
     t.setData(data);
     sink.doSomething(t);
+    
+    // emitted tuples are screwed up so this property should be set with the 
+    // stream instead of with the node.
   }
 
   public void addSink(Sink sink)
@@ -316,11 +361,9 @@ public abstract class AbstractNode implements Node, Sink, Runnable
         if (shouldWait) {
           try {
             inputQueue.wait();
-
-
           }
           catch (InterruptedException ex) {
-            Logger.getLogger(AbstractNode.class.getName()).log(Level.SEVERE, null, ex);
+            logger.error("wait interrupted", ex);
           }
         }
         else {
@@ -335,7 +378,7 @@ public abstract class AbstractNode implements Node, Sink, Runnable
               break;
 
             case END_WINDOW:
-              endWidndow(ctx);
+              endWindow(ctx);
               emitControl();
               break;
 

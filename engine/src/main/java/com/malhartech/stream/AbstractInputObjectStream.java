@@ -24,6 +24,7 @@ public abstract class AbstractInputObjectStream implements InputAdapter
 
   protected StreamContext context = null;
   protected long tupleCount = 0;
+  protected long timemillis = 0;
   
   public void setContext(StreamContext context)
   {
@@ -37,7 +38,7 @@ public abstract class AbstractInputObjectStream implements InputAdapter
     byte[] partition = serde.getPartition(o);
 
     Data.Builder db = Data.newBuilder();
-    db.setWindowId(0); // set it to appropriate window Id
+    db.setWindowId(timemillis); // set it to appropriate window Id
     if (partition == null) {
       SimpleData.Builder sdb = SimpleData.newBuilder();
       sdb.setData(ByteString.EMPTY);
@@ -68,8 +69,9 @@ public abstract class AbstractInputObjectStream implements InputAdapter
     return t;
   }
 
-  public void beginWindow(long timemillis)
+  public synchronized void beginWindow(long timemillis)
   {
+    this.timemillis = timemillis;
     Data.Builder db = Data.newBuilder();
     db.setWindowId(timemillis);
     db.setType(Data.DataType.BEGIN_WINDOW);
@@ -87,8 +89,9 @@ public abstract class AbstractInputObjectStream implements InputAdapter
     context.getSink().doSomething(t);
   }
 
-  public void endWindow(long timemillis)
+  public synchronized void endWindow(long timemillis)
   {
+    this.timemillis = 0;
     Data.Builder db = Data.newBuilder();
     db.setWindowId(timemillis);
     db.setType(Data.DataType.END_WINDOW);

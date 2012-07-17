@@ -16,9 +16,9 @@ public class BufferServerOutputSocketStream extends OutputSocketStream
   public void setContext(StreamContext context, String upstreamNodeId, String streamLogicalName)
   {
     super.setContext(context);
-    // send publisher request
+
     LOG.info("registering publisher: {} {}", upstreamNodeId, streamLogicalName);
-    ClientHandler.publish(channel, upstreamNodeId, streamLogicalName);
+    ClientHandler.publish(channel, upstreamNodeId, streamLogicalName, context.getWindowId());
   }
   
   @Override

@@ -10,7 +10,6 @@ import java.util.Arrays;
 import junit.framework.Assert;
 
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.malhartech.dag.DefaultSerDe;
@@ -21,7 +20,6 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 public class DNodeManagerTest {
 
-  @Ignore
   @Test
   public void testAssignContainer() {
 

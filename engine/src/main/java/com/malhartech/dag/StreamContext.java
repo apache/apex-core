@@ -10,13 +10,14 @@ package com.malhartech.dag;
  */
 public class StreamContext implements Context
 {
-  final Sink sink;
+  private Sink sink;
   private SerDe serde;
+  private long windowId;
   
   /**
    * @param sink - target node, not required for output adapter
    */
-  public StreamContext(Sink sink) {
+  public void setSink(Sink sink) {
     this.sink = sink;
   }
   
@@ -30,5 +31,15 @@ public class StreamContext implements Context
 
   public Sink getSink() {
     return sink;
+  }
+
+  public long getWindowId()
+  {
+    return windowId;
+  }
+  
+  public void setWindowId(long windowId)
+  {
+    this.windowId = windowId;
   }
 }

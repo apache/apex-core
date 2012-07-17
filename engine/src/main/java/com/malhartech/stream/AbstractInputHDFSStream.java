@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -20,6 +21,7 @@ import org.apache.hadoop.fs.Path;
 public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream implements Runnable
 {
 
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractInputHDFSStream.class);
   protected FSDataInputStream input;
 
   @Override
@@ -46,9 +48,13 @@ public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream 
 
   public void run()
   {
+    logger.debug("ready to read hdfs file");
     Object o;
     while ((o = getObject(input)) != null) {
-      context.getSink().doSomething(getTuple(o));
+      logger.debug("read object = " + o);
+      synchronized (this) {
+        context.getSink().doSomething(getTuple(o));
+      }
     }
   }
 

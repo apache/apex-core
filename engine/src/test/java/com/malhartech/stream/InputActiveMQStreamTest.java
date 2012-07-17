@@ -34,7 +34,6 @@ public class InputActiveMQStreamTest
 
     public MyStreamContext()
     {
-      super(null); // TODO
       myserde = new DefaultSerDe();
     }
 

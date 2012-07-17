@@ -26,7 +26,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
   // Stateful properties
   private volatile Channel channel;
 
-  public static void publish(Channel channel, String identifier, String type)
+  public static void publish(Channel channel, String identifier, String type, long windowId)
   {
     Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
     prb.setIdentifier(identifier).setType(type);
@@ -34,7 +34,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
     Data.Builder db = Data.newBuilder();
     db.setType(Data.DataType.PUBLISHER_REQUEST);
     db.setPublish(prb);
-    db.setWindowId(0L); // TODO Message missing required fields: window_id
+    db.setWindowId(windowId);
     
     final ChannelFutureListener cfl = new ChannelFutureListener()
     {
@@ -58,7 +58,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
       }
     };
 
-    channel.write(db);//.addListener(cfl);
+    channel.write(db.build());//.addListener(cfl);
   }
 
   public static void registerPartitions(Channel channel, String id,

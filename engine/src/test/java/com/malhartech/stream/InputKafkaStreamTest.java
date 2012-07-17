@@ -29,7 +29,6 @@ public class InputKafkaStreamTest
 
     public MyStreamContext()
     {
-      super(null); // TODO
       myserde = new DefaultSerDe();
     }
 
