@@ -12,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,11 +32,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.dag.SerDe;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
@@ -83,6 +83,11 @@ public class StramChild {
     // create nodes
     for (StreamingNodeContext snc : ctx.getNodes()) {
         AbstractNode dnode = initNode(snc, conf);
+        NodeConfiguration nc = new NodeConfiguration();
+        for (Map.Entry<String, String> e : snc.getProperties().entrySet()) {
+            nc.set(e.getKey(), e.getValue());
+        }
+        dnode.setup(nc);
         LOG.info("Initialized node " + snc.getLogicalId());
         nodeList.put(snc.getDnodeId(), dnode);
     }
@@ -114,7 +119,7 @@ public class StramChild {
             LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
             BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();
             oss.setup(streamConf);
-            oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
+            oss.setContext(streamContext, sc.getSourceNodeId(), sc.getBufferServerChannelType());
             sourceNode.addSink(oss);
             this.streams.put(sc.getId(), oss);
           }
@@ -123,7 +128,14 @@ public class StramChild {
             LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
             BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
             iss.setup(streamConf);
-            iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.getTargetNodeId());
+            List<String> partitions = Collections.emptyList();
+            if (sc.getPartitionKeys() != null) {
+              partitions = new ArrayList<String>(sc.getPartitionKeys().size());
+              for (byte[] partition : sc.getPartitionKeys()) {
+                 partitions.add(new String(partition));
+              }
+            }
+            iss.setContext(streamContext, sc.getSourceNodeId(), sc.getBufferServerChannelType(), sc.getTargetNodeId(), partitions);
             this.streams.put(sc.getId(), iss);
           }
         } else {
@@ -363,13 +375,7 @@ public class StramChild {
       
       instance.setup(streamConf);
       com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(sink);
-      String serdeClassname = properties.get(TopologyBuilder.STREAM_SERDE_CLASSNAME);
-      if (serdeClassname != null) {
-        Class<? extends SerDe> serdeClass = Class.forName(serdeClassname).asSubclass(SerDe.class);
-        ctx.setSerde(serdeClass.newInstance());
-      } else {
-        ctx.setSerde(new DefaultSerDe());
-      }
+      ctx.setSerde(StramUtils.getSerdeInstance(properties));
       instance.setContext(ctx);
 
       return instance;

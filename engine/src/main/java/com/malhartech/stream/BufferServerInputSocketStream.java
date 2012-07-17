@@ -4,11 +4,13 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.StreamContext;
-import java.util.Collections;
+import java.util.Collection;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.dag.StreamContext;
 
 public class BufferServerInputSocketStream extends InputSocketStream
 {
@@ -17,12 +19,12 @@ public class BufferServerInputSocketStream extends InputSocketStream
   /**
    * Requires upstream node info to setup subscriber TODO: revisit context
    */
-  public void setContext(StreamContext context, String upstreamNodeId, String streamLogicalName, String downstreamNodeId)
+  public void setContext(StreamContext context, String upstreamNodeId, String streamLogicalName, String downstreamNodeId, Collection<String> partitions)
   {
     super.setContext(context);
     String type = "paramNotRequired?"; // TODO: why do we need this?
     LOG.info("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {downstreamNodeId, upstreamNodeId, streamLogicalName});
-    ClientHandler.registerPartitions(channel, downstreamNodeId, streamLogicalName, upstreamNodeId, type, Collections.<String>emptyList());
+    ClientHandler.registerPartitions(channel, downstreamNodeId, streamLogicalName, upstreamNodeId, type, partitions);
   }
   
   @Override

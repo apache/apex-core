@@ -22,34 +22,15 @@ public class InputKafkaStreamTest
   private static InputKafkaStream instance;
   private static MyStreamContext context;
 
-  private static final class MySerDe implements SerDe
-  {
-
-    public Object fromByteArray(byte[] bytes)
-    {
-      return new String(bytes);
-    }
-
-    public byte[] toByteArray(Object o)
-    {
-      return ((String) o).getBytes();
-    }
-
-    public byte[] getPartition(Object o)
-    {
-      return null;
-    }
-  }
-
   private static final class MyStreamContext extends StreamContext implements Sink
   {
 
-    MySerDe myserde;
+    SerDe myserde;
 
     public MyStreamContext()
     {
       super(null); // TODO
-      myserde = new MySerDe();
+      myserde = new DefaultSerDe();
     }
 
     @Override

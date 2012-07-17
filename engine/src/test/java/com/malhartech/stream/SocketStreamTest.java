@@ -7,6 +7,7 @@ import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.*;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -94,7 +95,7 @@ public class SocketStreamTest
 
     BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
     iss.setup(sconf);
-    iss.setContext(issContext, upstreamNodeId, streamName, downstreamNodeId);
+    iss.setContext(issContext, upstreamNodeId, streamName, downstreamNodeId, Collections.<String>emptyList());
     System.out.println("input stream ready");
 
     BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();

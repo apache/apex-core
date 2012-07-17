@@ -8,14 +8,13 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.stram.conf.ShipContainingJars;
-import org.objenesis.instantiator.ObjectInstantiator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Requires kryo and mockito in deployment
+ * Requires kryo and its dependencies in deployment
  */
-@ShipContainingJars (classes={Kryo.class, ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class})
+@ShipContainingJars (classes={Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class})
 public class DefaultSerDe implements SerDe
 {
   private static final Logger logger = LoggerFactory.getLogger(DefaultSerDe.class);
@@ -24,6 +23,7 @@ public class DefaultSerDe implements SerDe
   private Output output = new Output(new byte[4096]);
   private Input input = new Input();
 
+  @Override
   public Object fromByteArray(byte[] bytes)
   {
     input.setBuffer(bytes);
@@ -31,6 +31,7 @@ public class DefaultSerDe implements SerDe
     return o;
   }
 
+  @Override
   public byte[] toByteArray(Object o)
   {
     output.setPosition(0);
@@ -40,8 +41,15 @@ public class DefaultSerDe implements SerDe
     return bytes;
   }
 
+  @Override
   public byte[] getPartition(Object o)
   {
     return null;
   }
+
+  @Override
+  public byte[][] getPartitions() {
+    return null;
+  }
+  
 }
