@@ -15,12 +15,11 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class AbstractActiveMQInputStream
-        extends AbstractObjectInputStream
-        implements MessageListener, ExceptionListener
+  extends AbstractObjectInputStream
+  implements MessageListener, ExceptionListener
 {
-
   private static final Logger logger = Logger.getLogger(
-          AbstractActiveMQInputStream.class.getName());
+    AbstractActiveMQInputStream.class.getName());
   private boolean transacted;
   private int maxiumMessages;
   private int receiveTimeOut;
@@ -34,9 +33,9 @@ public abstract class AbstractActiveMQInputStream
   private void internalSetup(StreamConfiguration config) throws Exception
   {
     ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-            config.get("user"),
-            config.get("password"),
-            config.get("url"));
+      config.get("user"),
+      config.get("password"),
+      config.get("url"));
 
     connection = connectionFactory.createConnection();
     if (config.getBoolean("durable", false)) {
@@ -63,7 +62,8 @@ public abstract class AbstractActiveMQInputStream
     replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
     if (config.getBoolean("durable", false) && config.getBoolean("topic", false)) {
-      consumer = getSession().createDurableSubscriber((Topic) destination, config.get("consumerName"));
+      consumer = getSession().createDurableSubscriber((Topic) destination, config.
+        get("consumerName"));
     }
     else {
       consumer = getSession().createConsumer(destination);
@@ -80,7 +80,8 @@ public abstract class AbstractActiveMQInputStream
       internalSetup(config);
     }
     catch (Exception e) {
-      logger.log(Level.SEVERE, "Exception while setting up ActiveMQ consumer.", e.getCause());
+      logger.log(Level.SEVERE, "Exception while setting up ActiveMQ consumer.", e.
+        getCause());
     }
   }
   private int ackMode = Session.AUTO_ACKNOWLEDGE;
@@ -134,7 +135,8 @@ public abstract class AbstractActiveMQInputStream
 
   public void onException(JMSException jmse)
   {
-    logger.log(Level.SEVERE, "Exception thrown by ActiveMQ consumer setup.", jmse.getCause());
+    logger.log(Level.SEVERE, "Exception thrown by ActiveMQ consumer setup.", jmse.
+      getCause());
   }
 
   public void onMessage(Message message)
@@ -157,12 +159,13 @@ public abstract class AbstractActiveMQInputStream
 
     Object o = getObject(message);
     if (o != null) {
-      context.getSink().doSomething(getTuple(o));
+      sendTuple(o);
     }
 
     try {
       if (message.getJMSReplyTo() != null) {
-        replyProducer.send(message.getJMSReplyTo(), session.createTextMessage("Reply: " + message.getJMSMessageID()));
+        replyProducer.send(message.getJMSReplyTo(), session.createTextMessage("Reply: " + message.
+          getJMSMessageID()));
       }
       if (transacted) {
         //if ((messagesReceived % batch) == 0) {

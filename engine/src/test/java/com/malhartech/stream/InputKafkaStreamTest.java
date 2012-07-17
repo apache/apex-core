@@ -17,14 +17,13 @@ import org.junit.*;
 @Ignore
 public class InputKafkaStreamTest
 {
-
   private static StreamConfiguration config;
   private static KafkaInputStream instance;
   private static MyStreamContext context;
 
-  private static final class MyStreamContext extends StreamContext implements Sink
+  private static final class MyStreamContext extends StreamContext implements
+    Sink
   {
-
     SerDe myserde;
 
     public MyStreamContext()
@@ -125,14 +124,12 @@ public class InputKafkaStreamTest
   /**
    * Test of getTuple method, of class KafkaInputStream.
    */
-  public void testGetTuple()
+  public void testSendTuple()
   {
     System.out.println("getTuple");
     Message message = null;
     KafkaInputStream instance = new KafkaInputStream();
-    Tuple expResult = null;
-    Tuple result = instance.getTuple(message);
-    assertEquals(expResult, result);
+    instance.sendTuple(message);
     // TODO review the generated test code and remove the default call to fail.
     fail("The test case is a prototype.");
   }

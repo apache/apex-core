@@ -51,10 +51,7 @@ public abstract class AbstractHDFSInputStream extends AbstractObjectInputStream 
     logger.debug("ready to read hdfs file");
     Object o;
     while ((o = getObject(input)) != null) {
-      logger.debug("read object = " + o);
-      synchronized (this) {
-        context.getSink().doSomething(getTuple(o));
-      }
+      sendTuple(o);
     }
   }
 
