@@ -98,6 +98,12 @@ public abstract class AbstractNode implements Node, Runnable
         inputQueue.notify();
       }
     }
+    
+    @Override
+    public String toString()
+    {
+      return AbstractNode.this.toString();
+    }    
   };
 
   public Sink getSink(StreamContext context)

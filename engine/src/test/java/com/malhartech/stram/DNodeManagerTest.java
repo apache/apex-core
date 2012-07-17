@@ -24,11 +24,15 @@ public class DNodeManagerTest {
   public void testAssignContainer() {
 
     TopologyBuilder b = new TopologyBuilder(new Configuration());
-    
+
     NodeConf node1 = b.getOrAddNode("node1");
     NodeConf node2 = b.getOrAddNode("node2");
     NodeConf node3 = b.getOrAddNode("node3");
 
+    StreamConf input1 = b.getOrAddStream("input1");
+    input1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
+    node1.addInput(input1);
+    
     node1.addOutput(b.getOrAddStream("n1n2"));
     node2.addInput(b.getOrAddStream("n1n2"));
 
@@ -54,11 +58,19 @@ public class DNodeManagerTest {
     StreamingContainerContext c1 = dnm.assignContainer(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("number nodes assigned to container", 1, c1.getNodes().size());
     Assert.assertTrue(node1.getId() + " assigned to " + container1Id, containsNodeContext(c1, node1));
-    Assert.assertEquals("one stream connection for container1", 1, c1.getStreams().size());
+    Assert.assertEquals("stream connections for container1", 2, c1.getStreams().size());
+
     StreamContext c1n1n2 = getStreamContext(c1, "n1n2");
-    Assert.assertNotNull("one stream connection for container1", c1n1n2);
+    Assert.assertNotNull("stream connection for container1", c1n1n2);
     Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1n1n2.getBufferServerHost());
     Assert.assertEquals("stream connects to upstream port", 9001, c1n1n2.getBufferServerPort());
+
+    StreamContext input1Phys = getStreamContext(c1, input1.getId());
+    Assert.assertNotNull("stream connection " + input1.getId(), input1Phys);
+    Assert.assertNull(input1.getId(), input1Phys.getSourceNodeId());
+    Assert.assertEquals(input1.getId(), c1n1n2.getSourceNodeId(), input1Phys.getTargetNodeId());
+    Assert.assertNotNull(input1.getId() + " properties", input1Phys.getProperties());
+    Assert.assertEquals(input1.getId() + " classname", NumberGeneratorInputAdapter.class.getName(), input1Phys.getProperties().get(TopologyBuilder.STREAM_CLASSNAME));
     
     StreamingContainerContext c2 = dnm.assignContainer(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
     Assert.assertEquals("number nodes assigned to container", 2, c2.getNodes().size());

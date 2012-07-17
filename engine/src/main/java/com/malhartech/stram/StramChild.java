@@ -82,6 +82,9 @@ public class StramChild
     LOG.info("Got context: " + ctx);
 
     this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
+    if (this.heartbeatIntervalMillis == 0) {
+      this.heartbeatIntervalMillis = 1000;
+    }
 
     // create nodes
     for (StreamingNodeContext snc : ctx.getNodes()) {
@@ -215,7 +218,7 @@ public class StramChild
   private void heartbeatLoop() throws IOException
   {
     umbilical.echo(containerId, "[" + containerId + "] Entering heartbeat loop..");
-    LOG.info("Entering hearbeat loop");
+    LOG.info("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
     while (!exitHeartbeatLoop) {
 
       try {
@@ -249,6 +252,7 @@ public class StramChild
       msg.setDnodeEntries(heartbeats);
 
       // heartbeat call and follow-up processing
+      LOG.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
       ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
       if (rsp != null) {
         processHeartbeatResponse(rsp);
