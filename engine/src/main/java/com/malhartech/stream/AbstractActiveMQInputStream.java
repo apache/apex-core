@@ -14,13 +14,13 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputActiveMQStream
-        extends AbstractInputObjectStream
+public abstract class AbstractActiveMQInputStream
+        extends AbstractObjectInputStream
         implements MessageListener, ExceptionListener
 {
 
   private static final Logger logger = Logger.getLogger(
-          AbstractInputActiveMQStream.class.getName());
+          AbstractActiveMQInputStream.class.getName());
   private boolean transacted;
   private int maxiumMessages;
   private int receiveTimeOut;
@@ -109,7 +109,7 @@ public abstract class AbstractInputActiveMQStream
       getConsumer().setMessageListener(this);
     }
     catch (JMSException ex) {
-      Logger.getLogger(AbstractInputActiveMQStream.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(AbstractActiveMQInputStream.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 
@@ -128,7 +128,7 @@ public abstract class AbstractInputActiveMQStream
       connection = null;
     }
     catch (JMSException ex) {
-      Logger.getLogger(AbstractInputActiveMQStream.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(AbstractActiveMQInputStream.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 
@@ -149,7 +149,7 @@ public abstract class AbstractInputActiveMQStream
           getConsumer().setMessageListener(null);
         }
         catch (JMSException ex) {
-          Logger.getLogger(AbstractInputActiveMQStream.class.getName()).log(Level.SEVERE, null, ex);
+          Logger.getLogger(AbstractActiveMQInputStream.class.getName()).log(Level.SEVERE, null, ex);
         }
       }
     }
@@ -179,7 +179,7 @@ public abstract class AbstractInputActiveMQStream
       }
     }
     catch (JMSException ex) {
-      Logger.getLogger(AbstractInputActiveMQStream.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(AbstractActiveMQInputStream.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 

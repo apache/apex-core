@@ -21,7 +21,7 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
  *
  * @author chetan
  */
-public class InputSocketStream extends SimpleChannelUpstreamHandler implements Stream
+public class SocketInputStream extends SimpleChannelUpstreamHandler implements Stream
 {
 
   private static final Logger logger =
@@ -68,7 +68,7 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
 
   protected ClientPipelineFactory getClientPipelineFactory()
   {
-    return new ClientPipelineFactory(InputSocketStream.class);
+    return new ClientPipelineFactory(SocketInputStream.class);
   }
 
   @Override

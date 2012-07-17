@@ -33,7 +33,7 @@ import com.malhartech.dag.Tuple;
 @Ignore
 public final class OutputSocketStreamTest
 {
-  static class MyOutputSocketStream extends OutputSocketStream 
+  static class MyOutputSocketStream extends SocketOutputStream 
   {
     @Override
     public void writeRequested(ChannelHandlerContext context, MessageEvent ev)
@@ -43,7 +43,7 @@ public final class OutputSocketStreamTest
     }
   }
   
-  static OutputSocketStream oss;
+  static SocketOutputStream oss;
   static StreamConfiguration sc;
   static StreamContext ctx;
   public OutputSocketStreamTest()
@@ -81,7 +81,7 @@ public final class OutputSocketStreamTest
   }
 
   /**
-   * Test of doSomething method, of class OutputSocketStream.
+   * Test of doSomething method, of class SocketOutputStream.
    */
   @Test
   public void testDoSomething() throws InterruptedException
@@ -107,7 +107,7 @@ public final class OutputSocketStreamTest
   }
 
   /**
-   * Test of getClientPipelineFactory method, of class OutputSocketStream.
+   * Test of getClientPipelineFactory method, of class SocketOutputStream.
    */
   @Ignore
   @Test

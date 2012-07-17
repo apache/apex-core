@@ -26,10 +26,10 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
-public class OutputSocketStream extends SimpleChannelDownstreamHandler implements Sink, Stream
+public class SocketOutputStream extends SimpleChannelDownstreamHandler implements Sink, Stream
 {
 
-  private static Logger logger = LoggerFactory.getLogger(OutputSocketStream.class);
+  private static Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
   private StreamContext context;
   protected ClientBootstrap bootstrap;
   protected Channel channel;
@@ -80,7 +80,7 @@ public class OutputSocketStream extends SimpleChannelDownstreamHandler implement
 
   protected ClientPipelineFactory getClientPipelineFactory()
   {
-    return new ClientPipelineFactory(OutputSocketStream.class);
+    return new ClientPipelineFactory(SocketOutputStream.class);
   }
 
   public void setup(StreamConfiguration config)

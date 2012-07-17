@@ -18,10 +18,10 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream implements Runnable
+public abstract class AbstractHDFSInputStream extends AbstractObjectInputStream implements Runnable
 {
 
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractInputHDFSStream.class);
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
   protected FSDataInputStream input;
 
   @Override
@@ -33,7 +33,7 @@ public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream 
       input = fs.open(filepath);
     }
     catch (IOException ex) {
-      Logger.getLogger(AbstractInputHDFSStream.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(AbstractHDFSInputStream.class.getName()).log(Level.SEVERE, null, ex);
     }
 
   }
@@ -65,7 +65,7 @@ public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream 
       input.close();
     }
     catch (IOException ex) {
-      Logger.getLogger(AbstractInputHDFSStream.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(AbstractHDFSInputStream.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 }

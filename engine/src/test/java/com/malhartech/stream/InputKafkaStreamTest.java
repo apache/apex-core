@@ -19,7 +19,7 @@ public class InputKafkaStreamTest
 {
 
   private static StreamConfiguration config;
-  private static InputKafkaStream instance;
+  private static KafkaInputStream instance;
   private static MyStreamContext context;
 
   private static final class MyStreamContext extends StreamContext implements Sink
@@ -63,7 +63,7 @@ public class InputKafkaStreamTest
     config.set("groupid", "test_group");
     config.set("topic", "test");
 
-    instance = new InputKafkaStream();
+    instance = new KafkaInputStream();
     context = new MyStreamContext();
   }
 
@@ -88,20 +88,20 @@ public class InputKafkaStreamTest
   }
 
   /**
-   * Test of setup method, of class InputKafkaStream.
+   * Test of setup method, of class KafkaInputStream.
    */
   public void testSetup()
   {
     System.out.println("setup");
     StreamConfiguration config = null;
-    InputKafkaStream instance = new InputKafkaStream();
+    KafkaInputStream instance = new KafkaInputStream();
     instance.setup(config);
     // TODO review the generated test code and remove the default call to fail.
     fail("The test case is a prototype.");
   }
 
   /**
-   * Test of setContext method, of class InputKafkaStream.
+   * Test of setContext method, of class KafkaInputStream.
    */
   @Test
   public void testSetContext()
@@ -111,25 +111,25 @@ public class InputKafkaStreamTest
   }
 
   /**
-   * Test of run method, of class InputKafkaStream.
+   * Test of run method, of class KafkaInputStream.
    */
   public void testRun()
   {
     System.out.println("run");
-    InputKafkaStream instance = new InputKafkaStream();
+    KafkaInputStream instance = new KafkaInputStream();
     instance.run();
     // TODO review the generated test code and remove the default call to fail.
     fail("The test case is a prototype.");
   }
 
   /**
-   * Test of getTuple method, of class InputKafkaStream.
+   * Test of getTuple method, of class KafkaInputStream.
    */
   public void testGetTuple()
   {
     System.out.println("getTuple");
     Message message = null;
-    InputKafkaStream instance = new InputKafkaStream();
+    KafkaInputStream instance = new KafkaInputStream();
     Tuple expResult = null;
     Tuple result = instance.getTuple(message);
     assertEquals(expResult, result);
@@ -138,12 +138,12 @@ public class InputKafkaStreamTest
   }
 
   /**
-   * Test of teardown method, of class InputKafkaStream.
+   * Test of teardown method, of class KafkaInputStream.
    */
   public void testTeardown()
   {
     System.out.println("teardown");
-    InputKafkaStream instance = new InputKafkaStream();
+    KafkaInputStream instance = new KafkaInputStream();
     instance.teardown();
     // TODO review the generated test code and remove the default call to fail.
     fail("The test case is a prototype.");

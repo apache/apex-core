@@ -15,11 +15,11 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class OutputHDFSStream
+public class HDFSOutputStream
         implements Stream, Sink
 {
 
-  private static org.slf4j.Logger LOG = LoggerFactory.getLogger(OutputHDFSStream.class);
+  private static org.slf4j.Logger LOG = LoggerFactory.getLogger(HDFSOutputStream.class);
   private StreamContext context;
   private FSDataOutputStream output;
 

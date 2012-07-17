@@ -12,9 +12,9 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.dag.StreamContext;
 
-public class BufferServerInputSocketStream extends InputSocketStream
+public class BufferServerInputStream extends SocketInputStream
 {
-  private static Logger LOG = LoggerFactory.getLogger(BufferServerInputSocketStream.class);
+  private static Logger LOG = LoggerFactory.getLogger(BufferServerInputStream.class);
 
   /**
    * Requires upstream node info to setup subscriber TODO: revisit context

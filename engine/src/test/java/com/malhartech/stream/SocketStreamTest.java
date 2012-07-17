@@ -94,12 +94,12 @@ public class SocketStreamTest
     StreamConfiguration sconf = new StreamConfiguration();
     sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
-    BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
+    BufferServerInputStream iss = new BufferServerInputStream();
     iss.setup(sconf);
     iss.setContext(issContext, upstreamNodeId, streamName, downstreamNodeId, Collections.<String>emptyList());
     System.out.println("input stream ready");
 
-    BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();
+    BufferServerOutputStream oss = new BufferServerOutputStream();
     StreamContext ossContext = new StreamContext();
     
     ossContext.setSerde(serde);
