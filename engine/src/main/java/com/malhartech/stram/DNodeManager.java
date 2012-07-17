@@ -266,6 +266,7 @@ public class DNodeManager {
           sc.setTargetNodeId(subscriberEntry.getValue().getDnodeId());
           // type is upstream node name for multiple downstream nodes to be able to subscribe
           sc.setBufferServerChannelType(streamConf.getSourceNode().getId());
+          sc.setProperties(streamConf.getProperties());
           pstreams.add(sc);
         } 
       }
