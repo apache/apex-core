@@ -274,12 +274,16 @@ public class DNodeManager {
       // adapters
       if (streamConf.getSourceNode() == null) {
         // input adapter, need implementation class
+        Map<String, StreamingNodeContext> subscribers = getPhysicalNodes(streamConf.getTargetNode());
         StreamContext sc = newStreamContext(streamConf, bufferServerAddress, null);
+        sc.setTargetNodeId(subscribers.values().iterator().next().getDnodeId());
         sc.setProperties(streamConf.getProperties());
         pstreams.add(sc);
       } else if (streamConf.getTargetNode() == null) {
         // output adapter, need implementation class
+        Map<String, StreamingNodeContext> publishers = getPhysicalNodes(streamConf.getSourceNode());
         StreamContext sc = newStreamContext(streamConf, bufferServerAddress, null);
+        sc.setSourceNodeId(publishers.values().iterator().next().getDnodeId());
         sc.setProperties(streamConf.getProperties());
         pstreams.add(sc);
       }
