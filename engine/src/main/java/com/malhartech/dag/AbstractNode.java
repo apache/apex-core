@@ -29,16 +29,14 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractNode implements Node, Runnable
 {
-
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
   private final HashSet<Sink> outputStreams = new HashSet<Sink>();
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
   
-      // emitted tuples are screwed up so this property should be set with the 
-    // stream instead of with the node.
-
+  // emitted tuples are screwed up so this property should be set with the 
+  // stream instead of with the node.
   private long emittedTuples = 0;
 
   public AbstractNode(NodeContext ctx)
@@ -90,7 +88,6 @@ public abstract class AbstractNode implements Node, Runnable
   
   private final Sink sink = new Sink()
   {
-
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
@@ -98,12 +95,12 @@ public abstract class AbstractNode implements Node, Runnable
         inputQueue.notify();
       }
     }
-    
+
     @Override
     public String toString()
     {
       return AbstractNode.this.toString();
-    }    
+    }
   };
 
   public Sink getSink(StreamContext context)
@@ -125,24 +122,24 @@ public abstract class AbstractNode implements Node, Runnable
         b.setNode(ctx.getId());
         data.setBeginwindow(b);
         break;
-        
+
       case END_WINDOW:
-        EndWindow.Builder e  = EndWindow.newBuilder();
+        EndWindow.Builder e = EndWindow.newBuilder();
         e.setNode(ctx.getId());
         e.setTupleCount(emittedTuples);
         data.setEndwindow(e);
         break;
-        
+
       default:
         logger.info("found unexpected data type " + type);
     }
-    
+
     for (Sink sink : outputStreams) {
       Tuple t = new Tuple(null);
       t.setData(data.build());
       sink.doSomething(t);
     }
-        // emitted tuples are screwed up so this property should be set with the 
+    // emitted tuples are screwed up so this property should be set with the 
     // stream instead of with the node.
 
     emittedTuples = 0;
@@ -155,7 +152,8 @@ public abstract class AbstractNode implements Node, Runnable
         && data.getType() != DataType.PARTITIONED_DATA) {
       Data.Builder db = Data.newBuilder();
       db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).setWindowId(data.getWindowId());
+      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).
+        setWindowId(data.getWindowId());
       data = db.build();
     }
 
@@ -164,7 +162,7 @@ public abstract class AbstractNode implements Node, Runnable
       t.setData(data);
       sink.doSomething(t);
     }
-        // emitted tuples are screwed up so this property should be set with the 
+    // emitted tuples are screwed up so this property should be set with the 
     // stream instead of with the node.
 
     emittedTuples++;
@@ -177,7 +175,8 @@ public abstract class AbstractNode implements Node, Runnable
         && data.getType() != DataType.PARTITIONED_DATA) {
       Data.Builder db = Data.newBuilder();
       db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).setWindowId(data.getWindowId());
+      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).
+        setWindowId(data.getWindowId());
       data = db.build();
     }
 
@@ -187,7 +186,7 @@ public abstract class AbstractNode implements Node, Runnable
      */
     t.setData(data);
     sink.doSomething(t);
-    
+
     // emitted tuples are screwed up so this property should be set with the 
     // stream instead of with the node.
   }
@@ -204,48 +203,16 @@ public abstract class AbstractNode implements Node, Runnable
     }
   }
 
-  public long getWindowId(Data d)
-  {
-    long windowId;
-
-    switch (d.getType()) {
-      case BEGIN_WINDOW:
-        windowId = d.getWindowId();
-        break;
-
-      case END_WINDOW:
-        windowId = d.getWindowId();
-        break;
-
-      case SIMPLE_DATA:
-        windowId = d.getWindowId();
-        break;
-
-      case PARTITIONED_DATA:
-        windowId = d.getWindowId();
-        break;
-
-      default:
-        windowId = 0;
-        break;
-    }
-
-    return windowId;
-
-
-  }
-
   final private class DataComparator implements Comparator<Tuple>
   {
-
     public int compare(Tuple t, Tuple t1)
     {
 
       Data d = t.getData();
       Data d1 = t1.getData();
       if (d != d1) {
-        long tid = getWindowId(d);
-        long t1id = getWindowId(d1);
+        long tid = d.getWindowId();
+        long t1id = d1.getWindowId();
         if (tid < t1id) {
           return -1;
         }
@@ -404,7 +371,8 @@ public abstract class AbstractNode implements Node, Runnable
   @Override
   public String toString()
   {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.ctx.getId()).
-            toString();
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.ctx.
+      getId()).
+      toString();
   }
 }

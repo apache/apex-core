@@ -19,7 +19,7 @@ public class InlineStream implements Sink, Stream
   public void doSomething(Tuple t)
   {
     t.setContext(context);
-    context.getSink().doSomething(t);
+    context.sink(t);
   }
 
   @Override

@@ -80,7 +80,7 @@ public abstract class AbstractObjectInputStream implements InputAdapter
       db.setWindowId(timemillis); // set it to appropriate window Id
       t.setData(db.build());
       tupleCount++;
-      context.getSink().doSomething(t);
+      context.sink(t);
     }
   }
 
@@ -101,7 +101,7 @@ public abstract class AbstractObjectInputStream implements InputAdapter
       db.setWindowId(timemillis);
       t.setData(db.build());
       tupleCount = 0;
-      context.getSink().doSomething(t);
+      context.sink(t);
       this.notifyAll();
     }
   }
@@ -114,16 +114,16 @@ public abstract class AbstractObjectInputStream implements InputAdapter
 
     EndWindow.Builder ewb = EndWindow.newBuilder();
     ewb.setNode("");
-    db.setEndwindow(ewb);
 
     Tuple t = new Tuple(null);
     t.setContext(context);
 
     synchronized (this) {
-      db.setWindowId(timemillis);
-      t.setData(db.build());
       ewb.setTupleCount(tupleCount);
-      context.getSink().doSomething(t);
+      db.setWindowId(timemillis);
+      db.setEndwindow(ewb);
+      t.setData(db.build());
+      context.sink(t);
     }
 
   }

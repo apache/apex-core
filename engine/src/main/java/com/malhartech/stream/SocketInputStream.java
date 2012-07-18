@@ -62,7 +62,7 @@ public class SocketInputStream extends SimpleChannelUpstreamHandler implements S
       Tuple t = new Tuple(o);
       t.setContext(context);
       t.setData(d);
-      context.getSink().doSomething(t);
+      context.sink(t);
     }
   }
 

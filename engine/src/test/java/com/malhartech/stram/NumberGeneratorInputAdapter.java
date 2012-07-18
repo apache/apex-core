@@ -42,7 +42,7 @@ public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
     int i = 0;
     while (!shutdown) {
       sendTuple(String.valueOf(i++));
-      LOG.info("sent tuple to: " + context.getSink());
+      LOG.info("sent tuple to: " + context);
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {

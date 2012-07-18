@@ -37,12 +37,6 @@ public class InputKafkaStreamTest
       return myserde;
     }
 
-    @Override
-    public Sink getSink()
-    {
-      return this;
-    }
-
     public void doSomething(Tuple t)
     {
       System.out.println("sinking " + t.getObject());
