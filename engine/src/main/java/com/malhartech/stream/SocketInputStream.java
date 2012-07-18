@@ -101,4 +101,10 @@ public class SocketInputStream extends SimpleChannelUpstreamHandler implements S
     channel.getCloseFuture().awaitUninterruptibly();
     bootstrap.releaseExternalResources();
   }
+
+  @Override
+  public StreamContext getContext()
+  {
+    return contexts.get(channel);
+  }
 }

@@ -32,6 +32,11 @@ public abstract class AbstractObjectInputStream implements InputAdapter
   {
     this.context = context;
   }
+  
+  public StreamContext getContext()
+  {
+    return this.context;
+  }
 
   public abstract Object getObject(Object object);
 

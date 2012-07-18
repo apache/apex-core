@@ -4,6 +4,18 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.*;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stream.BufferServerInputStream;
+import com.malhartech.stream.BufferServerOutputStream;
+import com.malhartech.stream.InlineStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -16,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSError;
@@ -31,32 +42,11 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stream.BufferServerInputStream;
-import com.malhartech.stream.BufferServerOutputStream;
-import com.malhartech.stream.InlineStream;
-
-
 /**
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
  */
 public class StramChild
 {
-
   private static Logger LOG = LoggerFactory.getLogger(StramChild.class);
   final private String containerId;
   final private Configuration conf;
@@ -88,14 +78,14 @@ public class StramChild
 
     // create nodes
     for (StreamingNodeContext snc : ctx.getNodes()) {
-        AbstractNode dnode = initNode(snc, conf);
-        NodeConfiguration nc = new NodeConfiguration();
-        for (Map.Entry<String, String> e : snc.getProperties().entrySet()) {
-            nc.set(e.getKey(), e.getValue());
-        }
-        dnode.setup(nc);
-        LOG.info("Initialized node " + snc.getLogicalId());
-        nodeList.put(snc.getDnodeId(), dnode);
+      AbstractNode dnode = initNode(snc, conf);
+      NodeConfiguration nc = new NodeConfiguration();
+      for (Map.Entry<String, String> e : snc.getProperties().entrySet()) {
+        nc.set(e.getKey(), e.getValue());
+      }
+      dnode.setup(nc);
+      LOG.info("Initialized node " + snc.getLogicalId());
+      nodeList.put(snc.getDnodeId(), dnode);
     }
 
     // wire stream connections
@@ -111,35 +101,43 @@ public class StramChild
         Sink sink = target.getSink(dsc);
         dsc.setSink(sink); // this is circular... we may want to chance it later.
         // operation is additive - there can be multiple output streams
-        source.addSink(stream);
+        source.addOutputStream(dsc);
       }
       else if (sc.getSourceNodeId() != null && sc.getTargetNodeId() != null) {
         // buffer server connection between nodes
-        LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
+        LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.
+          getTargetNodeId());
         AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
         AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
+
         com.malhartech.dag.StreamContext streamContext = new com.malhartech.dag.StreamContext();
         if (targetNode != null) {
-          Sink sink = targetNode.getSink(streamContext);
-          streamContext.setSink(sink);
         }
         streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
         streamContext.setWindowId(ctx.getStartWindowMillis());
 
         StreamConfiguration streamConf = new StreamConfiguration();
-        streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
+        streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.
+          createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
         if (sourceNode != null) {
           // setup output stream as sink for source node
-          LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
+          LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.
+            getId());
           BufferServerOutputStream oss = new BufferServerOutputStream();
           oss.setup(streamConf);
           oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
-          sourceNode.addSink(oss);
+          streamContext.setSink(oss);
+          sourceNode.addOutputStream(streamContext);
           this.streams.put(sc.getId(), oss);
         }
+
         if (targetNode != null) {
+          Sink sink = targetNode.getSink(streamContext);
+          streamContext.setSink(sink);
+
           // setup input stream for target node
-          LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.getId());
+          LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.
+            getId());
           BufferServerInputStream iss = new BufferServerInputStream();
           iss.setup(streamConf);
           List<String> partitions = Collections.emptyList();
@@ -149,14 +147,16 @@ public class StramChild
               partitions.add(new String(partition));
             }
           }
-          iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.getTargetNodeId(), partitions);
+          iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.
+            getTargetNodeId(), partitions);
           this.streams.put(sc.getId(), iss);
         }
       }
       else {
 
         StreamConfiguration streamConf = new StreamConfiguration();
-        streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
+        streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.
+          createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
 
         for (Map.Entry<String, String> e : sc.getProperties().entrySet()) {
           streamConf.set(e.getKey(), e.getValue());
@@ -164,7 +164,8 @@ public class StramChild
 
         if (sc.getSourceNodeId() == null) {
           // input adapter
-          InputAdapter stream = initStream(sc.getProperties(), streamConf, nodeList.get(sc.getTargetNodeId()));
+          InputAdapter stream = initStream(sc.getProperties(), streamConf, nodeList.
+            get(sc.getTargetNodeId()));
           LOG.debug("Created input adapter {}", sc.getId());
           this.inputAdapters.put(sc.getId(), stream);
           this.streams.put(sc.getId(), stream);
@@ -175,7 +176,7 @@ public class StramChild
           // output adapter
           Stream stream = initStream(sc.getProperties(), streamConf, null); // no sink
           this.streams.put(sc.getId(), stream);
-          source.addSink((Sink) stream);
+          source.addOutputStream(stream.getContext());
 
         }
 
@@ -186,7 +187,6 @@ public class StramChild
       // launch nodes
       Runnable nodeRunnable = new Runnable()
       {
-
         @Override
         public void run()
         {
@@ -201,7 +201,8 @@ public class StramChild
       launchThread.start();
     }
 
-    windowGenerator = new WindowGenerator(this.inputAdapters.values(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
+    windowGenerator = new WindowGenerator(this.inputAdapters.values(), ctx.
+      getStartWindowMillis(), ctx.getWindowSizeMillis());
     if (ctx.getWindowSizeMillis() > 0) {
       windowGenerator.start();
     }
@@ -232,7 +233,8 @@ public class StramChild
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
       msg.setContainerId(this.containerId);
-      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.size());
+      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.
+        size());
 
       // gather heartbeat info for all nodes
       for (Map.Entry<String, AbstractNode> e : nodeList.entrySet()) {
@@ -274,7 +276,8 @@ public class StramChild
       for (StramToNodeRequest req : rsp.getNodeRequests()) {
         AbstractNode n = nodeList.get(req.getNodeId());
         if (n == null) {
-          LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
+          LOG.warn("Received request with invalid node id {} ({})", req.
+            getNodeId(), req);
         }
         else {
           LOG.info("Stram request: {}", req);
@@ -327,25 +330,26 @@ public class StramChild
 
     // Communicate with parent as actual task owner.
     UserGroupInformation taskOwner =
-                         UserGroupInformation.createRemoteUser(StramChild.class.getName());
+                         UserGroupInformation.createRemoteUser(StramChild.class.
+      getName());
     //taskOwner.addToken(jt);
     final StreamingNodeUmbilicalProtocol umbilical =
                                          taskOwner.doAs(new PrivilegedExceptionAction<StreamingNodeUmbilicalProtocol>()
     {
-
       @Override
       public StreamingNodeUmbilicalProtocol run() throws Exception
       {
-        return (StreamingNodeUmbilicalProtocol) RPC.getProxy(StreamingNodeUmbilicalProtocol.class,
-                                                             StreamingNodeUmbilicalProtocol.versionID, address, defaultConf);
+        return RPC.getProxy(StreamingNodeUmbilicalProtocol.class,
+                            StreamingNodeUmbilicalProtocol.versionID, address, defaultConf);
       }
     });
 
     LOG.debug("PID: " + System.getenv().get("JVM_PID"));
-    UserGroupInformation childUGI = null;
+    UserGroupInformation childUGI;
 
     try {
-      childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
+      childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.
+        toString()));
       // Add tokens to new user so that it may execute its task correctly.
       for (Token<?> token : UserGroupInformation.getCurrentUser().getTokens()) {
         childUGI.addToken(token);
@@ -354,7 +358,6 @@ public class StramChild
       // TODO: run node in doAs block
       childUGI.doAs(new PrivilegedExceptionAction<Object>()
       {
-
         @Override
         public Object run() throws Exception
         {
@@ -418,11 +421,18 @@ public class StramChild
       instance.setup(streamConf);
 
       com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
-      if (node != null) {
+      if (node == null) {
         /*
-         * no sink for the output streams.
+         * This is output adapter so it needs to implement the Sink interface.
          */
-        ctx.setSink(node.getSink(ctx));
+        if (instance instanceof Sink) {
+          ctx.setSink((Sink) instance);
+        }
+      }
+      else {
+        Sink sink = node.getSink(ctx);
+//        LOG.info("setting sink for instance " + instance + " to " + sink);
+        ctx.setSink(sink);
       }
 
       ctx.setSerde(StramUtils.getSerdeInstance(properties));
@@ -460,7 +470,8 @@ public class StramChild
   public static AbstractNode initNode(StreamingNodeContext nodeCtx, Configuration conf)
   {
     try {
-      Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(AbstractNode.class);
+      Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.
+        getDnodeClassName()).asSubclass(AbstractNode.class);
       Constructor<? extends AbstractNode> c = nodeClass.getConstructor(NodeContext.class);
       AbstractNode node = c.newInstance(new NodeContext(nodeCtx.getDnodeId()));
       //DNode node = ReflectionUtils.newInstance(nodeClass, conf);
@@ -469,7 +480,8 @@ public class StramChild
       return node;
     }
     catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Node class not found: " + nodeCtx.getDnodeClassName(), e);
+      throw new IllegalArgumentException("Node class not found: " + nodeCtx.
+        getDnodeClassName(), e);
     }
     catch (IllegalAccessException e) {
       throw new IllegalArgumentException("Error setting node properties", e);
@@ -478,13 +490,16 @@ public class StramChild
       throw new IllegalArgumentException("Error setting node properties", e);
     }
     catch (SecurityException e) {
-      throw new IllegalArgumentException("Error creating instance of class: " + nodeCtx.getDnodeClassName(), e);
+      throw new IllegalArgumentException("Error creating instance of class: " + nodeCtx.
+        getDnodeClassName(), e);
     }
     catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeCtx.getDnodeClassName(), e);
+      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeCtx.
+        getDnodeClassName(), e);
     }
     catch (InstantiationException e) {
-      throw new IllegalArgumentException("Failed to instantiate: " + nodeCtx.getDnodeClassName(), e);
+      throw new IllegalArgumentException("Failed to instantiate: " + nodeCtx.
+        getDnodeClassName(), e);
     }
   }
 }

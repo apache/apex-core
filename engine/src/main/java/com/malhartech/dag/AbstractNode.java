@@ -30,14 +30,10 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractNode implements Node, Runnable
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
-  private final HashSet<Sink> outputStreams = new HashSet<Sink>();
+  private final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
-  
-  // emitted tuples are screwed up so this property should be set with the 
-  // stream instead of with the node.
-  private long emittedTuples = 0;
 
   public AbstractNode(NodeContext ctx)
   {
@@ -85,12 +81,12 @@ public abstract class AbstractNode implements Node, Runnable
   {
     return ctx.resetHeartbeatCounters();
   }
-  
   private final Sink sink = new Sink()
   {
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
+//        logger.info(this + " got data " + t.getData());
         inputQueue.add(t);
         inputQueue.notify();
       }
@@ -109,44 +105,9 @@ public abstract class AbstractNode implements Node, Runnable
     return sink;
   }
 
-  protected void emitControl()
-  {
-    Data.DataType type = ctx.getData().getType();
-
-    Data.Builder data = Data.newBuilder();
-    data.setType(type);
-    data.setWindowId(ctx.getData().getWindowId());
-    switch (type) {
-      case BEGIN_WINDOW:
-        BeginWindow.Builder b = BeginWindow.newBuilder();
-        b.setNode(ctx.getId());
-        data.setBeginwindow(b);
-        break;
-
-      case END_WINDOW:
-        EndWindow.Builder e = EndWindow.newBuilder();
-        e.setNode(ctx.getId());
-        e.setTupleCount(emittedTuples);
-        data.setEndwindow(e);
-        break;
-
-      default:
-        logger.info("found unexpected data type " + type);
-    }
-
-    for (Sink sink : outputStreams) {
-      Tuple t = new Tuple(null);
-      t.setData(data.build());
-      sink.doSomething(t);
-    }
-    // emitted tuples are screwed up so this property should be set with the 
-    // stream instead of with the node.
-
-    emittedTuples = 0;
-  }
-
   public void emit(Object o)
   {
+    // we cannot send out simple data always... consult the serde.
     Data data = ctx.getData();
     if (data.getType() != DataType.SIMPLE_DATA
         && data.getType() != DataType.PARTITIONED_DATA) {
@@ -157,18 +118,14 @@ public abstract class AbstractNode implements Node, Runnable
       data = db.build();
     }
 
-    for (Sink sink : outputStreams) {
+    for (StreamContext context : outputStreams) {
       Tuple t = new Tuple(o);
       t.setData(data);
-      sink.doSomething(t);
+      context.sink(t);
     }
-    // emitted tuples are screwed up so this property should be set with the 
-    // stream instead of with the node.
-
-    emittedTuples++;
   }
 
-  public void emitStream(Object o, Sink sink)
+  public void emitStream(Object o, StreamContext output)
   {
     Data data = ctx.getData();
     if (data.getType() != DataType.SIMPLE_DATA
@@ -185,21 +142,18 @@ public abstract class AbstractNode implements Node, Runnable
      * only wrapper is used; data is ignored
      */
     t.setData(data);
-    sink.doSomething(t);
-
-    // emitted tuples are screwed up so this property should be set with the 
-    // stream instead of with the node.
+    output.sink(t);
   }
 
-  public void addSink(Sink sink)
+  public void addOutputStream(StreamContext context)
   {
-    outputStreams.add(sink);
+    outputStreams.add(context);
   }
 
-  public void connectOutputStreams(Collection<? extends Sink> sinks)
+  public void addOutputStreams(Collection<? extends StreamContext> contexts)
   {
-    for (Sink sink : sinks) {
-      outputStreams.add(sink);
+    for (StreamContext context : contexts) {
+      outputStreams.add(context);
     }
   }
 
@@ -347,12 +301,16 @@ public abstract class AbstractNode implements Node, Runnable
           switch (t.getData().getType()) {
             case BEGIN_WINDOW:
               beginWindow(ctx);
-              emitControl();
+              for (StreamContext stream : outputStreams) {
+                stream.sink(t);
+              }
               break;
 
             case END_WINDOW:
               endWindow(ctx);
-              emitControl();
+              for (StreamContext stream : outputStreams) {
+                stream.sink(t);
+              }
               break;
 
             default:
