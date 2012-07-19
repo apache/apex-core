@@ -3,18 +3,41 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.*;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.SerDe;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
+import com.malhartech.stram.AdapterWrapperNode;
+import com.malhartech.stram.DNodeManager;
+import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
+import com.malhartech.stram.NumberGeneratorInputAdapter;
+import com.malhartech.stram.StramChild;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.TopologyBuilderTest;
+import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
+import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 /**
  *
@@ -89,7 +112,7 @@ public class SocketStreamTest
     String upstreamNodeId = "upstreamNodeId";
     String downstreamNodeId = "downStreamNodeId";
 
-    StreamConfiguration sconf = new StreamConfiguration();
+    StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
     sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
     BufferServerInputStream iss = new BufferServerInputStream();
@@ -119,4 +142,67 @@ public class SocketStreamTest
     System.out.println("exiting...");
 
   }
+  
+
+  private class ChildContainer extends StramChild {
+
+    public ChildContainer(String containerId) {
+      super(containerId, new Configuration(), null);
+    }
+
+    private void initForTest(StreamingContainerContext ctx) throws IOException {
+      super.init(ctx);
+    }
+    
+  }
+  
+  
+  /**
+   * Instantiate physical model with adapters and partitioning in mock container.
+   * @throws Exception
+   */
+  @Test
+  public void testStramChildInit() throws Exception {
+
+    AdapterWrapperNode wn = new AdapterWrapperNode(null);
+    Map<String, String> properties = new HashMap<String, String>();
+    properties.put(AdapterWrapperNode.KEY_IS_INPUT, "true");
+    BeanUtils.populate(wn, properties);
+    Assert.assertTrue(wn.isInput());
+    
+    TopologyBuilder b = new TopologyBuilder(new Configuration());
+
+    NodeConf node1 = b.getOrAddNode("node1");
+    
+    StreamConf input1 = b.getOrAddStream("input1");
+    input1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
+    input1.addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
+
+    StreamConf output1 = b.getOrAddStream("output1");
+    output1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
+    
+    node1.addInput(input1);
+    node1.addOutput(output1);
+    
+    for (NodeConf nodeConf : b.getAllNodes().values()) {
+      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+    }
+
+    DNodeManager dnm = new DNodeManager(b);
+    int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
+    Assert.assertEquals("number required containers", expectedContainerCount, dnm.getNumRequiredContainers());
+
+    List<ChildContainer> containers = new ArrayList<ChildContainer>();
+    
+    for (int i=0; i<expectedContainerCount; i++) {
+      String containerId = "container"+(i+1);
+      StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+      ChildContainer container = new ChildContainer(containerId);
+      container.initForTest(cc);
+      containers.add(container);
+    }
+
+  }  
+  
+  
 }

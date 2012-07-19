@@ -56,8 +56,11 @@ public class DNodeManagerTest {
     
     // node1 needs to be deployed first, regardless in which order they were given
     StreamingContainerContext c1 = dnm.assignContainer(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
-    Assert.assertEquals("number nodes assigned to container", 1, c1.getNodes().size());
+    Assert.assertEquals("number nodes assigned to container", 2, c1.getNodes().size());
     Assert.assertTrue(node1.getId() + " assigned to " + container1Id, containsNodeContext(c1, node1));
+    StreamingNodeContext input1PNode = getNodeContext(c1, input1.getId());
+    Assert.assertNotNull(input1.getId() + " assigned to " + container1Id, input1PNode);
+
     Assert.assertEquals("stream connections for container1", 2, c1.getStreams().size());
 
     StreamContext c1n1n2 = getStreamContext(c1, "n1n2");
@@ -67,10 +70,11 @@ public class DNodeManagerTest {
 
     StreamContext input1Phys = getStreamContext(c1, input1.getId());
     Assert.assertNotNull("stream connection " + input1.getId(), input1Phys);
-    Assert.assertNull(input1.getId(), input1Phys.getSourceNodeId());
-    Assert.assertEquals(input1.getId(), c1n1n2.getSourceNodeId(), input1Phys.getTargetNodeId());
+    Assert.assertEquals(input1.getId() + " sourceId", input1PNode.getDnodeId(), input1Phys.getSourceNodeId());
+    Assert.assertEquals(input1.getId() + " targetId", c1n1n2.getSourceNodeId(), input1Phys.getTargetNodeId());
     Assert.assertNotNull(input1.getId() + " properties", input1Phys.getProperties());
     Assert.assertEquals(input1.getId() + " classname", NumberGeneratorInputAdapter.class.getName(), input1Phys.getProperties().get(TopologyBuilder.STREAM_CLASSNAME));
+    Assert.assertTrue(input1Phys.isInline());
     
     StreamingContainerContext c2 = dnm.assignContainer(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
     Assert.assertEquals("number nodes assigned to container", 2, c2.getNodes().size());
@@ -121,13 +125,65 @@ public class DNodeManagerTest {
       Assert.assertNotNull("stream connection for " + containerId, sc);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], sc.getPartitionKeys().get(0)));
     }
-      
   }  
   
+  @Test
+  public void testAdaptersWithStaticPartitioning() {
+    TopologyBuilder b = new TopologyBuilder(new Configuration());
 
+    NodeConf node1 = b.getOrAddNode("node1");
+    
+    StreamConf input1 = b.getOrAddStream("input1");
+    input1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
+    input1.addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
+
+    StreamConf output1 = b.getOrAddStream("output1");
+    output1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
+    
+    node1.addInput(input1);
+    node1.addOutput(output1);
+    
+    for (NodeConf nodeConf : b.getAllNodes().values()) {
+      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+    }
+
+    DNodeManager dnm = new DNodeManager(b);
+    int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
+    Assert.assertEquals("number required containers", expectedContainerCount, dnm.getNumRequiredContainers());
+    
+    for (int i=0; i<expectedContainerCount; i++) {
+      String containerId = "container"+(i+1);
+      StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
+
+      if (i==0) {
+        // the input and output adapter should be assigned to first container and streams should not be inline
+        Assert.assertEquals("number nodes assigned to " + containerId, 3, cc.getNodes().size());
+        StreamingNodeContext input1PNode = getNodeContext(cc, input1.getId());
+        Assert.assertNotNull(input1.getId() + " assigned to " + containerId, input1PNode);
+        
+        StreamingNodeContext output1PNode = getNodeContext(cc, output1.getId());
+        Assert.assertNotNull(output1.getId() + " assigned to " + containerId, output1PNode);
+      } else {
+        Assert.assertEquals("number nodes assigned to " + containerId, 1, cc.getNodes().size());
+      }
+      
+      Assert.assertTrue(node1.getId() + " assigned to " + containerId, containsNodeContext(cc, node1));
+  
+      Assert.assertEquals("stream connections for " + containerId, 2, cc.getStreams().size());
+      StreamContext scIn1 = getStreamContext(cc, "input1");
+      Assert.assertNotNull("in stream connection for " + containerId, scIn1);
+      Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], scIn1.getPartitionKeys().get(0)));
+      Assert.assertFalse(scIn1.isInline());
+      
+      StreamContext scOut1 = getStreamContext(cc, "output1");
+      Assert.assertNotNull("out stream connection for " + containerId, scOut1);
+      Assert.assertFalse(scOut1.isInline());
+    }
+  }  
+  
   public static class TestStaticPartitioningSerDe extends DefaultSerDe {
 
-    final static byte[][] partitions = new byte[][]{
+    public final static byte[][] partitions = new byte[][]{
         {'1'}, {'2'}, {'3'}
     };
     
@@ -139,14 +195,18 @@ public class DNodeManagerTest {
   
   
   private boolean containsNodeContext(StreamingContainerContext scc, NodeConf nodeConf) {
-    for (StreamingNodeContext snc : scc.getNodes()) {
-      if (nodeConf.getId().equals(snc.getLogicalId())) {
-        return true;
-      }
-    }
-    return false;
+    return getNodeContext(scc, nodeConf.getId()) != null;
   }
 
+  private static StreamingNodeContext getNodeContext(StreamingContainerContext scc, String logicalName) {
+    for (StreamingNodeContext snc : scc.getNodes()) {
+      if (logicalName.equals(snc.getLogicalId())) {
+        return snc;
+      }
+    }
+    return null;
+  }
+  
   private static StreamContext getStreamContext(StreamingContainerContext scc, String streamId) {
     for (StreamContext sc : scc.getStreams()) {
       if (streamId.equals(sc.getId())) {

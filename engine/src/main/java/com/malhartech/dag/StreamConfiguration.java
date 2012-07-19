@@ -6,6 +6,9 @@ package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Server;
 import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.Map;
+
 import org.apache.hadoop.conf.Configuration;
 
 /**
@@ -15,6 +18,20 @@ import org.apache.hadoop.conf.Configuration;
 public class StreamConfiguration extends Configuration
 {
   public static final String SERVER_ADDRESS = "bufferserver";
+  final Map<String, String> properties;
+
+  public StreamConfiguration(Map<String, String> properties) {
+    this.properties = properties;
+    NodeConfiguration.addAll(this, properties);
+  }  
+
+  public StreamConfiguration() {
+    this(Collections.<String, String>emptyMap());
+  }
+  
+  public Map<String, String> getDagProperties() {
+    return properties;
+  }
   
   public InetSocketAddress getBufferServerAddress()
   {
