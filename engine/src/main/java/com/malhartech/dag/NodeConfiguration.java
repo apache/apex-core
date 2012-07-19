@@ -5,6 +5,8 @@
 
 package com.malhartech.dag;
 
+import java.util.Map;
+
 import org.apache.hadoop.conf.Configuration;
 
 /**
@@ -13,5 +15,21 @@ import org.apache.hadoop.conf.Configuration;
  */
 public class NodeConfiguration extends Configuration 
 {
+  private final Map<String, String> properties;
+  
+  public NodeConfiguration(Map<String, String> properties) {
+    this.properties = properties;
+    addAll(this, properties);
+  }
 
+  public Map<String, String> getDagProperties() {
+    return properties;
+  }
+  
+  public static void addAll(Configuration conf, Map<String, String> properties) {
+    for (Map.Entry<String, String> e : properties.entrySet()) {
+      conf.set(e.getKey(), e.getValue());
+    }    
+  }
+  
 }

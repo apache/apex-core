@@ -7,6 +7,7 @@ package com.malhartech.stream;
 import static org.junit.Assert.fail;
 
 import java.net.InetSocketAddress;
+import java.util.Collections;
 
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipeline;

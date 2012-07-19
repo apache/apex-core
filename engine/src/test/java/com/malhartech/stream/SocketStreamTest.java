@@ -91,7 +91,7 @@ public class SocketStreamTest
     String upstreamNodeId = "upstreamNodeId";
     String downstreamNodeId = "downStreamNodeId";
 
-    StreamConfiguration sconf = new StreamConfiguration();
+    StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
     sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
     BufferServerInputStream iss = new BufferServerInputStream();
