@@ -56,7 +56,8 @@ public class LaunchContainerRunnable implements Runnable {
   private Container container;
   // Handle to communicate with ContainerManager
   private ContainerManager cm;
-
+  private int containerMemoryMb = 64;
+  
   /**
    * @param lcontainer Allocated container
    */
@@ -66,6 +67,7 @@ public class LaunchContainerRunnable implements Runnable {
     this.conf = conf;
     this.heartbeatAddress = heartbeatAddress;
     this.topologyProps = topologyProps;
+    this.containerMemoryMb = lcontainer.getResource().getMemory();
   }
 
   /**
@@ -93,7 +95,7 @@ public class LaunchContainerRunnable implements Runnable {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
-    classPathEnv.append(":./log4j.properties");
+    classPathEnv.append(":."); // include log4j.properties, if any
 
     env.put("CLASSPATH", classPathEnv.toString());        
     LOG.info("CLASSPATH: {}", classPathEnv);
@@ -225,7 +227,10 @@ public class LaunchContainerRunnable implements Runnable {
     } else {
       vargs.add("java");
     }
-  
+
+    // Set Xmx based on am memory size
+    vargs.add("-Xmx" + containerMemoryMb + "m");    
+    
     Path childTmpDir = new Path(Environment.PWD.$(),
         YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);

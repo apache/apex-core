@@ -24,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
-import com.malhartech.dag.StreamConfiguration;
 
 /**
  * Builder for the DAG logical representation of nodes and streams.
@@ -48,6 +47,8 @@ public class TopologyBuilder {
   public static final String STREAM_TARGETNODE = "outputNode";
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_INLINE = "inline";
+  public static final String STREAM_SERDE_CLASSNAME = "serdeClassname";
+  public static final String STREAM_CLASSNAME = "classname";
   
   public static final String NODE_PREFIX = "stram.node";
   public static final String NODE_CLASSNAME = "classname";
@@ -464,8 +465,8 @@ public class TopologyBuilder {
       if (s.getSourceNode() == null && s.getTargetNode() == null) {
         throw new IllegalStateException(String.format("Source or target needs to be defined for stream %s", s.getId()));
       } else if (s.getSourceNode() == null || s.getTargetNode() == null) {
-        if (s.getProperty(StreamConfiguration.STREAM_CLASSNAME) == null) {
-          throw new IllegalStateException(String.format("Property %s needs to be defined for adapter stream %s", StreamConfiguration.STREAM_CLASSNAME, s.getId()));
+        if (s.getProperty(TopologyBuilder.STREAM_CLASSNAME) == null) {
+          throw new IllegalStateException(String.format("Property %s needs to be defined for adapter stream %s", TopologyBuilder.STREAM_CLASSNAME, s.getId()));
         }
       }
     }
@@ -485,7 +486,7 @@ public class TopologyBuilder {
       }
     }
     for (StreamConf n : this.streams.values()) {
-      String className = n.properties.getProperty(StreamConfiguration.STREAM_CLASSNAME);
+      String className = n.properties.getProperty(TopologyBuilder.STREAM_CLASSNAME);
       if (className != null) {
         classNames.add(className);
       }

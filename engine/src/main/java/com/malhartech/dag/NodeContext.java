@@ -18,8 +18,8 @@ public class NodeContext implements Context
   }
   private HeartbeatCounters heartbeatCounters = new HeartbeatCounters();
   
-  private Data data;
   private String id;
+  private long windowId;
   
   public NodeContext(String id) {
     this.id = id;
@@ -31,17 +31,12 @@ public class NodeContext implements Context
   
   public long getCurrentWindowId()
   {
-    return data.getWindowId();
+    return windowId;
   }
   
-  public void setData(Data data)
+  public void setCurrentWindowId(long windowId)
   {
-    this.data = data;
-  }
-  
-  public Data getData()
-  {
-    return data;
+    this.windowId = windowId;
   }
 
   /**
@@ -60,7 +55,8 @@ public class NodeContext implements Context
   void countProcessed(Tuple t) {
     synchronized (this.heartbeatCounters) {
       this.heartbeatCounters.tuplesProcessed++;
-      this.heartbeatCounters.bytesProcessed += t.getData().getSerializedSize();
+      // chetan commented this out since counting the serialized size of data is wrong
+      //this.heartbeatCounters.bytesProcessed += t.getData().getSerializedSize();
     }
   }
   

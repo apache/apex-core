@@ -36,9 +36,9 @@
   </dependencies>
 
   <modules>
-
     <module>stram</module>
     <module>bufferserver</module>
+    <module>examples/wordcount</module>
   </modules>
     <artifactId>framework</artifactId>
 </project>

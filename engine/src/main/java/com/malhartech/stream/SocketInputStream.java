@@ -4,11 +4,9 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import com.malhartech.netty.ClientPipelineFactory;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -21,15 +19,14 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
  *
  * @author chetan
  */
-public class InputSocketStream extends SimpleChannelUpstreamHandler implements Stream
+public class SocketInputStream
+  extends SimpleChannelUpstreamHandler
+  implements Stream
 {
-
   private static final Logger logger =
                               Logger.getLogger(ClientHandler.class.getName());
-  private ClientBootstrap bootstrap;
   public static final ChannelLocal<StreamContext> contexts = new ChannelLocal<StreamContext>()
   {
-
     @Override
     protected StreamContext initialValue(Channel channel)
     {
@@ -37,6 +34,8 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     }
   };
   protected Channel channel;
+  private ClientBootstrap bootstrap;
+  private long tupleCount;
 
   @Override
   public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
@@ -47,38 +46,59 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     }
     else {
       Data d = (Data) e.getMessage();
-      logger.log(Level.INFO, "received {0} with windowid {1}", new Object[]{d.getType(), d.getWindowId()});
 
-      Object o;
-      if (d.getType() == Data.DataType.SIMPLE_DATA) {
-        o = context.getSerDe().fromByteArray(d.getSimpledata().getData().toByteArray());
-      }
-      else if (d.getType() == Data.DataType.PARTITIONED_DATA) {
-        o = context.getSerDe().fromByteArray(d.getPartitioneddata().getData().toByteArray());
-      }
-      else {
-        o = null;
+      Tuple t;
+      switch (d.getType()) {
+        case SIMPLE_DATA:
+          tupleCount++;
+          t = new Tuple(context.getSerDe().fromByteArray(d.getSimpledata().
+            getData().toByteArray()));
+          t.setType(DataType.SIMPLE_DATA);
+          break;
+
+        case PARTITIONED_DATA:
+          tupleCount++;
+          t = new Tuple(context.getSerDe().fromByteArray(d.getPartitioneddata().
+            getData().toByteArray()));
+          /*
+           * we really do not distinguish between SIMPLE_DATA and
+           * PARTITIONED_DATA
+           */
+          t.setType(DataType.SIMPLE_DATA);
+          break;
+
+        case END_WINDOW:
+          t = new EndWindowTuple();
+          ((EndWindowTuple) t).setTupleCount(tupleCount);
+          break;
+
+        case BEGIN_WINDOW:
+          tupleCount = 0;
+          
+        default:
+          t = new Tuple(null);
+          t.setType(d.getType());
+          break;
       }
 
-      Tuple t = new Tuple(o);
+      t.setWindowId(d.getWindowId());
       t.setContext(context);
-      t.setData(d);
-      context.getSink().doSomething(t);
+      context.sink(t);
     }
   }
 
   protected ClientPipelineFactory getClientPipelineFactory()
   {
-    return new ClientPipelineFactory(InputSocketStream.class);
+    return new ClientPipelineFactory(SocketInputStream.class);
   }
 
   @Override
   public void setup(StreamConfiguration config)
   {
     bootstrap = new ClientBootstrap(
-            new NioClientSocketChannelFactory(
-            Executors.newCachedThreadPool(),
-            Executors.newCachedThreadPool()));
+      new NioClientSocketChannelFactory(
+      Executors.newCachedThreadPool(),
+      Executors.newCachedThreadPool()));
 
     // Configure the event pipeline factory.
     bootstrap.setPipelineFactory(getClientPipelineFactory());
@@ -101,5 +121,11 @@ public class InputSocketStream extends SimpleChannelUpstreamHandler implements S
     channel.close();
     channel.getCloseFuture().awaitUninterruptibly();
     bootstrap.releaseExternalResources();
+  }
+
+  @Override
+  public StreamContext getContext()
+  {
+    return contexts.get(channel);
   }
 }

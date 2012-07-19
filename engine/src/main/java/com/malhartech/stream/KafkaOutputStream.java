@@ -11,20 +11,18 @@ import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 import kafka.javaapi.producer.Producer;
 
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class OutputKafkaStream
-        implements Stream, Sink
+public class KafkaOutputStream
+  implements Stream, Sink
 {
-
   @Override
   public void setup(StreamConfiguration config)
   {
     Producer producer;
-    
+
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
@@ -45,5 +43,10 @@ public class OutputKafkaStream
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
-  
+
+  @Override
+  public StreamContext getContext()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }

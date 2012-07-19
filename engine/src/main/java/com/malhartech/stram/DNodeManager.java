@@ -6,8 +6,8 @@ package com.malhartech.stram;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,6 +20,7 @@ import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.dag.SerDe;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -34,7 +35,8 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
  * Tracks topology provisioning/allocation to containers.
  */
 public class DNodeManager {
-  private static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
+  private final static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
+  private final static String NO_PARTITION = "";
   
   private AtomicInteger nodeSequence = new AtomicInteger();
   private long windowStartMillis = System.currentTimeMillis();
@@ -56,20 +58,35 @@ public class DNodeManager {
    */
   private Map<NodeConf, Set<NodeConf>> nodeGroups = new HashMap<NodeConf, Set<NodeConf>>();
   
+  /**
+   * Count of instances to create for each logical node
+   */
+  private Map<NodeConf, List<byte[]>> nodePartitioning = new HashMap<NodeConf, List<byte[]>>();
   
   private List<Set<NodeConf>> deployGroups = new ArrayList<Set<NodeConf>>();
   private Map<String, NodeStatus> allNodes = new ConcurrentHashMap<String, NodeStatus>();
   
   private Map<String, StreamingContainerContext> containerContextMap = new HashMap<String, StreamingContainerContext>();
-  private Map<NodeConf, List<StreamingNodeContext>> logical2PhysicalMap = new ConcurrentHashMap<NodeConf, List<StreamingNodeContext>>();
+  private Map<NodeConf, Map<String, StreamingNodeContext>> logical2PhysicalNode = new ConcurrentHashMap<NodeConf, Map<String, StreamingNodeContext>>();
   private Map<String, NodeConf> nodeId2NodeConfMap = new ConcurrentHashMap<String, NodeConf>();
 
   public DNodeManager(TopologyBuilder topology) {
       addNodes(topology.getAllNodes().values());
+      
+      /*
+       * try to align to it pleases eyes.
+       */
+      windowStartMillis -= (windowStartMillis % windowSizeMillis);
   }
 
   public int getNumRequiredContainers() {
-    return deployGroups.size();
+    int numContainers = deployGroups.size() - nodePartitioning.size();
+    if (!this.nodePartitioning.isEmpty()) {
+        for (List<byte[]> partitions : this.nodePartitioning.values()) {
+          numContainers += partitions.size();
+        }
+    }
+    return numContainers;
   }
   
   /**
@@ -98,11 +115,31 @@ public class DNodeManager {
     for (NodeConf nc : nodes) {
       // if the node has inline links to other nodes, cluster
       groupNodes(nc.getInputStreams());
+      for (StreamConf sc : nc.getInputStreams()) {
+        List<byte[]> partitions = getStreamPartitions(sc);
+        if (partitions != null) {
+          // deploy instance for each partition
+          nodePartitioning.put(nc, partitions);
+        }
+      }
       groupNodes(nc.getOutputStreams());
     }
     return nodeGroups.size();
   }
 
+  private List<byte[]> getStreamPartitions(StreamConf streamConf) {
+    try {
+      SerDe serde = StramUtils.getSerdeInstance(streamConf.getProperties());
+      byte[][] partitions = serde.getPartitions();
+      if (partitions != null) {
+        return new ArrayList<byte[]>(Arrays.asList(serde.getPartitions()));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to get partition info from SerDe", e);
+    }
+    return null;
+  }
+  
   private void groupNodes(Collection<StreamConf> streams) {
     for (StreamConf sc : streams) {
         if (sc.isInline()) {
@@ -177,42 +214,82 @@ public class DNodeManager {
     return !deployGroups.isEmpty() ? deployGroups.get(0) : null;
   }
 
-  /**
-   * Find the stream context for the given stream, 
-   * regardless of whether publisher or subscriber deploy first.
-   * @param streamConf
-   * @param nodeConf
-   * @return
-   */
-  private StreamContext getStreamContext(StreamConf streamConf, InetSocketAddress bufferServerAddress) {
-    for (StreamingContainerContext scc : this.containerContextMap.values()) {
-        for (StreamContext sc : scc.getStreams()) {
-            if (sc.getId().equals(streamConf.getId()) && sc.getTargetNodeLogicalId().equals(streamConf.getTargetNode().getId())) {
-              return sc;
-            }
-        }
-    }
+  private Map<StreamConf, List<StreamContext>> logical2PhysicalStream = new HashMap<StreamConf, List<StreamContext>>();
+
+  private StreamContext newStreamContext(StreamConf streamConf, InetSocketAddress bufferServerAddress, byte[] subscriberPartition) {
+    // create new stream info and assign buffer server
     StreamContext sc = new StreamContext();
     sc.setId(streamConf.getId());
     sc.setBufferServerHost(bufferServerAddress.getHostName());
     sc.setBufferServerPort(bufferServerAddress.getPort());
     sc.setInline(streamConf.isInline());
-
-    // map logical node id to assigned sequences for source and target
-    if (streamConf.getSourceNode() != null) {
-      sc.setSourceNodeId(getNodeContext(streamConf.getSourceNode()).getDnodeId());
-    } else {
-      // input adapter, need implementation class
-      sc.setProperties(streamConf.getProperties());
-    }
-    if (streamConf.getTargetNode() != null) {
-      sc.setTargetNodeId(getNodeContext(streamConf.getTargetNode()).getDnodeId());
-      sc.setTargetNodeLogicalId(streamConf.getTargetNode().getId());
-    } else {
-      // external output, need implementation class
-      sc.setProperties(streamConf.getProperties());
+    if (subscriberPartition != null) {
+      sc.setPartitionKeys(Arrays.asList(subscriberPartition));
     }
     return sc;
+  }
+  
+  /**
+   * Find the stream context(s) for the given logical stream, 
+   * regardless of whether publisher or subscriber deploy first.
+   * Returns multiple streams if either source or target use partitioning or load balancing.
+   * @param streamConf
+   * @param nodeConf
+   * @return
+   */
+  private List<StreamContext> getPhysicalStreams(StreamConf streamConf, InetSocketAddress bufferServerAddress) {
+
+    List<StreamContext> pstreams = logical2PhysicalStream.get(streamConf);
+    if (pstreams != null) {
+        return pstreams;
+    }
+    
+    pstreams = new ArrayList<StreamContext>();
+    logical2PhysicalStream.put(streamConf, pstreams);
+
+    // map logical source and target to assigned nodes
+    if (streamConf.getSourceNode() != null && streamConf.getTargetNode() != null) {
+      // all publisher nodes
+      Map<String, StreamingNodeContext> publishers = getPhysicalNodes(streamConf.getSourceNode());
+      for (Map.Entry<String, StreamingNodeContext> publisherEntry : publishers.entrySet()) {
+        // all subscriber nodes
+        Map<String, StreamingNodeContext> subscribers = getPhysicalNodes(streamConf.getTargetNode());
+        for (Map.Entry<String, StreamingNodeContext> subscriberEntry : subscribers.entrySet()) {
+          byte[] subscriberPartition = null;
+          if (NO_PARTITION != subscriberEntry.getKey()) {
+            subscriberPartition = subscriberEntry.getKey().getBytes();
+          }
+          StreamContext sc = newStreamContext(streamConf, bufferServerAddress, subscriberPartition);
+          sc.setSourceNodeId(publisherEntry.getValue().getDnodeId());
+          // type is upstream node name for multiple downstream nodes to be able to subscribe
+          sc.setBufferServerChannelType(streamConf.getSourceNode().getId());
+          sc.setTargetNodeId(subscriberEntry.getValue().getDnodeId());
+          // type is upstream node name for multiple downstream nodes to be able to subscribe
+          sc.setBufferServerChannelType(streamConf.getSourceNode().getId());
+          sc.setProperties(streamConf.getProperties());
+          pstreams.add(sc);
+        } 
+      }
+    } else {
+      // adapters - TOD0: inline connection to source/target does not work with partitioning
+      if (streamConf.getSourceNode() == null) {
+        // input adapter, need implementation class
+        Map<String, StreamingNodeContext> subscribers = getPhysicalNodes(streamConf.getTargetNode());
+        StreamContext sc = newStreamContext(streamConf, bufferServerAddress, null);
+        sc.setTargetNodeId(subscribers.values().iterator().next().getDnodeId());
+        sc.setProperties(streamConf.getProperties());
+        pstreams.add(sc);
+      } else if (streamConf.getTargetNode() == null) {
+        // output adapter, need implementation class
+        Map<String, StreamingNodeContext> publishers = getPhysicalNodes(streamConf.getSourceNode());
+        StreamContext sc = newStreamContext(streamConf, bufferServerAddress, null);
+        sc.setSourceNodeId(publishers.values().iterator().next().getDnodeId());
+        sc.setProperties(streamConf.getProperties());
+        pstreams.add(sc);
+      }
+    }
+    
+    return pstreams;
   }
   
   /**
@@ -227,13 +304,43 @@ public class DNodeManager {
     }
     Set<NodeConf> nodes = findDeployableNodeGroup();
     if (nodes == null) {
-      throw new IllegalStateException("Cannot find a streaming node for new container, remaining unassgined nodes are " + this.deployGroups);
+      throw new IllegalStateException("Cannot find a streaming node for new container, remaining unassigned nodes are " + this.deployGroups);
     }
-    deployGroups.remove(nodes);
-   
+    
+    // figure physical nodes for logical set
+    List<byte[]> inputPartitions = null;
     List<StreamingNodeContext> nodeContextList = new ArrayList<StreamingNodeContext>(nodes.size());
     for (NodeConf nodeConf : nodes) {
-      nodeContextList.add(getNodeContext(nodeConf));
+      Map<String, StreamingNodeContext> pnodes = getPhysicalNodes(nodeConf);
+      if (this.nodePartitioning.containsKey(nodeConf)) {
+        // partitioned deployment
+        if (inputPartitions != null) {
+          LOG.error("Cannot partition more than one node in group {}.", nodes);
+        }
+        inputPartitions = this.nodePartitioning.get(nodeConf);
+        // pick the next partition
+        String partKey = new String(inputPartitions.remove(0));
+        StreamingNodeContext sc = pnodes.get(partKey); 
+        if (sc == null) {
+          throw new IllegalStateException("Node not found for partition key " + partKey);
+        }
+        if (inputPartitions.isEmpty()) {
+          // all partitions deployed
+          this.nodePartitioning.remove(nodeConf);
+        }
+        nodeContextList.add(sc);
+      } else {
+        // no partitioning
+        if (pnodes.size() != 1) {
+          String msg = String.format("There should be a single instance for non-partitioned nodes, but found {}.", pnodes);
+          throw new IllegalStateException(msg);
+        }
+        nodeContextList.add(pnodes.values().iterator().next());
+      }
+    }
+ 
+    if (inputPartitions == null || inputPartitions.isEmpty()) {
+      deployGroups.remove(nodes);
     }
     
     StreamingContainerContext scc = new StreamingContainerContext();
@@ -241,18 +348,34 @@ public class DNodeManager {
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setNodes(nodeContextList);
 
-    // assemble connecting streams for deployment group of node(s)
-    // map to remove duplicates between nodes in same container (inline or not)
+    // find streams for to be deployed node(s)
+    // map to eliminate duplicates within container (inline or not)
     Map<String, StreamContext> streams = new HashMap<String, StreamContext>();
     for (StreamingNodeContext snc  : scc.getNodes()) {
       NodeConf nodeConf = nodeId2NodeConfMap.get(snc.getDnodeId());
       // DAG node inputs
       for (StreamConf streamConf : nodeConf.getInputStreams()) {
-        streams.put(streamConf.getId(), getStreamContext(streamConf, bufferServerAddress));
+        // find incoming stream(s)
+        // if source is partitioned, it is one entry per upstream partition,
+        List<StreamContext> pstreams = getPhysicalStreams(streamConf, bufferServerAddress);
+        for (StreamContext pstream : pstreams) {
+          if (pstream.getTargetNodeId() == snc.getDnodeId()) {
+            // node is subscriber
+            streams.put(streamConf.getId(), pstream);
+          }
+        }
       }
       // DAG node outputs
       for (StreamConf streamConf : nodeConf.getOutputStreams()) {
-        streams.put(streamConf.getId(), getStreamContext(streamConf, bufferServerAddress));
+        // find incoming stream(s)
+        // if source is partitioned, it is one entry per upstream partition,
+        List<StreamContext> pstreams = getPhysicalStreams(streamConf, bufferServerAddress);
+        for (StreamContext pstream : pstreams) {
+          if (pstream.getSourceNodeId() == snc.getDnodeId()) {
+            // node is publisher
+            streams.put(streamConf.getId(), pstream);
+          }
+        }
       }
     }
     scc.setStreams(new ArrayList<StreamContext>(streams.values()));
@@ -260,18 +383,37 @@ public class DNodeManager {
 
     return scc;
   }
- 
-  private StreamingNodeContext getNodeContext(NodeConf nodeConf) {
-    synchronized (logical2PhysicalMap) {
-      if (logical2PhysicalMap.containsKey(nodeConf)) {
-          return logical2PhysicalMap.get(nodeConf).get(0);
+
+  /**
+   * Map of partition to node (if incoming streams use partitions).
+   * If no partitions are used, resulting map will have single entry.
+   * @param nodeConf
+   * @return
+   */
+  private Map<String, StreamingNodeContext> getPhysicalNodes(NodeConf nodeConf) {
+    synchronized (logical2PhysicalNode) {
+      Map<String, StreamingNodeContext> pNodes = logical2PhysicalNode.get(nodeConf);
+      if (pNodes == null) {
+        pNodes = new HashMap<String, StreamingNodeContext>();
+        List<byte[]> partitions = this.nodePartitioning.get(nodeConf);
+        if (partitions != null) {
+          for (byte[] p : partitions) {
+            pNodes.put(new String(p), newNodeContext(nodeConf));
+          }
+        } else {
+          pNodes.put(NO_PARTITION, newNodeContext(nodeConf));
+        }
+        logical2PhysicalNode.put(nodeConf, pNodes);
       }
+      return pNodes;
+    }
+  }
+      
+  private StreamingNodeContext newNodeContext(NodeConf nodeConf) {
       StreamingNodeContext scc = createNodeContext(""+nodeSequence.incrementAndGet(), nodeConf);
-      logical2PhysicalMap.put(nodeConf, Collections.singletonList(scc));
       nodeId2NodeConfMap.put(scc.getDnodeId(), nodeConf);
       allNodes.put(scc.getDnodeId(), new NodeStatus(scc));
       return scc;
-    }
   }
   
   public StreamingContainerContext getContainerContext(String containerId) {

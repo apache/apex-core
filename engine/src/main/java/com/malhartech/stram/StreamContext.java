@@ -66,18 +66,18 @@ public class StreamContext extends StreamingNodeUmbilicalProtocol.WritableAdapte
     this.targetNodeId = targetNodeId;
   }
   /**
-   * Target node name from topology. Required for publish to buffer server.
+   * upstream node name from topology. Required for subscribe to buffer server.
    */
-  private String targetNodeLogicalId;
+  private String bufferServerChannelType;
 
-  public String getTargetNodeLogicalId()
+  public String getBufferServerChannelType()
   {
-    return targetNodeLogicalId;
+    return bufferServerChannelType;
   }
 
-  public void setTargetNodeLogicalId(String targetNodeLogicalId)
+  public void setBufferServerChannelType(String bufferServerChannelType)
   {
-    this.targetNodeLogicalId = targetNodeLogicalId;
+    this.bufferServerChannelType = bufferServerChannelType;
   }
   private boolean isInline;
 

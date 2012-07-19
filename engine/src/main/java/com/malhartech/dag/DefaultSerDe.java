@@ -4,40 +4,47 @@
  */
 package com.malhartech.dag;
 
-import org.objenesis.instantiator.ObjectInstantiator;
-
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.stram.conf.ShipContainingJars;
 
 /**
- * Requires kryo and mockito in deployment
+ * Requires kryo and its dependencies in deployment
  */
-@ShipContainingJars (classes={Kryo.class, ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class})
-final public class DefaultSerDe implements SerDe
+@ShipContainingJars (classes={Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
+public class DefaultSerDe implements SerDe
 {
+  //private static final Logger logger = LoggerFactory.getLogger(DefaultSerDe.class);
+  
   private Kryo kryo = new Kryo();
   private Output output = new Output(new byte[4096]);
   private Input input = new Input();
 
+  @Override
   public Object fromByteArray(byte[] bytes)
   {
     input.setBuffer(bytes);
-    Object o = kryo.readClassAndObject(input);
-    return o;
+    return kryo.readClassAndObject(input);
   }
 
+  @Override
   public byte[] toByteArray(Object o)
   {
     output.setPosition(0);
     kryo.writeClassAndObject(output, o);
-    byte[] bytes = output.toBytes();
-    return bytes;
+    return output.toBytes();
   }
 
+  @Override
   public byte[] getPartition(Object o)
   {
     return null;
   }
+
+  @Override
+  public byte[][] getPartitions() {
+    return null;
+  }
+  
 }

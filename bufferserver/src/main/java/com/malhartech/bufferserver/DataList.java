@@ -11,7 +11,6 @@ import java.util.Map.Entry;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -125,7 +124,6 @@ public class DataList
 
   public void add(Data d)
   {
-    logger.log(Level.INFO, "added data of type {0} with windowId {1}", new Object[]{d.getType(), d.getWindowId()});
     last.lockWrite();
     DataArray temp = last;
     try {
@@ -139,8 +137,6 @@ public class DataList
     }
 
     last.add(d);
-
-    logger.log(Level.FINEST, "Adding datapoint {0}", Thread.currentThread());
 
     // here somehow we need to let the other thread know that we are ready
     // to write w/o writing all the data since that comes with the danger
@@ -188,6 +184,7 @@ public class DataList
   {
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
     db.setType(Data.DataType.PUBLISHER_DISCONNECT);
+    db.setWindowId(time);
 
     Buffer.PublisherDisconnect.Builder pdb = Buffer.PublisherDisconnect.newBuilder();
     pdb.setIdentifier(identifier);

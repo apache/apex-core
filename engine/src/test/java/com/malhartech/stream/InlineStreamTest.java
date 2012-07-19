@@ -61,19 +61,24 @@ public class InlineStreamTest {
       AbstractNode node2 = new PassThroughNode(new NodeContext("2"));
       
       InlineStream stream12 = new InlineStream();
-      stream12.setContext(new StreamContext(node2));
+      StreamContext sc1 = new StreamContext();
+      sc1.setSink(node2.getSink(sc1));
+      stream12.setContext(sc1);
        
-      node1.connectOutputStreams(Collections.singletonList(stream12));
+      node1.addOutputStreams(Collections.singletonList(sc1));
       
-      node2.connectOutputStreams(Collections.singletonList(node2Sink));
+      StreamContext sc2 = new StreamContext();
+      sc1.setSink(node2Sink);
+      node2.addOutputStreams(Collections.singletonList(sc2));
 
       Map<String, Thread> activeNodes = new ConcurrentHashMap<String, Thread>();
       launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
 
-      StreamContext streamContext = new StreamContext(node1);
+      StreamContext streamContext = new StreamContext();
+      streamContext.setSink(node1.getSink(streamContext));
       
       for (int i=0; i<totalTupleCount; i++) {
-        node1.doSomething(StramTestSupport.generateTuple(i, 0, streamContext));
+        node1.getSink(streamContext).doSomething(StramTestSupport.generateTuple(i, 0, streamContext));
       }
 
       synchronized(s) {
@@ -112,15 +117,42 @@ public class InlineStreamTest {
    */
   public static class PassThroughNode extends AbstractNode {
 
+    private boolean appendNodeId = false;
+
+    public boolean isAppendNodeId() {
+      return appendNodeId;
+    }
+
+    public void setAppendNodeId(boolean appendNodeId) {
+      LOG.info("appendNodeId=" + appendNodeId);
+      this.appendNodeId = appendNodeId;
+    }
+
+    private boolean logMessages = false;
+    
+    public boolean isLogMessages() {
+      return logMessages;
+    }
+
+    public void setLogMessages(boolean logMessages) {
+      this.logMessages = logMessages;
+    }
+
     public PassThroughNode(NodeContext ctx) {
       super(ctx);
     }
 
     @Override
     public void process(NodeContext context, StreamContext sc, Object o) {
+      if (appendNodeId) {
+        o = this.getContext().getId() + " > " + o;
+      }
       emit(o);
+      if (logMessages) {
+        LOG.info("emit: " + o);
+      }
     }
-
+    
   }
   
 }

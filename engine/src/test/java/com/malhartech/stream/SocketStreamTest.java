@@ -3,17 +3,11 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.stream.BufferServerOutputSocketStream;
-import com.malhartech.stream.BufferServerInputSocketStream;
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -67,13 +61,11 @@ public class SocketStreamTest
       @Override
       public void doSomething(Tuple t)
       {
-        switch (t.getData().getType()) {
+        switch (t.getType()) {
           case BEGIN_WINDOW:
-            System.out.println(t.getData().getBeginwindow().getNode() + " begin window for window " + t.getData().getWindowId());
             break;
 
           case END_WINDOW:
-            System.out.println(t.getData().getEndwindow().getNode() + " end window for window " + t.getData().getWindowId());
             synchronized (SocketStreamTest.this) {
               SocketStreamTest.this.notifyAll();
             }
@@ -89,7 +81,8 @@ public class SocketStreamTest
     SerDe serde = new DefaultSerDe();
 
 
-    StreamContext issContext = new StreamContext(sink);
+    StreamContext issContext = new StreamContext();
+    issContext.setSink(sink);
     issContext.setSerde(serde);
 
     String streamName = "streamName"; // AKA "type"
@@ -99,13 +92,14 @@ public class SocketStreamTest
     StreamConfiguration sconf = new StreamConfiguration();
     sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
-    BufferServerInputSocketStream iss = new BufferServerInputSocketStream();
+    BufferServerInputStream iss = new BufferServerInputStream();
     iss.setup(sconf);
-    iss.setContext(issContext, upstreamNodeId, streamName, downstreamNodeId);
+    iss.setContext(issContext, upstreamNodeId, streamName, downstreamNodeId, Collections.<String>emptyList());
     System.out.println("input stream ready");
 
-    BufferServerOutputSocketStream oss = new BufferServerOutputSocketStream();
-    StreamContext ossContext = new StreamContext(null);
+    BufferServerOutputStream oss = new BufferServerOutputStream();
+    StreamContext ossContext = new StreamContext();
+    
     ossContext.setSerde(serde);
     oss.setup(sconf);
     oss.setContext(ossContext, upstreamNodeId, streamName);
@@ -114,6 +108,7 @@ public class SocketStreamTest
     oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0, ossContext));
     oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
+    oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1, ossContext));
     synchronized (SocketStreamTest.this) {
       if (messageCount.get() == 0) { // don't wait if already notified
         SocketStreamTest.this.wait(2000);

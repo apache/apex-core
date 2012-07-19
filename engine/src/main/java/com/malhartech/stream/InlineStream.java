@@ -4,10 +4,7 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 
 /**
  *
@@ -15,11 +12,11 @@ import com.malhartech.dag.Tuple;
  */
 public class InlineStream implements Sink, Stream
 {
-  private com.malhartech.dag.StreamContext context;
+  private StreamContext context;
+
   public void doSomething(Tuple t)
   {
-    t.setContext(context);
-    context.getSink().doSomething(t);
+    context.sink(t);
   }
 
   @Override
@@ -29,7 +26,7 @@ public class InlineStream implements Sink, Stream
   }
 
   @Override
-  public void setContext(com.malhartech.dag.StreamContext context)
+  public void setContext(StreamContext context)
   {
     this.context = context;
   }
@@ -40,4 +37,9 @@ public class InlineStream implements Sink, Stream
     // nothing to do?
   }
 
+  @Override
+  public StreamContext getContext()
+  {
+    return this.context;
+  }
 }

@@ -4,21 +4,20 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.stream.AbstractObjectInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.stream.AbstractInputObjectStream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
 
-
-public class NumberGeneratorInputAdapter extends AbstractInputObjectStream
+public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
     implements Runnable {
   private static Logger LOG = LoggerFactory
       .getLogger(NumberGeneratorInputAdapter.class);
   private boolean shutdown = false;
   private String myConfigProperty;
-
+  
   public String getMyConfigProperty() {
     return myConfigProperty;
   }
@@ -34,6 +33,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputObjectStream
   @Override
   public void setContext(StreamContext context) {
     super.setContext(context);
+    this.context = context;
     Thread t = new Thread(this);
     t.start();
   }
@@ -41,7 +41,8 @@ public class NumberGeneratorInputAdapter extends AbstractInputObjectStream
   public void run() {
     int i = 0;
     while (!shutdown) {
-      context.getSink().doSomething(getTuple("" + i++));
+      sendTuple(String.valueOf(i++));
+      LOG.info("sent tuple to: " + context);
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
@@ -58,6 +59,11 @@ public class NumberGeneratorInputAdapter extends AbstractInputObjectStream
   @Override
   public Object getObject(Object object) {
     return null;
+  }
+
+  public StreamContext getContext()
+  {
+    return context;
   }
 
 }

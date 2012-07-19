@@ -12,15 +12,17 @@ import java.util.logging.Logger;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream implements Runnable
+public abstract class AbstractHDFSInputStream extends AbstractObjectInputStream implements Runnable
 {
 
-  private FSDataInputStream input;
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
+  protected FSDataInputStream input;
 
   @Override
   public void setup(StreamConfiguration config)
@@ -31,7 +33,7 @@ public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream 
       input = fs.open(filepath);
     }
     catch (IOException ex) {
-      Logger.getLogger(AbstractInputHDFSStream.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(AbstractHDFSInputStream.class.getName()).log(Level.SEVERE, null, ex);
     }
 
   }
@@ -46,9 +48,10 @@ public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream 
 
   public void run()
   {
+    logger.debug("ready to read hdfs file");
     Object o;
     while ((o = getObject(input)) != null) {
-      context.getSink().doSomething(getTuple(o));
+      sendTuple(o);
     }
   }
 
@@ -59,7 +62,7 @@ public abstract class AbstractInputHDFSStream extends AbstractInputObjectStream 
       input.close();
     }
     catch (IOException ex) {
-      Logger.getLogger(AbstractInputHDFSStream.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(AbstractHDFSInputStream.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 }

@@ -10,6 +10,7 @@ import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.EndWindow;
 import com.malhartech.bufferserver.Buffer.SimpleData;
+import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 
@@ -20,27 +21,17 @@ abstract public class StramTestSupport {
 
   static Tuple generateTuple(Object payload, long windowId, StreamContext sc) {
     Tuple t = new Tuple(payload);
-    Data.Builder db = Data.newBuilder();
-    db.setType(Data.DataType.SIMPLE_DATA);
-    db.setSimpledata(SimpleData.newBuilder().setData(ByteString.EMPTY)).setWindowId(windowId);
-    t.setData(db.build());
+    t.setWindowId(windowId);
+    t.setType(DataType.SIMPLE_DATA);
     t.setContext(sc);
     return t;
   }
   
   static Tuple generateBeginWindowTuple(String nodeid, long windowId, StreamContext sc)
   {
-    BeginWindow.Builder bwb = BeginWindow.newBuilder();
-    bwb.setNode(nodeid);
-
-    Data.Builder db = Data.newBuilder();
-    db.setType(DataType.BEGIN_WINDOW);
-    db.setWindowId(windowId);
-    db.setBeginwindow(bwb);
-    
-    Data data = db.build();
     Tuple t = new Tuple(null);
-    t.setData(data);
+    t.setType(DataType.BEGIN_WINDOW);
+    t.setWindowId(windowId);
     t.setContext(sc);
     
     return t;
@@ -59,10 +50,10 @@ abstract public class StramTestSupport {
     db.setEndwindow(ewb);
     
     Data data = db.build();
-    Tuple t = new Tuple(null);
-    t.setData(data);
+    EndWindowTuple t = new EndWindowTuple();
+    t.setTupleCount(tupleCount);
+    t.setWindowId(windowId);
     t.setContext(sc);
-    
     return t;
   }
   

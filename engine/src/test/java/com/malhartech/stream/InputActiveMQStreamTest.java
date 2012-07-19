@@ -23,7 +23,7 @@ public class InputActiveMQStreamTest
 {
 
   static StreamConfiguration config;
-  static AbstractInputActiveMQStream instance;
+  static AbstractActiveMQInputStream instance;
   static StreamContext context;
 
 
@@ -34,7 +34,6 @@ public class InputActiveMQStreamTest
 
     public MyStreamContext()
     {
-      super(null); // TODO
       myserde = new DefaultSerDe();
     }
 
@@ -54,7 +53,7 @@ public class InputActiveMQStreamTest
     }
   }
 
-  private static final class InputActiveMQStream extends AbstractInputActiveMQStream
+  private static final class InputActiveMQStream extends AbstractActiveMQInputStream
   {
 
     @Override
@@ -124,7 +123,7 @@ public class InputActiveMQStreamTest
   }
 
   /**
-   * Test of setup method, of class AbstractInputActiveMQStream.
+   * Test of setup method, of class AbstractActiveMQInputStream.
    */
   @Test
   public void testSetup()
@@ -137,7 +136,7 @@ public class InputActiveMQStreamTest
   }
 
   /**
-   * Test of teardown method, of class AbstractInputActiveMQStream.
+   * Test of teardown method, of class AbstractActiveMQInputStream.
    */
   @Test
   public void testTeardown()
