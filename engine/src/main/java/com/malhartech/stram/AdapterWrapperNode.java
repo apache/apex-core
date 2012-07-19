@@ -4,9 +4,13 @@
  */
 package com.malhartech.stram;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.beanutils.BeanUtils;
 
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.InputAdapter;
@@ -108,5 +112,66 @@ public class AdapterWrapperNode extends AbstractNode implements Sink {
       return super.getSink(context);
     }
   }
+
+  
+  public static <T extends Stream> T initAdapterStream(StreamConfiguration streamConf, AbstractNode node)
+  {
+    Map<String, String> properties = streamConf.getDagProperties();
+    String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
+    if (className == null) {
+      // should have been caught during submit validation
+      throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", TopologyBuilder.STREAM_CLASSNAME));
+    }
+    try {
+      Class<?> clazz = Class.forName(className);
+      Class<? extends Stream> subClass = clazz.asSubclass(Stream.class);
+      Constructor<? extends Stream> c = subClass.getConstructor();
+      @SuppressWarnings("unchecked")
+      T instance = (T) c.newInstance();
+      // populate custom properties
+      BeanUtils.populate(instance, properties);
+
+      instance.setup(streamConf);
+
+      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
+      if (node == null) {
+        /*
+         * This is output adapter so it needs to implement the Sink interface.
+         */
+        if (instance instanceof Sink) {
+          ctx.setSink((Sink) instance);
+        }
+      }
+      else {
+        Sink sink = node.getSink(ctx);
+//        LOG.info("setting sink for instance " + instance + " to " + sink);
+        ctx.setSink(sink);
+      }
+
+      ctx.setSerde(StramUtils.getSerdeInstance(properties));
+      instance.setContext(ctx);
+
+      return instance;
+    }
+    catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException("Node class not found: " + className, e);
+    }
+    catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    }
+    catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    }
+    catch (SecurityException e) {
+      throw new IllegalArgumentException("Error creating instance of class: " + className, e);
+    }
+    catch (NoSuchMethodException e) {
+      throw new IllegalArgumentException("Constructor with NodeContext not found: " + className, e);
+    }
+    catch (InstantiationException e) {
+      throw new IllegalArgumentException("Failed to instantiate: " + className, e);
+    }
+  }
+    
   
 }

@@ -4,18 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.dag.*;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stream.BufferServerInputStream;
-import com.malhartech.stream.BufferServerOutputStream;
-import com.malhartech.stream.InlineStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -28,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSError;
@@ -41,6 +30,24 @@ import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stream.BufferServerInputStream;
+import com.malhartech.stream.BufferServerOutputStream;
+import com.malhartech.stream.InlineStream;
 
 /**
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
