@@ -166,6 +166,7 @@ public class DNodeManagerTest {
       } else {
         Assert.assertEquals("number nodes assigned to " + containerId, 1, cc.getNodes().size());
       }
+      Assert.assertEquals("number streams " + containerId, 2, cc.getStreams().size());
       
       Assert.assertTrue(node1.getId() + " assigned to " + containerId, containsNodeContext(cc, node1));
   
