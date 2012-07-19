@@ -89,12 +89,9 @@ public final class OutputSocketStreamTest
     System.out.println("doSomething");
     oss.setContext(ctx);
 
-    Data.Builder data = Data.newBuilder();
-    data.setType(Data.DataType.SIMPLE_DATA).setWindowId(0);
-    data.setSimpledata(SimpleData.newBuilder().setData(ByteString.EMPTY).build());
-    
     Tuple t = new Tuple("hello");
-    t.setData(data.build());
+    t.setType(Data.DataType.SIMPLE_DATA);
+    t.setWindowId(0);
     t.setContext(oss.getContext());
     
     oss.doSomething(t);

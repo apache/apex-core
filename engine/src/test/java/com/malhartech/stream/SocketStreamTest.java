@@ -61,13 +61,11 @@ public class SocketStreamTest
       @Override
       public void doSomething(Tuple t)
       {
-        switch (t.getData().getType()) {
+        switch (t.getType()) {
           case BEGIN_WINDOW:
-            System.out.println(t.getData().getBeginwindow().getNode() + " begin window for window " + t.getData().getWindowId());
             break;
 
           case END_WINDOW:
-            System.out.println(t.getData().getEndwindow().getNode() + " end window for window " + t.getData().getWindowId());
             synchronized (SocketStreamTest.this) {
               SocketStreamTest.this.notifyAll();
             }

@@ -15,6 +15,8 @@ import com.malhartech.bufferserver.Buffer.BeginWindow;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.EndWindow;
+import com.malhartech.bufferserver.Buffer.PartitionedData;
+import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
 import java.util.Collection;
@@ -105,43 +107,21 @@ public abstract class AbstractNode implements Node, Runnable
     return sink;
   }
 
+  // this about object sharing among the nodes. it would be nice
+  // to know if the object can be shared among multiple downstream
+  // nodes. will save on serialization/deserialization etc.
   public void emit(Object o)
   {
-    // we cannot send out simple data always... consult the serde.
-    Data data = ctx.getData();
-    if (data.getType() != DataType.SIMPLE_DATA
-        && data.getType() != DataType.PARTITIONED_DATA) {
-      Data.Builder db = Data.newBuilder();
-      db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).
-        setWindowId(data.getWindowId());
-      data = db.build();
-    }
-
     for (StreamContext context : outputStreams) {
-      Tuple t = new Tuple(o);
-      t.setData(data);
-      context.sink(t);
+      emitStream(o, context);
     }
   }
 
   public void emitStream(Object o, StreamContext output)
   {
-    Data data = ctx.getData();
-    if (data.getType() != DataType.SIMPLE_DATA
-        && data.getType() != DataType.PARTITIONED_DATA) {
-      Data.Builder db = Data.newBuilder();
-      db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).
-        setWindowId(data.getWindowId());
-      data = db.build();
-    }
-
     Tuple t = new Tuple(o);
-    /*
-     * only wrapper is used; data is ignored
-     */
-    t.setData(data);
+    t.setWindowId(ctx.getCurrentWindowId());
+    t.setType(DataType.SIMPLE_DATA);
     output.sink(t);
   }
 
@@ -159,33 +139,28 @@ public abstract class AbstractNode implements Node, Runnable
 
   final private class DataComparator implements Comparator<Tuple>
   {
-    public int compare(Tuple t, Tuple t1)
+    public int compare(Tuple t1, Tuple t2)
     {
-
-      Data d = t.getData();
-      Data d1 = t1.getData();
-      if (d != d1) {
-        long tid = d.getWindowId();
-        long t1id = d1.getWindowId();
-        if (tid < t1id) {
+        long wid1 = t1.getWindowId();
+        long wid2 = t2.getWindowId();
+        if (wid1 < wid2) {
           return -1;
         }
-        else if (tid > t1id) {
+        else if (wid1 > wid2) {
           return 1;
         }
-        else if (d.getType() == Data.DataType.BEGIN_WINDOW) {
+        else if (t1.getType() == Data.DataType.BEGIN_WINDOW) {
           return -1;
         }
-        else if (d1.getType() == Data.DataType.BEGIN_WINDOW) {
+        else if (t2.getType() == Data.DataType.BEGIN_WINDOW) {
           return 1;
         }
-        else if (d.getType() == Data.DataType.END_WINDOW) {
+        else if (t1.getType() == Data.DataType.END_WINDOW) {
           return 1;
         }
-        else if (d1.getType() == Data.DataType.END_WINDOW) {
+        else if (t2.getType() == Data.DataType.END_WINDOW) {
           return -1;
         }
-      }
 
       return 0;
     }
@@ -219,10 +194,10 @@ public abstract class AbstractNode implements Node, Runnable
   final public void run()
   {
     alive = true;
+    ctx.setCurrentWindowId(0);
 
     int canStartNewWindow = 0;
     boolean shouldWait = false;
-    long currentWindow = 0;
     int tupleCount = 0;
 
     while (alive && !shouldShutdown()) {
@@ -232,17 +207,16 @@ public abstract class AbstractNode implements Node, Runnable
           shouldWait = true;
         }
         else {
-          Data d = t.getData();
-          switch (d.getType()) {
+          switch (t.getType()) {
             case BEGIN_WINDOW:
               if (canStartNewWindow == 0) {
                 tupleCount = 0;
                 canStartNewWindow = inputStreams.size();
                 inputQueue.poll();
-                currentWindow = d.getWindowId();
+                ctx.setCurrentWindowId(t.getWindowId());
                 shouldWait = false;
               }
-              else if (d.getWindowId() == currentWindow) {
+              else if (t.getWindowId() == ctx.getCurrentWindowId()) {
                 shouldWait = false;
               }
               else {
@@ -251,9 +225,9 @@ public abstract class AbstractNode implements Node, Runnable
               break;
 
             case END_WINDOW:
-              if (d.getWindowId() == currentWindow
-                  && d.getEndwindow().getTupleCount() <= tupleCount) {
-                tupleCount -= d.getEndwindow().getTupleCount();
+              if (t.getWindowId() == ctx.getCurrentWindowId()
+                  && ((EndWindowTuple) t).getTupleCount() <= tupleCount) {
+                tupleCount -= ((EndWindowTuple) t).getTupleCount();
                 if (tupleCount == 0) {
                   canStartNewWindow--;
                   inputQueue.poll();
@@ -266,14 +240,14 @@ public abstract class AbstractNode implements Node, Runnable
               break;
 
             default:
-              if (d.getType() == Data.DataType.SIMPLE_DATA
-                  && d.getWindowId() == currentWindow) {
+              if (t.getType() == Data.DataType.SIMPLE_DATA
+                  && t.getWindowId() == ctx.getCurrentWindowId()) {
                 tupleCount++;
                 inputQueue.poll();
                 shouldWait = false;
               }
-              else if (d.getType() == Data.DataType.PARTITIONED_DATA
-                       && d.getWindowId() == currentWindow) {
+              else if (t.getType() == Data.DataType.PARTITIONED_DATA
+                       && t.getWindowId() == ctx.getCurrentWindowId()) {
                 tupleCount++;
                 inputQueue.poll();
                 shouldWait = false;
@@ -294,11 +268,10 @@ public abstract class AbstractNode implements Node, Runnable
           }
         }
         else {
-          ctx.setData(t.getData());
           /*
            * we process this outside to keep the critical region free.
            */
-          switch (t.getData().getType()) {
+          switch (t.getType()) {
             case BEGIN_WINDOW:
               beginWindow(ctx);
               for (StreamContext stream : outputStreams) {

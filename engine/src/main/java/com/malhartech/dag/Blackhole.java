@@ -15,7 +15,6 @@ public class Blackhole implements Sink {
   public void doSomething(Tuple t)
   {
     t.setContext(null);
-    t.setData(null);
     t.setContext(null);
   }
 

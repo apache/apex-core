@@ -69,7 +69,7 @@ public class HDFSOutputStream
   @Override
   public void doSomething(Tuple t)
   {
-    switch (t.getData().getType()) {
+    switch (t.getType()) {
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
 //        LOG.debug("writing out " + t.getObject());
@@ -84,7 +84,7 @@ public class HDFSOutputStream
         break;
 
       default:
-        LOG.info("ignoring tuple of the type " + t.getData().getType());
+        LOG.info("ignoring tuple of the type " + t.getType());
         break;
     }
   }

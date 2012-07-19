@@ -40,10 +40,9 @@ public class StreamContext implements Context
     this.serde = serde;
   }
 
-  // check if this needs to be synchronized
   public void sink(Tuple t)
   {
-    switch (t.getData().getType()) {
+    switch (t.getType()) {
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
         tupleCount++;
@@ -54,28 +53,16 @@ public class StreamContext implements Context
         break;
 
       case END_WINDOW:
-        if (tupleCount == t.getData().getEndwindow().getTupleCount()) {
-//          logger.debug("No need to create a new tuple");
+        if (tupleCount != ((EndWindowTuple) t).getTupleCount()) {
+          EndWindowTuple ewt = new EndWindowTuple();
+          ewt.setTupleCount(tupleCount);
+          ewt.setWindowId(t.getWindowId());
+          t = ewt;
+          break;
         }
-        else {
-//          logger.debug("creating a new tuple since most likely working on partitioned data " + t.getData());
-          Data.Builder db = Data.newBuilder();
-          db.setWindowId(t.getData().getWindowId());
-          db.setType(Data.DataType.END_WINDOW);
-
-          EndWindow.Builder eb = EndWindow.newBuilder();
-          eb.setNode("?@?");
-          eb.setTupleCount(tupleCount);
-          db.setEndwindow(eb);
-
-          t.setData(db.build());
-        }
-        break;
     }
 
     t.setContext(this);
-    
-    //logger.info(this + " tupleCount = " + tupleCount + " writing " + t.getData());
     sink.doSomething(t);
   }
 
