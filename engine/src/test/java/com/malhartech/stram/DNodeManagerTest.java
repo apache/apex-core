@@ -148,9 +148,10 @@ public class DNodeManagerTest {
     }
 
     DNodeManager dnm = new DNodeManager(b);
-    Assert.assertEquals("number required containers", TestStaticPartitioningSerDe.partitions.length, dnm.getNumRequiredContainers());
+    int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
+    Assert.assertEquals("number required containers", expectedContainerCount, dnm.getNumRequiredContainers());
     
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<expectedContainerCount; i++) {
       String containerId = "container"+(i+1);
       StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
 
@@ -182,7 +183,7 @@ public class DNodeManagerTest {
   
   public static class TestStaticPartitioningSerDe extends DefaultSerDe {
 
-    final static byte[][] partitions = new byte[][]{
+    public final static byte[][] partitions = new byte[][]{
         {'1'}, {'2'}, {'3'}
     };
     

@@ -16,9 +16,8 @@ import org.slf4j.LoggerFactory;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class HDFSOutputStream
-        implements Stream, Sink
+  implements Stream, Sink
 {
-
   private static org.slf4j.Logger LOG = LoggerFactory.getLogger(HDFSOutputStream.class);
   private StreamContext context;
   private FSDataOutputStream output;
@@ -70,10 +69,10 @@ public class HDFSOutputStream
   @Override
   public void doSomething(Tuple t)
   {
-    switch (t.getData().getType()) {
+    switch (t.getType()) {
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
-        LOG.debug("writing out " + t.getObject());
+//        LOG.debug("writing out " + t.getObject());
         SerDe serde = context.getSerDe();
         byte[] serialized = serde.toByteArray(t.getObject());
         try {
@@ -85,8 +84,13 @@ public class HDFSOutputStream
         break;
 
       default:
-        LOG.debug("ignoring tuple of the type " + t.getData().getType());
+        LOG.info("ignoring tuple of the type " + t.getType());
         break;
     }
+  }
+
+  public StreamContext getContext()
+  {
+    return this.context;
   }
 }

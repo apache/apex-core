@@ -61,13 +61,15 @@ public class InlineStreamTest {
       AbstractNode node2 = new PassThroughNode(new NodeContext("2"));
       
       InlineStream stream12 = new InlineStream();
-      StreamContext sc = new StreamContext();
-      sc.setSink(node2.getSink(sc));
-      stream12.setContext(sc);
+      StreamContext sc1 = new StreamContext();
+      sc1.setSink(node2.getSink(sc1));
+      stream12.setContext(sc1);
        
-      node1.connectOutputStreams(Collections.singletonList(stream12));
+      node1.addOutputStreams(Collections.singletonList(sc1));
       
-      node2.connectOutputStreams(Collections.singletonList(node2Sink));
+      StreamContext sc2 = new StreamContext();
+      sc1.setSink(node2Sink);
+      node2.addOutputStreams(Collections.singletonList(sc2));
 
       Map<String, Thread> activeNodes = new ConcurrentHashMap<String, Thread>();
       launchNodeThreads(Arrays.asList(node1, node2), activeNodes);

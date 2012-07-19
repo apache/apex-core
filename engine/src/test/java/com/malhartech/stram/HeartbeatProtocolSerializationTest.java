@@ -79,6 +79,10 @@ public class HeartbeatProtocolSerializationTest {
       public void setContext(StreamContext context) {
       }
       @Override
+      public StreamContext getContext() {
+        return null;
+      }
+      @Override
       public void endWindow(long timemillis) {
         endWindowCount.incrementAndGet();
         windowXor.set(windowXor.get() ^ timemillis);

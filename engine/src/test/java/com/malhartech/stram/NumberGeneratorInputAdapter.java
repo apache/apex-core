@@ -41,8 +41,8 @@ public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
   public void run() {
     int i = 0;
     while (!shutdown) {
-      context.getSink().doSomething(getTuple("" + i++));
-      LOG.info("sent tuple to: " + context.getSink());
+      sendTuple(String.valueOf(i++));
+      LOG.info("sent tuple to: " + context);
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {

@@ -9,6 +9,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
 
 /**
  *
@@ -17,8 +18,9 @@ import com.malhartech.bufferserver.Buffer.Data;
 public class Tuple
 {
 
+  private long windowId;
+  private DataType type;
   private StreamContext context;
-  private Data data;
   final Object object;
 
   public Tuple(Object object)
@@ -42,24 +44,40 @@ public class Tuple
     this.context = context;
   }
 
-  /**
-   * @return the data
-   */
-  public Data getData()
-  {
-    return data;
-  }
-
-  /**
-   * @param data the data to set
-   */
-  public void setData(Data data)
-  {
-    this.data = data;
-  }
-
   public Object getObject()
   {
     return object;
+  }
+
+  /**
+   * @return the windowId
+   */
+  public long getWindowId()
+  {
+    return windowId;
+  }
+
+  /**
+   * @param windowId the windowId to set
+   */
+  public void setWindowId(long windowId)
+  {
+    this.windowId = windowId;
+  }
+
+  /**
+   * @return the type
+   */
+  public DataType getType()
+  {
+    return type;
+  }
+
+  /**
+   * @param type the type to set
+   */
+  public void setType(DataType type)
+  {
+    this.type = type;
   }
 }

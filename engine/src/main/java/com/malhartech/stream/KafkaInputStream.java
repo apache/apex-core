@@ -66,10 +66,7 @@ public class KafkaInputStream
     KafkaStream<Message> stream = consumerMap.get(topic).get(0);
     ConsumerIterator<Message> it = stream.iterator();
     while (it.hasNext()) {
-      Object o = getObject(it.next().message());
-      if (o != null) {
-        context.getSink().doSomething(getTuple(o));
-      }
+      sendTuple(getObject(it.next().message()));
     }
   }
 

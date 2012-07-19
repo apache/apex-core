@@ -9,37 +9,35 @@
  */
 package com.malhartech.dag;
 
-import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.BeginWindow;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
-import com.malhartech.bufferserver.Buffer.EndWindow;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.util.StablePriorityQueue;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Map;
+
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.stram.StramUtils;
+import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.util.StablePriorityQueue;
 
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class AbstractNode implements Node, Runnable
 {
-
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
-  private final HashSet<Sink> outputStreams = new HashSet<Sink>();
+  private final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
-  
-      // emitted tuples are screwed up so this property should be set with the 
-    // stream instead of with the node.
-
-  private long emittedTuples = 0;
 
   public AbstractNode(NodeContext ctx)
   {
@@ -87,23 +85,22 @@ public abstract class AbstractNode implements Node, Runnable
   {
     return ctx.resetHeartbeatCounters();
   }
-  
   private final Sink sink = new Sink()
   {
-
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
+//        logger.info(this + " got data " + t.getData());
         inputQueue.add(t);
         inputQueue.notify();
       }
     }
-    
+
     @Override
     public String toString()
     {
       return AbstractNode.this.toString();
-    }    
+    }
   };
 
   public Sink getSink(StreamContext context)
@@ -112,159 +109,60 @@ public abstract class AbstractNode implements Node, Runnable
     return sink;
   }
 
-  protected void emitControl()
-  {
-    Data.DataType type = ctx.getData().getType();
-
-    Data.Builder data = Data.newBuilder();
-    data.setType(type);
-    data.setWindowId(ctx.getData().getWindowId());
-    switch (type) {
-      case BEGIN_WINDOW:
-        BeginWindow.Builder b = BeginWindow.newBuilder();
-        b.setNode(ctx.getId());
-        data.setBeginwindow(b);
-        break;
-        
-      case END_WINDOW:
-        EndWindow.Builder e  = EndWindow.newBuilder();
-        e.setNode(ctx.getId());
-        e.setTupleCount(emittedTuples);
-        data.setEndwindow(e);
-        break;
-        
-      default:
-        logger.info("found unexpected data type " + type);
-    }
-    
-    for (Sink sink : outputStreams) {
-      Tuple t = new Tuple(null);
-      t.setData(data.build());
-      sink.doSomething(t);
-    }
-        // emitted tuples are screwed up so this property should be set with the 
-    // stream instead of with the node.
-
-    emittedTuples = 0;
-  }
-
+  // this about object sharing among the nodes. it would be nice
+  // to know if the object can be shared among multiple downstream
+  // nodes. will save on serialization/deserialization etc.
   public void emit(Object o)
   {
-    Data data = ctx.getData();
-    if (data.getType() != DataType.SIMPLE_DATA
-        && data.getType() != DataType.PARTITIONED_DATA) {
-      Data.Builder db = Data.newBuilder();
-      db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).setWindowId(data.getWindowId());
-      data = db.build();
+    for (StreamContext context : outputStreams) {
+      emitStream(o, context);
     }
-
-    for (Sink sink : outputStreams) {
-      Tuple t = new Tuple(o);
-      t.setData(data);
-      sink.doSomething(t);
-    }
-        // emitted tuples are screwed up so this property should be set with the 
-    // stream instead of with the node.
-
-    emittedTuples++;
   }
 
-  public void emitStream(Object o, Sink sink)
+  public void emitStream(Object o, StreamContext output)
   {
-    Data data = ctx.getData();
-    if (data.getType() != DataType.SIMPLE_DATA
-        && data.getType() != DataType.PARTITIONED_DATA) {
-      Data.Builder db = Data.newBuilder();
-      db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(Buffer.SimpleData.newBuilder().setData(ByteString.EMPTY)).setWindowId(data.getWindowId());
-      data = db.build();
-    }
-
     Tuple t = new Tuple(o);
-    /*
-     * only wrapper is used; data is ignored
-     */
-    t.setData(data);
-    sink.doSomething(t);
-    
-    // emitted tuples are screwed up so this property should be set with the 
-    // stream instead of with the node.
+    t.setWindowId(ctx.getCurrentWindowId());
+    t.setType(DataType.SIMPLE_DATA);
+    output.sink(t);
   }
 
-  public void addSink(Sink sink)
+  public void addOutputStream(StreamContext context)
   {
-    outputStreams.add(sink);
+    outputStreams.add(context);
   }
 
-  public void connectOutputStreams(Collection<? extends Sink> sinks)
+  public void addOutputStreams(Collection<? extends StreamContext> contexts)
   {
-    for (Sink sink : sinks) {
-      outputStreams.add(sink);
+    for (StreamContext context : contexts) {
+      outputStreams.add(context);
     }
-  }
-
-  public long getWindowId(Data d)
-  {
-    long windowId;
-
-    switch (d.getType()) {
-      case BEGIN_WINDOW:
-        windowId = d.getWindowId();
-        break;
-
-      case END_WINDOW:
-        windowId = d.getWindowId();
-        break;
-
-      case SIMPLE_DATA:
-        windowId = d.getWindowId();
-        break;
-
-      case PARTITIONED_DATA:
-        windowId = d.getWindowId();
-        break;
-
-      default:
-        windowId = 0;
-        break;
-    }
-
-    return windowId;
-
-
   }
 
   final private class DataComparator implements Comparator<Tuple>
   {
-
-    public int compare(Tuple t, Tuple t1)
+    public int compare(Tuple t1, Tuple t2)
     {
-
-      Data d = t.getData();
-      Data d1 = t1.getData();
-      if (d != d1) {
-        long tid = getWindowId(d);
-        long t1id = getWindowId(d1);
-        if (tid < t1id) {
+        long wid1 = t1.getWindowId();
+        long wid2 = t2.getWindowId();
+        if (wid1 < wid2) {
           return -1;
         }
-        else if (tid > t1id) {
+        else if (wid1 > wid2) {
           return 1;
         }
-        else if (d.getType() == Data.DataType.BEGIN_WINDOW) {
+        else if (t1.getType() == Data.DataType.BEGIN_WINDOW) {
           return -1;
         }
-        else if (d1.getType() == Data.DataType.BEGIN_WINDOW) {
+        else if (t2.getType() == Data.DataType.BEGIN_WINDOW) {
           return 1;
         }
-        else if (d.getType() == Data.DataType.END_WINDOW) {
+        else if (t1.getType() == Data.DataType.END_WINDOW) {
           return 1;
         }
-        else if (d1.getType() == Data.DataType.END_WINDOW) {
+        else if (t2.getType() == Data.DataType.END_WINDOW) {
           return -1;
         }
-      }
 
       return 0;
     }
@@ -298,10 +196,10 @@ public abstract class AbstractNode implements Node, Runnable
   final public void run()
   {
     alive = true;
+    ctx.setCurrentWindowId(0);
 
     int canStartNewWindow = 0;
     boolean shouldWait = false;
-    long currentWindow = 0;
     int tupleCount = 0;
 
     while (alive && !shouldShutdown()) {
@@ -311,17 +209,16 @@ public abstract class AbstractNode implements Node, Runnable
           shouldWait = true;
         }
         else {
-          Data d = t.getData();
-          switch (d.getType()) {
+          switch (t.getType()) {
             case BEGIN_WINDOW:
               if (canStartNewWindow == 0) {
                 tupleCount = 0;
                 canStartNewWindow = inputStreams.size();
                 inputQueue.poll();
-                currentWindow = d.getWindowId();
+                ctx.setCurrentWindowId(t.getWindowId());
                 shouldWait = false;
               }
-              else if (d.getWindowId() == currentWindow) {
+              else if (t.getWindowId() == ctx.getCurrentWindowId()) {
                 shouldWait = false;
               }
               else {
@@ -330,9 +227,9 @@ public abstract class AbstractNode implements Node, Runnable
               break;
 
             case END_WINDOW:
-              if (d.getWindowId() == currentWindow
-                  && d.getEndwindow().getTupleCount() <= tupleCount) {
-                tupleCount -= d.getEndwindow().getTupleCount();
+              if (t.getWindowId() == ctx.getCurrentWindowId()
+                  && ((EndWindowTuple) t).getTupleCount() <= tupleCount) {
+                tupleCount -= ((EndWindowTuple) t).getTupleCount();
                 if (tupleCount == 0) {
                   canStartNewWindow--;
                   inputQueue.poll();
@@ -345,14 +242,14 @@ public abstract class AbstractNode implements Node, Runnable
               break;
 
             default:
-              if (d.getType() == Data.DataType.SIMPLE_DATA
-                  && d.getWindowId() == currentWindow) {
+              if (t.getType() == Data.DataType.SIMPLE_DATA
+                  && t.getWindowId() == ctx.getCurrentWindowId()) {
                 tupleCount++;
                 inputQueue.poll();
                 shouldWait = false;
               }
-              else if (d.getType() == Data.DataType.PARTITIONED_DATA
-                       && d.getWindowId() == currentWindow) {
+              else if (t.getType() == Data.DataType.PARTITIONED_DATA
+                       && t.getWindowId() == ctx.getCurrentWindowId()) {
                 tupleCount++;
                 inputQueue.poll();
                 shouldWait = false;
@@ -373,19 +270,22 @@ public abstract class AbstractNode implements Node, Runnable
           }
         }
         else {
-          ctx.setData(t.getData());
           /*
            * we process this outside to keep the critical region free.
            */
-          switch (t.getData().getType()) {
+          switch (t.getType()) {
             case BEGIN_WINDOW:
               beginWindow(ctx);
-              emitControl();
+              for (StreamContext stream : outputStreams) {
+                stream.sink(t);
+              }
               break;
 
             case END_WINDOW:
               endWindow(ctx);
-              emitControl();
+              for (StreamContext stream : outputStreams) {
+                stream.sink(t);
+              }
               break;
 
             default:
@@ -401,10 +301,71 @@ public abstract class AbstractNode implements Node, Runnable
 
   }
 
+  public static <T extends Stream> T initAdapterStream(StreamConfiguration streamConf, AbstractNode node)
+  {
+    Map<String, String> properties = streamConf.getDagProperties();
+    String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
+    if (className == null) {
+      // should have been caught during submit validation
+      throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", TopologyBuilder.STREAM_CLASSNAME));
+    }
+    try {
+      Class<?> clazz = Class.forName(className);
+      Class<? extends Stream> subClass = clazz.asSubclass(Stream.class);
+      Constructor<? extends Stream> c = subClass.getConstructor();
+      @SuppressWarnings("unchecked")
+      T instance = (T) c.newInstance();
+      // populate custom properties
+      BeanUtils.populate(instance, properties);
+
+      instance.setup(streamConf);
+
+      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
+      if (node == null) {
+        /*
+         * This is output adapter so it needs to implement the Sink interface.
+         */
+        if (instance instanceof Sink) {
+          ctx.setSink((Sink) instance);
+        }
+      }
+      else {
+        Sink sink = node.getSink(ctx);
+//        LOG.info("setting sink for instance " + instance + " to " + sink);
+        ctx.setSink(sink);
+      }
+
+      ctx.setSerde(StramUtils.getSerdeInstance(properties));
+      instance.setContext(ctx);
+
+      return instance;
+    }
+    catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException("Node class not found: " + className, e);
+    }
+    catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    }
+    catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    }
+    catch (SecurityException e) {
+      throw new IllegalArgumentException("Error creating instance of class: " + className, e);
+    }
+    catch (NoSuchMethodException e) {
+      throw new IllegalArgumentException("Constructor with NodeContext not found: " + className, e);
+    }
+    catch (InstantiationException e) {
+      throw new IllegalArgumentException("Failed to instantiate: " + className, e);
+    }
+  }
+  
+  
   @Override
   public String toString()
   {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.ctx.getId()).
-            toString();
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.ctx.
+      getId()).
+      toString();
   }
 }

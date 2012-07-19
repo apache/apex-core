@@ -4,16 +4,13 @@
  */
 package com.malhartech.stream;
 
-import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer.BeginWindow;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.EndWindow;
-import com.malhartech.bufferserver.Buffer.PartitionedData;
-import com.malhartech.bufferserver.Buffer.SimpleData;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.SerDe;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -21,90 +18,74 @@ import com.malhartech.dag.Tuple;
  */
 public abstract class AbstractObjectInputStream implements InputAdapter
 {
-
+  private static final Logger logger = LoggerFactory.getLogger(AbstractObjectInputStream.class);
   protected StreamContext context = null;
-  protected long tupleCount = 0;
-  protected long timemillis = 0;
+  protected volatile long tupleCount = 0;
+  protected volatile long timemillis = 0;
   
   public void setContext(StreamContext context)
   {
     this.context = context;
   }
-  public abstract Object getObject(Object object);
-
-  public Tuple getTuple(Object o)
+  
+  public StreamContext getContext()
   {
-    SerDe serde = context.getSerDe();
-    byte[] partition = serde.getPartition(o);
-
-    Data.Builder db = Data.newBuilder();
-    db.setWindowId(timemillis); // set it to appropriate window Id
-    if (partition == null) {
-      SimpleData.Builder sdb = SimpleData.newBuilder();
-      sdb.setData(ByteString.EMPTY);
-
-      /*
-       * we dont care about byte array
-       */
-      db.setType(Data.DataType.SIMPLE_DATA);
-      db.setSimpledata(sdb);
-    }
-    else {
-      PartitionedData.Builder pdb = PartitionedData.newBuilder();
-      pdb.setPartition(ByteString.copyFrom(partition));
-
-      /*
-       * we dont care about byte array
-       */
-      pdb.setData(ByteString.EMPTY);
-      db.setType(Data.DataType.PARTITIONED_DATA);
-      db.setPartitioneddata(pdb);
-    }
-    
-    tupleCount++;
-
+    return this.context;
+  }
+  
+  public abstract Object getObject(Object object);
+  
+  public void sendTuple(Object o)
+  {
     Tuple t = new Tuple(o);
     t.setContext(context);
-    t.setData(db.build());
-    return t;
+    t.setType(DataType.SIMPLE_DATA);
+    
+    synchronized (this) {
+      try {
+        while (timemillis == 0) {
+          this.wait();
+        }
+      }
+      catch (InterruptedException ie) {
+        logger.info("Interrupted while waiting to be in the window because of "
+                    + ie.getLocalizedMessage());
+      }
+      
+      t.setWindowId(timemillis);
+      tupleCount++;
+      context.sink(t);
+    }
   }
-
-  public synchronized void beginWindow(long timemillis)
+  
+  public void beginWindow(long timemillis)
   {
     this.timemillis = timemillis;
-    Data.Builder db = Data.newBuilder();
-    db.setWindowId(timemillis);
-    db.setType(Data.DataType.BEGIN_WINDOW);
-
-    BeginWindow.Builder bwb = BeginWindow.newBuilder();
-    bwb.setNode("");
-    db.setBeginwindow(bwb);
-
-    tupleCount = 0;
     
     Tuple t = new Tuple(null);
+    t.setType(DataType.BEGIN_WINDOW);
     t.setContext(context);
-    t.setData(db.build());
-
-    context.getSink().doSomething(t);
+    
+    synchronized (this) {
+      t.setWindowId(timemillis);
+      tupleCount = 0;
+      context.sink(t);
+      this.notifyAll();
+    }
   }
-
-  public synchronized void endWindow(long timemillis)
+  
+  public void endWindow(long timemillis)
   {
     this.timemillis = 0;
-    Data.Builder db = Data.newBuilder();
-    db.setWindowId(timemillis);
-    db.setType(Data.DataType.END_WINDOW);
     
-    EndWindow.Builder ewb = EndWindow.newBuilder();
-    ewb.setNode("");
-    ewb.setTupleCount(tupleCount);
-    db.setEndwindow(ewb);
-    
-    Tuple t = new Tuple(null);
+    EndWindowTuple t = new EndWindowTuple();
     t.setContext(context);
-    t.setData(db.build());
     
-    context.getSink().doSomething(t);
+    synchronized (this) {
+      t.setTupleCount(tupleCount);
+      t.setWindowId(timemillis);
+      context.sink(t);
+    }
+    
   }
 }

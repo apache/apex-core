@@ -217,7 +217,6 @@ public class StablePriorityQueueTest
     StablePriorityQueue instance = null;
     Object[] expResult = null;
     Object[] result = instance.toArray();
-    assertEquals(expResult, result);
     // TODO review the generated test code and remove the default call to fail.
     fail("The test case is a prototype.");
   }

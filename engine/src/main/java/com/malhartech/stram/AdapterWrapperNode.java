@@ -26,7 +26,7 @@ import com.malhartech.stram.conf.TopologyBuilder;
 public class AdapterWrapperNode extends AbstractNode implements Sink {
 
   public static final String KEY_STREAM_CLASS_NAME = "streamClassName";
-  public static final String KEY_IS_INPUT = "isInput";
+  public static final String KEY_IS_INPUT = "input";
 
   private String streamClassName;
   private boolean isInput;
@@ -65,9 +65,9 @@ public class AdapterWrapperNode extends AbstractNode implements Sink {
 
   @Override
   public void doSomething(Tuple t) {
-    // pass on the tuple downstream
-    for (Sink sink : sinks) {
-      sink.doSomething(t);
+    // pass tuple downstream
+    for (StreamContext sink : sinks) {
+      sink.sink(t);
     }
   }
 
@@ -77,10 +77,10 @@ public class AdapterWrapperNode extends AbstractNode implements Sink {
     props.put(TopologyBuilder.STREAM_CLASSNAME, this.streamClassName);
     StreamConfiguration streamConf = new StreamConfiguration(props);
     if (isInput) {
-      InputAdapter inputAdapter = StramChild.initAdapterStream(streamConf, this);
+      InputAdapter inputAdapter = initAdapterStream(streamConf, this);
       adapterStream = inputAdapter;
     } else {
-      adapterStream = StramChild.initAdapterStream(streamConf, null);
+      adapterStream = initAdapterStream(streamConf, null);
     }
   }
 
@@ -91,17 +91,22 @@ public class AdapterWrapperNode extends AbstractNode implements Sink {
     }
   }
 
-  private List<Sink> sinks = new ArrayList<Sink>();
+  private List<StreamContext> sinks = new ArrayList<StreamContext>();
   
   @Override
-  public void addSink(Sink sink) {
-    sinks.add(sink);
+  public void addOutputStream(StreamContext context) {
+    // will set buffer server output stream for input adapter
+    sinks.add(context);
   }
 
   @Override
   public Sink getSink(StreamContext context) {
-    // called for output adapter, hand back the stream
-    return super.getSink(context);
+    if (isInput) {
+      return this;
+    } else {
+      // output adapter
+      return super.getSink(context);
+    }
   }
   
 }
