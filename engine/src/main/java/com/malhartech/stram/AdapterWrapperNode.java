@@ -44,8 +44,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   {
     return isInput;
   }
-  
-  
+
   public void setInput(boolean value)
   {
     isInput = value;
@@ -59,13 +58,14 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   @Override
   public void process(Object payload)
   {
-    throw new UnsupportedOperationException("Adapter nodes do not implement process.");
+
+    throw new UnsupportedOperationException("Adapter nodes do not implement process. " + payload);
   }
 
   @Override
   public void doSomething(Tuple t)
   {
-    sink.sink(t);
+    this.sink.sink(t);
   }
 
   @Override
@@ -90,14 +90,12 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     }
     super.teardown(); // terminate super.run
   }
-  
-  
   private com.malhartech.dag.StreamContext sink;
 
   @Override
   public void addOutputStream(StreamContext context)
   {
-    sink = context;
+    this.sink = context;
   }
 
   @Override
@@ -106,10 +104,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     if (isInput()) {
       return this;
     }
-    else {
-      // output adapter
-      return super.getSink(context);
-    }
+
+    return (Sink) adapterStream;
   }
 
   public static <T extends Stream> T initAdapterStream(StreamConfiguration streamConf, AbstractNode node)

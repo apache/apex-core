@@ -54,6 +54,7 @@ public class SocketStreamTest
    *
    * @throws Exception
    */
+  @Ignore
   @Test
   public void testBufferServerStream() throws Exception
   {
@@ -201,12 +202,9 @@ public class SocketStreamTest
 
     // TODO: validate data flow
 
-    synchronized (this) {
-      //this.wait(5000);
-      for (ChildContainer cc : containers) {
-        LOG.info("shutting down " + cc);
-        cc.shutdown();
-      }
+    for (ChildContainer cc : containers) {
+      LOG.info("shutting down " + cc);
+      cc.shutdown();
     }
 
     containers = null;
