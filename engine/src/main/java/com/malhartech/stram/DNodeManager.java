@@ -36,6 +36,8 @@ public class DNodeManager {
   private class NodeStatus {
     StreamingNodeHeartbeat lastHeartbeat;
     final NodePConf pnode;
+    int tuplesTotal;
+    int bytesTotal;
     
     private NodeStatus(NodePConf pnode) {
       this.pnode = pnode;
@@ -508,17 +510,20 @@ public class DNodeManager {
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
       ReflectionToStringBuilder b = new ReflectionToStringBuilder(shb);
 
-      NodeStatus nodeStatus = deployedNodes.get(shb.getNodeId());
-      if (nodeStatus == null) {
+      NodeStatus status = deployedNodes.get(shb.getNodeId());
+      if (status == null) {
          LOG.error("Heartbeat for unknown node {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
          continue;
       }
 
-      LOG.info("node {} ({}) heartbeat: {}", new Object[] {shb.getNodeId(), nodeStatus.pnode.getLogicalId(), b.toString()});
+      LOG.info("node {} ({}) heartbeat: {}, totalTupes: {}, totalBytes: {}", new Object[] {shb.getNodeId(), 
+          status.pnode.getLogicalId(), b.toString(), status.tuplesTotal, status.bytesTotal});
       
-      nodeStatus.lastHeartbeat = shb;
-      if (!nodeStatus.canShutdown()) {
+      status.lastHeartbeat = shb;
+      if (!status.canShutdown()) {
         containerIdle = false;
+        status.bytesTotal += shb.getNumberBytesProcessed();
+        status.tuplesTotal += shb.getNumberTuplesProcessed();
         checkNodeLoad(shb);
       }
     }
