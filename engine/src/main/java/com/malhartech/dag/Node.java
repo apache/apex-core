@@ -22,23 +22,21 @@ public interface Node extends DAGPart<NodeConfiguration, NodeContext>
    *
    * @param context - currently unused, may go away.
    */
-  public void beginWindow(NodeContext context);
+  public void beginWindow();
 
   /**
    * This method gets called at the end of each window.
    *
    * @param context - currently unused, may go away.
    */
-  public void endWindow(NodeContext context);
+  public void endWindow();
 
   /**
    * This method gets called for each tuple that is received by this node.
    *
-   * @param context - currently unused, may go away.
-   * @param streamContext - currently unused, may go away.
    * @param payload
    */
-  public void process(NodeContext context, StreamContext streamContext, Object payload);
+  public void process(Object payload);
 
   /**
    * This method gets called just before the node is terminated.

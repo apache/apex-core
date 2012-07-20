@@ -13,12 +13,12 @@ public class BufferServerOutputStream extends SocketOutputStream
 {
   private static Logger LOG = LoggerFactory.getLogger(BufferServerOutputStream.class);
 
-  public void setContext(StreamContext context, String upstreamNodeId, String streamLogicalName)
+  public void setContext(StreamContext context, String sourceId, String streamLogicalName)
   {
     super.setContext(context);
 
-    LOG.info("registering publisher: {} {}", upstreamNodeId, streamLogicalName);
-    ClientHandler.publish(channel, upstreamNodeId, streamLogicalName, context.getWindowId());
+    LOG.info("registering publisher: {} {}", sourceId, streamLogicalName);
+    ClientHandler.publish(channel, sourceId, streamLogicalName, context.getWindowId());
   }
   
   @Override

@@ -32,6 +32,8 @@ import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TopologyBuilderTest {
 
@@ -228,7 +230,7 @@ public class TopologyBuilderTest {
     properties.put(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestSerDe.class.getName());
     properties.put(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
     
-    NumberGeneratorInputAdapter s = StramChild.initStream(properties, new StreamConfiguration(), null);
+    NumberGeneratorInputAdapter s = AdapterWrapperNode.initAdapterStream(new StreamConfiguration(properties), null);
     Assert.assertNotNull("context serde", s.getContext().getSerDe());
     Assert.assertEquals("context serde class", TestSerDe.class, s.getContext().getSerDe().getClass());
     s.teardown();
@@ -239,6 +241,7 @@ public class TopologyBuilderTest {
   }
   
   public static class EchoNode extends AbstractNode {
+    private static final Logger logger = LoggerFactory.getLogger(EchoNode.class);
 
     boolean booleanProperty;
     
@@ -265,15 +268,15 @@ public class TopologyBuilderTest {
     }
 
     @Override
-    public void process(NodeContext context, com.malhartech.dag.StreamContext sc, Object o) {
-      Log.info("Got some work: " + o);
+    public void process(Object o) {
+      logger.info("Got some work: " + o);
     }
 
     @Override
-    protected boolean shouldShutdown() {
-      return true; // cause stram to exit
+    public void handleIdleTimeout()
+    {
+      stopSafely();
     }
-
   }
   
 }

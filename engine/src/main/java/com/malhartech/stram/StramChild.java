@@ -4,18 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.dag.*;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stream.BufferServerInputStream;
-import com.malhartech.stream.BufferServerOutputStream;
-import com.malhartech.stream.InlineStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -28,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSError;
@@ -41,6 +30,24 @@ import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stream.BufferServerInputStream;
+import com.malhartech.stream.BufferServerOutputStream;
+import com.malhartech.stream.InlineStream;
 
 /**
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
@@ -66,11 +73,93 @@ public class StramChild
     this.conf = conf;
   }
 
-  private void init() throws IOException
+  /**
+   * Initialize stream between 2 nodes
+   *
+   * @param sc
+   * @param ctx
+   */
+  private void initStream(StreamContext sc, StreamingContainerContext ctx)
   {
-    StreamingContainerContext ctx = umbilical.getInitContext(containerId);
-    LOG.info("Got context: " + ctx);
+    AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
+    if (sourceNode instanceof AdapterWrapperNode) {
+      AdapterWrapperNode wrapper = (AdapterWrapperNode) sourceNode;
+      // input adapter
+      this.inputAdapters.put(sc.getId(), wrapper.getInputAdapter());
+    }
 
+
+    AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
+    if (sc.isInline()) {
+      LOG.info("inline connection from {} to {}", sourceNode, targetNode);
+      InlineStream stream = new InlineStream();
+      com.malhartech.dag.StreamContext dsc = new com.malhartech.dag.StreamContext();
+      stream.setContext(dsc);
+      Sink sink = targetNode.getSink(dsc);
+
+      LOG.info(dsc + " setting sink to " + sink);
+      dsc.setSink(sink);
+
+      // operation is additive - there can be multiple output streams
+      sourceNode.addOutputStream(dsc);
+    }
+    else {
+
+      // buffer server connection between nodes
+      LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.
+        getTargetNodeId());
+
+      com.malhartech.dag.StreamContext streamContext = new com.malhartech.dag.StreamContext();
+      if (targetNode != null) {
+      }
+      streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
+      streamContext.setWindowId(ctx.getStartWindowMillis());
+
+      StreamConfiguration streamConf = new StreamConfiguration(sc.getProperties());
+      streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.
+        createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
+      if (sourceNode != null) {
+        // setup output stream as sink for source node
+        LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.
+          getId());
+        BufferServerOutputStream oss = new BufferServerOutputStream();
+        oss.setup(streamConf);
+        oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
+        LOG.info(streamContext + " setting sink to " + oss);
+
+        streamContext.setSink(oss);
+        sourceNode.addOutputStream(streamContext);
+        this.streams.put(sc.getId(), oss);
+
+      }
+
+      if (targetNode != null) {
+        Sink sink = targetNode.getSink(streamContext);
+        LOG.info(streamContext + " setting sink to " + sink);
+
+        streamContext.setSink(sink);
+
+        // setup input stream for target node
+        LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.
+          getId());
+        BufferServerInputStream iss = new BufferServerInputStream();
+        iss.setup(streamConf);
+        List<String> partitions = Collections.emptyList();
+        if (sc.getPartitionKeys() != null) {
+          partitions = new ArrayList<String>(sc.getPartitionKeys().size());
+          for (byte[] partition : sc.getPartitionKeys()) {
+            partitions.add(new String(partition));
+          }
+        }
+        iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.
+          getTargetNodeId(), partitions);
+        this.streams.put(sc.getId(), iss);
+      }
+    }
+  }
+
+  protected void init(StreamingContainerContext ctx) throws IOException
+  {
     this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
     if (this.heartbeatIntervalMillis == 0) {
       this.heartbeatIntervalMillis = 1000;
@@ -79,10 +168,7 @@ public class StramChild
     // create nodes
     for (StreamingNodeContext snc : ctx.getNodes()) {
       AbstractNode dnode = initNode(snc, conf);
-      NodeConfiguration nc = new NodeConfiguration();
-      for (Map.Entry<String, String> e : snc.getProperties().entrySet()) {
-        nc.set(e.getKey(), e.getValue());
-      }
+      NodeConfiguration nc = new NodeConfiguration(snc.getProperties());
       dnode.setup(nc);
       LOG.info("Initialized node " + snc.getLogicalId());
       nodeList.put(snc.getDnodeId(), dnode);
@@ -90,97 +176,15 @@ public class StramChild
 
     // wire stream connections
     for (StreamContext sc : ctx.getStreams()) {
-      LOG.debug("Deploy stream " + sc.getId());
-      if (sc.isInline()) {
-        AbstractNode source = nodeList.get(sc.getSourceNodeId());
-        AbstractNode target = nodeList.get(sc.getTargetNodeId());
-        LOG.info("inline connection from {} to {}", source, target);
-        InlineStream stream = new InlineStream();
-        com.malhartech.dag.StreamContext dsc = new com.malhartech.dag.StreamContext();
-        stream.setContext(dsc);
-        Sink sink = target.getSink(dsc);
-        dsc.setSink(sink); // this is circular... we may want to chance it later.
-        // operation is additive - there can be multiple output streams
-        source.addOutputStream(dsc);
-      }
-      else if (sc.getSourceNodeId() != null && sc.getTargetNodeId() != null) {
-        // buffer server connection between nodes
-        LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.
-          getTargetNodeId());
-        AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
-        AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
-
-        com.malhartech.dag.StreamContext streamContext = new com.malhartech.dag.StreamContext();
-        if (targetNode != null) {
-        }
-        streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
-        streamContext.setWindowId(ctx.getStartWindowMillis());
-
-        StreamConfiguration streamConf = new StreamConfiguration();
-        streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.
-          createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
-        if (sourceNode != null) {
-          // setup output stream as sink for source node
-          LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.
-            getId());
-          BufferServerOutputStream oss = new BufferServerOutputStream();
-          oss.setup(streamConf);
-          oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
-          streamContext.setSink(oss);
-          sourceNode.addOutputStream(streamContext);
-          this.streams.put(sc.getId(), oss);
-        }
-
-        if (targetNode != null) {
-          Sink sink = targetNode.getSink(streamContext);
-          streamContext.setSink(sink);
-
-          // setup input stream for target node
-          LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.
-            getId());
-          BufferServerInputStream iss = new BufferServerInputStream();
-          iss.setup(streamConf);
-          List<String> partitions = Collections.emptyList();
-          if (sc.getPartitionKeys() != null) {
-            partitions = new ArrayList<String>(sc.getPartitionKeys().size());
-            for (byte[] partition : sc.getPartitionKeys()) {
-              partitions.add(new String(partition));
-            }
-          }
-          iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.
-            getTargetNodeId(), partitions);
-          this.streams.put(sc.getId(), iss);
-        }
+      LOG.debug("Deploying stream " + sc.getId());
+      if (sc.getSourceNodeId() != null && sc.getTargetNodeId() != null) {
+        initStream(sc, ctx);
       }
       else {
-
-        StreamConfiguration streamConf = new StreamConfiguration();
-        streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.
-          createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
-
-        for (Map.Entry<String, String> e : sc.getProperties().entrySet()) {
-          streamConf.set(e.getKey(), e.getValue());
-        }
-
-        if (sc.getSourceNodeId() == null) {
-          // input adapter
-          InputAdapter stream = initStream(sc.getProperties(), streamConf, nodeList.
-            get(sc.getTargetNodeId()));
-          LOG.debug("Created input adapter {}", sc.getId());
-          this.inputAdapters.put(sc.getId(), stream);
-          this.streams.put(sc.getId(), stream);
-        }
-        else {
-          AbstractNode source = nodeList.get(sc.getSourceNodeId());
-
-          // output adapter
-          Stream stream = initStream(sc.getProperties(), streamConf, null); // no sink
-          this.streams.put(sc.getId(), stream);
-          source.addOutputStream(stream.getContext());
-
-        }
-
+        throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.
+          getId());
       }
+
     }
 
     for (final AbstractNode node : nodeList.values()) {
@@ -191,7 +195,6 @@ public class StramChild
         public void run()
         {
           node.run();
-          node.teardown();
           // processing has ended
           activeNodeList.remove(node.getContext().getId());
         }
@@ -208,11 +211,16 @@ public class StramChild
     }
   }
 
-  private void shutdown()
+  // change it back to private later.
+  protected void shutdown()
   {
     windowGenerator.stop();
     for (Stream s : this.streams.values()) {
       s.teardown();
+    }
+
+    for (AbstractNode node : this.nodeList.values()) {
+      node.teardown();
     }
   }
 
@@ -362,7 +370,9 @@ public class StramChild
         public Object run() throws Exception
         {
           StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
-          stramChild.init();
+          StreamingContainerContext ctx = umbilical.getInitContext(childId);
+          LOG.info("Got context: " + ctx);
+          stramChild.init(ctx);
           // main thread enters heartbeat loop
           stramChild.heartbeatLoop();
           // shutdown
@@ -402,64 +412,6 @@ public class StramChild
     }
   }
 
-  public static <T extends Stream> T initStream(Map<String, String> properties, StreamConfiguration streamConf, AbstractNode node)
-  {
-    String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
-    if (className == null) {
-      // should have been caught during submit validation
-      throw new IllegalArgumentException(String.format("Stream class not configured (key '%s')", TopologyBuilder.STREAM_CLASSNAME));
-    }
-    try {
-      Class<?> clazz = Class.forName(className);
-      Class<? extends Stream> subClass = clazz.asSubclass(Stream.class);
-      Constructor<? extends Stream> c = subClass.getConstructor();
-      @SuppressWarnings("unchecked")
-      T instance = (T) c.newInstance();
-      // populate custom properties
-      BeanUtils.populate(instance, properties);
-
-      instance.setup(streamConf);
-
-      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
-      if (node == null) {
-        /*
-         * This is output adapter so it needs to implement the Sink interface.
-         */
-        if (instance instanceof Sink) {
-          ctx.setSink((Sink) instance);
-        }
-      }
-      else {
-        Sink sink = node.getSink(ctx);
-//        LOG.info("setting sink for instance " + instance + " to " + sink);
-        ctx.setSink(sink);
-      }
-
-      ctx.setSerde(StramUtils.getSerdeInstance(properties));
-      instance.setContext(ctx);
-
-      return instance;
-    }
-    catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Node class not found: " + className, e);
-    }
-    catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Error setting node properties", e);
-    }
-    catch (InvocationTargetException e) {
-      throw new IllegalArgumentException("Error setting node properties", e);
-    }
-    catch (SecurityException e) {
-      throw new IllegalArgumentException("Error creating instance of class: " + className, e);
-    }
-    catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException("Constructor with NodeContext not found: " + className, e);
-    }
-    catch (InstantiationException e) {
-      throw new IllegalArgumentException("Failed to instantiate: " + className, e);
-    }
-  }
-
   /**
    * Instantiate node from configuration. (happens in the child container, not
    * the stram master process.)
@@ -474,7 +426,6 @@ public class StramChild
         getDnodeClassName()).asSubclass(AbstractNode.class);
       Constructor<? extends AbstractNode> c = nodeClass.getConstructor(NodeContext.class);
       AbstractNode node = c.newInstance(new NodeContext(nodeCtx.getDnodeId()));
-      //DNode node = ReflectionUtils.newInstance(nodeClass, conf);
       // populate custom properties
       BeanUtils.populate(node, nodeCtx.getProperties());
       return node;

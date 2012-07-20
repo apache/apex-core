@@ -238,7 +238,7 @@ public class StramMiniClusterTest {
     }
 
     @Override
-    public void process(NodeContext context, com.malhartech.dag.StreamContext sc, Object payload) {
+    public void process(Object payload) {
       LOG.info("Designed to do nothing!");
     }
 
@@ -246,10 +246,10 @@ public class StramMiniClusterTest {
      * Node will exit processing loop immediately and report not processing in heartbeat.
      */
     @Override
-    protected boolean shouldShutdown() {
-      return true;
+    public void handleIdleTimeout()
+    {
+      stopSafely();
     }
-    
   }
   
   

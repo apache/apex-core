@@ -10,6 +10,9 @@ package com.malhartech.dag;
  */
 public interface InputAdapter extends Stream
 {
+  public boolean hasFinished();
+
   public void beginWindow(long timemillis);
+
   public void endWindow(long timemillis);
 }

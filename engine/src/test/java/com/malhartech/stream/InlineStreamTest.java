@@ -65,11 +65,11 @@ public class InlineStreamTest {
       sc1.setSink(node2.getSink(sc1));
       stream12.setContext(sc1);
        
-      node1.addOutputStreams(Collections.singletonList(sc1));
+      node1.addOutputStream(sc1);
       
       StreamContext sc2 = new StreamContext();
       sc1.setSink(node2Sink);
-      node2.addOutputStreams(Collections.singletonList(sc2));
+      node2.addOutputStream(sc2);
 
       Map<String, Thread> activeNodes = new ConcurrentHashMap<String, Thread>();
       launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
@@ -143,7 +143,7 @@ public class InlineStreamTest {
     }
 
     @Override
-    public void process(NodeContext context, StreamContext sc, Object o) {
+    public void process(Object o) {
       if (appendNodeId) {
         o = this.getContext().getId() + " > " + o;
       }

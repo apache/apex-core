@@ -93,4 +93,9 @@ public class HDFSOutputStream
   {
     return this.context;
   }
+
+  public boolean hasFinished()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }

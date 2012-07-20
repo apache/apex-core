@@ -15,7 +15,7 @@ public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
     implements Runnable {
   private static Logger LOG = LoggerFactory
       .getLogger(NumberGeneratorInputAdapter.class);
-  private boolean shutdown = false;
+  private volatile boolean shutdown = false;
   private String myConfigProperty;
   
   public String getMyConfigProperty() {
@@ -41,8 +41,8 @@ public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
   public void run() {
     int i = 0;
     while (!shutdown) {
+      LOG.info("sending tuple to: " + context);
       sendTuple(String.valueOf(i++));
-      LOG.info("sent tuple to: " + context);
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {

@@ -42,6 +42,7 @@ public class StreamContext implements Context
 
   public void sink(Tuple t)
   {
+    logger.info(this + " " + t);
     switch (t.getType()) {
       case SIMPLE_DATA:
       case PARTITIONED_DATA:

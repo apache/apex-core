@@ -9,17 +9,10 @@
  */
 package com.malhartech.dag;
 
-import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.BeginWindow;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
-import com.malhartech.bufferserver.Buffer.EndWindow;
-import com.malhartech.bufferserver.Buffer.PartitionedData;
-import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -55,20 +48,24 @@ public abstract class AbstractNode implements Node, Runnable
   }
 
   @Override
-  public void beginWindow(NodeContext context)
+  public void beginWindow()
   {
   }
 
   @Override
-  public void endWindow(NodeContext context)
+  public void endWindow()
   {
   }
 
   @Override
-  public abstract void process(NodeContext context, StreamContext streamContext, Object payload);
+  public abstract void process(Object payload);
 
   @Override
   public void teardown()
+  {
+  }
+
+  public void handleIdleTimeout()
   {
   }
 
@@ -88,7 +85,7 @@ public abstract class AbstractNode implements Node, Runnable
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
-//        logger.info(this + " got data " + t.getData());
+        logger.info(this + " " + t);
         inputQueue.add(t);
         inputQueue.notify();
       }
@@ -130,37 +127,30 @@ public abstract class AbstractNode implements Node, Runnable
     outputStreams.add(context);
   }
 
-  public void addOutputStreams(Collection<? extends StreamContext> contexts)
-  {
-    for (StreamContext context : contexts) {
-      outputStreams.add(context);
-    }
-  }
-
   final private class DataComparator implements Comparator<Tuple>
   {
     public int compare(Tuple t1, Tuple t2)
     {
-        long wid1 = t1.getWindowId();
-        long wid2 = t2.getWindowId();
-        if (wid1 < wid2) {
-          return -1;
-        }
-        else if (wid1 > wid2) {
-          return 1;
-        }
-        else if (t1.getType() == Data.DataType.BEGIN_WINDOW) {
-          return -1;
-        }
-        else if (t2.getType() == Data.DataType.BEGIN_WINDOW) {
-          return 1;
-        }
-        else if (t1.getType() == Data.DataType.END_WINDOW) {
-          return 1;
-        }
-        else if (t2.getType() == Data.DataType.END_WINDOW) {
-          return -1;
-        }
+      long wid1 = t1.getWindowId();
+      long wid2 = t2.getWindowId();
+      if (wid1 < wid2) {
+        return -1;
+      }
+      else if (wid1 > wid2) {
+        return 1;
+      }
+      else if (t1.getType() == Data.DataType.BEGIN_WINDOW) {
+        return -1;
+      }
+      else if (t2.getType() == Data.DataType.BEGIN_WINDOW) {
+        return 1;
+      }
+      else if (t1.getType() == Data.DataType.END_WINDOW) {
+        return 1;
+      }
+      else if (t2.getType() == Data.DataType.END_WINDOW) {
+        return -1;
+      }
 
       return 0;
     }
@@ -180,17 +170,6 @@ public abstract class AbstractNode implements Node, Runnable
     }
   }
 
-  /**
-   * Hook for node implementation to define custom exit condition. Complementary
-   * to external control provided by stopSafely(). For example, node may request
-   * shutdown based on external condition unrelated to processing state. Used
-   * for testing.
-   */
-  protected boolean shouldShutdown()
-  {
-    return false;
-  }
-
   final public void run()
   {
     alive = true;
@@ -200,8 +179,8 @@ public abstract class AbstractNode implements Node, Runnable
     boolean shouldWait = false;
     int tupleCount = 0;
 
-    while (alive && !shouldShutdown()) {
-      Tuple t = null;
+    while (alive) {
+      Tuple t;
       synchronized (inputQueue) {
         if ((t = inputQueue.peek()) == null) {
           shouldWait = true;
@@ -261,7 +240,11 @@ public abstract class AbstractNode implements Node, Runnable
 
         if (shouldWait) {
           try {
-            inputQueue.wait();
+            int queueSize = inputQueue.size();
+            inputQueue.wait(ctx.getIdleTimeout());
+            if (inputQueue.size() == queueSize) {
+              handleIdleTimeout();
+            }
           }
           catch (InterruptedException ex) {
             logger.error("wait interrupted", ex);
@@ -273,14 +256,14 @@ public abstract class AbstractNode implements Node, Runnable
            */
           switch (t.getType()) {
             case BEGIN_WINDOW:
-              beginWindow(ctx);
+              beginWindow();
               for (StreamContext stream : outputStreams) {
                 stream.sink(t);
               }
               break;
 
             case END_WINDOW:
-              endWindow(ctx);
+              endWindow();
               for (StreamContext stream : outputStreams) {
                 stream.sink(t);
               }
@@ -288,7 +271,7 @@ public abstract class AbstractNode implements Node, Runnable
 
             default:
               // process payload
-              process(ctx, t.getContext(), t.getObject());
+              process(t.getObject());
               // update heartbeat counters;
               ctx.countProcessed(t);
               break;
