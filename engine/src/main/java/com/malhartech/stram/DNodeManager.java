@@ -43,14 +43,21 @@ public class DNodeManager {
   private long windowSizeMillis = 500;
   
   private class NodeStatus {
-    private NodeStatus(StreamingNodeContext pnode) {
-    }
     StreamingNodeHeartbeat lastHeartbeat;
-
-    boolean isIdle() {
-      return (lastHeartbeat != null && DNodeState.IDLE.name().equals(lastHeartbeat.getState()));
+    final StreamingNodeContext pnode;
+    
+    private NodeStatus(StreamingNodeContext pnode) {
+      this.pnode = pnode;
     }
-  
+    
+    boolean canShutdown() {
+      // idle or output adapter
+      if ((lastHeartbeat != null && DNodeState.IDLE.name().equals(lastHeartbeat.getState()))) {
+        return true;
+      }
+      return outputAdapters.contains(pnode);
+    }
+    
   }
 
   /**
@@ -108,8 +115,9 @@ public class DNodeManager {
     return snc;
   }
 
+  private Set<StreamingNodeContext> outputAdapters = new HashSet<StreamingNodeContext>(); 
+  
   private StreamingNodeContext newAdapterNodeContext(StreamConf streamConf, boolean isInputAdapter) {
-    // TODO: map className property
     StreamingNodeContext snc = new StreamingNodeContext();
     snc.setDnodeClassName(AdapterWrapperNode.class.getName());
     Map<String, String> properties = new HashMap<String, String>(streamConf.getProperties());
@@ -122,6 +130,10 @@ public class DNodeManager {
     snc.setProperties(properties);
     snc.setLogicalId(streamConf.getId());
     snc.setDnodeId(""+nodeSequence.incrementAndGet());
+    
+    if (!isInputAdapter) {
+      outputAdapters.add(snc);
+    }
     return snc;
   }
   
@@ -512,7 +524,7 @@ public class DNodeManager {
          continue;
       }
       nodeStatus.lastHeartbeat = shb;
-      if (!nodeStatus.isIdle()) {
+      if (!nodeStatus.canShutdown()) {
         containerIdle = false;
         checkNodeLoad(shb);
       }
@@ -530,7 +542,7 @@ public class DNodeManager {
 
   private boolean isApplicationIdle() {
     for (NodeStatus nodeStatus : this.deployedNodes.values()) {
-      if (!nodeStatus.isIdle()) {
+      if (!nodeStatus.canShutdown()) {
         return false;
       }
     }

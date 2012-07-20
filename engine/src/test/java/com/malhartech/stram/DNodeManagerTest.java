@@ -97,34 +97,49 @@ public class DNodeManagerTest {
     NodeConf node1 = b.getOrAddNode("node1");
     NodeConf node2 = b.getOrAddNode("node2");
 
+    NodeConf mergeNode = b.getOrAddNode("mergeNode");
+    
     StreamConf n1n2 = b.getOrAddStream("n1n2");
     n1n2.addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
     
     node1.addOutput(n1n2);
     node2.addInput(n1n2);
 
+    StreamConf mergeStream = b.getOrAddStream("mergeStream");
+    node2.addOutput(mergeStream);
+    mergeNode.addInput(mergeStream);
+    
     for (NodeConf nodeConf : b.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
     DNodeManager dnm = new DNodeManager(b);
-    Assert.assertEquals("number required containers", 4, dnm.getNumRequiredContainers());
-    
+    Assert.assertEquals("number required containers", 5, dnm.getNumRequiredContainers());
+
     String container1Id = "container1";
     StreamingContainerContext c1 = dnm.assignContainer(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("number nodes assigned to container", 1, c1.getNodes().size());
     Assert.assertTrue(node2.getId() + " assigned to " + container1Id, containsNodeContext(c1, node1));
 
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<TestStaticPartitioningSerDe.partitions.length; i++) {
       String containerId = "container"+(i+1);
       StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
       Assert.assertEquals("number nodes assigned to container", 1, cc.getNodes().size());
       Assert.assertTrue(node2.getId() + " assigned to " + containerId, containsNodeContext(cc, node2));
   
-      Assert.assertEquals("stream connections for " + containerId, 1, cc.getStreams().size());
+      // n1n2 in, mergeStream out
+      Assert.assertEquals("stream connections for " + containerId, 2, cc.getStreams().size());
       StreamContext sc = getStreamContext(cc, "n1n2");
       Assert.assertNotNull("stream connection for " + containerId, sc);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], sc.getPartitionKeys().get(0)));
     }
+    
+    // mergeNode container 
+    String mergeContainerId = "mergeNodeContainer";
+    StreamingContainerContext cmerge = dnm.assignContainer(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
+    Assert.assertEquals("number nodes assigned to " + mergeContainerId, 1, cmerge.getNodes().size());
+    Assert.assertTrue(mergeNode.getId() + " assigned to " + container1Id, containsNodeContext(cmerge, mergeNode));
+    //Assert.assertEquals("stream connections for " + mergeContainerId, 2, cmerge.getStreams().size());
+    
   }  
   
   @Test
@@ -181,7 +196,8 @@ public class DNodeManagerTest {
       Assert.assertFalse(scOut1.isInline());
     }
   }  
-  
+
+   
   public static class TestStaticPartitioningSerDe extends DefaultSerDe {
 
     public final static byte[][] partitions = new byte[][]{
