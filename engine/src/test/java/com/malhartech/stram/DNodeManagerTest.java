@@ -138,7 +138,7 @@ public class DNodeManagerTest {
     StreamingContainerContext cmerge = dnm.assignContainer(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
     Assert.assertEquals("number nodes assigned to " + mergeContainerId, 1, cmerge.getNodes().size());
     Assert.assertTrue(mergeNode.getId() + " assigned to " + container1Id, containsNodeContext(cmerge, mergeNode));
-    //Assert.assertEquals("stream connections for " + mergeContainerId, 2, cmerge.getStreams().size());
+    Assert.assertEquals("stream connections for " + mergeContainerId, 3, cmerge.getStreams().size());
     
   }  
   

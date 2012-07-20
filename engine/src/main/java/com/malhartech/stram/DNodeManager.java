@@ -409,8 +409,8 @@ public class DNodeManager {
     }
     
     // find streams for to be deployed node(s)
-    // map to eliminate duplicates within container (inline or not)
-    Map<String, StreamPConf> streams = new HashMap<String, StreamPConf>();
+    // eliminate duplicates within container (inline or not)
+    Set<StreamPConf> streams = new HashSet<StreamPConf>();
     for (NodePConf snc  : pnodeList.toArray(new NodePConf[pnodeList.size()])) {
       NodeConf nodeConf = nodeId2NodeConfMap.get(snc.getDnodeId());
       // DAG node inputs
@@ -421,7 +421,7 @@ public class DNodeManager {
         for (StreamPConf pstream : pstreams) {
           if (pstream.getTargetNodeId() == snc.getDnodeId()) {
             // node instance is subscriber
-            streams.put(streamConf.getId(), pstream);
+            streams.add(pstream);
             if (streamConf.getSourceNode() == null) {
               // input adapter: deploy with first subscriber
               if (!this.deployedNodes.containsKey(pstream.getSourceNodeId())) {
@@ -439,7 +439,7 @@ public class DNodeManager {
         for (StreamPConf pstream : pstreams) {
           if (pstream.getSourceNodeId() == snc.getDnodeId()) {
             // node is publisher
-            streams.put(streamConf.getId(), pstream);
+            streams.add(pstream);
             if (streamConf.getTargetNode() == null) {
               // output adapter: deploy with first publisher
               if (!this.deployedNodes.containsKey(pstream.getTargetNodeId())) {
@@ -459,7 +459,7 @@ public class DNodeManager {
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setNodes(pnodeList);
-    scc.setStreams(new ArrayList<StreamPConf>(streams.values()));
+    scc.setStreams(streams);
     containerContextMap.put(containerId, scc);
 
     return scc;
