@@ -21,6 +21,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   private final static Logger logger = LoggerFactory.getLogger(AdapterWrapperNode.class);
   public static final String KEY_STREAM_CLASS_NAME = "streamClassName";
   public static final String KEY_IS_INPUT = "input";
+  private boolean isInput;
   private String streamClassName;
   private Stream adapterStream = null;
 
@@ -41,7 +42,13 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
 
   public boolean isInput()
   {
-    return adapterStream instanceof InputAdapter;
+    return isInput;
+  }
+  
+  
+  public void setInput(boolean value)
+  {
+    isInput = value;
   }
 
   public InputAdapter getInputAdapter()
@@ -68,8 +75,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     props.put(TopologyBuilder.STREAM_CLASSNAME, this.streamClassName);
     StreamConfiguration streamConf = new StreamConfiguration(props);
     if (isInput()) {
-      InputAdapter inputAdapter = initAdapterStream(streamConf, this);
-      adapterStream = inputAdapter;
+      adapterStream = initAdapterStream(streamConf, this);
     }
     else {
       adapterStream = initAdapterStream(streamConf, null);
@@ -88,7 +94,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   
   private com.malhartech.dag.StreamContext sink;
 
-  public void setOutputStream(com.malhartech.dag.StreamContext context)
+  @Override
+  public void addOutputStream(StreamContext context)
   {
     sink = context;
   }
