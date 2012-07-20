@@ -283,14 +283,14 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
      * The current window being processed by the node.
      * To be used by stram to monitor window synchronization.
      */
-    private long currentWindowSeq;
+    private long currentWindowId;
     
-    public long getCurrentWindowSeq() {
-      return currentWindowSeq;
+    public long getCurrentWindowId() {
+      return currentWindowId;
     }
 
-    public void setCurrentWindowSeq(long currentWindowSeq) {
-      this.currentWindowSeq = currentWindowSeq;
+    public void setCurrentWindowId(long currentWindowSeq) {
+      this.currentWindowId = currentWindowSeq;
     }
     
   }

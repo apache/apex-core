@@ -214,10 +214,6 @@ public class StramAppMaster {
 
 	    Options opts = new Options();
 	    opts.addOption("app_attempt_id", true, "App Attempt ID. Not to be used unless for testing purposes");
-	    opts.addOption("shell_command", true, "Shell command to be executed by the Application Master");
-	    opts.addOption("shell_script", true, "Location of the shell script to be executed");
-	    opts.addOption("shell_args", true, "Command line args for the shell script");
-	    opts.addOption("shell_env", true, "Environment for shell script. Specified as env_key=env_val pairs");
 	    opts.addOption("container_memory", true, "Amount of memory in MB to be requested to run the shell command");
 	    opts.addOption("num_containers", true, "No. of containers on which the shell command needs to be executed");
 	    opts.addOption("priority", true, "Application Priority. Default 0");

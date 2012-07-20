@@ -254,6 +254,7 @@ public class StramChild
         hb.setGeneratedTms(currentTime);
         hb.setNumberTuplesProcessed((int) counters.tuplesProcessed);
         hb.setIntervalMs(heartbeatIntervalMillis);
+        hb.setCurrentWindowId(e.getValue().getContext().getCurrentWindowId());
         DNodeState state = DNodeState.PROCESSING;
         if (!activeNodeList.containsKey(e.getKey())) {
           state = DNodeState.IDLE;

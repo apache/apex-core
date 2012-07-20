@@ -36,6 +36,8 @@ public class DNodeManager {
   private class NodeStatus {
     StreamingNodeHeartbeat lastHeartbeat;
     final NodePConf pnode;
+    int tuplesTotal;
+    int bytesTotal;
     
     private NodeStatus(NodePConf pnode) {
       this.pnode = pnode;
@@ -407,8 +409,8 @@ public class DNodeManager {
     }
     
     // find streams for to be deployed node(s)
-    // map to eliminate duplicates within container (inline or not)
-    Map<String, StreamPConf> streams = new HashMap<String, StreamPConf>();
+    // eliminate duplicates within container (inline or not)
+    Set<StreamPConf> streams = new HashSet<StreamPConf>();
     for (NodePConf snc  : pnodeList.toArray(new NodePConf[pnodeList.size()])) {
       NodeConf nodeConf = nodeId2NodeConfMap.get(snc.getDnodeId());
       // DAG node inputs
@@ -419,7 +421,7 @@ public class DNodeManager {
         for (StreamPConf pstream : pstreams) {
           if (pstream.getTargetNodeId() == snc.getDnodeId()) {
             // node instance is subscriber
-            streams.put(streamConf.getId(), pstream);
+            streams.add(pstream);
             if (streamConf.getSourceNode() == null) {
               // input adapter: deploy with first subscriber
               if (!this.deployedNodes.containsKey(pstream.getSourceNodeId())) {
@@ -437,7 +439,7 @@ public class DNodeManager {
         for (StreamPConf pstream : pstreams) {
           if (pstream.getSourceNodeId() == snc.getDnodeId()) {
             // node is publisher
-            streams.put(streamConf.getId(), pstream);
+            streams.add(pstream);
             if (streamConf.getTargetNode() == null) {
               // output adapter: deploy with first publisher
               if (!this.deployedNodes.containsKey(pstream.getTargetNodeId())) {
@@ -457,7 +459,7 @@ public class DNodeManager {
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setNodes(pnodeList);
-    scc.setStreams(new ArrayList<StreamPConf>(streams.values()));
+    scc.setStreams(streams);
     containerContextMap.put(containerId, scc);
 
     return scc;
@@ -508,17 +510,20 @@ public class DNodeManager {
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
       ReflectionToStringBuilder b = new ReflectionToStringBuilder(shb);
 
-      NodeStatus nodeStatus = deployedNodes.get(shb.getNodeId());
-      if (nodeStatus == null) {
+      NodeStatus status = deployedNodes.get(shb.getNodeId());
+      if (status == null) {
          LOG.error("Heartbeat for unknown node {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
          continue;
       }
 
-      LOG.info("node {} ({}) heartbeat: {}", new Object[] {shb.getNodeId(), nodeStatus.pnode.getLogicalId(), b.toString()});
+      LOG.info("node {} ({}) heartbeat: {}, totalTupes: {}, totalBytes: {}", new Object[] {shb.getNodeId(), 
+          status.pnode.getLogicalId(), b.toString(), status.tuplesTotal, status.bytesTotal});
       
-      nodeStatus.lastHeartbeat = shb;
-      if (!nodeStatus.canShutdown()) {
+      status.lastHeartbeat = shb;
+      if (!status.canShutdown()) {
         containerIdle = false;
+        status.bytesTotal += shb.getNumberBytesProcessed();
+        status.tuplesTotal += shb.getNumberTuplesProcessed();
         checkNodeLoad(shb);
       }
     }
