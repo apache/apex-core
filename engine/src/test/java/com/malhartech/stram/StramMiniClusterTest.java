@@ -246,10 +246,10 @@ public class StramMiniClusterTest {
      * Node will exit processing loop immediately and report not processing in heartbeat.
      */
     @Override
-    protected boolean shouldShutdown() {
-      return true;
+    public void handleIdleTimeout()
+    {
+      stopSafely();
     }
-    
   }
   
   

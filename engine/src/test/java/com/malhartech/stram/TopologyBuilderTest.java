@@ -32,6 +32,8 @@ import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TopologyBuilderTest {
 
@@ -239,6 +241,7 @@ public class TopologyBuilderTest {
   }
   
   public static class EchoNode extends AbstractNode {
+    private static final Logger logger = LoggerFactory.getLogger(EchoNode.class);
 
     boolean booleanProperty;
     
@@ -266,14 +269,14 @@ public class TopologyBuilderTest {
 
     @Override
     public void process(NodeContext context, com.malhartech.dag.StreamContext sc, Object o) {
-      Log.info("Got some work: " + o);
+      logger.info("Got some work: " + o);
     }
 
     @Override
-    protected boolean shouldShutdown() {
-      return true; // cause stram to exit
+    public void handleIdleTimeout()
+    {
+      stopSafely();
     }
-
   }
   
 }

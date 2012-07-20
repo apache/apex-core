@@ -13,6 +13,7 @@ import com.malhartech.bufferserver.Buffer;
 public class EndWindowTuple extends Tuple
 {
   private long tupleCount;
+
   public EndWindowTuple()
   {
     super(null);
@@ -33,5 +34,11 @@ public class EndWindowTuple extends Tuple
   public void setTupleCount(long tupleCount)
   {
     this.tupleCount = tupleCount;
+  }
+
+  @Override
+  public String toString()
+  {
+    return "tuples = " + tupleCount + " " + super.toString();
   }
 }

@@ -4,22 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.commons.lang.builder.ReflectionToStringBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -30,6 +14,13 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbea
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tracks topology provisioning/allocation to containers.

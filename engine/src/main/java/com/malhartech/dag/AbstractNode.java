@@ -9,18 +9,15 @@
  */
 package com.malhartech.dag;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashSet;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
+import java.util.Comparator;
+import java.util.HashSet;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -32,6 +29,7 @@ public abstract class AbstractNode implements Node, Runnable
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
+ 
 
   public AbstractNode(NodeContext ctx)
   {
@@ -68,6 +66,10 @@ public abstract class AbstractNode implements Node, Runnable
   {
   }
 
+  public void handleIdleTimeout()
+  {
+    
+  }
   /**
    * Return and reset counts for next heartbeat interval. This is called as part
    * of the heartbeat processing. Providing this hook in node implementation so
@@ -84,7 +86,7 @@ public abstract class AbstractNode implements Node, Runnable
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
-//        logger.info(this + " got data " + t.getData());
+        logger.info(this + " " + t);
         inputQueue.add(t);
         inputQueue.notify();
       }
@@ -124,13 +126,6 @@ public abstract class AbstractNode implements Node, Runnable
   public void addOutputStream(StreamContext context)
   {
     outputStreams.add(context);
-  }
-
-  public void addOutputStreams(Collection<? extends StreamContext> contexts)
-  {
-    for (StreamContext context : contexts) {
-      outputStreams.add(context);
-    }
   }
 
   final private class DataComparator implements Comparator<Tuple>
@@ -176,17 +171,6 @@ public abstract class AbstractNode implements Node, Runnable
     }
   }
 
-  /**
-   * Hook for node implementation to define custom exit condition. Complementary
-   * to external control provided by stopSafely(). For example, node may request
-   * shutdown based on external condition unrelated to processing state. Used
-   * for testing.
-   */
-  protected boolean shouldShutdown()
-  {
-    return false;
-  }
-
   final public void run()
   {
     alive = true;
@@ -196,8 +180,8 @@ public abstract class AbstractNode implements Node, Runnable
     boolean shouldWait = false;
     int tupleCount = 0;
 
-    while (alive && !shouldShutdown()) {
-      Tuple t = null;
+    while (alive) {
+      Tuple t;
       synchronized (inputQueue) {
         if ((t = inputQueue.peek()) == null) {
           shouldWait = true;
@@ -257,7 +241,11 @@ public abstract class AbstractNode implements Node, Runnable
 
         if (shouldWait) {
           try {
-            inputQueue.wait();
+            int queueSize = inputQueue.size();
+            inputQueue.wait(ctx.getIdleTimeout());
+            if (inputQueue.size() == queueSize) {
+              handleIdleTimeout();
+            }
           }
           catch (InterruptedException ex) {
             logger.error("wait interrupted", ex);

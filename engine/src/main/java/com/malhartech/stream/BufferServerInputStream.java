@@ -4,13 +4,11 @@
  */
 package com.malhartech.stream;
 
-import java.util.Collection;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.dag.StreamContext;
+import java.util.Collection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BufferServerInputStream extends SocketInputStream
 {
