@@ -143,7 +143,7 @@ public class InlineStreamTest {
     }
 
     @Override
-    public void process(NodeContext context, StreamContext sc, Object o) {
+    public void process(Object o) {
       if (appendNodeId) {
         o = this.getContext().getId() + " > " + o;
       }

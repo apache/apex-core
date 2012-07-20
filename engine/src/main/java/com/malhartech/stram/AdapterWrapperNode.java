@@ -68,8 +68,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   }
 
   @Override
-  public void process(NodeContext context, StreamContext streamContext,
-                      Object payload)
+  public void process(Object payload)
   {
     throw new UnsupportedOperationException("Adapter nodes do not implement process.");
   }

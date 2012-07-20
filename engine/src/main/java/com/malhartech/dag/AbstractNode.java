@@ -29,7 +29,6 @@ public abstract class AbstractNode implements Node, Runnable
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
- 
 
   public AbstractNode(NodeContext ctx)
   {
@@ -49,17 +48,17 @@ public abstract class AbstractNode implements Node, Runnable
   }
 
   @Override
-  public void beginWindow(NodeContext context)
+  public void beginWindow()
   {
   }
 
   @Override
-  public void endWindow(NodeContext context)
+  public void endWindow()
   {
   }
 
   @Override
-  public abstract void process(NodeContext context, StreamContext streamContext, Object payload);
+  public abstract void process(Object payload);
 
   @Override
   public void teardown()
@@ -68,8 +67,8 @@ public abstract class AbstractNode implements Node, Runnable
 
   public void handleIdleTimeout()
   {
-    
   }
+
   /**
    * Return and reset counts for next heartbeat interval. This is called as part
    * of the heartbeat processing. Providing this hook in node implementation so
@@ -132,26 +131,26 @@ public abstract class AbstractNode implements Node, Runnable
   {
     public int compare(Tuple t1, Tuple t2)
     {
-        long wid1 = t1.getWindowId();
-        long wid2 = t2.getWindowId();
-        if (wid1 < wid2) {
-          return -1;
-        }
-        else if (wid1 > wid2) {
-          return 1;
-        }
-        else if (t1.getType() == Data.DataType.BEGIN_WINDOW) {
-          return -1;
-        }
-        else if (t2.getType() == Data.DataType.BEGIN_WINDOW) {
-          return 1;
-        }
-        else if (t1.getType() == Data.DataType.END_WINDOW) {
-          return 1;
-        }
-        else if (t2.getType() == Data.DataType.END_WINDOW) {
-          return -1;
-        }
+      long wid1 = t1.getWindowId();
+      long wid2 = t2.getWindowId();
+      if (wid1 < wid2) {
+        return -1;
+      }
+      else if (wid1 > wid2) {
+        return 1;
+      }
+      else if (t1.getType() == Data.DataType.BEGIN_WINDOW) {
+        return -1;
+      }
+      else if (t2.getType() == Data.DataType.BEGIN_WINDOW) {
+        return 1;
+      }
+      else if (t1.getType() == Data.DataType.END_WINDOW) {
+        return 1;
+      }
+      else if (t2.getType() == Data.DataType.END_WINDOW) {
+        return -1;
+      }
 
       return 0;
     }
@@ -257,14 +256,14 @@ public abstract class AbstractNode implements Node, Runnable
            */
           switch (t.getType()) {
             case BEGIN_WINDOW:
-              beginWindow(ctx);
+              beginWindow();
               for (StreamContext stream : outputStreams) {
                 stream.sink(t);
               }
               break;
 
             case END_WINDOW:
-              endWindow(ctx);
+              endWindow();
               for (StreamContext stream : outputStreams) {
                 stream.sink(t);
               }
@@ -272,7 +271,7 @@ public abstract class AbstractNode implements Node, Runnable
 
             default:
               // process payload
-              process(ctx, t.getContext(), t.getObject());
+              process(t.getObject());
               // update heartbeat counters;
               ctx.countProcessed(t);
               break;
@@ -282,7 +281,7 @@ public abstract class AbstractNode implements Node, Runnable
     }
 
   }
-  
+
   @Override
   public String toString()
   {
