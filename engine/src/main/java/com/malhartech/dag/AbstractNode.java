@@ -81,7 +81,7 @@ public abstract class AbstractNode implements Node, Runnable
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
-        logger.info(this + " " + t);
+        //logger.info(this + " " + t);
         inputQueue.add(t);
         inputQueue.notify();
       }

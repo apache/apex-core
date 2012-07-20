@@ -106,26 +106,26 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     /**
      * Nodes that are hosted in the container.
      */
-    private List<StreamingNodeContext> nodes;
+    private List<NodePConf> nodes;
 
-    public List<StreamingNodeContext> getNodes() {
+    public List<NodePConf> getNodes() {
       return nodes;
     }
 
-    public void setNodes(List<StreamingNodeContext> nodes) {
+    public void setNodes(List<NodePConf> nodes) {
       this.nodes = nodes;
     }
 
     /**
      * Streams that have input/output from container.
      */
-    private Collection<StreamContext> streams;
+    private Collection<StreamPConf> streams;
 
-    public Collection<StreamContext> getStreams() {
+    public Collection<StreamPConf> getStreams() {
       return streams;
     }
 
-    public void setStreams(Collection<StreamContext> streams) {
+    public void setStreams(Collection<StreamPConf> streams) {
       this.streams = streams;
     }
 

@@ -4,8 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.EndWindow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +14,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StreamContext implements Context
 {
-  private final Logger logger = LoggerFactory.getLogger(StreamContext.class);
+  private final Logger LOG = LoggerFactory.getLogger(StreamContext.class);
   private Sink sink;
   private SerDe serde;
   private long windowId;
@@ -27,6 +25,7 @@ public class StreamContext implements Context
    */
   public void setSink(Sink sink)
   {
+    LOG.info("sink: {}", sink);
     this.sink = sink;
   }
 
@@ -42,7 +41,7 @@ public class StreamContext implements Context
 
   public void sink(Tuple t)
   {
-    logger.info(this + " " + t);
+    //LOG.info(this + " " + t);
     switch (t.getType()) {
       case SIMPLE_DATA:
       case PARTITIONED_DATA:

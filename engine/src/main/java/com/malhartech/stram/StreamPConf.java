@@ -16,7 +16,7 @@ import java.util.Map;
  * StramChild to use this to wire the nodes after instantiating them.
  * @author thomas
  */
-public class StreamContext extends StreamingNodeUmbilicalProtocol.WritableAdapter
+public class StreamPConf extends StreamingNodeUmbilicalProtocol.WritableAdapter
 {
 
   private static final long serialVersionUID = 1L;

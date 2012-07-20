@@ -79,7 +79,7 @@ public class StramChild
    * @param sc
    * @param ctx
    */
-  private void initStream(StreamContext sc, StreamingContainerContext ctx)
+  private void initStream(StreamPConf sc, StreamingContainerContext ctx)
   {
     AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
     if (sourceNode instanceof AdapterWrapperNode) {
@@ -166,16 +166,16 @@ public class StramChild
     }
 
     // create nodes
-    for (StreamingNodeContext snc : ctx.getNodes()) {
+    for (NodePConf snc : ctx.getNodes()) {
       AbstractNode dnode = initNode(snc, conf);
       NodeConfiguration nc = new NodeConfiguration(snc.getProperties());
       dnode.setup(nc);
-      LOG.info("Initialized node " + snc.getLogicalId());
+      LOG.info("Initialized node {} ({})", snc.getDnodeId(), snc.getLogicalId());
       nodeList.put(snc.getDnodeId(), dnode);
     }
 
     // wire stream connections
-    for (StreamContext sc : ctx.getStreams()) {
+    for (StreamPConf sc : ctx.getStreams()) {
       LOG.debug("Deploying stream " + sc.getId());
       if (sc.getSourceNodeId() != null && sc.getTargetNodeId() != null) {
         initStream(sc, ctx);
@@ -211,15 +211,17 @@ public class StramChild
     }
   }
 
-  // change it back to private later.
   protected void shutdown()
   {
     windowGenerator.stop();
     for (Stream s : this.streams.values()) {
+      LOG.info("teardown " + s);
       s.teardown();
     }
 
     for (AbstractNode node : this.nodeList.values()) {
+      LOG.info("teardown " + node);
+      node.stopSafely();
       node.teardown();
     }
   }
@@ -419,7 +421,7 @@ public class StramChild
    * @param nodeConf
    * @param conf
    */
-  public static AbstractNode initNode(StreamingNodeContext nodeCtx, Configuration conf)
+  public static AbstractNode initNode(NodePConf nodeCtx, Configuration conf)
   {
     try {
       Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.

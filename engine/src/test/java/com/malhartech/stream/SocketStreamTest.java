@@ -38,7 +38,6 @@ import com.malhartech.stram.TopologyBuilderTest;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import org.junit.*;
 
 /**
  *
@@ -73,7 +72,7 @@ public class SocketStreamTest
    *
    * @throws Exception
    */
-  @Ignore
+  //@Ignore
   @Test
   public void testBufferServerStream() throws Exception
   {
@@ -219,9 +218,10 @@ public class SocketStreamTest
 
     }
 
+    // TODO: validate data flow
+    
     synchronized (this) {
-      this.wait(5000);
-      
+      //this.wait(5000);
       for (ChildContainer cc : containers) {
         LOG.info("shutting down " + cc);
         cc.shutdown();
