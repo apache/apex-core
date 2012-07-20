@@ -1,6 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
- * All rights reserved.
+ * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
  */
 package com.malhartech.stram;
 
@@ -22,53 +21,62 @@ import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.conf.TopologyBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Wrapper node to connects adapter "stream" to another source or sink stream.
  * Provides uniform view of adapter as node for stram deployment and monitoring.
  */
-public class AdapterWrapperNode extends AbstractNode implements Sink {
-
+public class AdapterWrapperNode extends AbstractNode implements Sink
+{
+  private final static Logger logger = LoggerFactory.getLogger(AdapterWrapperNode.class);
   public static final String KEY_STREAM_CLASS_NAME = "streamClassName";
   public static final String KEY_IS_INPUT = "input";
-
   private String streamClassName;
   private boolean isInput;
   private Stream adapterStream = null;
-  
-  
-  public AdapterWrapperNode(NodeContext ctx) {
+
+  public AdapterWrapperNode(NodeContext ctx)
+  {
     super(ctx);
   }
 
-  public String getStreamClassName() {
+  public String getStreamClassName()
+  {
     return streamClassName;
   }
 
-  public void setStreamClassName(String streamClassName) {
+  public void setStreamClassName(String streamClassName)
+  {
     this.streamClassName = streamClassName;
   }
 
-  public boolean isInput() {
+  public boolean isInput()
+  {
     return isInput;
   }
 
-  public void setInput(boolean isInput) {
+  public void setInput(boolean isInput)
+  {
     this.isInput = isInput;
   }
 
-  public InputAdapter getInputAdapter() {
-    return (InputAdapter)adapterStream;
+  public InputAdapter getInputAdapter()
+  {
+    return (InputAdapter) adapterStream;
   }
-  
+
   @Override
   public void process(NodeContext context, StreamContext streamContext,
-      Object payload) {
+                      Object payload)
+  {
     throw new UnsupportedOperationException("Adapter nodes do not implement process.");
   }
 
   @Override
-  public void doSomething(Tuple t) {
+  public void doSomething(Tuple t)
+  {
     // pass tuple downstream
     for (StreamContext sink : sinks) {
       sink.sink(t);
@@ -76,44 +84,49 @@ public class AdapterWrapperNode extends AbstractNode implements Sink {
   }
 
   @Override
-  public void setup(NodeConfiguration config) {
+  public void setup(NodeConfiguration config)
+  {
     Map<String, String> props = config.getDagProperties();
     props.put(TopologyBuilder.STREAM_CLASSNAME, this.streamClassName);
     StreamConfiguration streamConf = new StreamConfiguration(props);
     if (isInput) {
       InputAdapter inputAdapter = initAdapterStream(streamConf, this);
       adapterStream = inputAdapter;
-    } else {
+    }
+    else {
       adapterStream = initAdapterStream(streamConf, null);
     }
   }
 
   @Override
-  public void teardown() {
+  public void teardown()
+  {
     if (adapterStream != null) {
       adapterStream.teardown();
     }
+    super.teardown(); // terminate super.run
   }
-
   private List<StreamContext> sinks = new ArrayList<StreamContext>();
-  
+
   @Override
-  public void addOutputStream(StreamContext context) {
+  public void addOutputStream(StreamContext context)
+  {
     // will set buffer server output stream for input adapter
     sinks.add(context);
   }
 
   @Override
-  public Sink getSink(StreamContext context) {
+  public Sink getSink(StreamContext context)
+  {
     if (isInput) {
       return this;
-    } else {
+    }
+    else {
       // output adapter
       return super.getSink(context);
     }
   }
 
-  
   public static <T extends Stream> T initAdapterStream(StreamConfiguration streamConf, AbstractNode node)
   {
     Map<String, String> properties = streamConf.getDagProperties();
@@ -139,12 +152,13 @@ public class AdapterWrapperNode extends AbstractNode implements Sink {
          * This is output adapter so it needs to implement the Sink interface.
          */
         if (instance instanceof Sink) {
+          logger.info(ctx + " setting selfsink for instance " + instance);
           ctx.setSink((Sink) instance);
         }
       }
       else {
         Sink sink = node.getSink(ctx);
-//        LOG.info("setting sink for instance " + instance + " to " + sink);
+        logger.info(ctx + " setting sink for instance " + instance + " to " + sink);
         ctx.setSink(sink);
       }
 
@@ -172,6 +186,15 @@ public class AdapterWrapperNode extends AbstractNode implements Sink {
       throw new IllegalArgumentException("Failed to instantiate: " + className, e);
     }
   }
-    
-  
+
+  @Override
+  public void handleIdleTimeout()
+  {
+    logger.info("adapter timed out");
+    if (adapterStream instanceof InputAdapter
+        && ((InputAdapter) adapterStream).hasFinished()) {
+      logger.info("it was input adapter... stopping now");
+      stopSafely();
+    }
+  }
 }

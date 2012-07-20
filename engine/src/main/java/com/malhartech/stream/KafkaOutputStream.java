@@ -49,4 +49,9 @@ public class KafkaOutputStream
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
+
+  public boolean hasFinished()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }

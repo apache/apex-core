@@ -4,14 +4,28 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.bufferserver.Buffer.Data;
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class NodeContext implements Context
 {
+
+  /**
+   * @return the idleTimeout
+   */
+  public long getIdleTimeout()
+  {
+    return idleTimeout;
+  }
+
+  /**
+   * @param idleTimeout the idleTimeout to set
+   */
+  public void setIdleTimeout(long idleTimeout)
+  {
+    this.idleTimeout = idleTimeout;
+  }
   public static class HeartbeatCounters {
     public long tuplesProcessed;
     public long bytesProcessed;
@@ -20,6 +34,13 @@ public class NodeContext implements Context
   
   private String id;
   private long windowId;
+  
+  /**
+   * The AbstractNode to which this context is passed, will timeout after the
+   * following milliseconds if no new tuple has been received by it.
+   */
+  // we should make it configurable somehow.
+  private long idleTimeout = 1000;
   
   public NodeContext(String id) {
     this.id = id;

@@ -15,9 +15,20 @@ public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
     implements Runnable {
   private static Logger LOG = LoggerFactory
       .getLogger(NumberGeneratorInputAdapter.class);
-  private boolean shutdown = false;
+  private volatile boolean shutdown = false;
   private String myConfigProperty;
-  
+  private int maxTuples = -1;
+  private int generatedNumbers = 0;
+
+  public int getMaxTuples() {
+    return maxTuples;
+  }
+
+  public void setMaxTuples(int maxNumbers) {
+    LOG.info("setting max tuples to {}", maxNumbers);
+    this.maxTuples = maxNumbers;
+  }
+
   public String getMyConfigProperty() {
     return myConfigProperty;
   }
@@ -38,17 +49,22 @@ public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
     t.start();
   }
 
+  @Override
+  public boolean hasFinished() {
+    return maxTuples > 0 && maxTuples > generatedNumbers;
+  }
+
   public void run() {
-    int i = 0;
-    while (!shutdown) {
-      sendTuple(String.valueOf(i++));
-      LOG.info("sent tuple to: " + context);
+    while (!shutdown && !hasFinished()) {
+      LOG.info("sending tuple to: " + context);
+      sendTuple(String.valueOf(generatedNumbers++));
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
         LOG.error("Unexpected error in run.", e);
       }
     }
+    LOG.info("Finished generating tuples");
   }
 
   @Override

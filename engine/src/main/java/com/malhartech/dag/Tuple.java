@@ -80,4 +80,10 @@ public class Tuple
   {
     this.type = type;
   }
+  
+  @Override
+  public String toString()
+  {
+    return "type = " + type + " window = " + windowId + " object = " + object;
+  }
 }

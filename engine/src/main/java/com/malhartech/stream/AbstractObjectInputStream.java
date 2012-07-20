@@ -19,9 +19,9 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractObjectInputStream implements InputAdapter
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractObjectInputStream.class);
-  protected StreamContext context = null;
-  protected volatile long tupleCount = 0;
-  protected volatile long timemillis = 0;
+  protected StreamContext context;
+//  protected volatile long tupleCount = 0;
+  protected volatile long timemillis;
   
   public void setContext(StreamContext context)
   {
@@ -53,7 +53,7 @@ public abstract class AbstractObjectInputStream implements InputAdapter
       }
       
       t.setWindowId(timemillis);
-      tupleCount++;
+//      tupleCount++;
       context.sink(t);
     }
   }
@@ -68,7 +68,7 @@ public abstract class AbstractObjectInputStream implements InputAdapter
     
     synchronized (this) {
       t.setWindowId(timemillis);
-      tupleCount = 0;
+//      tupleCount = 0;
       context.sink(t);
       this.notifyAll();
     }
@@ -82,10 +82,15 @@ public abstract class AbstractObjectInputStream implements InputAdapter
     t.setContext(context);
     
     synchronized (this) {
-      t.setTupleCount(tupleCount);
+//      t.setTupleCount(tupleCount);
       t.setWindowId(timemillis);
       context.sink(t);
     }
     
+  }
+  
+  public boolean hasFinished()
+  {
+    return false;
   }
 }

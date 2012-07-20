@@ -62,7 +62,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
-    logger.log(Level.INFO, "received publisher request: id={0}, type={1}", new Object[]{request.getIdentifier(), request.getType()});
+    logger.log(Level.INFO, "received publisher request: {0}", request);
 
     DataList dl;
 
@@ -87,7 +87,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     String type = request.getType();
     String upstream_identifier = request.getUpstreamIdentifier();
     //String upstream_type = request.getUpstreamType();
-    logger.log(Level.INFO, "received subscriber request: id={0}, type={1}, upstreamId={2}", new Object[]{request.getIdentifier(), request.getType(), request.getUpstreamIdentifier()});
+    logger.log(Level.INFO, "received subscriber request: {0}", request);
 
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;

@@ -26,7 +26,7 @@ public class HeartbeatProtocolSerializationTest {
   @Test
   public void testLoadFromPropertiesFile() throws IOException {
 
-    StreamingNodeContext snc = new StreamingNodeContext();
+    NodePConf snc = new NodePConf();
     snc.setLogicalId("node1");
     
     StreamingContainerContext scc = new StreamingContainerContext();
@@ -94,6 +94,10 @@ public class HeartbeatProtocolSerializationTest {
         beginWindowCount.incrementAndGet();
         windowXor.set(windowXor.get() ^ timemillis);
         System.out.println("begin: " + timemillis + " (" + System.currentTimeMillis() + ")");
+      }
+      public boolean hasFinished()
+      {
+        throw new UnsupportedOperationException("Not supported yet.");
       }
     };
     

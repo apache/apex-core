@@ -75,11 +75,20 @@ public class StramChild
 
   /**
    * Initialize stream between 2 nodes
+   *
    * @param sc
    * @param ctx
    */
-  private void initStream(StreamContext sc, StreamingContainerContext ctx) {
+  private void initStream(StreamPConf sc, StreamingContainerContext ctx)
+  {
     AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
+    if (sourceNode instanceof AdapterWrapperNode) {
+      AdapterWrapperNode wrapper = (AdapterWrapperNode) sourceNode;
+      // input adapter
+      this.inputAdapters.put(sc.getId(), wrapper.getInputAdapter());
+    }
+
+
     AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
     if (sc.isInline()) {
       LOG.info("inline connection from {} to {}", sourceNode, targetNode);
@@ -87,11 +96,15 @@ public class StramChild
       com.malhartech.dag.StreamContext dsc = new com.malhartech.dag.StreamContext();
       stream.setContext(dsc);
       Sink sink = targetNode.getSink(dsc);
-      dsc.setSink(sink); // this is circular... we may want to chance it later.
+
+      LOG.info(dsc + " setting sink to " + sink);
+      dsc.setSink(sink);
+
       // operation is additive - there can be multiple output streams
       sourceNode.addOutputStream(dsc);
-    } else {
-      
+    }
+    else {
+
       // buffer server connection between nodes
       LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.
         getTargetNodeId());
@@ -107,23 +120,23 @@ public class StramChild
         createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
       if (sourceNode != null) {
         // setup output stream as sink for source node
-        LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.getId());
+        LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.
+          getId());
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(streamConf);
         oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
+        LOG.info(streamContext + " setting sink to " + oss);
+
         streamContext.setSink(oss);
         sourceNode.addOutputStream(streamContext);
         this.streams.put(sc.getId(), oss);
 
-        if (sourceNode instanceof AdapterWrapperNode) {
-          AdapterWrapperNode wrapper = (AdapterWrapperNode)sourceNode; 
-          // input adapter
-          this.inputAdapters.put(sc.getId(), wrapper.getInputAdapter());
-        }
       }
 
       if (targetNode != null) {
         Sink sink = targetNode.getSink(streamContext);
+        LOG.info(streamContext + " setting sink to " + sink);
+
         streamContext.setSink(sink);
 
         // setup input stream for target node
@@ -144,7 +157,7 @@ public class StramChild
       }
     }
   }
-  
+
   protected void init(StreamingContainerContext ctx) throws IOException
   {
     this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
@@ -153,23 +166,25 @@ public class StramChild
     }
 
     // create nodes
-    for (StreamingNodeContext snc : ctx.getNodes()) {
+    for (NodePConf snc : ctx.getNodes()) {
       AbstractNode dnode = initNode(snc, conf);
       NodeConfiguration nc = new NodeConfiguration(snc.getProperties());
       dnode.setup(nc);
-      LOG.info("Initialized node " + snc.getLogicalId());
+      LOG.info("Initialized node {} ({})", snc.getDnodeId(), snc.getLogicalId());
       nodeList.put(snc.getDnodeId(), dnode);
     }
 
     // wire stream connections
-    for (StreamContext sc : ctx.getStreams()) {
+    for (StreamPConf sc : ctx.getStreams()) {
       LOG.debug("Deploying stream " + sc.getId());
       if (sc.getSourceNodeId() != null && sc.getTargetNodeId() != null) {
         initStream(sc, ctx);
-      } else {
-        throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.getId());
       }
-     
+      else {
+        throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.
+          getId());
+      }
+
     }
 
     for (final AbstractNode node : nodeList.values()) {
@@ -196,14 +211,17 @@ public class StramChild
     }
   }
 
-  private void shutdown()
+  protected void shutdown()
   {
     windowGenerator.stop();
     for (Stream s : this.streams.values()) {
+      LOG.info("teardown " + s);
       s.teardown();
     }
-    
+
     for (AbstractNode node : this.nodeList.values()) {
+      LOG.info("teardown " + node);
+      node.stopSafely();
       node.teardown();
     }
   }
@@ -403,7 +421,7 @@ public class StramChild
    * @param nodeConf
    * @param conf
    */
-  public static AbstractNode initNode(StreamingNodeContext nodeCtx, Configuration conf)
+  public static AbstractNode initNode(NodePConf nodeCtx, Configuration conf)
   {
     try {
       Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.
