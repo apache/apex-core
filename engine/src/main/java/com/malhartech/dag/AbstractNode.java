@@ -3,10 +3,6 @@
  *  All Rights Reserved.
  */
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;

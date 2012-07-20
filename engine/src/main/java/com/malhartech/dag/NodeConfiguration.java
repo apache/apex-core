@@ -6,7 +6,6 @@
 package com.malhartech.dag;
 
 import java.util.Map;
-
 import org.apache.hadoop.conf.Configuration;
 
 /**
