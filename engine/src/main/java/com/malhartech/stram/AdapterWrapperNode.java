@@ -3,38 +3,26 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.*;
+import com.malhartech.stram.conf.TopologyBuilder;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.beanutils.BeanUtils;
-
-import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
-import com.malhartech.stram.conf.TopologyBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Wrapper node to connects adapter "stream" to another source or sink Provides
- * uniform view of adapter as node for stram deployment and monitoring.
+ * Wrapper node to connects adapter "stream" to another source or sink stream.
+ * Provides uniform view of adapter as node for stram deployment and monitoring.
  */
 public class AdapterWrapperNode extends AbstractNode implements Sink
 {
   private final static Logger logger = LoggerFactory.getLogger(AdapterWrapperNode.class);
   public static final String KEY_STREAM_CLASS_NAME = "streamClassName";
   public static final String KEY_IS_INPUT = "input";
-  private String streamClassName;
   private boolean isInput;
+  private String streamClassName;
   private Stream adapterStream = null;
 
   public AdapterWrapperNode(NodeContext ctx)
@@ -57,9 +45,9 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     return isInput;
   }
 
-  public void setInput(boolean isInput)
+  public void setInput(boolean value)
   {
-    this.isInput = isInput;
+    isInput = value;
   }
 
   public InputAdapter getInputAdapter()
@@ -70,16 +58,14 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   @Override
   public void process(Object payload)
   {
-    throw new UnsupportedOperationException("Adapter nodes do not implement process.");
+
+    throw new UnsupportedOperationException("Adapter nodes do not implement process. " + payload);
   }
 
   @Override
   public void doSomething(Tuple t)
   {
-    // pass tuple downstream
-    for (StreamContext sink : sinks) {
-      sink.sink(t);
-    }
+    this.sink.sink(t);
   }
 
   @Override
@@ -88,9 +74,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     Map<String, String> props = config.getDagProperties();
     props.put(TopologyBuilder.STREAM_CLASSNAME, this.streamClassName);
     StreamConfiguration streamConf = new StreamConfiguration(props);
-    if (isInput) {
-      InputAdapter inputAdapter = initAdapterStream(streamConf, this);
-      adapterStream = inputAdapter;
+    if (isInput()) {
+      adapterStream = initAdapterStream(streamConf, this);
     }
     else {
       adapterStream = initAdapterStream(streamConf, null);
@@ -103,26 +88,24 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     if (adapterStream != null) {
       adapterStream.teardown();
     }
+    super.teardown(); // terminate super.run
   }
-  private List<StreamContext> sinks = new ArrayList<StreamContext>();
+  private com.malhartech.dag.StreamContext sink;
 
   @Override
   public void addOutputStream(StreamContext context)
   {
-    // will set buffer server output stream for input adapter
-    sinks.add(context);
+    this.sink = context;
   }
 
   @Override
-  public Sink getSink(StreamContext context)
+  public Sink getSink(com.malhartech.dag.StreamContext context)
   {
-    if (isInput) {
+    if (isInput()) {
       return this;
     }
-    else {
-      // output adapter
-      return super.getSink(context);
-    }
+
+    return (Sink) adapterStream;
   }
 
   public static <T extends Stream> T initAdapterStream(StreamConfiguration streamConf, AbstractNode node)
@@ -189,8 +172,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   public void handleIdleTimeout()
   {
     logger.info("adapter timed out");
-    if (adapterStream instanceof InputAdapter
-        && ((InputAdapter) adapterStream).hasFinished()) {
+    if (isInput() && ((InputAdapter) adapterStream).hasFinished()) {
       logger.info("it was input adapter... stopping now");
       stopSafely();
     }

@@ -26,7 +26,7 @@ public class HeartbeatProtocolSerializationTest {
   @Test
   public void testLoadFromPropertiesFile() throws IOException {
 
-    StreamingNodeContext snc = new StreamingNodeContext();
+    NodePConf snc = new NodePConf();
     snc.setLogicalId("node1");
     
     StreamingContainerContext scc = new StreamingContainerContext();

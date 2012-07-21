@@ -103,7 +103,7 @@ public class TopologyBuilderTest {
 
   @SuppressWarnings("unchecked")
   private <T extends AbstractNode> T initNode(NodeConf nodeConf, Configuration conf) {
-    StreamingNodeContext snc = DNodeManager.createNodeContext(nodeConf.getId(), nodeConf);
+    NodePConf snc = DNodeManager.createNodeContext(nodeConf.getId(), nodeConf);
     return (T)StramChild.initNode(snc, conf);
   }
   

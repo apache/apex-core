@@ -20,14 +20,12 @@ public interface Node extends DAGPart<NodeConfiguration, NodeContext>
   /**
    * This method gets called at the beginning of each window.
    *
-   * @param context - currently unused, may go away.
    */
   public void beginWindow();
 
   /**
    * This method gets called at the end of each window.
    *
-   * @param context - currently unused, may go away.
    */
   public void endWindow();
 

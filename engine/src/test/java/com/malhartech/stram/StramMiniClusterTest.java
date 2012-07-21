@@ -7,6 +7,8 @@ package com.malhartech.stram;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.stream.HDFSOutputStream;
+
 import java.io.*;
 import java.net.URL;
 import java.util.List;
@@ -82,13 +84,9 @@ public class StramMiniClusterTest {
   }
   
   @Test
-  public void test1() throws Exception {
+  public void testSetupShutdown() throws Exception {
 
-    /**
-     * Find out about the currently available cluster resources
-     */
-      // some of this needs to happen in the app master? some in order to decide where to request the app master?
-    // get NodeReports from RM: 
+
     GetClusterNodesRequest request = 
         Records.newRecord(GetClusterNodesRequest.class);
     ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
@@ -110,6 +108,17 @@ public class StramMiniClusterTest {
 
     // create test topology
     Properties props = new Properties();
+
+    // input adapter to ensure shutdown works while windows are generated
+//    props.put("stram.stream.input1.classname", NumberGeneratorInputAdapter.class.getName());
+//    props.put("stram.stream.input1.outputNode", "node1");
+//    props.put("stram.stream.input1.maxTuples", "1");
+
+    // fake output adapter - to be ignored when determine shutdown
+    props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
+    props.put("stram.stream.output.inputNode", "node2");
+    props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
+    
     props.put("stram.stream.n1n2.inputNode", "node1");
     props.put("stram.stream.n1n2.outputNode", "node2");
     props.put("stram.stream.n1n2.template", "defaultstream");

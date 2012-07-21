@@ -2,11 +2,6 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data;
@@ -85,7 +80,7 @@ public abstract class AbstractNode implements Node, Runnable
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
-        logger.info(this + " " + t);
+        //logger.info(this + " " + t);
         inputQueue.add(t);
         inputQueue.notify();
       }
@@ -179,7 +174,7 @@ public abstract class AbstractNode implements Node, Runnable
     boolean shouldWait = false;
     int tupleCount = 0;
 
-    while (alive) {
+    do {
       Tuple t;
       synchronized (inputQueue) {
         if ((t = inputQueue.peek()) == null) {
@@ -269,16 +264,24 @@ public abstract class AbstractNode implements Node, Runnable
               }
               break;
 
-            default:
+            case PARTITIONED_DATA:
+              logger.warn("partitioned data should not be called " + t);
+
+            case SIMPLE_DATA:
               // process payload
               process(t.getObject());
               // update heartbeat counters;
               ctx.countProcessed(t);
               break;
+
+
+            default:
+              logger.warn("got an unhandled packet " + t);
+              break;
           }
         }
       }
-    }
+    } while (alive);
 
   }
 
