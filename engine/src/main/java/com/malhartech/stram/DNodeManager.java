@@ -4,6 +4,22 @@
  */
 package com.malhartech.stram;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.lang.builder.ReflectionToStringBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -14,13 +30,6 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbea
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.lang.builder.ReflectionToStringBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Tracks topology provisioning/allocation to containers.
@@ -409,8 +418,8 @@ public class DNodeManager {
     }
     
     // find streams for to be deployed node(s)
-    // eliminate duplicates within container (inline or not)
-    Set<StreamPConf> streams = new HashSet<StreamPConf>();
+    // eliminate source duplicates within container (inline or not)
+    Map<String, StreamPConf> streams = new HashMap<String, StreamPConf>();
     for (NodePConf snc  : pnodeList.toArray(new NodePConf[pnodeList.size()])) {
       NodeConf nodeConf = nodeId2NodeConfMap.get(snc.getDnodeId());
       // DAG node inputs
@@ -421,7 +430,7 @@ public class DNodeManager {
         for (StreamPConf pstream : pstreams) {
           if (pstream.getTargetNodeId() == snc.getDnodeId()) {
             // node instance is subscriber
-            streams.add(pstream);
+            streams.put(pstream.getSourceNodeId() + pstream.getId(), pstream);
             if (streamConf.getSourceNode() == null) {
               // input adapter: deploy with first subscriber
               if (!this.deployedNodes.containsKey(pstream.getSourceNodeId())) {
@@ -439,11 +448,15 @@ public class DNodeManager {
         for (StreamPConf pstream : pstreams) {
           if (pstream.getSourceNodeId() == snc.getDnodeId()) {
             // node is publisher
-            streams.add(pstream);
+            streams.put(pstream.getSourceNodeId() + pstream.getId(), pstream);
             if (streamConf.getTargetNode() == null) {
               // output adapter: deploy with first publisher
               if (!this.deployedNodes.containsKey(pstream.getTargetNodeId())) {
                 pnodeList.add(adapterNodes.get(streamConf));
+                // adapter needs to subscribe to all partitions
+                for (StreamPConf pstream2 : pstreams) {
+                  streams.put(pstream2.getSourceNodeId() + pstream2.getId(), pstream2);
+                }
               }
             }
           }
@@ -459,7 +472,7 @@ public class DNodeManager {
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setNodes(pnodeList);
-    scc.setStreams(streams);
+    scc.setStreams(new ArrayList<StreamPConf>(streams.values()));
     containerContextMap.put(containerId, scc);
 
     return scc;

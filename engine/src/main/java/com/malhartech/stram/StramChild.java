@@ -120,8 +120,8 @@ public class StramChild
         createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
       if (sourceNode != null) {
         // setup output stream as sink for source node
-        LOG.info("Node {} is buffer server publisher for stream {}", sourceNode, sc.
-          getId());
+        LOG.info("Node {} is publisher for {}/{}", new Object[] {
+            sourceNode, sc.getId(), sc.getSourceNodeId()});
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(streamConf);
         oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
@@ -140,8 +140,8 @@ public class StramChild
         streamContext.setSink(sink);
 
         // setup input stream for target node
-        LOG.info("Node {} is buffer server subscriber for stream {}", targetNode, sc.
-          getId());
+        LOG.info("Node {} is subscriber for {}/{}", new Object[] {
+            targetNode, sc.getId(), sc.getSourceNodeId()});
         BufferServerInputStream iss = new BufferServerInputStream();
         iss.setup(streamConf);
         List<String> partitions = Collections.emptyList();

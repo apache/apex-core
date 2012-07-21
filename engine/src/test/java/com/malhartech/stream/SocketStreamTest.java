@@ -54,7 +54,6 @@ public class SocketStreamTest
    *
    * @throws Exception
    */
-  @Ignore
   @Test
   public void testBufferServerStream() throws Exception
   {

@@ -173,6 +173,9 @@ public class DNodeManagerTest {
       if (i==0) {
         // the input and output adapter should be assigned to first container and streams should not be inline
         Assert.assertEquals("number nodes assigned to " + containerId, 3, cc.getNodes().size());
+        // output subscribes to all upstream partitions
+        Assert.assertEquals("number streams " + containerId, 1+TestStaticPartitioningSerDe.partitions.length, cc.getStreams().size());
+
         NodePConf input1PNode = getNodeContext(cc, input1.getId());
         Assert.assertNotNull(input1.getId() + " assigned to " + containerId, input1PNode);
         
@@ -180,12 +183,11 @@ public class DNodeManagerTest {
         Assert.assertNotNull(output1.getId() + " assigned to " + containerId, output1PNode);
       } else {
         Assert.assertEquals("number nodes assigned to " + containerId, 1, cc.getNodes().size());
+        Assert.assertEquals("number streams " + containerId, 2, cc.getStreams().size());
       }
-      Assert.assertEquals("number streams " + containerId, 2, cc.getStreams().size());
       
       Assert.assertTrue(node1.getId() + " assigned to " + containerId, containsNodeContext(cc, node1));
   
-      Assert.assertEquals("stream connections for " + containerId, 2, cc.getStreams().size());
       StreamPConf scIn1 = getStreamContext(cc, "input1");
       Assert.assertNotNull("in stream connection for " + containerId, scIn1);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], scIn1.getPartitionKeys().get(0)));
