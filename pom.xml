@@ -39,6 +39,7 @@
     <module>stram</module>
     <module>bufferserver</module>
     <module>examples/wordcount</module>
+    <module>examples/twitter</module>
   </modules>
     <artifactId>framework</artifactId>
 </project>
