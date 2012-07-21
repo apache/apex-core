@@ -11,7 +11,8 @@ import java.util.Map.Entry;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -20,7 +21,7 @@ import java.util.logging.Logger;
 public class DataList
 {
 
-  private static final Logger logger = Logger.getLogger(DataList.class.getName());
+  private static final Logger logger = LoggerFactory.getLogger(DataList.class.getName());
   HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
   HashSet<DataListener> all_listeners = new HashSet<DataListener>();
   int capacity;

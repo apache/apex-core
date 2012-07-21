@@ -11,9 +11,9 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jboss.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * LogicalNode represents a logical node in a DAG. Logical node can be split
@@ -24,8 +24,7 @@ import org.jboss.netty.channel.Channel;
  */
 public class LogicalNode implements DataListener
 {
-
-  private static final Logger logger = Logger.getLogger(LogicalNode.class.getName());
+  private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class.getName());
   private final String group;
   private final HashSet<PhysicalNode> physicalNodes;
   private final HashSet<ByteBuffer> partitions;
@@ -65,7 +64,6 @@ public class LogicalNode implements DataListener
     partitions.add(partition);
   }
 
-
   public synchronized void catchUp(long windowId)
   {
     /*
@@ -94,24 +92,38 @@ public class LogicalNode implements DataListener
     // my assumption is that one will never get blocked while writing
     // since the underlying blocking queue maintained by netty has infinite
     // capacity. we will have to double check though.
-    while (iterator.hasNext()) {
-      Data data = iterator.next();
-      switch (data.getType()) {
-        case PARTITIONED_DATA:
-          if (partitions.contains(data.getPartitioneddata().getPartition().asReadOnlyByteBuffer())) {
+    if (partitions.isEmpty()) {
+      while (iterator.hasNext()) {
+        Data data = iterator.next();
+        switch (data.getType()) {
+          case PARTITIONED_DATA:
+          case SIMPLE_DATA:
             policy.distribute(physicalNodes, data);
-          }
-          break;
+            break;
 
-        case SIMPLE_DATA:
-          if (partitions.isEmpty()) {
-            policy.distribute(physicalNodes, data);
-          }
-          break;
+          default:
+            GiveAll.getInstance().distribute(physicalNodes, data);
+            break;
+        }
+      }
+    }
+    else {
+      while (iterator.hasNext()) {
+        Data data = iterator.next();
+        switch (data.getType()) {
+          case PARTITIONED_DATA:
+            if (partitions.contains(data.getPartitioneddata().getPartition().asReadOnlyByteBuffer())) {
+              policy.distribute(physicalNodes, data);
+            }
+            break;
 
-        default:
-          GiveAll.getInstance().distribute(physicalNodes, data);
-          break;
+          case SIMPLE_DATA:
+            break;
+
+          default:
+            GiveAll.getInstance().distribute(physicalNodes, data);
+            break;
+        }
       }
     }
   }
