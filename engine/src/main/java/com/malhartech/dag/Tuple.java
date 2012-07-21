@@ -8,7 +8,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 
 /**
@@ -17,11 +16,10 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
  */
 public class Tuple
 {
-
   private long windowId;
   private DataType type;
   private StreamContext context;
-  final Object object;
+  private final Object object;
 
   public Tuple(Object object)
   {
@@ -80,10 +78,10 @@ public class Tuple
   {
     this.type = type;
   }
-  
+
   @Override
   public String toString()
   {
-    return "type = " + type + " window = " + windowId + " object = " + object;
+    return "type = " + type + " window = " + windowId + " object = " + getObject();
   }
 }
