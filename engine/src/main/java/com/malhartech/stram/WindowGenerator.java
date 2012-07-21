@@ -11,8 +11,8 @@ import java.util.concurrent.TimeUnit;
 
 public class WindowGenerator {
   
-  final long startMillis;
-  final long intervalMillis;
+  final long startMillis; // Window start time
+  final long intervalMillis; // Window size
   long currentWindowMillis = -1;
   final Collection<InputAdapter> inputAdapters;
   ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1);
@@ -27,7 +27,7 @@ public class WindowGenerator {
   protected void nextWindow() {
     for (InputAdapter ia : inputAdapters) {
       if (currentWindowMillis != startMillis) {
-        ia.endWindow(currentWindowMillis - intervalMillis);
+        ia.endWindow(currentWindowMillis - intervalMillis); // endwindow gets the startwindow time
       }
       ia.beginWindow(currentWindowMillis);
     }
@@ -37,6 +37,7 @@ public class WindowGenerator {
   public void start() {
     long currentTms = System.currentTimeMillis();
     // generate begin/end for elapsed windows
+    // elapsed windows are ones that have elapsed in the time it took to setup the DAG?
     while (currentWindowMillis < currentTms) {
       nextWindow();
     }
