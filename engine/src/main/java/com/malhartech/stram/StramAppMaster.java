@@ -118,7 +118,7 @@ public class StramAppMaster {
 
 	  // child container callback
 	  private StreamingNodeParent rpcImpl;
-    private DNodeManager dnmgr;
+	  private DNodeManager dnmgr;
 	  private InetSocketAddress bufferServerAddress;
 	  
 	  /**
@@ -131,7 +131,7 @@ public class StramAppMaster {
 	    for (Map.Entry<String, String> e : System.getenv().entrySet()) {
 	        sw.append("\n").append(e.getKey()).append("=").append(e.getValue());
 	    }
-      LOG.info("appmaster env:" + sw.toString());
+            LOG.info("appmaster env:" + sw.toString());
 
 	    try {
 	      StramAppMaster appMaster = new StramAppMaster();
@@ -162,10 +162,12 @@ public class StramAppMaster {
 
 	    LOG.info("Dump debug output");
 	    Map<String, String> envs = System.getenv();
+            LOG.info("\nDumping System Env: begin");
 	    for (Map.Entry<String, String> env : envs.entrySet()) {
 	      LOG.info("System env: key=" + env.getKey() + ", val=" + env.getValue());
 	      System.out.println("System env: key=" + env.getKey() + ", val=" + env.getValue());
 	    }
+            LOG.info("Dumping System Env: end");
 
 	    String cmd = "ls -al";
 	    Runtime run = Runtime.getRuntime();
@@ -176,10 +178,12 @@ public class StramAppMaster {
 
 	      BufferedReader buf = new BufferedReader(new InputStreamReader(pr.getInputStream()));
 	      String line = "";
+              LOG.info("\nDumping files in local dir: begin");
 	      while ((line=buf.readLine())!=null) {
 	        LOG.info("System CWD content: " + line);
 	        System.out.println("System CWD content: " + line);
 	      }
+              LOG.info("Dumping files in local dir: end");
 	      buf.close();
 	    } catch (IOException e) {
 	      e.printStackTrace();
@@ -231,11 +235,13 @@ public class StramAppMaster {
 	      throw new IllegalArgumentException("No args specified for application master to initialize");
 	    }
 
+            // option "help" overrides and cancels any run
 	    if (cliParser.hasOption("help")) {
 	      printUsage(opts);
 	      return false;
 	    }
 
+            // "debug" simply dumps all data using LOG.info
 	    if (cliParser.hasOption("debug")) {
 	      dumpOutDebugInfo();
 	    }
