@@ -72,7 +72,7 @@ public class HDFSOutputStream
     switch (t.getType()) {
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
-//        LOG.debug("writing out " + t.getObject());
+        LOG.debug("writing out " + t.getObject());
         SerDe serde = context.getSerDe();
         byte[] serialized = serde.toByteArray(t.getObject());
         try {
@@ -84,7 +84,7 @@ public class HDFSOutputStream
         break;
 
       default:
-        LOG.info("ignoring tuple of the type " + t.getType());
+        LOG.debug("ignoring tuple " + t);
         break;
     }
   }
