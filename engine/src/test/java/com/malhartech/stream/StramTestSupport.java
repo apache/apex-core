@@ -4,6 +4,8 @@
  */
 package com.malhartech.stream;
 
+import static org.junit.Assert.assertTrue;
+
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.BeginWindow;
 import com.malhartech.bufferserver.Buffer.Data;
@@ -56,5 +58,12 @@ abstract public class StramTestSupport {
     t.setContext(sc);
     return t;
   }
+  
+
+  public static void checkStringMatch(String print, String expected, String got) {
+    assertTrue(
+        print + " doesn't match, got: " + got + " expected: " + expected,
+        got.matches(expected));
+  }  
   
 }

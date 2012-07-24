@@ -61,7 +61,7 @@ public class StramWebServices {
   }
 
   @GET
-  @Path("/info")
+  @Path("info")
   @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
   public AppInfo getAppInfo() {
     init();
