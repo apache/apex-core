@@ -171,7 +171,6 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   @Override
   public void handleIdleTimeout()
   {
-    logger.info("adapter timed out");
     if (isInput() && ((InputAdapter) adapterStream).hasFinished()) {
       logger.info("it was input adapter... stopping now");
       stopSafely();

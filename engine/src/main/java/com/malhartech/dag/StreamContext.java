@@ -19,7 +19,13 @@ public class StreamContext implements Context
   private SerDe serde;
   private long windowId;
   private int tupleCount;
-
+  private State sinkState;
+  
+  public StreamContext()
+  {
+    sinkState = State.UNDEFINED;
+  }
+  
   /**
    * @param sink - target node, not required for output adapter
    */
@@ -80,4 +86,15 @@ public class StreamContext implements Context
   {
     return tupleCount;
   }
+
+  State getSinkState()
+  {
+    return sinkState;
+  }
+
+  void setSinkState(State state)
+  {
+    sinkState = state;
+  }
+
 }

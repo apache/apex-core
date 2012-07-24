@@ -142,10 +142,10 @@ public class StramClient {
       System.exit(1);
     }
     if (result) {
-      LOG.info("Application completed successfully");
+      LOG.info("Application finished successfully.");
       System.exit(0);			
     } 
-    LOG.error("Application failed to complete successfully");
+    LOG.error("Application failed!");
     System.exit(2);
   }
 

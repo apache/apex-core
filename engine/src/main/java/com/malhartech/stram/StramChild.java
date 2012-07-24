@@ -106,8 +106,7 @@ public class StramChild
     else {
 
       // buffer server connection between nodes
-      LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.
-        getTargetNodeId());
+      LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
 
       com.malhartech.dag.StreamContext streamContext = new com.malhartech.dag.StreamContext();
       if (targetNode != null) {
@@ -116,11 +115,10 @@ public class StramChild
       streamContext.setWindowId(ctx.getStartWindowMillis());
 
       StreamConfiguration streamConf = new StreamConfiguration(sc.getProperties());
-      streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.
-        createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
+      streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
       if (sourceNode != null) {
         // setup output stream as sink for source node
-        LOG.info("Node {} is publisher for {}/{}", new Object[] {
+        LOG.info("Node {} is publisher for {}/{}", new Object[]{
             sourceNode, sc.getId(), sc.getSourceNodeId()});
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(streamConf);
@@ -140,7 +138,7 @@ public class StramChild
         streamContext.setSink(sink);
 
         // setup input stream for target node
-        LOG.info("Node {} is subscriber for {}/{}", new Object[] {
+        LOG.info("Node {} is subscriber for {}/{}", new Object[]{
             targetNode, sc.getId(), sc.getSourceNodeId()});
         BufferServerInputStream iss = new BufferServerInputStream();
         iss.setup(streamConf);
@@ -151,8 +149,7 @@ public class StramChild
             partitions.add(new String(partition));
           }
         }
-        iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.
-          getTargetNodeId(), partitions);
+        iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.getTargetNodeId(), partitions);
         this.streams.put(sc.getId(), iss);
       }
     }
@@ -181,8 +178,7 @@ public class StramChild
         initStream(sc, ctx);
       }
       else {
-        throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.
-          getId());
+        throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.getId());
       }
 
     }
@@ -204,8 +200,7 @@ public class StramChild
       launchThread.start();
     }
 
-    windowGenerator = new WindowGenerator(this.inputAdapters.values(), ctx.
-      getStartWindowMillis(), ctx.getWindowSizeMillis());
+    windowGenerator = new WindowGenerator(this.inputAdapters.values(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
     if (ctx.getWindowSizeMillis() > 0) {
       windowGenerator.start();
     }
@@ -243,8 +238,7 @@ public class StramChild
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
       msg.setContainerId(this.containerId);
-      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.
-        size());
+      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.size());
 
       // gather heartbeat info for all nodes
       for (Map.Entry<String, AbstractNode> e : nodeList.entrySet()) {
@@ -266,12 +260,17 @@ public class StramChild
 
       // heartbeat call and follow-up processing
       LOG.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
-      ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
-      if (rsp != null) {
-        processHeartbeatResponse(rsp);
+      try {
+        ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
+        if (rsp != null) {
+          processHeartbeatResponse(rsp);
+        }
+      }
+      catch (Exception e) {
+        LOG.warn("Exception received (may be during shutdown?) " + e.getLocalizedMessage());
       }
     }
-    LOG.info("Exiting hearbeat loop");
+    LOG.debug("Exiting hearbeat loop");
     umbilical.echo(containerId, "[" + containerId + "] Exiting heartbeat loop..");
   }
 
@@ -287,8 +286,7 @@ public class StramChild
       for (StramToNodeRequest req : rsp.getNodeRequests()) {
         AbstractNode n = nodeList.get(req.getNodeId());
         if (n == null) {
-          LOG.warn("Received request with invalid node id {} ({})", req.
-            getNodeId(), req);
+          LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
         else {
           LOG.info("Stram request: {}", req);
@@ -341,8 +339,7 @@ public class StramChild
 
     // Communicate with parent as actual task owner.
     UserGroupInformation taskOwner =
-                         UserGroupInformation.createRemoteUser(StramChild.class.
-      getName());
+                         UserGroupInformation.createRemoteUser(StramChild.class.getName());
     //taskOwner.addToken(jt);
     final StreamingNodeUmbilicalProtocol umbilical =
                                          taskOwner.doAs(new PrivilegedExceptionAction<StreamingNodeUmbilicalProtocol>()
@@ -359,8 +356,7 @@ public class StramChild
     UserGroupInformation childUGI;
 
     try {
-      childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.
-        toString()));
+      childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
       // Add tokens to new user so that it may execute its task correctly.
       for (Token<?> token : UserGroupInformation.getCurrentUser().getTokens()) {
         childUGI.addToken(token);
@@ -425,8 +421,7 @@ public class StramChild
   public static AbstractNode initNode(NodePConf nodeCtx, Configuration conf)
   {
     try {
-      Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.
-        getDnodeClassName()).asSubclass(AbstractNode.class);
+      Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(AbstractNode.class);
       Constructor<? extends AbstractNode> c = nodeClass.getConstructor(NodeContext.class);
       AbstractNode node = c.newInstance(new NodeContext(nodeCtx.getDnodeId()));
       // populate custom properties
@@ -434,8 +429,7 @@ public class StramChild
       return node;
     }
     catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Node class not found: " + nodeCtx.
-        getDnodeClassName(), e);
+      throw new IllegalArgumentException("Node class not found: " + nodeCtx.getDnodeClassName(), e);
     }
     catch (IllegalAccessException e) {
       throw new IllegalArgumentException("Error setting node properties", e);
@@ -444,16 +438,13 @@ public class StramChild
       throw new IllegalArgumentException("Error setting node properties", e);
     }
     catch (SecurityException e) {
-      throw new IllegalArgumentException("Error creating instance of class: " + nodeCtx.
-        getDnodeClassName(), e);
+      throw new IllegalArgumentException("Error creating instance of class: " + nodeCtx.getDnodeClassName(), e);
     }
     catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeCtx.
-        getDnodeClassName(), e);
+      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeCtx.getDnodeClassName(), e);
     }
     catch (InstantiationException e) {
-      throw new IllegalArgumentException("Failed to instantiate: " + nodeCtx.
-        getDnodeClassName(), e);
+      throw new IllegalArgumentException("Failed to instantiate: " + nodeCtx.getDnodeClassName(), e);
     }
   }
 }
