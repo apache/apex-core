@@ -354,7 +354,7 @@ public class DNodeManager {
           for (Map.Entry<String, NodePConf> publisherEntry : publishers.entrySet()) {
             StreamPConf sc = newStreamContext(streamConf, bufferServerAddress, null, 
                 publisherEntry.getValue(), adapterNode);
-            sc.setInline(false);
+            sc.setInline(false); // set to true in assignContainer when adapter is deployed to same container
             sc.setBufferServerChannelType(streamConf.getId());
             sc.setProperties(streamConf.getProperties());
             pstreams.add(sc);
@@ -456,6 +456,10 @@ public class DNodeManager {
                 // adapter needs to subscribe to all partitions
                 for (StreamPConf pstream2 : pstreams) {
                   streams.put(pstream2.getSourceNodeId() + pstream2.getId(), pstream2);
+                  if (snc.getDnodeId() == pstream2.getSourceNodeId()) {
+                     // both nodes in same container, make stream inline
+                    pstream2.setInline(true);
+                  }
                 }
               }
             }
