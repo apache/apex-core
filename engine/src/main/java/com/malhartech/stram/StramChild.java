@@ -210,15 +210,50 @@ public class StramChild
   protected void shutdown()
   {
     windowGenerator.stop();
+    
+    // ideally we should do the graph traversal and shutdown as we descend down. At this time
+    // we do not have a choice because the things are not setup to facilitate it, so brute force.
+    
+    /*
+     * first tear down all the input adapters.
+     */
+    for (AbstractNode node : nodeList.values()) {
+      if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode) node).isInput()) {
+        LOG.info("teardown " + node);
+        node.stopSafely();
+        node.teardown();
+      }
+    }
+    
+    /*
+     * now tear down all the nodes.
+     */
+    for (AbstractNode node : nodeList.values()) {
+      if (!(node instanceof AdapterWrapperNode)) {
+        LOG.info("teardown " + node);
+        node.stopSafely();
+        node.teardown();
+      }
+    }
+    
+    /*
+     * tear down all the streams.
+     */
     for (Stream s : this.streams.values()) {
       LOG.info("teardown " + s);
       s.teardown();
     }
 
+
+    /*
+     * tear down all the output adapters
+     */
     for (AbstractNode node : this.nodeList.values()) {
-      LOG.info("teardown " + node);
-      node.stopSafely();
-      node.teardown();
+      if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode) node).isInput()) {
+        LOG.info("teardown " + node);
+        node.stopSafely();
+        node.teardown();
+      }
     }
   }
 
