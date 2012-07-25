@@ -52,8 +52,8 @@ public class StramChild
   final private StreamingNodeUmbilicalProtocol umbilical;
   final private Map<String, AbstractNode> nodeList = new ConcurrentHashMap<String, AbstractNode>();
   final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
-  final private Map<String, Stream> streams = new ConcurrentHashMap<String, Stream>();
-  final private Map<String, InputAdapter> inputAdapters = new ConcurrentHashMap<String, InputAdapter>();
+  final private List<Stream> streams = new ArrayList<Stream>();
+  final private List<InputAdapter> inputAdapters = new ArrayList<InputAdapter>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   private WindowGenerator windowGenerator;
@@ -77,7 +77,7 @@ public class StramChild
     if (sourceNode instanceof AdapterWrapperNode) {
       AdapterWrapperNode wrapper = (AdapterWrapperNode) sourceNode;
       // input adapter
-      this.inputAdapters.put(sc.getId(), (InputAdapter)wrapper.getAdapterStream());
+      this.inputAdapters.add((InputAdapter)wrapper.getAdapterStream());
     }
 
 
@@ -121,7 +121,7 @@ public class StramChild
 
         streamContext.setSink(oss);
         sourceNode.addOutputStream(streamContext);
-        this.streams.put(sc.getId(), oss);
+        this.streams.add(oss);
       }
 
       if (targetNode != null) {
@@ -139,7 +139,7 @@ public class StramChild
         streamContext.setPartitions(sc.getPartitionKeys());
         
         iss.setContext(streamContext);
-        this.streams.put(sc.getId(), iss);
+        this.streams.add(iss);
       }
     }
   }
@@ -173,7 +173,7 @@ public class StramChild
 
     // ideally we would like to activate the output streams for a node before the input streams
     // are activated. But does not look like we have that fine control here. we should get it.
-    for (Stream s : this.streams.values()) {
+    for (Stream s : this.streams) {
       LOG.info("activate " + s);
       s.activate();
     }
@@ -197,11 +197,11 @@ public class StramChild
     }    
 
     // activate all the input adapters if any
-    for (Stream ia : inputAdapters.values()) {
+    for (Stream ia : inputAdapters) {
       ia.activate();
     }
     
-    windowGenerator = new WindowGenerator(this.inputAdapters.values(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
+    windowGenerator = new WindowGenerator(this.inputAdapters, ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
     if (ctx.getWindowSizeMillis() > 0) {
       windowGenerator.start();
     }
@@ -239,7 +239,7 @@ public class StramChild
     /*
      * tear down all the streams.
      */
-    for (Stream s : this.streams.values()) {
+    for (Stream s : this.streams) {
       LOG.info("teardown " + s);
       s.teardown();
     }
