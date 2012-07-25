@@ -50,9 +50,9 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     isInput = value;
   }
 
-  public InputAdapter getInputAdapter()
+  public Stream getAdapterStream()
   {
-    return (InputAdapter) adapterStream;
+    return adapterStream;
   }
 
   @Override
@@ -133,13 +133,13 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
          * This is output adapter so it needs to implement the Sink interface.
          */
         if (instance instanceof Sink) {
-          logger.info(ctx + " setting selfsink for instance " + instance);
+//          logger.info(ctx + " setting selfsink for instance " + instance);
           ctx.setSink((Sink) instance);
         }
       }
       else {
         Sink sink = node.getSink(ctx);
-        logger.info(ctx + " setting sink for instance " + instance + " to " + sink);
+//        logger.info(ctx + " setting sink for instance " + instance + " to " + sink);
         ctx.setSink(sink);
       }
 

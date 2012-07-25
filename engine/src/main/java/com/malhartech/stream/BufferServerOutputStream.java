@@ -1,29 +1,80 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
- * All rights reserved.
+ * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
  */
 package com.malhartech.stream;
 
+import com.google.protobuf.ByteString;
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.EndWindowTuple;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BufferServerOutputStream extends SocketOutputStream
+public class BufferServerOutputStream extends SocketOutputStream implements Sink
 {
-  private static Logger LOG = LoggerFactory.getLogger(BufferServerOutputStream.class);
+  private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
 
-  public void setContext(StreamContext context, String sourceId, String streamLogicalName)
+  public void doSomething(Tuple t)
   {
-    super.setContext(context);
+    Buffer.Data.Builder db = Buffer.Data.newBuilder();
+    db.setType(t.getType());
+    db.setWindowId(t.getWindowId());
 
-    LOG.info("registering publisher: {} {}", sourceId, streamLogicalName);
-    ClientHandler.publish(channel, sourceId, streamLogicalName, context.getWindowId());
+    switch (t.getType()) {
+      case BEGIN_WINDOW:
+        Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
+        bw.setNode("SOS");
+
+        db.setBeginwindow(bw);
+        break;
+
+      case END_WINDOW:
+        Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
+        ew.setNode("SOS");
+        ew.setTupleCount(((EndWindowTuple) t).getTupleCount());
+
+        db.setEndwindow(ew);
+        break;
+
+      case PARTITIONED_DATA:
+        logger.info("got partitioned data " + t.getObject());
+      case SIMPLE_DATA:
+
+        byte partition[] = context.getSerDe().getPartition(t.getObject());
+        if (partition == null) {
+          Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
+          sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.getObject())));
+
+          db.setType(Buffer.Data.DataType.SIMPLE_DATA);
+          db.setSimpledata(sdb);
+        }
+        else {
+          Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
+          pdb.setPartition(ByteString.copyFrom(partition));
+          pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.getObject())));
+
+          db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
+          db.setPartitioneddata(pdb);
+        }
+        break;
+
+      default:
+        throw new UnsupportedOperationException("this data type is not handled in the stream");
+    }
+
+//    logger.debug("channel write with data = " + db.build());
+    channel.write(db.build());
   }
-  
+
   @Override
-  public void setContext(StreamContext context) {
-    throw new UnsupportedOperationException("setContext requires additional parameters.");
+  public void activate()
+  {
+    super.activate();
+    
+    BufferServerStreamContext sc = (BufferServerStreamContext)getContext();
+    logger.info("registering publisher: {} {}", sc.getSourceId(), sc.getId());
+    ClientHandler.publish(channel, sc.getSourceId(), sc.getId(), sc.getWindowId());    
   }
-  
 }

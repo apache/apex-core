@@ -5,7 +5,6 @@
 package com.malhartech.stram;
 
 import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
 import com.malhartech.stream.AbstractObjectInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,14 +41,6 @@ public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
   }
 
   @Override
-  public void setContext(StreamContext context) {
-    super.setContext(context);
-    this.context = context;
-    Thread t = new Thread(this);
-    t.start();
-  }
-
-  @Override
   public boolean hasFinished() {
     return maxTuples > 0 && maxTuples > generatedNumbers;
   }
@@ -77,9 +68,10 @@ public class NumberGeneratorInputAdapter extends AbstractObjectInputStream
     return null;
   }
 
-  public StreamContext getContext()
+  public void activate()
   {
-    return context;
+    Thread t = new Thread(this);
+    t.start();
   }
 
 }

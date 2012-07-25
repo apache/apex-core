@@ -98,4 +98,8 @@ public class HDFSOutputStream
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
+
+  public void activate()
+  {
+  }
 }

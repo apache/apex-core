@@ -53,7 +53,6 @@ public abstract class AbstractObjectInputStream implements InputAdapter
       }
       
       t.setWindowId(timemillis);
-//      tupleCount++;
       context.sink(t);
     }
   }
@@ -68,7 +67,6 @@ public abstract class AbstractObjectInputStream implements InputAdapter
     
     synchronized (this) {
       t.setWindowId(timemillis);
-//      tupleCount = 0;
       context.sink(t);
       this.notifyAll();
     }
@@ -82,7 +80,6 @@ public abstract class AbstractObjectInputStream implements InputAdapter
     t.setContext(context);
     
     synchronized (this) {
-//      t.setTupleCount(tupleCount);
       t.setWindowId(timemillis);
       context.sink(t);
     }

@@ -99,6 +99,11 @@ public class HeartbeatProtocolSerializationTest {
       {
         throw new UnsupportedOperationException("Not supported yet.");
       }
+
+      public void activate()
+      {
+        throw new UnsupportedOperationException("Not supported yet.");
+      }
     };
     
     long startTime = System.currentTimeMillis();

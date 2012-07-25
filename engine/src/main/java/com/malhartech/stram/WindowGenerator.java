@@ -14,10 +14,10 @@ public class WindowGenerator {
   final long startMillis; // Window start time
   final long intervalMillis; // Window size
   long currentWindowMillis = -1;
-  final Collection<InputAdapter> inputAdapters;
+  final Collection<? extends InputAdapter> inputAdapters;
   ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1);
   
-  public WindowGenerator(Collection<InputAdapter> inputs, long startMillis, long intervalMillis) {
+  public WindowGenerator(Collection<? extends InputAdapter> inputs, long startMillis, long intervalMillis) {
     this.inputAdapters = inputs;
     this.startMillis = startMillis;
     this.intervalMillis = intervalMillis;

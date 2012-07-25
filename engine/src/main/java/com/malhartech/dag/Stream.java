@@ -16,5 +16,7 @@ public interface Stream extends DAGPart<StreamConfiguration, StreamContext>
 
   public StreamContext getContext();
 
+  public void activate();
+  
   public void teardown();
 }

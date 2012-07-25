@@ -57,4 +57,8 @@ public class ConsoleOutputStream implements Stream, Sink
     
     System.out.println();
   }
+
+  public void activate()
+  {
+  }
 }

@@ -1,33 +1,73 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
+ * Copyright (c) 2012 Malhar, Inc.
  * All rights reserved.
  */
 package com.malhartech.stream;
 
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.StreamContext;
-import java.util.Collection;
+import com.malhartech.dag.Tuple;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.MessageEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BufferServerInputStream extends SocketInputStream
 {
-  private static Logger LOG = LoggerFactory.getLogger(BufferServerInputStream.class);
+  private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
 
-  /**
-   * Requires upstream node info to setup subscriber TODO: revisit context
-   */
-  public void setContext(StreamContext context, String upstreamNodeId, String streamLogicalName, String downstreamNodeId, Collection<String> partitions)
-  {
-    super.setContext(context);
-    String type = "paramNotRequired?"; // TODO: why do we need this?
-    LOG.info("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {downstreamNodeId, upstreamNodeId, streamLogicalName});
-    ClientHandler.registerPartitions(channel, downstreamNodeId, streamLogicalName, upstreamNodeId, type, partitions);
-  }
-  
   @Override
-  public void setContext(StreamContext context) {
-    throw new UnsupportedOperationException("setContext requires additional parameters.");
+  public void activate()
+  {
+    super.activate();
+    
+    BufferServerStreamContext sc = (BufferServerStreamContext) getContext();
+    String type = "paramNotRequired?"; // TODO: why do we need this?
+    logger.info("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[]{sc.getSinkId(), sc.getSourceId(), sc.getId()});
+    ClientHandler.registerPartitions(channel, sc.getSinkId(), sc.getId(), sc.getSourceId(), type, sc.getPartitions());
   }
-  
+
+  // most of this code should be abstracted to the SocketInputStream and just 
+  @Override
+  public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
+  {
+//    logger.debug("received message {0}", e.getMessage());
+    StreamContext context = contexts.get(ctx.getChannel());
+    if (context == null) {
+      logger.warn("Context is not setup for the InputSocketStream");
+    }
+    else {
+      Buffer.Data d = (Buffer.Data) e.getMessage();
+
+      Tuple t;
+      switch (d.getType()) {
+        case SIMPLE_DATA:
+          t = new Tuple(context.getSerDe().fromByteArray(d.getSimpledata().getData().toByteArray()));
+          t.setType(Buffer.Data.DataType.SIMPLE_DATA);
+          break;
+
+        case PARTITIONED_DATA:
+          t = new Tuple(context.getSerDe().fromByteArray(d.getPartitioneddata().getData().toByteArray()));
+          /*
+           * we really do not distinguish between SIMPLE_DATA and PARTITIONED_DATA
+           */
+          t.setType(Buffer.Data.DataType.SIMPLE_DATA);
+          break;
+
+        case END_WINDOW:
+          t = new EndWindowTuple();
+          break;
+
+        default:
+          t = new Tuple(null);
+          t.setType(d.getType());
+          break;
+      }
+
+      t.setWindowId(d.getWindowId());
+      context.sink(t);
+    }
+  }
 }

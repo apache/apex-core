@@ -7,15 +7,11 @@
  */
 package com.malhartech.stream;
 
-import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.BeginWindow;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.EndWindow;
-import com.malhartech.bufferserver.Buffer.PartitionedData;
-import com.malhartech.bufferserver.Buffer.SimpleData;
-import com.malhartech.dag.*;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.netty.ClientPipelineFactory;
+import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
@@ -29,70 +25,17 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
-public class SocketOutputStream extends SimpleChannelDownstreamHandler
-  implements Sink, Stream
+public class SocketOutputStream extends SimpleChannelDownstreamHandler implements Stream
 {
   private static Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
-  private StreamContext context;
+  protected StreamContext context;
   protected ClientBootstrap bootstrap;
   protected Channel channel;
-
-  public void doSomething(Tuple t)
-  {
-    Data.Builder db = Data.newBuilder();
-    db.setType(t.getType());
-    db.setWindowId(t.getWindowId());
-    
-    switch (t.getType()) {
-      case BEGIN_WINDOW:
-        BeginWindow.Builder bw = BeginWindow.newBuilder();
-        bw.setNode("SOS");
-
-        db.setBeginwindow(bw);
-        break;
-
-      case END_WINDOW:
-        EndWindow.Builder ew = EndWindow.newBuilder();
-        ew.setNode("SOS");
-        ew.setTupleCount(((EndWindowTuple) t).getTupleCount());
-
-        db.setEndwindow(ew);
-        break;
-
-      case PARTITIONED_DATA:
-        logger.info("got partitioned data " + t.getObject());
-      case SIMPLE_DATA:
-
-        byte partition[] = context.getSerDe().getPartition(t.getObject());
-        if (partition == null) {
-          SimpleData.Builder sdb = SimpleData.newBuilder();
-          sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.
-            getObject())));
-
-          db.setType(Data.DataType.SIMPLE_DATA);
-          db.setSimpledata(sdb);
-        }
-        else {
-          PartitionedData.Builder pdb = PartitionedData.newBuilder();
-          pdb.setPartition(ByteString.copyFrom(partition));
-          pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.
-            getObject())));
-
-          db.setType(Data.DataType.PARTITIONED_DATA);
-          db.setPartitioneddata(pdb);
-        }
-        break;
-
-      default:
-        throw new UnsupportedOperationException("this data type is not handled in the stream");
-    }
-
-    channel.write(db.build());
-  }
+  private InetSocketAddress serverAddress;
 
   protected ClientPipelineFactory getClientPipelineFactory()
   {
-    return new ClientPipelineFactory(SocketOutputStream.class);
+    return new ClientPipelineFactory(this.getClass());
   }
 
   public void setup(StreamConfiguration config)
@@ -104,12 +47,10 @@ public class SocketOutputStream extends SimpleChannelDownstreamHandler
     // Configure the event pipeline factory.
     bootstrap.setPipelineFactory(getClientPipelineFactory());
 
-    // Make a new connection.
-    ChannelFuture future = bootstrap.connect(config.getBufferServerAddress());
-    channel = future.awaitUninterruptibly().getChannel();
+    serverAddress = config.getBufferServerAddress();
   }
 
-  public void setContext(com.malhartech.dag.StreamContext context)
+  public void setContext(StreamContext context)
   {
     this.context = context;
     // send publisher request
@@ -125,5 +66,12 @@ public class SocketOutputStream extends SimpleChannelDownstreamHandler
     channel.close();
     channel.getCloseFuture().awaitUninterruptibly();
     bootstrap.releaseExternalResources();
+  }
+
+  public void activate()
+  {
+    // Make a new connection.
+    ChannelFuture future = bootstrap.connect(serverAddress);
+    channel = future.awaitUninterruptibly().getChannel();
   }
 }

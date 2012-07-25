@@ -4,12 +4,9 @@
  */
 package com.malhartech.stream;
 
-import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer.BeginWindow;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.EndWindow;
-import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
