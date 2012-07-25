@@ -65,7 +65,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
                                  String down_type,
                                  String node,
                                  String type,
-                                 Collection<String> partitions)
+                                 Collection<byte[]> partitions)
   {
     Buffer.SubscriberRequest.Builder srb = Buffer.SubscriberRequest.newBuilder();
     srb.setIdentifier(id);
@@ -73,8 +73,10 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
     srb.setUpstreamIdentifier(node);
     srb.setUpstreamType(type);
 
-    for (String c : partitions) {
-      srb.addPartition(ByteString.copyFromUtf8(c));
+    if (partitions != null) {
+      for (byte[] c : partitions) {
+        srb.addPartition(ByteString.copyFrom(c));
+      }
     }
 
     Data.Builder builder = Data.newBuilder();
