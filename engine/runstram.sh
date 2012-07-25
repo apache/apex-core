@@ -63,4 +63,4 @@ export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$JAR
 TPLG="$PROJECT/src/main/resources/*.tplg.properties $PROJECT/src/test/resources/*.tplg.properties"
 pick_one "$TPLG" TPLG
 
-$HADOOP_PREFIX/bin/hadoop com.malhartech.stram.StramClient --debug --container_memory 64 --master_memory 256 --num_containers 2 --topologyProperties "$TPLG"
+$HADOOP_PREFIX/bin/hadoop com.malhartech.stram.StramClient --container_memory 64 --master_memory 256 --num_containers 2 --topologyProperties "$TPLG"
