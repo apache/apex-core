@@ -47,7 +47,7 @@ abstract public class StramTestSupport {
     db.setWindowId(windowId);
     db.setEndwindow(ewb);
     
-    Data data = db.build();
+    //Data data = db.build();
     EndWindowTuple t = new EndWindowTuple();
     t.setTupleCount(tupleCount);
     t.setWindowId(windowId);

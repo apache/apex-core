@@ -103,6 +103,8 @@ public class StramClient {
   // Main class to invoke application master
   private String appMasterMainClass = "";
 
+  private ApplicationId appId;  
+  
   private String topologyPropertyFile;
 
   // Amt of memory to request for container in which shell script will be executed
@@ -136,7 +138,8 @@ public class StramClient {
       if (!doRun) {
         System.exit(0);
       }
-      result = client.run();
+      client.startApplication();
+      result = client.monitorApplication();
     } catch (Throwable t) {
       LOG.error("Error running CLient", t);
       System.exit(1);
@@ -245,7 +248,7 @@ public class StramClient {
    * @return true if application completed successfully
    * @throws IOException
    */
-  public boolean run() throws IOException {
+  public void startApplication() throws IOException {
     LOG.info("Starting StramClient");
 
     // Connect to ResourceManager 	
@@ -293,8 +296,8 @@ public class StramClient {
     }		
 
     // Get a new application id 
-    GetNewApplicationResponse newApp = getApplication();
-    ApplicationId appId = newApp.getApplicationId();
+    GetNewApplicationResponse newApp = getNewApplication();
+    appId = newApp.getApplicationId();
 
     // TODO get min/max resource capabilities from RM and change memory ask if needed
     // If we do not have min/max, we may not be able to correctly request 
@@ -539,11 +542,30 @@ public class StramClient {
     // Try submitting the same request again
     // app submission failure?
 
-    // Monitor the application
-    return monitorApplication(appId);
-
   }
 
+  public ApplicationReport getApplicationReport() throws YarnRemoteException {
+    // Get application report for the appId we are interested in 
+    GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
+    reportRequest.setApplicationId(appId);
+    GetApplicationReportResponse reportResponse = applicationsManager.getApplicationReport(reportRequest);
+    ApplicationReport report = reportResponse.getApplicationReport();
+
+    LOG.info("Got application report from ASM for"
+        + ", appId=" + appId.getId()
+        + ", clientToken=" + report.getClientToken()
+        + ", appDiagnostics=" + report.getDiagnostics()
+        + ", appMasterHost=" + report.getHost()
+        + ", appQueue=" + report.getQueue()
+        + ", appMasterRpcPort=" + report.getRpcPort()
+        + ", appStartTime=" + report.getStartTime()
+        + ", yarnAppState=" + report.getYarnApplicationState().toString()
+        + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
+        + ", appTrackingUrl=" + report.getTrackingUrl()
+        + ", appUser=" + report.getUser());
+    return report;
+  }
+  
   /**
    * Monitor the submitted application for completion. 
    * Kill application if time expires. 
@@ -551,7 +573,7 @@ public class StramClient {
    * @return true if application completed successfully
    * @throws YarnRemoteException
    */
-  private boolean monitorApplication(ApplicationId appId) throws YarnRemoteException {
+  public boolean monitorApplication() throws YarnRemoteException {
 
     while (true) {
 
@@ -562,25 +584,7 @@ public class StramClient {
         LOG.debug("Thread sleep in monitoring loop interrupted");
       }
 
-      // Get application report for the appId we are interested in 
-      GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
-      reportRequest.setApplicationId(appId);
-      GetApplicationReportResponse reportResponse = applicationsManager.getApplicationReport(reportRequest);
-      ApplicationReport report = reportResponse.getApplicationReport();
-
-      LOG.info("Got application report from ASM for"
-          + ", appId=" + appId.getId()
-          + ", clientToken=" + report.getClientToken()
-          + ", appDiagnostics=" + report.getDiagnostics()
-          + ", appMasterHost=" + report.getHost()
-          + ", appQueue=" + report.getQueue()
-          + ", appMasterRpcPort=" + report.getRpcPort()
-          + ", appStartTime=" + report.getStartTime()
-          + ", yarnAppState=" + report.getYarnApplicationState().toString()
-          + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
-          + ", appTrackingUrl=" + report.getTrackingUrl()
-          + ", appUser=" + report.getUser());
-
+      ApplicationReport report = getApplicationReport();
       YarnApplicationState state = report.getYarnApplicationState();
       FinalApplicationStatus dsStatus = report.getFinalApplicationStatus();
       if (YarnApplicationState.FINISHED == state) {
@@ -605,7 +609,7 @@ public class StramClient {
 
       if (System.currentTimeMillis() > (clientStartTime + clientTimeout)) {
         LOG.info("Reached client specified timeout for application. Killing application");
-        killApplication(appId);
+        killApplication();
         return false;				
       }
     }			
@@ -617,7 +621,7 @@ public class StramClient {
    * @param appId Application Id to be killed. 
    * @throws YarnRemoteException
    */
-  private void killApplication(ApplicationId appId) throws YarnRemoteException {
+  public void killApplication() throws YarnRemoteException {
     KillApplicationRequest request = Records.newRecord(KillApplicationRequest.class);		
     // TODO clarify whether multiple jobs with the same app id can be submitted and be running at 
     // the same time. 
@@ -667,7 +671,7 @@ public class StramClient {
    * @return New Application
    * @throws YarnRemoteException
    */
-  private GetNewApplicationResponse getApplication() throws YarnRemoteException {
+  private GetNewApplicationResponse getNewApplication() throws YarnRemoteException {
     GetNewApplicationRequest request = Records.newRecord(GetNewApplicationRequest.class);		
     GetNewApplicationResponse response = applicationsManager.getNewApplication(request);
     LOG.info("Got new application id=" + response.getApplicationId());		
