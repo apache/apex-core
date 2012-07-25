@@ -607,7 +607,7 @@ public class StramClient
         return false;
       }
 
-      if (System.currentTimeMillis() > (clientStartTime + clientTimeout)) {
+      if (System.currentTimeMillis() - clientStartTime > clientTimeout) {
         LOG.info("Reached client specified timeout for application. Killing application");
         killApplication();
         return false;
