@@ -27,6 +27,9 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.yarn.Clock;
+import org.apache.hadoop.yarn.ClusterInfo;
+import org.apache.hadoop.yarn.SystemClock;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
@@ -36,6 +39,7 @@ import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterReque
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
 import org.apache.hadoop.yarn.api.records.AMResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerState;
@@ -46,15 +50,19 @@ import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
+import org.apache.hadoop.yarn.webapp.WebApp;
+import org.apache.hadoop.yarn.webapp.WebApps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
 import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.webapp.StramWebApp;
 
 /**
  * see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster}  
@@ -120,6 +128,55 @@ public class StramAppMaster {
 	  private StreamingNodeParent rpcImpl;
 	  private DNodeManager dnmgr;
 	  private InetSocketAddress bufferServerAddress;
+
+	  final private Clock clock = new SystemClock();
+	  final private long startTime = clock.getTime();
+	  
+    private class ClusterAppContextImpl implements StramAppContext {
+
+      @Override
+      public ApplicationId getApplicationID() {
+        return appAttemptID.getApplicationId();
+      }
+
+      @Override
+      public ApplicationAttemptId getApplicationAttemptId() {
+        return appAttemptID;
+      }
+
+      @Override
+      public String getApplicationName() {
+        // TODO get from the app master env / ClientRMProtocol
+        return null;
+      }
+
+      @Override
+      public long getStartTime() {
+        return startTime;
+      }
+
+      @Override
+      public CharSequence getUser() {
+        // TODO get from the app master env / ClientRMProtocol
+        return null;
+      }
+
+      @Override
+      public Clock getClock() {
+        return clock;
+      }
+
+      @Override
+      public EventHandler<?> getEventHandler() {
+        return null;
+      }
+
+      @Override
+      public ClusterInfo getClusterInfo() {
+        return null;
+      }
+      
+    }
 	  
 	  /**
 	   * @param args Command line args
@@ -287,6 +344,18 @@ public class StramAppMaster {
       SocketAddress bindAddr  = s.run();
       this.bufferServerAddress = ((InetSocketAddress)bindAddr); 
       LOG.info("Buffer server started: {}", bufferServerAddress);
+
+      StramAppContext appContext = new ClusterAppContextImpl();
+      // start web service
+      try {
+        WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(conf).
+            start(new StramWebApp());
+        LOG.info("Started web service at port: " + webApp.port());
+        this.appMasterTrackingUrl = NetUtils.getConnectAddress(rpcImpl.getAddress()).getHostName() + ":" + webApp.port();
+        LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
+      } catch (Exception e) {
+        LOG.error("Webapps failed to start. Ignoring for now:", e);
+      }
       
 	    return true;
 	  }
