@@ -25,10 +25,9 @@ import kafka.message.Message;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class KafkaInputStream
-        extends AbstractObjectInputStream
-        implements Runnable
+  extends AbstractObjectInputStream
+  implements Runnable
 {
-
   private ConsumerConnector consumer;
   private String topic;
 
@@ -50,12 +49,6 @@ public class KafkaInputStream
 
     topic = props.containsKey("topic") ? props.getProperty("topic") : "";
     consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(props));
-  }
-
-  public void setContext(StreamContext context)
-  {
-    super.setContext(context);
-    new Thread(this).start();
   }
 
   public void run()
@@ -90,7 +83,12 @@ public class KafkaInputStream
 
       return context.getSerDe().fromByteArray(bytes);
     }
-    
+
     return null;
+  }
+
+  public void activate()
+  {
+    new Thread(this).start();
   }
 }

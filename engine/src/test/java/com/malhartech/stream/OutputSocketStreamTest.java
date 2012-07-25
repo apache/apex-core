@@ -4,28 +4,17 @@
  */
 package com.malhartech.stream;
 
-import static org.junit.Assert.fail;
-
-import java.net.InetSocketAddress;
-import java.util.Collections;
-
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.MessageEvent;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
+import java.net.InetSocketAddress;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.ChannelPipeline;
+import org.jboss.netty.channel.MessageEvent;
+import static org.junit.Assert.fail;
+import org.junit.*;
 
 /**
  *
@@ -79,29 +68,6 @@ public final class OutputSocketStreamTest
   public void tearDown()
   {
     oss.teardown();
-  }
-
-  /**
-   * Test of doSomething method, of class SocketOutputStream.
-   */
-  @Test
-  public void testDoSomething() throws InterruptedException
-  {
-    System.out.println("doSomething");
-    oss.setContext(ctx);
-
-    Tuple t = new Tuple("hello");
-    t.setType(Data.DataType.SIMPLE_DATA);
-    t.setWindowId(0);
-    t.setContext(oss.getContext());
-    
-    oss.doSomething(t);
-    // TODO review the generated test code and remove the default call to fail.
-    
-    synchronized (oss) {
-      oss.wait();
-    }
-    fail("The test case is a prototype.");
   }
 
   /**

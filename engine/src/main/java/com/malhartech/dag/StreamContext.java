@@ -96,5 +96,11 @@ public class StreamContext implements Context
   {
     sinkState = state;
   }
+  
+  @Override
+  public String toString()
+  {
+    return "window = " + windowId + " tuples = " + tupleCount + " state = " + sinkState + " sink = " + sink + " serde = " + serde;
+  }
 
 }

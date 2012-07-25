@@ -4,7 +4,6 @@
 package com.malhartech.stream;
 
 import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.jms.*;
@@ -62,8 +61,7 @@ public abstract class AbstractActiveMQInputStream
     replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
     if (config.getBoolean("durable", false) && config.getBoolean("topic", false)) {
-      consumer = getSession().createDurableSubscriber((Topic) destination, config.
-        get("consumerName"));
+      consumer = getSession().createDurableSubscriber((Topic) destination, config.get("consumerName"));
     }
     else {
       consumer = getSession().createConsumer(destination);
@@ -80,8 +78,7 @@ public abstract class AbstractActiveMQInputStream
       internalSetup(config);
     }
     catch (Exception e) {
-      logger.log(Level.SEVERE, "Exception while setting up ActiveMQ consumer.", e.
-        getCause());
+      logger.log(Level.SEVERE, "Exception while setting up ActiveMQ consumer.", e.getCause());
     }
   }
   private int ackMode = Session.AUTO_ACKNOWLEDGE;
@@ -102,10 +99,8 @@ public abstract class AbstractActiveMQInputStream
     }
   }
 
-  @Override
-  public void setContext(StreamContext context)
+  public void activate()
   {
-    super.setContext(context);
     try {
       getConsumer().setMessageListener(this);
     }
@@ -135,8 +130,7 @@ public abstract class AbstractActiveMQInputStream
 
   public void onException(JMSException jmse)
   {
-    logger.log(Level.SEVERE, "Exception thrown by ActiveMQ consumer setup.", jmse.
-      getCause());
+    logger.log(Level.SEVERE, "Exception thrown by ActiveMQ consumer setup.", jmse.getCause());
   }
 
   public void onMessage(Message message)
@@ -164,8 +158,7 @@ public abstract class AbstractActiveMQInputStream
 
     try {
       if (message.getJMSReplyTo() != null) {
-        replyProducer.send(message.getJMSReplyTo(), session.createTextMessage("Reply: " + message.
-          getJMSMessageID()));
+        replyProducer.send(message.getJMSReplyTo(), session.createTextMessage("Reply: " + message.getJMSMessageID()));
       }
       if (transacted) {
         //if ((messagesReceived % batch) == 0) {

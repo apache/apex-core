@@ -54,4 +54,9 @@ public class KafkaOutputStream
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
+
+  public void activate()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }

@@ -5,9 +5,10 @@
 package com.malhartech.netty;
 
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.Data;
+import org.jboss.netty.channel.ChannelHandler;
+import org.jboss.netty.channel.ChannelPipeline;
+import org.jboss.netty.channel.ChannelPipelineFactory;
 import static org.jboss.netty.channel.Channels.pipeline;
-import org.jboss.netty.channel.*;
 import org.jboss.netty.handler.codec.protobuf.ProtobufDecoder;
 import org.jboss.netty.handler.codec.protobuf.ProtobufEncoder;
 import org.jboss.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
@@ -33,16 +34,16 @@ public class ClientPipelineFactory implements ChannelPipelineFactory
 
     p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
     p.addLast("protobufEncoder", new ProtobufEncoder());
-    p.addLast("debug", new SimpleChannelDownstreamHandler()
-    {
-
-      @Override
-      public void writeRequested(ChannelHandlerContext ctx, MessageEvent me) throws Exception
-      {
-        logger.debug("buffer handing out {0} for window {1}", new Object[]{((Data) me.getMessage()).getType(), ((Data) me.getMessage()).getWindowId()});
-        super.writeRequested(ctx, me);
-      }
-    });
+//    p.addLast("debug", new SimpleChannelDownstreamHandler()
+//    {
+//
+//      @Override
+//      public void writeRequested(ChannelHandlerContext ctx, MessageEvent me) throws Exception
+//      {
+//        logger.debug("buffer handing out {0} for window {1}", new Object[]{((Data) me.getMessage()).getType(), ((Data) me.getMessage()).getWindowId()});
+//        super.writeRequested(ctx, me);
+//      }
+//    });
 
     p.addLast("handler", handler.newInstance());
     return p;

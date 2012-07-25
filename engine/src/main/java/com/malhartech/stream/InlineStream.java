@@ -42,4 +42,8 @@ public class InlineStream implements Sink, Stream
   {
     return this.context;
   }
+
+  public void activate()
+  {
+  }
 }

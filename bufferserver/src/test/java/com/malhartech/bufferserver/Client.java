@@ -28,16 +28,16 @@ public class Client {
     private final String type;
     private final String id;
     private final String down_type;
-    private final Collection<String> partitions;
+    private final Collection<byte[]> partitions;
 
-    public Client(String host, int port, String node, String type, String id, String down_type, Collection<String> partitions) {
+    public Client(String host, int port, String node, String type, String id, String down_type, Collection<byte[]> partitions) {
         this.host = host;
         this.port = port;
         this.node = node;
         this.type = type;
         this.id = id;
         this.down_type = down_type;
-        this.partitions = new ArrayList<String>();
+        this.partitions = new ArrayList<byte[]>();
         this.partitions.addAll(partitions);
     }
 
@@ -98,7 +98,7 @@ public class Client {
         } else { // downstream node
             String identifier = args[4];
             String down_type = args[5];
-            Collection<String> partitions = parsePartitions(args, 6);
+            Collection<byte[]> partitions = parsePartitions(args, 6);
             new Client(host, port, node, type, identifier, down_type, partitions).run();
         }
     }
@@ -115,10 +115,10 @@ public class Client {
                 + " localhost 8080 map1 mapper reduce1 1 5 7");
     }
 
-    private static List<String> parsePartitions(String[] args, int offset) {
-        List<String> partitions = new ArrayList<String>();
+    private static List<byte[]> parsePartitions(String[] args, int offset) {
+        List<byte[]> partitions = new ArrayList<byte[]>();
         for (int i = offset; i < args.length; i++) {
-            partitions.add(args[i].trim());
+            partitions.add(args[i].trim().getBytes());
         }
         return partitions;
     }

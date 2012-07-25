@@ -4,14 +4,13 @@
  */
 package com.malhartech.stream;
 
-import static org.junit.Assert.assertTrue;
-
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.EndWindow;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Bunch of utilities shared between tests.

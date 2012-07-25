@@ -5,9 +5,9 @@ package com.malhartech.stream;
 
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.*;
-import com.malhartech.stram.*;
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.*;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
@@ -83,32 +83,42 @@ public class SocketStreamTest
 
     SerDe serde = new DefaultSerDe();
 
-
-    StreamContext issContext = new StreamContext();
-    issContext.setSink(sink);
-    issContext.setSerde(serde);
-
     String streamName = "streamName"; // AKA "type"
     String upstreamNodeId = "upstreamNodeId";
     String downstreamNodeId = "downStreamNodeId";
 
-    StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>
-      emptyMap());
-    sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.
-      createUnresolved("localhost", bufferServerPort));
+
+    BufferServerStreamContext issContext = new BufferServerStreamContext();
+    issContext.setSink(sink);
+    issContext.setSerde(serde);
+    issContext.setId(streamName);
+    issContext.setSourceId(upstreamNodeId);
+    issContext.setSinkId(downstreamNodeId);
+    
+
+    StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
+    sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
     BufferServerInputStream iss = new BufferServerInputStream();
     iss.setup(sconf);
-    iss.setContext(issContext, upstreamNodeId, streamName, downstreamNodeId, Collections.<String>
-      emptyList());
-    System.out.println("input stream ready");
+    iss.setContext(issContext);
 
-    BufferServerOutputStream oss = new BufferServerOutputStream();
-    StreamContext ossContext = new StreamContext();
-
+    BufferServerStreamContext ossContext = new BufferServerStreamContext();
     ossContext.setSerde(serde);
+    ossContext.setId(streamName);
+    ossContext.setSourceId(upstreamNodeId);
+    ossContext.setSinkId(downstreamNodeId);
+    
+    BufferServerOutputStream oss = new BufferServerOutputStream();
     oss.setup(sconf);
-    oss.setContext(ossContext, upstreamNodeId, streamName);
+    oss.setContext(ossContext);
+    // oss.setContext(ossContext, upstreamNodeId, streamName);
+
+    oss.activate();
+    LOG.debug("output stream activated");
+    iss.activate();
+    LOG.debug("input stream activated");
+
 
     LOG.info("Sending hello message");
     oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0, ossContext));
@@ -146,8 +156,7 @@ public class SocketStreamTest
   }
 
   /**
-   * Instantiate physical model with adapters and partitioning in mock
-   * container.
+   * Instantiate physical model with adapters and partitioning in mock container.
    *
    * @throws Exception
    */
@@ -192,8 +201,7 @@ public class SocketStreamTest
 
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
-      StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.
-        createUnresolved("localhost", bufferServerPort));
+      StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
       ChildContainer container = new ChildContainer(containerId);
       container.initForTest(cc);
       containers.add(container);

@@ -5,7 +5,6 @@
 package com.malhartech.stream;
 
 import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,14 +37,12 @@ public abstract class AbstractHDFSInputStream extends AbstractObjectInputStream 
 
   }
 
-  @Override
-  public void setContext(StreamContext context)
+  public void activate()
   {
-    super.setContext(context);
     Thread t = new Thread(this);
-    t.start();
+    t.start();    
   }
-
+  
   public void run()
   {
     logger.debug("ready to read hdfs file");

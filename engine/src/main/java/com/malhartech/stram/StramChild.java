@@ -4,6 +4,18 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.*;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stream.BufferServerInputStream;
+import com.malhartech.stream.BufferServerOutputStream;
+import com.malhartech.stream.BufferServerStreamContext;
+import com.malhartech.stream.InlineStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -12,11 +24,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSError;
@@ -31,24 +41,6 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stream.BufferServerInputStream;
-import com.malhartech.stream.BufferServerOutputStream;
-import com.malhartech.stream.InlineStream;
-
 /**
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
  */
@@ -60,8 +52,8 @@ public class StramChild
   final private StreamingNodeUmbilicalProtocol umbilical;
   final private Map<String, AbstractNode> nodeList = new ConcurrentHashMap<String, AbstractNode>();
   final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
-  final private Map<String, Stream> streams = new ConcurrentHashMap<String, Stream>();
-  final private Map<String, InputAdapter> inputAdapters = new ConcurrentHashMap<String, InputAdapter>();
+  final private List<Stream> streams = new ArrayList<Stream>();
+  final private List<InputAdapter> inputAdapters = new ArrayList<InputAdapter>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   private WindowGenerator windowGenerator;
@@ -85,7 +77,7 @@ public class StramChild
     if (sourceNode instanceof AdapterWrapperNode) {
       AdapterWrapperNode wrapper = (AdapterWrapperNode) sourceNode;
       // input adapter
-      this.inputAdapters.put(sc.getId(), wrapper.getInputAdapter());
+      this.inputAdapters.add((InputAdapter)wrapper.getAdapterStream());
     }
 
 
@@ -108,11 +100,12 @@ public class StramChild
       // buffer server connection between nodes
       LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
 
-      com.malhartech.dag.StreamContext streamContext = new com.malhartech.dag.StreamContext();
-      if (targetNode != null) {
-      }
+      BufferServerStreamContext streamContext = new BufferServerStreamContext();
       streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
       streamContext.setWindowId(ctx.getStartWindowMillis());
+      streamContext.setSourceId(sc.getSourceNodeId());
+      streamContext.setSinkId(sc.getTargetNodeId());
+      streamContext.setId(sc.getId());
 
       StreamConfiguration streamConf = new StreamConfiguration(sc.getProperties());
       streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
@@ -122,13 +115,13 @@ public class StramChild
             sourceNode, sc.getId(), sc.getSourceNodeId()});
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(streamConf);
-        oss.setContext(streamContext, sc.getSourceNodeId(), sc.getId());
+
+        oss.setContext(streamContext);
         LOG.info(streamContext + " setting sink to " + oss);
 
         streamContext.setSink(oss);
         sourceNode.addOutputStream(streamContext);
-        this.streams.put(sc.getId(), oss);
-
+        this.streams.add(oss);
       }
 
       if (targetNode != null) {
@@ -142,15 +135,11 @@ public class StramChild
             targetNode, sc.getId(), sc.getSourceNodeId()});
         BufferServerInputStream iss = new BufferServerInputStream();
         iss.setup(streamConf);
-        List<String> partitions = Collections.emptyList();
-        if (sc.getPartitionKeys() != null) {
-          partitions = new ArrayList<String>(sc.getPartitionKeys().size());
-          for (byte[] partition : sc.getPartitionKeys()) {
-            partitions.add(new String(partition));
-          }
-        }
-        iss.setContext(streamContext, sc.getSourceNodeId(), sc.getId(), sc.getTargetNodeId(), partitions);
-        this.streams.put(sc.getId(), iss);
+        
+        streamContext.setPartitions(sc.getPartitionKeys());
+        
+        iss.setContext(streamContext);
+        this.streams.add(iss);
       }
     }
   }
@@ -180,9 +169,15 @@ public class StramChild
       else {
         throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.getId());
       }
-
     }
 
+    // ideally we would like to activate the output streams for a node before the input streams
+    // are activated. But does not look like we have that fine control here. we should get it.
+    for (Stream s : this.streams) {
+      LOG.info("activate " + s);
+      s.activate();
+    }
+    
     for (final AbstractNode node : nodeList.values()) {
       // launch nodes
       Runnable nodeRunnable = new Runnable()
@@ -198,9 +193,15 @@ public class StramChild
       Thread launchThread = new Thread(nodeRunnable);
       activeNodeList.put(node.getContext().getId(), launchThread);
       launchThread.start();
-    }
+      
+    }    
 
-    windowGenerator = new WindowGenerator(this.inputAdapters.values(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
+    // activate all the input adapters if any
+    for (Stream ia : inputAdapters) {
+      ia.activate();
+    }
+    
+    windowGenerator = new WindowGenerator(this.inputAdapters, ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
     if (ctx.getWindowSizeMillis() > 0) {
       windowGenerator.start();
     }
@@ -209,15 +210,50 @@ public class StramChild
   protected void shutdown()
   {
     windowGenerator.stop();
-    for (Stream s : this.streams.values()) {
+    
+    // ideally we should do the graph traversal and shutdown as we descend down. At this time
+    // we do not have a choice because the things are not setup to facilitate it, so brute force.
+    
+    /*
+     * first tear down all the input adapters.
+     */
+    for (AbstractNode node : nodeList.values()) {
+      if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode) node).isInput()) {
+        LOG.info("teardown " + node);
+        node.stopSafely();
+        node.teardown();
+      }
+    }
+    
+    /*
+     * now tear down all the nodes.
+     */
+    for (AbstractNode node : nodeList.values()) {
+      if (!(node instanceof AdapterWrapperNode)) {
+        LOG.info("teardown " + node);
+        node.stopSafely();
+        node.teardown();
+      }
+    }
+    
+    /*
+     * tear down all the streams.
+     */
+    for (Stream s : this.streams) {
       LOG.info("teardown " + s);
       s.teardown();
     }
 
+
+    /*
+     * tear down all the output adapters
+     */
     for (AbstractNode node : this.nodeList.values()) {
-      LOG.info("teardown " + node);
-      node.stopSafely();
-      node.teardown();
+      if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode) node).isInput()) {
+        LOG.info("teardown " + node);
+        node.stopSafely();
+        node.teardown();
+      }
     }
   }
 
@@ -297,9 +333,7 @@ public class StramChild
   }
 
   /**
-   * Process request from stram for further communication through the protocol.
-   * Extended reporting is on a per node basis (won't occur under regular
-   * operation)
+   * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
    *
    * @param n
    * @param snr
@@ -412,8 +446,7 @@ public class StramChild
   }
 
   /**
-   * Instantiate node from configuration. (happens in the child container, not
-   * the stram master process.)
+   * Instantiate node from configuration. (happens in the child container, not the stram master process.)
    *
    * @param nodeConf
    * @param conf

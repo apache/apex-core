@@ -3,28 +3,28 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.*;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.netty.ClientPipelineFactory;
+import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.*;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ChannelLocal;
+import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 /**
  *
  * @author chetan
  */
-public class SocketInputStream
-  extends SimpleChannelUpstreamHandler
-  implements Stream
+public class SocketInputStream extends SimpleChannelUpstreamHandler implements Stream
 {
-  private static final Logger logger =
-                              Logger.getLogger(ClientHandler.class.getName());
+  private static final Logger logger = Logger.getLogger(ClientHandler.class.getName());
   public static final ChannelLocal<StreamContext> contexts = new ChannelLocal<StreamContext>()
   {
     @Override
@@ -35,61 +35,12 @@ public class SocketInputStream
   };
   protected Channel channel;
   private ClientBootstrap bootstrap;
-  private long tupleCount;
-
-  @Override
-  public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
-  {
-    StreamContext context = contexts.get(ctx.getChannel());
-    if (context == null) {
-      logger.log(Level.WARNING, "Context is not setup for the InputSocketStream");
-    }
-    else {
-      Data d = (Data) e.getMessage();
-
-      Tuple t;
-      switch (d.getType()) {
-        case SIMPLE_DATA:
-          tupleCount++;
-          t = new Tuple(context.getSerDe().fromByteArray(d.getSimpledata().
-            getData().toByteArray()));
-          t.setType(DataType.SIMPLE_DATA);
-          break;
-
-        case PARTITIONED_DATA:
-          tupleCount++;
-          t = new Tuple(context.getSerDe().fromByteArray(d.getPartitioneddata().
-            getData().toByteArray()));
-          /*
-           * we really do not distinguish between SIMPLE_DATA and
-           * PARTITIONED_DATA
-           */
-          t.setType(DataType.SIMPLE_DATA);
-          break;
-
-        case END_WINDOW:
-          t = new EndWindowTuple();
-          ((EndWindowTuple) t).setTupleCount(tupleCount);
-          break;
-
-        case BEGIN_WINDOW:
-          tupleCount = 0;
-          
-        default:
-          t = new Tuple(null);
-          t.setType(d.getType());
-          break;
-      }
-
-      t.setWindowId(d.getWindowId());
-      t.setContext(context);
-      context.sink(t);
-    }
-  }
+  private InetSocketAddress serverAddress;
+  private StreamContext context;
 
   protected ClientPipelineFactory getClientPipelineFactory()
   {
-    return new ClientPipelineFactory(SocketInputStream.class);
+    return new ClientPipelineFactory(this.getClass());
   }
 
   @Override
@@ -103,15 +54,14 @@ public class SocketInputStream
     // Configure the event pipeline factory.
     bootstrap.setPipelineFactory(getClientPipelineFactory());
 
-    // Make a new connection.
-    ChannelFuture future = bootstrap.connect(config.getBufferServerAddress());
-    channel = future.awaitUninterruptibly().getChannel();
+    serverAddress = config.getBufferServerAddress();
   }
 
   @Override
   public void setContext(com.malhartech.dag.StreamContext context)
   {
-    contexts.set(channel, context);
+    this.context = context;
+//    contexts.set(channel, context);
   }
 
   @Override
@@ -126,6 +76,15 @@ public class SocketInputStream
   @Override
   public StreamContext getContext()
   {
+    //return context;
     return contexts.get(channel);
+  }
+
+  public void activate()
+  {
+    // Make a new connection.
+    ChannelFuture future = bootstrap.connect(serverAddress);
+    channel = future.awaitUninterruptibly().getChannel();
+    contexts.set(channel, context);
   }
 }
