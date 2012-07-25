@@ -10,8 +10,6 @@ import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Queue;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.LoggerFactory;
@@ -22,14 +20,6 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractNode implements Node, Runnable
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
-  private static final Tuple SKIP_TUPLE = new Tuple(null);
-  /*
-   * We use skip tuple to skip the loops efficiently.
-   */
-
-  static {
-    SKIP_TUPLE.setType(DataType.NO_DATA);
-  }
   private final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
@@ -90,7 +80,7 @@ public abstract class AbstractNode implements Node, Runnable
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
-        //logger.info(this + " " + t);
+//        logger.info(this + "::doSomething " + t);
         inputQueue.add(t);
         inputQueue.notify();
       }
@@ -177,27 +167,34 @@ public abstract class AbstractNode implements Node, Runnable
 
   final public void run()
   {
+    /*
+     * We use skip tuple to skip the loops efficiently.
+     */
+    final Tuple skipTuple = new Tuple(null);
+    skipTuple.setType(DataType.NO_DATA);
+
     alive = true;
     ctx.setCurrentWindowId(0);
 
     int insideWindowStreamCount = 0;
-
     do {
       Tuple t;
       synchronized (inputQueue) {
         if ((t = inputQueue.peek()) == null) {
-          t = SKIP_TUPLE;
+//          logger.info(this + "::run " + t);
+          t = skipTuple;
         }
         else {
+//          logger.info(this + "::run " + t + " windows = " + insideWindowStreamCount + " context = " + t.getContext());
           switch (t.getType()) {
             case BEGIN_WINDOW:
               if (t.getContext().getSinkState() == StreamContext.State.INSIDE_WINDOW) {
                 logger.warn("Got BEGIN_WINDOW while expecting END_WINDOW on {0}", t.getContext());
-                t = SKIP_TUPLE;
+                t = skipTuple;
               }
               else if (insideWindowStreamCount == 0) {
                 t.getContext().setSinkState(StreamContext.State.INSIDE_WINDOW);
-                insideWindowStreamCount++;
+                insideWindowStreamCount = 1 - 2 * inputStreams.size();
 
                 /*
                  * This tuple is starting a new window for the node.
@@ -213,7 +210,7 @@ public abstract class AbstractNode implements Node, Runnable
                 /*
                  * Some other tuple already started this window.
                  */
-                t = SKIP_TUPLE;
+                t = skipTuple;
 
                 inputQueue.poll();
               }
@@ -222,27 +219,25 @@ public abstract class AbstractNode implements Node, Runnable
                  * This stream is not moving in synch with the rest of the
                  * streams. May be we should just wait for more data.
                  */
-                t = SKIP_TUPLE;
+                t = skipTuple;
               }
               break;
-
-
 
             case END_WINDOW:
               if (t.getContext().getSinkState() == StreamContext.State.OUTSIDE_WINDOW) {
                 logger.warn("Got END_WINDOW while expecting BEGIN_WINDOW on {0}", t.getContext());
-                t = SKIP_TUPLE;
+                t = skipTuple;
               }
               else if (t.getWindowId() == ctx.getCurrentWindowId()) {
-                inputQueue.poll();
-
                 t.getContext().setSinkState(StreamContext.State.OUTSIDE_WINDOW);
-                if (--insideWindowStreamCount > 0) {
-                  t = SKIP_TUPLE;
+                if (++insideWindowStreamCount < 0) {
+                  t = skipTuple;
                 }
+
+                inputQueue.poll();
               }
               else {
-                t = SKIP_TUPLE;
+                t = skipTuple;
               }
               break;
 
@@ -251,13 +246,13 @@ public abstract class AbstractNode implements Node, Runnable
                 inputQueue.poll();
               }
               else {
-                t = SKIP_TUPLE;
+                t = skipTuple;
               }
               break;
           }
         }
 
-        if (t.getType() == DataType.NO_DATA) {
+        if (t == skipTuple) {
           try {
             int queueSize = inputQueue.size();
             inputQueue.wait(ctx.getIdleTimeout());
@@ -269,7 +264,8 @@ public abstract class AbstractNode implements Node, Runnable
             logger.error("wait interrupted", ex);
           }
         }
-      } /*
+      }
+      /*
        * we process this outside to keep the critical region free.
        */
 
