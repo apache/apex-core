@@ -2,7 +2,6 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-
 package com.malhartech.stram;
 
 import java.io.IOException;
@@ -70,25 +69,20 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.stram.conf.ShipContainingJars;
 import com.malhartech.stram.conf.TopologyBuilder;
 
-
 /**
  * StramClient for application submission to YARN.
  */
 @InterfaceAudience.Public
 @InterfaceStability.Unstable
-public class StramClient {
-
+public class StramClient
+{
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
-
   // Configuration
   private Configuration conf;
-
   // RPC to communicate to RM
   private YarnRPC rpc;
-
   // Handle to talk to the Resource Manager/Applications Manager
   private ClientRMProtocol applicationsManager;
-
   // Application master specific info to register a new Application with RM/ASM
   private String appName = StramConstants.APPNAME;
   // App master priority
@@ -98,38 +92,31 @@ public class StramClient {
   // User to run app master as
   private String amUser = "";
   // Amt. of memory resource to request for to run the App Master
-  private int amMemory = 10; 
-
+  private int amMemory = 10;
   // Main class to invoke application master
   private String appMasterMainClass = "";
-
-  private ApplicationId appId;  
-  
+  private ApplicationId appId;
   private String topologyPropertyFile;
-
   // Amt of memory to request for container in which shell script will be executed
-  private int containerMemory = 10; 
+  private int containerMemory = 10;
   // No. of containers in which the shell script needs to be executed
   private int numContainers = 1;
-
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
-  
   // log4j.properties file 
   // if available, add to local resources and set into classpath 
-  private String log4jPropFile = "";	
-
+  private String log4jPropFile = "";
   // Start time for client
   private final long clientStartTime = System.currentTimeMillis();
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-
   // Debug flag
-  boolean debugFlag = false;	
+  boolean debugFlag = false;
 
   /**
-   * @param args Command line arguments 
+   * @param args Command line arguments
    */
-  public static void main(String[] args) {
+  public static void main(String[] args)
+  {
     boolean result = false;
     try {
       StramClient client = new StramClient();
@@ -140,21 +127,23 @@ public class StramClient {
       }
       client.startApplication();
       result = client.monitorApplication();
-    } catch (Throwable t) {
+    }
+    catch (Throwable t) {
       LOG.error("Error running CLient", t);
       System.exit(1);
     }
     if (result) {
       LOG.info("Application finished successfully.");
-      System.exit(0);			
-    } 
+      System.exit(0);
+    }
     LOG.error("Application failed!");
     System.exit(2);
   }
 
   /**
    */
-  public StramClient(Configuration conf) throws Exception  {
+  public StramClient(Configuration conf) throws Exception
+  {
     // Set up the configuration and RPC
     this.conf = conf;
     rpc = YarnRPC.create(conf);
@@ -162,24 +151,29 @@ public class StramClient {
 
   /**
    */
-  public StramClient() throws Exception  {
+  public StramClient() throws Exception
+  {
     this(new Configuration());
   }
 
   /**
    * Helper function to print out usage
-   * @param opts Parsed command line options 
+   *
+   * @param opts Parsed command line options
    */
-  private void printUsage(Options opts) {
+  private void printUsage(Options opts)
+  {
     new HelpFormatter().printHelp("StramClient", opts);
   }
 
   /**
    * Parse command line options
-   * @param args Parsed command line options 
+   *
+   * @param args Parsed command line options
    * @return Whether the init was successful to run the client
    */
-  public boolean init(String[] args) throws ParseException {
+  public boolean init(String[] args) throws ParseException
+  {
 
     Options opts = new Options();
     opts.addOption("appname", true, "Application Name. Default value - Stram");
@@ -199,7 +193,7 @@ public class StramClient {
     if (args.length == 0) {
       printUsage(opts);
       throw new IllegalArgumentException("No args specified for client to initialize");
-    }		
+    }
 
     if (cliParser.hasOption("help")) {
       printUsage(opts);
@@ -208,35 +202,37 @@ public class StramClient {
 
     if (cliParser.hasOption("debug")) {
       debugFlag = true;
-
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
     amQueue = cliParser.getOptionValue("queue", "default");
     amUser = cliParser.getOptionValue("user", "");
-    amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", "10"));		
+    amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", "10"));
 
     if (amMemory < 0) {
       throw new IllegalArgumentException("Invalid memory specified for application master, exiting."
-          + " Specified memory=" + amMemory);
+                                         + " Specified memory=" + amMemory);
     }
 
-    appMasterMainClass = StramAppMaster.class.getName();		
+    appMasterMainClass = StramAppMaster.class.getName();
     topologyPropertyFile = cliParser.getOptionValue("topologyProperties");
     if (topologyPropertyFile == null) {
       throw new IllegalArgumentException("No topology property file specified, exiting.");
     }
-    
+
     containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", "10"));
     numContainers = Integer.parseInt(cliParser.getOptionValue("num_containers", "1"));
 
     if (containerMemory < 0 || numContainers < 1) {
       throw new IllegalArgumentException("Invalid no. of containers or container memory specified, exiting."
-          + " Specified containerMemory=" + containerMemory
-          + ", numContainer=" + numContainers);
+                                         + " Specified containerMemory=" + containerMemory
+                                         + ", numContainer=" + numContainers);
     }
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
+    if (clientTimeout == 0) {
+      clientTimeout = Long.MAX_VALUE;
+    }
 
     log4jPropFile = cliParser.getOptionValue("log_properties", "");
 
@@ -245,55 +241,52 @@ public class StramClient {
 
   /**
    * Main run function for the client
+   *
    * @return true if application completed successfully
    * @throws IOException
    */
-  public void startApplication() throws IOException {
+  public void startApplication() throws IOException
+  {
     LOG.info("Starting StramClient");
 
     // Connect to ResourceManager 	
     connectToASM();
-    assert(applicationsManager != null);		
+    assert (applicationsManager != null);
 
     // Use ClientRMProtocol handle to general cluster information 
     GetClusterMetricsRequest clusterMetricsReq = Records.newRecord(GetClusterMetricsRequest.class);
     GetClusterMetricsResponse clusterMetricsResp = applicationsManager.getClusterMetrics(clusterMetricsReq);
-    LOG.info("Got Cluster metric info from ASM" 
-        + ", numNodeManagers=" + clusterMetricsResp.getClusterMetrics().getNumNodeManagers());
+    LOG.info("Got Cluster metric info from ASM"
+             + ", numNodeManagers=" + clusterMetricsResp.getClusterMetrics().getNumNodeManagers());
 
     GetClusterNodesRequest clusterNodesReq = Records.newRecord(GetClusterNodesRequest.class);
     GetClusterNodesResponse clusterNodesResp = applicationsManager.getClusterNodes(clusterNodesReq);
     LOG.info("Got Cluster node info from ASM");
     for (NodeReport node : clusterNodesResp.getNodeReports()) {
       LOG.info("Got node report from ASM for"
-          + ", nodeId=" + node.getNodeId() 
-          + ", nodeAddress" + node.getHttpAddress()
-          + ", nodeRackName" + node.getRackName()
-          + ", nodeNumContainers" + node.getNumContainers()
-          + ", nodeHealthStatus" + node.getNodeHealthStatus());
+               + ", nodeId=" + node.getNodeId()
+               + ", nodeAddress" + node.getHttpAddress()
+               + ", nodeRackName" + node.getRackName()
+               + ", nodeNumContainers" + node.getNumContainers()
+               + ", nodeHealthStatus" + node.getNodeHealthStatus());
     }
-/*
- This is NPE in 2.0-alpha as request needs to provide specific queue name
-    GetQueueInfoRequest queueInfoReq = Records.newRecord(GetQueueInfoRequest.class);
-    GetQueueInfoResponse queueInfoResp = applicationsManager.getQueueInfo(queueInfoReq);		
-    QueueInfo queueInfo = queueInfoResp.getQueueInfo();
-    LOG.info("Queue info"
-        + ", queueName=" + queueInfo.getQueueName()
-        + ", queueCurrentCapacity=" + queueInfo.getCurrentCapacity()
-        + ", queueMaxCapacity=" + queueInfo.getMaximumCapacity()
-        + ", queueApplicationCount=" + queueInfo.getApplications().size()
-        + ", queueChildQueueCount=" + queueInfo.getChildQueues().size());		
-*/
+    /*
+     * This is NPE in 2.0-alpha as request needs to provide specific queue name GetQueueInfoRequest queueInfoReq = Records.newRecord(GetQueueInfoRequest.class);
+     * GetQueueInfoResponse queueInfoResp = applicationsManager.getQueueInfo(queueInfoReq); QueueInfo queueInfo = queueInfoResp.getQueueInfo(); LOG.info("Queue
+     * info" + ", queueName=" + queueInfo.getQueueName() + ", queueCurrentCapacity=" + queueInfo.getCurrentCapacity() + ", queueMaxCapacity=" +
+     * queueInfo.getMaximumCapacity() + ", queueApplicationCount=" + queueInfo.getApplications().size() + ", queueChildQueueCount=" +
+     * queueInfo.getChildQueues().size());
+     */
     GetQueueUserAclsInfoRequest queueUserAclsReq = Records.newRecord(GetQueueUserAclsInfoRequest.class);
-    GetQueueUserAclsInfoResponse queueUserAclsResp = applicationsManager.getQueueUserAcls(queueUserAclsReq);				
+    GetQueueUserAclsInfoResponse queueUserAclsResp = applicationsManager.getQueueUserAcls(queueUserAclsReq);
     List<QueueUserACLInfo> listAclInfo = queueUserAclsResp.getUserAclsInfoList();
     for (QueueUserACLInfo aclInfo : listAclInfo) {
       for (QueueACL userAcl : aclInfo.getUserAcls()) {
         LOG.info("User ACL Info for Queue"
-            + ", queueName=" + aclInfo.getQueueName()			
-            + ", userAcl=" + userAcl.name());
+                 + ", queueName=" + aclInfo.getQueueName()
+                 + ", userAcl=" + userAcl.name());
       }
-    }		
+    }
 
     // Get a new application id 
     GetNewApplicationResponse newApp = getNewApplication();
@@ -314,16 +307,16 @@ public class StramClient {
     // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
     if (amMemory < minMem) {
       LOG.info("AM memory specified below min threshold of cluster. Using min value."
-          + ", specified=" + amMemory
-          + ", min=" + minMem);
-      amMemory = minMem; 
-    } 
+               + ", specified=" + amMemory
+               + ", min=" + minMem);
+      amMemory = minMem;
+    }
     else if (amMemory > maxMem) {
       LOG.info("AM memory specified above max threshold of cluster. Using max value."
-          + ", specified=" + amMemory
-          + ", max=" + maxMem);
+               + ", specified=" + amMemory
+               + ", max=" + maxMem);
       amMemory = maxMem;
-    }				
+    }
 
     // Create launch context for app master
     LOG.info("Setting up application submission context for ASM");
@@ -336,16 +329,16 @@ public class StramClient {
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
-    
+
     // platform jar files - always required
-    Class<?>[] defaultClasses = new Class<?>[] {
-        com.malhartech.bufferserver.Server.class,
-        com.malhartech.stram.StramAppMaster.class,
-        com.malhartech.dag.DefaultSerDe.class
+    Class<?>[] defaultClasses = new Class<?>[]{
+      com.malhartech.bufferserver.Server.class,
+      com.malhartech.stram.StramAppMaster.class,
+      com.malhartech.dag.DefaultSerDe.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
-    jarClasses.addAll(Arrays.asList(defaultClasses));  
-    
+    jarClasses.addAll(Arrays.asList(defaultClasses));
+
     // topology properties
     Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
     TopologyBuilder tb = new TopologyBuilder(conf);
@@ -356,7 +349,8 @@ public class StramClient {
       try {
         Class<?> clazz = Class.forName(className);
         jarClasses.add(clazz);
-      } catch (ClassNotFoundException e) {
+      }
+      catch (ClassNotFoundException e) {
         LOG.warn("Failed to load class {}", className);
       }
     }
@@ -375,22 +369,23 @@ public class StramClient {
             LOG.info("Including {} as dependency of {}", depClass, jarClass);
           }
         }
-      } catch (ArrayStoreException e) {
+      }
+      catch (ArrayStoreException e) {
         LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
       }
     }
-    
+
     if (topologyProperties.getProperty(TopologyBuilder.LIBJARS) != null) {
       String[] libJars = StringUtils.splitByWholeSeparator(topologyProperties.getProperty(TopologyBuilder.LIBJARS), ",");
       localJarFiles.addAll(Arrays.asList(libJars));
     }
-    
+
     // copy required jar files to dfs, to be localized for containers
     String libJarsCsv = "";
     for (String localJarFile : localJarFiles) {
       Path src = new Path(localJarFile);
       String jarName = src.getName();
-      String pathSuffix = appName + "/" + appId.getId() + "/" + jarName;	    
+      String pathSuffix = appName + "/" + appId.getId() + "/" + jarName;
       Path dst = new Path(fs.getHomeDirectory(), pathSuffix);
       LOG.info("Copy {} from local filesystem to {}", localJarFile, dst);
       fs.copyFromLocalFile(false, true, src, dst);
@@ -399,16 +394,16 @@ public class StramClient {
       }
       libJarsCsv += dst.toString();
     }
-    
+
     LOG.info("libjars: {}", libJarsCsv);
     topologyProperties.put(TopologyBuilder.LIBJARS, libJarsCsv);
-    
+
     // set local resources for the application master
     // local files or archives as needed
     // In this scenario, the jar file for the application master is part of the local resources     
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
     LaunchContainerRunnable.addLibJarsToLocalResources(libJarsCsv, localResources, fs);
-    
+
     // Set the log4j properties if needed 
     if (!log4jPropFile.isEmpty()) {
       Path log4jSrc = new Path(log4jPropFile);
@@ -417,28 +412,28 @@ public class StramClient {
       FileStatus log4jFileStatus = fs.getFileStatus(log4jDst);
       LocalResource log4jRsrc = Records.newRecord(LocalResource.class);
       log4jRsrc.setType(LocalResourceType.FILE);
-      log4jRsrc.setVisibility(LocalResourceVisibility.APPLICATION);	   
+      log4jRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
       log4jRsrc.setResource(ConverterUtils.getYarnUrlFromURI(log4jDst.toUri()));
       log4jRsrc.setTimestamp(log4jFileStatus.getModificationTime());
       log4jRsrc.setSize(log4jFileStatus.getLen());
       localResources.put("log4j.properties", log4jRsrc);
-    }			
-    
+    }
+
     // push topology properties to run specific dfs location
     Path topologyDst = new Path(fs.getHomeDirectory(), appName + "/" + appId.getId() + "/stram.properties");
     FSDataOutputStream outStream = fs.create(topologyDst, true);
     topologyProperties.store(outStream, "topology for " + appId.getId());
     outStream.close();
-    
+
     FileStatus topologyFileStatus = fs.getFileStatus(topologyDst);
     LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
     topologyRsrc.setType(LocalResourceType.FILE);
-    topologyRsrc.setVisibility(LocalResourceVisibility.APPLICATION);    
+    topologyRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
     topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(topologyDst.toUri()));
     topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
     topologyRsrc.setSize(topologyFileStatus.getLen());
     localResources.put("stram.properties", topologyRsrc);
-    
+
     // Set local resource info into app master container launch context
     amContainer.setLocalResources(localResources);
 
@@ -456,13 +451,12 @@ public class StramClient {
     // For now setting all required classpaths including
     // the classpath to "." for the application jar(s)
     StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
-    for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH)
-        .split(",")) {
+    for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
     env.put("CLASSPATH", classPathEnv.toString());
-    
+
     amContainer.setEnvironment(env);
 
     // Set the necessary command to execute the application master 
@@ -471,6 +465,9 @@ public class StramClient {
     // Set java executable command 
     LOG.info("Setting up app master command");
     vargs.add(javaCmd);
+    if (debugFlag) {
+      vargs.add("-agentlib:jdwp=transport=dt_socket,server=y");
+    }
     // Set Xmx based on am memory size
     vargs.add("-Xmx" + amMemory + "m");
     // Set class name 
@@ -491,9 +488,9 @@ public class StramClient {
       command.append(str).append(" ");
     }
 
-    LOG.info("Completed setting up app master command " + command.toString());	   
+    LOG.info("Completed setting up app master command " + command.toString());
     List<String> commands = new ArrayList<String>();
-    commands.add(command.toString());		
+    commands.add(command.toString());
     amContainer.setCommands(commands);
 
     // For launching an AM Container, setting user here is not needed
@@ -544,7 +541,8 @@ public class StramClient {
 
   }
 
-  public ApplicationReport getApplicationReport() throws YarnRemoteException {
+  public ApplicationReport getApplicationReport() throws YarnRemoteException
+  {
     // Get application report for the appId we are interested in 
     GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
     reportRequest.setApplicationId(appId);
@@ -552,35 +550,37 @@ public class StramClient {
     ApplicationReport report = reportResponse.getApplicationReport();
 
     LOG.info("Got application report from ASM for"
-        + ", appId=" + appId.getId()
-        + ", clientToken=" + report.getClientToken()
-        + ", appDiagnostics=" + report.getDiagnostics()
-        + ", appMasterHost=" + report.getHost()
-        + ", appQueue=" + report.getQueue()
-        + ", appMasterRpcPort=" + report.getRpcPort()
-        + ", appStartTime=" + report.getStartTime()
-        + ", yarnAppState=" + report.getYarnApplicationState().toString()
-        + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
-        + ", appTrackingUrl=" + report.getTrackingUrl()
-        + ", appUser=" + report.getUser());
+             + ", appId=" + appId.getId()
+             + ", clientToken=" + report.getClientToken()
+             + ", appDiagnostics=" + report.getDiagnostics()
+             + ", appMasterHost=" + report.getHost()
+             + ", appQueue=" + report.getQueue()
+             + ", appMasterRpcPort=" + report.getRpcPort()
+             + ", appStartTime=" + report.getStartTime()
+             + ", yarnAppState=" + report.getYarnApplicationState().toString()
+             + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
+             + ", appTrackingUrl=" + report.getTrackingUrl()
+             + ", appUser=" + report.getUser());
     return report;
   }
-  
+
   /**
-   * Monitor the submitted application for completion. 
-   * Kill application if time expires. 
+   * Monitor the submitted application for completion. Kill application if time expires.
+   *
    * @param appId Application Id of application to be monitored
    * @return true if application completed successfully
    * @throws YarnRemoteException
    */
-  public boolean monitorApplication() throws YarnRemoteException {
+  public boolean monitorApplication() throws YarnRemoteException
+  {
 
     while (true) {
 
       // Check app status every 1 second.
       try {
         Thread.sleep(1000);
-      } catch (InterruptedException e) {
+      }
+      catch (InterruptedException e) {
         LOG.debug("Thread sleep in monitoring loop interrupted");
       }
 
@@ -590,39 +590,41 @@ public class StramClient {
       if (YarnApplicationState.FINISHED == state) {
         if (FinalApplicationStatus.SUCCEEDED == dsStatus) {
           LOG.info("Application has completed successfully. Breaking monitoring loop");
-          return true;        
+          return true;
         }
         else {
           LOG.info("Application did finished unsuccessfully."
-              + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-              + ". Breaking monitoring loop");
+                   + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+                   + ". Breaking monitoring loop");
           return false;
-        }			  
+        }
       }
-      else if (YarnApplicationState.KILLED == state	
-          || YarnApplicationState.FAILED == state) {
+      else if (YarnApplicationState.KILLED == state
+               || YarnApplicationState.FAILED == state) {
         LOG.info("Application did not finish."
-            + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-            + ". Breaking monitoring loop");
+                 + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+                 + ". Breaking monitoring loop");
         return false;
-      }			
+      }
 
       if (System.currentTimeMillis() > (clientStartTime + clientTimeout)) {
         LOG.info("Reached client specified timeout for application. Killing application");
         killApplication();
-        return false;				
+        return false;
       }
-    }			
+    }
 
   }
 
   /**
    * Kill a submitted application by sending a call to the ASM
-   * @param appId Application Id to be killed. 
+   *
+   * @param appId Application Id to be killed.
    * @throws YarnRemoteException
    */
-  public void killApplication() throws YarnRemoteException {
-    KillApplicationRequest request = Records.newRecord(KillApplicationRequest.class);		
+  public void killApplication() throws YarnRemoteException
+  {
+    KillApplicationRequest request = Records.newRecord(KillApplicationRequest.class);
     // TODO clarify whether multiple jobs with the same app id can be submitted and be running at 
     // the same time. 
     // If yes, can we kill a particular attempt only?
@@ -630,53 +632,46 @@ public class StramClient {
     // KillApplicationResponse response = applicationsManager.forceKillApplication(request);		
     // Response can be ignored as it is non-null on success or 
     // throws an exception in case of failures
-    applicationsManager.forceKillApplication(request);	
+    applicationsManager.forceKillApplication(request);
   }
 
   /**
    * Connect to the Resource Manager/Applications Manager
+   *
    * @return Handle to communicate with the ASM
-   * @throws IOException 
+   * @throws IOException
    */
-  private void connectToASM() throws IOException {
+  private void connectToASM() throws IOException
+  {
 
     /*
-		UserGroupInformation user = UserGroupInformation.getCurrentUser();
-		applicationsManager = user.doAs(new PrivilegedAction<ClientRMProtocol>() {
-			public ClientRMProtocol run() {
-				InetSocketAddress rmAddress = NetUtils.createSocketAddr(conf.get(
-					YarnConfiguration.RM_SCHEDULER_ADDRESS,
-					YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS));		
-				LOG.info("Connecting to ResourceManager at " + rmAddress);
-				Configuration appsManagerServerConf = new Configuration(conf);
-				appsManagerServerConf.setClass(YarnConfiguration.YARN_SECURITY_INFO,
-				ClientRMSecurityInfo.class, SecurityInfo.class);
-				ClientRMProtocol asm = ((ClientRMProtocol) rpc.getProxy(ClientRMProtocol.class, rmAddress, appsManagerServerConf));
-				return asm;
-			}
-		});
+     * UserGroupInformation user = UserGroupInformation.getCurrentUser(); applicationsManager = user.doAs(new PrivilegedAction<ClientRMProtocol>() { public
+     * ClientRMProtocol run() { InetSocketAddress rmAddress = NetUtils.createSocketAddr(conf.get( YarnConfiguration.RM_SCHEDULER_ADDRESS,
+     * YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS)); LOG.info("Connecting to ResourceManager at " + rmAddress); Configuration appsManagerServerConf = new
+     * Configuration(conf); appsManagerServerConf.setClass(YarnConfiguration.YARN_SECURITY_INFO, ClientRMSecurityInfo.class, SecurityInfo.class);
+     * ClientRMProtocol asm = ((ClientRMProtocol) rpc.getProxy(ClientRMProtocol.class, rmAddress, appsManagerServerConf)); return asm; } });
      */
     YarnConfiguration yarnConf = new YarnConfiguration(conf);
     InetSocketAddress rmAddress = yarnConf.getSocketAddr(
-        YarnConfiguration.RM_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_PORT);
+      YarnConfiguration.RM_ADDRESS,
+      YarnConfiguration.DEFAULT_RM_ADDRESS,
+      YarnConfiguration.DEFAULT_RM_PORT);
     LOG.info("Connecting to ResourceManager at " + rmAddress);
     applicationsManager = ((ClientRMProtocol) rpc.getProxy(
-        ClientRMProtocol.class, rmAddress, conf));
-  }		
+                           ClientRMProtocol.class, rmAddress, conf));
+  }
 
   /**
-   * Get a new application from the ASM 
+   * Get a new application from the ASM
+   *
    * @return New Application
    * @throws YarnRemoteException
    */
-  private GetNewApplicationResponse getNewApplication() throws YarnRemoteException {
-    GetNewApplicationRequest request = Records.newRecord(GetNewApplicationRequest.class);		
+  private GetNewApplicationResponse getNewApplication() throws YarnRemoteException
+  {
+    GetNewApplicationRequest request = Records.newRecord(GetNewApplicationRequest.class);
     GetNewApplicationResponse response = applicationsManager.getNewApplication(request);
-    LOG.info("Got new application id=" + response.getApplicationId());		
-    return response;		
+    LOG.info("Got new application id=" + response.getApplicationId());
+    return response;
   }
-
-
 }

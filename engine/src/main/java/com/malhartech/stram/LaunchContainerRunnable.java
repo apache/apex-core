@@ -39,50 +39,52 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
- * Runnable to connect to the {@link ContainerManager} and 
- * launch the container that will host streaming node.
+ * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming node.
  */
-public class LaunchContainerRunnable implements Runnable {
-
-  private static Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);  
-  
+public class LaunchContainerRunnable implements Runnable
+{
+  private static Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
   private Configuration conf;
-  private YarnRPC rpc;  
+  private YarnRPC rpc;
   private Map<String, String> containerEnv = new HashMap<String, String>();
   private InetSocketAddress heartbeatAddress;
   private Properties topologyProps;
-  
   // Allocated container 
   private Container container;
   // Handle to communicate with ContainerManager
   private ContainerManager cm;
   private int containerMemoryMb = 64;
-  
+  private final boolean debug;
+
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, YarnRPC rpc, Configuration conf, Properties topologyProps, InetSocketAddress heartbeatAddress) {
+  public LaunchContainerRunnable(Container lcontainer, YarnRPC rpc, Configuration conf, Properties topologyProps, InetSocketAddress heartbeatAddress, boolean debug)
+  {
     this.container = lcontainer;
     this.rpc = rpc;
     this.conf = conf;
     this.heartbeatAddress = heartbeatAddress;
     this.topologyProps = topologyProps;
     this.containerMemoryMb = lcontainer.getResource().getMemory();
+    this.debug = debug;
   }
 
   /**
    * Helper function to connect to CM
    */
-  private void connectToCM() {
+  private void connectToCM()
+  {
     LOG.debug("Connecting to ContainerManager for containerid=" + container.getId());
     String cmIpPortStr = container.getNodeId().getHost() + ":"
-        + container.getNodeId().getPort();
+                         + container.getNodeId().getPort();
     InetSocketAddress cmAddress = NetUtils.createSocketAddr(cmIpPortStr);
     LOG.info("Connecting to ContainerManager at " + cmIpPortStr);
     this.cm = ((ContainerManager) rpc.getProxy(ContainerManager.class, cmAddress, conf));
   }
 
-  private void setClasspath(Map<String, String> env) {
+  private void setClasspath(Map<String, String> env)
+  {
     // add localized application jar files to classpath    
     // At some point we should not be required to add 
     // the hadoop specific classpaths to the env. 
@@ -90,18 +92,18 @@ public class LaunchContainerRunnable implements Runnable {
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
-    for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH)
-        .split(",")) {
+    for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
     classPathEnv.append(":."); // include log4j.properties, if any
 
-    env.put("CLASSPATH", classPathEnv.toString());        
+    env.put("CLASSPATH", classPathEnv.toString());
     LOG.info("CLASSPATH: {}", classPathEnv);
   }
 
-  public static void addLibJarsToLocalResources(String libJars, Map<String, LocalResource> localResources, FileSystem fs) throws IOException {
+  public static void addLibJarsToLocalResources(String libJars, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
+  {
     String[] jarPathList = StringUtils.splitByWholeSeparator(libJars, ",");
     for (String jarPath : jarPathList) {
       Path dst = new Path(jarPath);
@@ -112,26 +114,25 @@ public class LaunchContainerRunnable implements Runnable {
       amJarRsrc.setType(LocalResourceType.FILE);
       // Set visibility of the resource 
       // Setting to most private option
-      amJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);    
+      amJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
       // Set the resource to be copied over
-      amJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(dst)); 
+      amJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(dst));
       // Set timestamp and length of file so that the framework 
       // can do basic sanity checks for the local resource 
       // after it has been copied over to ensure it is the same 
       // resource the client intended to use with the application
       amJarRsrc.setTimestamp(destStatus.getModificationTime());
       amJarRsrc.setSize(destStatus.getLen());
-      localResources.put(dst.getName(),  amJarRsrc);
+      localResources.put(dst.getName(), amJarRsrc);
     }
   }
-  
+
   @Override
   /**
-   * Connects to CM, sets up container launch context 
-   * for shell command and eventually dispatches the container 
-   * start request to the CM. 
+   * Connects to CM, sets up container launch context for shell command and eventually dispatches the container start request to the CM.
    */
-  public void run() {
+  public void run()
+  {
     // Connect to ContainerManager 
     connectToCM();
 
@@ -143,39 +144,41 @@ public class LaunchContainerRunnable implements Runnable {
 
     try {
       ctx.setUser(UserGroupInformation.getCurrentUser().getShortUserName());
-    } catch (IOException e) {
-      LOG.info("Getting current user info failed when trying to launch the container"
-          + e.getMessage());
     }
-    
+    catch (IOException e) {
+      LOG.info("Getting current user info failed when trying to launch the container"
+               + e.getMessage());
+    }
+
     setClasspath(containerEnv);
     // Set the environment 
     ctx.setEnvironment(containerEnv);
 
     // Set the local resources 
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
-   
+
     // add resources for child VM
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(conf);
       addLibJarsToLocalResources(topologyProps.getProperty(TopologyBuilder.LIBJARS, ""), localResources, fs);
       ctx.setLocalResources(localResources);
-    } catch (IOException e) {
+    }
+    catch (IOException e) {
       LOG.error("Failed to prepare local resources.", e);
       return;
     }
 
     // Set the necessary command to execute on the allocated container 
     List<CharSequence> vargs = getChildVMCommand(container.getId().toString());
-    
+
     // Get final commmand
     StringBuilder command = new StringBuilder();
     for (CharSequence str : vargs) {
       command.append(str).append(" ");
     }
     LOG.info("Final command is: {}", command);
-    
+
     List<String> commands = new ArrayList<String>();
     commands.add(command.toString());
     ctx.setCommands(commands);
@@ -184,9 +187,10 @@ public class LaunchContainerRunnable implements Runnable {
     startReq.setContainerLaunchContext(ctx);
     try {
       cm.startContainer(startReq);
-    } catch (YarnRemoteException e) {
+    }
+    catch (YarnRemoteException e) {
       LOG.error("Start container failed for :"
-          + ", containerId=" + container.getId());
+                + ", containerId=" + container.getId());
       e.printStackTrace();
       // TODO do we need to release this container? 
     }
@@ -207,39 +211,44 @@ public class LaunchContainerRunnable implements Runnable {
     //e.printStackTrace();
     //}
   }
-  
+
   /**
-   * Build the command to launch the child VM in the container
-   * TODO: Build based on streaming node configuration
+   * Build the command to launch the child VM in the container TODO: Build based on streaming node configuration
+   *
    * @param callbackListenerAddr
    * @param task
    * @param jvmID
    * @return
    */
   public List<CharSequence> getChildVMCommand(
-      String jvmID) {
+    String jvmID)
+  {
 
     List<CharSequence> vargs = new ArrayList<CharSequence>(8);
 
     //vargs.add("exec");
     if (!StringUtils.isBlank(System.getenv(Environment.JAVA_HOME.$()))) {
       vargs.add(Environment.JAVA_HOME.$() + "/bin/java");
-    } else {
+    }
+    else {
       vargs.add("java");
     }
 
+    if (debug) {
+      vargs.add("-agentlib:jdwp=transport=dt_socket,server=y");
+    }
     // Set Xmx based on am memory size
-    vargs.add("-Xmx" + containerMemoryMb + "m");    
-    
+    vargs.add("-Xmx" + containerMemoryMb + "m");
+
     Path childTmpDir = new Path(Environment.PWD.$(),
-        YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
+                                YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
-    
+
     // Add main class and its arguments 
     vargs.add(StramChild.class.getName());  // main of Child
     // pass listener's address
-    vargs.add(heartbeatAddress.getAddress().getHostAddress()); 
-    vargs.add(Integer.toString(heartbeatAddress.getPort())); 
+    vargs.add(heartbeatAddress.getAddress().getHostAddress());
+    vargs.add(Integer.toString(heartbeatAddress.getPort()));
 
     // Finally add the jvmID
     vargs.add(String.valueOf(jvmID));
@@ -253,8 +262,7 @@ public class LaunchContainerRunnable implements Runnable {
     }
     List<CharSequence> vargsFinal = new ArrayList<CharSequence>(1);
     vargsFinal.add(mergedCommand.toString());
-    return vargsFinal;        
-            
+    return vargsFinal;
+
   }
-  
 }
