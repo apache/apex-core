@@ -27,6 +27,7 @@ public abstract class AbstractActiveMQInputStream
   private Session session;
   private MessageProducer replyProducer;
 
+  @Override
   public abstract Object getObject(Object object);
 
   private void internalSetup(StreamConfiguration config) throws Exception
@@ -72,6 +73,7 @@ public abstract class AbstractActiveMQInputStream
     transacted = config.getBoolean("transacted", false);
   }
 
+  @Override
   public void setup(StreamConfiguration config)
   {
     try {
@@ -99,6 +101,7 @@ public abstract class AbstractActiveMQInputStream
     }
   }
 
+  @Override
   public void activate()
   {
     try {
@@ -128,11 +131,13 @@ public abstract class AbstractActiveMQInputStream
     }
   }
 
+  @Override
   public void onException(JMSException jmse)
   {
     logger.log(Level.SEVERE, "Exception thrown by ActiveMQ consumer setup.", jmse.getCause());
   }
 
+  @Override
   public void onMessage(Message message)
   {
     /**
@@ -153,7 +158,7 @@ public abstract class AbstractActiveMQInputStream
 
     Object o = getObject(message);
     if (o != null) {
-      sendTuple(o);
+      emit(o);
     }
 
     try {

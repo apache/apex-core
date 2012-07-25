@@ -10,6 +10,7 @@ package com.malhartech.dag;
  */
 public interface Stream extends DAGPart<StreamConfiguration, StreamContext>
 {
+  @Override
   public void setup(StreamConfiguration config);
 
   public void setContext(StreamContext context);
@@ -18,5 +19,6 @@ public interface Stream extends DAGPart<StreamConfiguration, StreamContext>
 
   public void activate();
   
+  @Override
   public void teardown();
 }

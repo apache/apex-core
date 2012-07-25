@@ -123,7 +123,7 @@ public class InputKafkaStreamTest
     System.out.println("getTuple");
     Message message = null;
     KafkaInputStream instance = new KafkaInputStream();
-    instance.sendTuple(message);
+    instance.emit(message);
     // TODO review the generated test code and remove the default call to fail.
     fail("The test case is a prototype.");
   }
