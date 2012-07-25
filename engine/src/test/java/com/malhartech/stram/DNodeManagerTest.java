@@ -170,24 +170,35 @@ public class DNodeManagerTest {
       String containerId = "container"+(i+1);
       StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
 
+      NodePConf node1PNode = getNodeContext(cc, node1.getId());
+      Assert.assertNotNull(node1.getId() + " assigned to " + containerId, node1PNode);
+      
       if (i==0) {
-        // the input and output adapter should be assigned to first container and streams should not be inline
+        // the input and output adapter should be assigned to first container (deployed with first partition)
         Assert.assertEquals("number nodes assigned to " + containerId, 3, cc.getNodes().size());
         // output subscribes to all upstream partitions
         Assert.assertEquals("number streams " + containerId, 1+TestStaticPartitioningSerDe.partitions.length, cc.getStreams().size());
-
+        
         NodePConf input1PNode = getNodeContext(cc, input1.getId());
         Assert.assertNotNull(input1.getId() + " assigned to " + containerId, input1PNode);
         
         NodePConf output1PNode = getNodeContext(cc, output1.getId());
         Assert.assertNotNull(output1.getId() + " assigned to " + containerId, output1PNode);
+        
+        int inlineStreamCount = 0;
+        for (StreamPConf pstream : cc.getStreams()) {
+          if (pstream.getTargetNodeId() == output1PNode.getDnodeId() && pstream.getSourceNodeId() == node1PNode.getDnodeId()) {
+            Assert.assertTrue("stream from " + node1PNode + " to " + output1PNode + " inline", pstream.isInline());
+            inlineStreamCount++;
+          }
+        }
+        Assert.assertEquals("number inline streams", 1, inlineStreamCount);
+        
       } else {
         Assert.assertEquals("number nodes assigned to " + containerId, 1, cc.getNodes().size());
         Assert.assertEquals("number streams " + containerId, 2, cc.getStreams().size());
       }
-      
-      Assert.assertTrue(node1.getId() + " assigned to " + containerId, containsNodeContext(cc, node1));
-  
+        
       StreamPConf scIn1 = getStreamContext(cc, "input1");
       Assert.assertNotNull("in stream connection for " + containerId, scIn1);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], scIn1.getPartitionKeys().get(0)));
