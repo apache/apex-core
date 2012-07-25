@@ -22,13 +22,16 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.apache.hadoop.yarn.util.Times;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.malhartech.stram.StramAppContext;
 
 @XmlRootElement(name = "info")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class AppInfo {
-
+  private static Logger LOG = LoggerFactory.getLogger(AppInfo.class);
+  
   protected String appId;
   protected String name;
   protected String user;
@@ -39,8 +42,9 @@ public class AppInfo {
   }
 
   public AppInfo(StramAppContext context) {
+    LOG.info("AppInfo called");
     this.appId = context.getApplicationID().toString();
-    this.name = context.getApplicationName().toString();
+    this.name = context.getApplicationName();
     this.user = context.getUser().toString();
     this.startedOn = context.getStartTime();
     this.elapsedTime = Times.elapsed(this.startedOn, 0);

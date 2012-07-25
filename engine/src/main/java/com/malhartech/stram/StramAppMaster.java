@@ -147,7 +147,7 @@ public class StramAppMaster {
       @Override
       public String getApplicationName() {
         // TODO get from the app master env / ClientRMProtocol
-        return null;
+        return "TODO: application name";
       }
 
       @Override
@@ -158,7 +158,7 @@ public class StramAppMaster {
       @Override
       public CharSequence getUser() {
         // TODO get from the app master env / ClientRMProtocol
-        return null;
+        return "TODO: user";
       }
 
       @Override

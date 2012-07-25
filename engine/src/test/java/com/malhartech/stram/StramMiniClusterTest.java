@@ -4,31 +4,49 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.stream.HDFSOutputStream;
+import static org.junit.Assert.assertEquals;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URL;
 import java.util.List;
 import java.util.Properties;
+
+import javax.ws.rs.core.MediaType;
+
 import junit.framework.Assert;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesResponse;
+import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
 import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
 import org.apache.hadoop.yarn.util.Records;
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.stream.HDFSOutputStream;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 
 public class StramMiniClusterTest {
   
@@ -82,6 +100,14 @@ public class StramMiniClusterTest {
       yarnCluster = null;
     }
   }
+
+  private File createTmpPropFile(Properties props) throws IOException {
+    File tmpFile = File.createTempFile("stram-junit", ".properties");
+    tmpFile.deleteOnExit();
+    props.store(new FileOutputStream(tmpFile), "StramMiniClusterTest.test1");
+    LOG.info("topology: " + tmpFile);
+    return tmpFile;
+  }  
   
   @Test
   public void testSetupShutdown() throws Exception {
@@ -127,10 +153,8 @@ public class StramMiniClusterTest {
     props.put("stram.node.node1.myStringProperty", "myStringPropertyValue");
 
     props.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
-    File tmpFile = File.createTempFile("stram-junit", ".properties");
-    tmpFile.deleteOnExit();
-    props.store(new FileOutputStream(tmpFile), "StramMiniClusterTest.test1");
-    LOG.info("topology: " + tmpFile);
+
+    File tmpFile = createTmpPropFile(props);
     
     //URL location =  this.getClass().getResource("/testTopology.properties");
     //String topologyPath = location.getPath();    
@@ -146,7 +170,7 @@ public class StramMiniClusterTest {
         tmpFile.getAbsolutePath()
     };
 
-    LOG.info("Initializing DS Client");
+    LOG.info("Initializing Client");
     StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()));
     if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
       client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
@@ -154,13 +178,82 @@ public class StramMiniClusterTest {
     boolean initSuccess = client.init(args);
     Assert.assertTrue(initSuccess);
     LOG.info("Running client");
-    boolean result = client.run();
+    client.startApplication();
+    boolean result = client.monitorApplication();
 
     LOG.info("Client run completed. Result=" + result);
     Assert.assertTrue(result);
       
   }
 
+  /**
+   * Verify the web service deployment and lifecycle functionality
+   * @throws Exception
+   */
+  @Ignore //disabled due to web service init delay issue
+  @Test
+  public void testWebService() throws Exception {
+
+    // single container topology of inline input and node
+    Properties props = new Properties();
+    props.put("stram.stream.input.classname", NumberGeneratorInputAdapter.class.getName());
+    props.put("stram.stream.input.outputNode", "node1");
+    props.put("stram.node.node1.classname", NoTimeoutTestNode.class.getName());
+    
+    File tmpFile = createTmpPropFile(props);
+    
+    String[] args = {
+        //"--num_containers",
+        //"1",
+        "--master_memory",
+        "256",
+        "--container_memory",
+        "64",
+        "--topologyProperties",
+        tmpFile.getAbsolutePath()
+    };
+
+    LOG.info("Initializing Client");
+    StramClient client = new StramClient(new Configuration(yarnCluster.getConfig()));
+    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
+      client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
+    }
+    boolean initSuccess = client.init(args);
+    Assert.assertTrue(initSuccess);
+
+    client.startApplication();
+
+    // attempt web service connection
+    ApplicationReport appReport = client.getApplicationReport();
+
+    try {
+      Thread.sleep(5000); // delay to give web service time to fully initialize
+      Client wsClient = Client.create();
+      wsClient.setFollowRedirects(true);
+      WebResource r = wsClient.resource("http://" + appReport.getTrackingUrl())
+          .path("ws").path("v1").path("stram").path("info");
+      LOG.info("Requesting: " + r.getURI());
+      ClientResponse response = r.accept(MediaType.APPLICATION_JSON)
+          .get(ClientResponse.class);
+      assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+      JSONObject json = response.getEntity(JSONObject.class);
+      LOG.info("Got response: " + json.toString());
+      assertEquals("incorrect number of elements", 1, json.length());    
+      assertEquals("appId", appReport.getApplicationId().toString(), json.getJSONObject("info").get("appId"));
+    } finally {
+      //LOG.info("waiting...");
+      //synchronized (this) {
+      //  this.wait();
+      //}
+      //boolean result = client.monitorApplication();
+      client.killApplication();
+    }
+      
+//    LOG.info("Client run completed. Result=" + result);
+//    Assert.assertTrue(result);
+    
+  }
+  
   private static String getTestRuntimeClasspath() {
 
     InputStream classpathFileStream = null;
@@ -252,7 +345,7 @@ public class StramMiniClusterTest {
     }
 
     /**
-     * Node will exit processing loop immediately and report not processing in heartbeat.
+     * Exit processing loop immediately and report not processing in heartbeat.
      */
     @Override
     public void handleIdleTimeout()
@@ -261,5 +354,17 @@ public class StramMiniClusterTest {
     }
   }
   
-  
+
+  public static class NoTimeoutTestNode extends TestDNode {
+
+    public NoTimeoutTestNode(NodeContext ctx) {
+      super(ctx);
+    }
+
+    @Override
+    public void handleIdleTimeout() {
+      // does not timeout
+    }
+    
+  }
 }
