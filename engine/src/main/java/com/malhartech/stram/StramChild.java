@@ -77,7 +77,7 @@ public class StramChild
     if (sourceNode instanceof AdapterWrapperNode) {
       AdapterWrapperNode wrapper = (AdapterWrapperNode) sourceNode;
       // input adapter
-      this.inputAdapters.add((InputAdapter)wrapper.getAdapterStream());
+      this.inputAdapters.add((InputAdapter) wrapper.getAdapterStream());
     }
 
 
@@ -89,7 +89,7 @@ public class StramChild
       stream.setContext(dsc);
       Sink sink = targetNode.getSink(dsc);
 
-      LOG.info(dsc + " setting sink to " + sink);
+//      LOG.info(dsc + " setting sink to " + sink);
       dsc.setSink(sink);
 
       // operation is additive - there can be multiple output streams
@@ -111,13 +111,12 @@ public class StramChild
       streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
       if (sourceNode != null) {
         // setup output stream as sink for source node
-        LOG.info("Node {} is publisher for {}/{}", new Object[]{
-            sourceNode, sc.getId(), sc.getSourceNodeId()});
+//        LOG.info("Node {} is publisher for {}/{}", new Object[]{sourceNode, sc.getId(), sc.getSourceNodeId()});
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(streamConf);
 
         oss.setContext(streamContext);
-        LOG.info(streamContext + " setting sink to " + oss);
+//        LOG.info(streamContext + " setting sink to " + oss);
 
         streamContext.setSink(oss);
         sourceNode.addOutputStream(streamContext);
@@ -126,18 +125,17 @@ public class StramChild
 
       if (targetNode != null) {
         Sink sink = targetNode.getSink(streamContext);
-        LOG.info(streamContext + " setting sink to " + sink);
+//        LOG.info(streamContext + " setting sink to " + sink);
 
         streamContext.setSink(sink);
 
         // setup input stream for target node
-        LOG.info("Node {} is subscriber for {}/{}", new Object[]{
-            targetNode, sc.getId(), sc.getSourceNodeId()});
+//        LOG.info("Node {} is subscriber for {}/{}", new Object[]{targetNode, sc.getId(), sc.getSourceNodeId()});
         BufferServerInputStream iss = new BufferServerInputStream();
         iss.setup(streamConf);
-        
+
         streamContext.setPartitions(sc.getPartitionKeys());
-        
+
         iss.setContext(streamContext);
         this.streams.add(iss);
       }
@@ -156,13 +154,13 @@ public class StramChild
       AbstractNode dnode = initNode(snc, conf);
       NodeConfiguration nc = new NodeConfiguration(snc.getProperties());
       dnode.setup(nc);
-      LOG.info("Initialized node {} ({})", snc.getDnodeId(), snc.getLogicalId());
+//      LOG.info("Initialized node {} ({})", snc.getDnodeId(), snc.getLogicalId());
       nodeList.put(snc.getDnodeId(), dnode);
     }
 
     // wire stream connections
     for (StreamPConf sc : ctx.getStreams()) {
-      LOG.debug("Deploying stream " + sc.getId());
+//      LOG.debug("Deploying stream " + sc.getId());
       if (sc.getSourceNodeId() != null && sc.getTargetNodeId() != null) {
         initStream(sc, ctx);
       }
@@ -174,10 +172,10 @@ public class StramChild
     // ideally we would like to activate the output streams for a node before the input streams
     // are activated. But does not look like we have that fine control here. we should get it.
     for (Stream s : this.streams) {
-      LOG.info("activate " + s);
+//      LOG.info("activate " + s);
       s.activate();
     }
-    
+
     for (final AbstractNode node : nodeList.values()) {
       // launch nodes
       Runnable nodeRunnable = new Runnable()
@@ -193,14 +191,14 @@ public class StramChild
       Thread launchThread = new Thread(nodeRunnable);
       activeNodeList.put(node.getContext().getId(), launchThread);
       launchThread.start();
-      
-    }    
+
+    }
 
     // activate all the input adapters if any
     for (Stream ia : inputAdapters) {
       ia.activate();
     }
-    
+
     windowGenerator = new WindowGenerator(this.inputAdapters, ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
     if (ctx.getWindowSizeMillis() > 0) {
       windowGenerator.start();
@@ -210,10 +208,10 @@ public class StramChild
   protected void shutdown()
   {
     windowGenerator.stop();
-    
+
     // ideally we should do the graph traversal and shutdown as we descend down. At this time
     // we do not have a choice because the things are not setup to facilitate it, so brute force.
-    
+
     /*
      * first tear down all the input adapters.
      */
@@ -224,7 +222,7 @@ public class StramChild
         node.teardown();
       }
     }
-    
+
     /*
      * now tear down all the nodes.
      */
@@ -235,7 +233,7 @@ public class StramChild
         node.teardown();
       }
     }
-    
+
     /*
      * tear down all the streams.
      */

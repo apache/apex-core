@@ -14,9 +14,6 @@ import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- *
- */
 public class StramClientUtils {
 
   public static class YarnClientHelper {

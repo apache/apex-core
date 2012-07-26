@@ -31,7 +31,7 @@ public class StreamContext implements Context
    */
   public void setSink(Sink sink)
   {
-    LOG.info("sink: {}", sink);
+//    LOG.info("sink: {}", sink);
     this.sink = sink;
   }
 

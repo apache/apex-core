@@ -23,11 +23,13 @@ public abstract class AbstractObjectInputStream implements InputAdapter
 //  protected volatile long tupleCount = 0;
   protected volatile long timemillis;
   
+  @Override
   public void setContext(StreamContext context)
   {
     this.context = context;
   }
   
+  @Override
   public StreamContext getContext()
   {
     return this.context;
@@ -35,7 +37,7 @@ public abstract class AbstractObjectInputStream implements InputAdapter
   
   public abstract Object getObject(Object object);
   
-  public void sendTuple(Object o)
+  public void emit(Object o)
   {
     Tuple t = new Tuple(o);
     t.setContext(context);
@@ -57,6 +59,7 @@ public abstract class AbstractObjectInputStream implements InputAdapter
     }
   }
   
+  @Override
   public void beginWindow(long timemillis)
   {
     this.timemillis = timemillis;
@@ -72,6 +75,7 @@ public abstract class AbstractObjectInputStream implements InputAdapter
     }
   }
   
+  @Override
   public void endWindow(long timemillis)
   {
     this.timemillis = 0;
@@ -86,6 +90,7 @@ public abstract class AbstractObjectInputStream implements InputAdapter
     
   }
   
+  @Override
   public boolean hasFinished()
   {
     return false;

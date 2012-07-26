@@ -37,18 +37,20 @@ public abstract class AbstractHDFSInputStream extends AbstractObjectInputStream 
 
   }
 
+  @Override
   public void activate()
   {
     Thread t = new Thread(this);
     t.start();    
   }
   
+  @Override
   public void run()
   {
     logger.debug("ready to read hdfs file");
     Object o;
     while ((o = getObject(input)) != null) {
-      sendTuple(o);
+      emit(o);
     }
   }
 

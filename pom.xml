@@ -40,6 +40,7 @@
     <module>bufferserver</module>
     <module>examples/wordcount</module>
     <module>examples/twitter</module>
+    <module>examples/ads</module>
   </modules>
     <artifactId>framework</artifactId>
 </project>
