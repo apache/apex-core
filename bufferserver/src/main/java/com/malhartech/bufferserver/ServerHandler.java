@@ -43,10 +43,8 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
       case BEGIN_WINDOW:
       case END_WINDOW:
-      case HEARTBEAT_DATA:
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
-      case SERDE_CODE:
         DataList dl = (DataList) ctx.getAttachment();
         if (dl == null) {
           logger.log(Level.INFO, "Attempt to send data w/o talking protocol");

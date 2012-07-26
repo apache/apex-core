@@ -1,5 +1,6 @@
+
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.malhartech</groupId>
@@ -27,14 +28,19 @@
     </license>
   </licenses>
   <inceptionYear>2012</inceptionYear>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>dtrott</id>
+      <url>http://maven.davidtrott.com/repository</url>
+    </pluginRepository>
+  </pluginRepositories>  
 
   <dependencies>
-    <!-- Google Protocol Buffers - completely optional -->
-	<dependency>
-		<groupId>io.netty</groupId>
-		<artifactId>netty</artifactId>
-		<version>3.4.5.Final</version>
-	</dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty</artifactId>
+      <version>3.4.5.Final</version>
+    </dependency>
             
     <dependency>
       <groupId>com.google.protobuf</groupId>
@@ -125,20 +131,37 @@
           </execution>
         </executions>
       </plugin>
-      <plugin> 
-			<groupId>org.apache.maven.plugins</groupId>
-			<artifactId>maven-source-plugin</artifactId>
-			<executions>
-				<execution>
-					<id>attach-sources</id>
-					<goals>
-						<goal>jar</goal>
-					</goals>
-				</execution>
-			</executions>
+      <plugin>
+        <groupId>com.google.protobuf.tools</groupId>
+        <artifactId>maven-protoc-plugin</artifactId>
+        <version>0.1.10</version>
+        <configuration>
+          <checkStaleness>true</checkStaleness>
+          <!-- protocExecutable>/usr/local/bin/protoc</protocExecutable -->
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
-     </plugins>
-   </build>
-    <artifactId>bufferserver</artifactId>
-    <description>Interface for nodes from 2 different containers to talk to each other.</description>
+      <!-- plugin> Disabled since we do not have a need to make the source jars, yet.
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin -->
+    </plugins>
+  </build>
+  <artifactId>bufferserver</artifactId>
+  <description>Interface for nodes from 2 different containers to talk to each other.</description>
 </project>

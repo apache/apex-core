@@ -78,7 +78,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
         srb.addPartition(ByteString.copyFrom(c));
       }
     }
-
+    srb.setPolicy(Buffer.SubscriberRequest.PolicyType.ROUND_ROBIN);
+    
     Data.Builder builder = Data.newBuilder();
     builder.setType(Data.DataType.SUBSCRIBER_REQUEST);
     builder.setSubscribe(srb);

@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
+import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.netty.ClientPipelineFactory;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -106,13 +107,13 @@ public class Client {
     private static void printUsage() {
         System.err.println(
                 "Usage: " + Client.class.getSimpleName()
-                + " <host> <port> upstream_node_id upstream_node_type [downstream_node_id [partitions ...]]");
+                + " <host> <port> upstream_node_id upstream_node_type [downstream_node_id downstream_node_type [partitions ...]]");
         System.err.println(
                 "Upstream Example: " + Client.class.getSimpleName()
                 + " localhost 8080 map1 mapper");
         System.err.println(
                 "Downstream Example: " + Client.class.getSimpleName()
-                + " localhost 8080 map1 mapper reduce1 1 5 7");
+                + " localhost 8080 map1 mapper reduce1 reduce 1 5 7");
     }
 
     private static List<byte[]> parsePartitions(String[] args, int offset) {
