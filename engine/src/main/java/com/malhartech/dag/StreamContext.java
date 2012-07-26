@@ -100,7 +100,7 @@ public class StreamContext implements Context
   @Override
   public String toString()
   {
-    return "window = " + windowId + " tuples = " + tupleCount + " state = " + sinkState + " sink = " + sink + " serde = " + serde;
+    return "window = " + windowId + " tuples = " + tupleCount + " state = " + sinkState;
   }
 
 }

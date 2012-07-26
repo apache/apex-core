@@ -82,6 +82,6 @@ public class Tuple
   @Override
   public String toString()
   {
-    return "type = " + type + " window = " + windowId + " object = " + getObject() +  " context = " + context;
+    return "type = " + type + " window = " + windowId;
   }
 }

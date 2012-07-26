@@ -38,6 +38,12 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         db.setEndwindow(ew);
         break;
 
+      case END_STREAM:
+        Buffer.EndStream.Builder es = Buffer.EndStream.newBuilder();
+        
+        db.setEndstream(es);
+        break;
+        
       case PARTITIONED_DATA:
         logger.info("got partitioned data " + t.getObject());
       case SIMPLE_DATA:

@@ -5,7 +5,6 @@
 package com.malhartech.stream;
 
 import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -25,12 +24,13 @@ import kafka.message.Message;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class KafkaInputStream
-  extends AbstractObjectInputStream
+  extends AbstractInputAdapter
   implements Runnable
 {
   private ConsumerConnector consumer;
   private String topic;
 
+  @Override
   public void setup(StreamConfiguration config)
   {
     Properties props = new Properties();
@@ -51,6 +51,7 @@ public class KafkaInputStream
     consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(props));
   }
 
+  @Override
   public void run()
   {
     Map<String, Integer> topicCountMap = new HashMap<String, Integer>();
@@ -63,6 +64,7 @@ public class KafkaInputStream
     }
   }
 
+  @Override
   public void teardown()
   {
     consumer.shutdown();
@@ -70,7 +72,6 @@ public class KafkaInputStream
     topic = null;
   }
 
-  @Override
   public Object getObject(Object message)
   {
     /*
@@ -87,6 +88,7 @@ public class KafkaInputStream
     return null;
   }
 
+  @Override
   public void activate()
   {
     new Thread(this).start();

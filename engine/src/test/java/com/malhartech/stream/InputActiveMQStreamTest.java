@@ -37,6 +37,7 @@ public class InputActiveMQStreamTest
       myserde = new DefaultSerDe();
     }
 
+    @Override
     public SerDe getSerDe()
     {
       return myserde;
@@ -47,6 +48,7 @@ public class InputActiveMQStreamTest
       return this;
     }
 
+    @Override
     public void doSomething(Tuple t)
     {
       System.out.println("sinking " + t.getObject());

@@ -219,7 +219,7 @@ public class StramChild
       if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode) node).isInput()) {
         LOG.info("teardown " + node);
         node.stopSafely();
-        node.teardown();
+        node.teardown(); // this is an anomalie, the input adapters do not have any business running as node.
       }
     }
 
@@ -230,7 +230,6 @@ public class StramChild
       if (!(node instanceof AdapterWrapperNode)) {
         LOG.info("teardown " + node);
         node.stopSafely();
-        node.teardown();
       }
     }
 
@@ -250,7 +249,7 @@ public class StramChild
       if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode) node).isInput()) {
         LOG.info("teardown " + node);
         node.stopSafely();
-        node.teardown();
+        node.teardown(); // this is an anomalie, the output adapters do not have any business running as node.
       }
     }
   }

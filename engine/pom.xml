@@ -40,6 +40,12 @@
       <groupId>com.malhartech</groupId>
       <artifactId>bufferserver</artifactId>
       <version>0.1-SNAPSHOT</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>netty</artifactId>
+          <groupId>io.netty</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>

@@ -14,7 +14,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class AbstractActiveMQInputStream
-  extends AbstractObjectInputStream
+  extends AbstractInputAdapter
   implements MessageListener, ExceptionListener
 {
   private static final Logger logger = Logger.getLogger(
@@ -27,7 +27,6 @@ public abstract class AbstractActiveMQInputStream
   private Session session;
   private MessageProducer replyProducer;
 
-  @Override
   public abstract Object getObject(Object object);
 
   private void internalSetup(StreamConfiguration config) throws Exception

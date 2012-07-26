@@ -65,6 +65,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   @Override
   public void doSomething(Tuple t)
   {
+    logger.info("sending tuple {}", t);
     this.sink.sink(t);
   }
 
@@ -88,8 +89,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     if (adapterStream != null) {
       adapterStream.teardown();
     }
-    super.teardown(); // terminate super.run
   }
+  
   private com.malhartech.dag.StreamContext sink;
 
   @Override
@@ -172,7 +173,6 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   public void handleIdleTimeout()
   {
     if (isInput() && ((InputAdapter) adapterStream).hasFinished()) {
-      logger.info("it was input adapter... stopping now");
       stopSafely();
     }
   }
