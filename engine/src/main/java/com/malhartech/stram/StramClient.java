@@ -6,7 +6,6 @@
 package com.malhartech.stram;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -61,12 +60,12 @@ import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
-import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.ShipContainingJars;
 import com.malhartech.stram.conf.TopologyBuilder;
 
@@ -83,8 +82,7 @@ public class StramClient {
   // Configuration
   private Configuration conf;
 
-  // RPC to communicate to RM
-  private YarnRPC rpc;
+  final private YarnClientHelper yarnClient;
 
   // Handle to talk to the Resource Manager/Applications Manager
   private ClientRMProtocol applicationsManager;
@@ -157,7 +155,7 @@ public class StramClient {
   public StramClient(Configuration conf) throws Exception  {
     // Set up the configuration and RPC
     this.conf = conf;
-    rpc = YarnRPC.create(conf);
+    yarnClient = new YarnClientHelper(conf);
   }
 
   /**
@@ -252,7 +250,7 @@ public class StramClient {
     LOG.info("Starting StramClient");
 
     // Connect to ResourceManager 	
-    connectToASM();
+    applicationsManager = yarnClient.connectToASM();
     assert(applicationsManager != null);		
 
     // Use ClientRMProtocol handle to general cluster information 
@@ -632,39 +630,6 @@ public class StramClient {
     // throws an exception in case of failures
     applicationsManager.forceKillApplication(request);	
   }
-
-  /**
-   * Connect to the Resource Manager/Applications Manager
-   * @return Handle to communicate with the ASM
-   * @throws IOException 
-   */
-  private void connectToASM() throws IOException {
-
-    /*
-		UserGroupInformation user = UserGroupInformation.getCurrentUser();
-		applicationsManager = user.doAs(new PrivilegedAction<ClientRMProtocol>() {
-			public ClientRMProtocol run() {
-				InetSocketAddress rmAddress = NetUtils.createSocketAddr(conf.get(
-					YarnConfiguration.RM_SCHEDULER_ADDRESS,
-					YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS));		
-				LOG.info("Connecting to ResourceManager at " + rmAddress);
-				Configuration appsManagerServerConf = new Configuration(conf);
-				appsManagerServerConf.setClass(YarnConfiguration.YARN_SECURITY_INFO,
-				ClientRMSecurityInfo.class, SecurityInfo.class);
-				ClientRMProtocol asm = ((ClientRMProtocol) rpc.getProxy(ClientRMProtocol.class, rmAddress, appsManagerServerConf));
-				return asm;
-			}
-		});
-     */
-    YarnConfiguration yarnConf = new YarnConfiguration(conf);
-    InetSocketAddress rmAddress = yarnConf.getSocketAddr(
-        YarnConfiguration.RM_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_PORT);
-    LOG.info("Connecting to ResourceManager at " + rmAddress);
-    applicationsManager = ((ClientRMProtocol) rpc.getProxy(
-        ClientRMProtocol.class, rmAddress, conf));
-  }		
 
   /**
    * Get a new application from the ASM 
