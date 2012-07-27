@@ -108,7 +108,7 @@ public class StramMiniClusterTest {
     LOG.info("topology: " + tmpFile);
     return tmpFile;
   }  
-  
+  @Ignore
   @Test
   public void testSetupShutdown() throws Exception {
 
@@ -190,7 +190,7 @@ public class StramMiniClusterTest {
    * Verify the web service deployment and lifecycle functionality
    * @throws Exception
    */
-  @Ignore //disabled due to web service init delay issue
+ // @Ignore //disabled due to web service init delay issue
   @Test
   public void testWebService() throws Exception {
 
@@ -240,6 +240,18 @@ public class StramMiniClusterTest {
       LOG.info("Got response: " + json.toString());
       assertEquals("incorrect number of elements", 1, json.length());    
       assertEquals("appId", appReport.getApplicationId().toString(), json.getJSONObject("info").get("appId"));
+      
+      
+      r = wsClient.resource("http://" + appReport.getTrackingUrl())
+          .path("ws").path("v1").path("stram").path("nodes");
+      LOG.info("Requesting: " + r.getURI());
+      response = r.accept(MediaType.APPLICATION_JSON)
+          .get(ClientResponse.class);
+      assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+      json = response.getEntity(JSONObject.class);
+      LOG.info("Got response: " + json.toString());
+      
+      
     } finally {
       //LOG.info("waiting...");
       //synchronized (this) {

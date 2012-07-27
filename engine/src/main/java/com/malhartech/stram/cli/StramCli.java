@@ -25,6 +25,8 @@ import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.util.Records;
 import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.sun.jersey.api.client.Client;
@@ -32,10 +34,24 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
 public class StramCli {
+  
+  private static Logger LOG = LoggerFactory.getLogger(StramCli.class);
+  
   private String[] commandsList;
   private Configuration conf = new Configuration();
   private final YarnClientHelper yarnClient;
   private final ClientRMProtocol rmClient;  
+  private ApplicationReport currentApp = null;
+
+  private class CliException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+    CliException(String msg, Throwable cause) {
+      super(msg, cause);
+    }
+    CliException(String msg) {
+      super(msg);
+    }
+  }
   
   public StramCli() throws Exception {
     yarnClient = new YarnClientHelper(conf);
@@ -59,18 +75,28 @@ public class StramCli {
     PrintWriter out = new PrintWriter(System.out);
 
     while ((line = readLine(reader, "")) != null) {
-      if ("help".equals(line)) {
-        printHelp();
-      } else if ("ls".equals(line)) {
-        listApplications();
-      } else if (line.startsWith("connect")) {
-        connect(line);
-      } else if ("exit".equals(line)) {
-        System.out.println("Exiting application");
-        return;
-      } else {
-        System.out
-            .println("Invalid command, For assistance press TAB or type \"help\" then hit ENTER.");
+      try {
+        if ("help".equals(line)) {
+          printHelp();
+        } else if ("ls".equals(line)) {
+          listApplications();
+        } else if (line.startsWith("connect")) {
+          connect(line);
+        } else if (line.startsWith("listnodes")) {
+          listNodes(line);
+        } else if ("exit".equals(line)) {
+          System.out.println("Exiting application");
+          return;
+        } else {
+          System.err
+              .println("Invalid command, For assistance press TAB or type \"help\" then hit ENTER.");
+        }
+      } catch (CliException e) {
+        System.err.println(e.getMessage());
+        LOG.info("Error processing line: " + line, e);
+      } catch (Exception e) {
+        System.err.println("Unexpected error: " + e.getMessage());
+        e.printStackTrace();
       }
       out.flush();
     }
@@ -79,12 +105,29 @@ public class StramCli {
   private void printWelcomeMessage() {
     System.out
         .println("Stram CLI. For assistance press TAB or type \"help\" then hit ENTER.");
+  }
+
+  private void printHelp() {
+    System.out.println("help         - Show help");
+    System.out.println("ls           - Show currently running applications");
+    System.out.println("connect <id> - Connect to running streaming application");
+    System.out.println("exit         - Exit the app");
 
   }
 
-  private List<ApplicationReport> getApplicationList() throws Exception {
-    GetAllApplicationsRequest appsReq = Records.newRecord(GetAllApplicationsRequest.class);
-    return rmClient.getAllApplications(appsReq).getApplicationList();
+  private String readLine(ConsoleReader reader, String promtMessage)
+      throws IOException {
+    String line = reader.readLine(promtMessage + "\nstramcli> ");
+    return line.trim();
+  }
+  
+  private List<ApplicationReport> getApplicationList() {
+    try {
+      GetAllApplicationsRequest appsReq = Records.newRecord(GetAllApplicationsRequest.class);
+      return rmClient.getAllApplications(appsReq).getApplicationList();
+    } catch (Exception e) {
+      throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
+    }
   }
   
   private void listApplications() {
@@ -113,11 +156,32 @@ public class StramCli {
       }
       System.out.println(runningCnt + " active, total " + totalCnt + " applications.");
     } catch (Exception ex) {
-      System.err.println("Failed to retrieve application list:");
-      ex.printStackTrace(System.err);
+      throw new CliException("Failed to retrieve application list", ex);
     }
   }
 
+  private ClientResponse getResource(String resourcePath) {
+
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    
+    Client wsClient = Client.create();
+    wsClient.setFollowRedirects(true);
+    WebResource r = wsClient.resource("http://" + currentApp.getTrackingUrl())
+        .path("ws").path("v1").path("stram").path(resourcePath);
+    try {
+      ClientResponse response = r.accept(MediaType.APPLICATION_JSON)
+          .get(ClientResponse.class);
+      if (!MediaType.APPLICATION_JSON_TYPE.equals(response.getType())) {
+        throw new Exception("Unexpected response type " + response.getType());
+      }
+      return response;
+    } catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+  
   private void connect(String line) {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
     if (args.length != 2) {
@@ -125,59 +189,38 @@ public class StramCli {
       return;
     }
 
-    try {
-      int appSeq = Integer.parseInt(args[1]);
-      
-      List<ApplicationReport> appList = getApplicationList(); 
-      ApplicationReport selectedApp = null;
-      for (ApplicationReport ar : appList) {
-        if (ar.getApplicationId().getId() == appSeq) {
-          selectedApp = ar;
-          break;
-        }
+    int appSeq = Integer.parseInt(args[1]);
+    
+    List<ApplicationReport> appList = getApplicationList(); 
+    for (ApplicationReport ar : appList) {
+      if (ar.getApplicationId().getId() == appSeq) {
+        currentApp = ar;
+        break;
       }
-      
-      if (selectedApp == null) {
-        System.err.println("Invalid application id: " + args[1]);
-        return;
-      }
-      System.out.println("Selected " + selectedApp.getApplicationId() + " " + selectedApp.getTrackingUrl());
+    }
+    if (currentApp == null) {
+      throw new CliException("Invalid application id: " + args[1]);
+    }
 
-      Client wsClient = Client.create();
-      wsClient.setFollowRedirects(true);
-      WebResource r = wsClient.resource("http://" + selectedApp.getTrackingUrl())
-          .path("ws").path("v1").path("stram").path("info");
-      try {
-        ClientResponse response = r.accept(MediaType.APPLICATION_JSON)
-            .get(ClientResponse.class);
-        //assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-        JSONObject json = response.getEntity(JSONObject.class);      
-        System.out.println(json);
-      } catch (Exception e) {
-        System.err.println("Error connecting to " + r.getURI());
-        e.printStackTrace(System.err);
-      }
-      
+    try {
+      LOG.info("Selected {} with tracking url: ", currentApp.getApplicationId(), currentApp.getTrackingUrl());
+      ClientResponse rsp = getResource("info");
+      JSONObject json = rsp.getEntity(JSONObject.class);      
+      System.out.println(json);
     } catch (Exception e) {
-      System.err.println("Error connecting to app " + args[1]);
-      e.printStackTrace(System.err);
+      currentApp = null;
+      throw new CliException("Error connecting to app " + args[1], e);
     }
   }
+
+  private void listNodes(String line) {
+
+    ClientResponse rsp = getResource("nodes");
+    JSONObject json = rsp.getEntity(JSONObject.class);      
+    System.out.println(json);
+
+  }
   
-  private void printHelp() {
-    System.out.println("help         - Show help");
-    System.out.println("ls           - Show currently running applications");
-    System.out.println("connect <id> - Connect to running streaming application");
-    System.out.println("exit         - Exit the app");
-
-  }
-
-  private String readLine(ConsoleReader reader, String promtMessage)
-      throws IOException {
-    String line = reader.readLine(promtMessage + "\nstramcli> ");
-    return line.trim();
-  }
-
   public static void main(String[] args) throws Exception {
     StramCli shell = new StramCli();
     shell.init();

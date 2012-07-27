@@ -30,6 +30,7 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbea
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import com.malhartech.stram.webapp.NodeInfo;
 
 /**
  * Tracks topology provisioning/allocation to containers.
@@ -45,11 +46,13 @@ public class DNodeManager {
   private class NodeStatus {
     StreamingNodeHeartbeat lastHeartbeat;
     final NodePConf pnode;
+    final String containerId;
     int tuplesTotal;
     int bytesTotal;
     
-    private NodeStatus(NodePConf pnode) {
+    private NodeStatus(String containerId, NodePConf pnode) {
       this.pnode = pnode;
+      this.containerId = containerId;
     }
     
     boolean canShutdown() {
@@ -82,10 +85,7 @@ public class DNodeManager {
   
   public DNodeManager(TopologyBuilder topology) {
       addNodes(topology.getAllNodes().values());
-      
-      /*
-       * try to align to it pleases eyes.
-       */
+      // try to align to it pleases eyes.
       windowStartMillis -= (windowStartMillis % windowSizeMillis);
   }
 
@@ -469,7 +469,7 @@ public class DNodeManager {
     }
 
     for (NodePConf pnode : pnodeList) {
-      this.deployedNodes.put(pnode.getDnodeId(), new NodeStatus(pnode));
+      this.deployedNodes.put(pnode.getDnodeId(), new NodeStatus(containerId, pnode));
     }
     
     StreamingContainerContext scc = new StreamingContainerContext();
@@ -589,6 +589,24 @@ public class DNodeManager {
      }
       
   }
-  
+
+  public ArrayList<NodeInfo> getNodeInfoList() {
+    ArrayList<NodeInfo> nodeInfoList = new ArrayList<NodeInfo>(deployedNodes.size());
+    for (NodeStatus ns : deployedNodes.values()) {
+      NodeInfo ni = new NodeInfo();
+      ni.containerId = ns.containerId;
+      ni.id = ns.pnode.getDnodeId();
+      ni.name = ns.pnode.getLogicalId();
+      StreamingNodeHeartbeat hb = ns.lastHeartbeat;
+      if (hb != null) {
+        // initial heartbeat not yet received
+        ni.status = hb.getState();
+        ni.totalBytes = ns.bytesTotal;
+        ni.totalTuples = ns.tuplesTotal;
+      }
+      nodeInfoList.add(ni);
+    }
+    return nodeInfoList;
+  }
   
 }

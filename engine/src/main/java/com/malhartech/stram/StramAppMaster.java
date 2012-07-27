@@ -360,7 +360,7 @@ public class StramAppMaster
     // start web service
     try {
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(conf).
-        start(new StramWebApp());
+        start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
       this.appMasterTrackingUrl = NetUtils.getConnectAddress(rpcImpl.getAddress()).getHostName() + ":" + webApp.port();
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);

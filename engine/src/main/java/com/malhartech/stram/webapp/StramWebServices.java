@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram.webapp;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
@@ -15,16 +16,23 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
 
 import org.apache.hadoop.security.UserGroupInformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
+import com.malhartech.stram.DNodeManager;
 import com.malhartech.stram.StramAppContext;
 
 
 @Path("/ws/v1/stram")
 public class StramWebServices {
+  private static Logger LOG = LoggerFactory.getLogger(StramWebServices.class);
+
   private final StramAppContext appCtx;
 
   private @Context HttpServletResponse response;
+  
+  private @Inject @Nullable DNodeManager topologyManager;
   
   @Inject
   public StramWebServices(final StramAppContext context) {
@@ -68,5 +76,16 @@ public class StramWebServices {
     return new AppInfo(this.appCtx);
   }
 
+  @GET
+  @Path("nodes")
+  @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
+  public NodesInfo getNodes() throws Exception {
+    init();
+    LOG.info("topologyManager: {}", topologyManager);
+    NodesInfo nodeList = new NodesInfo();
+    nodeList.nodes = topologyManager.getNodeInfoList();
+    return nodeList;
+  }
+  
 }
 
