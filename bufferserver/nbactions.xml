@@ -7,7 +7,7 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:1.2:exec</goal>
             </goals>
             <properties>
-                <exec.args>-classpath %classpath com.malhartech.bufferserver.Client cnode1  47742 1 node2hdfs downId1 down4 3</exec.args>
+                <exec.args>-classpath %classpath com.malhartech.bufferserver.Client cnode1  51688 1 doesnotmatter id1 type1</exec.args>
                 <exec.executable>java</exec.executable>
                 <exec.classpathScope>runtime</exec.classpathScope>
             </properties>
@@ -19,7 +19,7 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:1.2:exec</goal>
             </goals>
             <properties>
-                <exec.args>-Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address} -classpath %classpath com.malhartech.bufferserver.Client cnode1  47742 1 node2hdfs downId1 down4 3</exec.args>
+                <exec.args>-Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address} -classpath %classpath com.malhartech.bufferserver.Client cnode1  51688 1 doesnotmatter id1 type1</exec.args>
                 <exec.executable>java</exec.executable>
                 <exec.classpathScope>runtime</exec.classpathScope>
                 <jpda.listen>true</jpda.listen>
@@ -32,7 +32,7 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:1.2:exec</goal>
             </goals>
             <properties>
-                <exec.args>${profiler.args} -classpath %classpath com.malhartech.bufferserver.Client cnode1  47742 1 node2hdfs downId1 down4 3</exec.args>
+                <exec.args>${profiler.args} -classpath %classpath com.malhartech.bufferserver.Client cnode1  51688 1 doesnotmatter id1 type1</exec.args>
                 <exec.executable>${profiler.java}</exec.executable>
                 <profiler.action>profile</profiler.action>
             </properties>

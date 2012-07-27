@@ -41,10 +41,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
         handleSubscriberRequest(data.getSubscribe(), ctx, data.getWindowId());
         break;
 
-      case BEGIN_WINDOW:
-      case END_WINDOW:
-      case SIMPLE_DATA:
-      case PARTITIONED_DATA:
+      default:
         DataList dl = (DataList) ctx.getAttachment();
         if (dl == null) {
           logger.log(Level.INFO, "Attempt to send data w/o talking protocol");
