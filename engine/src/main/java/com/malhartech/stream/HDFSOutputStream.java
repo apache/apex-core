@@ -89,6 +89,7 @@ public class HDFSOutputStream
     }
   }
 
+  @Override
   public StreamContext getContext()
   {
     return this.context;
@@ -99,6 +100,7 @@ public class HDFSOutputStream
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  @Override
   public void activate()
   {
   }

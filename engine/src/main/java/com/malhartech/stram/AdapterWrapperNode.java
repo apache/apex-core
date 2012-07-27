@@ -65,7 +65,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   @Override
   public void doSomething(Tuple t)
   {
-    logger.info("sending tuple {}", t);
+    logger.debug("sending tuple {}", t);
     this.sink.sink(t);
   }
 

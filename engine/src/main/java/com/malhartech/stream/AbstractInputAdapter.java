@@ -93,6 +93,8 @@ public abstract class AbstractInputAdapter implements InputAdapter
         while (timemillis == 0) {
           this.wait();
         }
+        
+        this.wait();
       }
       catch (InterruptedException ie) {
         logger.info("Interrupted while waiting to be in the window because of {}", ie.getLocalizedMessage());
