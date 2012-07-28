@@ -217,7 +217,7 @@ public class StramChild
      */
     for (AbstractNode node : nodeList.values()) {
       if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode) node).isInput()) {
-        LOG.info("teardown " + node);
+        LOG.debug("teardown " + node);
         node.stopSafely();
         node.teardown(); // this is an anomalie, the input adapters do not have any business running as node.
       }
@@ -228,7 +228,7 @@ public class StramChild
      */
     for (AbstractNode node : nodeList.values()) {
       if (!(node instanceof AdapterWrapperNode)) {
-        LOG.info("teardown " + node);
+        LOG.debug("teardown " + node);
         node.stopSafely();
       }
     }
@@ -237,7 +237,7 @@ public class StramChild
      * tear down all the streams.
      */
     for (Stream s : this.streams) {
-      LOG.info("teardown " + s);
+      LOG.debug("teardown " + s);
       s.teardown();
     }
 
@@ -247,7 +247,7 @@ public class StramChild
      */
     for (AbstractNode node : this.nodeList.values()) {
       if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode) node).isInput()) {
-        LOG.info("teardown " + node);
+        LOG.debug("teardown " + node);
         node.stopSafely();
         node.teardown(); // this is an anomalie, the output adapters do not have any business running as node.
       }
@@ -257,7 +257,7 @@ public class StramChild
   private void heartbeatLoop() throws IOException
   {
     umbilical.echo(containerId, "[" + containerId + "] Entering heartbeat loop..");
-    LOG.info("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
+    LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
     while (!exitHeartbeatLoop) {
 
       try {
@@ -322,7 +322,7 @@ public class StramChild
           LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
         else {
-          LOG.info("Stram request: {}", req);
+          LOG.debug("Stram request: {}", req);
           processStramRequest(n, req);
         }
       }
@@ -353,7 +353,7 @@ public class StramChild
 
   public static void main(String[] args) throws Throwable
   {
-    LOG.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
+    LOG.debug("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
     // TODO: streaming node config
@@ -401,7 +401,7 @@ public class StramChild
         {
           StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
           StreamingContainerContext ctx = umbilical.getInitContext(childId);
-          LOG.info("Got context: " + ctx);
+          LOG.debug("Got context: " + ctx);
           stramChild.init(ctx);
           // main thread enters heartbeat loop
           stramChild.heartbeatLoop();

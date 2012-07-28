@@ -16,6 +16,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
 
+  @Override
   public void doSomething(Tuple t)
   {
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
@@ -45,7 +46,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         break;
         
       case PARTITIONED_DATA:
-        logger.info("got partitioned data " + t.getObject());
+        logger.warn("got partitioned data " + t.getObject());
       case SIMPLE_DATA:
 
         byte partition[] = context.getSerDe().getPartition(t.getObject());
@@ -70,7 +71,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         throw new UnsupportedOperationException("this data type is not handled in the stream");
     }
 
-//    logger.debug("channel write with data = " + db.build());
+    logger.debug("channel write with data {}" + db.build());
     channel.write(db.build());
   }
 
@@ -80,7 +81,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
     super.activate();
     
     BufferServerStreamContext sc = (BufferServerStreamContext)getContext();
-    logger.info("registering publisher: {} {}", sc.getSourceId(), sc.getId());
+    logger.debug("registering publisher: {} {}", sc.getSourceId(), sc.getId());
     ClientHandler.publish(channel, sc.getSourceId(), sc.getId(), sc.getWindowId());    
   }
 }
