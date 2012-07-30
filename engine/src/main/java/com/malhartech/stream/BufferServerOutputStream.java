@@ -71,7 +71,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         throw new UnsupportedOperationException("this data type is not handled in the stream");
     }
 
-    logger.debug("channel write with data {}" + db.build());
+//    logger.debug("channel write with data {}" + db.build());
     channel.write(db.build());
   }
 

@@ -34,7 +34,7 @@ public class BufferServerInputStream extends SocketInputStream
   @Override
   public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
   {
-    logger.debug("received message {}", e.getMessage());
+//    logger.debug("received message {}", e.getMessage());
     StreamContext context = contexts.get(ctx.getChannel());
     if (context == null) {
       logger.warn("Context is not setup for the InputSocketStream");
