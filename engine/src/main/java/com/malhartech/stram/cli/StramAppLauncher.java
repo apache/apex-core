@@ -111,7 +111,6 @@ public class StramAppLauncher {
           if (file.getName().endsWith("pom.xml")) {
             File pomDst = new File(baseDir, "pom.xml");
             FileUtils.copyInputStreamToFile(jar.getInputStream(file), pomDst);
-            System.out.println("pom crc: " + file.getCrc());
             if (pomCrc != file.getCrc()) {
               LOG.info("CRC of " + file.getName() + " changed, invalidating cached classpath.");
               cp = null;

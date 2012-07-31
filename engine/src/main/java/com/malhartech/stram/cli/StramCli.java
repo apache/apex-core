@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -29,6 +30,7 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.util.Records;
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +48,7 @@ public class StramCli {
   private final YarnClientHelper yarnClient;
   private final ClientRMProtocol rmClient;  
   private ApplicationReport currentApp = null;
-
+  
   private class CliException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     CliException(String msg, Throwable cause) {
@@ -108,7 +110,7 @@ public class StramCli {
         } else if (line.startsWith("listnodes")) {
           listNodes(line);
         } else if (line.startsWith("launch")) {
-          launchApp(line);
+          launchApp(line, reader);
         } else if ("exit".equals(line)) {
           System.out.println("Exiting application");
           return;
@@ -234,21 +236,21 @@ public class StramCli {
       LOG.info("Selected {} with tracking url: ", currentApp.getApplicationId(), currentApp.getTrackingUrl());
       ClientResponse rsp = getResource("info");
       JSONObject json = rsp.getEntity(JSONObject.class);      
-      System.out.println(json);
+      System.out.println(json.toString(2));
     } catch (Exception e) {
       currentApp = null;
       throw new CliException("Error connecting to app " + args[1], e);
     }
   }
 
-  private void listNodes(String line) {
+  private void listNodes(String line) throws JSONException {
 
     ClientResponse rsp = getResource("nodes");
     JSONObject json = rsp.getEntity(JSONObject.class);      
-    System.out.println(json);
+    System.out.println(json.toString(2));
   }
 
-  private void launchApp(String line) {
+  private void launchApp(String line, ConsoleReader reader) {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
     if (args.length < 2) {
       System.err.println("Please specify the jar file.");
@@ -268,12 +270,40 @@ public class StramCli {
         if (tplgList.isEmpty()) {
           throw new CliException("No topology files bundled in jar, please specify one");
         }
-        tplgFile = tplgList.get(0);
+        
+        for (int i=0; i<tplgList.size(); i++) {
+          System.out.printf("%3d. %s\n", i+1, tplgList.get(i));
+        }
+
+        boolean useHistory = reader.getUseHistory();
+        reader.setUseHistory(false);
+        @SuppressWarnings("unchecked")
+        List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
+        for (Completor c : completors) {
+          reader.removeCompletor(c);
+        }
+        String optionLine = reader.readLine("Pick topology? ");
+        reader.setUseHistory(useHistory);
+        for (Completor c : completors) {
+          reader.addCompletor(c);
+        }
+
+        try {
+          int option = Integer.parseInt(optionLine);
+          if (0 < option && option <= tplgList.size()) {
+            tplgFile = tplgList.get(option-1);
+          }
+        } catch (Exception e) {
+          // ignore
+        }
       }
 
-      ApplicationId appId = submitApp.launchTopology(tplgFile);
-      System.out.println(appId);
-      //connect("connect " + appId.getId());
+      if (tplgFile != null) {
+        ApplicationId appId = submitApp.launchTopology(tplgFile);
+        System.out.println(appId);
+      } else {
+        System.err.println("No topology specified.");
+      }
       
     } catch (Exception e) {
       throw new CliException("Failed to launch " + args[1] + " :" + e.getMessage(), e);
