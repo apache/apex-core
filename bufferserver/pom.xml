@@ -39,7 +39,8 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty</artifactId>
-      <version>3.4.5.Final</version>
+      <version>3.5.1.Final</version>
+      <scope>compile</scope>
     </dependency>
             
     <dependency>

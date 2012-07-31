@@ -12,12 +12,14 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.channel.*;
+import org.jboss.netty.channel.ChannelHandler.Sharable;
 
 /**
  * Handler to serve connections accepted by the server.
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+@Sharable
 public class ServerHandler extends SimpleChannelUpstreamHandler
 {
 
@@ -64,8 +66,6 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     synchronized (publisher_bufffers) {
       if (publisher_bufffers.containsKey(identifier)) {
         dl = publisher_bufffers.get(identifier);
-        // if this is the case some readers might be waiting already
-        // activate them
       }
       else {
         dl = new DataList(identifier, type, 1024 * 1024);
