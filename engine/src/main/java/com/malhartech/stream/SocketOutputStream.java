@@ -38,6 +38,7 @@ public class SocketOutputStream extends SimpleChannelDownstreamHandler implement
     return new ClientPipelineFactory(this.getClass());
   }
 
+  @Override
   public void setup(StreamConfiguration config)
   {
     bootstrap = new ClientBootstrap(
@@ -50,17 +51,20 @@ public class SocketOutputStream extends SimpleChannelDownstreamHandler implement
     serverAddress = config.getBufferServerAddress();
   }
 
+  @Override
   public void setContext(StreamContext context)
   {
     this.context = context;
     // send publisher request
   }
 
+  @Override
   public StreamContext getContext()
   {
     return context;
   }
 
+  @Override
   public void teardown()
   {
     channel.close();
@@ -68,6 +72,7 @@ public class SocketOutputStream extends SimpleChannelDownstreamHandler implement
     bootstrap.releaseExternalResources();
   }
 
+  @Override
   public void activate()
   {
     // Make a new connection.
