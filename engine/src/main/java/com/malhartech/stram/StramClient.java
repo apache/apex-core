@@ -12,7 +12,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.Vector;
 
 import org.apache.commons.cli.CommandLine;
@@ -245,8 +244,61 @@ public class StramClient
    */
   public void startApplication() throws IOException
   {
-    LOG.info("Starting StramClient");
+    LOG.info("Starting StramClient - topology: " + this.topologyPropertyFile);
 
+    // topology properties
+    Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
+
+    // process dependencies
+    
+    // platform jar files - always required
+    Class<?>[] defaultClasses = new Class<?>[]{
+      com.malhartech.bufferserver.Server.class,
+      com.malhartech.stram.StramAppMaster.class,
+      com.malhartech.dag.DefaultSerDe.class
+    };
+    List<Class<?>> jarClasses = new ArrayList<Class<?>>();
+    jarClasses.addAll(Arrays.asList(defaultClasses));
+
+    TopologyBuilder tb = new TopologyBuilder(conf);
+    tb.addFromProperties(topologyProperties);
+    tb.validate();
+
+    for (String className : tb.getClassNames()) {
+      try {
+        Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
+        jarClasses.add(clazz);
+      }
+      catch (ClassNotFoundException e) {
+        throw new IllegalArgumentException("Failed to load class " + className, e);
+      }
+    }
+
+    LinkedHashSet<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
+
+    for (Class<?> jarClass : jarClasses) {
+      localJarFiles.add(JarFinder.getJar(jarClass));
+      // check for annotated dependencies
+      try {
+        ShipContainingJars shipJars = jarClass.getAnnotation(ShipContainingJars.class);
+        if (shipJars != null) {
+          for (Class<?> depClass : shipJars.classes()) {
+            localJarFiles.add(JarFinder.getJar(depClass));
+            LOG.info("Including {} as dependency of {}", depClass, jarClass);
+          }
+        }
+      }
+      catch (ArrayStoreException e) {
+        LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
+      }
+    }
+
+    if (topologyProperties.getProperty(TopologyBuilder.LIBJARS) != null) {
+      String[] libJars = StringUtils.splitByWholeSeparator(topologyProperties.getProperty(TopologyBuilder.LIBJARS), ",");
+      localJarFiles.addAll(Arrays.asList(libJars));
+    }
+    LOG.info("Local jar file dependencies: " + localJarFiles);
+        
     // Connect to ResourceManager 	
     applicationsManager = yarnClient.connectToASM();
     assert(applicationsManager != null);		
@@ -328,57 +380,9 @@ public class StramClient
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
-    // platform jar files - always required
-    Class<?>[] defaultClasses = new Class<?>[]{
-      com.malhartech.bufferserver.Server.class,
-      com.malhartech.stram.StramAppMaster.class,
-      com.malhartech.dag.DefaultSerDe.class
-    };
-    List<Class<?>> jarClasses = new ArrayList<Class<?>>();
-    jarClasses.addAll(Arrays.asList(defaultClasses));
-
-    // topology properties
-    Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
-    TopologyBuilder tb = new TopologyBuilder(conf);
-    tb.addFromProperties(topologyProperties);
-    tb.validate();
-
-    for (String className : tb.getClassNames()) {
-      try {
-        Class<?> clazz = Class.forName(className);
-        jarClasses.add(clazz);
-      }
-      catch (ClassNotFoundException e) {
-        LOG.warn("Failed to load class {}", className);
-      }
-    }
-
-    FileSystem fs = FileSystem.get(conf);
-    Set<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
-
-    for (Class<?> jarClass : jarClasses) {
-      localJarFiles.add(JarFinder.getJar(jarClass));
-      // check for annotated dependencies
-      try {
-        ShipContainingJars shipJars = jarClass.getAnnotation(ShipContainingJars.class);
-        if (shipJars != null) {
-          for (Class<?> depClass : shipJars.classes()) {
-            localJarFiles.add(JarFinder.getJar(depClass));
-            LOG.info("Including {} as dependency of {}", depClass, jarClass);
-          }
-        }
-      }
-      catch (ArrayStoreException e) {
-        LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
-      }
-    }
-
-    if (topologyProperties.getProperty(TopologyBuilder.LIBJARS) != null) {
-      String[] libJars = StringUtils.splitByWholeSeparator(topologyProperties.getProperty(TopologyBuilder.LIBJARS), ",");
-      localJarFiles.addAll(Arrays.asList(libJars));
-    }
 
     // copy required jar files to dfs, to be localized for containers
+    FileSystem fs = FileSystem.get(conf);
     String libJarsCsv = "";
     for (String localJarFile : localJarFiles) {
       Path src = new Path(localJarFile);
@@ -536,7 +540,7 @@ public class StramClient
     // TODO
     // Try submitting the same request again
     // app submission failure?
-
+    
   }
 
   public ApplicationReport getApplicationReport() throws YarnRemoteException

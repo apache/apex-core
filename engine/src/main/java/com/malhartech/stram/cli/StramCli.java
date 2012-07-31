@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram.cli;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
@@ -15,12 +16,16 @@ import javax.ws.rs.core.MediaType;
 import jline.ArgumentCompletor;
 import jline.Completor;
 import jline.ConsoleReader;
+import jline.FileNameCompletor;
+import jline.History;
+import jline.MultiCompletor;
 import jline.SimpleCompletor;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.ClientRMProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.util.Records;
@@ -37,7 +42,6 @@ public class StramCli {
   
   private static Logger LOG = LoggerFactory.getLogger(StramCli.class);
   
-  private String[] commandsList;
   private Configuration conf = new Configuration();
   private final YarnClientHelper yarnClient;
   private final ClientRMProtocol rmClient;  
@@ -59,18 +63,37 @@ public class StramCli {
   }
   
   public void init() {
-    commandsList = new String[] { "help", "ls", "connect", "exit" };
   }
 
   public void run() throws IOException {
     printWelcomeMessage();
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
+
+    String[] commandsList = new String[] { "help", "ls", "connect", "listnodes", "exit" };
     List<Completor> completors = new LinkedList<Completor>();
-
     completors.add(new SimpleCompletor(commandsList));
-    reader.addCompletor(new ArgumentCompletor(completors));
 
+    List<Completor> launchCompletors = new LinkedList<Completor>();
+    launchCompletors.add(new SimpleCompletor("launch"));
+    launchCompletors.add(new FileNameCompletor()); // jarFile
+    launchCompletors.add(new FileNameCompletor()); // topology
+    completors.add(new ArgumentCompletor(launchCompletors));
+    
+    reader.addCompletor(new MultiCompletor(completors));
+
+    
+    String historyFile = System.getProperty("user.home") + File.separator + ".history";
+    try
+    {
+        History history = new History(new File(historyFile));
+        reader.setHistory(history);
+    }
+    catch (IOException exp)
+    {
+        System.err.printf("Unable to open %s for writing.", historyFile);    
+    }
+    
     String line;
     PrintWriter out = new PrintWriter(System.out);
 
@@ -84,6 +107,8 @@ public class StramCli {
           connect(line);
         } else if (line.startsWith("listnodes")) {
           listNodes(line);
+        } else if (line.startsWith("launch")) {
+          launchApp(line);
         } else if ("exit".equals(line)) {
           System.out.println("Exiting application");
           return;
@@ -108,10 +133,12 @@ public class StramCli {
   }
 
   private void printHelp() {
-    System.out.println("help         - Show help");
-    System.out.println("ls           - Show currently running applications");
-    System.out.println("connect <id> - Connect to running streaming application");
-    System.out.println("exit         - Exit the app");
+    System.out.println("help             - Show help");
+    System.out.println("ls               - Show running applications");
+    System.out.println("connect <appId>  - Connect to running streaming application");
+    System.out.println("listnodes        - List deployed streaming nodes");
+    System.out.println("launch <jarFile> [<topologyFile>] - Launch topology packaged in jar file.");
+    System.out.println("exit             - Exit the app");
 
   }
 
@@ -145,7 +172,8 @@ public class StramCli {
         .append(", id: " + ar.getApplicationId().getId())
         .append(", name: " + ar.getName())
         .append(", state: " + ar.getYarnApplicationState().name())
-        .append(", trackingUrl: " + ar.getTrackingUrl());
+        .append(", trackingUrl: " + ar.getTrackingUrl())
+        .append(", finalStatus: " + ar.getFinalApplicationStatus());
         System.out.println(sb);
         //Map<?,?> properties = BeanUtils.describe(ar);
         //System.out.println(properties);
@@ -218,7 +246,39 @@ public class StramCli {
     ClientResponse rsp = getResource("nodes");
     JSONObject json = rsp.getEntity(JSONObject.class);      
     System.out.println(json);
+  }
 
+  private void launchApp(String line) {
+    String[] args = StringUtils.splitByWholeSeparator(line, " ");
+    if (args.length < 2) {
+      System.err.println("Please specify the jar file.");
+      return;
+    }
+    
+    File tplgFile = null;
+    if (args.length == 3) {
+      tplgFile = new File(args[2]);
+    }
+
+    try {
+      StramAppLauncher submitApp = new StramAppLauncher(new File(args[1]));
+      
+      if (tplgFile == null) {
+        List<File> tplgList = submitApp.getBundledTopologies();
+        if (tplgList.isEmpty()) {
+          throw new CliException("No topology files bundled in jar, please specify one");
+        }
+        tplgFile = tplgList.get(0);
+      }
+
+      ApplicationId appId = submitApp.launchTopology(tplgFile);
+      System.out.println(appId);
+      //connect("connect " + appId.getId());
+      
+    } catch (Exception e) {
+      throw new CliException("Failed to launch " + args[1] + " :" + e.getMessage(), e);
+    }
+    
   }
   
   public static void main(String[] args) throws Exception {

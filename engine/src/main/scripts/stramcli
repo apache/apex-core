@@ -13,11 +13,6 @@ HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/esotericsoftware/kryo/kr
 HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/org/mockito/mockito-all/1.8.5/mockito-all-1.8.5.jar
 HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/esotericsoftware/minlog/minlog/1.2/minlog-1.2.jar
 
-#twitter4j dependencies
-HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/org/twitter4j/twitter4j-core/2.2.5/twitter4j-core-2.2.5.jar
-HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/org/twitter4j/twitter4j-stream/2.2.5/twitter4j-stream-2.2.5.jar
-
-
 HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/sun/jersey/jersey-client/1.8/jersey-client-1.8.jar
 
 export HADOOP_CLIENT_OPTS="$HADOOP_OPTS"

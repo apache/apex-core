@@ -108,7 +108,7 @@ public class StramMiniClusterTest {
     LOG.info("topology: " + tmpFile);
     return tmpFile;
   }  
-  @Ignore
+ // @Ignore
   @Test
   public void testSetupShutdown() throws Exception {
 
@@ -190,7 +190,7 @@ public class StramMiniClusterTest {
    * Verify the web service deployment and lifecycle functionality
    * @throws Exception
    */
- // @Ignore //disabled due to web service init delay issue
+  @Ignore //disabled due to web service init delay issue
   @Test
   public void testWebService() throws Exception {
 
