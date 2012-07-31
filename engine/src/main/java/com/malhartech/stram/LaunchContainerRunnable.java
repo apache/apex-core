@@ -235,7 +235,7 @@ public class LaunchContainerRunnable implements Runnable
     }
 
     if (debug) {
-      vargs.add("-agentlib:jdwp=transport=dt_socket,server=y");
+      vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
     // Set Xmx based on am memory size
     vargs.add("-Xmx" + containerMemoryMb + "m");

@@ -14,6 +14,7 @@ public class InlineStream implements Sink, Stream
 {
   private StreamContext context;
 
+  @Override
   public void doSomething(Tuple t)
   {
     context.sink(t);
@@ -43,6 +44,7 @@ public class InlineStream implements Sink, Stream
     return this.context;
   }
 
+  @Override
   public void activate()
   {
   }

@@ -80,6 +80,7 @@ public class SocketInputStream extends SimpleChannelUpstreamHandler implements S
     return contexts.get(channel);
   }
 
+  @Override
   public void activate()
   {
     // Make a new connection.

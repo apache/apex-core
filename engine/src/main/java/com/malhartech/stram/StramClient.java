@@ -468,7 +468,7 @@ public class StramClient
     LOG.info("Setting up app master command");
     vargs.add(javaCmd);
     if (debugFlag) {
-      vargs.add("-agentlib:jdwp=transport=dt_socket,server=y");
+      vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
     // Set Xmx based on am memory size
     vargs.add("-Xmx" + amMemory + "m");

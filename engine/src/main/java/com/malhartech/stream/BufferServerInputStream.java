@@ -6,6 +6,7 @@ package com.malhartech.stream;
 
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.dag.EndStreamTuple;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
@@ -25,15 +26,15 @@ public class BufferServerInputStream extends SocketInputStream
     
     BufferServerStreamContext sc = (BufferServerStreamContext) getContext();
     String type = "paramNotRequired?"; // TODO: why do we need this?
-    logger.info("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[]{sc.getSinkId(), sc.getSourceId(), sc.getId()});
-    ClientHandler.registerPartitions(channel, sc.getSinkId(), sc.getId(), sc.getSourceId(), type, sc.getPartitions());
+    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[]{sc.getSinkId(), sc.getSourceId(), sc.getId()});
+    ClientHandler.registerPartitions(channel, sc.getSinkId(), sc.getId() + '/' + sc.getSinkId(), sc.getSourceId(), type, sc.getPartitions());
   }
 
   // most of this code should be abstracted to the SocketInputStream and just 
   @Override
   public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception
   {
-//    logger.debug("received message {0}", e.getMessage());
+//    logger.debug("received message {}", e.getMessage());
     StreamContext context = contexts.get(ctx.getChannel());
     if (context == null) {
       logger.warn("Context is not setup for the InputSocketStream");
@@ -59,7 +60,11 @@ public class BufferServerInputStream extends SocketInputStream
         case END_WINDOW:
           t = new EndWindowTuple();
           break;
-
+          
+        case END_STREAM:
+          t = new EndStreamTuple();
+          break;
+          
         default:
           t = new Tuple(null);
           t.setType(d.getType());

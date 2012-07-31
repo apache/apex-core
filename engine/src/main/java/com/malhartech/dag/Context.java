@@ -13,6 +13,7 @@ public interface Context {
   public enum State {
     UNDEFINED,
     OUTSIDE_WINDOW,
-    INSIDE_WINDOW
+    INSIDE_WINDOW,
+    TERMINATED
   }
 }

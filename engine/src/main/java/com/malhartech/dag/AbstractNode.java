@@ -4,7 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
@@ -24,11 +23,12 @@ public abstract class AbstractNode implements Node, Runnable
   private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
   private final StablePriorityQueue<Tuple> inputQueue;
   final NodeContext ctx;
+  private volatile boolean alive;
 
   public AbstractNode(NodeContext ctx)
   {
     // initial capacity should be some function of the window length
-    this.inputQueue = new StablePriorityQueue<Tuple>(1024 * 1024, new DataComparator());
+    this.inputQueue = new StablePriorityQueue<Tuple>(1024 * 1024, new TupleComparator());
     this.ctx = ctx;
   }
 
@@ -65,9 +65,8 @@ public abstract class AbstractNode implements Node, Runnable
   }
 
   /**
-   * Return and reset counts for next heartbeat interval. This is called as part
-   * of the heartbeat processing. Providing this hook in node implementation so
-   * it can be mocked for testing.
+   * Return and reset counts for next heartbeat interval. This is called as part of the heartbeat processing. Providing this hook in node implementation so it
+   * can be mocked for testing.
    *
    * @return
    */
@@ -77,6 +76,7 @@ public abstract class AbstractNode implements Node, Runnable
   }
   private final Sink sink = new Sink()
   {
+    @Override
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
@@ -122,8 +122,9 @@ public abstract class AbstractNode implements Node, Runnable
     outputStreams.add(context);
   }
 
-  final private class DataComparator implements Comparator<Tuple>
+  final private class TupleComparator implements Comparator<Tuple>
   {
+    @Override
     public int compare(Tuple t1, Tuple t2)
     {
       long wid1 = t1.getWindowId();
@@ -134,37 +135,24 @@ public abstract class AbstractNode implements Node, Runnable
       else if (wid1 > wid2) {
         return 1;
       }
-      else if (t1.getType() == Data.DataType.BEGIN_WINDOW) {
-        return -1;
-      }
-      else if (t2.getType() == Data.DataType.BEGIN_WINDOW) {
-        return 1;
-      }
-      else if (t1.getType() == Data.DataType.END_WINDOW) {
-        return 1;
-      }
-      else if (t2.getType() == Data.DataType.END_WINDOW) {
-        return -1;
-      }
 
-      return 0;
+      return t1.getType().compareTo(t2.getType());
     }
   }
-  private boolean alive;
 
   final public void stopSafely()
   {
     alive = false;
 
     /*
-     * Since the thread may be waiting for data to come on the queue, we need to
-     * notify. We do not need notifyAll since the queue is not exposed outside.
+     * Since the thread may be waiting for data to come on the queue, we need to notify. We do not need notifyAll since the queue is not exposed outside.
      */
     synchronized (inputQueue) {
       inputQueue.notify();
     }
   }
 
+  @Override
   final public void run()
   {
     /*
@@ -216,8 +204,7 @@ public abstract class AbstractNode implements Node, Runnable
               }
               else {
                 /*
-                 * This stream is not moving in synch with the rest of the
-                 * streams. May be we should just wait for more data.
+                 * This stream is not moving in synch with the rest of the streams. May be we should just wait for more data.
                  */
                 t = skipTuple;
               }
@@ -270,15 +257,12 @@ public abstract class AbstractNode implements Node, Runnable
        */
 
       switch (t.getType()) {
-        case BEGIN_WINDOW:
-          beginWindow();
-          for (StreamContext stream : outputStreams) {
-            stream.sink(t);
-          }
+        case NO_DATA:
+          // special packet which allows us to skip the data processing.
           break;
 
-        case END_WINDOW:
-          endWindow();
+        case BEGIN_WINDOW:
+          beginWindow();
           for (StreamContext stream : outputStreams) {
             stream.sink(t);
           }
@@ -294,8 +278,27 @@ public abstract class AbstractNode implements Node, Runnable
           ctx.countProcessed(t);
           break;
 
-        case NO_DATA:
-          // special packet which allows us to skip the data processing.
+        case END_WINDOW:
+          endWindow();
+          for (StreamContext stream : outputStreams) {
+            stream.sink(t);
+          }
+          break;
+
+          /*
+           * our comparator function guarantees that we are always processing End of Stream 
+           * tuple after the end window tuple of the window in which EoS tuple was received.
+           */
+        case END_STREAM:
+          if (inputStreams.remove(t.getContext())) {
+            if (inputStreams.isEmpty()) {
+              alive = false;
+            }
+          }
+          else {
+            logger.error("Got EndOfStream on from a stream which is not registered");
+          }
+          // find out which stream the packet come on and then remove that from our collection.
           break;
 
         default:
@@ -305,6 +308,16 @@ public abstract class AbstractNode implements Node, Runnable
 
     } while (alive);
 
+    teardown();
+    
+    /*
+     * since we are going away... we should let all the downstream nodes know that.
+     */
+    EndStreamTuple est = new EndStreamTuple();
+    est.setWindowId(ctx.getCurrentWindowId());
+    for (StreamContext stream : outputStreams) {
+      stream.sink(est);
+    }
   }
 
   @Override

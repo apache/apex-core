@@ -6,11 +6,6 @@ package com.malhartech.bufferserver;
 
 option optimize_for = SPEED;
 
-message HeartbeatData {
-    required string node = 1;
-    required uint64 timestamp = 2;
-}
-
 message SimpleData {
     required bytes data = 1;
 }
@@ -29,9 +24,8 @@ message EndWindow {
     required uint64 tuple_count = 3;
 }
 
-
-message SerdeCode {
-    required bytes code = 1;
+message EndStream {
+  /* right now nothing goes in here. */
 }
 
 message SubscriberRequest {
@@ -66,16 +60,14 @@ message PublisherDisconnect {
 message Data {
     enum DataType {
         NO_DATA = 0;
-        RESERVED1 = 1;
-        HEARTBEAT_DATA = 2;
-        SIMPLE_DATA = 3;
-        PARTITIONED_DATA = 4;
-        BEGIN_WINDOW = 5;
-        END_WINDOW = 6;
-        SERDE_CODE = 7;
-        PUBLISHER_REQUEST = 8;
-        PUBLISHER_DISCONNECT = 9;
-        SUBSCRIBER_REQUEST = 10;
+        BEGIN_WINDOW = 1;
+        SIMPLE_DATA = 2;
+        PARTITIONED_DATA = 3;
+        END_WINDOW = 4;
+        END_STREAM = 5;
+        PUBLISHER_REQUEST = 6;
+        SUBSCRIBER_REQUEST = 7;
+        PUBLISHER_DISCONNECT = 8;
     }
 
 
@@ -83,13 +75,12 @@ message Data {
     required uint64 window_id = 2;
 
 
-    optional HeartbeatData heartbeat = 3;
+    optional BeginWindow beginwindow = 3;
     optional SimpleData simpledata = 4;
     optional PartitionedData partitioneddata = 5;
-    optional BeginWindow beginwindow = 6;
-    optional EndWindow endwindow = 7;
-    optional SerdeCode codec = 8;
-    optional PublisherRequest publish = 9;
+    optional EndWindow endwindow = 6;
+    optional EndStream endstream = 7;
+    optional PublisherRequest publish = 8;
+    optional SubscriberRequest subscribe = 9;
     optional PublisherDisconnect disconnect = 10;
-    optional SubscriberRequest subscribe = 11;
 }
