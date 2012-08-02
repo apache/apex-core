@@ -13,6 +13,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.channel.ChannelHandler.Sharable;
 import org.jboss.netty.channel.*;
+import org.jboss.netty.channel.group.ChannelGroup;
 
 /**
  * Handler to serve connections accepted by the server.
@@ -22,14 +23,19 @@ import org.jboss.netty.channel.*;
 @Sharable
 public class ServerHandler extends SimpleChannelUpstreamHandler
 {
-
   private static final Logger logger = Logger.getLogger(ServerHandler.class.getName());
+  final ChannelGroup connectedChannels;
   final HashMap<String, DataList> publisher_bufffers = new HashMap<String, DataList>();
   final HashMap<String, LogicalNode> groups = new HashMap<String, LogicalNode>();
 
+  public ServerHandler(ChannelGroup connected)
+  {
+    connectedChannels = connected;
+  }
+  
   @Override
   public void messageReceived(
-          ChannelHandlerContext ctx, MessageEvent e)
+    ChannelHandlerContext ctx, MessageEvent e)
   {
     final Data data = (Data) e.getMessage();
 
@@ -92,10 +98,8 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     }
     else {
       /**
-       * if there is already a datalist registered for the type in which this
-       * client is interested, then get a iterator on the data items of that
-       * data list. If the datalist is not registered, then create one and
-       * register it. Hopefully this one would be used by future upstream nodes.
+       * if there is already a datalist registered for the type in which this client is interested, then get a iterator on the data items of that data list. If
+       * the datalist is not registered, then create one and register it. Hopefully this one would be used by future upstream nodes.
        */
       DataList dl;
       synchronized (publisher_bufffers) {
@@ -108,12 +112,17 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
         }
       }
 
-      ln = new LogicalNode(type, dl.newIterator(identifier, new ProtobufDataInspector(Buffer.Data.getDefaultInstance())), getPolicy(request.getPolicy(), null));
+      ln = new LogicalNode(upstream_identifier,
+                           type,
+                           dl.newIterator(identifier, new ProtobufDataInspector()),
+                           getPolicy(request.getPolicy(), null));
+
       if (request.getPartitionCount() > 0) {
         for (ByteString bs : request.getPartitionList()) {
           ln.addPartition(bs.asReadOnlyByteBuffer());
         }
       }
+
       groups.put(type, ln);
       ln.addChannel(ctx.getChannel());
       dl.addDataListener(ln);
@@ -166,35 +175,54 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
   @Override
   public void exceptionCaught(
-          ChannelHandlerContext ctx, ExceptionEvent e)
+    ChannelHandlerContext ctx, ExceptionEvent e)
   {
     logger.log(
-            Level.WARNING,
-            "Unexpected exception from downstream.",
-            e.getCause());
+      Level.WARNING,
+      "Unexpected exception from downstream.",
+      e.getCause());
     e.getChannel().close();
   }
 
+  @Override
+  public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception
+  {
+    connectedChannels.add(ctx.getChannel());
+  }
   /*
-   * @Override public void writeRequested(ChannelHandlerContext ctx,
-   * MessageEvent e) throws Exception { // when the control comes here, we are
-   * in a worker thread which is supposed // to be writing. We have only written
-   * one unit of data on the socket, // take this opportunity to continue to
-   * write lots of data, we do not care // if this is a worker thread that gets
-   * blocked. or should we worry? System.err.println("writeRequested from thread
-   * " + Thread.currentThread()); super.writeRequested(ctx, e); }
+   * @Override public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception { // when the control comes here, we are in a worker
+   * thread which is supposed // to be writing. We have only written one unit of data on the socket, // take this opportunity to continue to write lots of data,
+   * we do not care // if this is a worker thread that gets blocked. or should we worry? System.err.println("writeRequested from thread " +
+   * Thread.currentThread()); super.writeRequested(ctx, e); }
    */
   @Override
   public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception
   {
-    if (ctx.getAttachment() instanceof DataList) {
+    connectedChannels.remove(ctx.getChannel());
+    
+    Object attachment = ctx.getAttachment();
+    if (attachment instanceof DataList) {
       /**
-       * since the publisher server died, the queue which it was using would
-       * stop pumping the data unless a new publisher comes up with the same
-       * name. We leave it to the stream to decide when to bring up a new node
-       * with the same identifier as the one which just died.
+       * since the publisher server died, the queue which it was using would stop pumping the data unless a new publisher comes up with the same name. We leave
+       * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
        */
       ctx.setAttachment(null);
+    }
+    else if (attachment instanceof LogicalNode) {
+      /**
+       * in case the downstream subsriber dies, we need to do some cleanup.
+       */
+      LogicalNode ln = (LogicalNode) attachment;
+
+      ln.removeChannel(ctx.getChannel());
+      if (ln.getPhysicalNodeCount() == 0) {
+        DataList dl = publisher_bufffers.get(ln.getUpstream());
+        if (dl != null) {
+          dl.removeDataListener(ln);
+          dl.delIterator(ln.getIterator());
+        }
+        groups.remove(ln.getGroup());
+      }
     }
   }
 }

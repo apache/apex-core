@@ -20,14 +20,8 @@ import org.slf4j.LoggerFactory;
 public class ProtobufDataInspector implements DataIntrospector
 {
   private static final Logger logger = LoggerFactory.getLogger(ProtobufDataInspector.class);
-  final MessageLite prototype;
   SerializedData previousSerializedMessage;
   Data previousMessage;
-
-  public ProtobufDataInspector(MessageLite prototype)
-  {
-    this.prototype = prototype;
-  }
 
   private void readyMessage(SerializedData data)
   {

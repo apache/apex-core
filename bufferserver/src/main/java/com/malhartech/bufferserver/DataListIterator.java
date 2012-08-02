@@ -28,7 +28,7 @@ class DataListIterator implements Iterator<SerializedData>
   {
     this.da = da;
     this.di = di;
-    
+
     previous.bytes = current.bytes = da.data;
   }
 
@@ -43,7 +43,7 @@ class DataListIterator implements Iterator<SerializedData>
         if (da.next == null) {
           return false;
         }
-        
+
         da = da.next;
         rollover = previous.bytes;
         current.offset = 0;
@@ -55,7 +55,7 @@ class DataListIterator implements Iterator<SerializedData>
           current.offset += current.size;
           return hasNext();
         }
-        
+
         return true;
     }
   }
@@ -71,17 +71,16 @@ class DataListIterator implements Iterator<SerializedData>
   }
 
   /**
-   * Removes from the underlying collection the last element returned by the iterator (optional operation).
-   * This method can be called only once per call to next. The behavior of an iterator is unspecified if
-   * the underlying collection is modified while the iteration is in progress in any way other than by 
-   * calling this method.   
+   * Removes from the underlying collection the last element returned by the iterator (optional operation). This method can be called only once per call to
+   * next. The behavior of an iterator is unspecified if the underlying collection is modified while the iteration is in progress in any way other than by
+   * calling this method.
    */
   public void remove()
   {
     if (previous.size == 0) {
       throw new IllegalStateException("Nothing to remove");
     }
-    
+
     if (rollover == null) {
       di.wipeData(previous);
     }
@@ -91,7 +90,7 @@ class DataListIterator implements Iterator<SerializedData>
       di.wipeData(previous);
       previous.bytes = current.bytes;
     }
-    
+
     previous.size = 0;
   }
 

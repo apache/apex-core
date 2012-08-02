@@ -36,7 +36,7 @@ public class PhysicalNode
 
   public void send(SerializedData d)
   {
-    channel.write(d);
+    getChannel().write(d);
     processedMessageCount++;
   }
 
@@ -53,12 +53,20 @@ public class PhysicalNode
 
   public final int getId()
   {
-    return channel.getId();
+    return getChannel().getId();
   }
 
   @Override
   public final int hashCode()
   {
-    return channel.getId();
+    return getChannel().getId();
+  }
+
+  /**
+   * @return the channel
+   */
+  public Channel getChannel()
+  {
+    return channel;
   }
 }

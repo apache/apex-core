@@ -25,15 +25,16 @@ import org.slf4j.LoggerFactory;
 public class LogicalNode implements DataListener
 {
   private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class.getName());
+  private final String upstream;
   private final String group;
   private final HashSet<PhysicalNode> physicalNodes;
   private final HashSet<ByteBuffer> partitions;
   private final Policy policy;
   private final DataListIterator iterator;
-  private Object attachment;
 
-  LogicalNode(String group, Iterator<SerializedData> iterator, Policy policy)
+  LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy)
   {
+    this.upstream = upstream;
     this.group = group;
     this.policy = policy;
     this.physicalNodes = new HashSet<PhysicalNode>();
@@ -62,6 +63,16 @@ public class LogicalNode implements DataListener
     PhysicalNode pn = new PhysicalNode(channel);
     if (!physicalNodes.contains(pn)) {
       physicalNodes.add(pn);
+    }
+  }
+  
+  public void removeChannel(Channel channel)
+  {
+    for (PhysicalNode pn : physicalNodes) {
+      if (pn.getChannel() == channel) {
+        physicalNodes.remove(pn);
+        break;
+      }
     }
   }
 
@@ -139,5 +150,18 @@ public class LogicalNode implements DataListener
   {
     partitions.addAll(this.partitions);
     return partitions.size();
+  }
+  
+  public final int getPhysicalNodeCount()
+  {
+    return physicalNodes.size();
+  }
+
+  /**
+   * @return the upstream
+   */
+  public String getUpstream()
+  {
+    return upstream;
   }
 }

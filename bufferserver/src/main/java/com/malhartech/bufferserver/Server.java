@@ -14,6 +14,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.group.ChannelGroup;
+import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
 /**
@@ -26,7 +28,8 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 public class Server
 {
   private static final Logger LOGGER = Logger.getLogger(Server.class.getName());
-  
+  private ChannelGroup allConnected = new DefaultChannelGroup("all-connected");
+
   public static int DEFAULT_PORT = 9080;
   private final int port;
   private ServerBootstrap bootstrap;
@@ -49,7 +52,7 @@ public class Server
             Executors.newCachedThreadPool()));
 
     // Set up the event pipeline factory.
-    bootstrap.setPipelineFactory(new ServerPipelineFactory());
+    bootstrap.setPipelineFactory(new ServerPipelineFactory(allConnected));
 
     // Bind and start to accept incoming connections.
     serverChannel = bootstrap.bind(new InetSocketAddress(port));
@@ -62,7 +65,13 @@ public class Server
     if (serverChannel !=  null) {
       LOGGER.log(Level.INFO, "shutting down server at: {0}", serverChannel.getLocalAddress());
       this.serverChannel.close();
-      //this.bootstrap.releaseExternalResources();
+
+      for (Channel c : allConnected) {
+        c.close();
+      }
+      allConnected.clear();
+      
+      this.bootstrap.releaseExternalResources();
       this.serverChannel =  null;
     }
   }
