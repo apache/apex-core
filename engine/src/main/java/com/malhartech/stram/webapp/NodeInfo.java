@@ -31,6 +31,7 @@ public class NodeInfo {
   public long totalTuples;   
   public long totalBytes;
   public String status;
+  public long lastHeartbeat;
   
   public NodeInfo() {
   }

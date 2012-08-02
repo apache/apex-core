@@ -24,17 +24,18 @@ import jline.SimpleCompletor;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.api.ClientRMProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.Records;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -45,8 +46,7 @@ public class StramCli {
   private static Logger LOG = LoggerFactory.getLogger(StramCli.class);
   
   private Configuration conf = new Configuration();
-  private final YarnClientHelper yarnClient;
-  private final ClientRMProtocol rmClient;  
+  private final ClientRMHelper rmClient;  
   private ApplicationReport currentApp = null;
   
   private class CliException extends RuntimeException {
@@ -60,8 +60,8 @@ public class StramCli {
   }
   
   public StramCli() throws Exception {
-    yarnClient = new YarnClientHelper(conf);
-    rmClient = yarnClient.connectToASM();
+    YarnClientHelper yarnClient = new YarnClientHelper(conf);
+    rmClient = new ClientRMHelper(yarnClient);
   }
   
   public void init() {
@@ -72,7 +72,7 @@ public class StramCli {
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[] { "help", "ls", "connect", "listnodes", "exit" };
+    String[] commandsList = new String[] { "help", "ls", "connect", "listnodes", "timeout", "kill", "exit" };
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -111,6 +111,10 @@ public class StramCli {
           listNodes(line);
         } else if (line.startsWith("launch")) {
           launchApp(line, reader);
+        } else if (line.startsWith("timeout")) {
+          timeoutApp(line, reader);
+        } else if (line.startsWith("kill")) {
+          killApp(line);
         } else if ("exit".equals(line)) {
           System.out.println("Exiting application");
           return;
@@ -140,6 +144,8 @@ public class StramCli {
     System.out.println("connect <appId>  - Connect to running streaming application");
     System.out.println("listnodes        - List deployed streaming nodes");
     System.out.println("launch <jarFile> [<topologyFile>] - Launch topology packaged in jar file.");
+    System.out.println("timeout <duration> - Wait for completion of current application.");
+    System.out.println("kill             - Force termination for current application.");
     System.out.println("exit             - Exit the app");
 
   }
@@ -149,11 +155,19 @@ public class StramCli {
     String line = reader.readLine(promtMessage + "\nstramcli> ");
     return line.trim();
   }
+
+  private String[] assertArgs(String line, int num, String msg) {
+    String[] args = StringUtils.splitByWholeSeparator(line, " ");
+    if (args.length < num) {
+      throw new CliException(msg);
+    }
+    return args;
+  }
   
   private List<ApplicationReport> getApplicationList() {
     try {
       GetAllApplicationsRequest appsReq = Records.newRecord(GetAllApplicationsRequest.class);
-      return rmClient.getAllApplications(appsReq).getApplicationList();
+      return rmClient.clientRM.getAllApplications(appsReq).getApplicationList();
     } catch (Exception e) {
       throw new CliException("Error getting application list from resource manager: " + e.getMessage(), e);
     }
@@ -249,13 +263,9 @@ public class StramCli {
     JSONObject json = rsp.getEntity(JSONObject.class);      
     System.out.println(json.toString(2));
   }
-
+  
   private void launchApp(String line, ConsoleReader reader) {
-    String[] args = StringUtils.splitByWholeSeparator(line, " ");
-    if (args.length < 2) {
-      System.err.println("Please specify the jar file.");
-      return;
-    }
+    String[] args = assertArgs(line, 2, "No jar file specified.");
     
     File tplgFile = null;
     if (args.length == 3) {
@@ -300,6 +310,7 @@ public class StramCli {
 
       if (tplgFile != null) {
         ApplicationId appId = submitApp.launchTopology(tplgFile);
+        this.currentApp = rmClient.getApplicationReport(appId);
         System.out.println(appId);
       } else {
         System.err.println("No topology specified.");
@@ -307,6 +318,60 @@ public class StramCli {
       
     } catch (Exception e) {
       throw new CliException("Failed to launch " + args[1] + " :" + e.getMessage(), e);
+    }
+    
+  }
+
+  private void killApp(String line) {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    
+    try {
+      rmClient.killApplication(currentApp.getApplicationId());
+    } catch (YarnRemoteException e) {
+      throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
+    }
+  }
+
+  private int getIntArg(String line, int argIndex, String msg) {
+    String[] args = assertArgs(line, argIndex+1, msg);
+    try {
+      int arg = Integer.parseInt(args[argIndex]);
+      return arg;
+    } catch (Exception e) {
+      throw new CliException("Not a valid number: " + args[argIndex]);
+    }
+  }
+  
+  private void timeoutApp(String line, final ConsoleReader reader) {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    int timeout = getIntArg(line, 1, "Specify wait duration");
+
+    ClientRMHelper.AppStatusCallback cb = new ClientRMHelper.AppStatusCallback() {
+      @Override
+      public boolean exitLoop(ApplicationReport report) {
+        System.out.println("current status is: " + report.getYarnApplicationState());
+        try {
+          if (reader.getInput().available() > 0) {
+            return true;
+          }
+        } catch (IOException e) {
+          LOG.error("Error checking for input.", e);
+        }
+        return false;
+      }
+    };
+      
+    try {
+      boolean result = rmClient.waitForCompletion(currentApp.getApplicationId(), cb, timeout*1000);
+      if (!result) {
+        System.err.println("Application terminated unsucessful.");
+      }
+    } catch (YarnRemoteException e) {
+      throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
     }
     
   }

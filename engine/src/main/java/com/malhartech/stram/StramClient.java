@@ -29,9 +29,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.hadoop.yarn.api.ClientRMProtocol;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
-import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterMetricsRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterMetricsResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
@@ -40,13 +37,11 @@ import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetQueueUserAclsInfoResponse;
-import org.apache.hadoop.yarn.api.protocolrecords.KillApplicationRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.SubmitApplicationRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.ApplicationSubmissionContext;
 import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
-import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.LocalResource;
 import org.apache.hadoop.yarn.api.records.LocalResourceType;
 import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
@@ -55,7 +50,6 @@ import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.QueueACL;
 import org.apache.hadoop.yarn.api.records.QueueUserACLInfo;
 import org.apache.hadoop.yarn.api.records.Resource;
-import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
@@ -63,6 +57,7 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.ShipContainingJars;
 import com.malhartech.stram.conf.TopologyBuilder;
@@ -77,9 +72,8 @@ public class StramClient
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
   // Configuration
   private Configuration conf;
-  final private YarnClientHelper yarnClient;
   // Handle to talk to the Resource Manager/Applications Manager
-  private ClientRMProtocol applicationsManager;
+  private ClientRMHelper rmClient;
   // Application master specific info to register a new Application with RM/ASM
   private String appName = StramConstants.APPNAME;
   // App master priority
@@ -102,8 +96,6 @@ public class StramClient
   // log4j.properties file 
   // if available, add to local resources and set into classpath 
   private String log4jPropFile = "";
-  // Start time for client
-  private final long clientStartTime = System.currentTimeMillis();
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
   // Debug flag
@@ -143,7 +135,6 @@ public class StramClient
   {
     // Set up the configuration and RPC
     this.conf = conf;
-    yarnClient = new YarnClientHelper(conf);
   }
 
   /**
@@ -237,9 +228,8 @@ public class StramClient
   }
 
   /**
-   * Main run function for the client
+   * Launch application for the topology represented by this client.
    *
-   * @return true if application completed successfully
    * @throws IOException
    */
   public void startApplication() throws IOException
@@ -300,17 +290,18 @@ public class StramClient
     LOG.info("Local jar file dependencies: " + localJarFiles);
         
     // Connect to ResourceManager 	
-    applicationsManager = yarnClient.connectToASM();
-    assert(applicationsManager != null);		
+    YarnClientHelper yarnClient = new YarnClientHelper(conf);
+    rmClient = new ClientRMHelper(yarnClient);
+    assert(rmClient.clientRM != null);		
 
     // Use ClientRMProtocol handle to general cluster information 
     GetClusterMetricsRequest clusterMetricsReq = Records.newRecord(GetClusterMetricsRequest.class);
-    GetClusterMetricsResponse clusterMetricsResp = applicationsManager.getClusterMetrics(clusterMetricsReq);
+    GetClusterMetricsResponse clusterMetricsResp = rmClient.clientRM.getClusterMetrics(clusterMetricsReq);
     LOG.info("Got Cluster metric info from ASM"
              + ", numNodeManagers=" + clusterMetricsResp.getClusterMetrics().getNumNodeManagers());
 
     GetClusterNodesRequest clusterNodesReq = Records.newRecord(GetClusterNodesRequest.class);
-    GetClusterNodesResponse clusterNodesResp = applicationsManager.getClusterNodes(clusterNodesReq);
+    GetClusterNodesResponse clusterNodesResp = rmClient.clientRM.getClusterNodes(clusterNodesReq);
     LOG.info("Got Cluster node info from ASM");
     for (NodeReport node : clusterNodesResp.getNodeReports()) {
       LOG.info("Got node report from ASM for"
@@ -322,13 +313,13 @@ public class StramClient
     }
     /*
      * This is NPE in 2.0-alpha as request needs to provide specific queue name GetQueueInfoRequest queueInfoReq = Records.newRecord(GetQueueInfoRequest.class);
-     * GetQueueInfoResponse queueInfoResp = applicationsManager.getQueueInfo(queueInfoReq); QueueInfo queueInfo = queueInfoResp.getQueueInfo(); LOG.info("Queue
+     * GetQueueInfoResponse queueInfoResp = rmClient.getQueueInfo(queueInfoReq); QueueInfo queueInfo = queueInfoResp.getQueueInfo(); LOG.info("Queue
      * info" + ", queueName=" + queueInfo.getQueueName() + ", queueCurrentCapacity=" + queueInfo.getCurrentCapacity() + ", queueMaxCapacity=" +
      * queueInfo.getMaximumCapacity() + ", queueApplicationCount=" + queueInfo.getApplications().size() + ", queueChildQueueCount=" +
      * queueInfo.getChildQueues().size());
      */
     GetQueueUserAclsInfoRequest queueUserAclsReq = Records.newRecord(GetQueueUserAclsInfoRequest.class);
-    GetQueueUserAclsInfoResponse queueUserAclsResp = applicationsManager.getQueueUserAcls(queueUserAclsReq);
+    GetQueueUserAclsInfoResponse queueUserAclsResp = rmClient.clientRM.getQueueUserAcls(queueUserAclsReq);
     List<QueueUserACLInfo> listAclInfo = queueUserAclsResp.getUserAclsInfoList();
     for (QueueUserACLInfo aclInfo : listAclInfo) {
       for (QueueACL userAcl : aclInfo.getUserAcls()) {
@@ -531,11 +522,11 @@ public class StramClient
     appRequest.setApplicationSubmissionContext(appContext);
 
     // Submit the application to the applications manager
-    // SubmitApplicationResponse submitResp = applicationsManager.submitApplication(appRequest);
+    // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
     // Ignore the response as either a valid response object is returned on success 
     // or an exception thrown to denote some form of a failure
     LOG.info("Submitting application to ASM");
-    applicationsManager.submitApplication(appRequest);
+    rmClient.clientRM.submitApplication(appRequest);
 
     // TODO
     // Try submitting the same request again
@@ -545,27 +536,13 @@ public class StramClient
 
   public ApplicationReport getApplicationReport() throws YarnRemoteException
   {
-    // Get application report for the appId we are interested in 
-    GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
-    reportRequest.setApplicationId(appId);
-    GetApplicationReportResponse reportResponse = applicationsManager.getApplicationReport(reportRequest);
-    ApplicationReport report = reportResponse.getApplicationReport();
-
-    LOG.info("Got application report from ASM for"
-             + ", appId=" + appId.getId()
-             + ", clientToken=" + report.getClientToken()
-             + ", appDiagnostics=" + report.getDiagnostics()
-             + ", appMasterHost=" + report.getHost()
-             + ", appQueue=" + report.getQueue()
-             + ", appMasterRpcPort=" + report.getRpcPort()
-             + ", appStartTime=" + report.getStartTime()
-             + ", yarnAppState=" + report.getYarnApplicationState().toString()
-             + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
-             + ", appTrackingUrl=" + report.getTrackingUrl()
-             + ", appUser=" + report.getUser());
-    return report;
+    return this.rmClient.getApplicationReport(this.appId);
   }
 
+  public void killApplication() throws YarnRemoteException {
+    this.rmClient.killApplication(this.appId);
+  }
+  
   /**
    * Monitor the submitted application for completion. Kill application if time expires.
    *
@@ -575,67 +552,27 @@ public class StramClient
    */
   public boolean monitorApplication() throws YarnRemoteException
   {
-
-    while (true) {
-
-      // Check app status every 1 second.
-      try {
-        Thread.sleep(1000);
-      }
-      catch (InterruptedException e) {
-        LOG.debug("Thread sleep in monitoring loop interrupted");
-      }
-
-      ApplicationReport report = getApplicationReport();
-      YarnApplicationState state = report.getYarnApplicationState();
-      FinalApplicationStatus dsStatus = report.getFinalApplicationStatus();
-      if (YarnApplicationState.FINISHED == state) {
-        if (FinalApplicationStatus.SUCCEEDED == dsStatus) {
-          LOG.info("Application has completed successfully. Breaking monitoring loop");
-          return true;
-        }
-        else {
-          LOG.info("Application did finished unsuccessfully."
-                   + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-                   + ". Breaking monitoring loop");
-          return false;
-        }
-      }
-      else if (YarnApplicationState.KILLED == state
-               || YarnApplicationState.FAILED == state) {
-        LOG.info("Application did not finish."
-                 + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-                 + ". Breaking monitoring loop");
+    ClientRMHelper.AppStatusCallback callback = new ClientRMHelper.AppStatusCallback() {
+      @Override
+      public boolean exitLoop(ApplicationReport report) {
+        LOG.info("Got application report from ASM for"
+            + ", appId=" + appId.getId()
+            + ", clientToken=" + report.getClientToken()
+            + ", appDiagnostics=" + report.getDiagnostics()
+            + ", appMasterHost=" + report.getHost()
+            + ", appQueue=" + report.getQueue()
+            + ", appMasterRpcPort=" + report.getRpcPort()
+            + ", appStartTime=" + report.getStartTime()
+            + ", yarnAppState=" + report.getYarnApplicationState().toString()
+            + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
+            + ", appTrackingUrl=" + report.getTrackingUrl()
+            + ", appUser=" + report.getUser());
         return false;
       }
-
-      if (System.currentTimeMillis() - clientStartTime > clientTimeout) {
-        LOG.info("Reached client specified timeout for application. Killing application");
-        killApplication();
-        return false;
-      }
-    }
-
+    };
+    return rmClient.waitForCompletion(appId, callback, clientTimeout);
   }
 
-  /**
-   * Kill a submitted application by sending a call to the ASM
-   *
-   * @param appId Application Id to be killed.
-   * @throws YarnRemoteException
-   */
-  public void killApplication() throws YarnRemoteException
-  {
-    KillApplicationRequest request = Records.newRecord(KillApplicationRequest.class);
-    // TODO clarify whether multiple jobs with the same app id can be submitted and be running at 
-    // the same time. 
-    // If yes, can we kill a particular attempt only?
-    request.setApplicationId(appId);
-    // KillApplicationResponse response = applicationsManager.forceKillApplication(request);		
-    // Response can be ignored as it is non-null on success or 
-    // throws an exception in case of failures
-    applicationsManager.forceKillApplication(request);
-  }
 
   /**
    * Get a new application from the ASM 
@@ -646,7 +583,7 @@ public class StramClient
   private GetNewApplicationResponse getNewApplication() throws YarnRemoteException
   {
     GetNewApplicationRequest request = Records.newRecord(GetNewApplicationRequest.class);
-    GetNewApplicationResponse response = applicationsManager.getNewApplication(request);
+    GetNewApplicationResponse response = rmClient.clientRM.getNewApplication(request);
     LOG.info("Got new application id=" + response.getApplicationId());
     return response;
   }

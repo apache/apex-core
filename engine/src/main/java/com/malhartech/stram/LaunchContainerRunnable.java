@@ -13,11 +13,9 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
@@ -30,57 +28,40 @@ import org.apache.hadoop.yarn.api.records.LocalResourceType;
 import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
-import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
- * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming node.
+ * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming nodes.
  */
 public class LaunchContainerRunnable implements Runnable
 {
   private static Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
-  private Configuration conf;
-  private YarnRPC rpc;
+  final private YarnClientHelper yarnClient;
   private Map<String, String> containerEnv = new HashMap<String, String>();
   private InetSocketAddress heartbeatAddress;
   private Properties topologyProps;
   // Allocated container 
   private Container container;
-  // Handle to communicate with ContainerManager
-  private ContainerManager cm;
   private int containerMemoryMb = 64;
   private final boolean debug;
 
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, YarnRPC rpc, Configuration conf, Properties topologyProps, InetSocketAddress heartbeatAddress, boolean debug)
+  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, Properties topologyProps, InetSocketAddress heartbeatAddress, boolean debug)
   {
     this.container = lcontainer;
-    this.rpc = rpc;
-    this.conf = conf;
+    this.yarnClient = yarnClient;
     this.heartbeatAddress = heartbeatAddress;
     this.topologyProps = topologyProps;
     this.containerMemoryMb = lcontainer.getResource().getMemory();
     this.debug = debug;
-  }
-
-  /**
-   * Helper function to connect to CM
-   */
-  private void connectToCM()
-  {
-    LOG.debug("Connecting to ContainerManager for containerid=" + container.getId());
-    String cmIpPortStr = container.getNodeId().getHost() + ":"
-                         + container.getNodeId().getPort();
-    InetSocketAddress cmAddress = NetUtils.createSocketAddr(cmIpPortStr);
-    LOG.info("Connecting to ContainerManager at " + cmIpPortStr);
-    this.cm = ((ContainerManager) rpc.getProxy(ContainerManager.class, cmAddress, conf));
   }
 
   private void setClasspath(Map<String, String> env)
@@ -92,7 +73,7 @@ public class LaunchContainerRunnable implements Runnable
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
-    for (String c : conf.get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
+    for (String c : yarnClient.getConf().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
@@ -134,7 +115,7 @@ public class LaunchContainerRunnable implements Runnable
   public void run()
   {
     // Connect to ContainerManager 
-    connectToCM();
+    ContainerManager cm = yarnClient.connectToCM(container);
 
     LOG.info("Setting up container launch container for containerid=" + container.getId());
     ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
@@ -160,7 +141,7 @@ public class LaunchContainerRunnable implements Runnable
     // add resources for child VM
     try {
       // child VM dependencies
-      FileSystem fs = FileSystem.get(conf);
+      FileSystem fs = FileSystem.get(yarnClient.getConf());
       addLibJarsToLocalResources(topologyProps.getProperty(TopologyBuilder.LIBJARS, ""), localResources, fs);
       ctx.setLocalResources(localResources);
     }

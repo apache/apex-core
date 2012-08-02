@@ -43,6 +43,12 @@ public class DNodeManager
   private long windowStartMillis = System.currentTimeMillis();
   private long windowSizeMillis = 500;
 
+  public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
+
+  public void addContainerStopRequest(String containerId) {
+    containerStopRequests.put(containerId, containerId);
+  }
+  
   private class NodeStatus
   {
     StreamingNodeHeartbeat lastHeartbeat;
@@ -543,6 +549,7 @@ public class DNodeManager
 
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
+//addContainerStopRequest(heartbeat.getContainerId());    
     boolean containerIdle = true;
 
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
@@ -626,6 +633,7 @@ public class DNodeManager
         ni.status = hb.getState();
         ni.totalBytes = ns.bytesTotal;
         ni.totalTuples = ns.tuplesTotal;
+        ni.lastHeartbeat = ns.lastHeartbeat.getGeneratedTms();
       }
       nodeInfoList.add(ni);
     }
