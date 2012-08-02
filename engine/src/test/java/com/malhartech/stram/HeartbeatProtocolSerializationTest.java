@@ -4,22 +4,19 @@
  */
 package com.malhartech.stram;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
-import junit.framework.Assert;
-
-import org.apache.hadoop.io.DataInputByteBuffer;
-import org.apache.hadoop.io.DataOutputByteBuffer;
-import org.junit.Test;
-
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import junit.framework.Assert;
+import org.apache.hadoop.io.DataInputByteBuffer;
+import org.apache.hadoop.io.DataOutputByteBuffer;
+import org.junit.Test;
 
 public class HeartbeatProtocolSerializationTest {
 

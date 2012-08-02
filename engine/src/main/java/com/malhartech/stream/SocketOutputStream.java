@@ -10,7 +10,7 @@ package com.malhartech.stream;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
-import com.malhartech.netty.ClientPipelineFactory;
+import com.malhartech.bufferserver.netty.ClientPipelineFactory;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 import org.jboss.netty.bootstrap.ClientBootstrap;

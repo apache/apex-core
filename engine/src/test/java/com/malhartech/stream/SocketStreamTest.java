@@ -94,7 +94,7 @@ public class SocketStreamTest
     issContext.setId(streamName);
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
-    
+
 
     StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
     sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
@@ -108,7 +108,7 @@ public class SocketStreamTest
     ossContext.setId(streamName);
     ossContext.setSourceId(upstreamNodeId);
     ossContext.setSinkId(downstreamNodeId);
-    
+
     BufferServerOutputStream oss = new BufferServerOutputStream();
     oss.setup(sconf);
     oss.setContext(ossContext);

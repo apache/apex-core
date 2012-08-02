@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractHDFSInputStream extends AbstractInputAdapter implements Runnable
 {
-
   private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
   protected FSDataInputStream input;
 
@@ -40,9 +39,9 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
   public void activate()
   {
     Thread t = new Thread(this);
-    t.start();    
+    t.start();
   }
-  
+
   @Override
   public void run()
   {
@@ -51,7 +50,7 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
     while ((o = getRecord(input)) != null) {
       emit(o);
     }
-    
+
     endStream();
   }
 

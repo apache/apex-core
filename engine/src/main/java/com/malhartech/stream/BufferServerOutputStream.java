@@ -40,9 +40,6 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         break;
 
       case END_STREAM:
-        Buffer.EndStream.Builder es = Buffer.EndStream.newBuilder();
-        
-        db.setEndstream(es);
         break;
         
       case PARTITIONED_DATA:
