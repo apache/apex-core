@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.netty;
+package com.malhartech.bufferserver.netty;
 
 import com.malhartech.bufferserver.Buffer;
 import org.jboss.netty.channel.ChannelHandler;

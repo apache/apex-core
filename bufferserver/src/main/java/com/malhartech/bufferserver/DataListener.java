@@ -13,7 +13,6 @@ import java.util.Collection;
  */
 public interface DataListener
 {
-
   public static final ByteBuffer NULL_PARTITION = ByteBuffer.allocate(0);
 
   public void dataAdded(ByteBuffer partition);

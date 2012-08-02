@@ -12,7 +12,7 @@ message SimpleData {
 
 message PartitionedData {
     required bytes data = 1;
-    required bytes partition = 3;
+    required bytes partition = 2;
 }
 
 message BeginWindow {
@@ -21,11 +21,7 @@ message BeginWindow {
 
 message EndWindow {
     required string node = 1;
-    required uint64 tuple_count = 3;
-}
-
-message EndStream {
-  /* right now nothing goes in here. */
+    required uint64 tuple_count = 2;
 }
 
 message SubscriberRequest {
@@ -51,12 +47,6 @@ message PublisherRequest {
      optional uint64 time = 3;
 }
 
-message PublisherDisconnect {
-     required string identifier = 1;
-     required string type = 2;
-     required uint64 time = 3;
-}
-
 message Data {
     enum DataType {
         NO_DATA = 0;
@@ -67,20 +57,15 @@ message Data {
         END_STREAM = 5;
         PUBLISHER_REQUEST = 6;
         SUBSCRIBER_REQUEST = 7;
-        PUBLISHER_DISCONNECT = 8;
     }
-
 
     required DataType type = 1;
     required uint64 window_id = 2;
-
 
     optional BeginWindow beginwindow = 3;
     optional SimpleData simpledata = 4;
     optional PartitionedData partitioneddata = 5;
     optional EndWindow endwindow = 6;
-    optional EndStream endstream = 7;
-    optional PublisherRequest publish = 8;
-    optional SubscriberRequest subscribe = 9;
-    optional PublisherDisconnect disconnect = 10;
+    optional PublisherRequest publish = 7;
+    optional SubscriberRequest subscribe = 8;
 }

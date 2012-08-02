@@ -4,8 +4,8 @@
  */
 package com.malhartech.bufferserver.policy;
 
-import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.PhysicalNode;
+import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Set;
 
 /**
@@ -23,7 +23,7 @@ public class RoundRobin extends AbstractPolicy
   }
 
   @Override
-  public void distribute(Set<PhysicalNode> nodes, Data data)
+  public void distribute(Set<PhysicalNode> nodes, SerializedData data)
   {
     index %= nodes.size();
     int count = index++;

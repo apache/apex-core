@@ -6,6 +6,8 @@ package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.bufferserver.util.SerializedData;
 import java.nio.ByteBuffer;
 import java.util.Map.Entry;
 import java.util.*;
@@ -20,8 +22,11 @@ import org.slf4j.LoggerFactory;
  */
 public class DataList
 {
-
   private static final Logger logger = LoggerFactory.getLogger(DataList.class.getName());
+  /**
+   * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
+   */
+  private static final int blockSize = 64 * 1024 * 1024;
   HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
   HashSet<DataListener> all_listeners = new HashSet<DataListener>();
   int capacity;
@@ -37,28 +42,63 @@ public class DataList
 
   class DataArray
   {
-
     /**
      * Any operation on this data array would need read or write lock here.
      */
     private final ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
     private final Lock r = rwl.readLock();
     private final Lock w = rwl.writeLock();
+    /**
+     * currentOffset is the number of data elements in the array.
+     */
     int offset;
-    int count;
+    /**
+     * The starting window which is available in this data array
+     */
     long starting_window;
+    /**
+     * the ending window which is available in this data array
+     */
     long ending_window;
-    Data data[];
+    /**
+     * actual data - stored as length followed by actual data.
+     */
+    byte data[];
+    /**
+     * the next in the chain.
+     */
     DataArray next;
 
     public DataArray(int capacity)
     {
       this.offset = 0;
-      this.count = 0;
       this.starting_window = 0;
       this.ending_window = 0;
-      data = new Data[capacity];
+
+      /*
+       * we want to make sure that MSB of each byte is on, so that we can exploit it ensure presence of a record which is prepended with getSize represented as
+       * 32 bit integer varint.
+       */
+      data = new byte[capacity];
+      Arrays.fill(data, Byte.MIN_VALUE);
+
       next = null;
+    }
+
+    void getNextData(SerializedData current)
+    {
+      if (current.offset + 5 < current.bytes.length) {
+        r.lock();
+        try {
+          Codec.readRawVarInt32(current);
+        }
+        finally {
+          r.unlock();
+        }
+      }
+      else {
+        current.size = 0;
+      }
     }
 
     public void add(Data d)
@@ -66,7 +106,32 @@ public class DataList
       w.lock();
 
       try {
-        data[count++] = d;
+        int size = d.getSerializedSize();
+        if (size + 5 + offset >= data.length) {
+          if (offset < data.length) {
+            offset = Codec.writeRawVarint32(data.length - offset, data, offset);
+            if (offset < data.length) {
+              Data.Builder db = Data.newBuilder();
+              db.setType(DataType.NO_DATA);
+              db.setWindowId(0);
+              System.arraycopy(db.build().toByteArray(), 0, data, offset, data.length - offset);
+              offset = data.length;
+            }
+          }
+
+          int newblockSize = blockSize;
+          while (newblockSize < size + 5) {
+            newblockSize += blockSize;
+          }
+
+          DataList.this.last = next = new DataArray(newblockSize);
+          next.add(d);
+        }
+        else {
+          offset = Codec.writeRawVarint32(size, data, offset);
+          System.arraycopy(d.toByteArray(), 0, data, offset, size);
+          offset += size;
+        }
 
         if (d.getType() == Data.DataType.BEGIN_WINDOW) {
           if (starting_window == 0) {
@@ -80,19 +145,12 @@ public class DataList
       }
     }
 
-    public void purge(int count)
-    {
-      w.lock();
-
-      try {
-        this.offset += count;
-        this.count -= count;
-      }
-      finally {
-        w.unlock();
-      }
-    }
-
+    /*
+     * public void purge(int currentOffset) { w.lock();
+     *
+     * try { this.offset_2_delete += currentOffset; this.currentOffset -= currentOffset; } finally { w.unlock(); } }
+     *
+     */
     public void lockWrite()
     {
       w.lock();
@@ -123,20 +181,13 @@ public class DataList
     first = last = new DataArray(capacity);
   }
 
+  public DataList(String identifier, String type)
+  {
+    this(identifier, type, blockSize);
+  }
+
   public void add(Data d)
   {
-    last.lockWrite();
-    DataArray temp = last;
-    try {
-      if (last.offset + last.count == capacity) {
-        last.next = new DataArray(capacity);
-        last = last.next;
-      }
-    }
-    finally {
-      temp.unlockWrite();
-    }
-
     last.add(d);
 
     // here somehow we need to let the other thread know that we are ready
@@ -144,8 +195,6 @@ public class DataList
     // of getting blocked. May be it's enough for us to write just one byte
     // of data.
 
-    // what happens when there are listeners who are not interested in
-    // partitioned data?
     ByteBuffer bytebuffer = null;
     switch (d.getType()) {
       case PARTITIONED_DATA:
@@ -157,8 +206,7 @@ public class DataList
           }
         }
       /*
-       * fall through here since we also want to give data to all the listeners
-       * who do not have preference for the partition.
+       * fall through here since we also want to give data to all the listeners who do not have preference for the partition.
        */
       case SIMPLE_DATA:
         if (listeners.containsKey(DataListener.NULL_PARTITION)) {
@@ -172,7 +220,6 @@ public class DataList
         }
         break;
 
-
       default:
         for (DataListener dl : all_listeners) {
           dl.dataAdded(DataListener.NULL_PARTITION);
@@ -181,80 +228,37 @@ public class DataList
     }
   }
 
-  public void addPublisherDisconnected(long time)
-  {
-    Buffer.Data.Builder db = Buffer.Data.newBuilder();
-    db.setType(Data.DataType.PUBLISHER_DISCONNECT);
-    db.setWindowId(time);
-
-    Buffer.PublisherDisconnect.Builder pdb = Buffer.PublisherDisconnect.newBuilder();
-    pdb.setIdentifier(identifier);
-    pdb.setType(type);
-    pdb.setTime(time);
-
-    db.setDisconnect(pdb.build());
-    this.add(db.build());
-  }
-
-  public void purge(int ending_id)
-  {
-    first.lockWrite();
-    try {
-      while (first != last && ending_id > first.ending_window) {
-        DataArray temp = first;
-        first = first.next;
-        first.lockWrite();
-        temp.unlockWrite();
-      }
-
-      if (ending_id <= first.ending_window) {
-        int offset = 0;
-        while (offset < capacity) {
-          Data d = first.data[offset++];
-          if (d.getType() == DataType.END_WINDOW && d.getWindowId() == ending_id) {
-            break;
-          }
-        }
-        first.offset = offset;
-        first.count -= offset;
-        while (offset < capacity) {
-          Data d = first.data[offset++];
-          if (d.getType() == DataType.BEGIN_WINDOW) {
-            first.starting_window = d.getWindowId();
-          }
-        }
-      }
-      else {
-        first.offset = 0;
-        first.count = 0;
-        first.ending_window = 0;
-        first.starting_window = 0;
-      }
-    }
-    finally {
-      first.unlockWrite();
-    }
-  }
+  /*
+   * public void purge(int ending_id) { first.lockWrite(); try { while (first != last && ending_id > first.ending_window) { DataArray temp = first; first =
+   * first.next; first.lockWrite(); temp.unlockWrite(); }
+   *
+   * if (ending_id <= first.ending_window) { int offset_2_delete = 0; while (offset_2_delete < capacity) { Data d = first.data[offset_2_delete++]; if
+   * (d.getType() == DataType.END_WINDOW && d.getWindowId() == ending_id) { break; } } first.offset_2_delete = offset_2_delete; first.currentOffset -=
+   * offset_2_delete; while (offset_2_delete < capacity) { Data d = first.data[offset_2_delete++]; if (d.getType() == DataType.BEGIN_WINDOW) {
+   * first.starting_window = d.getWindowId(); } } } else { first.offset_2_delete = 0; first.currentOffset = 0; first.ending_window = 0; first.starting_window =
+   * 0; } } finally { first.unlockWrite(); } }
+   *
+   */
 
   /*
    * Iterator related functions.
    */
   private final HashMap<String, DataListIterator> iterators = new HashMap<String, DataListIterator>();
 
-  public Iterator<Data> newIterator(String identifier)
+  public Iterator<SerializedData> newIterator(String identifier, DataIntrospector di)
   {
-    DataListIterator di;
+    DataListIterator dli;
     first.lockRead();
     try {
-      di = new DataListIterator(first);
+      dli = new DataListIterator(first, di);
       synchronized (iterators) {
-        iterators.put(identifier, di);
+        iterators.put(identifier, dli);
       }
     }
     finally {
       first.unlockRead();
     }
-    return di;
+    return dli;
   }
 
   /**
@@ -263,7 +267,7 @@ public class DataList
    * @param iterator
    * @return true if successfully released, false otherwise.
    */
-  public boolean delIterator(Iterator<Data> iterator)
+  public boolean delIterator(Iterator<SerializedData> iterator)
   {
     boolean released = false;
     if (iterator instanceof DataListIterator) {
@@ -291,7 +295,7 @@ public class DataList
 
   /**
    *
-   * @return the count of iterators
+   * @return the currentOffset of iterators
    */
   public int clearIterators()
   {
@@ -343,7 +347,7 @@ public class DataList
         set = new HashSet<DataListener>();
         listeners.put(DataListener.NULL_PARTITION, set);
       }
-      
+
       set.add(dl);
     }
   }
@@ -357,13 +361,14 @@ public class DataList
           listeners.get(partition).remove(dl);
         }
       }
-    } else {
+    }
+    else {
       if (listeners.containsKey(DataListener.NULL_PARTITION)) {
         listeners.get(DataListener.NULL_PARTITION).remove(dl);
       }
     }
-    
-    
+
+
     all_listeners.remove(dl);
   }
 
@@ -375,7 +380,7 @@ public class DataList
 
     DataArray tmp = first;
     while (tmp != null) {
-      System.out.println("offset = " + tmp.offset + " count = " + tmp.count);
+      System.out.println("offset = " + tmp.offset);
       tmp = tmp.next;
     }
 

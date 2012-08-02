@@ -4,8 +4,8 @@
  */
 package com.malhartech.bufferserver.policy;
 
-import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.PhysicalNode;
+import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Set;
 
 /**
@@ -15,5 +15,5 @@ import java.util.Set;
 public interface Policy
 {
 
-  public void distribute(Set<PhysicalNode> nodes, Data data);
+  public void distribute(Set<PhysicalNode> nodes, SerializedData data);
 }

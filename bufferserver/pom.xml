@@ -137,7 +137,7 @@
         <artifactId>maven-protoc-plugin</artifactId>
         <version>0.1.10</version>
         <configuration>
-          <checkStaleness>true</checkStaleness>
+          <!-- checkStaleness>true</checkStaleness -->
           <!-- protocExecutable>/usr/local/bin/protoc</protocExecutable -->
         </configuration>
         <executions>

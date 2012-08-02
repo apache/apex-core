@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.util.SerializedData;
 import org.jboss.netty.channel.Channel;
 
 /**
@@ -13,7 +13,6 @@ import org.jboss.netty.channel.Channel;
  */
 public class PhysicalNode
 {
-
   private final long starttime;
   private final Channel channel;
   private long processedMessageCount;
@@ -35,13 +34,13 @@ public class PhysicalNode
     return System.currentTimeMillis() - starttime;
   }
 
-  public void send(Data d)
+  public void send(SerializedData d)
   {
     channel.write(d);
     processedMessageCount++;
   }
 
-  public long getProcessedMessageCount()
+  public final long getProcessedMessageCount()
   {
     return processedMessageCount;
   }
@@ -52,13 +51,13 @@ public class PhysicalNode
     return o.hashCode() == this.hashCode();
   }
 
-  public int getId()
+  public final int getId()
   {
     return channel.getId();
   }
 
   @Override
-  public int hashCode()
+  public final int hashCode()
   {
     return channel.getId();
   }

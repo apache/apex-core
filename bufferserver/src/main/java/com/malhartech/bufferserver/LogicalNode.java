@@ -7,6 +7,7 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
+import com.malhartech.bufferserver.util.SerializedData;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashSet;
@@ -16,9 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * LogicalNode represents a logical node in a DAG. Logical node can be split
- * into multiple physical nodes. The type of the logical node groups the
- * multiple physical nodes together in a group.
+ * LogicalNode represents a logical node in a DAG. Logical node can be split into multiple physical nodes. The type of the logical node groups the multiple
+ * physical nodes together in a group.
  *
  * @author chetan
  */
@@ -29,16 +29,22 @@ public class LogicalNode implements DataListener
   private final HashSet<PhysicalNode> physicalNodes;
   private final HashSet<ByteBuffer> partitions;
   private final Policy policy;
-  private final Iterator<Data> iterator;
+  private final DataListIterator iterator;
   private Object attachment;
 
-  public LogicalNode(String group, Iterator<Data> iterator, Policy policy)
+  LogicalNode(String group, Iterator<SerializedData> iterator, Policy policy)
   {
     this.group = group;
     this.policy = policy;
     this.physicalNodes = new HashSet<PhysicalNode>();
     this.partitions = new HashSet<ByteBuffer>();
-    this.iterator = iterator;
+
+    if (iterator instanceof DataListIterator) {
+      this.iterator = (DataListIterator) iterator;
+    }
+    else {
+      throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
+    }
   }
 
   public String getGroup()
@@ -46,7 +52,7 @@ public class LogicalNode implements DataListener
     return group;
   }
 
-  public Iterator<Data> getIterator()
+  public Iterator<SerializedData> getIterator()
   {
     return iterator;
   }
@@ -70,9 +76,9 @@ public class LogicalNode implements DataListener
      * fast forward to catch up with the windowId without consuming
      */
     while (iterator.hasNext()) {
-      Data data = iterator.next();
-      if (data.getType() == Data.DataType.BEGIN_WINDOW) {
-        if (data.getWindowId() >= windowId) {
+      SerializedData data = iterator.next();
+      if (iterator.getType() == Data.DataType.BEGIN_WINDOW) {
+        if (iterator.getWindowId() >= windowId) {
           GiveAll.getInstance().distribute(physicalNodes, data);
           break;
         }
@@ -82,6 +88,7 @@ public class LogicalNode implements DataListener
     if (iterator.hasNext()) {
       dataAdded(DataListener.NULL_PARTITION);
     }
+
   }
 
   public synchronized void dataAdded(ByteBuffer partition)
@@ -94,8 +101,8 @@ public class LogicalNode implements DataListener
     // capacity. we will have to double check though.
     if (partitions.isEmpty()) {
       while (iterator.hasNext()) {
-        Data data = iterator.next();
-        switch (data.getType()) {
+        SerializedData data = iterator.next();
+        switch (iterator.getType()) {
           case PARTITIONED_DATA:
           case SIMPLE_DATA:
             policy.distribute(physicalNodes, data);
@@ -109,10 +116,10 @@ public class LogicalNode implements DataListener
     }
     else {
       while (iterator.hasNext()) {
-        Data data = iterator.next();
-        switch (data.getType()) {
+        SerializedData data = iterator.next();
+        switch (iterator.getType()) {
           case PARTITIONED_DATA:
-            if (partitions.contains(data.getPartitioneddata().getPartition().asReadOnlyByteBuffer())) {
+            if (partitions.contains(iterator.getPartitionedData())) {
               policy.distribute(physicalNodes, data);
             }
             break;

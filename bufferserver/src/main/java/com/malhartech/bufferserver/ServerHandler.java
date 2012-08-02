@@ -11,8 +11,8 @@ import com.malhartech.bufferserver.policy.*;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.jboss.netty.channel.*;
 import org.jboss.netty.channel.ChannelHandler.Sharable;
+import org.jboss.netty.channel.*;
 
 /**
  * Handler to serve connections accepted by the server.
@@ -68,7 +68,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
         dl = publisher_bufffers.get(identifier);
       }
       else {
-        dl = new DataList(identifier, type, 1024 * 1024);
+        dl = new DataList(identifier, type);
         publisher_bufffers.put(identifier, dl);
       }
     }
@@ -103,12 +103,12 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
           dl = publisher_bufffers.get(upstream_identifier);
         }
         else {
-          dl = new DataList(upstream_identifier, type, 1024 * 1024);
+          dl = new DataList(upstream_identifier, type);
           publisher_bufffers.put(upstream_identifier, dl);
         }
       }
 
-      ln = new LogicalNode(type, dl.newIterator(identifier), getPolicy(request.getPolicy(), null));
+      ln = new LogicalNode(type, dl.newIterator(identifier, new ProtobufDataInspector(Buffer.Data.getDefaultInstance())), getPolicy(request.getPolicy(), null));
       if (request.getPartitionCount() > 0) {
         for (ByteString bs : request.getPartitionList()) {
           ln.addPartition(bs.asReadOnlyByteBuffer());
@@ -194,7 +194,6 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
        * name. We leave it to the stream to decide when to bring up a new node
        * with the same identifier as the one which just died.
        */
-      ((DataList) ctx.getAttachment()).addPublisherDisconnected(System.currentTimeMillis());
       ctx.setAttachment(null);
     }
   }

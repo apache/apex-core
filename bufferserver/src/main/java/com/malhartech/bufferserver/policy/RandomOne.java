@@ -4,8 +4,8 @@
  */
 package com.malhartech.bufferserver.policy;
 
-import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.PhysicalNode;
+import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Set;
 
 /**
@@ -27,7 +27,7 @@ public class RandomOne extends AbstractPolicy
   }
 
   @Override
-  public void distribute(Set<PhysicalNode> nodes, Data data)
+  public void distribute(Set<PhysicalNode> nodes, SerializedData data)
   {
     int count = (int) (Math.random() * nodes.size());
     for (PhysicalNode node : nodes) {
