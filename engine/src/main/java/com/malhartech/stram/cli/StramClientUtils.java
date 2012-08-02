@@ -8,12 +8,16 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.yarn.api.AMRMProtocol;
 import org.apache.hadoop.yarn.api.ClientRMProtocol;
+import org.apache.hadoop.yarn.api.ContainerManager;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.KillApplicationRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
@@ -40,7 +44,11 @@ public class StramClientUtils {
       this.conf = conf;
       this.rpc = YarnRPC.create(conf);
     }
- 
+
+    public Configuration getConf() {
+      return this.conf;
+    }
+    
     public YarnRPC  getYarnRPC() {
       return rpc;
     }
@@ -77,6 +85,35 @@ public class StramClientUtils {
       return  ((ClientRMProtocol) rpc.getProxy(
           ClientRMProtocol.class, rmAddress, conf));
     }   
+
+    
+    /**
+     * Connect to the Resource Manager
+     *
+     * @return Handle to communicate with the RM
+     */
+    public AMRMProtocol connectToRM()
+    {
+      InetSocketAddress rmAddress = conf.getSocketAddr(
+        YarnConfiguration.RM_SCHEDULER_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
+        YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
+      LOG.info("Connecting to ResourceManager at " + rmAddress);
+      return ((AMRMProtocol) rpc.getProxy(AMRMProtocol.class, rmAddress, conf));
+    }
+
+    /**
+     * Helper function to connect to CM
+     */
+    public ContainerManager connectToCM(Container container)
+    {
+      LOG.debug("Connecting to ContainerManager for containerid=" + container.getId());
+      String cmIpPortStr = container.getNodeId().getHost() + ":"
+                           + container.getNodeId().getPort();
+      InetSocketAddress cmAddress = NetUtils.createSocketAddr(cmIpPortStr);
+      LOG.info("Connecting to ContainerManager at " + cmIpPortStr);
+      return ((ContainerManager) rpc.getProxy(ContainerManager.class, cmAddress, conf));
+    }
     
   }
 

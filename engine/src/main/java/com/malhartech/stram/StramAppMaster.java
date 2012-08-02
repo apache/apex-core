@@ -14,10 +14,10 @@ import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.cli.CommandLine;
@@ -32,11 +32,13 @@ import org.apache.hadoop.yarn.ClusterInfo;
 import org.apache.hadoop.yarn.SystemClock;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.hadoop.yarn.api.ContainerManager;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.StopContainerRequest;
 import org.apache.hadoop.yarn.api.records.AMResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -52,7 +54,6 @@ import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
-import org.apache.hadoop.yarn.ipc.YarnRPC;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.hadoop.yarn.webapp.WebApp;
@@ -61,6 +62,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
+import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.webapp.StramWebApp;
 
@@ -72,10 +74,9 @@ public class StramAppMaster
 {
   private static Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
   // Configuration 
-  private YarnConfiguration conf;
+  private Configuration conf;
+  private YarnClientHelper yarnClient;
   private Properties topologyProperties;
-  // YARN RPC to communicate with the Resource Manager or Node Manager
-  private YarnRPC rpc;
   // Handle to communicate with the Resource Manager
   private AMRMProtocol resourceManager;
   // Application Attempt Id ( combination of attemptId and fail count )
@@ -104,6 +105,8 @@ public class StramAppMaster
   // Allocated container count so that we know how many containers has the RM
   // allocated to us
   private AtomicInteger numAllocatedContainers = new AtomicInteger();
+  private Map<String, Container> allocatedContainers = new HashMap<String, Container>();
+  
   // Count of failed containers 
   private AtomicInteger numFailedContainers = new AtomicInteger();
   // Count of containers already requested from the RM
@@ -111,7 +114,7 @@ public class StramAppMaster
   // Only request for more if the original requirement changes. 
   private AtomicInteger numRequestedContainers = new AtomicInteger();
   // Containers to be released
-  private CopyOnWriteArrayList<ContainerId> releasedContainers = new CopyOnWriteArrayList<ContainerId>();
+  //private CopyOnWriteArrayList<ContainerId> releasedContainers = new CopyOnWriteArrayList<ContainerId>();
   // Launch threads
   private List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
@@ -264,8 +267,8 @@ public class StramAppMaster
   public StramAppMaster() throws Exception
   {
     // Set up the configuration and RPC
-    conf = new YarnConfiguration();
-    rpc = YarnRPC.create(conf);
+    this.conf = new YarnConfiguration();
+    this.yarnClient = new YarnClientHelper(this.conf);
   }
 
   /**
@@ -401,7 +404,7 @@ public class StramAppMaster
     LOG.info("Starting ApplicationMaster");
 
     // Connect to ResourceManager
-    resourceManager = connectToRM();
+    resourceManager = yarnClient.connectToRM();
 
     // Setup local RPC Server to accept status requests directly from clients 
     // TODO need to setup a protocol for client to be able to communicate to the RPC server 
@@ -505,7 +508,8 @@ public class StramAppMaster
 
         // assign streaming node(s) to new container
         dnmgr.assignContainer(allocatedContainer.getId().toString(), NetUtils.getConnectAddress(this.bufferServerAddress));
-        LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, rpc, conf, this.topologyProperties, rpcImpl.getAddress(), debug);
+        this.allocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
+        LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, this.topologyProperties, rpcImpl.getAddress(), debug);
         Thread launchThread = new Thread(runnableLaunchContainer);
 
         // launch and start the container on a separate thread to keep the main thread unblocked
@@ -625,21 +629,6 @@ public class StramAppMaster
   }
 
   /**
-   * Connect to the Resource Manager
-   *
-   * @return Handle to communicate with the RM
-   */
-  private AMRMProtocol connectToRM()
-  {
-    InetSocketAddress rmAddress = conf.getSocketAddr(
-      YarnConfiguration.RM_SCHEDULER_ADDRESS,
-      YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
-      YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
-    LOG.info("Connecting to ResourceManager at " + rmAddress);
-    return ((AMRMProtocol) rpc.getProxy(AMRMProtocol.class, rmAddress, conf));
-  }
-
-  /**
    * Register the Application Master to the Resource Manager
    *
    * @return the registration response from the RM
@@ -711,6 +700,25 @@ public class StramAppMaster
     req.setResponseId(rmRequestID.incrementAndGet());
     req.setApplicationAttemptId(appAttemptID);
     req.addAllAsks(requestedContainers);
+
+    List<ContainerId> releasedContainers = new ArrayList<ContainerId>();    
+    for (String containerIdStr : dnmgr.containerStopRequests.values()) {
+      Container allocatedContainer = this.allocatedContainers.get(containerIdStr);
+      if (allocatedContainer != null) {
+         // issue stop container - TODO: separate thread to not block heartbeat
+        ContainerManager cm = yarnClient.connectToCM(allocatedContainer);
+        StopContainerRequest stopContainer = Records.newRecord(StopContainerRequest.class);
+        stopContainer.setContainerId(allocatedContainer.getId());
+        cm.stopContainer(stopContainer);
+        LOG.info("Stopped container {}", containerIdStr);
+        // RM does not report the container as completed when stopped from here
+        this.numCompletedContainers.incrementAndGet(); 
+        this.numFailedContainers.incrementAndGet();
+        //releasedContainers.add(allocatedContainer.getId());
+      }
+      dnmgr.containerStopRequests.remove(containerIdStr);
+    }
+    
     req.addAllReleases(releasedContainers);
     req.setProgress((float) numCompletedContainers.get() / numTotalContainers);
 

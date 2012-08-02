@@ -109,7 +109,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     return (Sink) adapterStream;
   }
 
-  public static <T extends Stream> T initAdapterStream(StreamConfiguration streamConf, AbstractNode node)
+  public static <T extends Stream> T initAdapterStream(StreamConfiguration streamConf, AbstractNode targetNode)
   {
     Map<String, String> properties = streamConf.getDagProperties();
     String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
@@ -129,7 +129,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
       instance.setup(streamConf);
 
       com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
-      if (node == null) {
+      if (targetNode == null) {
         /*
          * This is output adapter so it needs to implement the Sink interface.
          */
@@ -139,7 +139,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
         }
       }
       else {
-        Sink sink = node.getSink(ctx);
+        Sink sink = targetNode.getSink(ctx);
 //        logger.info(ctx + " setting sink for instance " + instance + " to " + sink);
         ctx.setSink(sink);
       }
