@@ -72,7 +72,7 @@ public class StramCli {
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[] { "help", "ls", "connect", "listnodes", "timeout", "kill", "exit" };
+    String[] commandsList = new String[] { "help", "ls", "connect", "listnodes", "shutdown", "timeout", "kill", "exit" };
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -111,6 +111,8 @@ public class StramCli {
           listNodes(line);
         } else if (line.startsWith("launch")) {
           launchApp(line, reader);
+        } else if (line.startsWith("shutdown")) {
+          shutdownApp(line);
         } else if (line.startsWith("timeout")) {
           timeoutApp(line, reader);
         } else if (line.startsWith("kill")) {
@@ -162,6 +164,16 @@ public class StramCli {
       throw new CliException(msg);
     }
     return args;
+  }
+
+  private int getIntArg(String line, int argIndex, String msg) {
+    String[] args = assertArgs(line, argIndex+1, msg);
+    try {
+      int arg = Integer.parseInt(args[argIndex]);
+      return arg;
+    } catch (Exception e) {
+      throw new CliException("Not a valid number: " + args[argIndex]);
+    }
   }
   
   private List<ApplicationReport> getApplicationList() {
@@ -334,13 +346,21 @@ public class StramCli {
     }
   }
 
-  private int getIntArg(String line, int argIndex, String msg) {
-    String[] args = assertArgs(line, argIndex+1, msg);
+  private void shutdownApp(String line) {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    
+    Client wsClient = Client.create();
+    wsClient.setFollowRedirects(true);
+    // WebAppProxyServlet does not support POST - for now bypass it for this request
+    WebResource r = wsClient.resource("http://" + currentApp.getOriginalTrackingUrl())
+        .path("ws").path("v1").path("stram").path("shutdown");
     try {
-      int arg = Integer.parseInt(args[argIndex]);
-      return arg;
+      JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class);
+      System.out.println("shutdown requested: " + response);
     } catch (Exception e) {
-      throw new CliException("Not a valid number: " + args[argIndex]);
+      throw new CliException("Failed to request " + r.getURI(), e);
     }
   }
   

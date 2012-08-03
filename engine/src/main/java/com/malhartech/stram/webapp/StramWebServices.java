@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
@@ -16,6 +17,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
 
 import org.apache.hadoop.security.UserGroupInformation;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +88,15 @@ public class StramWebServices {
     nodeList.nodes = topologyManager.getNodeInfoList();
     return nodeList;
   }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path("shutdown") 
+  @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
+  public JSONObject shutdown() { 
+      topologyManager.shutdownAllContainers();
+      return new JSONObject();
+  }   
+  
   
 }
 
