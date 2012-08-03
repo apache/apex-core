@@ -4,14 +4,15 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.malhartech</groupId>
+  <artifactId>bufferserver</artifactId>
+  <version>0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
+  <description>Interface for nodes from 2 different containers to talk to each other.</description>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <netbeans.hint.license>malhar-inc</netbeans.hint.license>
   </properties>
-
-  <version>0.1-SNAPSHOT</version>
 
   <name>Buffer Server</name>
   <url>http://www.malhartech.com/</url>
@@ -163,6 +164,4 @@
       </plugin -->
     </plugins>
   </build>
-  <artifactId>bufferserver</artifactId>
-  <description>Interface for nodes from 2 different containers to talk to each other.</description>
 </project>

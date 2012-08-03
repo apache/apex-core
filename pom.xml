@@ -41,6 +41,7 @@
     <module>examples/wordcount</module>
     <module>examples/twitter</module>
     <module>examples/ads</module>
+    <module>examples/performance</module>
   </modules>
     <artifactId>framework</artifactId>
 </project>
