@@ -25,11 +25,6 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   private String streamClassName;
   private Stream adapterStream = null;
 
-  public AdapterWrapperNode(NodeContext ctx)
-  {
-    super(ctx);
-  }
-
   public String getStreamClassName()
   {
     return streamClassName;

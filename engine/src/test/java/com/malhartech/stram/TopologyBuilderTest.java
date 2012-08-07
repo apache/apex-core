@@ -245,10 +245,6 @@ public class TopologyBuilderTest {
 
     boolean booleanProperty;
     
-    public EchoNode(NodeContext ctx) {
-      super(ctx);
-    }
-
     private String myStringProperty;
 
     public String getMyStringProperty() {

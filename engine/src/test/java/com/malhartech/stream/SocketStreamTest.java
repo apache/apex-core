@@ -163,7 +163,7 @@ public class SocketStreamTest
   @Test
   public void testStramChildInit() throws Exception
   {
-    AdapterWrapperNode wn = new AdapterWrapperNode(null);
+    AdapterWrapperNode wn = new AdapterWrapperNode();
     Map<String, String> properties = new HashMap<String, String>();
     properties.put(AdapterWrapperNode.KEY_IS_INPUT, "true");
     BeanUtils.populate(wn, properties);

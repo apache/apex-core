@@ -315,10 +315,6 @@ public class StramMiniClusterTest {
 
   public static class TestDNode extends AbstractNode {
 
-    public TestDNode(NodeContext ctx) {
-      super(ctx);
-    }
-
     int getResetCount = 0;
     Long[] tupleCounts = new Long[0];
     
@@ -364,14 +360,15 @@ public class StramMiniClusterTest {
     {
       stopSafely();
     }
+
+    void setNodeContext(NodeContext nodeContext)
+    {
+      ctx = nodeContext;
+    }
   }
   
 
   public static class NoTimeoutTestNode extends TestDNode {
-
-    public NoTimeoutTestNode(NodeContext ctx) {
-      super(ctx);
-    }
 
     @Override
     public void handleIdleTimeout() {

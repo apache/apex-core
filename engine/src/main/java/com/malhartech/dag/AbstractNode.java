@@ -7,6 +7,10 @@ package com.malhartech.dag;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
+import java.io.Externalizable;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.lang.reflect.Field;
 import java.util.Comparator;
 import java.util.HashSet;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -16,20 +20,37 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode implements Node, Runnable
+public abstract class AbstractNode implements Node, Externalizable
 {
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
-  private final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
-  private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
-  private final StablePriorityQueue<Tuple> inputQueue;
-  final NodeContext ctx;
-  private volatile boolean alive;
+  private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
+  private transient final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
+  private transient final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
+  private transient final StablePriorityQueue<Tuple> inputQueue;
+  private transient final Sink sink = new Sink()
+  {
+    @Override
+    public void doSomething(Tuple t)
+    {
+      synchronized (inputQueue) {
+//        logger.info(this + "::doSomething " + t);
+        inputQueue.add(t);
+        inputQueue.notify();
+      }
+    }
 
-  public AbstractNode(NodeContext ctx)
+    @Override
+    public String toString()
+    {
+      return AbstractNode.this.toString();
+    }
+  };
+  private transient volatile boolean alive;
+  protected transient NodeContext ctx;
+
+  public AbstractNode()
   {
     // initial capacity should be some function of the window length
     this.inputQueue = new StablePriorityQueue<Tuple>(1024 * 1024, new TupleComparator());
-    this.ctx = ctx;
   }
 
   final public NodeContext getContext()
@@ -74,24 +95,6 @@ public abstract class AbstractNode implements Node, Runnable
   {
     return ctx.resetHeartbeatCounters();
   }
-  private final Sink sink = new Sink()
-  {
-    @Override
-    public void doSomething(Tuple t)
-    {
-      synchronized (inputQueue) {
-//        logger.info(this + "::doSomething " + t);
-        inputQueue.add(t);
-        inputQueue.notify();
-      }
-    }
-
-    @Override
-    public String toString()
-    {
-      return AbstractNode.this.toString();
-    }
-  };
 
   public Sink getSink(StreamContext context)
   {
@@ -152,9 +155,14 @@ public abstract class AbstractNode implements Node, Runnable
     }
   }
 
-  @Override
-  final public void run()
+  /**
+   * Originally this method was defined in an attempt to implement the interface Runnable. Although it seems that it's called from another thread which
+   * implements Runnable, so we take this opportunity to pass the NodeContext through the run method.
+   */
+  final public void run(NodeContext ctx)
   {
+    this.ctx = ctx;
+
     /*
      * We use skip tuple to skip the loops efficiently.
      */
@@ -252,10 +260,10 @@ public abstract class AbstractNode implements Node, Runnable
           }
         }
       }
+
       /*
        * we process this outside to keep the critical region free.
        */
-
       switch (t.getType()) {
         case NO_DATA:
           // special packet which allows us to skip the data processing.
@@ -285,10 +293,10 @@ public abstract class AbstractNode implements Node, Runnable
           }
           break;
 
-          /*
-           * our comparator function guarantees that we are always processing End of Stream 
-           * tuple after the end window tuple of the window in which EoS tuple was received.
-           */
+        /*
+         * our comparator function guarantees that we are always processing End of Stream tuple after the end window tuple of the window in which EoS tuple was
+         * received.
+         */
         case END_STREAM:
           if (inputStreams.remove(t.getContext())) {
             if (inputStreams.isEmpty()) {
@@ -309,9 +317,9 @@ public abstract class AbstractNode implements Node, Runnable
     } while (alive);
 
     teardown();
-    
+
     /*
-     * since we are going away... we should let all the downstream nodes know that.
+     * since we are going away, we should let all the downstream nodes know that.
      */
     EndStreamTuple est = new EndStreamTuple();
     est.setWindowId(ctx.getCurrentWindowId());
@@ -323,7 +331,23 @@ public abstract class AbstractNode implements Node, Runnable
   @Override
   public String toString()
   {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.ctx.getId()).
-      toString();
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", ctx == null ? "unassigned" : ctx.getId()).toString();
+  }
+
+  @Override
+  public void readExternal(ObjectInput in)
+  {
+
+    Class<? extends AbstractNode> myclass = this.getClass();
+  }
+
+  @Override
+  public void writeExternal(ObjectOutput out)
+  {
+    Class<? extends AbstractNode> myclass = this.getClass();
+    Field[] fields = myclass.getDeclaredFields();
+    for (Field f : fields) {
+    }
+
   }
 }

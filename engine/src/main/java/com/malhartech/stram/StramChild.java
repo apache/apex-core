@@ -26,6 +26,7 @@ import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -83,7 +84,7 @@ public class StramChild
 
     AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
     if (sc.isInline()) {
-      LOG.info("inline connection from {} to {}", sourceNode, targetNode);
+      LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
       InlineStream stream = new InlineStream();
       com.malhartech.dag.StreamContext dsc = new com.malhartech.dag.StreamContext();
       stream.setContext(dsc);
@@ -176,22 +177,26 @@ public class StramChild
       s.activate();
     }
 
-    for (final AbstractNode node : nodeList.values()) {
+    for (Entry<String, AbstractNode> e : nodeList.entrySet()) {
+      final AbstractNode node = e.getValue();
+      final String id = e.getKey();
       // launch nodes
       Runnable nodeRunnable = new Runnable()
       {
         @Override
         public void run()
         {
-          node.run();
-          // processing has ended
-          activeNodeList.remove(node.getContext().getId());
+          node.run(new NodeContext(id));
+          /*
+           * processing has ended
+           */
+          activeNodeList.remove(id);
         }
       };
-      Thread launchThread = new Thread(nodeRunnable);
-      activeNodeList.put(node.getContext().getId(), launchThread);
-      launchThread.start();
 
+      Thread launchThread = new Thread(nodeRunnable);
+      activeNodeList.put(e.getKey(), launchThread);
+      launchThread.start();
     }
 
     // activate all the input adapters if any
@@ -213,18 +218,17 @@ public class StramChild
     // we do not have a choice because the things are not setup to facilitate it, so brute force.
 
     /*
-     * first tear down all the input adapters.
+     * first stop all the input adapters.
      */
     for (AbstractNode node : nodeList.values()) {
       if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode) node).isInput()) {
         LOG.debug("teardown " + node);
         node.stopSafely();
-        node.teardown(); // this is an anomalie, the input adapters do not have any business running as node.
       }
     }
 
     /*
-     * now tear down all the nodes.
+     * now stop all the nodes.
      */
     for (AbstractNode node : nodeList.values()) {
       if (!(node instanceof AdapterWrapperNode)) {
@@ -234,7 +238,7 @@ public class StramChild
     }
 
     /*
-     * tear down all the streams.
+     * stop all the streams.
      */
     for (Stream s : this.streams) {
       LOG.debug("teardown " + s);
@@ -243,13 +247,12 @@ public class StramChild
 
 
     /*
-     * tear down all the output adapters
+     * stop all the output adapters
      */
     for (AbstractNode node : this.nodeList.values()) {
       if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode) node).isInput()) {
         LOG.debug("teardown " + node);
         node.stopSafely();
-        node.teardown(); // this is an anomalie, the output adapters do not have any business running as node.
       }
     }
   }
@@ -452,8 +455,8 @@ public class StramChild
   {
     try {
       Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(AbstractNode.class);
-      Constructor<? extends AbstractNode> c = nodeClass.getConstructor(NodeContext.class);
-      AbstractNode node = c.newInstance(new NodeContext(nodeCtx.getDnodeId()));
+      Constructor<? extends AbstractNode> c = nodeClass.getConstructor();
+      AbstractNode node = c.newInstance();
       // populate custom properties
       BeanUtils.populate(node, nodeCtx.getProperties());
       return node;
