@@ -42,12 +42,6 @@ public class DNodeManager
   private AtomicInteger nodeSequence = new AtomicInteger();
   private long windowStartMillis = System.currentTimeMillis();
   private long windowSizeMillis = 500;
-
-  public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
-
-  public void addContainerStopRequest(String containerId) {
-    containerStopRequests.put(containerId, containerId);
-  }
   
   private class NodeStatus
   {
@@ -71,6 +65,18 @@ public class DNodeManager
       return outputAdapters.contains(pnode);
     }
   }
+  
+  private class ContainerStatus
+  {
+    private ContainerStatus(StreamingContainerContext ctx) {
+      this.containerContext = ctx;
+    }
+    
+    boolean shutdownRequested = false;
+    StreamingContainerContext containerContext;
+  }
+  
+  
   /**
    * Nodes grouped for deployment, nodes connected with inline streams go to same container
    */
@@ -81,11 +87,13 @@ public class DNodeManager
   private Map<NodeConf, List<byte[]>> nodePartitioning = new HashMap<NodeConf, List<byte[]>>();
   private List<Set<NodeConf>> deployGroups = new ArrayList<Set<NodeConf>>();
   private Map<String, NodeStatus> deployedNodes = new ConcurrentHashMap<String, NodeStatus>();
-  private Map<String, StreamingContainerContext> containerContextMap = new HashMap<String, StreamingContainerContext>();
   private Map<NodeConf, Map<String, NodePConf>> logical2PhysicalNode = new ConcurrentHashMap<NodeConf, Map<String, NodePConf>>();
   private Map<String, NodeConf> nodeId2NodeConfMap = new ConcurrentHashMap<String, NodeConf>();
   private Map<StreamConf, NodePConf> adapterNodes = new ConcurrentHashMap<StreamConf, NodePConf>();
-  
+
+  public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
+  public Map<String, ContainerStatus> containers = new ConcurrentHashMap<String, ContainerStatus>();
+    
   public DNodeManager(TopologyBuilder topology) {
       addNodes(topology.getAllNodes().values());
       // try to align to it pleases eyes.
@@ -499,7 +507,7 @@ public class DNodeManager
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setNodes(pnodeList);
     scc.setStreams(new ArrayList<StreamPConf>(streams.values()));
-    containerContextMap.put(containerId, scc);
+    containers.put(containerId, new ContainerStatus(scc));
 
     return scc;
   }
@@ -540,11 +548,11 @@ public class DNodeManager
 
   public StreamingContainerContext getContainerContext(String containerId)
   {
-    StreamingContainerContext ctx = containerContextMap.get(containerId);
-    if (ctx == null) {
+    ContainerStatus cs = containers.get(containerId);
+    if (cs == null) {
       throw new IllegalArgumentException("No context for container " + containerId);
     }
-    return ctx;
+    return cs.containerContext;
   }
 
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
@@ -573,12 +581,18 @@ public class DNodeManager
       }
     }
 
-    List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (containerIdle && isApplicationIdle()) {
-      LOG.info("requesting shutdown for container {}", heartbeat.getContainerId());
+      LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
       rsp.setShutdown(true);
+    } else {
+      ContainerStatus cs = containers.get(heartbeat.getContainerId());
+      if (cs != null && cs.shutdownRequested) {
+        LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
+        rsp.setShutdown(true);
+      }
     }
+    List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
     rsp.setNodeRequests(requests);
     return rsp;
   }
@@ -620,6 +634,22 @@ public class DNodeManager
 
   }
 
+  /**
+   * Mark all containers for shutdown, next container heartbeat response
+   * will propagate the shutdown request. This is controlled soft shutdown.
+   * If containers don't respond, the application can be forcefully terminated
+   * via yarn using forceKillApplication.
+   */
+  public void shutdownAllContainers() {
+    for (ContainerStatus cs : this.containers.values()) {
+      cs.shutdownRequested = true;
+    }
+  }
+  
+  public void addContainerStopRequest(String containerId) {
+    containerStopRequests.put(containerId, containerId);
+  }
+  
   public ArrayList<NodeInfo> getNodeInfoList() {
     ArrayList<NodeInfo> nodeInfoList = new ArrayList<NodeInfo>(deployedNodes.size());
     for (NodeStatus ns : deployedNodes.values()) {
