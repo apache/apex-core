@@ -279,7 +279,7 @@ public class StramChild
       // gather heartbeat info for all nodes
       for (Map.Entry<String, AbstractNode> e : nodeList.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
-        HeartbeatCounters counters = e.getValue().resetHeartbeatCounters();
+        HeartbeatCounters counters = e.getValue().getContext().resetHeartbeatCounters();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setNumberTuplesProcessed((int) counters.tuplesProcessed);
@@ -303,7 +303,7 @@ public class StramChild
         }
       }
       catch (Exception e) {
-        LOG.warn("Exception received (may be during shutdown?) " + e.getLocalizedMessage());
+        LOG.warn("Exception received (may be during shutdown?) {}", e.getLocalizedMessage());
       }
     }
     LOG.debug("Exiting hearbeat loop");

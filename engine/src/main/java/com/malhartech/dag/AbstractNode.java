@@ -5,12 +5,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data.DataType;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
-import java.io.Externalizable;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.lang.reflect.Field;
 import java.util.Comparator;
 import java.util.HashSet;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -20,7 +15,7 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode implements Node, Externalizable
+public abstract class AbstractNode implements Node
 {
   private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
   private transient final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
@@ -32,7 +27,6 @@ public abstract class AbstractNode implements Node, Externalizable
     public void doSomething(Tuple t)
     {
       synchronized (inputQueue) {
-//        logger.info(this + "::doSomething " + t);
         inputQueue.add(t);
         inputQueue.notify();
       }
@@ -44,6 +38,7 @@ public abstract class AbstractNode implements Node, Externalizable
       return AbstractNode.this.toString();
     }
   };
+  private transient int consumedTupleCount;
   private transient volatile boolean alive;
   protected transient NodeContext ctx;
 
@@ -85,17 +80,6 @@ public abstract class AbstractNode implements Node, Externalizable
   {
   }
 
-  /**
-   * Return and reset counts for next heartbeat interval. This is called as part of the heartbeat processing. Providing this hook in node implementation so it
-   * can be mocked for testing.
-   *
-   * @return
-   */
-  public HeartbeatCounters resetHeartbeatCounters()
-  {
-    return ctx.resetHeartbeatCounters();
-  }
-
   public Sink getSink(StreamContext context)
   {
     inputStreams.add(context);
@@ -105,16 +89,16 @@ public abstract class AbstractNode implements Node, Externalizable
   // this about object sharing among the nodes. it would be nice
   // to know if the object can be shared among multiple downstream
   // nodes. will save on serialization/deserialization etc.
-  public void emit(Object o)
+  public void emit(final Object o)
   {
-    for (StreamContext context : outputStreams) {
+    for (final StreamContext context : outputStreams) {
       emitStream(o, context);
     }
   }
 
-  public void emitStream(Object o, StreamContext output)
+  public final void emitStream(final Object o, final StreamContext output)
   {
-    Tuple t = new Tuple(o);
+    final Tuple t = new Tuple(o);
     t.setWindowId(ctx.getCurrentWindowId());
     t.setType(DataType.SIMPLE_DATA);
     output.sink(t);
@@ -232,6 +216,9 @@ public abstract class AbstractNode implements Node, Externalizable
                 inputQueue.poll();
               }
               else {
+                /*
+                 * out of sync stream, wait for other streams to move or to get more packets on this stream.
+                 */
                 t = skipTuple;
               }
               break;
@@ -280,16 +267,48 @@ public abstract class AbstractNode implements Node, Externalizable
           logger.warn("partitioned data should not be called " + t);
 
         case SIMPLE_DATA:
-          // process payload
+          /*
+           * process payload
+           */
           process(t.getObject());
-          // update heartbeat counters;
-          ctx.countProcessed(t);
           break;
 
         case END_WINDOW:
           endWindow();
           for (StreamContext stream : outputStreams) {
             stream.sink(t);
+          }
+
+          /*
+           * we prefer to do quite a few operations at the end of the window boundary.
+           */
+          // I wanted to take this opportunity to do multiple tasks at the same time
+          // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
+          // over elements but cannot remove them without access to iterator.
+          switch (ctx.getRequestType()) {
+            case UNDEFINED:
+              /*
+               * this is an evidence that life form other than itself exists somewhere.
+               */
+              break;
+
+            case REPORT:
+              ctx.report(consumedTupleCount);
+              consumedTupleCount = 0;
+              break;
+
+            case BACKUP:
+              ctx.backup(this);
+              // this is where we do checkPointing
+              break;
+
+            case RESTORE:
+              // can we restore the state? probably not possible.
+              break;
+
+            case TERMINATE:
+              alive = false;
+              break;
           }
           break;
 
@@ -332,22 +351,5 @@ public abstract class AbstractNode implements Node, Externalizable
   public String toString()
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", ctx == null ? "unassigned" : ctx.getId()).toString();
-  }
-
-  @Override
-  public void readExternal(ObjectInput in)
-  {
-
-    Class<? extends AbstractNode> myclass = this.getClass();
-  }
-
-  @Override
-  public void writeExternal(ObjectOutput out)
-  {
-    Class<? extends AbstractNode> myclass = this.getClass();
-    Field[] fields = myclass.getDeclaredFields();
-    for (Field f : fields) {
-    }
-
   }
 }

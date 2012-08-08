@@ -318,7 +318,6 @@ public class StramMiniClusterTest {
     int getResetCount = 0;
     Long[] tupleCounts = new Long[0];
     
-    @Override
     public HeartbeatCounters resetHeartbeatCounters() {
       HeartbeatCounters stats = new HeartbeatCounters();
       if (tupleCounts.length == 0) {
