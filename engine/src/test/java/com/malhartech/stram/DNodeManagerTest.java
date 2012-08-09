@@ -48,6 +48,7 @@ public class DNodeManagerTest {
         nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
 
+    b.setContainerCount(2);
     DNodeManager dnm = new DNodeManager(b);
     Assert.assertEquals("number required containers", 2, dnm.getNumRequiredContainers());
     
@@ -112,6 +113,8 @@ public class DNodeManagerTest {
     for (NodeConf nodeConf : b.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
+    
+    b.setContainerCount(5);
     DNodeManager dnm = new DNodeManager(b);
     Assert.assertEquals("number required containers", 5, dnm.getNumRequiredContainers());
 
@@ -162,8 +165,10 @@ public class DNodeManagerTest {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
 
-    DNodeManager dnm = new DNodeManager(b);
     int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
+    b.setContainerCount(expectedContainerCount);
+    DNodeManager dnm = new DNodeManager(b);
+
     Assert.assertEquals("number required containers", expectedContainerCount, dnm.getNumRequiredContainers());
     
     for (int i=0; i<expectedContainerCount; i++) {
@@ -206,7 +211,12 @@ public class DNodeManagerTest {
       
       StreamPConf scOut1 = getStreamContext(cc, "output1");
       Assert.assertNotNull("out stream connection for " + containerId, scOut1);
-      Assert.assertFalse(scOut1.isInline());
+      
+      if (i==0) {
+        Assert.assertTrue(containerId +"/" + scOut1.getId() + " inline", scOut1.isInline()); // first stream inline
+      } else {
+        Assert.assertFalse(containerId +"/" + scOut1.getId() + " not inline", scOut1.isInline()); // first stream inline
+      }
     }
   }  
 
@@ -245,5 +255,5 @@ public class DNodeManagerTest {
     }
     return null;
   }
-  
+
 }
