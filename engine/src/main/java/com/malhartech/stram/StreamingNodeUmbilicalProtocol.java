@@ -35,7 +35,7 @@ import org.apache.hadoop.ipc.VersionedProtocol;
 @InterfaceStability.Stable
 public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
 
-  public static final long versionID = 1L;
+  public static final long versionID = 201208081755L;
   
   void echo(String containerId, String msg) throws IOException;
 
@@ -332,7 +332,8 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
        */
       SHUTDOWN,
       RECONFIGURE, // for node configuration changes
-      REPORT_PARTION_STATS
+      REPORT_PARTION_STATS,
+      CHECKPOINT
     }
     
     private String nodeId;

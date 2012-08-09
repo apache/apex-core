@@ -285,37 +285,35 @@ public abstract class AbstractNode implements Node
           // I wanted to take this opportunity to do multiple tasks at the same time
           // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
           // over elements but cannot remove them without access to iterator.
-          switch (ctx.getRequestType()) {
-            case UNDEFINED:
-              /*
-               * this is an evidence that life form other than itself exists somewhere.
-               */
-              break;
+          try {
+            switch (ctx.getRequestType()) {
+              case UNDEFINED:
+                logger.info("Node notified of an intelligent life elsewhere in the system!");
+                break;
 
-            case REPORT:
-              ctx.report(consumedTupleCount);
-              consumedTupleCount = 0;
-              break;
+              case REPORT:
+                ctx.report(consumedTupleCount);
+                consumedTupleCount = 0;
+                break;
 
-            case BACKUP:
-              ctx.backup(this);
-              // this is where we do checkPointing
-              break;
+              case BACKUP:
+                ctx.backup(this);
+                break;
 
-            case RESTORE:
-              // can we restore the state? probably not possible.
-              break;
+              case RESTORE:
+                logger.info("restore requests are not implemented");
+                break;
 
-            case TERMINATE:
-              alive = false;
-              break;
+              case TERMINATE:
+                alive = false;
+                break;
+            }
+          }
+          catch (Exception e) {
+            logger.warn("Exception while catering to external request", e.getLocalizedMessage());
           }
           break;
 
-        /*
-         * our comparator function guarantees that we are always processing End of Stream tuple after the end window tuple of the window in which EoS tuple was
-         * received.
-         */
         case END_STREAM:
           if (inputStreams.remove(t.getContext())) {
             if (inputStreams.isEmpty()) {
@@ -325,7 +323,6 @@ public abstract class AbstractNode implements Node
           else {
             logger.error("Got EndOfStream on from a stream which is not registered");
           }
-          // find out which stream the packet come on and then remove that from our collection.
           break;
 
         default:

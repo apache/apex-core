@@ -25,7 +25,7 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 public class SocketInputStream extends SimpleChannelUpstreamHandler implements Stream
 {
   private static final Logger logger = Logger.getLogger(ClientHandler.class.getName());
-  public static final ChannelLocal<StreamContext> contexts = new ChannelLocal<StreamContext>()
+  protected static final ChannelLocal<StreamContext> contexts = new ChannelLocal<StreamContext>()
   {
     @Override
     protected StreamContext initialValue(Channel channel)

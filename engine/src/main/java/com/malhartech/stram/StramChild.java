@@ -16,12 +16,12 @@ import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.BufferServerOutputStream;
 import com.malhartech.stream.BufferServerStreamContext;
 import com.malhartech.stream.InlineStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +30,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSError;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
@@ -349,6 +350,37 @@ public class StramChild
       case RECONFIGURE:
         LOG.warn("Ignoring stram request {}", snr);
         break;
+
+      case CHECKPOINT:
+        // the follow code needs scrubbing to ensure that the input and output are setup correctly.
+        n.getContext().requestBackup(
+          new BackupAgent()
+          {
+            private FSDataOutputStream output;
+            private FSDataInputStream input;
+
+            @Override
+            public OutputStream borrowOutputStream(String id) throws IOException
+            {
+              FileSystem fs = FileSystem.get(conf); // is the conf parameter right?
+              return (output = fs.create(new Path(id))); // id is definitely not the correct path... we need to secure our state files.
+            }
+
+            @Override
+            public void returnOutputStream(String id, long windowId, OutputStream os) throws IOException
+            {
+              assert (output == os);
+              output.close();
+            }
+            
+            @Override
+            public InputStream getInputStream(String id)
+            {
+              return input;
+            }
+          });
+        break;
+
       default:
         LOG.error("Unknown request from stram {}", snr);
     }

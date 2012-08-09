@@ -4,12 +4,21 @@
  */
 package com.malhartech.dag;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class NodeContext implements Context
 {
+  private BackupAgent backupAgent;
+
   public static enum RequestType
   {
     UNDEFINED,
@@ -40,14 +49,6 @@ public class NodeContext implements Context
   public final RequestType getRequestType()
   {
     return request;
-  }
-
-  /**
-   * @param requestType the requestType to set
-   */
-  public final void setRequestType(RequestType requestType)
-  {
-    this.request = requestType;
   }
 
   /**
@@ -100,14 +101,38 @@ public class NodeContext implements Context
 
   synchronized void report(int consumedTupleCount)
   {
-    // find a way to report the bytes processed.
     this.heartbeatCounters.tuplesProcessed = consumedTupleCount;
     request = RequestType.UNDEFINED;
   }
 
-  void backup(AbstractNode aThis)
+  void backup(AbstractNode aThis) throws IOException
   {
-    // TBH
-    request = RequestType.UNDEFINED;
+    OutputStream os = backupAgent.borrowOutputStream(id);
+    try {
+      Kryo kryo = new Kryo();
+      Output output = new Output(os);
+      kryo.writeClassAndObject(output, aThis);
+      output.flush();
+
+      /*
+       * we purposely do not close the stream here since it may close the underlying stream which we did not open. We do not want the foreign logic to have to
+       * reopen the stream which may be inconvenient where as closing it is possible and easy when we return the stream back to the agent.
+       */
+      request = RequestType.UNDEFINED;
+    }
+    finally {
+      backupAgent.returnOutputStream(id, windowId, os);
+    }
+  }
+
+  public void requestBackup(BackupAgent agent)
+  {
+    this.backupAgent = agent;
+    request = RequestType.BACKUP;
+  }
+
+  public Object restore(BackupAgent agent)
+  {
+    return new Kryo().readClassAndObject(new Input(backupAgent.getInputStream(id)));
   }
 }
