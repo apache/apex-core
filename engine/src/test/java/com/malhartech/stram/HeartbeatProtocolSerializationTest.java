@@ -46,7 +46,9 @@ public class HeartbeatProtocolSerializationTest {
 
   @Test
   public void testMiniClusterTestNode() {
-    StramMiniClusterTest.TestDNode d = new StramMiniClusterTest.TestDNode(new NodeContext("1"));
+    StramMiniClusterTest.TestDNode d = new StramMiniClusterTest.TestDNode();
+    d.setNodeContext(new NodeContext("1"));
+    
     d.setTupleCounts("100, 100, 1000");
     Assert.assertEquals("100,100,1000", d.getTupleCounts());
 

@@ -14,18 +14,25 @@ import org.slf4j.LoggerFactory;
  */
 public class StreamContext implements Context
 {
+  public static enum State
+  {
+    UNDEFINED,
+    OUTSIDE_WINDOW,
+    INSIDE_WINDOW,
+    TERMINATED
+  }
   private final Logger LOG = LoggerFactory.getLogger(StreamContext.class);
   private Sink sink;
   private SerDe serde;
   private long windowId;
   private int tupleCount;
   private State sinkState;
-  
+
   public StreamContext()
   {
     sinkState = State.UNDEFINED;
   }
-  
+
   /**
    * @param sink - target node, not required for output adapter
    */
@@ -96,11 +103,10 @@ public class StreamContext implements Context
   {
     sinkState = state;
   }
-  
+
   @Override
   public String toString()
   {
     return "window = " + windowId + " tuples = " + tupleCount + " state = " + sinkState;
   }
-
 }

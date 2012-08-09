@@ -5,7 +5,6 @@
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data.DataType;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.util.StablePriorityQueue;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -16,20 +15,37 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode implements Node, Runnable
+public abstract class AbstractNode implements Node
 {
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
-  private final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
-  private final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
-  private final StablePriorityQueue<Tuple> inputQueue;
-  final NodeContext ctx;
-  private volatile boolean alive;
+  private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
+  private transient final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
+  private transient final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
+  private transient final StablePriorityQueue<Tuple> inputQueue;
+  private transient final Sink sink = new Sink()
+  {
+    @Override
+    public void doSomething(Tuple t)
+    {
+      synchronized (inputQueue) {
+        inputQueue.add(t);
+        inputQueue.notify();
+      }
+    }
 
-  public AbstractNode(NodeContext ctx)
+    @Override
+    public String toString()
+    {
+      return AbstractNode.this.toString();
+    }
+  };
+  private transient int consumedTupleCount;
+  private transient volatile boolean alive;
+  protected transient NodeContext ctx;
+
+  public AbstractNode()
   {
     // initial capacity should be some function of the window length
     this.inputQueue = new StablePriorityQueue<Tuple>(1024 * 1024, new TupleComparator());
-    this.ctx = ctx;
   }
 
   final public NodeContext getContext()
@@ -64,35 +80,6 @@ public abstract class AbstractNode implements Node, Runnable
   {
   }
 
-  /**
-   * Return and reset counts for next heartbeat interval. This is called as part of the heartbeat processing. Providing this hook in node implementation so it
-   * can be mocked for testing.
-   *
-   * @return
-   */
-  public HeartbeatCounters resetHeartbeatCounters()
-  {
-    return ctx.resetHeartbeatCounters();
-  }
-  private final Sink sink = new Sink()
-  {
-    @Override
-    public void doSomething(Tuple t)
-    {
-      synchronized (inputQueue) {
-//        logger.info(this + "::doSomething " + t);
-        inputQueue.add(t);
-        inputQueue.notify();
-      }
-    }
-
-    @Override
-    public String toString()
-    {
-      return AbstractNode.this.toString();
-    }
-  };
-
   public Sink getSink(StreamContext context)
   {
     inputStreams.add(context);
@@ -102,16 +89,16 @@ public abstract class AbstractNode implements Node, Runnable
   // this about object sharing among the nodes. it would be nice
   // to know if the object can be shared among multiple downstream
   // nodes. will save on serialization/deserialization etc.
-  public void emit(Object o)
+  public void emit(final Object o)
   {
-    for (StreamContext context : outputStreams) {
+    for (final StreamContext context : outputStreams) {
       emitStream(o, context);
     }
   }
 
-  public void emitStream(Object o, StreamContext output)
+  public final void emitStream(final Object o, final StreamContext output)
   {
-    Tuple t = new Tuple(o);
+    final Tuple t = new Tuple(o);
     t.setWindowId(ctx.getCurrentWindowId());
     t.setType(DataType.SIMPLE_DATA);
     output.sink(t);
@@ -152,9 +139,14 @@ public abstract class AbstractNode implements Node, Runnable
     }
   }
 
-  @Override
-  final public void run()
+  /**
+   * Originally this method was defined in an attempt to implement the interface Runnable. Although it seems that it's called from another thread which
+   * implements Runnable, so we take this opportunity to pass the NodeContext through the run method.
+   */
+  final public void run(NodeContext ctx)
   {
+    this.ctx = ctx;
+
     /*
      * We use skip tuple to skip the loops efficiently.
      */
@@ -224,6 +216,9 @@ public abstract class AbstractNode implements Node, Runnable
                 inputQueue.poll();
               }
               else {
+                /*
+                 * out of sync stream, wait for other streams to move or to get more packets on this stream.
+                 */
                 t = skipTuple;
               }
               break;
@@ -252,10 +247,10 @@ public abstract class AbstractNode implements Node, Runnable
           }
         }
       }
+
       /*
        * we process this outside to keep the critical region free.
        */
-
       switch (t.getType()) {
         case NO_DATA:
           // special packet which allows us to skip the data processing.
@@ -272,10 +267,10 @@ public abstract class AbstractNode implements Node, Runnable
           logger.warn("partitioned data should not be called " + t);
 
         case SIMPLE_DATA:
-          // process payload
+          /*
+           * process payload
+           */
           process(t.getObject());
-          // update heartbeat counters;
-          ctx.countProcessed(t);
           break;
 
         case END_WINDOW:
@@ -283,12 +278,42 @@ public abstract class AbstractNode implements Node, Runnable
           for (StreamContext stream : outputStreams) {
             stream.sink(t);
           }
-          break;
 
           /*
-           * our comparator function guarantees that we are always processing End of Stream 
-           * tuple after the end window tuple of the window in which EoS tuple was received.
+           * we prefer to do quite a few operations at the end of the window boundary.
            */
+          // I wanted to take this opportunity to do multiple tasks at the same time
+          // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
+          // over elements but cannot remove them without access to iterator.
+          try {
+            switch (ctx.getRequestType()) {
+              case UNDEFINED:
+                logger.info("Node notified of an intelligent life elsewhere in the system!");
+                break;
+
+              case REPORT:
+                ctx.report(consumedTupleCount);
+                consumedTupleCount = 0;
+                break;
+
+              case BACKUP:
+                ctx.backup(this);
+                break;
+
+              case RESTORE:
+                logger.info("restore requests are not implemented");
+                break;
+
+              case TERMINATE:
+                alive = false;
+                break;
+            }
+          }
+          catch (Exception e) {
+            logger.warn("Exception while catering to external request", e.getLocalizedMessage());
+          }
+          break;
+
         case END_STREAM:
           if (inputStreams.remove(t.getContext())) {
             if (inputStreams.isEmpty()) {
@@ -298,7 +323,6 @@ public abstract class AbstractNode implements Node, Runnable
           else {
             logger.error("Got EndOfStream on from a stream which is not registered");
           }
-          // find out which stream the packet come on and then remove that from our collection.
           break;
 
         default:
@@ -309,9 +333,9 @@ public abstract class AbstractNode implements Node, Runnable
     } while (alive);
 
     teardown();
-    
+
     /*
-     * since we are going away... we should let all the downstream nodes know that.
+     * since we are going away, we should let all the downstream nodes know that.
      */
     EndStreamTuple est = new EndStreamTuple();
     est.setWindowId(ctx.getCurrentWindowId());
@@ -323,7 +347,6 @@ public abstract class AbstractNode implements Node, Runnable
   @Override
   public String toString()
   {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.ctx.getId()).
-      toString();
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", ctx == null ? "unassigned" : ctx.getId()).toString();
   }
 }

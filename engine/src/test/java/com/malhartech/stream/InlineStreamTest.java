@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,10 +57,8 @@ public class InlineStreamTest
       }
     };
 
-    NodeContext ctx = new NodeContext("1");
-    AbstractNode node1 = new PassThroughNode(ctx);
-
-    AbstractNode node2 = new PassThroughNode(new NodeContext("2"));
+    AbstractNode node1 = new PassThroughNode();
+    AbstractNode node2 = new PassThroughNode();
 
     InlineStream stream12 = new InlineStream();
     StreamContext sc1 = new StreamContext();
@@ -100,20 +97,22 @@ public class InlineStreamTest
 
   private void launchNodeThreads(Collection<? extends AbstractNode> nodes, final Map<String, Thread> activeNodes)
   {
+    int i = 1;
     for (final AbstractNode node : nodes) {
+      final NodeContext ctx = new NodeContext(String.valueOf(i++));
       // launch nodes
       Runnable nodeRunnable = new Runnable()
       {
         @Override
         public void run()
         {
-          node.run();
+          node.run(ctx);
           // processing has ended
-          activeNodes.remove(node.getContext().getId());
+          activeNodes.remove(ctx.getId());
         }
       };
       Thread launchThread = new Thread(nodeRunnable);
-      activeNodes.put(node.getContext().getId(), launchThread);
+      activeNodes.put(ctx.getId(), launchThread);
       launchThread.start();
     }
   }
@@ -145,11 +144,6 @@ public class InlineStreamTest
     public void setLogMessages(boolean logMessages)
     {
       this.logMessages = logMessages;
-    }
-
-    public PassThroughNode(NodeContext ctx)
-    {
-      super(ctx);
     }
 
     @Override
