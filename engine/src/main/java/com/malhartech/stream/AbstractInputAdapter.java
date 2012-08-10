@@ -17,8 +17,8 @@ public abstract class AbstractInputAdapter implements InputAdapter
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractInputAdapter.class);
   protected StreamContext context;
-  protected volatile long timemillis;
-  protected volatile boolean finished = false;
+  protected volatile int windowId;
+  protected volatile boolean finished;
 
   @Override
   public void setContext(StreamContext context)
@@ -40,7 +40,7 @@ public abstract class AbstractInputAdapter implements InputAdapter
 
     synchronized (this) {
       try {
-        while (timemillis == 0) {
+        while (windowId == InputAdapter.OUT_OF_RANGE_WINDOW) {
           this.wait();
         }
       }
@@ -48,37 +48,51 @@ public abstract class AbstractInputAdapter implements InputAdapter
         logger.info("Interrupted while waiting to be in the window because of {}", ie.getLocalizedMessage());
       }
 
-      t.setWindowId(timemillis);
+      t.setWindowId(windowId);
       context.sink(t);
     }
   }
 
   @Override
-  public void beginWindow(long timemillis)
+  public void resetWindow(int baseSeconds)
   {
-    this.timemillis = timemillis;
+    this.windowId = 0;
+
+    ResetWindowTuple t = new ResetWindowTuple(baseSeconds);
+    t.setContext(context);
+    
+    synchronized (this) {
+      t.setWindowId(windowId);
+      context.sink(t);
+    }
+  }
+  
+  @Override
+  public void beginWindow(int windowId)
+  {
+    this.windowId = windowId;
 
     Tuple t = new Tuple(null);
     t.setType(DataType.BEGIN_WINDOW);
     t.setContext(context);
 
     synchronized (this) {
-      t.setWindowId(timemillis);
+      t.setWindowId(windowId);
       context.sink(t);
       this.notifyAll();
     }
   }
 
   @Override
-  public void endWindow(long timemillis)
+  public void endWindow(int windowId)
   {
-    this.timemillis = 0;
+    this.windowId = InputAdapter.OUT_OF_RANGE_WINDOW;
 
     EndWindowTuple t = new EndWindowTuple();
     t.setContext(context);
 
     synchronized (this) {
-      t.setWindowId(timemillis);
+      t.setWindowId(windowId);
       context.sink(t);
     }
   }
@@ -90,7 +104,7 @@ public abstract class AbstractInputAdapter implements InputAdapter
 
     synchronized (this) {
       try {
-        while (timemillis == 0) {
+        while (windowId == InputAdapter.OUT_OF_RANGE_WINDOW) {
           this.wait();
         }
         
@@ -100,7 +114,7 @@ public abstract class AbstractInputAdapter implements InputAdapter
         logger.info("Interrupted while waiting to be in the window because of {}", ie.getLocalizedMessage());
       }
 
-      t.setWindowId(timemillis);
+      t.setWindowId(windowId);
       context.sink(t);
       finished = true;
     }

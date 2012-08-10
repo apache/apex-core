@@ -17,7 +17,7 @@ import static org.junit.Assert.assertTrue;
  */
 abstract public class StramTestSupport {
 
-  static Tuple generateTuple(Object payload, long windowId, StreamContext sc) {
+  static Tuple generateTuple(Object payload, int windowId, StreamContext sc) {
     Tuple t = new Tuple(payload);
     t.setWindowId(windowId);
     t.setType(DataType.SIMPLE_DATA);
@@ -25,7 +25,7 @@ abstract public class StramTestSupport {
     return t;
   }
   
-  static Tuple generateBeginWindowTuple(String nodeid, long windowId, StreamContext sc)
+  static Tuple generateBeginWindowTuple(String nodeid, int windowId, StreamContext sc)
   {
     Tuple t = new Tuple(null);
     t.setType(DataType.BEGIN_WINDOW);
@@ -36,7 +36,7 @@ abstract public class StramTestSupport {
   }
   
   
-  static Tuple generateEndWindowTuple(String nodeid, long windowId, int tupleCount, StreamContext sc)
+  static Tuple generateEndWindowTuple(String nodeid, int windowId, int tupleCount, StreamContext sc)
   {
     EndWindow.Builder ewb = EndWindow.newBuilder();
     ewb.setNode(nodeid);
@@ -45,7 +45,7 @@ abstract public class StramTestSupport {
     Data.Builder db = Data.newBuilder();
     db.setType(DataType.END_WINDOW);
     db.setWindowId(windowId);
-    db.setEndwindow(ewb);
+    db.setEndWindow(ewb);
     
     //Data data = db.build();
     EndWindowTuple t = new EndWindowTuple();

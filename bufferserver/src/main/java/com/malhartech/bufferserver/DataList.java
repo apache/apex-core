@@ -198,7 +198,7 @@ public class DataList
     ByteBuffer bytebuffer = null;
     switch (d.getType()) {
       case PARTITIONED_DATA:
-        bytebuffer = d.getPartitioneddata().getPartition().asReadOnlyByteBuffer();
+        bytebuffer = d.getPartitionedData().getPartition().asReadOnlyByteBuffer();
         if (listeners.containsKey(bytebuffer)) {
           Set<DataListener> interested = listeners.get(bytebuffer);
           for (DataListener dl : interested) {

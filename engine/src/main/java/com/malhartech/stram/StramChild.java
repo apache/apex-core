@@ -82,7 +82,6 @@ public class StramChild
       this.inputAdapters.add((InputAdapter) wrapper.getAdapterStream());
     }
 
-
     AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
     if (sc.isInline()) {
       LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
@@ -104,7 +103,6 @@ public class StramChild
 
       BufferServerStreamContext streamContext = new BufferServerStreamContext();
       streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
-      streamContext.setWindowId(ctx.getStartWindowMillis());
       streamContext.setSourceId(sc.getSourceNodeId());
       streamContext.setSinkId(sc.getTargetNodeId());
       streamContext.setId(sc.getId());

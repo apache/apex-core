@@ -104,8 +104,8 @@ class DataListIterator implements Iterator<SerializedData>
     return di.getWindowId(previous);
   }
 
-  ByteBuffer getPartitionedData()
+  Object getData()
   {
-    return di.getPartitionedData(previous);
+    return di.getData(previous);
   }
 }

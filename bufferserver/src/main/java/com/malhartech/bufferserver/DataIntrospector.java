@@ -18,7 +18,7 @@ public interface DataIntrospector
 
   public long getWindowId(SerializedData data);
 
-  public ByteBuffer getPartitionedData(SerializedData data);
+  public Object getData(SerializedData data);
 
   public void wipeData(SerializedData previous);
 }

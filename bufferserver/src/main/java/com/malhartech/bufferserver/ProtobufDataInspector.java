@@ -45,31 +45,28 @@ public class ProtobufDataInspector implements DataIntrospector
     }
   }
 
+  @Override
   public final DataType getType(SerializedData data)
   {
     readyMessage(data);
     return previousMessage == null ? Data.DataType.NO_DATA : previousMessage.getType();
   }
 
+  @Override
   public final long getWindowId(SerializedData data)
   {
     readyMessage(data);
     return previousMessage instanceof Data ? 0 : previousMessage.getWindowId();
   }
 
-  public final ByteBuffer getPartitionedData(SerializedData data)
+  @Override
+  public final Data getData(SerializedData data)
   {
     readyMessage(data);
-    if (previousMessage == null) {
-      return null;
-    }
-    else if (previousMessage.hasPartitioneddata()) {
-      return previousMessage.getPartitioneddata().getPartition().asReadOnlyByteBuffer();
-    }
-    
-    return null;
+    return previousMessage;
   }
 
+  @Override
   public void wipeData(SerializedData data)
   {
     if (data.size + data.offset - data.dataOffset > BasicDataMinLength) {
@@ -77,7 +74,7 @@ public class ProtobufDataInspector implements DataIntrospector
     }
     else {
       logger.debug("we do not need to wipe the SerializedData since it's smaller than min length");
-      // Arrays.fill(data.bytes, data.dataOffset, data.size + data.offset, (byte) 0);
+      /* Arrays.fill(data.bytes, data.dataOffset, data.size + data.offset, (byte) 0); */
     }
   }
   /**
@@ -100,7 +97,7 @@ public class ProtobufDataInspector implements DataIntrospector
 
     db = Data.newBuilder();
     db.setType(DataType.NO_DATA); // i may need to change this if protobuf is compacting to smaller than 1 byte
-    db.setWindowId(Long.MAX_VALUE);
+    db.setWindowId(Integer.MAX_VALUE);
 
     BasicDataMaxLength = db.build().getSerializedSize();
   }

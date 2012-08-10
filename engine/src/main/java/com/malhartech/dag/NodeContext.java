@@ -34,7 +34,7 @@ public class NodeContext implements Context
     public volatile long bytesProcessed;
   }
   private String id;
-  private long windowId;
+  private int windowId;
   private volatile HeartbeatCounters heartbeatCounters = new HeartbeatCounters();
   private volatile RequestType request = RequestType.UNDEFINED;
   /**
@@ -77,12 +77,12 @@ public class NodeContext implements Context
     return id;
   }
 
-  public long getCurrentWindowId()
+  public int getCurrentWindowId()
   {
     return windowId;
   }
 
-  public void setCurrentWindowId(long windowId)
+  public void setCurrentWindowId(int windowId)
   {
     this.windowId = windowId;
   }

@@ -15,13 +15,17 @@ message PartitionedData {
     required bytes partition = 2;
 }
 
+message ResetWindow {
+    required uint32 width = 1;
+}
+
 message BeginWindow {
     required string node = 1;
 }
 
 message EndWindow {
     required string node = 1;
-    required uint64 tuple_count = 2;
+    required uint32 tuple_count = 2;
 }
 
 message SubscriberRequest {
@@ -35,37 +39,40 @@ message SubscriberRequest {
 
     required string identifier = 1;
     required string type = 2;
-    optional string upstream_identifier = 3;
-    required string upstream_type = 4;
-    repeated bytes partition = 5;
-    optional PolicyType policy = 6 [default = GIVE_ALL ];
+    optional uint64 time = 3 [default = 0];
+    optional string upstream_identifier = 4;
+    required string upstream_type = 5;
+    repeated bytes partition = 6;
+    optional PolicyType policy = 7 [default = GIVE_ALL ];
 }
 
 message PublisherRequest {
      required string identifier = 1;
      required string type = 2;
-     optional uint64 time = 3;
+     optional uint64 time = 3 [default = 0];
 }
 
 message Data {
     enum DataType {
         NO_DATA = 0;
-        BEGIN_WINDOW = 1;
-        SIMPLE_DATA = 2;
-        PARTITIONED_DATA = 3;
-        END_WINDOW = 4;
-        END_STREAM = 5;
-        PUBLISHER_REQUEST = 6;
-        SUBSCRIBER_REQUEST = 7;
+        RESET_WINDOW = 1;
+        BEGIN_WINDOW = 2;
+        SIMPLE_DATA = 3;
+        PARTITIONED_DATA = 4;
+        END_WINDOW = 5;
+        END_STREAM = 6;
+        PUBLISHER_REQUEST = 7;
+        SUBSCRIBER_REQUEST = 8;
     }
 
     required DataType type = 1;
-    required uint64 window_id = 2;
+    required uint32 window_id = 2;
 
-    optional BeginWindow beginwindow = 3;
-    optional SimpleData simpledata = 4;
-    optional PartitionedData partitioneddata = 5;
-    optional EndWindow endwindow = 6;
-    optional PublisherRequest publish = 7;
-    optional SubscriberRequest subscribe = 8;
+optional ResetWindow resetWindow = 3;
+    optional BeginWindow beginWindow = 4;
+    optional SimpleData simpleData = 5;
+    optional PartitionedData partitionedData = 6;
+    optional EndWindow endWindow = 7;
+    optional PublisherRequest publishRequest = 8;
+    optional SubscriberRequest subscribeRequest = 9;
 }

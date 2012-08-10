@@ -26,15 +26,16 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
   // Stateful properties
   private volatile Channel channel;
 
-  public static void publish(Channel channel, String identifier, String type, long windowId)
+  public static void publish(Channel channel, String identifier, String type)
   {
     Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
     prb.setIdentifier(identifier).setType(type);
 
     Data.Builder db = Data.newBuilder();
     db.setType(Data.DataType.PUBLISHER_REQUEST);
-    db.setPublish(prb);
-    db.setWindowId(windowId);
+    db.setPublishRequest(prb);
+    //windowStartTime is ignored for now - shouldn't we?
+    db.setWindowId(0);
     
     final ChannelFutureListener cfl = new ChannelFutureListener()
     {
@@ -50,8 +51,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
 
         Buffer.Data.Builder db = Data.newBuilder();
         db.setType(Data.DataType.PARTITIONED_DATA);
-        db.setWindowId(new Date().getTime());
-        db.setPartitioneddata(pdb);
+        db.setWindowId((int)new Date().getTime());
+        db.setPartitionedData(pdb);
 
         Thread.sleep(500);
         cf.getChannel().write(db).addListener(this);
@@ -82,8 +83,8 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
     
     Data.Builder builder = Data.newBuilder();
     builder.setType(Data.DataType.SUBSCRIBER_REQUEST);
-    builder.setSubscribe(srb);
-    builder.setWindowId(0L); // TODO Message missing required fields: window_id
+    builder.setSubscribeRequest(srb);
+    builder.setWindowId(0); // TODO Message missing required fields: window_id
     
     channel.write(builder.build());
   }
