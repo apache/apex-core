@@ -8,9 +8,12 @@ import com.malhartech.dag.InputAdapter;
 import java.util.Collection;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WindowGenerator implements Runnable
 {
+  public static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
   private final long startMillis; // Window start time
   private final int intervalMillis; // Window size
   private long currentWindowMillis = -1;
@@ -35,6 +38,7 @@ public class WindowGenerator implements Runnable
   protected final void nextWindow()
   {
     if (windowId == InputAdapter.MAX_VALUE_WINDOW) {
+      logger.debug("generating end -> reset window {}", windowId);
       for (InputAdapter ia : inputAdapters) {
         ia.endWindow(windowId);
       }
@@ -42,6 +46,7 @@ public class WindowGenerator implements Runnable
       run();
     }
     else {
+      logger.debug("generating end -> begin {}", windowId);
       int previousWindowId = windowId;
       advanceWindow();
       for (InputAdapter ia : inputAdapters) {
@@ -55,6 +60,7 @@ public class WindowGenerator implements Runnable
   public void run()
   {
     windowId = 0;
+    logger.debug("generating reset -> begin {}", currentWindowMillis);
     int baseSeconds = (int) (currentWindowMillis / 1000);
     for (InputAdapter ia : inputAdapters) {
       ia.resetWindow(baseSeconds, intervalMillis);
@@ -82,7 +88,7 @@ public class WindowGenerator implements Runnable
       } while (currentWindowMillis < currentTms);
     }
     else {
-      stpe.schedule(this, currentWindowMillis - currentTms, TimeUnit.MICROSECONDS);
+      stpe.schedule(this, currentWindowMillis - currentTms, TimeUnit.MILLISECONDS);
     }
 
     stpe.scheduleAtFixedRate(subsequentRun, currentWindowMillis - currentTms + intervalMillis, intervalMillis, TimeUnit.MILLISECONDS);

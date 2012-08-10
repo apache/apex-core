@@ -17,6 +17,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
 
   @Override
+  @SuppressWarnings("fallthrough")
   public void doSomething(Tuple t)
   {
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
@@ -45,7 +46,6 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
       case PARTITIONED_DATA:
         logger.warn("got partitioned data " + t.getObject());
       case SIMPLE_DATA:
-
         byte partition[] = context.getSerDe().getPartition(t.getObject());
         if (partition == null) {
           Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
@@ -67,11 +67,11 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
       case RESET_WINDOW:
         Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
         rw.setWidth((int) t.getWindowId());
-        
-        db.setWindowId((int)(t.getWindowId() >> 32));
+
+        db.setWindowId((int) (t.getWindowId() >> 32));
         db.setResetWindow(rw);
         break;
-        
+
       default:
         throw new UnsupportedOperationException("this data type is not handled in the stream");
     }

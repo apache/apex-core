@@ -26,6 +26,7 @@ public abstract class AbstractNode implements Node
     @Override
     public void doSomething(Tuple t)
     {
+      logger.debug("received tuple {}", t);
       synchronized (inputQueue) {
         inputQueue.add(t);
         inputQueue.notify();
@@ -91,6 +92,7 @@ public abstract class AbstractNode implements Node
   // nodes. will save on serialization/deserialization etc.
   public void emit(final Object o)
   {
+    logger.debug("emitting {}", o);
     for (final StreamContext context : outputStreams) {
       emitStream(o, context);
     }
@@ -143,6 +145,7 @@ public abstract class AbstractNode implements Node
    * Originally this method was defined in an attempt to implement the interface Runnable. Although it seems that it's called from another thread which
    * implements Runnable, so we take this opportunity to pass the NodeContext through the run method.
    */
+  @SuppressWarnings("fallthrough")
   final public void run(NodeContext ctx)
   {
     this.ctx = ctx;
@@ -156,6 +159,7 @@ public abstract class AbstractNode implements Node
     alive = true;
     ctx.setCurrentWindowId(0);
 
+    int resetTuples = inputStreams.size();
     int insideWindowStreamCount = 0;
     do {
       Tuple t;
@@ -219,6 +223,19 @@ public abstract class AbstractNode implements Node
                 /*
                  * out of sync stream, wait for other streams to move or to get more packets on this stream.
                  */
+                t = skipTuple;
+              }
+              break;
+
+            case RESET_WINDOW:
+              /**
+               * we will receive tuples which are equal to the number of input streams.
+               */
+              inputQueue.poll();
+              if (--resetTuples == 0) {
+                resetTuples = inputStreams.size();
+              }
+              else {
                 t = skipTuple;
               }
               break;
@@ -322,6 +339,12 @@ public abstract class AbstractNode implements Node
           }
           else {
             logger.error("Got EndOfStream on from a stream which is not registered");
+          }
+          break;
+
+        case RESET_WINDOW:
+          for (StreamContext stream : outputStreams) {
+            stream.sink(t);
           }
           break;
 
