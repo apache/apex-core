@@ -53,8 +53,6 @@ public class TopologyDeployerTest {
   @Test
   public void testInline() {
     
-    TopologyDeployer deployer1 = new TopologyDeployer();
-    
     TopologyBuilder b = new TopologyBuilder(new Configuration());
     
     NodeConf node1 = b.getOrAddNode("node1");
@@ -100,9 +98,10 @@ public class TopologyDeployerTest {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
 
-    int numContainers = 5;
-    deployer1.init(numContainers, b);
-    Assert.assertEquals("number of containers", numContainers, deployer1.getContainers().size());
+    int maxContainers = 5;
+    TopologyDeployer deployer1 = new TopologyDeployer();
+    deployer1.init(maxContainers, b);
+    Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
     Assert.assertEquals("nodes container 0", 3, deployer1.getContainers().get(0).nodes.size());
     List<NodeConf> c1ExpNodes = Arrays.asList(node1, node2, node3);
     List<NodeConf> c1ActNodes = new ArrayList<NodeConf>();
@@ -115,7 +114,7 @@ public class TopologyDeployerTest {
     Assert.assertEquals("nodes container 1", notInlineNode, deployer1.getContainers().get(1).nodes.get(0).getLogicalNode());
 
     // one container per partition
-    for (int cindex = 2; cindex < numContainers; cindex++) {
+    for (int cindex = 2; cindex < maxContainers; cindex++) {
       Assert.assertEquals("nodes container" + cindex, 1, deployer1.getContainers().get(cindex).nodes.size());
       Assert.assertEquals("nodes container" + cindex, partNode, deployer1.getContainers().get(cindex).nodes.get(0).getLogicalNode());
     }
