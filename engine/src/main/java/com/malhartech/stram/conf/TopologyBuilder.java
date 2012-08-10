@@ -41,6 +41,10 @@ public class TopologyBuilder {
    * Comma separated list of jar files that will be made available to stram app master and child containers
    */
   public static final String LIBJARS = "stram.libjars";
+  public static final String NUM_CONTAINERS = "stram.numContainers";
+  public static final String STRAM_DEBUG = "stram.debug";
+  public static final String STRAM_CONTAINER_MEMORY_MB = "stram.containerMemoryMB";
+  public static final String STRAM_MASTER_MEMORY_MB = "stram.masterMemoryMB";
   
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCENODE = "inputNode";
@@ -242,13 +246,13 @@ public class TopologyBuilder {
     
   }
 
+  final private Configuration conf = new Configuration(false);
   final private Map<String, NodeConf> nodes;
   final private Map<String, StreamConf> streams;
   final private Map<String, TemplateConf> templates;
   final private Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
   private int nodeIndex = 0; // used for cycle validation
   private Stack<NodeConf> stack = new Stack<NodeConf>(); // used for cycle validation
-  private int containerCount = 3;
   
   /**
    * Create topology from given configuration. 
@@ -263,14 +267,34 @@ public class TopologyBuilder {
     addFromConfiguration(conf);
   }
 
+  public Configuration getConf() {
+    return this.conf;
+  }
+  
   public int getContainerCount() {
-    return containerCount;
+    return this.conf.getInt(NUM_CONTAINERS, 3);
   }
 
   public void setContainerCount(int containerCount) {
-    this.containerCount = containerCount;
+    this.conf.setInt(NUM_CONTAINERS, containerCount);
   }
 
+  public String getLibJars() {
+    return conf.get(LIBJARS, "");
+  }
+
+  public boolean isDebug() {
+    return conf.getBoolean(STRAM_DEBUG, false);
+  }
+
+  public int getContainerMemoryMB() {
+    return conf.getInt(STRAM_CONTAINER_MEMORY_MB, 64);
+  }
+  
+  public int getMasterMemoryMB() {
+    return conf.getInt(STRAM_MASTER_MEMORY_MB, 256);
+  }
+  
   public NodeConf getOrAddNode(String nodeId) {
     NodeConf nc = nodes.get(nodeId);
     if (nc == null) {
@@ -304,16 +328,20 @@ public class TopologyBuilder {
    * @param conf
    */
   public void addFromConfiguration(Configuration conf) {
-    // turn relevant entries into properties
+    addFromProperties(toProperties(conf));   
+  }
+
+  public static Properties toProperties(Configuration conf) {
     Iterator<Entry<String, String>> it = conf.iterator();
     Properties props = new Properties();
     while (it.hasNext()) {
       Entry<String, String> e = it.next();
+      // filter relevant entries
       if (e.getKey().startsWith("stram.")) {
          props.put(e.getKey(), e.getValue());
       }
     }
-    addFromProperties(props);   
+    return props;
   }
   
   /**
@@ -328,6 +356,7 @@ public class TopologyBuilder {
     
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
+      conf.set(propertyName, propertyValue);
       if (propertyName.startsWith(STREAM_PREFIX)) {
          // stream definition 
         String[] keyComps = propertyName.split("\\.");

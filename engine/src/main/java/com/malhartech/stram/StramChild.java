@@ -161,12 +161,10 @@ public class StramChild
     // wire stream connections
     for (StreamPConf sc : ctx.getStreams()) {
 //      LOG.debug("Deploying stream " + sc.getId());
-      if (sc.getSourceNodeId() != null && sc.getTargetNodeId() != null) {
-        initStream(sc, ctx);
-      }
-      else {
+      if (sc.getSourceNodeId() == null || sc.getTargetNodeId() == null) {
         throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.getId());
       }
+      initStream(sc, ctx);
     }
 
     // ideally we would like to activate the output streams for a node before the input streams
@@ -193,7 +191,7 @@ public class StramChild
         }
       };
 
-      Thread launchThread = new Thread(nodeRunnable);
+      Thread launchThread = new Thread(nodeRunnable, "node-" + e.getKey());
       activeNodeList.put(e.getKey(), launchThread);
       launchThread.start();
     }

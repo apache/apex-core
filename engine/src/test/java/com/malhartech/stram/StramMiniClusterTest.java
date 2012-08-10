@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stream.HDFSOutputStream;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -154,18 +155,14 @@ public class StramMiniClusterTest {
 
     props.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
 
+    props.setProperty(TopologyBuilder.STRAM_CONTAINER_MEMORY_MB, "256");
+    props.setProperty(TopologyBuilder.STRAM_CONTAINER_MEMORY_MB, "64");
+    props.setProperty(TopologyBuilder.STRAM_DEBUG, "true");
+    props.setProperty(TopologyBuilder.NUM_CONTAINERS, "2");
+    
     File tmpFile = createTmpPropFile(props);
     
-    //URL location =  this.getClass().getResource("/testTopology.properties");
-    //String topologyPath = location.getPath();    
-    
     String[] args = {
-        "--num_containers",
-        "2",
-        "--master_memory",
-        "256",
-        "--container_memory",
-        "64",
         "--topologyProperties",
         tmpFile.getAbsolutePath()
     };
@@ -203,12 +200,6 @@ public class StramMiniClusterTest {
     File tmpFile = createTmpPropFile(props);
     
     String[] args = {
-        //"--num_containers",
-        //"1",
-        "--master_memory",
-        "256",
-        "--container_memory",
-        "64",
         "--topologyProperties",
         tmpFile.getAbsolutePath()
     };
