@@ -18,7 +18,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
@@ -82,24 +81,14 @@ public class StramClient
   private String amQueue = "";
   // User to run app master as
   private String amUser = "";
-  // Amt. of memory resource to request for to run the App Master
-  private int amMemory = 10;
-  // Main class to invoke application master
-  private String appMasterMainClass = "";
   private ApplicationId appId;
-  private String topologyPropertyFile;
-  // Amt of memory to request for container in which shell script will be executed
-  private int containerMemory = 10;
-  // No. of containers in which the shell script needs to be executed
-  private int numContainers = 1;
+  private TopologyBuilder topology;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file 
   // if available, add to local resources and set into classpath 
   private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
-  // Debug flag
-  boolean debugFlag = false;
 
   /**
    * @param args Command line arguments
@@ -160,7 +149,7 @@ public class StramClient
    * @param args Parsed command line options
    * @return Whether the init was successful to run the client
    */
-  public boolean init(String[] args) throws ParseException
+  public boolean init(String[] args) throws Exception
   {
 
     Options opts = new Options();
@@ -170,9 +159,9 @@ public class StramClient
     opts.addOption("user", true, "User to run the application as");
     opts.addOption("timeout", true, "Application timeout in milliseconds");
     opts.addOption("master_memory", true, "Amount of memory in MB to be requested to run the application master");
-    opts.addOption("topologyProperties", true, "File defining the topology");
-    opts.addOption("container_memory", true, "Amount of memory in MB to be requested to run the shell command");
-    opts.addOption("num_containers", true, "No. of containers on which the shell command needs to be executed");
+    opts.addOption("topologyProperties", true, "Property file defining the topology");
+    opts.addOption("container_memory", true, "Amount of memory in MB per child container");
+    opts.addOption("num_containers", true, "No. of containers to use for topology");
     opts.addOption("log_properties", true, "log4j.properties file");
     opts.addOption("debug", false, "Dump out debug information");
     opts.addOption("help", false, "Print usage");
@@ -188,34 +177,44 @@ public class StramClient
       return false;
     }
 
+    // topology properties
+    String topologyPropertyFile = cliParser.getOptionValue("topologyProperties");
+    if (topologyPropertyFile == null) {
+      throw new IllegalArgumentException("No topology property file specified, exiting.");
+    }
+    LOG.info("Topology: " + topologyPropertyFile);
+    
+    Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
+    topology = new TopologyBuilder(conf);
+    topology.addFromProperties(topologyProperties);
+    topology.validate();
+    
     if (cliParser.hasOption("debug")) {
-      debugFlag = true;
+      topology.getConf().setBoolean(TopologyBuilder.STRAM_DEBUG, true);
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
     amQueue = cliParser.getOptionValue("queue", "default");
     amUser = cliParser.getOptionValue("user", "");
-    amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", "10"));
+    int amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", ""+topology.getMasterMemoryMB()));
 
     if (amMemory < 0) {
       throw new IllegalArgumentException("Invalid memory specified for application master, exiting."
                                          + " Specified memory=" + amMemory);
     }
 
-    appMasterMainClass = StramAppMaster.class.getName();
-    topologyPropertyFile = cliParser.getOptionValue("topologyProperties");
-    if (topologyPropertyFile == null) {
-      throw new IllegalArgumentException("No topology property file specified, exiting.");
-    }
+    int containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", ""+topology.getContainerMemoryMB()));
+    int containerCount = Integer.parseInt(cliParser.getOptionValue("num_containers", ""+ topology.getContainerCount()));
 
-    containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", "10"));
-    numContainers = Integer.parseInt(cliParser.getOptionValue("num_containers", "1"));
-
-    if (containerMemory < 0 || numContainers < 1) {
+    if (containerMemory < 0 || topology.getContainerCount() < 1) {
       throw new IllegalArgumentException("Invalid no. of containers or container memory specified, exiting."
                                          + " Specified containerMemory=" + containerMemory
-                                         + ", numContainer=" + numContainers);
+                                         + ", numContainer=" + containerCount);
     }
+
+    topology.setContainerCount(containerCount);
+    topology.getConf().setInt(TopologyBuilder.STRAM_MASTER_MEMORY_MB, amMemory);
+    topology.getConf().setInt(TopologyBuilder.STRAM_CONTAINER_MEMORY_MB, containerMemory);
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
     if (clientTimeout == 0) {
@@ -234,11 +233,6 @@ public class StramClient
    */
   public void startApplication() throws IOException
   {
-    LOG.info("Starting StramClient - topology: " + this.topologyPropertyFile);
-
-    // topology properties
-    Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
-
     // process dependencies
     
     // platform jar files - always required
@@ -250,11 +244,7 @@ public class StramClient
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
 
-    TopologyBuilder tb = new TopologyBuilder(conf);
-    tb.addFromProperties(topologyProperties);
-    tb.validate();
-
-    for (String className : tb.getClassNames()) {
+    for (String className : topology.getClassNames()) {
       try {
         Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
         jarClasses.add(clazz);
@@ -283,8 +273,9 @@ public class StramClient
       }
     }
 
-    if (topologyProperties.getProperty(TopologyBuilder.LIBJARS) != null) {
-      String[] libJars = StringUtils.splitByWholeSeparator(topologyProperties.getProperty(TopologyBuilder.LIBJARS), ",");
+    String libJarsPath = topology.getLibJars();
+    if (!StringUtils.isEmpty(libJarsPath)) {
+      String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, ",");
       localJarFiles.addAll(Arrays.asList(libJars));
     }
     LOG.info("Local jar file dependencies: " + localJarFiles);
@@ -346,6 +337,7 @@ public class StramClient
     // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be 
     // a multiple of the min value and cannot exceed the max. 
     // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
+    int amMemory = topology.getMasterMemoryMB();
     if (amMemory < minMem) {
       LOG.info("AM memory specified below min threshold of cluster. Using min value."
                + ", specified=" + amMemory
@@ -389,7 +381,7 @@ public class StramClient
     }
 
     LOG.info("libjars: {}", libJarsCsv);
-    topologyProperties.put(TopologyBuilder.LIBJARS, libJarsCsv);
+    topology.getConf().set(TopologyBuilder.LIBJARS, libJarsCsv);
 
     // set local resources for the application master
     // local files or archives as needed
@@ -415,7 +407,8 @@ public class StramClient
     // push topology properties to run specific dfs location
     Path topologyDst = new Path(fs.getHomeDirectory(), appName + "/" + appId.getId() + "/stram.properties");
     FSDataOutputStream outStream = fs.create(topologyDst, true);
-    topologyProperties.store(outStream, "topology for " + appId.getId());
+    Properties tplgProperties = TopologyBuilder.toProperties(topology.getConf());
+    tplgProperties.store(outStream, "topology for " + appId.getId());
     outStream.close();
 
     FileStatus topologyFileStatus = fs.getFileStatus(topologyDst);
@@ -458,19 +451,13 @@ public class StramClient
     // Set java executable command 
     LOG.info("Setting up app master command");
     vargs.add(javaCmd);
-    if (debugFlag) {
+    if (topology.isDebug()) {
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
     // Set Xmx based on am memory size
     vargs.add("-Xmx" + amMemory + "m");
     // Set class name 
-    vargs.add(appMasterMainClass);
-    // Set params for Application Master
-    vargs.add("--container_memory " + String.valueOf(containerMemory));
-    vargs.add("--num_containers " + String.valueOf(numContainers));
-    if (debugFlag) {
-      vargs.add("--debug");
-    }
+    vargs.add(StramAppMaster.class.getName());
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");

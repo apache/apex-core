@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileStatus;
@@ -41,27 +40,22 @@ import com.malhartech.stram.conf.TopologyBuilder;
  */
 public class LaunchContainerRunnable implements Runnable
 {
-  private static Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
+  final private static Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
   final private YarnClientHelper yarnClient;
-  private Map<String, String> containerEnv = new HashMap<String, String>();
-  private InetSocketAddress heartbeatAddress;
-  private Properties topologyProps;
-  // Allocated container 
-  private Container container;
-  private int containerMemoryMb = 64;
-  private final boolean debug;
+  final private Map<String, String> containerEnv = new HashMap<String, String>();
+  final private InetSocketAddress heartbeatAddress;
+  final private TopologyBuilder topology;
+  final private Container container;
 
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, Properties topologyProps, InetSocketAddress heartbeatAddress, boolean debug)
+  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, TopologyBuilder topology, InetSocketAddress heartbeatAddress)
   {
     this.container = lcontainer;
     this.yarnClient = yarnClient;
     this.heartbeatAddress = heartbeatAddress;
-    this.topologyProps = topologyProps;
-    this.containerMemoryMb = lcontainer.getResource().getMemory();
-    this.debug = debug;
+    this.topology = topology;
   }
 
   private void setClasspath(Map<String, String> env)
@@ -142,7 +136,7 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(yarnClient.getConf());
-      addLibJarsToLocalResources(topologyProps.getProperty(TopologyBuilder.LIBJARS, ""), localResources, fs);
+      addLibJarsToLocalResources(topology.getLibJars(), localResources, fs);
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
@@ -215,11 +209,12 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add("java");
     }
 
-    if (debug) {
+    if (topology.isDebug()) {
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
+    // TODO: heap size - VM may use more memory and the container may get killed
     // Set Xmx based on am memory size
-    vargs.add("-Xmx" + containerMemoryMb + "m");
+    vargs.add("-Xmx" + container.getResource().getMemory() + "m");
 
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);

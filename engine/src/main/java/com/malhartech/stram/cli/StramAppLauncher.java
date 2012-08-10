@@ -195,12 +195,6 @@ public class StramAppLauncher {
     LOG.info("Launching topology: {}", topologyFile);
 
     String[] args = {
-        "--num_containers",
-        "2",
-        "--master_memory",
-        "256",
-        "--container_memory",
-        "64",
         "--topologyProperties",
         topologyFile.getAbsolutePath()
     };
