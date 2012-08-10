@@ -122,14 +122,14 @@ public class HeartbeatProtocolSerializationTest
       }
 
       @Override
-      public void resetWindow(int baseSeconds)
+      public void resetWindow(int baseSeconds, int sizeMillis)
       {
       }
     };
 
     long startTime = System.currentTimeMillis();
     startTime = startTime - 1000;
-    long intervalMillis = 200;
+    int intervalMillis = 200;
     WindowGenerator wg = new WindowGenerator(Collections.singletonList(ia), startTime, intervalMillis);
     wg.start();
 

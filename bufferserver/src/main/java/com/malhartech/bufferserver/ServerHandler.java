@@ -41,12 +41,12 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
     switch (data.getType()) {
       case PUBLISHER_REQUEST:
-        handlePublisherRequest(data.getPublishRequest(), ctx);
+        handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
         break;
 
 
       case SUBSCRIBER_REQUEST:
-        handleSubscriberRequest(data.getSubscribeRequest(), ctx);
+        handleSubscriberRequest(data.getSubscribeRequest(), ctx, data.getWindowId());
         break;
 
       default:
@@ -61,7 +61,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     }
   }
 
-  public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx)
+  public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, long baseSeconds)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -82,7 +82,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     ctx.setAttachment(dl);
   }
 
-  public void handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx)
+  public void handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int baseSeconds)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();

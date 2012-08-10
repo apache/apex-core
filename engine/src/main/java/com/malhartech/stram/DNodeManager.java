@@ -42,7 +42,7 @@ public class DNodeManager
 {
   private final static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
   private long windowStartMillis = System.currentTimeMillis();
-  private long windowSizeMillis = 500;
+  private int windowSizeMillis = 500;
   
   private class NodeStatus
   {

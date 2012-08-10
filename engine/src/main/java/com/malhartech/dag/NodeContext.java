@@ -8,7 +8,6 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
@@ -34,7 +33,7 @@ public class NodeContext implements Context
     public volatile long bytesProcessed;
   }
   private String id;
-  private int windowId;
+  private long windowId;
   private volatile HeartbeatCounters heartbeatCounters = new HeartbeatCounters();
   private volatile RequestType request = RequestType.UNDEFINED;
   /**
@@ -77,12 +76,12 @@ public class NodeContext implements Context
     return id;
   }
 
-  public int getCurrentWindowId()
+  public long getCurrentWindowId()
   {
     return windowId;
   }
 
-  public void setCurrentWindowId(int windowId)
+  public void setCurrentWindowId(long windowId)
   {
     this.windowId = windowId;
   }

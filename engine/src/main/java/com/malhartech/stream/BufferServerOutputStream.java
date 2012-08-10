@@ -21,7 +21,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
   {
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
     db.setType(t.getType());
-    db.setWindowId(t.getWindowId());
+    db.setWindowId((int) t.getWindowId());
 
     switch (t.getType()) {
       case BEGIN_WINDOW:
@@ -41,7 +41,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
 
       case END_STREAM:
         break;
-        
+
       case PARTITIONED_DATA:
         logger.warn("got partitioned data " + t.getObject());
       case SIMPLE_DATA:
@@ -64,6 +64,14 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         }
         break;
 
+      case RESET_WINDOW:
+        Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
+        rw.setWidth((int) t.getWindowId());
+        
+        db.setWindowId((int)(t.getWindowId() >> 32));
+        db.setResetWindow(rw);
+        break;
+        
       default:
         throw new UnsupportedOperationException("this data type is not handled in the stream");
     }
@@ -76,9 +84,9 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
   public void activate()
   {
     super.activate();
-    
-    BufferServerStreamContext sc = (BufferServerStreamContext)getContext();
+
+    BufferServerStreamContext sc = (BufferServerStreamContext) getContext();
     logger.debug("registering publisher: {} {}", sc.getSourceId(), sc.getId());
-    ClientHandler.publish(channel, sc.getSourceId(), sc.getId());    
+    ClientHandler.publish(channel, sc.getSourceId(), sc.getId());
   }
 }

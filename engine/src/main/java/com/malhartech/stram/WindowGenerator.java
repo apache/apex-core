@@ -12,13 +12,13 @@ import java.util.concurrent.TimeUnit;
 public class WindowGenerator implements Runnable
 {
   private final long startMillis; // Window start time
-  private final long intervalMillis; // Window size
+  private final int intervalMillis; // Window size
   private long currentWindowMillis = -1;
   private final Collection<? extends InputAdapter> inputAdapters;
   private ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1);
   private int windowId;
 
-  public WindowGenerator(Collection<? extends InputAdapter> inputs, long startMillis, long intervalMillis)
+  public WindowGenerator(Collection<? extends InputAdapter> inputs, long startMillis, int intervalMillis)
   {
     this.inputAdapters = inputs;
     this.startMillis = startMillis;
@@ -57,7 +57,7 @@ public class WindowGenerator implements Runnable
     windowId = 0;
     int baseSeconds = (int) (currentWindowMillis / 1000);
     for (InputAdapter ia : inputAdapters) {
-      ia.resetWindow(baseSeconds);
+      ia.resetWindow(baseSeconds, intervalMillis);
       ia.beginWindow(windowId);
     }
   }

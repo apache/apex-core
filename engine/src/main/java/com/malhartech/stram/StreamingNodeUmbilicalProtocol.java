@@ -147,18 +147,18 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     /**
      * Window size. Inputs into the DAG propagate BEGIN_WINDOW at this interval.
      */
-    private long windowSizeMillis;
+    private int windowSizeMillis;
     /**
      * Node should start processing the initial window at this time.
      */
     private long startWindowMillis;
     
-    public long getWindowSizeMillis()
+    public int getWindowSizeMillis()
     {
       return windowSizeMillis;
     }
 
-    public void setWindowSizeMillis(long windowSizeMillis)
+    public void setWindowSizeMillis(int windowSizeMillis)
     {
       this.windowSizeMillis = windowSizeMillis;
     }

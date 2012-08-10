@@ -1,6 +1,5 @@
 /**
- * Copyright (c) 2012 Malhar, Inc.
- * All rights reserved.
+ * Copyright (c) 2012 Malhar, Inc. All rights reserved.
  */
 package com.malhartech.stream;
 
@@ -18,12 +17,13 @@ import org.slf4j.LoggerFactory;
 public class BufferServerInputStream extends SocketInputStream
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
+  private long baseSeconds = 0;
 
   @Override
   public void activate()
   {
     super.activate();
-    
+
     BufferServerStreamContext sc = (BufferServerStreamContext) getContext();
     String type = "paramNotRequired?"; // TODO: why do we need this?
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[]{sc.getSinkId(), sc.getSourceId(), sc.getId()});
@@ -47,6 +47,7 @@ public class BufferServerInputStream extends SocketInputStream
         case SIMPLE_DATA:
           t = new Tuple(context.getSerDe().fromByteArray(d.getSimpleData().getData().toByteArray()));
           t.setType(Buffer.Data.DataType.SIMPLE_DATA);
+          t.setWindowId(baseSeconds | d.getWindowId());
           break;
 
         case PARTITIONED_DATA:
@@ -55,23 +56,33 @@ public class BufferServerInputStream extends SocketInputStream
            * we really do not distinguish between SIMPLE_DATA and PARTITIONED_DATA
            */
           t.setType(Buffer.Data.DataType.SIMPLE_DATA);
+          t.setWindowId(baseSeconds | d.getWindowId());
           break;
 
         case END_WINDOW:
           t = new EndWindowTuple();
+          t.setWindowId(baseSeconds | d.getWindowId());
           break;
-          
+
         case END_STREAM:
           t = new EndStreamTuple();
+          t.setWindowId(baseSeconds | d.getWindowId());
           break;
-          
+
+        case RESET_WINDOW:
+          t = new Tuple(null);
+          t.setType(Buffer.Data.DataType.RESET_WINDOW);
+          baseSeconds = (long) d.getWindowId() << 32;
+          t.setWindowId(baseSeconds | d.getResetWindow().getWidth());
+          break;
+
         default:
           t = new Tuple(null);
           t.setType(d.getType());
+          t.setWindowId(baseSeconds | d.getWindowId());
           break;
       }
 
-      t.setWindowId(d.getWindowId());
       context.sink(t);
     }
   }

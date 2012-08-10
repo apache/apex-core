@@ -16,7 +16,7 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
  */
 public class Tuple
 {
-  private int windowId;
+  private long windowId;
   private DataType type;
   private StreamContext context;
   private final Object object;
@@ -50,7 +50,7 @@ public class Tuple
   /**
    * @return the windowId
    */
-  public int getWindowId()
+  public long getWindowId()
   {
     return windowId;
   }
@@ -58,7 +58,7 @@ public class Tuple
   /**
    * @param windowId the windowId to set
    */
-  public void setWindowId(int windowId)
+  public void setWindowId(long windowId)
   {
     this.windowId = windowId;
   }

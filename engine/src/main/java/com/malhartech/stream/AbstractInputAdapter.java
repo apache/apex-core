@@ -17,7 +17,8 @@ public abstract class AbstractInputAdapter implements InputAdapter
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractInputAdapter.class);
   protected StreamContext context;
-  protected volatile int windowId;
+  protected volatile long baseSeconds;
+  protected volatile long windowId;
   protected volatile boolean finished;
 
   @Override
@@ -40,7 +41,7 @@ public abstract class AbstractInputAdapter implements InputAdapter
 
     synchronized (this) {
       try {
-        while (windowId == InputAdapter.OUT_OF_RANGE_WINDOW) {
+        while (windowId == 0) {
           this.wait();
         }
       }
@@ -54,70 +55,60 @@ public abstract class AbstractInputAdapter implements InputAdapter
   }
 
   @Override
-  public void resetWindow(int baseSeconds)
+  public synchronized void resetWindow(int baseSeconds, int intervalMillis)
   {
-    this.windowId = 0;
+    this.baseSeconds = (long) baseSeconds << 32;
 
-    ResetWindowTuple t = new ResetWindowTuple(baseSeconds);
+    Tuple t = new Tuple(null);
+    t.setType(DataType.RESET_WINDOW);
     t.setContext(context);
-    
-    synchronized (this) {
-      t.setWindowId(windowId);
-      context.sink(t);
-    }
+    t.setWindowId(baseSeconds | intervalMillis);
+    context.sink(t);
   }
-  
+
   @Override
-  public void beginWindow(int windowId)
+  public synchronized void beginWindow(int windowId)
   {
-    this.windowId = windowId;
+    this.windowId = baseSeconds | windowId;
 
     Tuple t = new Tuple(null);
     t.setType(DataType.BEGIN_WINDOW);
     t.setContext(context);
 
-    synchronized (this) {
-      t.setWindowId(windowId);
-      context.sink(t);
-      this.notifyAll();
-    }
+    t.setWindowId(windowId);
+    context.sink(t);
+    this.notifyAll();
   }
 
   @Override
-  public void endWindow(int windowId)
+  public synchronized void endWindow(int windowId)
   {
-    this.windowId = InputAdapter.OUT_OF_RANGE_WINDOW;
-
     EndWindowTuple t = new EndWindowTuple();
     t.setContext(context);
-
-    synchronized (this) {
-      t.setWindowId(windowId);
-      context.sink(t);
-    }
+    t.setWindowId(windowId);
+    context.sink(t);
+    this.windowId = 0;
   }
 
-  public void endStream()
+  public synchronized void endStream()
   {
     EndStreamTuple t = new EndStreamTuple();
     t.setContext(context);
 
-    synchronized (this) {
-      try {
-        while (windowId == InputAdapter.OUT_OF_RANGE_WINDOW) {
-          this.wait();
-        }
-        
+    try {
+      while (windowId == 0) {
         this.wait();
       }
-      catch (InterruptedException ie) {
-        logger.info("Interrupted while waiting to be in the window because of {}", ie.getLocalizedMessage());
-      }
 
-      t.setWindowId(windowId);
-      context.sink(t);
-      finished = true;
+      this.wait();
     }
+    catch (InterruptedException ie) {
+      logger.info("Interrupted while waiting to be in the window because of {}", ie.getLocalizedMessage());
+    }
+
+    t.setWindowId(windowId);
+    context.sink(t);
+    finished = true;
   }
 
   @Override
