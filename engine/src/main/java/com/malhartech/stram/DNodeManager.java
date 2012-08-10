@@ -88,7 +88,7 @@ public class DNodeManager
     // TODO: get min/max containers from topology configuration
     this.deployer.init(topology.getContainerCount(), topology);
     // try to align to it pleases eyes.
-    windowStartMillis -= (windowStartMillis % windowSizeMillis);
+    windowStartMillis -= (windowStartMillis % 1000);
   }
 
   public int getNumRequiredContainers()

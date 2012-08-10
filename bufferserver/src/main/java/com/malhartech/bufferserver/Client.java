@@ -69,7 +69,7 @@ public class Client {
         Channel channel = connectFuture.awaitUninterruptibly().getChannel();
 
         if (id == null) {
-            ClientHandler.publish(channel, node, type, 0);
+            ClientHandler.publish(channel, node, type);
         } else {
             ClientHandler.registerPartitions(channel, id, down_type, node, type, partitions);
         }

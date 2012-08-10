@@ -65,7 +65,7 @@ public class LogicalNode implements DataListener
       physicalNodes.add(pn);
     }
   }
-  
+
   public void removeChannel(Channel channel)
   {
     for (PhysicalNode pn : physicalNodes) {
@@ -81,18 +81,33 @@ public class LogicalNode implements DataListener
     partitions.add(partition);
   }
 
-  public synchronized void catchUp(long windowId)
+  public synchronized void catchUp(long startTime)
   {
+    long baseMillis = 0;
+    int interval = 0;
     /*
      * fast forward to catch up with the windowId without consuming
      */
+    outer:
     while (iterator.hasNext()) {
       SerializedData data = iterator.next();
-      if (iterator.getType() == Data.DataType.BEGIN_WINDOW) {
-        if (iterator.getWindowId() >= windowId) {
+      switch (iterator.getType()) {
+        case RESET_WINDOW:
+          Data resetWindow = (Data) iterator.getData();
+          baseMillis = resetWindow.getWindowId() * 1000L;
+          interval = resetWindow.getResetWindow().getWidth();
+          if (interval <= 0) {
+            logger.warn("Interval value set to non positive value = {}", interval);
+          }
           GiveAll.getInstance().distribute(physicalNodes, data);
           break;
-        }
+
+        case BEGIN_WINDOW:
+          if (baseMillis + iterator.getWindowId() * interval >= startTime) {
+            GiveAll.getInstance().distribute(physicalNodes, data);
+            break outer;
+          }
+          break;
       }
     }
 
@@ -130,7 +145,7 @@ public class LogicalNode implements DataListener
         SerializedData data = iterator.next();
         switch (iterator.getType()) {
           case PARTITIONED_DATA:
-            if (partitions.contains(iterator.getPartitionedData())) {
+            if (partitions.contains(((Data) iterator.getData()).getPartitionedData().getPartition().asReadOnlyByteBuffer())) {
               policy.distribute(physicalNodes, data);
             }
             break;
@@ -151,7 +166,7 @@ public class LogicalNode implements DataListener
     partitions.addAll(this.partitions);
     return partitions.size();
   }
-  
+
   public final int getPhysicalNodeCount()
   {
     return physicalNodes.size();

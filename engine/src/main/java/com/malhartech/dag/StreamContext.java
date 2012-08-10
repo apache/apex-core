@@ -24,7 +24,6 @@ public class StreamContext implements Context
   private final Logger LOG = LoggerFactory.getLogger(StreamContext.class);
   private Sink sink;
   private SerDe serde;
-  private long windowId;
   private int tupleCount;
   private State sinkState;
 
@@ -79,16 +78,6 @@ public class StreamContext implements Context
     sink.doSomething(t);
   }
 
-  public long getWindowId()
-  {
-    return windowId;
-  }
-
-  public void setWindowId(long windowId)
-  {
-    this.windowId = windowId;
-  }
-
   public int getTupleCount()
   {
     return tupleCount;
@@ -107,6 +96,6 @@ public class StreamContext implements Context
   @Override
   public String toString()
   {
-    return "window = " + windowId + " tuples = " + tupleCount + " state = " + sinkState;
+    return " tuples = " + tupleCount + " state = " + sinkState;
   }
 }

@@ -10,9 +10,21 @@ package com.malhartech.dag;
  */
 public interface InputAdapter extends Stream
 {
+  /**
+   * corresponds to 2^14 - 1 =>  maximum bytes needed for varint encoding is 2.
+   */
+  public static final int MAX_VALUE_WINDOW = 0x3fff;
+  
+  /**
+   * A Sample out of range window value which can be used by applications to denote Invalid Window ID.
+   */
+  public static final int OUT_OF_RANGE_WINDOW = 0xffff;
+
   public boolean hasFinished();
 
-  public void beginWindow(long timemillis);
+  public void resetWindow(int baseSeconds);
 
-  public void endWindow(long timemillis);
+  public void beginWindow(int windowId);
+
+  public void endWindow(int windowId);
 }

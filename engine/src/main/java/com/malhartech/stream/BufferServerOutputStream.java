@@ -28,7 +28,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
         bw.setNode("SOS");
 
-        db.setBeginwindow(bw);
+        db.setBeginWindow(bw);
         break;
 
       case END_WINDOW:
@@ -36,7 +36,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         ew.setNode("SOS");
         ew.setTupleCount(((EndWindowTuple) t).getTupleCount());
 
-        db.setEndwindow(ew);
+        db.setEndWindow(ew);
         break;
 
       case END_STREAM:
@@ -52,7 +52,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
           sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.getObject())));
 
           db.setType(Buffer.Data.DataType.SIMPLE_DATA);
-          db.setSimpledata(sdb);
+          db.setSimpleData(sdb);
         }
         else {
           Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
@@ -60,7 +60,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
           pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.getObject())));
 
           db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
-          db.setPartitioneddata(pdb);
+          db.setPartitionedData(pdb);
         }
         break;
 
@@ -79,6 +79,6 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
     
     BufferServerStreamContext sc = (BufferServerStreamContext)getContext();
     logger.debug("registering publisher: {} {}", sc.getSourceId(), sc.getId());
-    ClientHandler.publish(channel, sc.getSourceId(), sc.getId(), sc.getWindowId());    
+    ClientHandler.publish(channel, sc.getSourceId(), sc.getId());    
   }
 }

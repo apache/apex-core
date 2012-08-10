@@ -45,12 +45,12 @@ public class BufferServerInputStream extends SocketInputStream
       Tuple t;
       switch (d.getType()) {
         case SIMPLE_DATA:
-          t = new Tuple(context.getSerDe().fromByteArray(d.getSimpledata().getData().toByteArray()));
+          t = new Tuple(context.getSerDe().fromByteArray(d.getSimpleData().getData().toByteArray()));
           t.setType(Buffer.Data.DataType.SIMPLE_DATA);
           break;
 
         case PARTITIONED_DATA:
-          t = new Tuple(context.getSerDe().fromByteArray(d.getPartitioneddata().getData().toByteArray()));
+          t = new Tuple(context.getSerDe().fromByteArray(d.getPartitionedData().getData().toByteArray()));
           /*
            * we really do not distinguish between SIMPLE_DATA and PARTITIONED_DATA
            */
