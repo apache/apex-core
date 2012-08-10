@@ -248,6 +248,7 @@ public class TopologyBuilder {
   final private Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
   private int nodeIndex = 0; // used for cycle validation
   private Stack<NodeConf> stack = new Stack<NodeConf>(); // used for cycle validation
+  private int containerCount = 3;
   
   /**
    * Create topology from given configuration. 
@@ -261,7 +262,15 @@ public class TopologyBuilder {
     this.rootNodes = new HashSet<NodeConf>();
     addFromConfiguration(conf);
   }
-  
+
+  public int getContainerCount() {
+    return containerCount;
+  }
+
+  public void setContainerCount(int containerCount) {
+    this.containerCount = containerCount;
+  }
+
   public NodeConf getOrAddNode(String nodeId) {
     NodeConf nc = nodes.get(nodeId);
     if (nc == null) {
