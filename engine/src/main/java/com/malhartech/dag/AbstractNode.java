@@ -26,7 +26,7 @@ public abstract class AbstractNode implements Node
     @Override
     public void doSomething(Tuple t)
     {
-      logger.debug("received tuple {}", t);
+      //logger.debug("received tuple {}", t);
       synchronized (inputQueue) {
         inputQueue.add(t);
         inputQueue.notify();
@@ -92,7 +92,7 @@ public abstract class AbstractNode implements Node
   // nodes. will save on serialization/deserialization etc.
   public void emit(final Object o)
   {
-    logger.debug("emitting {}", o);
+    //logger.debug("emitting {}", o);
     for (final StreamContext context : outputStreams) {
       emitStream(o, context);
     }
