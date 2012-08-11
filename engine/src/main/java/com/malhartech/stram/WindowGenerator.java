@@ -38,7 +38,7 @@ public class WindowGenerator implements Runnable
   protected final void nextWindow()
   {
     if (windowId == InputAdapter.MAX_VALUE_WINDOW) {
-      logger.debug("generating end -> reset window {}", windowId);
+//      logger.debug("generating end -> reset window {}", Integer.toHexString(windowId));
       for (InputAdapter ia : inputAdapters) {
         ia.endWindow(windowId);
       }
@@ -46,7 +46,7 @@ public class WindowGenerator implements Runnable
       run();
     }
     else {
-      logger.debug("generating end -> begin {}", windowId);
+//      logger.debug("generating end -> begin {}", Integer.toHexString(windowId));
       int previousWindowId = windowId;
       advanceWindow();
       for (InputAdapter ia : inputAdapters) {
@@ -60,7 +60,7 @@ public class WindowGenerator implements Runnable
   public void run()
   {
     windowId = 0;
-    logger.debug("generating reset -> begin {}", currentWindowMillis);
+//    logger.debug("generating reset -> begin {}", Long.toHexString(currentWindowMillis));
     int baseSeconds = (int) (currentWindowMillis / 1000);
     for (InputAdapter ia : inputAdapters) {
       ia.resetWindow(baseSeconds, intervalMillis);

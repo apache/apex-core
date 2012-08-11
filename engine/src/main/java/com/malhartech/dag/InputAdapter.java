@@ -13,7 +13,7 @@ public interface InputAdapter extends Stream
   /**
    * corresponds to 2^14 - 1 =>  maximum bytes needed for varint encoding is 2.
    */
-  public static final int MAX_VALUE_WINDOW = 0x3fff - (0x3fff % 1000);
+  public static final int MAX_VALUE_WINDOW = 0x3fff - (0x3fff % 1000) - 1;
   
   public boolean hasFinished();
 
