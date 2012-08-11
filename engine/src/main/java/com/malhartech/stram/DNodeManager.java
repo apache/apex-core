@@ -77,15 +77,14 @@ public class DNodeManager
     StreamingContainerContext containerContext;
   }
   
-  public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
-  public Map<String, ContainerStatus> containers = new ConcurrentHashMap<String, ContainerStatus>();
-  private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
+  final public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
+  final private Map<String, ContainerStatus> containers = new ConcurrentHashMap<String, ContainerStatus>();
+  final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
   
   
   public DNodeManager(TopologyBuilder topology) {
     this.deployer = new TopologyDeployer();
-    // TODO: get min/max containers from topology configuration
     this.deployer.init(topology.getContainerCount(), topology);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
@@ -151,7 +150,7 @@ public class DNodeManager
   }
 
   /**
-   * Assign streaming nodes to newly available container. Multiple nodes can run in a container.
+   * Get nodes/streams for next container. Multiple nodes can share a container.
    *
    * @param containerId
    * @param bufferServerAddress Buffer server for publishers on the container.

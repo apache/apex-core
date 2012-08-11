@@ -138,13 +138,23 @@ public class TopologyDeployer {
   private Map<StreamConf, PTOutputAdapter> outputAdapters = new HashMap<StreamConf, PTOutputAdapter>();
   private Map<StreamConf, PTInputAdapter> inputAdapters = new HashMap<StreamConf, PTInputAdapter>();
   private List<PTContainer> containers = new ArrayList<PTContainer>();
+  private int maxContainers = 1;
   
-  public void init(int numContainers, TopologyBuilder tb) {
-
-    for (int i=0; i<numContainers; i++) {
-      containers.add(new PTContainer());
+  private PTContainer getContainer(int index) {
+    if (index >= containers.size()) {
+      if (index >= maxContainers) {
+        index = maxContainers - 1;
+      }
+      for (int i=containers.size(); i<index+1; i++) {
+        containers.add(i, new PTContainer());
+      }
     }
+    return containers.get(index);
+  }
+  
+  public void init(int maxContainers, TopologyBuilder tb) {
 
+    this.maxContainers = maxContainers;
     Stack<NodeConf> pendingNodes = new Stack<NodeConf>();
     for (NodeConf n : tb.getAllNodes().values()) {
       pendingNodes.push(n);
@@ -200,10 +210,9 @@ public class TopologyDeployer {
           // create node per partition,
           // distribute over available containers
           for (int i = 0; i < partitions.length; i++) {
-            int containerIndex = (nodeCount++) % numContainers;
             PTNode pNode = createPTNode(n, partitions[i], pnodes.size()); 
             pnodes.add(pNode);
-            PTContainer container = containers.get(containerIndex);
+            PTContainer container = getContainer((nodeCount++) % maxContainers);
             container.nodes.add(pNode);
             pNode.container = container;
           }
@@ -216,8 +225,7 @@ public class TopologyDeployer {
           if (inlineUpstreamNode != null) {
             container = inlineUpstreamNode.container;
           } else {
-            int containerIndex = (nodeCount++) % numContainers;
-            container = containers.get(containerIndex);
+            container = getContainer((nodeCount++) % maxContainers);
           }
           container.nodes.add(pNode);
           pNode.container = container;
