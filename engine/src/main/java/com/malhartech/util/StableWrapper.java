@@ -6,7 +6,6 @@ package com.malhartech.util;
 
 import java.util.Comparator;
 
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -26,7 +25,7 @@ class StableWrapper<E>
 
 class StableWrapperNaturalComparator<E> implements Comparator<StableWrapper<E>>
 {
-
+  @Override
   public int compare(StableWrapper<E> o1, StableWrapper<E> o2)
   {
     @SuppressWarnings("unchecked")
@@ -47,7 +46,6 @@ class StableWrapperNaturalComparator<E> implements Comparator<StableWrapper<E>>
 
 class StableWrapperProvidedComparator<E> implements Comparator<StableWrapper<E>>
 {
-
   public final Comparator<? super E> comparator;
 
   public StableWrapperProvidedComparator(Comparator<? super E> comparator)
@@ -55,6 +53,7 @@ class StableWrapperProvidedComparator<E> implements Comparator<StableWrapper<E>>
     this.comparator = comparator;
   }
 
+  @Override
   public int compare(StableWrapper<E> o1, StableWrapper<E> o2)
   {
     int ret = comparator.compare(o1.object, o2.object);

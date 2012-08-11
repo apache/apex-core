@@ -10,7 +10,6 @@ import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 import org.junit.*;
-import static org.junit.Assert.*;
 
 /**
  *
