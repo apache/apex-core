@@ -154,7 +154,7 @@ public class TopologyDeployer {
   
   public void init(int maxContainers, TopologyBuilder tb) {
 
-    this.maxContainers = maxContainers;
+    this.maxContainers = Math.max(maxContainers,1);
     Stack<NodeConf> pendingNodes = new Stack<NodeConf>();
     for (NodeConf n : tb.getAllNodes().values()) {
       pendingNodes.push(n);

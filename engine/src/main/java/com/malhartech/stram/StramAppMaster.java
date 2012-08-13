@@ -62,6 +62,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
+import com.malhartech.stram.DNodeManager.ContainerDeployRequest;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.webapp.StramWebApp;
@@ -91,7 +92,6 @@ public class StramAppMaster
   private String appMasterTrackingUrl = "";
   // App Master configuration
   // No. of containers to run shell command on
-  private int numTotalContainers = 1;
   // Priority of the request
   private int requestPriority;
   // Incremental counter for rpc calls to the RM
@@ -100,19 +100,11 @@ public class StramAppMaster
   private boolean appDone = false;
   // Counter for completed containers ( complete denotes successful or failed )
   private AtomicInteger numCompletedContainers = new AtomicInteger();
-  // Allocated container count so that we know how many containers has the RM
-  // allocated to us
-  private AtomicInteger numAllocatedContainers = new AtomicInteger();
-  private Map<String, Container> allocatedContainers = new HashMap<String, Container>();
+  // Containers that the RM has allocated to us
+  private Map<String, Container> allAllocatedContainers = new HashMap<String, Container>();
   
   // Count of failed containers 
   private AtomicInteger numFailedContainers = new AtomicInteger();
-  // Count of containers already requested from the RM
-  // Needed as once requested, we should not request for containers again and again. 
-  // Only request for more if the original requirement changes. 
-  private AtomicInteger numRequestedContainers = new AtomicInteger();
-  // Containers to be released
-  //private CopyOnWriteArrayList<ContainerId> releasedContainers = new CopyOnWriteArrayList<ContainerId>();
   // Launch threads
   private List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
@@ -343,8 +335,7 @@ public class StramAppMaster
     rpcImpl.start();
     LOG.info("Container callback server listening at " + rpcImpl.getAddress());
 
-    numTotalContainers = dnmgr.getNumRequiredContainers();
-    LOG.info("Initializing logical topology with {} nodes in {} containers", logicalTopology.getAllNodes().size(), numTotalContainers);
+    LOG.info("Initializing logical topology with {} nodes in {} containers", logicalTopology.getAllNodes().size(), dnmgr.getNumRequiredContainers());
 
     // start buffer server
     com.malhartech.bufferserver.Server s = new Server(0);
@@ -442,9 +433,12 @@ public class StramAppMaster
     // ( regardless of success/failure). 
 
     int loopCounter = -1;
-
-    while (numCompletedContainers.get() < numTotalContainers
-           && !appDone) {
+    List<ContainerId> releasedContainers = new ArrayList<ContainerId>();
+    int numTotalContainers = 0;
+    // keep track of already requested containers to not request them again while waiting for allocation
+    int numRequestedContainers = 0;
+    
+    while (!appDone) {
       loopCounter++;
 
       // log current state
@@ -454,7 +448,7 @@ public class StramAppMaster
                + ", requested=" + numRequestedContainers
                + ", completed=" + numCompletedContainers
                + ", failed=" + numFailedContainers
-               + ", currentAllocated=" + numAllocatedContainers);
+               + ", currentAllocated=" + this.allAllocatedContainers.size());
 
       // Sleep before each loop when asking RM for containers
       // to avoid flooding RM with spurious requests when it 
@@ -466,32 +460,43 @@ public class StramAppMaster
       catch (InterruptedException e) {
         LOG.info("Sleep interrupted " + e.getMessage());
       }
-
+      
       // No. of containers to request 
       // For the first loop, askCount will be equal to total containers needed 
-      // From that point on, askCount will always be 0 as current implementation 
-      // does not change its ask on container failures. 
-      int askCount = numTotalContainers - numRequestedContainers.get();
-      numRequestedContainers.addAndGet(askCount);
+      // From that point on, askCount will be based on incremental deploy requests
+      int askCount = 0;
+
+      // request containers for pending deploy requests
+      if (!dnmgr.deployRequests.isEmpty()) {
+        askCount = dnmgr.deployRequests.size() - numRequestedContainers;
+      }
 
       // Setup request to be sent to RM to allocate containers
       List<ResourceRequest> resourceReq = new ArrayList<ResourceRequest>();
       if (askCount > 0) {
         ResourceRequest containerAsk = setupContainerAskForRM(askCount, containerMemory);
         resourceReq.add(containerAsk);
+        numTotalContainers += askCount;
+        numRequestedContainers += askCount;
+      } else {
+        if (askCount < 0) {
+          LOG.warn("negative container ask count: {}", askCount);
+          // container will be released once allocated and no deploy request pending
+        }
       }
 
       // Send the request to RM 
       LOG.info("Asking RM for containers"
                + ", askCount=" + askCount);
-      AMResponse amResp = sendContainerAskToRM(resourceReq);
-
+      AMResponse amResp = sendContainerAskToRM(resourceReq, releasedContainers);
+      releasedContainers.clear();
+      
       // Retrieve list of allocated containers from the response 
-      List<Container> allocatedContainers = amResp.getAllocatedContainers();
-      LOG.info("Got response from RM for container ask, allocatedCnt=" + allocatedContainers.size());
-      numAllocatedContainers.addAndGet(allocatedContainers.size());
-      for (Container allocatedContainer : allocatedContainers) {
-        LOG.info("Launching shell command on a new container."
+      List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
+      LOG.info("Got response from RM for container ask, allocatedCnt=" + newAllocatedContainers.size());
+      numRequestedContainers -= newAllocatedContainers.size();
+      for (Container allocatedContainer : newAllocatedContainers) {
+        LOG.info("Got new container."
                  + ", containerId=" + allocatedContainer.getId()
                  + ", containerNode=" + allocatedContainer.getNodeId().getHost()
                  + ":" + allocatedContainer.getNodeId().getPort()
@@ -500,16 +505,24 @@ public class StramAppMaster
                  + ", containerResourceMemory" + allocatedContainer.getResource().getMemory());
         //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
-        // assign streaming node(s) to new container
-        dnmgr.assignContainer(allocatedContainer.getId().toString(), NetUtils.getConnectAddress(this.bufferServerAddress));
-        this.allocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
-        LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, logicalTopology, rpcImpl.getAddress());
-        Thread launchThread = new Thread(runnableLaunchContainer);
+        // get next pending deploy requests
+        ContainerDeployRequest cdr = dnmgr.deployRequests.poll();
+        if (cdr == null) {
+          // allocated container no longer needed, add release request
+          LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
+          releasedContainers.add(allocatedContainer.getId());
+        } else {
+          // assign streaming node(s) to new container
+          dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), NetUtils.getConnectAddress(this.bufferServerAddress));
+          this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
+          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, logicalTopology, rpcImpl.getAddress());
+          Thread launchThread = new Thread(runnableLaunchContainer);
 
-        // launch and start the container on a separate thread to keep the main thread unblocked
-        // as all containers may not be allocated at one go.
-        launchThreads.add(launchThread);
-        launchThread.start();
+          // launch and start the container on a separate thread to keep the main thread unblocked
+          // as all containers may not be allocated at one go.
+          launchThreads.add(launchThread);
+          launchThread.start();
+        }
       }
 
       // TODO: we need to obtain the initial list...
@@ -538,38 +551,28 @@ public class StramAppMaster
 
         // non complete containers should not be here 
         assert (containerStatus.getState() == ContainerState.COMPLETE);
-
+        allAllocatedContainers.remove(containerStatus.getContainerId().toString());
+        
         // increment counters for completed/failed containers
         int exitStatus = containerStatus.getExitStatus();
+        LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
         if (0 != exitStatus) {
-          // container failed 
-          if (-100 != exitStatus) {
-            // shell script failed
-            // counts as completed 
-            numCompletedContainers.incrementAndGet();
-            numFailedContainers.incrementAndGet();
-          }
-          else {
-            // something else bad happened 
-            // app job did not complete for some reason 
-            // we should re-try as the container was lost for some reason
-            numAllocatedContainers.decrementAndGet();
-            numRequestedContainers.decrementAndGet();
-            // we do not need to release the container as it would be done
-            // by the RM/CM.
-          }
+          // StramChild failure or process killed
+          numFailedContainers.incrementAndGet();
+          LOG.info("Container {} failed, launching new container.", containerStatus.getContainerId());
+          dnmgr.restartContainer(containerStatus.getContainerId().toString());
         }
         else {
-          // nothing to do 
           // container completed successfully 
           numCompletedContainers.incrementAndGet();
+          dnmgr.markComplete(containerStatus.getContainerId().toString());
           LOG.info("Container completed successfully."
                    + ", containerId=" + containerStatus.getContainerId());
         }
 
       }
 
-      if (numCompletedContainers.get() == numTotalContainers) {
+      if (allAllocatedContainers.size() == 0 && dnmgr.deployRequests.isEmpty()) {
         appDone = true;
       }
 
@@ -579,10 +582,10 @@ public class StramAppMaster
                + ", requested=" + numRequestedContainers
                + ", completed=" + numCompletedContainers
                + ", failed=" + numFailedContainers
-               + ", currentAllocated=" + numAllocatedContainers);
+               + ", currentAllocated=" + allAllocatedContainers.size());
 
-      // TODO 
-      // Add monitoring for child containers
+      // monitor child containers
+      dnmgr.monitorHeartbeat();
     }
 
     // Join all launched threads
@@ -613,7 +616,7 @@ public class StramAppMaster
       String diagnostics = "Diagnostics."
                            + ", total=" + numTotalContainers
                            + ", completed=" + numCompletedContainers.get()
-                           + ", allocated=" + numAllocatedContainers.get()
+                           + ", allocated=" + allAllocatedContainers.size()
                            + ", failed=" + numFailedContainers.get();
       finishReq.setDiagnostics(diagnostics);
       isSuccess = false;
@@ -687,7 +690,7 @@ public class StramAppMaster
    * @return Response from RM to AM with allocated containers
    * @throws YarnRemoteException
    */
-  private AMResponse sendContainerAskToRM(List<ResourceRequest> requestedContainers)
+  private AMResponse sendContainerAskToRM(List<ResourceRequest> requestedContainers, List<ContainerId> releasedContainers)
     throws YarnRemoteException
   {
     AllocateRequest req = Records.newRecord(AllocateRequest.class);
@@ -695,9 +698,8 @@ public class StramAppMaster
     req.setApplicationAttemptId(appAttemptID);
     req.addAllAsks(requestedContainers);
 
-    List<ContainerId> releasedContainers = new ArrayList<ContainerId>();    
     for (String containerIdStr : dnmgr.containerStopRequests.values()) {
-      Container allocatedContainer = this.allocatedContainers.get(containerIdStr);
+      Container allocatedContainer = this.allAllocatedContainers.get(containerIdStr);
       if (allocatedContainer != null) {
          // issue stop container - TODO: separate thread to not block heartbeat
         ContainerManager cm = yarnClient.connectToCM(allocatedContainer);
@@ -705,8 +707,7 @@ public class StramAppMaster
         stopContainer.setContainerId(allocatedContainer.getId());
         cm.stopContainer(stopContainer);
         LOG.info("Stopped container {}", containerIdStr);
-        // RM does not report the container as completed when stopped from here
-        this.numCompletedContainers.incrementAndGet(); 
+        // RM does not report container as completed when stopped from here
         this.numFailedContainers.incrementAndGet();
         //releasedContainers.add(allocatedContainer.getId());
       }
@@ -714,7 +715,7 @@ public class StramAppMaster
     }
     
     req.addAllReleases(releasedContainers);
-    req.setProgress((float) numCompletedContainers.get() / numTotalContainers);
+    //req.setProgress((float) numCompletedContainers.get() / numTotalContainers);
 
     LOG.info("Sending request to RM for containers"
              + ", requestedSet=" + requestedContainers.size()
