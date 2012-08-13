@@ -47,6 +47,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     this((Collection<? extends E>) c);
   }
 
+  @Override
   public E element() throws NoSuchElementException
   {
     try {
@@ -58,11 +59,13 @@ public class StablePriorityQueue<E> implements Queue<E>
     }
   }
 
+  @Override
   public boolean offer(E e)
   {
     return queue.offer(new StableWrapper<E>(e, counter++));
   }
 
+  @Override
   public E peek()
   {
     StableWrapper<E> sw = queue.peek();
@@ -73,6 +76,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return sw.object;
   }
 
+  @Override
   public E remove() throws NoSuchElementException
   {
     try {
@@ -84,6 +88,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     }
   }
 
+  @Override
   public E poll()
   {
     StableWrapper<E> sw = queue.poll();
@@ -105,11 +110,13 @@ public class StablePriorityQueue<E> implements Queue<E>
     return null;
   }
 
+  @Override
   public boolean add(E e)
   {
     return queue.add(new StableWrapper<E>(e, counter++));
   }
 
+  @Override
   public int size()
   {
     int size = queue.size();
@@ -120,6 +127,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return size;
   }
 
+  @Override
   public boolean isEmpty()
   {
     boolean isEmpty = queue.isEmpty();
@@ -130,6 +138,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return isEmpty;
   }
 
+  @Override
   public boolean contains(Object o)
   {
     for (StableWrapper<E> e : queue) {
@@ -151,28 +160,33 @@ public class StablePriorityQueue<E> implements Queue<E>
       iterator = queue.iterator();
     }
 
+    @Override
     public boolean hasNext()
     {
       return iterator.hasNext();
     }
 
+    @Override
     public E next()
     {
       return iterator.next().object;
     }
 
+    @Override
     public void remove()
     {
       iterator.remove();
     }
   }
 
+  @Override
   public Iterator<E> iterator()
   {
     return new IteratorWrapper();
   }
 
   @SuppressWarnings("unchecked")
+  @Override
   public Object[] toArray()
   {
     Object[] array = queue.toArray();
@@ -185,6 +199,7 @@ public class StablePriorityQueue<E> implements Queue<E>
   }
 
   @SuppressWarnings("unchecked")
+  @Override
   public <T> T[] toArray(T[] a)
   {
     T[] finalArray;
@@ -217,6 +232,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return finalArray;
   }
 
+  @Override
   public boolean remove(Object o)
   {
     for (StableWrapper<E> e : queue) {
@@ -232,6 +248,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return false;
   }
 
+  @Override
   public boolean containsAll(Collection<?> c)
   {
     for (Object o : c) {
@@ -243,6 +260,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return true;
   }
 
+  @Override
   public boolean addAll(Collection<? extends E> c)
   {
     if (c == null) {
@@ -263,6 +281,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return modified;
   }
 
+  @Override
   public boolean removeAll(Collection<?> c)
   {
     boolean modified = false;
@@ -291,6 +310,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return modified;
   }
 
+  @Override
   public boolean retainAll(Collection<?> c)
   {
     ArrayList<StableWrapper<E>> removeThese = new ArrayList<StableWrapper<E>>();
@@ -311,6 +331,7 @@ public class StablePriorityQueue<E> implements Queue<E>
     return queue.removeAll(removeThese);
   }
 
+  @Override
   public void clear()
   {
     queue.clear();

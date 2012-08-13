@@ -62,7 +62,7 @@ public abstract class AbstractInputAdapter implements InputAdapter
     Tuple t = new Tuple(null);
     t.setType(DataType.RESET_WINDOW);
     t.setContext(context);
-    t.setWindowId(baseSeconds | intervalMillis);
+    t.setWindowId(this.baseSeconds | intervalMillis);
     context.sink(t);
   }
 
@@ -75,7 +75,7 @@ public abstract class AbstractInputAdapter implements InputAdapter
     t.setType(DataType.BEGIN_WINDOW);
     t.setContext(context);
 
-    t.setWindowId(windowId);
+    t.setWindowId(this.windowId);
     context.sink(t);
     this.notifyAll();
   }
@@ -85,7 +85,7 @@ public abstract class AbstractInputAdapter implements InputAdapter
   {
     EndWindowTuple t = new EndWindowTuple();
     t.setContext(context);
-    t.setWindowId(windowId);
+    t.setWindowId(this.windowId);
     context.sink(t);
     this.windowId = 0;
   }
