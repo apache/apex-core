@@ -19,22 +19,16 @@ import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
 /**
- * Receives a list of continent/city pairs from a {@link LocalTimeClient} to get
- * the local times of the specified cities.
- * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-
 public class Server
 {
   private static final Logger LOGGER = Logger.getLogger(Server.class.getName());
+  public static final int DEFAULT_PORT = 9080;
   private ChannelGroup allConnected = new DefaultChannelGroup("all-connected");
-
-  public static int DEFAULT_PORT = 9080;
   private final int port;
   private ServerBootstrap bootstrap;
-  private Channel serverChannel;
-  
+
   /**
    * @param port - port number to bind to or 0 to auto select a free port
    */
@@ -47,35 +41,28 @@ public class Server
   {
     // Configure the server.
     bootstrap = new ServerBootstrap(
-            new NioServerSocketChannelFactory(
-            Executors.newCachedThreadPool(),
-            Executors.newCachedThreadPool()));
+      new NioServerSocketChannelFactory(
+      Executors.newCachedThreadPool(),
+      Executors.newCachedThreadPool()));
 
     // Set up the event pipeline factory.
     bootstrap.setPipelineFactory(new ServerPipelineFactory(allConnected));
 
     // Bind and start to accept incoming connections.
-    serverChannel = bootstrap.bind(new InetSocketAddress(port));
+    Channel serverChannel = bootstrap.bind(new InetSocketAddress(port));
     LOGGER.log(Level.INFO, "bound to: {0}", serverChannel.getLocalAddress());
+
+    allConnected.add(serverChannel);
 
     return serverChannel.getLocalAddress();
   }
 
-  public void shutdown() {
-    if (serverChannel !=  null) {
-      LOGGER.log(Level.INFO, "shutting down server at: {0}", serverChannel.getLocalAddress());
-      this.serverChannel.close();
-
-      for (Channel c : allConnected) {
-        c.close();
-      }
-      allConnected.clear();
-      
-      this.bootstrap.releaseExternalResources();
-      this.serverChannel =  null;
-    }
+  public void shutdown()
+  {
+    allConnected.close().awaitUninterruptibly();
+    this.bootstrap.releaseExternalResources();
   }
-  
+
   public static void main(String[] args) throws Exception
   {
     Handler ch = new ConsoleHandler();
