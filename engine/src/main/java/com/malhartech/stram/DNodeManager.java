@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.slf4j.Logger;
@@ -43,18 +44,19 @@ public class DNodeManager
   private final static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private int windowSizeMillis = 500;
+  private int heartbeatTimeoutMillis = 30000;
   
   private class NodeStatus
   {
     StreamingNodeHeartbeat lastHeartbeat;
     final PTComponent node;
-    final String containerId;
+    final PTContainer container;
     int tuplesTotal;
     int bytesTotal;
     
-    private NodeStatus(String containerId, PTComponent node) {
+    private NodeStatus(PTContainer container, PTComponent node) {
       this.node = node;
-      this.containerId = containerId;
+      this.container = container;
     }
 
     boolean canShutdown()
@@ -69,15 +71,28 @@ public class DNodeManager
   
   private class ContainerStatus
   {
-    private ContainerStatus(StreamingContainerContext ctx) {
+    private ContainerStatus(StreamingContainerContext ctx, PTContainer container) {
       this.containerContext = ctx;
+      this.container = container;
     }
     
     boolean shutdownRequested = false;
+    boolean isComplete = false;
     StreamingContainerContext containerContext;
+    long lastHeartbeatMillis = 0;
+    long createdMillis = System.currentTimeMillis();
+    final PTContainer container;
+  }
+  
+  public class ContainerDeployRequest {
+    final PTContainer container;
+    public ContainerDeployRequest(PTContainer container) {
+      this.container = container;
+    }
   }
   
   final public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
+  final public ConcurrentLinkedQueue<ContainerDeployRequest> deployRequests = new ConcurrentLinkedQueue<ContainerDeployRequest>();
   final private Map<String, ContainerStatus> containers = new ConcurrentHashMap<String, ContainerStatus>();
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
@@ -88,13 +103,61 @@ public class DNodeManager
     this.deployer.init(topology.getContainerCount(), topology);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
+    
+    // fill initial deploy requests
+    for (PTContainer container : deployer.getContainers()) {
+      this.deployRequests.add(new ContainerDeployRequest(container));
+    }
+    
   }
 
   public int getNumRequiredContainers()
   {
-    return deployer.getContainers().size();
+    return deployRequests.size();
   }
 
+  /**
+   * Check periodically that child containers phone home
+   */
+  public void monitorHeartbeat() {
+    long currentTms = System.currentTimeMillis();
+    for (Map.Entry<String,ContainerStatus> cse : containers.entrySet()) {
+       String containerId = cse.getKey();
+       ContainerStatus cs = cse.getValue();
+       if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
+         // TODO: separate startup timeout handling
+         if (cs.createdMillis + heartbeatTimeoutMillis < currentTms) {
+           // issue stop as probably process is still hanging around (would have been detected by Yarn otherwise)
+           LOG.info("Triggering restart for container {} after heartbeat timeout.", containerId);
+           containerStopRequests.put(containerId, containerId);
+           deployRequests.add(new ContainerDeployRequest(cs.container));
+         }
+       }
+    }
+  }
+
+  /**
+   * Called by Stram when a failed to container is reported by the RM to request restart.
+   * @param containerId
+   */
+  public void restartContainer(String containerId) {
+    ContainerStatus cs = containers.get(containerId);
+    if (cs == null) {
+      LOG.warn("Restart request for unknown container {}", containerId);
+      return;
+    }
+    deployRequests.add(new ContainerDeployRequest(cs.container));
+  }
+
+  public void markComplete(String containerId) {
+    ContainerStatus cs = containers.get(containerId);
+    if (cs == null) {
+      LOG.warn("Completion status for unknown container {}", containerId);
+      return;
+    }
+    cs.isComplete = true;
+  }
+  
   /**
    * Create node tracking context for logical node. Exposed here for tests.
    *
@@ -162,15 +225,33 @@ public class DNodeManager
       if (container.containerId == null) {
         container.containerId = containerId;
         container.bufferServerAddress = bufferServerAddress;
-        StreamingContainerContext scc = createStreamingContainerContext(container);
-        containers.put(containerId, new ContainerStatus(scc));
+        StreamingContainerContext scc = getStreamingContainerContext(container);
+        containers.put(containerId, new ContainerStatus(scc, container));
         return scc;
       }
     }
     throw new IllegalStateException("There are no more containers to deploy.");
   }
 
-  private StreamingContainerContext createStreamingContainerContext(PTContainer container) {
+  public void assignContainer(ContainerDeployRequest cdr, String containerId, InetSocketAddress bufferServerAddress) {
+    PTContainer container = cdr.container;
+    if (container.containerId != null) {
+      LOG.info("Removing existing container status {}", cdr.container.containerId);
+      this.containers.remove(container.containerId);
+    } else {
+      cdr.container.bufferServerAddress = bufferServerAddress;
+    }
+    container.containerId = containerId;
+    StreamingContainerContext scc = getStreamingContainerContext(container);
+    containers.put(containerId, new ContainerStatus(scc, container));
+  }
+  
+  /**
+   * Create the protocol mandated node/stream info for bootstrapping StramChild.
+   * @param container
+   * @return
+   */
+  private StreamingContainerContext getStreamingContainerContext(PTContainer container) {
     StreamingContainerContext scc = new StreamingContainerContext();
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
@@ -280,14 +361,14 @@ public class DNodeManager
       }
     }
 
-    // add remaining publishers (with subscribers in other containers)
+    // add remaining publishers (subscribers in other containers)
     streams.addAll(publishers.values());
     
     scc.setNodes(new ArrayList<NodePConf>(nodes.keySet()));
     scc.setStreams(streams);
     
     for (Map.Entry<NodePConf, PTComponent> e : nodes.entrySet()) {
-      this.nodeStatusMap.put(e.getKey().getDnodeId(), new NodeStatus(container.containerId, e.getValue()));
+      this.nodeStatusMap.put(e.getKey().getDnodeId(), new NodeStatus(container, e.getValue()));
     }
     
     return scc;
@@ -329,12 +410,14 @@ public class DNodeManager
       }
     }
 
+    ContainerStatus cs = containers.get(heartbeat.getContainerId());
+    cs.lastHeartbeatMillis = System.currentTimeMillis();
+    
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (containerIdle && isApplicationIdle()) {
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
       rsp.setShutdown(true);
     } else {
-      ContainerStatus cs = containers.get(heartbeat.getContainerId());
       if (cs != null && cs.shutdownRequested) {
         LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
         rsp.setShutdown(true);
@@ -402,7 +485,7 @@ public class DNodeManager
     ArrayList<NodeInfo> nodeInfoList = new ArrayList<NodeInfo>(this.nodeStatusMap.size());
     for (NodeStatus ns : this.nodeStatusMap.values()) {
       NodeInfo ni = new NodeInfo();
-      ni.containerId = ns.containerId;
+      ni.containerId = ns.container.containerId;
       ni.id = ns.node.id;
       ni.name = ns.node.getLogicalId();
       StreamingNodeHeartbeat hb = ns.lastHeartbeat;
@@ -412,6 +495,12 @@ public class DNodeManager
         ni.totalBytes = ns.bytesTotal;
         ni.totalTuples = ns.tuplesTotal;
         ni.lastHeartbeat = ns.lastHeartbeat.getGeneratedTms();
+      } else {
+        // TODO: proper node status tracking
+        ContainerStatus cs = containers.get(ns.container.containerId);
+        if (cs != null) {
+          ni.status = cs.isComplete ? "CONTAINER_COMPLETE" : "CONTAINER_NEW";
+        }
       }
       nodeInfoList.add(ni);
     }
