@@ -32,7 +32,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   {
     connectedChannels = connected;
   }
-  
+
   @Override
   public void messageReceived(
     ChannelHandlerContext ctx, MessageEvent e)
@@ -195,11 +195,10 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
    * we do not care // if this is a worker thread that gets blocked. or should we worry? System.err.println("writeRequested from thread " +
    * Thread.currentThread()); super.writeRequested(ctx, e); }
    */
+
   @Override
   public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception
   {
-    connectedChannels.remove(ctx.getChannel());
-    
     Object attachment = ctx.getAttachment();
     if (attachment instanceof DataList) {
       /**
