@@ -14,9 +14,16 @@ import java.io.OutputStream;
  */
 public interface BackupAgent
 {
-  public OutputStream borrowOutputStream(String nodeId) throws IOException;
+  public OutputStream borrowOutputStream(String nodeId, long windowId) throws IOException;
 
-  public void returnOutputStream(String nodeId, long windowId, OutputStream os) throws IOException;
+  public void returnOutputStream(OutputStream os) throws IOException;
 
-  public InputStream getInputStream(String nodeId);
+  /**
+   * Return the input stream for restoring the node. 
+   * Caller is responsible for closing stream once done.
+   * @param nodeId
+   * @return
+   * @throws IOException
+   */
+  public InputStream getInputStream(String nodeId) throws IOException;
 }

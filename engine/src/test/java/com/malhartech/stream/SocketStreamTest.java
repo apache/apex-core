@@ -136,14 +136,15 @@ public class SocketStreamTest
 
   }
 
-  private class ChildContainer extends StramChild
+  public static class TestChildContainer extends StramChild
   {
-    public ChildContainer(String containerId)
+    public TestChildContainer(String containerId)
     {
       super(containerId, new Configuration(), null);
     }
 
-    private void initForTest(StreamingContainerContext ctx) throws IOException
+    @Override
+    public void init(StreamingContainerContext ctx) throws IOException
     {
       super.init(ctx);
     }
@@ -197,19 +198,19 @@ public class SocketStreamTest
                         expectedContainerCount,
                         dnm.getNumRequiredContainers());
 
-    List<ChildContainer> containers = new ArrayList<ChildContainer>();
+    List<TestChildContainer> containers = new ArrayList<TestChildContainer>();
 
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
       StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-      ChildContainer container = new ChildContainer(containerId);
-      container.initForTest(cc);
+      TestChildContainer container = new TestChildContainer(containerId);
+      container.init(cc);
       containers.add(container);
     }
 
     // TODO: validate data flow
 
-    for (ChildContainer cc : containers) {
+    for (TestChildContainer cc : containers) {
       LOG.info("shutting down " + cc);
       cc.shutdown();
     }

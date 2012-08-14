@@ -363,6 +363,7 @@ public class StramClient
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
+    String pathSuffix = appName + "/" + appId.getId();
 
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = FileSystem.get(conf);
@@ -370,8 +371,7 @@ public class StramClient
     for (String localJarFile : localJarFiles) {
       Path src = new Path(localJarFile);
       String jarName = src.getName();
-      String pathSuffix = appName + "/" + appId.getId() + "/" + jarName;
-      Path dst = new Path(fs.getHomeDirectory(), pathSuffix);
+      Path dst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + jarName);
       LOG.info("Copy {} from local filesystem to {}", localJarFile, dst);
       fs.copyFromLocalFile(false, true, src, dst);
       if (libJarsCsv.length() > 0) {
@@ -382,7 +382,9 @@ public class StramClient
 
     LOG.info("libjars: {}", libJarsCsv);
     topology.getConf().set(TopologyBuilder.LIBJARS, libJarsCsv);
-
+    topology.getConf().set(TopologyBuilder.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
+    
+    
     // set local resources for the application master
     // local files or archives as needed
     // In this scenario, the jar file for the application master is part of the local resources     

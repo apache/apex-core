@@ -7,8 +7,12 @@ package com.malhartech.dag;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+
 import java.io.IOException;
 import java.io.OutputStream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -16,6 +20,8 @@ import java.io.OutputStream;
  */
 public class NodeContext implements Context
 {
+  private static Logger LOG = LoggerFactory.getLogger(NodeContext.class);
+  
   private BackupAgent backupAgent;
 
   public static enum RequestType
@@ -40,7 +46,7 @@ public class NodeContext implements Context
    * The AbstractNode to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
    */
   // we should make it configurable somehow.
-  private static long idleTimeout = 1000L;
+  private long idleTimeout = 1000L;
 
   /**
    * @return the requestType
@@ -106,7 +112,8 @@ public class NodeContext implements Context
 
   void backup(AbstractNode aThis) throws IOException
   {
-    OutputStream os = backupAgent.borrowOutputStream(id);
+    LOG.debug("Backup node={}, window={}", id, getCurrentWindowId());
+    OutputStream os = backupAgent.borrowOutputStream(id, getCurrentWindowId());
     try {
       Kryo kryo = new Kryo();
       Output output = new Output(os);
@@ -120,7 +127,7 @@ public class NodeContext implements Context
       request = RequestType.UNDEFINED;
     }
     finally {
-      backupAgent.returnOutputStream(id, windowId, os);
+      backupAgent.returnOutputStream(os);
     }
   }
 
@@ -128,9 +135,10 @@ public class NodeContext implements Context
   {
     this.backupAgent = agent;
     request = RequestType.BACKUP;
+    LOG.debug("Received backup request (node={})", id);
   }
 
-  public Object restore(BackupAgent agent)
+  public Object restore(BackupAgent agent) throws IOException
   {
     return new Kryo().readClassAndObject(new Input(backupAgent.getInputStream(id)));
   }

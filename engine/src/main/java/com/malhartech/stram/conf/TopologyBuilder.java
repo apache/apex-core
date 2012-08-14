@@ -45,6 +45,7 @@ public class TopologyBuilder {
   public static final String STRAM_DEBUG = "stram.debug";
   public static final String STRAM_CONTAINER_MEMORY_MB = "stram.containerMemoryMB";
   public static final String STRAM_MASTER_MEMORY_MB = "stram.masterMemoryMB";
+  public static final String STRAM_CHECKPOINT_DIR = "stram.checkpointDir";
   
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCENODE = "inputNode";
