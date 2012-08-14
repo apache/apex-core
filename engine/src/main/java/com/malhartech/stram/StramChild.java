@@ -384,30 +384,35 @@ public class StramChild
           new BackupAgent()
           {
             private FSDataOutputStream output;
-
+            private String outputNodeId;
+            private long outputWindowId;
+            private long inputWindowId;
+            
             @Override
-            public OutputStream borrowOutputStream(String id) throws IOException
+            public OutputStream borrowOutputStream(String id, long windowId) throws IOException
             {
               FileSystem fs = FileSystem.get(conf);
-              Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id);
+              Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId);
               LOG.debug("Backup path: {}", path);
+              outputNodeId = id;
+              outputWindowId = windowId;
               return (output = fs.create(path)); 
             }
 
             @Override
-            public void returnOutputStream(String id, long windowId, OutputStream os) throws IOException
+            public void returnOutputStream(OutputStream os) throws IOException
             {
               assert (output == os);
               output.close();
               // record last backup window id for heartbeat
-              backupInfo.put(id, windowId);
+              backupInfo.put(outputNodeId, outputWindowId);
             }
             
             @Override
             public InputStream getInputStream(String id) throws IOException
             {
               FileSystem fs = FileSystem.get(conf);
-              FSDataInputStream input = fs.open(new Path(StramChild.this.checkpointDfsPath + "/" + id));
+              FSDataInputStream input = fs.open(new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + inputWindowId));
               return input;
             }
           });

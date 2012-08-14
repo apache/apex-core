@@ -108,8 +108,8 @@ public class CheckpointTest {
  
     container.shutdown();
 
-    File expectedFile = new File(testWorkDir, cc.getNodes().get(0).getDnodeId());
-    Assert.assertTrue("checkpoint file exists: " + expectedFile, expectedFile.exists());
+    File expectedFile = new File(testWorkDir, cc.getNodes().get(0).getDnodeId() + "/1");
+    Assert.assertTrue("checkpoint file exists: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
     
   }
   

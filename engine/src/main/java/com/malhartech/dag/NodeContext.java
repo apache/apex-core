@@ -113,7 +113,7 @@ public class NodeContext implements Context
   void backup(AbstractNode aThis) throws IOException
   {
     LOG.debug("Backup node={}, window={}", id, getCurrentWindowId());
-    OutputStream os = backupAgent.borrowOutputStream(id);
+    OutputStream os = backupAgent.borrowOutputStream(id, getCurrentWindowId());
     try {
       Kryo kryo = new Kryo();
       Output output = new Output(os);
@@ -127,7 +127,7 @@ public class NodeContext implements Context
       request = RequestType.UNDEFINED;
     }
     finally {
-      backupAgent.returnOutputStream(id, windowId, os);
+      backupAgent.returnOutputStream(os);
     }
   }
 
