@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
@@ -45,6 +46,7 @@ public class DNodeManager
   private long windowStartMillis = System.currentTimeMillis();
   private int windowSizeMillis = 500;
   private int heartbeatTimeoutMillis = 30000;
+  private int checkpointIntervalMillis = 30000;
   
   private class NodeStatus
   {
@@ -80,6 +82,7 @@ public class DNodeManager
     boolean isComplete = false;
     StreamingContainerContext containerContext;
     long lastHeartbeatMillis = 0;
+    long lastCheckpointRequestMillis = 0;
     long createdMillis = System.currentTimeMillis();
     final PTContainer container;
   }
@@ -96,13 +99,14 @@ public class DNodeManager
   final private Map<String, ContainerStatus> containers = new ConcurrentHashMap<String, ContainerStatus>();
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
-  
+  final private String checkpointDir;
   
   public DNodeManager(TopologyBuilder topology) {
     this.deployer = new TopologyDeployer();
     this.deployer.init(topology.getContainerCount(), topology);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
+    checkpointDir = topology.getConf().get(TopologyBuilder.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
     
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
@@ -255,7 +259,8 @@ public class DNodeManager
     StreamingContainerContext scc = new StreamingContainerContext();
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
-
+    scc.setCheckpointDfsPath(this.checkpointDir);
+    
     List<StreamPConf> streams = new ArrayList<StreamPConf>();
     Map<NodePConf, PTComponent> nodes = new LinkedHashMap<NodePConf, PTComponent>();
     Map<String, StreamPConf> publishers = new LinkedHashMap<String, StreamPConf>();
@@ -388,7 +393,8 @@ public class DNodeManager
   {
 //addContainerStopRequest(heartbeat.getContainerId());    
     boolean containerIdle = true;
-
+    long currentTimeMillis = System.currentTimeMillis();
+    
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
       ReflectionToStringBuilder b = new ReflectionToStringBuilder(shb);
 
@@ -411,7 +417,7 @@ public class DNodeManager
     }
 
     ContainerStatus cs = containers.get(heartbeat.getContainerId());
-    cs.lastHeartbeatMillis = System.currentTimeMillis();
+    cs.lastHeartbeatMillis = currentTimeMillis;
     
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (containerIdle && isApplicationIdle()) {
@@ -423,7 +429,17 @@ public class DNodeManager
         rsp.setShutdown(true);
       }
     }
+    
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
+    if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
+      for (NodePConf nodeConf : cs.containerContext.getNodes()) {
+        StramToNodeRequest backupRequest = new StramToNodeRequest();
+        backupRequest.setNodeId(nodeConf.getDnodeId());
+        backupRequest.setRequestType(RequestType.CHECKPOINT);
+        requests.add(backupRequest);
+      }
+      cs.lastCheckpointRequestMillis = currentTimeMillis;
+    }
     rsp.setNodeRequests(requests);
     return rsp;
   }

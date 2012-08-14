@@ -172,7 +172,17 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     {
       this.startWindowMillis = startWindowBeginMillis;
     }
-    
+
+    private String checkpointDfsPath;
+
+    public String getCheckpointDfsPath() {
+      return checkpointDfsPath;
+    }
+
+    public void setCheckpointDfsPath(String dfsPath) {
+      this.checkpointDfsPath = dfsPath;
+    }
+
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
@@ -291,6 +301,16 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
 
     public void setCurrentWindowId(long currentWindowSeq) {
       this.currentWindowId = currentWindowSeq;
+    }
+
+    private long lastBackupWindowId;
+
+    public long getLastBackupWindowId() {
+      return lastBackupWindowId;
+    }
+
+    public void setLastBackupWindowId(long lastBackupWindowId) {
+      this.lastBackupWindowId = lastBackupWindowId;
     }
     
   }

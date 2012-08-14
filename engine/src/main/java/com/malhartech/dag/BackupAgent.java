@@ -18,5 +18,12 @@ public interface BackupAgent
 
   public void returnOutputStream(String nodeId, long windowId, OutputStream os) throws IOException;
 
-  public InputStream getInputStream(String nodeId);
+  /**
+   * Return the input stream for restoring the node. 
+   * Caller is responsible for closing stream once done.
+   * @param nodeId
+   * @return
+   * @throws IOException
+   */
+  public InputStream getInputStream(String nodeId) throws IOException;
 }

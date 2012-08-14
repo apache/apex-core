@@ -31,7 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
@@ -59,7 +58,13 @@ public class StramChild
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   private WindowGenerator windowGenerator;
-
+  private String checkpointDfsPath;
+  /**
+   * Map of last backup window id that is used to communicate checkpoint state back to Stram.
+   * TODO: Consider adding this to the node context instead.
+   */
+  private Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
+  
   protected StramChild(String containerId, Configuration conf, StreamingNodeUmbilicalProtocol umbilical)
   {
     this.umbilical = umbilical;
@@ -67,6 +72,13 @@ public class StramChild
     this.conf = conf;
   }
 
+  /**
+   * Make accessible for unit testing
+   */
+  protected List<InputAdapter> getInputAdapters() {
+    return this.inputAdapters;
+  }
+  
   /**
    * Initialize stream between 2 nodes
    *
@@ -149,6 +161,10 @@ public class StramChild
       this.heartbeatIntervalMillis = 1000;
     }
 
+    if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
+      this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
+    }
+    
     // create nodes
     for (NodePConf snc : ctx.getNodes()) {
       AbstractNode dnode = initNode(snc, conf);
@@ -252,6 +268,16 @@ public class StramChild
         node.stopSafely();
       }
     }
+    
+    for (Thread t : activeNodeList.values()) {
+      try {
+        LOG.debug("Joining thread {}", t.getName());
+        t.join(2000);
+      } catch (Exception e) {
+        LOG.warn("Interrupted while waiting for thread {} to complete.", t.getName());
+      }
+    }
+    
   }
 
   private void heartbeatLoop() throws IOException
@@ -287,6 +313,11 @@ public class StramChild
           state = DNodeState.IDLE;
         }
         hb.setState(state.name());
+        // propagate the backup window, if any
+        Long backupWindowId = backupInfo.get(e.getKey());
+        if (backupWindowId != null) {
+          hb.setLastBackupWindowId(backupWindowId);
+        }
         heartbeats.add(hb);
       }
       msg.setDnodeEntries(heartbeats);
@@ -307,7 +338,7 @@ public class StramChild
     umbilical.echo(containerId, "[" + containerId + "] Exiting heartbeat loop..");
   }
 
-  private void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
+  protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
     if (rsp.isShutdown()) {
       LOG.info("Received shutdown request");
@@ -353,13 +384,14 @@ public class StramChild
           new BackupAgent()
           {
             private FSDataOutputStream output;
-            private FSDataInputStream input;
 
             @Override
             public OutputStream borrowOutputStream(String id) throws IOException
             {
-              FileSystem fs = FileSystem.get(conf); // is the conf parameter right?
-              return (output = fs.create(new Path(id))); // id is definitely not the correct path... we need to secure our state files.
+              FileSystem fs = FileSystem.get(conf);
+              Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id);
+              LOG.debug("Backup path: {}", path);
+              return (output = fs.create(path)); 
             }
 
             @Override
@@ -367,11 +399,15 @@ public class StramChild
             {
               assert (output == os);
               output.close();
+              // record last backup window id for heartbeat
+              backupInfo.put(id, windowId);
             }
             
             @Override
-            public InputStream getInputStream(String id)
+            public InputStream getInputStream(String id) throws IOException
             {
+              FileSystem fs = FileSystem.get(conf);
+              FSDataInputStream input = fs.open(new Path(StramChild.this.checkpointDfsPath + "/" + id));
               return input;
             }
           });
