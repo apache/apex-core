@@ -405,7 +405,7 @@ public class StramChild
               assert (output == os);
               output.close();
               // record last backup window id for heartbeat
-              backupInfo.put(outputNodeId, outputWindowId);
+              StramChild.this.backupInfo.put(outputNodeId, outputWindowId);
             }
             
             @Override

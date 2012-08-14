@@ -20,6 +20,15 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
   protected FSDataInputStream input;
+  private boolean skipEndStream = false;
+
+  public boolean isSkipEndStream() {
+    return skipEndStream;
+  }
+
+  public void setSkipEndStream(boolean skip) {
+    this.skipEndStream = skip;
+  }
 
   @Override
   public void setup(StreamConfiguration config)
@@ -51,7 +60,11 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
       emit(o);
     }
 
-    endStream();
+    if (!skipEndStream) {
+      endStream();
+    } else {
+      logger.info("Skipping endStream.");
+    }
   }
 
   @Override
