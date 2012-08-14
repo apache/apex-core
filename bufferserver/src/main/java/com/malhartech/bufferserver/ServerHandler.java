@@ -220,13 +220,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   {
     final Object attachment = ctx.getAttachment();
     final Channel c = ctx.getChannel();
+
     if (attachment instanceof DataList) {
       /**
        * since the publisher server died, the queue which it was using would stop pumping the data unless a new publisher comes up with the same name. We leave
        * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
        */
       if (publisher_channels.containsValue(c)) {
-        Iterator<Entry<String, Channel>> i = publisher_channels.entrySet().iterator();
+        final Iterator<Entry<String, Channel>> i = publisher_channels.entrySet().iterator();
         while (i.hasNext()) {
           if (i.next().getValue() == c) {
             i.remove();
@@ -239,7 +240,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     }
     else if (attachment instanceof LogicalNode) {
       if (subscriber_channels.containsValue(c)) {
-        Iterator<Entry<String, Channel>> i = subscriber_channels.entrySet().iterator();
+        final Iterator<Entry<String, Channel>> i = subscriber_channels.entrySet().iterator();
         while (i.hasNext()) {
           if (i.next().getValue() == c) {
             i.remove();
