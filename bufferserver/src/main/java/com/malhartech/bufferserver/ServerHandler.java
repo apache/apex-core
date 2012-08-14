@@ -11,6 +11,7 @@ import com.malhartech.bufferserver.policy.*;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.channel.ChannelHandler.Sharable;
@@ -29,8 +30,8 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   final ChannelGroup connectedChannels;
   final HashMap<String, DataList> publisher_bufffers = new HashMap<String, DataList>();
   final HashMap<String, LogicalNode> groups = new HashMap<String, LogicalNode>();
-  final HashMap<String, Channel> publisher_channels = new HashMap<String, Channel>();
-  final HashMap<String, Channel> subscriber_channels = new HashMap<String, Channel>();
+  final ConcurrentHashMap<String, Channel> publisher_channels = new ConcurrentHashMap<String, Channel>();
+  final ConcurrentHashMap<String, Channel> subscriber_channels = new ConcurrentHashMap<String, Channel>();
 
   public ServerHandler(ChannelGroup connected)
   {
@@ -107,6 +108,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
+      
       Channel previous = subscriber_channels.put(identifier, ctx.getChannel());
       if (previous != null && previous.getId() != ctx.getChannel().getId()) {
         previous.close();
