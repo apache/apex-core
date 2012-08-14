@@ -9,6 +9,8 @@ import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.policy.*;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.channel.ChannelHandler.Sharable;
@@ -216,18 +218,36 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   @Override
   public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception
   {
-    Object attachment = ctx.getAttachment();
+    final Object attachment = ctx.getAttachment();
+    final Channel c = ctx.getChannel();
     if (attachment instanceof DataList) {
       /**
        * since the publisher server died, the queue which it was using would stop pumping the data unless a new publisher comes up with the same name. We leave
        * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
        */
+      if (publisher_channels.containsValue(c)) {
+        Iterator<Entry<String, Channel>> i = publisher_channels.entrySet().iterator();
+        while (i.hasNext()) {
+          if (i.next().getValue() == c) {
+            i.remove();
+            break;
+          }
+        }
+      }
+
       ctx.setAttachment(null);
     }
     else if (attachment instanceof LogicalNode) {
-      /**
-       * in case the downstream subsriber dies, we need to do some cleanup.
-       */
+      if (subscriber_channels.containsValue(c)) {
+        Iterator<Entry<String, Channel>> i = subscriber_channels.entrySet().iterator();
+        while (i.hasNext()) {
+          if (i.next().getValue() == c) {
+            i.remove();
+            break;
+          }
+        }
+      }
+
       LogicalNode ln = (LogicalNode) attachment;
 
       ln.removeChannel(ctx.getChannel());
