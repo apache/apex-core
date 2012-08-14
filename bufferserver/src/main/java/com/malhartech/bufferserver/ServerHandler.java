@@ -9,6 +9,8 @@ import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.policy.*;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jboss.netty.channel.ChannelHandler.Sharable;
@@ -27,12 +29,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   final ChannelGroup connectedChannels;
   final HashMap<String, DataList> publisher_bufffers = new HashMap<String, DataList>();
   final HashMap<String, LogicalNode> groups = new HashMap<String, LogicalNode>();
+  final HashMap<String, Channel> publisher_channels = new HashMap<String, Channel>();
+  final HashMap<String, Channel> subscriber_channels = new HashMap<String, Channel>();
 
   public ServerHandler(ChannelGroup connected)
   {
     connectedChannels = connected;
   }
-  
+
   @Override
   public void messageReceived(
     ChannelHandlerContext ctx, MessageEvent e)
@@ -43,7 +47,6 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       case PUBLISHER_REQUEST:
         handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
         break;
-
 
       case SUBSCRIBER_REQUEST:
         handleSubscriberRequest(data.getSubscribeRequest(), ctx, data.getWindowId());
@@ -71,6 +74,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
     synchronized (publisher_bufffers) {
       if (publisher_bufffers.containsKey(identifier)) {
+        /*
+         * close previous connection with the same identifier which is guaranteed to be unique.
+         */
+        Channel previous = publisher_channels.put(identifier, ctx.getChannel());
+        if (previous != null && previous.getId() != ctx.getChannel().getId()) {
+          previous.close();
+        }
+
         dl = publisher_bufffers.get(identifier);
       }
       else {
@@ -93,6 +104,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;
     if (groups.containsKey(type)) {
+      /*
+       * close previous connection with the same identifier which is guaranteed to be unique.
+       */
+      Channel previous = subscriber_channels.put(identifier, ctx.getChannel());
+      if (previous != null && previous.getId() != ctx.getChannel().getId()) {
+        previous.close();
+      }
+
       ln = groups.get(type);
       ln.addChannel(ctx.getChannel());
     }
@@ -195,23 +214,41 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
    * we do not care // if this is a worker thread that gets blocked. or should we worry? System.err.println("writeRequested from thread " +
    * Thread.currentThread()); super.writeRequested(ctx, e); }
    */
+
   @Override
   public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception
   {
-    connectedChannels.remove(ctx.getChannel());
-    
-    Object attachment = ctx.getAttachment();
+    final Object attachment = ctx.getAttachment();
+    final Channel c = ctx.getChannel();
+
     if (attachment instanceof DataList) {
       /**
        * since the publisher server died, the queue which it was using would stop pumping the data unless a new publisher comes up with the same name. We leave
        * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
        */
+      if (publisher_channels.containsValue(c)) {
+        final Iterator<Entry<String, Channel>> i = publisher_channels.entrySet().iterator();
+        while (i.hasNext()) {
+          if (i.next().getValue() == c) {
+            i.remove();
+            break;
+          }
+        }
+      }
+
       ctx.setAttachment(null);
     }
     else if (attachment instanceof LogicalNode) {
-      /**
-       * in case the downstream subsriber dies, we need to do some cleanup.
-       */
+      if (subscriber_channels.containsValue(c)) {
+        final Iterator<Entry<String, Channel>> i = subscriber_channels.entrySet().iterator();
+        while (i.hasNext()) {
+          if (i.next().getValue() == c) {
+            i.remove();
+            break;
+          }
+        }
+      }
+
       LogicalNode ln = (LogicalNode) attachment;
 
       ln.removeChannel(ctx.getChannel());

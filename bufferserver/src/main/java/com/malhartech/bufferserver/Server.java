@@ -8,33 +8,24 @@ import com.malhartech.bufferserver.netty.ServerPipelineFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.Executors;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Receives a list of continent/city pairs from a {@link LocalTimeClient} to get
- * the local times of the specified cities.
- * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-
 public class Server
 {
-  private static final Logger LOGGER = Logger.getLogger(Server.class.getName());
-  private ChannelGroup allConnected = new DefaultChannelGroup("all-connected");
-
-  public static int DEFAULT_PORT = 9080;
+  private static final Logger logger = LoggerFactory.getLogger(Server.class);
+  public static final int DEFAULT_PORT = 9080;
+  private DefaultChannelGroup allConnected = new DefaultChannelGroup("all-connected");
   private final int port;
   private ServerBootstrap bootstrap;
-  private Channel serverChannel;
-  
+
   /**
    * @param port - port number to bind to or 0 to auto select a free port
    */
@@ -47,40 +38,31 @@ public class Server
   {
     // Configure the server.
     bootstrap = new ServerBootstrap(
-            new NioServerSocketChannelFactory(
-            Executors.newCachedThreadPool(),
-            Executors.newCachedThreadPool()));
+      new NioServerSocketChannelFactory(
+      Executors.newCachedThreadPool(),
+      Executors.newCachedThreadPool()));
 
     // Set up the event pipeline factory.
     bootstrap.setPipelineFactory(new ServerPipelineFactory(allConnected));
 
     // Bind and start to accept incoming connections.
-    serverChannel = bootstrap.bind(new InetSocketAddress(port));
-    LOGGER.log(Level.INFO, "bound to: {0}", serverChannel.getLocalAddress());
+    Channel serverChannel = bootstrap.bind(new InetSocketAddress(port));
+    logger.info("Server instance {} bound to: {}", this, serverChannel.getLocalAddress());
+
+    allConnected.add(serverChannel);
 
     return serverChannel.getLocalAddress();
   }
 
-  public void shutdown() {
-    if (serverChannel !=  null) {
-      LOGGER.log(Level.INFO, "shutting down server at: {0}", serverChannel.getLocalAddress());
-      this.serverChannel.close();
-
-      for (Channel c : allConnected) {
-        c.close();
-      }
-      allConnected.clear();
-      
-      this.bootstrap.releaseExternalResources();
-      this.serverChannel =  null;
-    }
+  public void shutdown()
+  {
+    logger.info("Server instance {} being shutdown with connections {}", this, allConnected);
+    allConnected.close().awaitUninterruptibly();
+    this.bootstrap.releaseExternalResources();
   }
-  
+
   public static void main(String[] args) throws Exception
   {
-    Handler ch = new ConsoleHandler();
-    Logger.getLogger("").addHandler(ch);
-
     int port;
     if (args.length > 0) {
       port = Integer.parseInt(args[0]);

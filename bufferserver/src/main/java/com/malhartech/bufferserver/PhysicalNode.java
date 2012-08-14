@@ -48,7 +48,8 @@ public class PhysicalNode
   @Override
   public boolean equals(Object o)
   {
-    return o.hashCode() == this.hashCode();
+    return o == this
+           || o.getClass() == this.getClass() && o.hashCode() == this.hashCode();
   }
 
   public final int getId()

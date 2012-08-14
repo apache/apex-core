@@ -47,14 +47,4 @@ public class ServerTest extends TestCase
     assertTrue(((InetSocketAddress) result).getPort() != 0);
   }
 
-  /**
-   * Test of shutdown method, of class Server.
-   */
-  public void testShutdown()
-  {
-    System.out.println("shutdown");
-    instance.shutdown();
-    assertTrue(true);
-  }
-
 }
