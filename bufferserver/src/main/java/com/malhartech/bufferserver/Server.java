@@ -8,24 +8,21 @@ import com.malhartech.bufferserver.netty.ServerPipelineFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.Executors;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class Server
 {
-  private static final Logger LOGGER = Logger.getLogger(Server.class.getName());
+  private static final Logger logger = LoggerFactory.getLogger(Server.class);
   public static final int DEFAULT_PORT = 9080;
-  private ChannelGroup allConnected = new DefaultChannelGroup("all-connected");
+  private DefaultChannelGroup allConnected = new DefaultChannelGroup("all-connected");
   private final int port;
   private ServerBootstrap bootstrap;
 
@@ -50,7 +47,7 @@ public class Server
 
     // Bind and start to accept incoming connections.
     Channel serverChannel = bootstrap.bind(new InetSocketAddress(port));
-    LOGGER.log(Level.INFO, "bound to: {0}", serverChannel.getLocalAddress());
+    logger.info("Server instance {} bound to: {}", this, serverChannel.getLocalAddress());
 
     allConnected.add(serverChannel);
 
@@ -59,15 +56,13 @@ public class Server
 
   public void shutdown()
   {
+    logger.info("Server instance {} being shutdown with connections {}", this, allConnected);
     allConnected.close().awaitUninterruptibly();
     this.bootstrap.releaseExternalResources();
   }
 
   public static void main(String[] args) throws Exception
   {
-    Handler ch = new ConsoleHandler();
-    Logger.getLogger("").addHandler(ch);
-
     int port;
     if (args.length > 0) {
       port = Integer.parseInt(args[0]);

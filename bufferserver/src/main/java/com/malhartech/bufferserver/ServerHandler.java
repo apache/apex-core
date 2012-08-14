@@ -27,6 +27,8 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
   final ChannelGroup connectedChannels;
   final HashMap<String, DataList> publisher_bufffers = new HashMap<String, DataList>();
   final HashMap<String, LogicalNode> groups = new HashMap<String, LogicalNode>();
+  final HashMap<String, Channel> publisher_channels = new HashMap<String, Channel>();
+  final HashMap<String, Channel> subscriber_channels = new HashMap<String, Channel>();
 
   public ServerHandler(ChannelGroup connected)
   {
@@ -43,7 +45,6 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       case PUBLISHER_REQUEST:
         handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
         break;
-
 
       case SUBSCRIBER_REQUEST:
         handleSubscriberRequest(data.getSubscribeRequest(), ctx, data.getWindowId());
@@ -71,6 +72,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
 
     synchronized (publisher_bufffers) {
       if (publisher_bufffers.containsKey(identifier)) {
+        /*
+         * close previous connection with the same identifier which is guaranteed to be unique.
+         */
+        Channel previous = publisher_channels.put(identifier, ctx.getChannel());
+        if (previous != null && previous.getId() != ctx.getChannel().getId()) {
+          previous.close();
+        }
+
         dl = publisher_bufffers.get(identifier);
       }
       else {
@@ -93,6 +102,14 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;
     if (groups.containsKey(type)) {
+      /*
+       * close previous connection with the same identifier which is guaranteed to be unique.
+       */
+      Channel previous = subscriber_channels.put(identifier, ctx.getChannel());
+      if (previous != null && previous.getId() != ctx.getChannel().getId()) {
+        previous.close();
+      }
+
       ln = groups.get(type);
       ln.addChannel(ctx.getChannel());
     }
