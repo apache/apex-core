@@ -348,6 +348,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
+        assert(n.getContext() != null);
         // the follow code needs scrubbing to ensure that the input and output are setup correctly.
         n.getContext().requestBackup(
           new BackupAgent()
