@@ -41,6 +41,24 @@ public class StreamContext implements Context
     this.sink = sink;
   }
 
+  public final void setSink(final Sink ultimateSink, final long fromWindowId)
+  {
+    LOG.debug("setSink: {} after window {}", ultimateSink, fromWindowId);
+      
+    sink = new Sink()
+    {
+      @Override
+      public void doSomething(Tuple t)
+      {
+        if (fromWindowId <= t.getWindowId()) {
+          LOG.debug("Sink {} kicking in after window {}", ultimateSink, fromWindowId);
+          sink = ultimateSink;
+          sink.doSomething(t);
+        }
+      }
+    };
+  }
+
   public SerDe getSerDe()
   {
     return serde; // required for socket connection
