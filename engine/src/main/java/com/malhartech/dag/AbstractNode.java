@@ -302,6 +302,7 @@ public abstract class AbstractNode implements Node
           // I wanted to take this opportunity to do multiple tasks at the same time
           // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
           // over elements but cannot remove them without access to iterator.
+          
           // the default is UNSPECIFIED which we ignore anyways as we ignore everything 
           // that we do not understand!
           try {

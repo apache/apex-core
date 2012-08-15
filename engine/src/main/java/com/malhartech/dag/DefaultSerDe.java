@@ -8,6 +8,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.stram.conf.ShipContainingJars;
+import java.util.Collection;
 
 /**
  * Requires kryo and its dependencies in deployment
@@ -45,6 +46,12 @@ public class DefaultSerDe implements SerDe
   @Override
   public byte[][] getPartitions() {
     return null;
+  }
+
+  @Override
+  public boolean transferState(Node destination, Node source, Collection<byte[]> partitions)
+  {
+    return false;
   }
   
 }
