@@ -8,6 +8,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -116,11 +117,18 @@ public class TopologyDeployer {
     List<PTInput> inputs;
     List<PTOutput> outputs;
     PTContainer container;
+    LinkedList<Long> checkpointWindows = new LinkedList<Long>();
     
     public NodeConf getLogicalNode() {
       return this.logicalNode;
     }
 
+    public long getRecentCheckpoint() {
+      if (checkpointWindows != null && !checkpointWindows.isEmpty())
+        return checkpointWindows.getLast();
+      return 0;
+    }
+    
     @Override
     public String getLogicalId() {
       return logicalNode.getId();

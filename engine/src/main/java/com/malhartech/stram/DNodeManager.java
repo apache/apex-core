@@ -120,6 +120,10 @@ public class DNodeManager
     return deployRequests.size();
   }
 
+  protected TopologyDeployer getTopologyDeployer() {
+    return deployer;
+  }
+  
   /**
    * Check periodically that child containers phone home
    */
@@ -241,6 +245,7 @@ public class DNodeManager
     PTContainer container = cdr.container;
     if (container.containerId != null) {
       LOG.info("Removing existing container status {}", cdr.container.containerId);
+      // TODO: this wipes out info about previous instances, including checkpoint state
       this.containers.remove(container.containerId);
     } else {
       cdr.container.bufferServerAddress = bufferServerAddress;
@@ -479,8 +484,72 @@ public class DNodeManager
       }
     }
 
+    // checkpoint tracking
+    PTNode node = (PTNode)status.node;
+    if (shb.getLastBackupWindowId() != 0) {
+      synchronized (node.checkpointWindows) {
+        if (!node.checkpointWindows.isEmpty()) {
+          Long lastCheckpoint = node.checkpointWindows.get(node.checkpointWindows.size()-1);
+          // no need to do any work unless checkpoint moves
+          if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
+            // keep track of current
+            node.checkpointWindows.add(shb.getLastBackupWindowId());
+            // TODO: purge older checkpoints, if no longer needed downstream
+          }
+        } else {
+          node.checkpointWindows.add(shb.getLastBackupWindowId());
+        }
+      }
+    }
+    
   }
 
+  /**
+   * Compute checkpoint required for a given node to be recovered.
+   * This is done by looking at checkpoints available for downstream dependencies first,
+   * and then selecting the most recent available checkpoint that is smaller than downstream. 
+   * @param node Node for which to find recovery checkpoint
+   * @param recoveryCheckpoints Map to collect all downstream recovery checkpoints
+   * @return Checkpoint that can be used to recover node (along with dependent nodes in recoveryCheckpoints).
+   */
+  public long getRecoveryCheckpoint(PTNode node, Map<PTNode, Long> recoveryCheckpoints) {
+    long maxCheckpoint = node.getRecentCheckpoint();
+    // find smallest most recent subscriber checkpoint
+    for (PTOutput out : node.outputs) {
+      NodeConf lDownNode = out.logicalStream.getTargetNode(); 
+      if (lDownNode != null) {
+        List<PTNode> downNodes = deployer.getNodes(lDownNode);
+        for (PTNode downNode : downNodes) {
+          Long downstreamCheckpoint = recoveryCheckpoints.get(downNode);
+          if (downstreamCheckpoint == null) {
+            // downstream traversal
+            downstreamCheckpoint = getRecoveryCheckpoint(downNode, recoveryCheckpoints);
+          }
+          maxCheckpoint = Math.min(maxCheckpoint, downstreamCheckpoint);
+        }
+      }
+    }
+    // find most recent checkpoint for downstream dependency    
+    long c1 = 0;
+    synchronized (node.checkpointWindows) {
+      if (node.checkpointWindows != null && !node.checkpointWindows.isEmpty()) {
+        if ((c1 = node.checkpointWindows.getFirst().longValue()) <= maxCheckpoint) {
+          long c2 = 0;
+          while (node.checkpointWindows.size() > 1 && (c2 = node.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
+            node.checkpointWindows.removeFirst();
+            // TODO: async hdfs cleanup task
+            LOG.warn("Checkpoint purging not implemented node={} windowId={}", node.id,  c1);
+            c1 = c2;
+          }
+        } else {
+          c1 = 0;
+        }
+      }
+    }
+    recoveryCheckpoints.put(node, c1);
+    return c1;
+  }
+  
   /**
    * Mark all containers for shutdown, next container heartbeat response
    * will propagate the shutdown request. This is controlled soft shutdown.
