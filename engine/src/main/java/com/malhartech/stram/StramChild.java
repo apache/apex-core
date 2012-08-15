@@ -20,8 +20,6 @@ import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +28,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
@@ -51,7 +50,7 @@ public class StramChild
   final private String containerId;
   final private Configuration conf;
   final private StreamingNodeUmbilicalProtocol umbilical;
-  final private Map<String, AbstractNode> nodeList = new ConcurrentHashMap<String, AbstractNode>();
+  final private Map<String, InternalNode> nodeList = new ConcurrentHashMap<String, InternalNode>();
   final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
   final private List<Stream> streams = new ArrayList<Stream>();
   final private List<InputAdapter> inputAdapters = new ArrayList<InputAdapter>();
@@ -87,14 +86,14 @@ public class StramChild
    */
   private void initStream(StreamPConf sc, StreamingContainerContext ctx)
   {
-    AbstractNode sourceNode = nodeList.get(sc.getSourceNodeId());
+    InternalNode sourceNode = nodeList.get(sc.getSourceNodeId());
     if (sourceNode instanceof AdapterWrapperNode) {
       AdapterWrapperNode wrapper = (AdapterWrapperNode) sourceNode;
       // input adapter
       this.inputAdapters.add((InputAdapter) wrapper.getAdapterStream());
     }
 
-    AbstractNode targetNode = nodeList.get(sc.getTargetNodeId());
+    InternalNode targetNode = nodeList.get(sc.getTargetNodeId());
     if (sc.isInline()) {
       LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
       InlineStream stream = new InlineStream();
@@ -167,7 +166,7 @@ public class StramChild
 
     // create nodes
     for (NodePConf snc : ctx.getNodes()) {
-      AbstractNode dnode = initNode(snc, conf);
+      InternalNode dnode = initNode(snc, conf);
       NodeConfiguration nc = new NodeConfiguration(snc.getProperties());
       dnode.setup(nc);
 //      LOG.info("Initialized node {} ({})", snc.getDnodeId(), snc.getLogicalId());
@@ -190,8 +189,8 @@ public class StramChild
       s.activate();
     }
 
-    for (Entry<String, AbstractNode> e : nodeList.entrySet()) {
-      final AbstractNode node = e.getValue();
+    for (Entry<String, InternalNode> e : nodeList.entrySet()) {
+      final InternalNode node = e.getValue();
       final String id = e.getKey();
       // launch nodes
       Runnable nodeRunnable = new Runnable()
@@ -199,7 +198,7 @@ public class StramChild
         @Override
         public void run()
         {
-          node.run(new NodeContext(id));
+          node.start(new NodeContext(id));
           /*
            * processing has ended
            */
@@ -233,20 +232,20 @@ public class StramChild
     /*
      * first stop all the input adapters.
      */
-    for (AbstractNode node : nodeList.values()) {
+    for (InternalNode node : nodeList.values()) {
       if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode) node).isInput()) {
         LOG.debug("teardown " + node);
-        node.stopSafely();
+        node.stop();
       }
     }
 
     /*
      * now stop all the nodes.
      */
-    for (AbstractNode node : nodeList.values()) {
+    for (InternalNode node : nodeList.values()) {
       if (!(node instanceof AdapterWrapperNode)) {
         LOG.debug("teardown " + node);
-        node.stopSafely();
+        node.stop();
       }
     }
 
@@ -262,10 +261,10 @@ public class StramChild
     /*
      * stop all the output adapters
      */
-    for (AbstractNode node : this.nodeList.values()) {
+    for (InternalNode node : this.nodeList.values()) {
       if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode) node).isInput()) {
         LOG.debug("teardown " + node);
-        node.stopSafely();
+        node.stop();
       }
     }
 
@@ -301,7 +300,7 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.size());
 
       // gather heartbeat info for all nodes
-      for (Map.Entry<String, AbstractNode> e : nodeList.entrySet()) {
+      for (Map.Entry<String, InternalNode> e : nodeList.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         HeartbeatCounters counters = e.getValue().getContext().resetHeartbeatCounters();
         hb.setNodeId(e.getKey());
@@ -349,7 +348,7 @@ public class StramChild
     if (rsp.getNodeRequests() != null) {
       // extended processing per node
       for (StramToNodeRequest req : rsp.getNodeRequests()) {
-        AbstractNode n = nodeList.get(req.getNodeId());
+        InternalNode n = nodeList.get(req.getNodeId());
         if (n == null) {
           LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
@@ -360,6 +359,13 @@ public class StramChild
       }
     }
   }
+  
+  public void shutdown(Node node)
+  {
+    /*
+     * make sure that the node exists in the current container
+     */
+  }
 
   /**
    * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
@@ -367,7 +373,7 @@ public class StramChild
    * @param n
    * @param snr
    */
-  private void processStramRequest(AbstractNode n, StramToNodeRequest snr)
+  private void processStramRequest(InternalNode n, StramToNodeRequest snr)
   {
     assert (n.getContext() != null);
     switch (snr.getRequestType()) {
@@ -467,7 +473,7 @@ public class StramChild
         childUGI.addToken(token);
       }
 
-      // TODO: run node in doAs block
+      // TODO: start node in doAs block
       childUGI.doAs(new PrivilegedExceptionAction<Object>()
       {
         @Override
@@ -510,7 +516,7 @@ public class StramChild
       RPC.stopProxy(umbilical);
       DefaultMetricsSystem.shutdown();
       // Shutting down log4j of the child-vm...
-      // This assumes that on return from Task.run()
+      // This assumes that on return from Task.start()
       // there is no more logging done.
       LogManager.shutdown();
     }
@@ -522,12 +528,12 @@ public class StramChild
    * @param nodeConf
    * @param conf
    */
-  public static AbstractNode initNode(NodePConf nodeCtx, Configuration conf)
+  public static InternalNode initNode(NodePConf nodeCtx, Configuration conf)
   {
     try {
-      Class<? extends AbstractNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(AbstractNode.class);
-      Constructor<? extends AbstractNode> c = nodeClass.getConstructor();
-      AbstractNode node = c.newInstance();
+      Class<? extends InternalNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(InternalNode.class);
+      Constructor<? extends InternalNode> c = nodeClass.getConstructor();
+      InternalNode node = c.newInstance();
       // populate custom properties
       BeanUtils.populate(node, nodeCtx.getProperties());
       return node;

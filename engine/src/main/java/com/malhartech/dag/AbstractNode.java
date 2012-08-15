@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode implements Node
+public abstract class AbstractNode implements InternalNode
 {
   private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
   private transient final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
@@ -49,6 +49,7 @@ public abstract class AbstractNode implements Node
     this.inputQueue = new StablePriorityQueue<Tuple>(1024 * 1024, new TupleComparator());
   }
 
+  @Override
   final public NodeContext getContext()
   {
     return ctx;
@@ -81,6 +82,7 @@ public abstract class AbstractNode implements Node
   {
   }
 
+  @Override
   public Sink getSink(StreamContext context)
   {
     inputStreams.add(context);
@@ -106,6 +108,7 @@ public abstract class AbstractNode implements Node
     output.sink(t);
   }
 
+  @Override
   public void addOutputStream(StreamContext context)
   {
     outputStreams.add(context);
