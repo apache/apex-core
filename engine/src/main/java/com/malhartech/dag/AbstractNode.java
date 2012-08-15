@@ -132,7 +132,8 @@ public abstract class AbstractNode implements InternalNode
     }
   }
 
-  final public void stopSafely()
+  @Override
+  final public void stop()
   {
     alive = false;
 
@@ -149,7 +150,8 @@ public abstract class AbstractNode implements InternalNode
    * implements Runnable, so we take this opportunity to pass the NodeContext through the run method.
    */
   @SuppressWarnings("fallthrough")
-  final public void run(NodeContext ctx)
+  @Override
+  final public void start(NodeContext ctx)
   {
     this.ctx = ctx;
 

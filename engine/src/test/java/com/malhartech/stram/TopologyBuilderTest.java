@@ -271,7 +271,7 @@ public class TopologyBuilderTest {
     @Override
     public void handleIdleTimeout()
     {
-      stopSafely();
+      stop();
     }
   }
   

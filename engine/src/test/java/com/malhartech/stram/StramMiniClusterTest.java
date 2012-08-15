@@ -348,7 +348,7 @@ public class StramMiniClusterTest {
     @Override
     public void handleIdleTimeout()
     {
-      stopSafely();
+      stop();
     }
 
     void setNodeContext(NodeContext nodeContext)

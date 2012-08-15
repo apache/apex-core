@@ -168,7 +168,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   public void handleIdleTimeout()
   {
     if (isInput() && ((InputAdapter) adapterStream).hasFinished()) {
-      stopSafely();
+      stop();
     }
   }
 }
