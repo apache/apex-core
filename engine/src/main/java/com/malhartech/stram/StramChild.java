@@ -60,11 +60,10 @@ public class StramChild
   private WindowGenerator windowGenerator;
   private String checkpointDfsPath;
   /**
-   * Map of last backup window id that is used to communicate checkpoint state back to Stram.
-   * TODO: Consider adding this to the node context instead.
+   * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
   private Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
-  
+
   protected StramChild(String containerId, Configuration conf, StreamingNodeUmbilicalProtocol umbilical)
   {
     this.umbilical = umbilical;
@@ -75,10 +74,11 @@ public class StramChild
   /**
    * Make accessible for unit testing
    */
-  protected List<InputAdapter> getInputAdapters() {
+  protected List<InputAdapter> getInputAdapters()
+  {
     return this.inputAdapters;
   }
-  
+
   /**
    * Initialize stream between 2 nodes
    *
@@ -164,7 +164,7 @@ public class StramChild
     if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
       this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
     }
-    
+
     // create nodes
     for (NodePConf snc : ctx.getNodes()) {
       AbstractNode dnode = initNode(snc, conf);
@@ -268,16 +268,17 @@ public class StramChild
         node.stopSafely();
       }
     }
-    
+
     for (Thread t : activeNodeList.values()) {
       try {
         LOG.debug("Joining thread {}", t.getName());
         t.join(2000);
-      } catch (Exception e) {
+      }
+      catch (Exception e) {
         LOG.warn("Interrupted while waiting for thread {} to complete.", t.getName());
       }
     }
-    
+
   }
 
   private void heartbeatLoop() throws IOException
@@ -368,6 +369,7 @@ public class StramChild
    */
   private void processStramRequest(AbstractNode n, StramToNodeRequest snr)
   {
+    assert (n.getContext() != null);
     switch (snr.getRequestType()) {
       case SHUTDOWN:
       //LOG.info("Received shutdown request");
@@ -379,7 +381,6 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        assert(n.getContext() != null);
         // the follow code needs scrubbing to ensure that the input and output are setup correctly.
         n.getContext().requestBackup(
           new BackupAgent()
@@ -388,7 +389,7 @@ public class StramChild
             private String outputNodeId;
             private long outputWindowId;
             private long inputWindowId;
-            
+
             @Override
             public OutputStream borrowOutputStream(String id, long windowId) throws IOException
             {
@@ -397,7 +398,7 @@ public class StramChild
               LOG.debug("Backup path: {}", path);
               outputNodeId = id;
               outputWindowId = windowId;
-              return (output = fs.create(path)); 
+              return (output = fs.create(path));
             }
 
             @Override
@@ -408,7 +409,7 @@ public class StramChild
               // record last backup window id for heartbeat
               StramChild.this.backupInfo.put(outputNodeId, outputWindowId);
             }
-            
+
             @Override
             public InputStream getInputStream(String id) throws IOException
             {

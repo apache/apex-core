@@ -97,10 +97,13 @@ public class NodeContext implements Context
    *
    * @return
    */
-  public synchronized HeartbeatCounters resetHeartbeatCounters()
+  public HeartbeatCounters resetHeartbeatCounters()
   {
     HeartbeatCounters counters = this.heartbeatCounters;
     this.heartbeatCounters = new HeartbeatCounters();
+    if (request == RequestType.UNDEFINED) {
+      request = RequestType.REPORT;
+    }
     return counters;
   }
 

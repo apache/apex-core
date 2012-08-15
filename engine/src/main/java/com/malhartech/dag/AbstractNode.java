@@ -288,6 +288,7 @@ public abstract class AbstractNode implements Node
            * process payload
            */
           process(t.getObject());
+          consumedTupleCount++;
           break;
 
         case END_WINDOW:
