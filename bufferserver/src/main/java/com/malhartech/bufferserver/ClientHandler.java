@@ -26,16 +26,17 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
   // Stateful properties
   private volatile Channel channel;
 
-  public static void publish(Channel channel, String identifier, String type)
+  public static void publish(Channel channel, String identifier, String type, long startingWindowId)
   {
     Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
-    prb.setIdentifier(identifier).setType(type);
+    prb.setIdentifier(identifier).setType(type).setBaseSeconds((int)(startingWindowId >> 32));
+    
 
     Data.Builder db = Data.newBuilder();
     db.setType(Data.DataType.PUBLISHER_REQUEST);
     db.setPublishRequest(prb);
     //windowStartTime is ignored for now - shouldn't we?
-    db.setWindowId(0);
+    db.setWindowId((int) startingWindowId);
     
     final ChannelFutureListener cfl = new ChannelFutureListener()
     {
@@ -66,13 +67,15 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
                                  String down_type,
                                  String node,
                                  String type,
-                                 Collection<byte[]> partitions)
+                                 Collection<byte[]> partitions,
+                                 long startingWindowId)
   {
     Buffer.SubscriberRequest.Builder srb = Buffer.SubscriberRequest.newBuilder();
     srb.setIdentifier(id);
     srb.setType(down_type);
     srb.setUpstreamIdentifier(node);
     srb.setUpstreamType(type);
+    srb.setBaseSeconds((int)(startingWindowId >> 32));
 
     if (partitions != null) {
       for (byte[] c : partitions) {
@@ -84,7 +87,7 @@ public class ClientHandler extends SimpleChannelUpstreamHandler
     Data.Builder builder = Data.newBuilder();
     builder.setType(Data.DataType.SUBSCRIBER_REQUEST);
     builder.setSubscribeRequest(srb);
-    builder.setWindowId(0); // TODO Message missing required fields: window_id
+    builder.setWindowId((int) startingWindowId); // TODO Message missing required fields: window_id
     
     channel.write(builder.build());
   }

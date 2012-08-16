@@ -65,7 +65,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
     }
   }
 
-  public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, long baseSeconds)
+  public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -91,10 +91,11 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       }
     }
 
+    dl.rewind(((long)request.getBaseSeconds() << 32) | windowId, new ProtobufDataInspector());
     ctx.setAttachment(dl);
   }
 
-  public void handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int baseSeconds)
+  public void handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -108,7 +109,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      
+
       Channel previous = subscriber_channels.put(identifier, ctx.getChannel());
       if (previous != null && previous.getId() != ctx.getChannel().getId()) {
         previous.close();
@@ -147,7 +148,7 @@ public class ServerHandler extends SimpleChannelUpstreamHandler
       groups.put(type, ln);
       ln.addChannel(ctx.getChannel());
       dl.addDataListener(ln);
-      ln.catchUp(request.getTime());
+      ln.catchUp(((long) request.getBaseSeconds() << 32) | windowId);
     }
 
     ctx.setAttachment(ln);

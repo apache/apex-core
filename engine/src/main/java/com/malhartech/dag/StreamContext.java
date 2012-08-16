@@ -14,6 +14,22 @@ import org.slf4j.LoggerFactory;
  */
 public class StreamContext implements Context
 {
+  /**
+   * @return the startingWindowId
+   */
+  public long getStartingWindowId()
+  {
+    return startingWindowId;
+  }
+
+  /**
+   * @param startingWindowId the startingWindowId to set
+   */
+  public void setStartingWindowId(long startingWindowId)
+  {
+    this.startingWindowId = startingWindowId;
+  }
+
   public static enum State
   {
     UNDEFINED,
@@ -26,6 +42,7 @@ public class StreamContext implements Context
   private SerDe serde;
   private int tupleCount;
   private State sinkState;
+  private long startingWindowId;
 
   public StreamContext()
   {
@@ -35,28 +52,23 @@ public class StreamContext implements Context
   /**
    * @param sink - target node, not required for output adapter
    */
-  public void setSink(Sink sink)
+  public void setSink(final Sink sink)
   {
     LOG.debug("setSink: {}", sink);
-    this.sink = sink;
-  }
-
-  public final void setSink(final Sink ultimateSink, final long fromWindowId)
-  {
-    LOG.debug("setSink: {} after window {}", ultimateSink, fromWindowId);
-      
-    sink = new Sink()
+    this.sink = startingWindowId > 0
+                ? new Sink()
     {
       @Override
       public void doSomething(Tuple t)
       {
-        if (fromWindowId <= t.getWindowId()) {
-          LOG.debug("Sink {} kicking in after window {}", ultimateSink, fromWindowId);
-          sink = ultimateSink;
+        if (startingWindowId <= t.getWindowId()) {
+          LOG.debug("Sink {} kicking in after window {}", sink, startingWindowId);
+          StreamContext.this.sink = sink;
           sink.doSomething(t);
         }
       }
-    };
+    }
+                : sink;
   }
 
   public SerDe getSerDe()

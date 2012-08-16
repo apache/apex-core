@@ -81,10 +81,10 @@ public class LogicalNode implements DataListener
     partitions.add(partition);
   }
 
-  public synchronized void catchUp(long startTime)
+  public synchronized void catchUp(long longWindowId)
   {
-    long baseMillis = 0;
-    int interval = 0;
+    int baseSeconds = 0;
+    int intervalMillis = 0;
     /*
      * fast forward to catch up with the windowId without consuming
      */
@@ -94,16 +94,16 @@ public class LogicalNode implements DataListener
       switch (iterator.getType()) {
         case RESET_WINDOW:
           Data resetWindow = (Data) iterator.getData();
-          baseMillis = (long) resetWindow.getWindowId() << 32;
-          interval = resetWindow.getResetWindow().getWidth();
-          if (interval <= 0) {
-            logger.warn("Interval value set to non positive value = {}", interval);
+          baseSeconds = resetWindow.getWindowId();
+          intervalMillis = resetWindow.getResetWindow().getWidth();
+          if (intervalMillis <= 0) {
+            logger.warn("Interval value set to non positive value = {}", intervalMillis);
           }
           GiveAll.getInstance().distribute(physicalNodes, data);
           break;
 
         case BEGIN_WINDOW:
-          if (baseMillis + iterator.getWindowId() * interval >= startTime) {
+          if ((((long) baseSeconds << 32) | iterator.getWindowId()) >= longWindowId) {
             GiveAll.getInstance().distribute(physicalNodes, data);
             break outer;
           }

@@ -39,7 +39,7 @@ message SubscriberRequest {
 
     required string identifier = 1;
     required string type = 2;
-    optional uint64 time = 3 [default = 0];
+    optional uint32 base_seconds = 3 [default = 0];
     optional string upstream_identifier = 4;
     required string upstream_type = 5;
     repeated bytes partition = 6;
@@ -49,7 +49,7 @@ message SubscriberRequest {
 message PublisherRequest {
      required string identifier = 1;
      required string type = 2;
-     optional uint64 time = 3 [default = 0];
+     optional uint32 base_seconds = 3 [default = 0];
 }
 
 message Data {

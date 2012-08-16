@@ -87,6 +87,6 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
 
     BufferServerStreamContext sc = (BufferServerStreamContext) getContext();
     logger.debug("registering publisher: {} {}", sc.getSourceId(), sc.getId());
-    ClientHandler.publish(channel, sc.getSourceId(), sc.getId());
+    ClientHandler.publish(channel, sc.getSourceId(), sc.getId(), sc.getStartingWindowId());
   }
 }

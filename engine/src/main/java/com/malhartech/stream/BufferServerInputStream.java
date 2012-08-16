@@ -27,7 +27,7 @@ public class BufferServerInputStream extends SocketInputStream
     BufferServerStreamContext sc = (BufferServerStreamContext) getContext();
     String type = "paramNotRequired?"; // TODO: why do we need this?
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[]{sc.getSinkId(), sc.getSourceId(), sc.getId()});
-    ClientHandler.registerPartitions(channel, sc.getSinkId(), sc.getId() + '/' + sc.getSinkId(), sc.getSourceId(), type, sc.getPartitions());
+    ClientHandler.registerPartitions(channel, sc.getSinkId(), sc.getId() + '/' + sc.getSinkId(), sc.getSourceId(), type, sc.getPartitions(), sc.getStartingWindowId());
   }
 
   // most of this code should be abstracted to the SocketInputStream and just 

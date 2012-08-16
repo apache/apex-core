@@ -26,18 +26,82 @@ public class DataList
   /**
    * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
    */
-  private static final int blockSize = 64 * 1024 * 1024;
+  private static final Integer BLOCKSIZE = 64 * 1024 * 1024;
   HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
   HashSet<DataListener> all_listeners = new HashSet<DataListener>();
   int capacity;
   String identifier;
   String type;
+  static volatile DataArray free = null;
   DataArray first;
   DataArray last;
 
   Object getType()
   {
     return this.type;
+  }
+
+  synchronized void rewind(long longWindowId, DataIntrospector di)
+  {
+    for (DataArray temp = first; temp != last; temp = temp.next) {
+      if (temp.starting_window >= longWindowId) {
+        synchronized (BLOCKSIZE) {
+          last.next = free;
+          free = temp.next;
+        }
+
+        last = temp;
+        last.next = null;
+        break;
+      }
+    }
+
+    if (last.starting_window >= longWindowId) {
+      int baseSeconds = (int) (last.starting_window >> 32);
+      last.lockWrite();
+      try {
+        DataListIterator dli = new DataListIterator(last, di);
+        while (dli.hasNext()) {
+          SerializedData sd = dli.next();
+          if (di.getType(sd) == DataType.BEGIN_WINDOW
+              && (((long) baseSeconds << 32) | di.getWindowId(sd)) >= longWindowId) {
+            last.offset = sd.offset;
+            Arrays.fill(last.data, last.offset, last.data.length - 1, Byte.MIN_VALUE);
+          }
+        }
+      }
+      finally {
+        last.unlockWrite();
+      }
+    }
+  }
+
+  /**
+   * @param capacity - it's ignored if we are reusing block
+   * @return
+   */
+  private DataArray getDataArray(int capacity)
+  {
+    DataArray retval = null;
+
+    synchronized (BLOCKSIZE) {
+      if (free != null) {
+        retval = free;
+        free = free.next;
+      }
+    }
+
+    if (retval == null) {
+      retval = new DataArray(capacity);
+    }
+    else {
+      retval.starting_window = retval.ending_window = retval.offset = 0;
+      retval.next = null;
+    }
+
+    Arrays.fill(retval.data, Byte.MIN_VALUE);
+
+    return retval;
   }
 
   class DataArray
@@ -69,20 +133,13 @@ public class DataList
      */
     DataArray next;
 
-    public DataArray(int capacity)
+    private DataArray(int capacity)
     {
-      this.offset = 0;
-      this.starting_window = 0;
-      this.ending_window = 0;
-
       /*
        * we want to make sure that MSB of each byte is on, so that we can exploit it ensure presence of a record which is prepended with getSize represented as
        * 32 bit integer varint.
        */
       data = new byte[capacity];
-      Arrays.fill(data, Byte.MIN_VALUE);
-
-      next = null;
     }
 
     void getNextData(SerializedData current)
@@ -100,6 +157,8 @@ public class DataList
         current.size = 0;
       }
     }
+    private int baseSeconds = 0;
+    private int intervalMillis = 0;
 
     public void add(Data d)
     {
@@ -119,12 +178,13 @@ public class DataList
             }
           }
 
-          int newblockSize = blockSize;
+          int newblockSize = BLOCKSIZE;
           while (newblockSize < size + 5) {
-            newblockSize += blockSize;
+            newblockSize += BLOCKSIZE;
           }
 
-          DataList.this.last = next = new DataArray(newblockSize);
+          DataList.this.last = next = getDataArray(newblockSize);
+
           next.add(d);
         }
         else {
@@ -133,11 +193,21 @@ public class DataList
           offset += size;
         }
 
-        if (d.getType() == Data.DataType.BEGIN_WINDOW) {
-          if (starting_window == 0) {
-            starting_window = d.getWindowId();
-          }
-          ending_window = d.getWindowId();
+        switch (d.getType()) {
+          case BEGIN_WINDOW:
+            long long_window_id = ((long) baseSeconds << 32 | d.getWindowId());
+            if (starting_window == 0) {
+              starting_window = long_window_id;
+            }
+            ending_window = long_window_id;
+
+            break;
+
+
+          case RESET_WINDOW:
+            baseSeconds = d.getWindowId();
+            intervalMillis = d.getResetWindow().getWidth();
+            break;
         }
       }
       finally {
@@ -178,12 +248,12 @@ public class DataList
     this.type = type;
     this.capacity = capacity;
 
-    first = last = new DataArray(capacity);
+    first = last = getDataArray(capacity);
   }
 
   public DataList(String identifier, String type)
   {
-    this(identifier, type, blockSize);
+    this(identifier, type, BLOCKSIZE);
   }
 
   public void add(Data d)
