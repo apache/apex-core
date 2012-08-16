@@ -47,7 +47,7 @@ public class StramCli
   private Configuration conf = new Configuration();
   private final ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
-  private String currentDir = "..";
+  private String currentDir = "/";
 
   private class CliException extends RuntimeException
   {
@@ -80,7 +80,7 @@ public class StramCli
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[]{"help", "ls", "connect", "listnodes", "shutdown", "timeout", "kill", "exit"};
+    String[] commandsList = new String[]{"help", "ls", "cd", "listnodes", "shutdown", "timeout", "kill", "exit"};
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -215,7 +215,7 @@ public class StramCli
       args[i] = args[i].trim();
     }
 
-    if (args.length == 2 && args[1].equals("..") || currentDir.equals("..")) {
+    if (args.length == 2 && args[1].equals("/") || currentDir.equals("/")) {
       listApplications(args);
     }
     else {
@@ -314,8 +314,9 @@ public class StramCli
       return;
     }
 
-    if ("..".equals(args[1])) {
-      currentDir = "..";
+    if ("..".equals(args[1]) || "/".equals(args[1])) {
+      currentDir = "/";
+      return;
     }
     else {
       currentDir = args[1];
@@ -423,6 +424,8 @@ public class StramCli
 
     try {
       rmClient.killApplication(currentApp.getApplicationId());
+      currentDir = "/";
+      currentApp = null;
     }
     catch (YarnRemoteException e) {
       throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
@@ -442,6 +445,8 @@ public class StramCli
     try {
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class);
       System.out.println("shutdown requested: " + response);
+      currentDir = "/";
+      currentApp = null;
     }
     catch (Exception e) {
       throw new CliException("Failed to request " + r.getURI(), e);
