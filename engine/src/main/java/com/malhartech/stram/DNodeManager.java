@@ -13,11 +13,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.StramChildAgent.DeployRequest;
+import com.malhartech.stram.StramChildAgent.UndeployRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -70,33 +73,10 @@ public class DNodeManager
       return (node instanceof PTOutputAdapter);
     }
   }
-  
-  private class ContainerStatus
-  {
-    private ContainerStatus(StreamingContainerContext ctx, PTContainer container) {
-      this.containerContext = ctx;
-      this.container = container;
-    }
     
-    boolean shutdownRequested = false;
-    boolean isComplete = false;
-    StreamingContainerContext containerContext;
-    long lastHeartbeatMillis = 0;
-    long lastCheckpointRequestMillis = 0;
-    long createdMillis = System.currentTimeMillis();
-    final PTContainer container;
-  }
-  
-  public class ContainerDeployRequest {
-    final PTContainer container;
-    public ContainerDeployRequest(PTContainer container) {
-      this.container = container;
-    }
-  }
-  
   final public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
-  final public ConcurrentLinkedQueue<ContainerDeployRequest> deployRequests = new ConcurrentLinkedQueue<ContainerDeployRequest>();
-  final private Map<String, ContainerStatus> containers = new ConcurrentHashMap<String, ContainerStatus>();
+  final public ConcurrentLinkedQueue<DeployRequest> initRequests = new ConcurrentLinkedQueue<DeployRequest>();
+  final private Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
   final private String checkpointDir;
@@ -110,14 +90,14 @@ public class DNodeManager
     
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
-      this.deployRequests.add(new ContainerDeployRequest(container));
+      this.initRequests.add(new DeployRequest(container, null));
     }
     
   }
 
   public int getNumRequiredContainers()
   {
-    return deployRequests.size();
+    return initRequests.size();
   }
 
   protected TopologyDeployer getTopologyDeployer() {
@@ -129,16 +109,16 @@ public class DNodeManager
    */
   public void monitorHeartbeat() {
     long currentTms = System.currentTimeMillis();
-    for (Map.Entry<String,ContainerStatus> cse : containers.entrySet()) {
+    for (Map.Entry<String,StramChildAgent> cse : containers.entrySet()) {
        String containerId = cse.getKey();
-       ContainerStatus cs = cse.getValue();
+       StramChildAgent cs = cse.getValue();
        if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
          // TODO: separate startup timeout handling
          if (cs.createdMillis + heartbeatTimeoutMillis < currentTms) {
            // issue stop as probably process is still hanging around (would have been detected by Yarn otherwise)
            LOG.info("Triggering restart for container {} after heartbeat timeout.", containerId);
            containerStopRequests.put(containerId, containerId);
-           deployRequests.add(new ContainerDeployRequest(cs.container));
+           restartContainer(containerId);
          }
        }
     }
@@ -149,16 +129,63 @@ public class DNodeManager
    * @param containerId
    */
   public void restartContainer(String containerId) {
-    ContainerStatus cs = containers.get(containerId);
-    if (cs == null) {
-      LOG.warn("Restart request for unknown container {}", containerId);
-      return;
+    StramChildAgent cs = getContainerAgent(containerId);
+
+    // building the checkpoint dependency, 
+    // downstream nodes will appear first in map
+    Map<PTNode, Long> checkpoints = new LinkedHashMap<PTNode, Long>();
+    for (PTNode node : cs.container.nodes) {
+      getRecoveryCheckpoint(node, checkpoints);
     }
-    deployRequests.add(new ContainerDeployRequest(cs.container));
+
+    Map<PTContainer, List<PTNode>> resetNodes = new HashMap<PTContainer, List<TopologyDeployer.PTNode>>();
+    // group downstream nodes by container, 
+    // everything but the failed container is downstream dependency
+    for (PTNode node : checkpoints.keySet()) {
+        List<PTNode> nodes = resetNodes.get(node.container);
+        if (nodes == null) {
+          nodes = new ArrayList<TopologyDeployer.PTNode>();
+          resetNodes.put(node.container, nodes);
+        }
+        nodes.add(node);
+    }
+
+    // except for failed container, stop existing nodes
+    AtomicInteger undeployAckCountdown = new AtomicInteger();
+    for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
+      if (e.getKey() != cs.container) {
+        StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey());
+        UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
+        r.setNodes(ctx.getNodes(), ctx.getStreams());
+        undeployAckCountdown.incrementAndGet();
+        StramChildAgent downstreamContainer = getContainerAgent(cs.container.containerId);
+        downstreamContainer.addRequest(r);
+      }
+    }
+    
+    // schedule deployment for replacement container
+    AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
+    DeployRequest dr = new DeployRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
+    // launch replacement container, the deploy request will be queued with new container agent in assignContainer
+    initRequests.add(dr); 
+    
+    // (re)deploy downstream nodes
+    AtomicInteger redeployAckCountdown = new AtomicInteger();
+    for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
+      if (e.getKey() != cs.container) {
+        StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey());
+        DeployRequest r = new DeployRequest(e.getKey(), redeployAckCountdown, failedContainerDeployCnt);
+        r.setNodes(ctx.getNodes(), ctx.getStreams());
+        redeployAckCountdown.incrementAndGet();
+        StramChildAgent downstreamContainer = getContainerAgent(cs.container.containerId);
+        downstreamContainer.addRequest(r);
+      }
+    }
+    
   }
 
   public void markComplete(String containerId) {
-    ContainerStatus cs = containers.get(containerId);
+    StramChildAgent cs = containers.get(containerId);
     if (cs == null) {
       LOG.warn("Completion status for unknown container {}", containerId);
       return;
@@ -233,26 +260,32 @@ public class DNodeManager
       if (container.containerId == null) {
         container.containerId = containerId;
         container.bufferServerAddress = bufferServerAddress;
-        StreamingContainerContext scc = getStreamingContainerContext(container);
-        containers.put(containerId, new ContainerStatus(scc, container));
+        StreamingContainerContext scc = createStramChildInitContext(container.nodes, container);
+        containers.put(containerId, new StramChildAgent(container, scc));
         return scc;
       }
     }
     throw new IllegalStateException("There are no more containers to deploy.");
   }
 
-  public void assignContainer(ContainerDeployRequest cdr, String containerId, InetSocketAddress bufferServerAddress) {
+  public void assignContainer(DeployRequest cdr, String containerId, InetSocketAddress bufferServerAddress) {
     PTContainer container = cdr.container;
     if (container.containerId != null) {
-      LOG.info("Removing existing container status {}", cdr.container.containerId);
-      // TODO: this wipes out info about previous instances, including checkpoint state
+      LOG.info("Removing existing container agent {}", cdr.container.containerId);
       this.containers.remove(container.containerId);
     } else {
-      cdr.container.bufferServerAddress = bufferServerAddress;
+      container.bufferServerAddress = bufferServerAddress;
     }
     container.containerId = containerId;
-    StreamingContainerContext scc = getStreamingContainerContext(container);
-    containers.put(containerId, new ContainerStatus(scc, container));
+
+    StreamingContainerContext initCtx = createStramChildInitContext(container.nodes, container);
+    cdr.setNodes(initCtx.getNodes(), initCtx.getStreams());
+    initCtx.setNodes(new ArrayList<NodePConf>(0));
+    initCtx.setStreams(new ArrayList<StreamPConf>(0));
+    
+    StramChildAgent sca = new StramChildAgent(container, initCtx);
+    containers.put(containerId, sca);
+    sca.addRequest(cdr);
   }
   
   /**
@@ -260,7 +293,7 @@ public class DNodeManager
    * @param container
    * @return
    */
-  private StreamingContainerContext getStreamingContainerContext(PTContainer container) {
+  private StreamingContainerContext createStramChildInitContext(List<PTNode> deployNodes, PTContainer container) {
     StreamingContainerContext scc = new StreamingContainerContext();
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
@@ -270,7 +303,7 @@ public class DNodeManager
     Map<NodePConf, PTComponent> nodes = new LinkedHashMap<NodePConf, PTComponent>();
     Map<String, StreamPConf> publishers = new LinkedHashMap<String, StreamPConf>();
     
-    for (PTNode node : container.nodes) {
+    for (PTNode node : deployNodes) {
       NodePConf pnodeConf = createNodeContext(node.id, node.getLogicalNode());
       nodes.put(pnodeConf, node);
       
@@ -282,7 +315,7 @@ public class DNodeManager
           List<PTNode> upstreamNodes = deployer.getNodes(streamConf.getSourceNode());
           if (upstreamNodes.size() == 1) {
             // inline adapter and source node
-            StreamPConf sc = newStreamContext(streamConf, container.bufferServerAddress, null, 
+            StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null, 
                 node.id, adapterNode.getDnodeId());
             sc.setInline(true);
             sc.setProperties(streamConf.getProperties());
@@ -291,7 +324,7 @@ public class DNodeManager
             // partitioned source node - adapter subscribes to buffer server(s)
             for (PTNode upstreamNode : upstreamNodes) {
               // merge node
-              StreamPConf sc = newStreamContext(streamConf, container.bufferServerAddress, null,
+              StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null,
                   upstreamNode.id, adapterNode.getDnodeId());
               if (upstreamNode == node) {
                 // adapter deployed to same container
@@ -306,7 +339,7 @@ public class DNodeManager
           }
         } else {
           // buffer server or inline publisher, intra container case handled below 
-          StreamPConf sc = newStreamContext(streamConf, container.bufferServerAddress, null, node.id, "-1subscriberInOtherContainer");
+          StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null, node.id, "-1subscriberInOtherContainer");
           sc.setBufferServerChannelType(streamConf.getSourceNode().getId());
           sc.setProperties(streamConf.getProperties());
           publishers.put(node.id + "/" + streamConf.getId(), sc);
@@ -316,7 +349,7 @@ public class DNodeManager
 
     // after we know all publishers within container, determine subscribers
     
-    for (PTNode subscriberNode : container.nodes) {
+    for (PTNode subscriberNode : deployNodes) {
       for (PTInput in : subscriberNode.inputs) {
         final StreamConf streamConf = in.logicalStream;
         if (in instanceof PTInputAdapter) {
@@ -384,14 +417,11 @@ public class DNodeManager
     return scc;
     
   }
-  
-  public StreamingContainerContext getContainerContext(String containerId)
-  {
-    ContainerStatus cs = containers.get(containerId);
-    if (cs == null) {
-      throw new IllegalArgumentException("No context for container " + containerId);
-    }
-    return cs.containerContext;
+
+  public StramChildAgent getContainerAgent(String containerId) {
+    StramChildAgent cs = containers.get(containerId);
+    assert cs != null : ("Restart request for unknown container " + containerId);
+    return cs;
   }
 
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
@@ -421,10 +451,15 @@ public class DNodeManager
       }
     }
 
-    ContainerStatus cs = containers.get(heartbeat.getContainerId());
+    StramChildAgent cs = getContainerAgent(heartbeat.getContainerId());
     cs.lastHeartbeatMillis = currentTimeMillis;
     
-    ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
+    ContainerHeartbeatResponse rsp = cs.pollRequest();
+    if (rsp == null) {
+      rsp = new ContainerHeartbeatResponse();
+    }
+    
+    // below should be merged into pollRequest
     if (containerIdle && isApplicationIdle()) {
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
       rsp.setShutdown(true);
@@ -437,9 +472,9 @@ public class DNodeManager
     
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
     if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
-      for (NodePConf nodeConf : cs.containerContext.getNodes()) {
+      for (PTNode node : cs.container.nodes) {
         StramToNodeRequest backupRequest = new StramToNodeRequest();
-        backupRequest.setNodeId(nodeConf.getDnodeId());
+        backupRequest.setNodeId(node.id);
         backupRequest.setRequestType(RequestType.CHECKPOINT);
         requests.add(backupRequest);
       }
@@ -557,7 +592,7 @@ public class DNodeManager
    * via yarn using forceKillApplication.
    */
   public void shutdownAllContainers() {
-    for (ContainerStatus cs : this.containers.values()) {
+    for (StramChildAgent cs : this.containers.values()) {
       cs.shutdownRequested = true;
     }
   }
@@ -582,7 +617,7 @@ public class DNodeManager
         ni.lastHeartbeat = ns.lastHeartbeat.getGeneratedTms();
       } else {
         // TODO: proper node status tracking
-        ContainerStatus cs = containers.get(ns.container.containerId);
+        StramChildAgent cs = containers.get(ns.container.containerId);
         if (cs != null) {
           ni.status = cs.isComplete ? "CONTAINER_COMPLETE" : "CONTAINER_NEW";
         }

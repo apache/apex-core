@@ -62,7 +62,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
-import com.malhartech.stram.DNodeManager.ContainerDeployRequest;
+import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.webapp.StramWebApp;
@@ -467,8 +467,8 @@ public class StramAppMaster
       int askCount = 0;
 
       // request containers for pending deploy requests
-      if (!dnmgr.deployRequests.isEmpty()) {
-        askCount = dnmgr.deployRequests.size() - numRequestedContainers;
+      if (!dnmgr.initRequests.isEmpty()) {
+        askCount = dnmgr.initRequests.size() - numRequestedContainers;
       }
 
       // Setup request to be sent to RM to allocate containers
@@ -506,20 +506,18 @@ public class StramAppMaster
         //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
         // get next pending deploy requests
-        ContainerDeployRequest cdr = dnmgr.deployRequests.poll();
+        DeployRequest cdr = dnmgr.initRequests.poll();
         if (cdr == null) {
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
           releasedContainers.add(allocatedContainer.getId());
         } else {
-          // assign streaming node(s) to new container
+          // setup new container context
           dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), NetUtils.getConnectAddress(this.bufferServerAddress));
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
+          // launch and start the container on a separate thread to keep the main thread unblocked
           LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, logicalTopology, rpcImpl.getAddress());
           Thread launchThread = new Thread(runnableLaunchContainer);
-
-          // launch and start the container on a separate thread to keep the main thread unblocked
-          // as all containers may not be allocated at one go.
           launchThreads.add(launchThread);
           launchThread.start();
         }
@@ -572,7 +570,7 @@ public class StramAppMaster
 
       }
 
-      if (allAllocatedContainers.size() == 0 && dnmgr.deployRequests.isEmpty()) {
+      if (allAllocatedContainers.size() == 0 && dnmgr.initRequests.isEmpty()) {
         appDone = true;
       }
 

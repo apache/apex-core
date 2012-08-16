@@ -103,21 +103,27 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
     return TaskUmbilicalProtocol.versionID;
   }
 
-
   @Override
-  public void echo(String containerId, String msg) throws IOException {
-    LOG.info("child msg: {} context: {}", msg, dnodeManager.getContainerContext(containerId));
+  public void log(String containerId, String msg) throws IOException {
+    LOG.info("child msg: {} context: {}", msg, dnodeManager.getContainerAgent(containerId).container);
   }
 
   @Override
   public StreamingContainerContext getInitContext(String containerId)
       throws IOException {
-    return dnodeManager.getContainerContext(containerId);
+    StramChildAgent sca = dnodeManager.getContainerAgent(containerId);
+    return sca.getInitContext();
   }
 
   @Override
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) {
     return dnodeManager.processHeartbeat(msg);
+  }
+
+  @Override
+  public ContainerHeartbeatResponse pollRequest(String containerId) {
+    StramChildAgent sca = dnodeManager.getContainerAgent(containerId);
+    return sca.pollRequest();
   }
 
   @Override

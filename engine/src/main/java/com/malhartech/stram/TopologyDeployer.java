@@ -140,6 +140,13 @@ public class TopologyDeployer {
     List<PTNode> nodes = new ArrayList<PTNode>();
     String containerId; // assigned to yarn container
     InetSocketAddress bufferServerAddress;
+
+    @Override
+    public String toString() {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+          append("nodes", this.nodes).
+          toString();
+    }
   }
 
   private Map<NodeConf, List<PTNode>> deployedNodes = new HashMap<NodeConf, List<PTNode>>();

@@ -280,7 +280,7 @@ public class StramChild
 
   private void heartbeatLoop() throws IOException
   {
-    umbilical.echo(containerId, "[" + containerId + "] Entering heartbeat loop..");
+    umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
     while (!exitHeartbeatLoop) {
 
@@ -326,6 +326,15 @@ public class StramChild
         ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
         if (rsp != null) {
           processHeartbeatResponse(rsp);
+          // keep polling at smaller interval if work is pending
+          while (rsp != null && rsp.isPendingRequests()) {
+            LOG.info("Waiting for pending request.");
+            Thread.sleep(500);
+            rsp = umbilical.pollRequest(this.containerId);
+            if (rsp != null) {
+              processHeartbeatResponse(rsp);
+            }
+          }
         }
       }
       catch (Exception e) {
@@ -333,7 +342,7 @@ public class StramChild
       }
     }
     LOG.debug("Exiting hearbeat loop");
-    umbilical.echo(containerId, "[" + containerId + "] Exiting heartbeat loop..");
+    umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
   }
 
   protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
@@ -343,6 +352,15 @@ public class StramChild
       this.exitHeartbeatLoop = true;
       return;
     }
+
+    if (rsp.getUndeployRequest() != null) {
+      LOG.warn("Ignoring undeploy request: {}", rsp.getUndeployRequest());
+    }
+    
+    if (rsp.getDeployRequest() != null) {
+      LOG.warn("Ignoring deploy request: {}", rsp.getDeployRequest());
+    }
+    
     if (rsp.getNodeRequests() != null) {
       // extended processing per node
       for (StramToNodeRequest req : rsp.getNodeRequests()) {
@@ -355,7 +373,7 @@ public class StramChild
           processStramRequest(n, req);
         }
       }
-    }
+    }    
   }
 
   // look at the implementation of the stream context it stores the source and sink ids.
@@ -552,7 +570,7 @@ public class StramChild
     }
     catch (FSError e) {
       LOG.error("FSError from child", e);
-      umbilical.echo(childId, e.getMessage());
+      umbilical.log(childId, e.getMessage());
     }
     catch (Exception exception) {
       LOG.warn("Exception running child : "
@@ -560,7 +578,7 @@ public class StramChild
       // Report back any failures, for diagnostic purposes
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       exception.printStackTrace(new PrintStream(baos));
-      umbilical.echo(childId, "FATAL: " + baos.toString());
+      umbilical.log(childId, "FATAL: " + baos.toString());
     }
     catch (Throwable throwable) {
       LOG.error("Error running child : "
@@ -569,7 +587,7 @@ public class StramChild
       String cause = tCause == null
                      ? throwable.getMessage()
                      : StringUtils.stringifyException(tCause);
-      umbilical.echo(childId, cause);
+      umbilical.log(childId, cause);
     }
     finally {
       RPC.stopProxy(umbilical);

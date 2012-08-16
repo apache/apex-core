@@ -15,7 +15,6 @@ import java.io.Serializable;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -37,7 +36,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
 
   public static final long versionID = 201208081755L;
   
-  void echo(String containerId, String msg) throws IOException;
+  void log(String containerId, String msg) throws IOException;
 
   /**
    * TODO: quick hack to focus on protocol instead of serialization code - replace with PB
@@ -98,8 +97,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     }  
 
   }
-  
-  
+
   public static class StreamingContainerContext extends WritableAdapter {
     private static final long serialVersionUID = 1L;
 
@@ -119,13 +117,13 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     /**
      * Streams that have input/output from container.
      */
-    private Collection<StreamPConf> streams;
+    private List<StreamPConf> streams;
 
-    public Collection<StreamPConf> getStreams() {
+    public List<StreamPConf> getStreams() {
       return streams;
     }
 
-    public void setStreams(Collection<StreamPConf> streams) {
+    public void setStreams(List<StreamPConf> streams) {
       this.streams = streams;
     }
 
@@ -407,6 +405,46 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     public void setNodeRequests(List<StramToNodeRequest> nodeRequests) {
       this.nodeRequests = nodeRequests;
     }
+
+    /**
+     * Set when there are pending requests that wait for dependencies to complete
+     */
+    private boolean pendingRequests = false;
+    
+    public boolean isPendingRequests() {
+      return pendingRequests;
+    }
+
+    public void setPendingRequests(boolean pendingRequests) {
+      this.pendingRequests = pendingRequests;
+    }
+
+    /**
+     * Set when nodes need to be removed
+     */
+    private StreamingContainerContext undeployRequest;
+
+    public StreamingContainerContext getUndeployRequest() {
+      return undeployRequest;
+    }
+
+    public void setUndeployRequest(StreamingContainerContext undeployRequest) {
+      this.undeployRequest = undeployRequest;
+    }
+
+    /**
+     * Set when new nodes need to be deployed
+     */
+    private StreamingContainerContext deployRequest;
+
+    public StreamingContainerContext getDeployRequest() {
+      return deployRequest;
+    }
+
+    public void setDeployRequest(StreamingContainerContext deployRequest) {
+      this.deployRequest = deployRequest;
+    }
+    
   }
 
   /**
@@ -415,6 +453,13 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
    */
   ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
 
+  /**
+   * Called to fetch pending request.
+   * @return
+   */
+  ContainerHeartbeatResponse pollRequest(String containerId); 
+  
+  
   /**
    * Reporting of partitioning stats - requested by stram for nodes that
    * participate in partitioning when the basic heartbeat indicates a
