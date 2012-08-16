@@ -403,6 +403,7 @@ public class StramCli
       if (tplgFile != null) {
         ApplicationId appId = submitApp.launchTopology(tplgFile);
         this.currentApp = rmClient.getApplicationReport(appId);
+        this.currentDir = ""+currentApp.getApplicationId().getId();
         System.out.println(appId);
       }
       else {
