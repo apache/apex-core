@@ -47,6 +47,7 @@ public class StramCli
   private Configuration conf = new Configuration();
   private final ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
+  private String currentDir = "..";
 
   private class CliException extends RuntimeException
   {
@@ -110,13 +111,13 @@ public class StramCli
           printHelp();
         }
         else if (line.startsWith("ls")) {
-          listApplications(line);
+          ls(line);
         }
-        else if (line.startsWith("connect")) {
+        else if (line.startsWith("connect") || line.startsWith("cd")) {
           connect(line);
         }
         else if (line.startsWith("listnodes")) {
-          listNodes(line);
+          listNodes(null);
         }
         else if (line.startsWith("launch")) {
           launchApp(line, reader);
@@ -207,16 +208,28 @@ public class StramCli
     }
   }
 
-  private void listApplications(String line)
+  private void ls(String line) throws JSONException
   {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
     for (int i = args.length; i-- > 0;) {
       args[i] = args[i].trim();
     }
 
+    if (args.length == 2 && args[1].equals("..") || currentDir.equals("..")) {
+      listApplications(args);
+    }
+    else {
+      listNodes(args);
+    }
+  }
+
+  private void listApplications(String[] args)
+  {
+
     try {
       List<ApplicationReport> appList = getApplicationList();
-      Collections.sort(appList, new Comparator<ApplicationReport>() {
+      Collections.sort(appList, new Comparator<ApplicationReport>()
+      {
         @Override
         public int compare(ApplicationReport o1, ApplicationReport o2)
         {
@@ -231,10 +244,9 @@ public class StramCli
 
       for (ApplicationReport ar : appList) {
         boolean show;
-        
+
         /*
-         * This is inefficient, but what the heck, if this can be passed through
-         * the command line, how long can it be before anyone notices slowness.
+         * This is inefficient, but what the heck, if this can be passed through the command line, how long can it be before anyone notices slowness.
          */
         if (args.length == 1) {
           show = true;
@@ -302,6 +314,13 @@ public class StramCli
       return;
     }
 
+    if ("..".equals(args[1])) {
+      currentDir = "..";
+    }
+    else {
+      currentDir = args[1];
+    }
+
     int appSeq = Integer.parseInt(args[1]);
 
     List<ApplicationReport> appList = getApplicationList();
@@ -327,9 +346,8 @@ public class StramCli
     }
   }
 
-  private void listNodes(String line) throws JSONException
+  private void listNodes(String[] argv) throws JSONException
   {
-
     ClientResponse rsp = getResource("nodes");
     JSONObject json = rsp.getEntity(JSONObject.class);
     System.out.println(json.toString(2));
