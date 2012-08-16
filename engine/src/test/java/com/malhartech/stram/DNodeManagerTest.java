@@ -56,7 +56,7 @@ public class DNodeManagerTest {
     String container2Id = "container2";
     
     // node1 needs to be deployed first, regardless in which order they were given
-    StreamingContainerContext c1 = dnm.assignContainer(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
+    StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("number nodes assigned to container", 2, c1.getNodes().size());
     Assert.assertTrue(node1.getId() + " assigned to " + container1Id, containsNodeContext(c1, node1));
     NodePConf input1PNode = getNodeContext(c1, input1.getId());
@@ -77,7 +77,7 @@ public class DNodeManagerTest {
     Assert.assertEquals(input1.getId() + " classname", NumberGeneratorInputAdapter.class.getName(), input1Phys.getProperties().get(TopologyBuilder.STREAM_CLASSNAME));
     Assert.assertTrue(input1Phys.isInline());
     
-    StreamingContainerContext c2 = dnm.assignContainer(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
+    StreamingContainerContext c2 = dnm.assignContainerForTest(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
     Assert.assertEquals("number nodes assigned to container", 2, c2.getNodes().size());
     Assert.assertTrue(node2.getId() + " assigned to " + container2Id, containsNodeContext(c2, node2));
     Assert.assertTrue(node3.getId() + " assigned to " + container2Id, containsNodeContext(c2, node3));
@@ -119,13 +119,13 @@ public class DNodeManagerTest {
     Assert.assertEquals("number required containers", 5, dnm.getNumRequiredContainers());
 
     String container1Id = "container1";
-    StreamingContainerContext c1 = dnm.assignContainer(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
+    StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("number nodes assigned to container", 1, c1.getNodes().size());
     Assert.assertTrue(node2.getId() + " assigned to " + container1Id, containsNodeContext(c1, node1));
 
     for (int i=0; i<TestStaticPartitioningSerDe.partitions.length; i++) {
       String containerId = "container"+(i+1);
-      StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
+      StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
       Assert.assertEquals("number nodes assigned to container", 1, cc.getNodes().size());
       Assert.assertTrue(node2.getId() + " assigned to " + containerId, containsNodeContext(cc, node2));
   
@@ -138,7 +138,7 @@ public class DNodeManagerTest {
     
     // mergeNode container 
     String mergeContainerId = "mergeNodeContainer";
-    StreamingContainerContext cmerge = dnm.assignContainer(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
+    StreamingContainerContext cmerge = dnm.assignContainerForTest(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
     Assert.assertEquals("number nodes assigned to " + mergeContainerId, 1, cmerge.getNodes().size());
     Assert.assertTrue(mergeNode.getId() + " assigned to " + container1Id, containsNodeContext(cmerge, mergeNode));
     Assert.assertEquals("stream connections for " + mergeContainerId, 3, cmerge.getStreams().size());
@@ -173,7 +173,7 @@ public class DNodeManagerTest {
     
     for (int i=0; i<expectedContainerCount; i++) {
       String containerId = "container"+(i+1);
-      StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
+      StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
 
       NodePConf node1PNode = getNodeContext(cc, node1.getId());
       Assert.assertNotNull(node1.getId() + " assigned to " + containerId, node1PNode);

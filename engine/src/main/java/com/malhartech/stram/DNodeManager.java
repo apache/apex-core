@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,7 +16,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +75,7 @@ public class DNodeManager
   }
     
   final public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
-  final public ConcurrentLinkedQueue<DeployRequest> initRequests = new ConcurrentLinkedQueue<DeployRequest>();
+  final public ConcurrentLinkedQueue<DeployRequest> conatinerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   final private Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
@@ -90,14 +90,14 @@ public class DNodeManager
     
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
-      this.initRequests.add(new DeployRequest(container, null));
+      this.conatinerStartRequests.add(new DeployRequest(container, null));
     }
     
   }
 
   public int getNumRequiredContainers()
   {
-    return initRequests.size();
+    return conatinerStartRequests.size();
   }
 
   protected TopologyDeployer getTopologyDeployer() {
@@ -129,6 +129,8 @@ public class DNodeManager
    * @param containerId
    */
   public void restartContainer(String containerId) {
+    LOG.info("Initiating recovery for container {}", containerId);
+
     StramChildAgent cs = getContainerAgent(containerId);
 
     // building the checkpoint dependency, 
@@ -150,11 +152,11 @@ public class DNodeManager
         nodes.add(node);
     }
 
-    // except for failed container, stop existing nodes
+    // except for failed container, stop affected downstream nodes
     AtomicInteger undeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
-        StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey());
+        StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
         UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
         r.setNodes(ctx.getNodes(), ctx.getStreams());
         undeployAckCountdown.incrementAndGet();
@@ -163,17 +165,20 @@ public class DNodeManager
       }
     }
     
-    // schedule deployment for replacement container
+    // schedule deployment for replacement container, depends on above downstream nodes stop
     AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
     DeployRequest dr = new DeployRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
     // launch replacement container, the deploy request will be queued with new container agent in assignContainer
-    initRequests.add(dr); 
+    conatinerStartRequests.add(dr); 
     
-    // (re)deploy downstream nodes
+    // (re)deploy affected downstream nodes
     AtomicInteger redeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
-        StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey());
+        
+        // TODO: pass in the start window id
+        
+        StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
         DeployRequest r = new DeployRequest(e.getKey(), redeployAckCountdown, failedContainerDeployCnt);
         r.setNodes(ctx.getNodes(), ctx.getStreams());
         redeployAckCountdown.incrementAndGet();
@@ -213,7 +218,7 @@ public class DNodeManager
     return snc;
   }
   
-  private NodePConf newAdapterNodeContext(String id, StreamConf streamConf)
+  private NodePConf newAdapterNodeContext(String id, StreamConf streamConf, Long checkpointWindowId)
   {
     NodePConf snc = new NodePConf();
     snc.setDnodeClassName(AdapterWrapperNode.class.getName());
@@ -227,6 +232,9 @@ public class DNodeManager
     snc.setProperties(properties);
     snc.setLogicalId(streamConf.getId());
     snc.setDnodeId(id);
+    if (checkpointWindowId != null) {
+      snc.setCheckpointWindowId(checkpointWindowId.longValue());
+    }
     return snc;
   }
 
@@ -247,20 +255,13 @@ public class DNodeManager
     return sc;
   }
 
-  /**
-   * Get nodes/streams for next container. Multiple nodes can share a container.
-   *
-   * @param containerId
-   * @param bufferServerAddress Buffer server for publishers on the container.
-   * @return
-   */
-  public synchronized StreamingContainerContext assignContainer(String containerId, InetSocketAddress bufferServerAddress)
+  public StreamingContainerContext assignContainerForTest(String containerId, InetSocketAddress bufferServerAddress)
   {
     for (PTContainer container : this.deployer.getContainers()) {
       if (container.containerId == null) {
         container.containerId = containerId;
         container.bufferServerAddress = bufferServerAddress;
-        StreamingContainerContext scc = createStramChildInitContext(container.nodes, container);
+        StreamingContainerContext scc = createStramChildInitContext(container.nodes, container, Collections.<PTNode, Long>emptyMap());
         containers.put(containerId, new StramChildAgent(container, scc));
         return scc;
       }
@@ -268,6 +269,13 @@ public class DNodeManager
     throw new IllegalStateException("There are no more containers to deploy.");
   }
 
+  /**
+   * Get nodes/streams for next container. Multiple nodes can share a container.
+   *
+   * @param containerId
+   * @param bufferServerAddress Buffer server for publishers on the container.
+   * @return
+   */
   public void assignContainer(DeployRequest cdr, String containerId, InetSocketAddress bufferServerAddress) {
     PTContainer container = cdr.container;
     if (container.containerId != null) {
@@ -278,7 +286,7 @@ public class DNodeManager
     }
     container.containerId = containerId;
 
-    StreamingContainerContext initCtx = createStramChildInitContext(container.nodes, container);
+    StreamingContainerContext initCtx = createStramChildInitContext(container.nodes, container, Collections.<PTNode, Long>emptyMap());
     cdr.setNodes(initCtx.getNodes(), initCtx.getStreams());
     initCtx.setNodes(new ArrayList<NodePConf>(0));
     initCtx.setStreams(new ArrayList<StreamPConf>(0));
@@ -287,13 +295,13 @@ public class DNodeManager
     containers.put(containerId, sca);
     sca.addRequest(cdr);
   }
-  
+
   /**
    * Create the protocol mandated node/stream info for bootstrapping StramChild.
    * @param container
    * @return
    */
-  private StreamingContainerContext createStramChildInitContext(List<PTNode> deployNodes, PTContainer container) {
+  private StreamingContainerContext createStramChildInitContext(List<PTNode> deployNodes, PTContainer container, Map<PTNode, Long> checkpoints) {
     StreamingContainerContext scc = new StreamingContainerContext();
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
@@ -305,12 +313,16 @@ public class DNodeManager
     
     for (PTNode node : deployNodes) {
       NodePConf pnodeConf = createNodeContext(node.id, node.getLogicalNode());
+      Long checkpointWindowId = checkpoints.get(node);
+      if (checkpointWindowId != null) {
+        pnodeConf.setCheckpointWindowId(checkpointWindowId);
+      }
       nodes.put(pnodeConf, node);
       
       for (PTOutput out : node.outputs) {
         final StreamConf streamConf = out.logicalStream;
         if (out instanceof PTOutputAdapter) {
-          NodePConf adapterNode = newAdapterNodeContext(out.id, streamConf);
+          NodePConf adapterNode = newAdapterNodeContext(out.id, streamConf, checkpointWindowId);
           nodes.put(adapterNode, out);
           List<PTNode> upstreamNodes = deployer.getNodes(streamConf.getSourceNode());
           if (upstreamNodes.size() == 1) {
@@ -354,7 +366,8 @@ public class DNodeManager
         final StreamConf streamConf = in.logicalStream;
         if (in instanceof PTInputAdapter) {
           // input adapter, with implementation class
-          NodePConf adapterNode = newAdapterNodeContext(in.id, streamConf);
+          Long checkpointWindowId = checkpoints.get(subscriberNode);
+          NodePConf adapterNode = newAdapterNodeContext(in.id, streamConf, checkpointWindowId);
           nodes.put(adapterNode, in);
           List<PTNode> subscriberNodes = deployer.getNodes(streamConf.getTargetNode());
           if (subscriberNodes.size() == 1) {
@@ -420,7 +433,9 @@ public class DNodeManager
 
   public StramChildAgent getContainerAgent(String containerId) {
     StramChildAgent cs = containers.get(containerId);
-    assert cs != null : ("Restart request for unknown container " + containerId);
+    if (cs == null) {
+      throw new AssertionError("Unknown container " + containerId);
+    }
     return cs;
   }
 
@@ -431,7 +446,6 @@ public class DNodeManager
     long currentTimeMillis = System.currentTimeMillis();
     
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
-      ReflectionToStringBuilder b = new ReflectionToStringBuilder(shb);
 
       NodeStatus status = nodeStatusMap.get(shb.getNodeId());
       if (status == null) {
@@ -439,8 +453,9 @@ public class DNodeManager
         continue;
       }
 
-      LOG.info("node {} ({}) heartbeat: {}, totalTuples: {}, totalBytes: {} - {}",
-               new Object[]{shb.getNodeId(), status.node.getLogicalId(), b.toString(), status.tuplesTotal, status.bytesTotal, heartbeat.getContainerId()});
+      //ReflectionToStringBuilder b = new ReflectionToStringBuilder(shb);
+      //LOG.info("node {} ({}) heartbeat: {}, totalTuples: {}, totalBytes: {} - {}",
+      //         new Object[]{shb.getNodeId(), status.node.getLogicalId(), b.toString(), status.tuplesTotal, status.bytesTotal, heartbeat.getContainerId()});
 
       status.lastHeartbeat = shb;
       if (!status.canShutdown()) {
@@ -453,6 +468,7 @@ public class DNodeManager
 
     StramChildAgent cs = getContainerAgent(heartbeat.getContainerId());
     cs.lastHeartbeatMillis = currentTimeMillis;
+    LOG.info("Heartbeat container {}", heartbeat.getContainerId());
     
     ContainerHeartbeatResponse rsp = cs.pollRequest();
     if (rsp == null) {

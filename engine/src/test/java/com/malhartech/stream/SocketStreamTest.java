@@ -198,7 +198,7 @@ public class SocketStreamTest
 
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
-      StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+      StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
       TestChildContainer container = new TestChildContainer(containerId);
       container.init(cc);
       containers.add(container);

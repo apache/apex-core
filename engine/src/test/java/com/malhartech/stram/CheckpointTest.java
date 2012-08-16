@@ -86,7 +86,7 @@ public class CheckpointTest {
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
     String containerId = "container1";
-    StreamingContainerContext cc = dnm.assignContainer(containerId, InetSocketAddress.createUnresolved("localhost", 0));
+    StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
     TestChildContainer container = new TestChildContainer(containerId);
     cc.setWindowSizeMillis(0); // disable window generator
     cc.setCheckpointDfsPath(testWorkDir.getPath());

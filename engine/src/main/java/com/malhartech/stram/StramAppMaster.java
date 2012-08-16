@@ -467,8 +467,8 @@ public class StramAppMaster
       int askCount = 0;
 
       // request containers for pending deploy requests
-      if (!dnmgr.initRequests.isEmpty()) {
-        askCount = dnmgr.initRequests.size() - numRequestedContainers;
+      if (!dnmgr.conatinerStartRequests.isEmpty()) {
+        askCount = dnmgr.conatinerStartRequests.size() - numRequestedContainers;
       }
 
       // Setup request to be sent to RM to allocate containers
@@ -506,7 +506,7 @@ public class StramAppMaster
         //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
         // get next pending deploy requests
-        DeployRequest cdr = dnmgr.initRequests.poll();
+        DeployRequest cdr = dnmgr.conatinerStartRequests.poll();
         if (cdr == null) {
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
@@ -570,7 +570,7 @@ public class StramAppMaster
 
       }
 
-      if (allAllocatedContainers.size() == 0 && dnmgr.initRequests.isEmpty()) {
+      if (allAllocatedContainers.size() == 0 && dnmgr.conatinerStartRequests.isEmpty()) {
         appDone = true;
       }
 

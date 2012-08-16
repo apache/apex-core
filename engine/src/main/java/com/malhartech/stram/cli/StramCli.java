@@ -216,7 +216,7 @@ public class StramCli
     }
 
     if (args.length == 2 && args[1].equals("/") || currentDir.equals("/")) {
-      listApplications(args);
+      listApplications(new String[]{args[0]});
     }
     else {
       listNodes(args);

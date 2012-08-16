@@ -18,7 +18,6 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -62,7 +61,6 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
               field.set(this, properties.get(fieldName));
             }
         }      
-        BeanUtils.populate(this, properties);
         ois.close();
       } catch (Exception e) {
         throw new IOException(e);

@@ -66,6 +66,22 @@ public class NodePConf extends StreamingNodeUmbilicalProtocol.WritableAdapter im
     this.logicalId = logicalId;
   }
 
+  private long checkpointWindowId;
+  
+  /**
+   * The checkpoint window identifier.
+   * Used to restore node and incoming streams as part of recovery.
+   * Value 0 indicates fresh initialization, no restart.   
+   * @return
+   */
+  public long getCheckpointWindowId() {
+    return checkpointWindowId;
+  }
+
+  public void setCheckpointWindowId(long checkpointWindowId) {
+    this.checkpointWindowId = checkpointWindowId;
+  }
+
   @Override
   public String toString()
   {

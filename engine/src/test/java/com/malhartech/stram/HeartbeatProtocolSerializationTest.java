@@ -7,6 +7,7 @@ import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import java.io.IOException;
 import java.util.Collections;
@@ -20,7 +21,7 @@ import org.junit.Test;
 public class HeartbeatProtocolSerializationTest
 {
   @Test
-  public void testLoadFromPropertiesFile() throws IOException
+  public void testContainerContextSerialization() throws IOException
   {
 
     NodePConf snc = new NodePConf();
@@ -42,8 +43,23 @@ public class HeartbeatProtocolSerializationTest
     Assert.assertEquals(1, clone.getNodes().size());
     Assert.assertEquals("node1", clone.getNodes().get(0).getLogicalId());
 
-  }
+    ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
+    rsp.setDeployRequest(scc);
+    
+    out = new DataOutputByteBuffer();
+    rsp.write(out);
 
+    in = new DataInputByteBuffer();
+    in.reset(out.getData());
+    
+    ContainerHeartbeatResponse cloneRsp = new ContainerHeartbeatResponse();
+    cloneRsp.readFields(in);
+
+    Assert.assertNotNull(cloneRsp.getDeployRequest());
+    Assert.assertEquals("node1", cloneRsp.getDeployRequest().getNodes().get(0).getLogicalId());
+    
+  }
+  
   @Test
   public void testMiniClusterTestNode()
   {
