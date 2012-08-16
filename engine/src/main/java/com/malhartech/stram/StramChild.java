@@ -607,6 +607,10 @@ public class StramChild
    */
   public static InternalNode initNode(NodePConf nodeCtx, Configuration conf)
   {
+    if (nodeCtx.getCheckpointWindowId() != 0) {
+      LOG.warn("Ignoring checkpoint {} {}", nodeCtx, nodeCtx.getCheckpointWindowId());
+    }
+    
     try {
       Class<? extends InternalNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(InternalNode.class);
       Constructor<? extends InternalNode> c = nodeClass.getConstructor();

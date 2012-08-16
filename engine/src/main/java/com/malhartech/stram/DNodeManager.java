@@ -75,7 +75,7 @@ public class DNodeManager
   }
     
   final public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
-  final public ConcurrentLinkedQueue<DeployRequest> conatinerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
+  final public ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   final private Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
@@ -90,14 +90,14 @@ public class DNodeManager
     
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
-      this.conatinerStartRequests.add(new DeployRequest(container, null));
+      this.containerStartRequests.add(new DeployRequest(container, null));
     }
     
   }
 
   public int getNumRequiredContainers()
   {
-    return conatinerStartRequests.size();
+    return containerStartRequests.size();
   }
 
   protected TopologyDeployer getTopologyDeployer() {
@@ -168,8 +168,9 @@ public class DNodeManager
     // schedule deployment for replacement container, depends on above downstream nodes stop
     AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
     DeployRequest dr = new DeployRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
+    dr.checkpoints = checkpoints;
     // launch replacement container, the deploy request will be queued with new container agent in assignContainer
-    conatinerStartRequests.add(dr); 
+    containerStartRequests.add(dr); 
     
     // (re)deploy affected downstream nodes
     AtomicInteger redeployAckCountdown = new AtomicInteger();
@@ -286,7 +287,11 @@ public class DNodeManager
     }
     container.containerId = containerId;
 
-    StreamingContainerContext initCtx = createStramChildInitContext(container.nodes, container, Collections.<PTNode, Long>emptyMap());
+    Map<PTNode, Long> checkpoints = cdr.checkpoints;
+    if (checkpoints == null) {
+      checkpoints = Collections.emptyMap();
+    }
+    StreamingContainerContext initCtx = createStramChildInitContext(container.nodes, container, checkpoints);
     cdr.setNodes(initCtx.getNodes(), initCtx.getStreams());
     initCtx.setNodes(new ArrayList<NodePConf>(0));
     initCtx.setStreams(new ArrayList<StreamPConf>(0));

@@ -5,12 +5,14 @@
 package com.malhartech.stram;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyDeployer.PTContainer;
+import com.malhartech.stram.TopologyDeployer.PTNode;
 
 /**
  * Representation of a child container in the master.
@@ -23,6 +25,7 @@ public class StramChildAgent {
     final AtomicInteger executeWhenZero; 
     private List<NodePConf> nodes;
     private List<StreamPConf> streams;
+    Map<PTNode, Long> checkpoints;
     
     public DeployRequest(PTContainer container, AtomicInteger ackCountdown) {
       this.container = container;
