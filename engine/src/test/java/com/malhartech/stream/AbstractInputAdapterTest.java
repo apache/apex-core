@@ -36,7 +36,7 @@ public class AbstractInputAdapterTest
   @Before
   public void setUp()
   {
-    StreamContext sc = new StreamContext();
+    StreamContext sc = new StreamContext("irrelevant_source", "irrelevant_sink");
     instance = new AbstractInputAdapterImpl();
     instance.setContext(sc);
   }

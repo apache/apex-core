@@ -30,6 +30,38 @@ public class StreamContext implements Context
     this.startingWindowId = startingWindowId;
   }
 
+  /**
+   * @return the sourceId
+   */
+  public String getSourceId()
+  {
+    return sourceId;
+  }
+
+  /**
+   * @param sourceId the sourceId to set
+   */
+  public void setSourceId(String upstreamNodeId)
+  {
+    this.sourceId = upstreamNodeId;
+  }
+
+  /**
+   * @return the sinkId
+   */
+  public String getSinkId()
+  {
+    return sinkId;
+  }
+
+  /**
+   * @param sinkId the sinkId to set
+   */
+  public void setSinkId(String downstreamNodeId)
+  {
+    this.sinkId = downstreamNodeId;
+  }
+
   public static enum State
   {
     UNDEFINED,
@@ -42,10 +74,14 @@ public class StreamContext implements Context
   private SerDe serde;
   private int tupleCount;
   private State sinkState;
+  private String sourceId;
+  private String sinkId;
   private long startingWindowId;
 
-  public StreamContext()
+  public StreamContext(String sourceId, String sinkId)
   {
+    this.sourceId = sourceId;
+    this.sinkId = sinkId;
     sinkState = State.UNDEFINED;
   }
 

@@ -4,16 +4,13 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
 import java.net.InetSocketAddress;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.MessageEvent;
-import static org.junit.Assert.fail;
 import org.junit.*;
 
 /**
@@ -47,7 +44,7 @@ public final class OutputSocketStreamTest
     sc = new StreamConfiguration();
     sc.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, new InetSocketAddress("localhost", 5033));
     
-    ctx = new StreamContext();
+    ctx = new StreamContext("irrelevant_source", "irrelevant_sink");
     ctx.setSerde(new DefaultSerDe());
   }
 

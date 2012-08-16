@@ -97,7 +97,7 @@ public class StramChild
     if (sc.isInline()) {
       LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
       InlineStream stream = new InlineStream();
-      com.malhartech.dag.StreamContext dsc = new com.malhartech.dag.StreamContext();
+      com.malhartech.dag.StreamContext dsc = new com.malhartech.dag.StreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
       stream.setContext(dsc);
       Sink sink = targetNode.getSink(dsc);
 
@@ -112,10 +112,8 @@ public class StramChild
       // buffer server connection between nodes
       LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
 
-      BufferServerStreamContext streamContext = new BufferServerStreamContext();
+      BufferServerStreamContext streamContext = new BufferServerStreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
       streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
-      streamContext.setSourceId(sc.getSourceNodeId());
-      streamContext.setSinkId(sc.getTargetNodeId());
       streamContext.setId(sc.getId());
 
       StreamConfiguration streamConf = new StreamConfiguration(sc.getProperties());
@@ -359,12 +357,73 @@ public class StramChild
       }
     }
   }
-  
-  public void shutdown(Node node)
+
+  // look at the implementation of the stream context it stores the source and sink ids.
+  // I am not sure of node_id is unique (should be since it's stored in the map) and 
+  // whether the source id and sink id are unique in a container. Does it still hold true
+  // when load balancing happens within a container? The following logic works provided
+  // assumption of node_id, source and sink ids are correct.
+  public void shutdown(String node_id)
   {
     /*
-     * make sure that the node exists in the current container
+     * make sure that we have a node we are asked to shutdown in this container.
      */
+    InternalNode in = nodeList.get(node_id);
+    if (in == null) {
+      throw new IllegalArgumentException("node with nodeid " + node_id + " does not exist");
+    }
+
+    ArrayList<Stream> inputStreams = new ArrayList<Stream>();
+    /*
+     * lets find out all the input streams for this node.
+     */
+    for (Stream s : inputAdapters) {
+      if (s.getContext().getSinkId().equals(node_id)) {
+        inputStreams.add(s);
+      }
+    }
+
+
+    ArrayList<Stream> outputStreams = new ArrayList<Stream>();
+    /*
+     * lets also find out remaining input streams and output streams.
+     */
+    for (Stream s : streams) {
+      if (node_id.equals(s.getContext().getSinkId())) {
+        inputStreams.add(s);
+      }
+      else if (node_id.equals(s.getContext().getSourceId())) {
+        outputStreams.add(s);
+      }
+    }
+
+    assert (!(inputStreams.isEmpty() && outputStreams.isEmpty()));
+
+    /*
+     * we bring down the node by first stopping inputs, then outputs and then the nodes itself.
+     */
+
+    for (Stream s : inputStreams) {
+      s.teardown();
+      if (s instanceof InputAdapter) {
+        inputAdapters.remove((InputAdapter) s);
+      }
+      else {
+        streams.remove(s);
+      }
+    }
+
+    for (Stream s : outputStreams) {
+      s.teardown();
+      streams.remove(s);
+    }
+
+    if (activeNodeList.containsKey(node_id)) {
+      in.stop();
+      activeNodeList.remove(node_id);
+    }
+
+    nodeList.remove(node_id);
   }
 
   /**

@@ -14,29 +14,12 @@ import java.util.HashSet;
  */
 public class BufferServerStreamContext extends StreamContext
 {
-  private String sourceId;
-  private String sinkId;
   private String id;
   private HashSet<byte[]> partitions;
 
-  public String getSourceId()
+  public BufferServerStreamContext(String upstreamNodeId, String downstreamNodeId)
   {
-    return sourceId;
-  }
-
-  public String getSinkId()
-  {
-    return sinkId;
-  }
-
-  public void setSourceId(String id)
-  {
-    sourceId = id;
-  }
-
-  public void setSinkId(String id)
-  {
-    sinkId = id;
+    super(upstreamNodeId, downstreamNodeId);
   }
   
   public void addPartition()

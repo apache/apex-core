@@ -88,12 +88,10 @@ public class SocketStreamTest
     String downstreamNodeId = "downStreamNodeId";
 
 
-    BufferServerStreamContext issContext = new BufferServerStreamContext();
+    BufferServerStreamContext issContext = new BufferServerStreamContext(upstreamNodeId, downstreamNodeId);
     issContext.setSink(sink);
     issContext.setSerde(serde);
     issContext.setId(streamName);
-    issContext.setSourceId(upstreamNodeId);
-    issContext.setSinkId(downstreamNodeId);
 
 
     StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
@@ -103,11 +101,9 @@ public class SocketStreamTest
     iss.setup(sconf);
     iss.setContext(issContext);
 
-    BufferServerStreamContext ossContext = new BufferServerStreamContext();
+    BufferServerStreamContext ossContext = new BufferServerStreamContext(upstreamNodeId, downstreamNodeId);
     ossContext.setSerde(serde);
     ossContext.setId(streamName);
-    ossContext.setSourceId(upstreamNodeId);
-    ossContext.setSinkId(downstreamNodeId);
 
     BufferServerOutputStream oss = new BufferServerOutputStream();
     oss.setup(sconf);

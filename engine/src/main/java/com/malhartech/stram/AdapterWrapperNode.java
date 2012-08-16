@@ -13,8 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Wrapper node to connects adapter "stream" to another source or sink stream.
- * Provides uniform view of adapter as node for stram deployment and monitoring.
+ * Wrapper node to connects adapter "stream" to another source or sink stream. Provides uniform view of adapter as node for stram deployment and monitoring.
  */
 public class AdapterWrapperNode extends AbstractNode implements Sink
 {
@@ -85,7 +84,6 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
       adapterStream.teardown();
     }
   }
-  
   private com.malhartech.dag.StreamContext sink;
 
   @Override
@@ -123,7 +121,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
 
       instance.setup(streamConf);
 
-      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext();
+      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCENODE),
+                                                                                  streamConf.get(TopologyBuilder.STREAM_TARGETNODE));
       if (targetNode == null) {
         /*
          * This is output adapter so it needs to implement the Sink interface.

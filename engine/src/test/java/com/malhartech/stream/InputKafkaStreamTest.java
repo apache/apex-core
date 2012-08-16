@@ -28,6 +28,7 @@ public class InputKafkaStreamTest
 
     public MyStreamContext()
     {
+      super("irrelevant_source", "irrelevant_sink");
       myserde = new DefaultSerDe();
     }
 

@@ -61,24 +61,26 @@ public class InlineStreamTest
     AbstractNode node2 = new PassThroughNode();
 
     InlineStream stream12 = new InlineStream();
-    StreamContext sc1 = new StreamContext();
+    StreamContext sc1 = new StreamContext("node1", "node2");
     sc1.setSink(node2.getSink(sc1));
     stream12.setContext(sc1);
 
     node1.addOutputStream(sc1);
 
-    StreamContext sc2 = new StreamContext();
+    StreamContext sc2 = new StreamContext("node2", "node2sink");
     sc2.setSink(node2Sink);
     node2.addOutputStream(sc2);
 
     Map<String, Thread> activeNodes = new ConcurrentHashMap<String, Thread>();
     launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
 
-    StreamContext streamContext = new StreamContext();
-    streamContext.setSink(node1.getSink(streamContext));
+    StreamContext streamContext = new StreamContext("source", "node1");
+    
+    Sink node1InputPort = node1.getSink(streamContext);
+    streamContext.setSink(node1InputPort);
 
     for (int i = 0; i < totalTupleCount; i++) {
-      node1.getSink(streamContext).doSomething(StramTestSupport.generateTuple(i, 0, streamContext));
+      node1InputPort.doSomething(StramTestSupport.generateTuple(i, 0, streamContext));
     }
 
     synchronized (s) {
