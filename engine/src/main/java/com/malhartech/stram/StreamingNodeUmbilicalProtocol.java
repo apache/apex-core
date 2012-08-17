@@ -343,11 +343,6 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 1L;
 
     enum RequestType {
-      /**
-       * Indicates node should terminate processing (soft shutdown by Stram)
-       */
-      SHUTDOWN,
-      RECONFIGURE, // for node configuration changes
       REPORT_PARTION_STATS,
       CHECKPOINT
     }

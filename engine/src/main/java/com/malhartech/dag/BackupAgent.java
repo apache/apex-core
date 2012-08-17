@@ -25,5 +25,5 @@ public interface BackupAgent
    * @return
    * @throws IOException
    */
-  public InputStream getInputStream(String nodeId) throws IOException;
+  public InputStream getInputStream(String nodeId, long windowId) throws IOException;
 }
