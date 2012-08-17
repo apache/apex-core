@@ -5,10 +5,7 @@ package com.malhartech.stream;
 
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.EndStreamTuple;
-import com.malhartech.dag.EndWindowTuple;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.MessageEvent;
 import org.slf4j.Logger;
@@ -70,8 +67,7 @@ public class BufferServerInputStream extends SocketInputStream
           break;
 
         case RESET_WINDOW:
-          t = new Tuple(null);
-          t.setType(Buffer.Data.DataType.RESET_WINDOW);
+          t = new ResetWindowTuple();
           baseSeconds = (long) d.getWindowId() << 32;
           t.setWindowId(baseSeconds | d.getResetWindow().getWidth());
           break;

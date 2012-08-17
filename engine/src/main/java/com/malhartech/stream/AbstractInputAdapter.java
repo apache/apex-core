@@ -59,8 +59,7 @@ public abstract class AbstractInputAdapter implements InputAdapter
   {
     this.baseSeconds = (long) baseSeconds << 32;
 
-    Tuple t = new Tuple(null);
-    t.setType(DataType.RESET_WINDOW);
+    ResetWindowTuple t = new ResetWindowTuple();
     t.setContext(context);
     t.setWindowId(this.baseSeconds | intervalMillis);
     context.sink(t);

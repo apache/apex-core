@@ -7,6 +7,7 @@ import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.dag.EndWindowTuple;
+import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
 import org.slf4j.Logger;
@@ -66,9 +67,8 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
 
       case RESET_WINDOW:
         Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
-        rw.setWidth((int) t.getWindowId());
-
-        db.setWindowId((int) (t.getWindowId() >> 32));
+        rw.setWidth(((ResetWindowTuple) t).getIntervalMillis());
+        db.setWindowId(((ResetWindowTuple) t).getBaseSeconds());
         db.setResetWindow(rw);
         break;
 

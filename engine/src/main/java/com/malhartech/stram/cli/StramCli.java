@@ -216,7 +216,7 @@ public class StramCli
     }
 
     if (args.length == 2 && args[1].equals("/") || currentDir.equals("/")) {
-      listApplications(new String[]{args[0]});
+      listApplications(args);
     }
     else {
       listNodes(args);
@@ -246,9 +246,9 @@ public class StramCli
         boolean show;
 
         /*
-         * This is inefficient, but what the heck, if this can be passed through the command line, how long can it be before anyone notices slowness.
+         * This is inefficient, but what the heck, if this can be passed through the command line, can anyone notice slowness.
          */
-        if (args.length == 1) {
+        if (args.length == 1 || args.length == 2 && (args[1].equals("/") || args[1].equals(".."))) {
           show = true;
         }
         else {
