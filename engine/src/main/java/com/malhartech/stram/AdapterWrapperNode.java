@@ -82,6 +82,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   {
     if (adapterStream != null) {
       adapterStream.teardown();
+      adapterStream.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
     }
   }
   private com.malhartech.dag.StreamContext sink;

@@ -266,6 +266,7 @@ public class StramChild
     for (Stream s : this.streams) {
       LOG.debug("teardown " + s);
       s.teardown();
+      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
     }
 
 
@@ -436,6 +437,7 @@ public class StramChild
 
     for (Stream s : inputStreams) {
       s.teardown();
+      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
       if (s instanceof InputAdapter) {
         inputAdapters.remove((InputAdapter) s);
       }
@@ -446,6 +448,7 @@ public class StramChild
 
     for (Stream s : outputStreams) {
       s.teardown();
+      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
       streams.remove(s);
     }
 
