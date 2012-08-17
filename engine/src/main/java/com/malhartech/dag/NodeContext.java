@@ -141,8 +141,8 @@ public class NodeContext implements Context
     LOG.debug("Received backup request (node={})", id);
   }
 
-  public Object restore(BackupAgent agent) throws IOException
+  public Object restore(BackupAgent agent, long windowId) throws IOException
   {
-    return new Kryo().readClassAndObject(new Input(backupAgent.getInputStream(id)));
+    return new Kryo().readClassAndObject(new Input(agent.getInputStream(id, windowId)));
   }
 }

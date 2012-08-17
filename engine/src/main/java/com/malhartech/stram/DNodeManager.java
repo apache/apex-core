@@ -320,6 +320,7 @@ public class DNodeManager
       NodePConf pnodeConf = createNodeContext(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
       if (checkpointWindowId != null) {
+        LOG.debug("Node {} has checkpoint state {}", node.id, checkpointWindowId);
         pnodeConf.setCheckpointWindowId(checkpointWindowId);
       }
       nodes.put(pnodeConf, node);
@@ -327,7 +328,7 @@ public class DNodeManager
       for (PTOutput out : node.outputs) {
         final StreamConf streamConf = out.logicalStream;
         if (out instanceof PTOutputAdapter) {
-          NodePConf adapterNode = newAdapterNodeContext(out.id, streamConf, checkpointWindowId);
+          NodePConf adapterNode = newAdapterNodeContext(out.id, streamConf, null);
           nodes.put(adapterNode, out);
           List<PTNode> upstreamNodes = deployer.getNodes(streamConf.getSourceNode());
           if (upstreamNodes.size() == 1) {
@@ -371,8 +372,7 @@ public class DNodeManager
         final StreamConf streamConf = in.logicalStream;
         if (in instanceof PTInputAdapter) {
           // input adapter, with implementation class
-          Long checkpointWindowId = checkpoints.get(subscriberNode);
-          NodePConf adapterNode = newAdapterNodeContext(in.id, streamConf, checkpointWindowId);
+          NodePConf adapterNode = newAdapterNodeContext(in.id, streamConf, null);
           nodes.put(adapterNode, in);
           List<PTNode> subscriberNodes = deployer.getNodes(streamConf.getTargetNode());
           if (subscriberNodes.size() == 1) {

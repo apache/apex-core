@@ -23,17 +23,15 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
-import org.mortbay.log.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TopologyBuilderTest {
 
@@ -54,8 +52,8 @@ public class TopologyBuilderTest {
     
     NodeConf node1 = assertNode(nodeConfs, "node1");
     NodeConf node2 = assertNode(nodeConfs, "node2");
-    NodeConf node3 = assertNode(nodeConfs, "node3");
-    NodeConf node4 = assertNode(nodeConfs, "node4");
+    assertNode(nodeConfs, "node3");
+    assertNode(nodeConfs, "node4");
 
     assertNotNull("nodeConf for root", node1);
     assertEquals("nodeId set", "node1", node1.getId());
@@ -104,7 +102,7 @@ public class TopologyBuilderTest {
   @SuppressWarnings("unchecked")
   private <T extends AbstractNode> T initNode(NodeConf nodeConf, Configuration conf) {
     NodePConf snc = DNodeManager.createNodeContext(nodeConf.getId(), nodeConf);
-    return (T)StramChild.initNode(snc, conf);
+    return (T)StramUtils.initNode(snc, conf);
   }
   
   public void printTopology(NodeConf node, Map<String, NodeConf> allNodes, int level) {

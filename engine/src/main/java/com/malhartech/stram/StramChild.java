@@ -4,21 +4,11 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
-import com.malhartech.dag.*;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stream.BufferServerInputStream;
-import com.malhartech.stream.BufferServerOutputStream;
-import com.malhartech.stream.BufferServerStreamContext;
-import com.malhartech.stream.InlineStream;
-import java.io.*;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
@@ -26,10 +16,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.commons.beanutils.BeanUtils;
+
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FSError;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
@@ -40,6 +33,26 @@ import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.BackupAgent;
+import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.InternalNode;
+import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stream.BufferServerInputStream;
+import com.malhartech.stream.BufferServerOutputStream;
+import com.malhartech.stream.BufferServerStreamContext;
+import com.malhartech.stream.InlineStream;
 
 /**
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
@@ -163,12 +176,12 @@ public class StramChild
     }
 
     // create nodes
-    for (NodePConf snc : ctx.getNodes()) {
-      InternalNode dnode = initNode(snc, conf);
-      NodeConfiguration nc = new NodeConfiguration(snc.getProperties());
+    for (NodePConf nodeConf : ctx.getNodes()) {
+      InternalNode dnode = initOrRestoreNode(nodeConf, conf);
+      NodeConfiguration nc = new NodeConfiguration(nodeConf.getProperties());
       dnode.setup(nc);
 //      LOG.info("Initialized node {} ({})", snc.getDnodeId(), snc.getLogicalId());
-      nodeList.put(snc.getDnodeId(), dnode);
+      nodeList.put(nodeConf.getDnodeId(), dnode);
     }
 
     // wire stream connections
@@ -443,7 +456,7 @@ public class StramChild
 
     nodeList.remove(node_id);
   }
-
+  
   /**
    * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
    *
@@ -454,53 +467,12 @@ public class StramChild
   {
     assert (n.getContext() != null);
     switch (snr.getRequestType()) {
-      case SHUTDOWN:
-      //LOG.info("Received shutdown request");
-      //this.exitHeartbeatLoop = true;
-      //break;
       case REPORT_PARTION_STATS:
-      case RECONFIGURE:
         LOG.warn("Ignoring stram request {}", snr);
         break;
 
       case CHECKPOINT:
-        // the follow code needs scrubbing to ensure that the input and output are setup correctly.
-        n.getContext().requestBackup(
-          new BackupAgent()
-          {
-            private FSDataOutputStream output;
-            private String outputNodeId;
-            private long outputWindowId;
-            private long inputWindowId;
-
-            @Override
-            public OutputStream borrowOutputStream(String id, long windowId) throws IOException
-            {
-              FileSystem fs = FileSystem.get(conf);
-              Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId);
-              LOG.debug("Backup path: {}", path);
-              outputNodeId = id;
-              outputWindowId = windowId;
-              return (output = fs.create(path));
-            }
-
-            @Override
-            public void returnOutputStream(OutputStream os) throws IOException
-            {
-              assert (output == os);
-              output.close();
-              // record last backup window id for heartbeat
-              StramChild.this.backupInfo.put(outputNodeId, outputWindowId);
-            }
-
-            @Override
-            public InputStream getInputStream(String id) throws IOException
-            {
-              FileSystem fs = FileSystem.get(conf);
-              FSDataInputStream input = fs.open(new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + inputWindowId));
-              return input;
-            }
-          });
+        n.getContext().requestBackup(new HdfsBackupAgent());
         break;
 
       default:
@@ -599,43 +571,56 @@ public class StramChild
     }
   }
 
-  /**
-   * Instantiate node from configuration. (happens in the child container, not the stram master process.)
-   *
-   * @param nodeConf
-   * @param conf
-   */
-  public static InternalNode initNode(NodePConf nodeCtx, Configuration conf)
-  {
-    if (nodeCtx.getCheckpointWindowId() != 0) {
-      LOG.warn("Ignoring checkpoint {} {}", nodeCtx, nodeCtx.getCheckpointWindowId());
-    }
-    
-    try {
-      Class<? extends InternalNode> nodeClass = Class.forName(nodeCtx.getDnodeClassName()).asSubclass(InternalNode.class);
-      Constructor<? extends InternalNode> c = nodeClass.getConstructor();
-      InternalNode node = c.newInstance();
-      // populate custom properties
-      BeanUtils.populate(node, nodeCtx.getProperties());
-      return node;
-    }
-    catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Node class not found: " + nodeCtx.getDnodeClassName(), e);
-    }
-    catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Error setting node properties", e);
-    }
-    catch (InvocationTargetException e) {
-      throw new IllegalArgumentException("Error setting node properties", e);
-    }
-    catch (SecurityException e) {
-      throw new IllegalArgumentException("Error creating instance of class: " + nodeCtx.getDnodeClassName(), e);
-    }
-    catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeCtx.getDnodeClassName(), e);
-    }
-    catch (InstantiationException e) {
-      throw new IllegalArgumentException("Failed to instantiate: " + nodeCtx.getDnodeClassName(), e);
+  private InternalNode initOrRestoreNode(NodePConf nodeConf, Configuration conf) {
+    if (nodeConf.getCheckpointWindowId() != 0) {
+      LOG.info("Restore node {} to checkpoint {}", nodeConf, nodeConf.getCheckpointWindowId());
+
+      // NodeContext here only required to pass the id to restore.
+      // The actual node context will be set when activating the node.
+      NodeContext restoreCtx = new NodeContext(nodeConf.getDnodeId());    
+      try {
+        return (InternalNode)restoreCtx.restore(new HdfsBackupAgent(), nodeConf.getCheckpointWindowId());
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to restore node from checkpoint.", e);
+      }
+    } else {
+      return StramUtils.initNode(nodeConf, conf);
     }
   }
+    
+  private class HdfsBackupAgent implements BackupAgent
+  {
+    private FSDataOutputStream output;
+    private String outputNodeId;
+    private long outputWindowId;
+
+    @Override
+    public OutputStream borrowOutputStream(String id, long windowId) throws IOException
+    {
+      FileSystem fs = FileSystem.get(conf);
+      Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId);
+      LOG.debug("Backup path: {}", path);
+      outputNodeId = id;
+      outputWindowId = windowId;
+      return (output = fs.create(path));
+    }
+
+    @Override
+    public void returnOutputStream(OutputStream os) throws IOException
+    {
+      assert (output == os);
+      output.close();
+      // record last backup window id for heartbeat
+      StramChild.this.backupInfo.put(outputNodeId, outputWindowId);
+    }
+
+    @Override
+    public InputStream getInputStream(String id, long windowId) throws IOException
+    {
+      FileSystem fs = FileSystem.get(conf);
+      FSDataInputStream input = fs.open(new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId));
+      return input;
+    }
+  }
+  
 }
