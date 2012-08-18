@@ -21,11 +21,6 @@ public class BufferServerStreamContext extends StreamContext
   {
     super(upstreamNodeId, downstreamNodeId);
   }
-  
-  public void addPartition()
-  {
-    
-  }
 
   public void setId(String id)
   {

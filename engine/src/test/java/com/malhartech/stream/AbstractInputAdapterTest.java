@@ -5,10 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import org.junit.*;
 
 /**
@@ -57,14 +54,16 @@ public class AbstractInputAdapterTest
 
     final int baseSeconds = 0xcafebabe;
     final int intervalMillis = 0x1234abcd;
-    
+
     instance.getContext().setSink(new Sink()
     {
       @Override
       public void doSomething(Tuple t)
       {
         assert (t.getType() == Buffer.Data.DataType.RESET_WINDOW);
-        assert (t.getWindowId() == 0xcafebabe1234abcdL);
+        assert (t.getWindowId() == 0xcafebabe00000000L);
+        assert (((ResetWindowTuple) t).getBaseSeconds() == baseSeconds);
+        assert (((ResetWindowTuple) t).getIntervalMillis() == intervalMillis);
       }
     });
 

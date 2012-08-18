@@ -16,7 +16,7 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
  */
 public class Tuple
 {
-  private long windowId;
+  protected long windowId;
   private DataType type;
   private StreamContext context;
   private final Object object;

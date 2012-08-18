@@ -94,7 +94,7 @@ public abstract class AbstractNode implements InternalNode
   // nodes. will save on serialization/deserialization etc.
   public void emit(final Object o)
   {
-    //logger.debug("emitting {}", o);
+//    logger.debug("emitting {}", o);
     for (final StreamContext context : outputStreams) {
       emitStream(o, context);
     }
@@ -170,15 +170,15 @@ public abstract class AbstractNode implements InternalNode
       Tuple t;
       synchronized (inputQueue) {
         if ((t = inputQueue.peek()) == null) {
-//          logger.info(this + "::run " + t);
+//          logger.debug(this + " empty queue!");
           t = skipTuple;
         }
         else {
-//          logger.info(this + "::run " + t + " windows = " + insideWindowStreamCount + " context = " + t.getContext());
+//          logger.debug(this + " " + t + " windows = " + insideWindowStreamCount + " context = " + t.getContext());
           switch (t.getType()) {
             case BEGIN_WINDOW:
               if (t.getContext().getSinkState() == StreamContext.State.INSIDE_WINDOW) {
-                logger.warn("Got BEGIN_WINDOW while expecting END_WINDOW on {0}", t.getContext());
+                logger.warn("Got BEGIN_WINDOW while expecting END_WINDOW on {}", t.getContext());
                 t = skipTuple;
               }
               else if (insideWindowStreamCount == 0) {
@@ -301,6 +301,9 @@ public abstract class AbstractNode implements InternalNode
           for (StreamContext stream : outputStreams) {
             stream.sink(t);
           }
+          
+          ctx.report(consumedTupleCount, 0L);
+          consumedTupleCount = 0;
 
           /*
            * we prefer to do quite a few operations at the end of the window boundary.
@@ -313,11 +316,6 @@ public abstract class AbstractNode implements InternalNode
           // that we do not understand!
           try {
             switch (ctx.getRequestType()) {
-              case REPORT:
-                ctx.report(consumedTupleCount);
-                consumedTupleCount = 0;
-                break;
-
               case BACKUP:
                 ctx.backup(this);
                 break;

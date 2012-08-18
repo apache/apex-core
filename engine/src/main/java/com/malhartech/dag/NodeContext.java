@@ -7,10 +7,10 @@ package com.malhartech.dag;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-
 import java.io.IOException;
 import java.io.OutputStream;
-
+import java.util.ArrayList;
+import java.util.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,15 +32,11 @@ public class NodeContext implements Context
     RESTORE,
     TERMINATE
   }
-
-  public static class HeartbeatCounters
-  {
-    public volatile long tuplesProcessed;
-    public volatile long bytesProcessed;
-  }
+  
   private String id;
   private long windowId;
-  private volatile HeartbeatCounters heartbeatCounters = new HeartbeatCounters();
+  
+  private ArrayList<HeartbeatCounters> heartbeatCounters = new ArrayList<HeartbeatCounters>();
   private volatile RequestType request = RequestType.UNDEFINED;
   /**
    * The AbstractNode to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
@@ -97,20 +93,19 @@ public class NodeContext implements Context
    *
    * @return
    */
-  public HeartbeatCounters resetHeartbeatCounters()
+  public synchronized void drainHeartbeatCounters(Collection<? super HeartbeatCounters> counters)
   {
-    HeartbeatCounters counters = this.heartbeatCounters;
-    this.heartbeatCounters = new HeartbeatCounters();
-    if (request == RequestType.UNDEFINED) {
-      request = RequestType.REPORT;
-    }
-    return counters;
+    counters.addAll(heartbeatCounters);
+    heartbeatCounters.clear();
   }
 
-  synchronized void report(int consumedTupleCount)
+  synchronized void report(int consumedTupleCount, long processedBytes)
   {
-    this.heartbeatCounters.tuplesProcessed = consumedTupleCount;
-    request = RequestType.UNDEFINED;
+    HeartbeatCounters newWindow = new HeartbeatCounters();
+    newWindow.windowId = windowId;
+    newWindow.tuplesProcessed = consumedTupleCount;
+    newWindow.bytesProcessed = processedBytes;
+    heartbeatCounters.add(newWindow);
   }
 
   void backup(AbstractNode aThis) throws IOException

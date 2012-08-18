@@ -40,7 +40,7 @@ import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InternalNode;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
@@ -278,6 +278,7 @@ public class StramChild
     for (Stream s : this.streams) {
       LOG.debug("teardown " + s);
       s.teardown();
+      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
     }
 
 
@@ -325,12 +326,11 @@ public class StramChild
       // gather heartbeat info for all nodes
       for (Map.Entry<String, InternalNode> e : nodeList.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
-        HeartbeatCounters counters = e.getValue().getContext().resetHeartbeatCounters();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
-        hb.setNumberTuplesProcessed((int) counters.tuplesProcessed);
         hb.setIntervalMs(heartbeatIntervalMillis);
         hb.setCurrentWindowId(e.getValue().getContext().getCurrentWindowId());
+        e.getValue().getContext().drainHeartbeatCounters(hb.getHeartbeatsContainer());
         DNodeState state = DNodeState.PROCESSING;
         if (!activeNodeList.containsKey(e.getKey())) {
           state = DNodeState.IDLE;
@@ -448,6 +448,7 @@ public class StramChild
 
     for (Stream s : inputStreams) {
       s.teardown();
+      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
       if (s instanceof InputAdapter) {
         inputAdapters.remove((InputAdapter) s);
       }
@@ -458,6 +459,7 @@ public class StramChild
 
     for (Stream s : outputStreams) {
       s.teardown();
+      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
       streams.remove(s);
     }
 
