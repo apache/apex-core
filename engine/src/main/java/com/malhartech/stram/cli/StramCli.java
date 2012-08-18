@@ -371,39 +371,43 @@ public class StramCli
         if (tplgList.isEmpty()) {
           throw new CliException("No topology files bundled in jar, please specify one");
         }
-
-        for (int i = 0; i < tplgList.size(); i++) {
-          System.out.printf("%3d. %s\n", i + 1, tplgList.get(i));
+        else if (tplgList.size() == 1) {
+          tplgFile = tplgList.get(0);
         }
-
-        boolean useHistory = reader.getUseHistory();
-        reader.setUseHistory(false);
-        @SuppressWarnings("unchecked")
-        List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
-        for (Completor c : completors) {
-          reader.removeCompletor(c);
-        }
-        String optionLine = reader.readLine("Pick topology? ");
-        reader.setUseHistory(useHistory);
-        for (Completor c : completors) {
-          reader.addCompletor(c);
-        }
-
-        try {
-          int option = Integer.parseInt(optionLine);
-          if (0 < option && option <= tplgList.size()) {
-            tplgFile = tplgList.get(option - 1);
+        else {
+          for (int i = 0; i < tplgList.size(); i++) {
+            System.out.printf("%3d. %s\n", i + 1, tplgList.get(i));
           }
-        }
-        catch (Exception e) {
-          // ignore
+
+          boolean useHistory = reader.getUseHistory();
+          reader.setUseHistory(false);
+          @SuppressWarnings("unchecked")
+          List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
+          for (Completor c : completors) {
+            reader.removeCompletor(c);
+          }
+          String optionLine = reader.readLine("Pick topology? ");
+          reader.setUseHistory(useHistory);
+          for (Completor c : completors) {
+            reader.addCompletor(c);
+          }
+
+          try {
+            int option = Integer.parseInt(optionLine);
+            if (0 < option && option <= tplgList.size()) {
+              tplgFile = tplgList.get(option - 1);
+            }
+          }
+          catch (Exception e) {
+            // ignore
+          }
         }
       }
 
       if (tplgFile != null) {
         ApplicationId appId = submitApp.launchTopology(tplgFile);
         this.currentApp = rmClient.getApplicationReport(appId);
-        this.currentDir = ""+currentApp.getApplicationId().getId();
+        this.currentDir = "" + currentApp.getApplicationId().getId();
         System.out.println(appId);
       }
       else {

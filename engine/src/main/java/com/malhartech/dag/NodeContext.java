@@ -95,21 +95,17 @@ public class NodeContext implements Context
    */
   public synchronized void drainHeartbeatCounters(Collection<? super HeartbeatCounters> counters)
   {
-    LOG.info("rsponding to request to drain heartbeat");
     counters.addAll(heartbeatCounters);
     heartbeatCounters.clear();
-    LOG.info("done responding");
   }
 
   synchronized void report(int consumedTupleCount, long processedBytes)
   {
-    LOG.info("reporting heartbeats");
     HeartbeatCounters newWindow = new HeartbeatCounters();
     newWindow.windowId = windowId;
     newWindow.tuplesProcessed = consumedTupleCount;
     newWindow.bytesProcessed = processedBytes;
     heartbeatCounters.add(newWindow);
-    LOG.info("done reporting");
   }
 
   void backup(AbstractNode aThis) throws IOException
