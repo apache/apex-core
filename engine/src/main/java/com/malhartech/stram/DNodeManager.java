@@ -74,8 +74,8 @@ public class DNodeManager
     }
   }
     
-  final public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
-  final public ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
+  final protected Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
+  final protected ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   final private Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
@@ -125,7 +125,9 @@ public class DNodeManager
   }
 
   /**
-   * Called by Stram when a failed to container is reported by the RM to request restart.
+   * Schedule container restart. Resolves downstream dependencies and checkpoint states.
+   * Called by Stram after a failed container is reported by the RM,
+   * or after heartbeat timeout occurs.
    * @param containerId
    */
   public void restartContainer(String containerId) {

@@ -121,8 +121,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
 
       instance.setup(streamConf);
 
-      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCENODE),
-                                                                                  streamConf.get(TopologyBuilder.STREAM_TARGETNODE));
+      StreamContext ctx = new StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCENODE),
+          streamConf.get(TopologyBuilder.STREAM_TARGETNODE));
       if (targetNode == null) {
         /*
          * This is output adapter so it needs to implement the Sink interface.

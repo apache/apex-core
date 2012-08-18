@@ -76,8 +76,8 @@ public class SocketInputStream extends SimpleChannelUpstreamHandler implements S
   @Override
   public StreamContext getContext()
   {
-    //return context;
-    return contexts.get(channel);
+    return context;
+    //return contexts.get(channel); // results in NPE when called prior to activate
   }
 
   @Override

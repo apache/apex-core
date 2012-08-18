@@ -12,6 +12,7 @@ import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -43,6 +44,7 @@ import com.malhartech.dag.NodeContext.HeartbeatCounters;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -97,9 +99,10 @@ public class StramChild
    * @param sc
    * @param ctx
    */
-  private void initStream(StreamPConf sc, StreamingContainerContext ctx)
+  private void initStream(StreamPConf sc, Map<String, NodePConf> nodeConfMap)
   {
     InternalNode sourceNode = nodeList.get(sc.getSourceNodeId());
+    
     if (sourceNode instanceof AdapterWrapperNode) {
       AdapterWrapperNode wrapper = (AdapterWrapperNode) sourceNode;
       // input adapter
@@ -110,13 +113,13 @@ public class StramChild
     if (sc.isInline()) {
       LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
       InlineStream stream = new InlineStream();
-      com.malhartech.dag.StreamContext dsc = new com.malhartech.dag.StreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
+      StreamContext dsc = new StreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
+      dsc.setStartingWindowId(nodeConfMap.get(sc.getSourceNodeId()).getCheckpointWindowId());
       stream.setContext(dsc);
-      Sink sink = targetNode.getSink(dsc);
 
+      Sink sink = targetNode.getSink(dsc);
 //      LOG.info(dsc + " setting sink to " + sink);
       dsc.setSink(sink);
-
       // operation is additive - there can be multiple output streams
       sourceNode.addOutputStream(dsc);
     }
@@ -128,12 +131,13 @@ public class StramChild
       BufferServerStreamContext streamContext = new BufferServerStreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
       streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
       streamContext.setId(sc.getId());
-
+      
       StreamConfiguration streamConf = new StreamConfiguration(sc.getProperties());
       streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
       if (sourceNode != null) {
         // setup output stream as sink for source node
 //        LOG.info("Node {} is publisher for {}/{}", new Object[]{sourceNode, sc.getId(), sc.getSourceNodeId()});
+        streamContext.setStartingWindowId(nodeConfMap.get(sc.getSourceNodeId()).getCheckpointWindowId());
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(streamConf);
 
@@ -146,6 +150,8 @@ public class StramChild
       }
 
       if (targetNode != null) {
+        streamContext.setStartingWindowId(nodeConfMap.get(sc.getTargetNodeId()).getCheckpointWindowId());
+
         Sink sink = targetNode.getSink(streamContext);
 //        LOG.info(streamContext + " setting sink to " + sink);
 
@@ -175,8 +181,11 @@ public class StramChild
       this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
     }
 
+    final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
+    
     // create nodes
     for (NodePConf nodeConf : ctx.getNodes()) {
+      nodeConfMap.put(nodeConf.getDnodeId(), nodeConf);
       InternalNode dnode = initOrRestoreNode(nodeConf, conf);
       NodeConfiguration nc = new NodeConfiguration(nodeConf.getProperties());
       dnode.setup(nc);
@@ -190,13 +199,13 @@ public class StramChild
       if (sc.getSourceNodeId() == null || sc.getTargetNodeId() == null) {
         throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.getId());
       }
-      initStream(sc, ctx);
+      initStream(sc, nodeConfMap);
     }
 
     // ideally we would like to activate the output streams for a node before the input streams
     // are activated. But does not look like we have that fine control here. we should get it.
     for (Stream s : this.streams) {
-//      LOG.info("activate " + s);
+      LOG.debug("activate {} with startWindowId {}", s, s.getContext().getStartingWindowId());
       s.activate();
     }
 
@@ -209,7 +218,10 @@ public class StramChild
         @Override
         public void run()
         {
-          node.start(new NodeContext(id));
+          NodePConf nodeConf = nodeConfMap.get(id);
+          NodeContext nc = new NodeContext(id);
+          nc.setCurrentWindowId(nodeConf.getCheckpointWindowId());
+          node.start(nc);
           /*
            * processing has ended
            */
