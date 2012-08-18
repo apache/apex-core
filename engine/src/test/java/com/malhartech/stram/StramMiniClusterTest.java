@@ -1,6 +1,5 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
- * All rights reserved.
+ * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
  */
 package com.malhartech.stram;
 
@@ -42,25 +41,26 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.NodeContext.HeartbeatCounters;
+import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stream.HDFSOutputStream;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
-public class StramMiniClusterTest {
-  
+public class StramMiniClusterTest
+{
   private static Logger LOG = LoggerFactory.getLogger(StramMiniClusterTest.class);
   protected static MiniYARNCluster yarnCluster = null;
-  protected static Configuration conf = new Configuration();  
-  
+  protected static Configuration conf = new Configuration();
+
   @BeforeClass
-  public static void setup() throws InterruptedException, IOException {
+  public static void setup() throws InterruptedException, IOException
+  {
     LOG.info("Starting up YARN cluster");
     conf.setInt(YarnConfiguration.RM_SCHEDULER_MINIMUM_ALLOCATION_MB, 128);
     conf.setInt("yarn.nodemanager.vmem-pmem-ratio", 10); // workaround to avoid containers being killed because java allocated too much vmem
-    
+
     StringBuilder adminEnv = new StringBuilder();
     if (System.getenv("JAVA_HOME") == null) {
       adminEnv.append("JAVA_HOME=").append(System.getProperty(System.getProperty("java.home")));
@@ -69,12 +69,12 @@ public class StramMiniClusterTest {
     adminEnv.append("MALLOC_ARENA_MAX=4"); // see MAPREDUCE-3068, MAPREDUCE-3065
     adminEnv.append(",");
     adminEnv.append("CLASSPATH=").append(getTestRuntimeClasspath());
-    
-    conf.set(YarnConfiguration.NM_ADMIN_USER_ENV,adminEnv.toString()); 
-    
+
+    conf.set(YarnConfiguration.NM_ADMIN_USER_ENV, adminEnv.toString());
+
     if (yarnCluster == null) {
       yarnCluster = new MiniYARNCluster(StramMiniClusterTest.class.getName(),
-          1, 1, 1);
+                                        1, 1, 1);
       yarnCluster.init(conf);
       yarnCluster.start();
       URL url = Thread.currentThread().getContextClassLoader().getResource("yarn-site.xml");
@@ -89,48 +89,53 @@ public class StramMiniClusterTest {
     }
     try {
       Thread.sleep(2000);
-    } catch (InterruptedException e) {
+    }
+    catch (InterruptedException e) {
       LOG.info("setup thread sleep interrupted. message=" + e.getMessage());
-    } 
+    }
   }
 
   @AfterClass
-  public static void tearDown() throws IOException {
+  public static void tearDown() throws IOException
+  {
     if (yarnCluster != null) {
       yarnCluster.stop();
       yarnCluster = null;
     }
   }
 
-  private File createTmpPropFile(Properties props) throws IOException {
+  private File createTmpPropFile(Properties props) throws IOException
+  {
     File tmpFile = File.createTempFile("stram-junit", ".properties");
     tmpFile.deleteOnExit();
     props.store(new FileOutputStream(tmpFile), "StramMiniClusterTest.test1");
     LOG.info("topology: " + tmpFile);
     return tmpFile;
-  }  
- // @Ignore
+  }
+  // @Ignore
+
   @Test
-  public void testSetupShutdown() throws Exception {
+  public void testSetupShutdown() throws Exception
+  {
 
 
-    GetClusterNodesRequest request = 
-        Records.newRecord(GetClusterNodesRequest.class);
+    GetClusterNodesRequest request =
+                           Records.newRecord(GetClusterNodesRequest.class);
     ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
     GetClusterNodesResponse response = clientRMService.getClusterNodes(request);
     List<NodeReport> nodeReports = response.getNodeReports();
     System.out.println(nodeReports);
-    
+
     for (NodeReport nr : nodeReports) {
       System.out.println("Node: " + nr.getNodeId());
       System.out.println("Total memory: " + nr.getCapability());
       System.out.println("Used memory: " + nr.getUsed());
       System.out.println("Number containers: " + nr.getNumContainers());
     }
-    
-    String appMasterJar = JarFinder.getJar(StramAppMaster.class);   
+
+    String appMasterJar = JarFinder.getJar(StramAppMaster.class);
     LOG.info("appmaster jar: " + appMasterJar);
-    String testJar = JarFinder.getJar(StramMiniClusterTest.class);   
+    String testJar = JarFinder.getJar(StramMiniClusterTest.class);
     LOG.info("testJar: " + testJar);
 
     // create test topology
@@ -145,11 +150,11 @@ public class StramMiniClusterTest {
     props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
     props.put("stram.stream.output.inputNode", "node2");
     props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
-    
+
     props.put("stram.stream.n1n2.inputNode", "node1");
     props.put("stram.stream.n1n2.outputNode", "node2");
     props.put("stram.stream.n1n2.template", "defaultstream");
-    
+
     props.put("stram.node.node1.classname", TopologyBuilderTest.EchoNode.class.getName());
     props.put("stram.node.node1.myStringProperty", "myStringPropertyValue");
 
@@ -159,12 +164,12 @@ public class StramMiniClusterTest {
     props.setProperty(TopologyBuilder.STRAM_CONTAINER_MEMORY_MB, "64");
     props.setProperty(TopologyBuilder.STRAM_DEBUG, "true");
     props.setProperty(TopologyBuilder.NUM_CONTAINERS, "2");
-    
+
     File tmpFile = createTmpPropFile(props);
-    
+
     String[] args = {
-        "--topologyProperties",
-        tmpFile.getAbsolutePath()
+      "--topologyProperties",
+      tmpFile.getAbsolutePath()
     };
 
     LOG.info("Initializing Client");
@@ -180,28 +185,30 @@ public class StramMiniClusterTest {
 
     LOG.info("Client run completed. Result=" + result);
     Assert.assertTrue(result);
-      
+
   }
 
   /**
    * Verify the web service deployment and lifecycle functionality
+   *
    * @throws Exception
    */
   @Ignore //disabled due to web service init delay issue
   @Test
-  public void testWebService() throws Exception {
+  public void testWebService() throws Exception
+  {
 
     // single container topology of inline input and node
     Properties props = new Properties();
     props.put("stram.stream.input.classname", NumberGeneratorInputAdapter.class.getName());
     props.put("stram.stream.input.outputNode", "node1");
     props.put("stram.node.node1.classname", NoTimeoutTestNode.class.getName());
-    
+
     File tmpFile = createTmpPropFile(props);
-    
+
     String[] args = {
-        "--topologyProperties",
-        tmpFile.getAbsolutePath()
+      "--topologyProperties",
+      tmpFile.getAbsolutePath()
     };
 
     LOG.info("Initializing Client");
@@ -221,29 +228,26 @@ public class StramMiniClusterTest {
       Thread.sleep(5000); // delay to give web service time to fully initialize
       Client wsClient = Client.create();
       wsClient.setFollowRedirects(true);
-      WebResource r = wsClient.resource("http://" + appReport.getTrackingUrl())
-          .path("ws").path("v1").path("stram").path("info");
+      WebResource r = wsClient.resource("http://" + appReport.getTrackingUrl()).path("ws").path("v1").path("stram").path("info");
       LOG.info("Requesting: " + r.getURI());
-      ClientResponse response = r.accept(MediaType.APPLICATION_JSON)
-          .get(ClientResponse.class);
+      ClientResponse response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
       JSONObject json = response.getEntity(JSONObject.class);
       LOG.info("Got response: " + json.toString());
-      assertEquals("incorrect number of elements", 1, json.length());    
+      assertEquals("incorrect number of elements", 1, json.length());
       assertEquals("appId", appReport.getApplicationId().toString(), json.getJSONObject("info").get("appId"));
-      
-      
-      r = wsClient.resource("http://" + appReport.getTrackingUrl())
-          .path("ws").path("v1").path("stram").path("nodes");
+
+
+      r = wsClient.resource("http://" + appReport.getTrackingUrl()).path("ws").path("v1").path("stram").path("nodes");
       LOG.info("Requesting: " + r.getURI());
-      response = r.accept(MediaType.APPLICATION_JSON)
-          .get(ClientResponse.class);
+      response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
       json = response.getEntity(JSONObject.class);
       LOG.info("Got response: " + json.toString());
-      
-      
-    } finally {
+
+
+    }
+    finally {
       //LOG.info("waiting...");
       //synchronized (this) {
       //  this.wait();
@@ -251,13 +255,14 @@ public class StramMiniClusterTest {
       //boolean result = client.monitorApplication();
       client.killApplication();
     }
-      
+
 //    LOG.info("Client run completed. Result=" + result);
 //    Assert.assertTrue(result);
-    
+
   }
-  
-  private static String getTestRuntimeClasspath() {
+
+  private static String getTestRuntimeClasspath()
+  {
 
     InputStream classpathFileStream = null;
     BufferedReader reader = null;
@@ -270,10 +275,10 @@ public class StramMiniClusterTest {
       // Check maven ppom.xml for generated classpath info
       // Works if compile time env is same as runtime. Mainly tests.
       ClassLoader thisClassLoader =
-          Thread.currentThread().getContextClassLoader();
+                  Thread.currentThread().getContextClassLoader();
       String generatedClasspathFile = "mrapp-generated-classpath";
       classpathFileStream =
-          thisClassLoader.getResourceAsStream(generatedClasspathFile);
+      thisClassLoader.getResourceAsStream(generatedClasspathFile);
       if (classpathFileStream == null) {
         LOG.info("Could not classpath resource from class loader");
         return envClassPath;
@@ -286,9 +291,10 @@ public class StramMiniClusterTest {
       }
       // Put the file itself on classpath for tasks.
       envClassPath += thisClassLoader.getResource(generatedClasspathFile).getFile();
-    } catch (IOException e) {
+    }
+    catch (IOException e) {
       LOG.info("Could not find the necessary resource to generate class path for tests. Error=" + e.getMessage());
-    } 
+    }
 
     try {
       if (classpathFileStream != null) {
@@ -297,48 +303,57 @@ public class StramMiniClusterTest {
       if (reader != null) {
         reader.close();
       }
-    } catch (IOException e) {
+    }
+    catch (IOException e) {
       LOG.info("Failed to close class path file stream or reader. Error=" + e.getMessage());
-    } 
+    }
     return envClassPath;
-  }     
+  }
 
-
-  public static class TestDNode extends AbstractNode {
-
+  @SuppressWarnings("PublicInnerClass")
+  public static class TestDNode extends AbstractNode
+  {
+    @SuppressWarnings("PackageVisibleField")
     int getResetCount = 0;
-    Long[] tupleCounts = new Long[0];
-    
-    public HeartbeatCounters resetHeartbeatCounters() {
+    @SuppressWarnings("PackageVisibleField")
+    Integer[] tupleCounts = new Integer[0];
+
+    public HeartbeatCounters resetHeartbeatCounters()
+    {
       HeartbeatCounters stats = new HeartbeatCounters();
       if (tupleCounts.length == 0) {
-          stats.tuplesProcessed = 0;
-      } else {
+        stats.tuplesProcessed = 0;
+      }
+      else {
         int count = getResetCount++ % (tupleCounts.length);
         stats.tuplesProcessed = tupleCounts[count];
       }
       return stats;
     }
 
-    public String getTupleCounts() {
+    public String getTupleCounts()
+    {
       return StringUtils.join(tupleCounts, ",");
     }
 
     /**
      * used to parameterize test node for heartbeat reporting
+     *
      * @param tupleCounts
      */
-    public void setTupleCounts(String tupleCounts) {
+    public void setTupleCounts(String tupleCounts)
+    {
       String[] scounts = StringUtils.splitByWholeSeparator(tupleCounts, ",");
-      Long[] counts = new Long[scounts.length];
-      for (int i=0; i<scounts.length; i++) {
-        counts[i] = new Long(scounts[i].trim());
+      Integer[] counts = new Integer[scounts.length];
+      for (int i = 0; i < scounts.length; i++) {
+        counts[i] = new Integer(scounts[i].trim());
       }
       this.tupleCounts = counts;
     }
 
     @Override
-    public void process(Object payload) {
+    public void process(Object payload)
+    {
       LOG.info("Designed to do nothing!");
     }
 
@@ -356,14 +371,14 @@ public class StramMiniClusterTest {
       ctx = nodeContext;
     }
   }
-  
 
-  public static class NoTimeoutTestNode extends TestDNode {
-
+  @SuppressWarnings("PublicInnerClass")
+  public static class NoTimeoutTestNode extends TestDNode
+  {
     @Override
-    public void handleIdleTimeout() {
+    public void handleIdleTimeout()
+    {
       // does not timeout
     }
-    
   }
 }

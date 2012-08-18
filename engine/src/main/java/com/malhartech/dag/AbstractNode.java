@@ -301,6 +301,9 @@ public abstract class AbstractNode implements InternalNode
           for (StreamContext stream : outputStreams) {
             stream.sink(t);
           }
+          
+          ctx.report(consumedTupleCount, 0L);
+          consumedTupleCount = 0;
 
           /*
            * we prefer to do quite a few operations at the end of the window boundary.
@@ -313,11 +316,6 @@ public abstract class AbstractNode implements InternalNode
           // that we do not understand!
           try {
             switch (ctx.getRequestType()) {
-              case REPORT:
-                ctx.report(consumedTupleCount);
-                consumedTupleCount = 0;
-                break;
-
               case BACKUP:
                 ctx.backup(this);
                 break;
