@@ -21,10 +21,14 @@
  *  a logical stream does not go through the buffer server and hence would not have BufferServerStream objects
  * BufferServerOutputStream: extends SocketOutputStream and in conjunction with BufferServerInputStream forms a complete stream in a node->buffer server->node path
  * 
- * ConsoleOutputStream:
- * InlineStream:
+ * ConsoleOutputStream: Extends Stream class. Writes directly to stdout. The data would show up in the stdout of Hadoop container in which the node runs. This
+ *  is a very good way to debug. Care must be taken to avoid connecting ConsoleOutputStream to an output of a node with high throughput
+ 
+ * InlineStream: Deprecated. Not in use
+ * 
  * KafkaInputStream:
  * KafkaOutputStream:
+ * 
  * SocketInputStream:
  * SocketOutputStream:
  * 
