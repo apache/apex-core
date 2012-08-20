@@ -133,7 +133,7 @@ public class SocketStreamTest
     LOG.debug("input stream activated");
 
 
-    LOG.info("Sending hello message");
+    LOG.debug("Sending hello message");
     oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0, ossContext));
     oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));

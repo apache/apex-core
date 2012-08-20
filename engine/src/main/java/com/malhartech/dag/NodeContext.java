@@ -22,9 +22,9 @@ import org.slf4j.LoggerFactory;
 public class NodeContext implements Context
 {
   private static Logger LOG = LoggerFactory.getLogger(NodeContext.class);
-  
   private BackupAgent backupAgent;
 
+  @SuppressWarnings("PublicInnerClass")
   public static enum RequestType
   {
     UNDEFINED,
@@ -33,13 +33,10 @@ public class NodeContext implements Context
     RESTORE,
     TERMINATE
   }
-  
   private String id;
   private long windowId;
-  
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
-
   private volatile RequestType request = RequestType.UNDEFINED;
   /**
    * The AbstractNode to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.

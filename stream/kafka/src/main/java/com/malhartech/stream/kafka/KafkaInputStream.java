@@ -2,9 +2,10 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.malhartech.stream.kafka;
 
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.stream.AbstractInputAdapter;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
