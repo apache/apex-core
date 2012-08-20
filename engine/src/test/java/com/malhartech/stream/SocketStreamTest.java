@@ -3,23 +3,40 @@
  */
 package com.malhartech.stream;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.beanutils.BeanUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.*;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.SerDe;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.Tuple;
+import com.malhartech.stram.AdapterWrapperNode;
+import com.malhartech.stram.DNodeManager;
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
+import com.malhartech.stram.NumberGeneratorInputAdapter;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.*;
+import com.malhartech.stram.TopologyBuilderTest;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.beanutils.BeanUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -116,7 +133,7 @@ public class SocketStreamTest
     LOG.debug("input stream activated");
 
 
-    LOG.info("Sending hello message");
+    LOG.debug("Sending hello message");
     oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0, ossContext));
     oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
     oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
@@ -132,26 +149,21 @@ public class SocketStreamTest
 
   }
 
-  public static class TestChildContainer extends StramChild
-  {
-    public TestChildContainer(String containerId)
-    {
-      super(containerId, new Configuration(), null);
-    }
-
-    @Override
-    public void init(StreamingContainerContext ctx) throws IOException
-    {
-      super.init(ctx);
-    }
-
-    @Override
-    public void shutdown()
-    {
-      super.shutdown();
-    }
-  }
-
+  /**
+   * Test to verify the adapter wrapper node initialization from properties.
+   * @throws Exception
+   */
+  @Test
+  public void testAdapterWrapperNodeInit() throws Exception {
+    AdapterWrapperNode wn = new AdapterWrapperNode();
+    Map<String, String> properties = new HashMap<String, String>();
+    properties.put(AdapterWrapperNode.KEY_IS_INPUT, "true");
+    properties.put(AdapterWrapperNode.CHECKPOINT_WINDOW_ID, "999");
+    BeanUtils.populate(wn, properties);
+    Assert.assertTrue(wn.isInput());
+    Assert.assertEquals(999, wn.getCheckPointWindowId());
+  }  
+  
   /**
    * Instantiate physical model with adapters and partitioning in mock container.
    *
@@ -160,12 +172,6 @@ public class SocketStreamTest
   @Test
   public void testStramChildInit() throws Exception
   {
-    AdapterWrapperNode wn = new AdapterWrapperNode();
-    Map<String, String> properties = new HashMap<String, String>();
-    properties.put(AdapterWrapperNode.KEY_IS_INPUT, "true");
-    BeanUtils.populate(wn, properties);
-    Assert.assertTrue(wn.isInput());
-
     TopologyBuilder b = new TopologyBuilder(new Configuration());
 
     NodeConf node1 = b.getOrAddNode("node1");
@@ -194,19 +200,19 @@ public class SocketStreamTest
                         expectedContainerCount,
                         dnm.getNumRequiredContainers());
 
-    List<TestChildContainer> containers = new ArrayList<TestChildContainer>();
+    List<LocalStramChild> containers = new ArrayList<LocalStramChild>();
 
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
       StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-      TestChildContainer container = new TestChildContainer(containerId);
+      LocalStramChild container = new LocalStramChild(containerId, null);
       container.init(cc);
       containers.add(container);
     }
 
     // TODO: validate data flow
 
-    for (TestChildContainer cc : containers) {
+    for (LocalStramChild cc : containers) {
       LOG.info("shutting down " + cc);
       cc.shutdown();
     }

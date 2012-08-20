@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -22,6 +21,7 @@ import org.junit.Test;
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.InputAdapter;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
@@ -30,7 +30,6 @@ import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import com.malhartech.stream.SocketStreamTest.TestChildContainer;
 
 /**
  *
@@ -48,16 +47,7 @@ public class CheckpointTest {
       throw new RuntimeException("could not cleanup test dir", e);
     }     
   }
-  
-  @Test
-  public void testAdapterWrapperNodeInit() throws Exception {
-    AdapterWrapperNode wn = new AdapterWrapperNode();
-    Map<String, String> properties = new HashMap<String, String>();
-    properties.put(AdapterWrapperNode.KEY_IS_INPUT, "true");
-    BeanUtils.populate(wn, properties);
-    Assert.assertTrue(wn.isInput());
-  }  
-  
+    
   /**
    * Test saving of node state at window boundary.
    *
@@ -87,7 +77,7 @@ public class CheckpointTest {
 
     String containerId = "container1";
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
-    TestChildContainer container = new TestChildContainer(containerId);
+    LocalStramChild container = new LocalStramChild(containerId, null);
     cc.setWindowSizeMillis(0); // disable window generator
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);

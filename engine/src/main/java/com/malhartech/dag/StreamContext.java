@@ -4,6 +4,8 @@
  */
 package com.malhartech.dag;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,6 +164,11 @@ public class StreamContext implements Context
   @Override
   public String toString()
   {
-    return " tuples = " + tupleCount + " state = " + sinkState;
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+    .append("sourceId", sourceId)
+    .append("sinkId", sinkId)
+    .append("tuples" , tupleCount)
+    .append("state", sinkState)
+    .toString();
   }
 }

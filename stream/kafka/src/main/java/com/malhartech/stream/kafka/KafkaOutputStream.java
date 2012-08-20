@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.malhartech.stream.kafka;
 
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
