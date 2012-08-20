@@ -121,6 +121,8 @@ public class StramChild
       dsc.setSink(sink);
       // operation is additive - there can be multiple output streams
       sourceNode.addOutputStream(dsc);
+      
+      this.streams.add(stream);
     }
     else {
 
