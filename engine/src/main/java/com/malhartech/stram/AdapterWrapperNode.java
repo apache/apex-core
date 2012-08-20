@@ -3,25 +3,41 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.*;
-import com.malhartech.stram.conf.TopologyBuilder;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
+
 import org.apache.commons.beanutils.BeanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
+import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
  * Wrapper node to connects adapter "stream" to another source or sink stream. Provides uniform view of adapter as node for stram deployment and monitoring.
  */
 public class AdapterWrapperNode extends AbstractNode implements Sink
 {
-  private final static Logger logger = LoggerFactory.getLogger(AdapterWrapperNode.class);
+  private final static Logger LOG = LoggerFactory.getLogger(AdapterWrapperNode.class);
   public static final String KEY_STREAM_CLASS_NAME = "streamClassName";
   public static final String KEY_IS_INPUT = "input";
+  /**
+   * Window id for underlying stream initialization.
+   * Passed through properties, since the adapter nodes are not part of the backup protocol. 
+   **/
+  public static final String CHECKPOINT_WINDOW_ID = "checkPointWindowId";
+  
   private boolean isInput;
   private String streamClassName;
+  private long checkPointWindowId;
   private Stream adapterStream = null;
 
   public String getStreamClassName()
@@ -32,6 +48,14 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   public void setStreamClassName(String streamClassName)
   {
     this.streamClassName = streamClassName;
+  }
+
+  public long getCheckPointWindowId() {
+    return checkPointWindowId;
+  }
+
+  public void setCheckPointWindowId(long checkPointWindowId) {
+    this.checkPointWindowId = checkPointWindowId;
   }
 
   public boolean isInput()
@@ -59,7 +83,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   @Override
   public void doSomething(Tuple t)
   {
-    logger.debug("sending tuple {}", t);
+    LOG.debug("sending tuple {}", t);
     this.sink.sink(t);
   }
 
@@ -75,6 +99,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     else {
       adapterStream = initAdapterStream(streamConf, null);
     }
+    LOG.debug("adapter stream {} with startWindowId {}", adapterStream, adapterStream.getContext().getStartingWindowId());
   }
 
   @Override
@@ -122,8 +147,10 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
 
       instance.setup(streamConf);
 
-      com.malhartech.dag.StreamContext ctx = new com.malhartech.dag.StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCENODE),
-                                                                                  streamConf.get(TopologyBuilder.STREAM_TARGETNODE));
+      long checkpointWindowId = streamConf.getLong(CHECKPOINT_WINDOW_ID, 0);
+      StreamContext ctx = new StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCENODE),
+          streamConf.get(TopologyBuilder.STREAM_TARGETNODE));
+      ctx.setStartingWindowId(checkpointWindowId);
       if (targetNode == null) {
         /*
          * This is output adapter so it needs to implement the Sink interface.

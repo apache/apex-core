@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -48,16 +47,7 @@ public class CheckpointTest {
       throw new RuntimeException("could not cleanup test dir", e);
     }     
   }
-  
-  @Test
-  public void testAdapterWrapperNodeInit() throws Exception {
-    AdapterWrapperNode wn = new AdapterWrapperNode();
-    Map<String, String> properties = new HashMap<String, String>();
-    properties.put(AdapterWrapperNode.KEY_IS_INPUT, "true");
-    BeanUtils.populate(wn, properties);
-    Assert.assertTrue(wn.isInput());
-  }  
-  
+    
   /**
    * Test saving of node state at window boundary.
    *

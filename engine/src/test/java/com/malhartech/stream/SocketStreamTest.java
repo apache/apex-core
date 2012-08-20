@@ -153,6 +153,21 @@ public class SocketStreamTest
   }
 
   /**
+   * Test to verify the adapter wrapper node initialization from properties.
+   * @throws Exception
+   */
+  @Test
+  public void testAdapterWrapperNodeInit() throws Exception {
+    AdapterWrapperNode wn = new AdapterWrapperNode();
+    Map<String, String> properties = new HashMap<String, String>();
+    properties.put(AdapterWrapperNode.KEY_IS_INPUT, "true");
+    properties.put(AdapterWrapperNode.CHECKPOINT_WINDOW_ID, "999");
+    BeanUtils.populate(wn, properties);
+    Assert.assertTrue(wn.isInput());
+    Assert.assertEquals(999, wn.getCheckPointWindowId());
+  }  
+  
+  /**
    * Instantiate physical model with adapters and partitioning in mock container.
    *
    * @throws Exception
@@ -160,12 +175,6 @@ public class SocketStreamTest
   @Test
   public void testStramChildInit() throws Exception
   {
-    AdapterWrapperNode wn = new AdapterWrapperNode();
-    Map<String, String> properties = new HashMap<String, String>();
-    properties.put(AdapterWrapperNode.KEY_IS_INPUT, "true");
-    BeanUtils.populate(wn, properties);
-    Assert.assertTrue(wn.isInput());
-
     TopologyBuilder b = new TopologyBuilder(new Configuration());
 
     NodeConf node1 = b.getOrAddNode("node1");

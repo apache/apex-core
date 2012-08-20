@@ -74,8 +74,8 @@ public class DNodeManager
     }
   }
     
-  final public Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
-  final public ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
+  final protected Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
+  final protected ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   final private Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
@@ -125,7 +125,9 @@ public class DNodeManager
   }
 
   /**
-   * Called by Stram when a failed to container is reported by the RM to request restart.
+   * Schedule container restart. Resolves downstream dependencies and checkpoint states.
+   * Called by Stram after a failed container is reported by the RM,
+   * or after heartbeat timeout occurs.
    * @param containerId
    */
   public void restartContainer(String containerId) {
@@ -230,12 +232,12 @@ public class DNodeManager
     }
     properties.put(AdapterWrapperNode.KEY_STREAM_CLASS_NAME, streamClassName);
     properties.put(AdapterWrapperNode.KEY_IS_INPUT, String.valueOf(streamConf.getSourceNode() == null));
+    if (checkpointWindowId != null) {
+      properties.put(AdapterWrapperNode.CHECKPOINT_WINDOW_ID, String.valueOf(checkpointWindowId.longValue()));
+    }
     snc.setProperties(properties);
     snc.setLogicalId(streamConf.getId());
     snc.setDnodeId(id);
-    if (checkpointWindowId != null) {
-      snc.setCheckpointWindowId(checkpointWindowId.longValue());
-    }
     return snc;
   }
 
@@ -328,7 +330,7 @@ public class DNodeManager
       for (PTOutput out : node.outputs) {
         final StreamConf streamConf = out.logicalStream;
         if (out instanceof PTOutputAdapter) {
-          NodePConf adapterNode = newAdapterNodeContext(out.id, streamConf, null);
+          NodePConf adapterNode = newAdapterNodeContext(out.id, streamConf, checkpointWindowId);
           nodes.put(adapterNode, out);
           List<PTNode> upstreamNodes = deployer.getNodes(streamConf.getSourceNode());
           if (upstreamNodes.size() == 1) {
@@ -372,7 +374,7 @@ public class DNodeManager
         final StreamConf streamConf = in.logicalStream;
         if (in instanceof PTInputAdapter) {
           // input adapter, with implementation class
-          NodePConf adapterNode = newAdapterNodeContext(in.id, streamConf, null);
+          NodePConf adapterNode = newAdapterNodeContext(in.id, streamConf, checkpoints.get(subscriberNode));
           nodes.put(adapterNode, in);
           List<PTNode> subscriberNodes = deployer.getNodes(streamConf.getTargetNode());
           if (subscriberNodes.size() == 1) {
