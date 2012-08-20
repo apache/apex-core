@@ -12,7 +12,6 @@ import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.ipc.ProtocolSignature;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.Server;
-import org.apache.hadoop.mapred.TaskUmbilicalProtocol;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.v2.app.security.authorize.MRAMPolicyProvider;
 import org.apache.hadoop.net.NetUtils;
@@ -100,7 +99,7 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
 
   @Override
   public long getProtocolVersion(String arg0, long arg1) throws IOException {
-    return TaskUmbilicalProtocol.versionID;
+    return StreamingNodeUmbilicalProtocol.versionID;
   }
 
   @Override

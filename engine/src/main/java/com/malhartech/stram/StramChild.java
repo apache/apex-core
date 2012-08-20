@@ -303,7 +303,7 @@ public class StramChild
 
   }
 
-  private void heartbeatLoop() throws IOException
+  protected void heartbeatLoop() throws IOException
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);

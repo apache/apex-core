@@ -21,6 +21,7 @@ import org.junit.Test;
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.InputAdapter;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
@@ -29,7 +30,6 @@ import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import com.malhartech.stream.SocketStreamTest.TestChildContainer;
 
 /**
  *
@@ -77,7 +77,7 @@ public class CheckpointTest {
 
     String containerId = "container1";
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
-    TestChildContainer container = new TestChildContainer(containerId);
+    LocalStramChild container = new LocalStramChild(containerId, null);
     cc.setWindowSizeMillis(0); // disable window generator
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);

@@ -119,7 +119,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
   }
 
   @Override
-  public Sink getSink(com.malhartech.dag.StreamContext context)
+  public Sink getSink(StreamContext context)
   {
     if (isInput()) {
       return this;
