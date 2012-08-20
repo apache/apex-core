@@ -12,11 +12,16 @@
  * 
  * AbstractActiveMQInputStream: Provides implementation to read from ActiveMQ. Users need to provide getObject implementation. (See example in InputActiveMQStreamTest)
  * ActiveMQOutputStream: TBD
+ * 
  * AbstractHDFSInputStream: Provides implementation of reading from HDFS. Users need to probide getRecord implementation. (See example of HDFSInputStream in com.malhartech.example.wordcount)
- * BufferServerInputStream: 
- * BufferServerOutputStream:
+ *  HDFSOutputStream:
+ * 
+ * BufferServerInputStream: extends SocketInputStream, takes data from buffer server into the node. Every logical stream will have at least two such objects (BufferServerInputStream
+ *  and BufferServerOutputStream). If the logical stream gets partitioned into physical streams then each of these physical streams will have these objects. Inlined version of
+ *  a logical stream does not go through the buffer server and hence would not have BufferServerStream objects
+ * BufferServerOutputStream: extends SocketOutputStream and in conjunction with BufferServerInputStream forms a complete stream in a node->buffer server->node path
+ * 
  * ConsoleOutputStream:
- * HDFSOutputStream:
  * InlineStream:
  * KafkaInputStream:
  * KafkaOutputStream:
