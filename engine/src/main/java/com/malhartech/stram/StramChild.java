@@ -40,7 +40,6 @@ import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InternalNode;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
