@@ -14,14 +14,14 @@
  * ActiveMQOutputStream: TBD
  * AbstractHDFSInputStream: Provides implementation of reading from HDFS. Users need to probide getRecord implementation. (See example of HDFSInputStream in com.malhartech.example.wordcount)
  * BufferServerInputStream: 
- * BufferServerOutputStream
- * ConsoleOutputStream
- * HDFSOutputStream
- * InlineStream
- * KafkaInputStream
- * KafkaOutputStream
- * SocketInputStream
- * SocketOutputStream
+ * BufferServerOutputStream:
+ * ConsoleOutputStream:
+ * HDFSOutputStream:
+ * InlineStream:
+ * KafkaInputStream:
+ * KafkaOutputStream:
+ * SocketInputStream:
+ * SocketOutputStream:
  * 
  * 
  * A tuple emitted by the writer node is automatically routed to the consumer nodes by the streaming platform
