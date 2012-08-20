@@ -7,9 +7,10 @@ package com.malhartech.dag;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.malhartech.util.CircularBuffer;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
+import java.nio.BufferOverflowException;
 import java.util.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +37,9 @@ public class NodeContext implements Context
   private String id;
   private long windowId;
   
-  private ArrayList<HeartbeatCounters> heartbeatCounters = new ArrayList<HeartbeatCounters>();
+  // the size of the circular queue should be configurable. hardcoded to 1024 for now.
+  private CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
+
   private volatile RequestType request = RequestType.UNDEFINED;
   /**
    * The AbstractNode to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
@@ -93,10 +96,9 @@ public class NodeContext implements Context
    *
    * @return
    */
-  public synchronized void drainHeartbeatCounters(Collection<? super HeartbeatCounters> counters)
+  public final synchronized int drainHeartbeatCounters(Collection<? super HeartbeatCounters> counters)
   {
-    counters.addAll(heartbeatCounters);
-    heartbeatCounters.clear();
+    return heartbeatCounters.drainTo(counters);
   }
 
   synchronized void report(int consumedTupleCount, long processedBytes)
@@ -105,7 +107,13 @@ public class NodeContext implements Context
     newWindow.windowId = windowId;
     newWindow.tuplesProcessed = consumedTupleCount;
     newWindow.bytesProcessed = processedBytes;
-    heartbeatCounters.add(newWindow);
+    try {
+      heartbeatCounters.add(newWindow);
+    }
+    catch (BufferOverflowException boe) {
+      heartbeatCounters.get();
+      heartbeatCounters.add(newWindow);
+    }
   }
 
   void backup(AbstractNode aThis) throws IOException
