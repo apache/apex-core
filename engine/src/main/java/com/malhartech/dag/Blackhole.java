@@ -12,6 +12,7 @@ package com.malhartech.dag;
  */
 public class Blackhole implements Sink {
 
+  @Override
   public void doSomething(Tuple t)
   {
     t.setContext(null);
