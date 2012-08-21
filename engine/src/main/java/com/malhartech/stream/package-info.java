@@ -12,9 +12,11 @@
  * a node and list of listener nodes. Stream has the following properties in Malhar's streaming platform<br>
  * - One writer node<br>
  * - Any number of listener nodes<br>
- * - Properties defined by the context as per the dag specification<br>
- * A stream definition in the dag is a logical definition. Multiple logical listerner nodes do not cause a stream to partition. But a single listener node can get partitioned based on user 
- * definition, load, spike, etc. In such a scenerio the logical stream gets partitioned into physical streams<br>
+ * - Context as defined by the properties specified in the dag<br>
+ * A stream definition in the dag is a logical definition. Multiple logical listerner nodes means that the emitted tuple would reach each of them. Partitioning is done when a single 
+ * logical listener node partitions into multilpe physical nodes. This may happen due to initial user 
+ * specification, or dynamic run time constraint enforcement. In such a scenerio the logical stream gets partitioned into physical streams. Each physical stream would retain the
+ * characteristics of the logical node (one writer, multiple readers, and context).<br>
  * <br>
  * The streams included in com.malhartech.stream include<br>
  * <br>
