@@ -8,7 +8,7 @@
 
 /**
  * 
- * <b>com.malhartech.util</b> package consists of utilities code that Malhar provides and uses internally.<br>
+ * <b>com.malhartech.util</b> package consists of utilities code that Malhar provides and uses internally.<p>
  * <br>
  * The current utilities include<br>
  * <b>CircularBuffer</b>: Takes a class T and provides a circular buffer. get() on the buffer consumes the object from tail, and add() adds to the head<br>
