@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,7 +24,9 @@ import com.malhartech.bufferserver.Server;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 
 /**
  * Launcher for topologies in local mode within a single process.
@@ -41,6 +44,9 @@ public class StramLocalCluster implements Runnable {
   private Server bufferServer = null;
   final private Map<String, StramChild> childContainers = new ConcurrentHashMap<String, StramChild>();
   private int containerSeq = 0;
+  private boolean appDone = false;
+
+  final private Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>(); 
   
   private class UmbilicalProtocolLocalImpl implements StreamingNodeUmbilicalProtocol {
 
@@ -70,6 +76,11 @@ public class StramLocalCluster implements Runnable {
 
     @Override
     public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) {
+      if (injectShutdown.containsKey(msg.getContainerId())) {
+        ContainerHeartbeatResponse r = new ContainerHeartbeatResponse();
+        r.setShutdown(true);
+        return r;
+      }
       return dnmgr.processHeartbeat(msg);
     }
 
@@ -170,10 +181,32 @@ public class StramLocalCluster implements Runnable {
     LOG.info("Buffer server started: {}", bufferServerAddress);
   }
 
-  boolean appDone = false;
-
   StramChild getContainer(int containerSeq) {
     return this.childContainers.get("container-" + containerSeq);
+  }
+
+  /**
+   * Simulate container failure for testing purposes.
+   * @param c
+   */
+  void failContainer(StramChild c) {
+    injectShutdown.put(c.getContainerId(), c);
+    c.triggerHeartbeat();
+    LOG.info("Container {} failed, launching new container.", c.getContainerId());
+    dnmgr.restartContainer(c.getContainerId());
+    // simplify testing: remove immediately rather than waiting for thread to exit
+    this.childContainers.remove(c.getContainerId());
+  }
+
+  StramChild findContainerByLogicalNode(NodeConf logicalNode) {
+    List<PTNode> nodes = dnmgr.getTopologyDeployer().getNodes(logicalNode);
+    if (nodes.isEmpty()) {
+      return null;
+    }
+    if (nodes.get(0).container.containerId == null) {
+      return null;
+    }
+    return this.childContainers.get(nodes.get(0).container.containerId);
   }
   
   public void runAsync() {
@@ -183,12 +216,6 @@ public class StramLocalCluster implements Runnable {
   @Override
   public void run() {
     while (!appDone) {
-      try {
-        Thread.sleep(1000);
-      }
-      catch (InterruptedException e) {
-        LOG.info("Sleep interrupted " + e.getMessage());
-      }
 
       for (String containerIdStr : dnmgr.containerStopRequests.values()) {
         // shutdown child thread
@@ -214,6 +241,13 @@ public class StramLocalCluster implements Runnable {
 
       if (childContainers.size() == 0 && dnmgr.containerStartRequests.isEmpty()) {
         appDone = true;
+      } else {
+        try {
+          Thread.sleep(1000);
+        }
+        catch (InterruptedException e) {
+          LOG.info("Sleep interrupted " + e.getMessage());
+        }
       }
     }
     
