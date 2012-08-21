@@ -1,6 +1,9 @@
 /**
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
+ */
+
+/*
  * 
  * com.malhartech.stream package contains all code related to various implementations of Stream interface. A stream is a logical unit of a dag that defines the connection between
  * a node and list of listener nodes. Stream has the following properties in Malhar's streaming platform
