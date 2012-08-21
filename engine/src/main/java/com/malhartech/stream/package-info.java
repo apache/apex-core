@@ -10,7 +10,7 @@
  * 
  * The streams included in com.malhartech.stream include
  * 
- * AbstractActiveMQInputStream: Provides implementation to read from ActiveMQ. Users need to provide getObject implementation. (See example in InputActiveMQStreamTest)
+ * AbstractActiveMQInputStream: Provides implementation to read from ActiveMQ by  extending AbstractInputAdapter. Users need to provide getObject implementation. (See example in InputActiveMQStreamTest)
  * ActiveMQOutputStream: TBD
  * 
  * AbstractHDFSInputStream: Provides implementation of reading from HDFS. Users need to probide getRecord implementation. (See example of HDFSInputStream in com.malhartech.example.wordcount)
@@ -24,16 +24,16 @@
  * ConsoleOutputStream: Extends Stream class. Writes directly to stdout. The data would show up in the stdout of Hadoop container in which the node runs. This
  *  is a very good way to debug. Care must be taken to avoid connecting ConsoleOutputStream to an output of a node with high throughput
  
- * InlineStream: Deprecated. Not in use
+ * InlineStream: Streams data between two nodes in inline mode. This instance of stream object does not have connection to BufferServer and cannot be persisted.
  * 
- * KafkaInputStream:
- * KafkaOutputStream:
+ * KafkaInputStream: Extends AbstractInputAdapter, and provides implementation for a node to read from Kafka.
+ * KafkaOutputStream: Implements Stream, and Sink classes to provide implementation for a node to write to Kafka.
  * 
- * SocketInputStream:
- * SocketOutputStream:
+ * SocketInputStream: Implements Stream and provides basic stream connection for a node to read from a socket. Users can use this class if they want to directly connect to a outside socket
+ * SocketOutputStream: Implements Stream and provides basic stream connection for a node to write to a socket. Most likely users would not use it to write to a socket by themselves.
+ *   Would be used in adapters and via BufferServerOutputStream
  * 
  * 
- * A tuple emitted by the writer node is automatically routed to the consumer nodes by the streaming platform
  * 
  */
 
