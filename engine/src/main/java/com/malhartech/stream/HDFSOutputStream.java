@@ -15,6 +15,19 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+
+/**
+ * Adapter for writing to HDFS<p>
+ * <br>
+ * Serializes tuples into a HDFS file<br>
+ * Currently all tuples are written to a single HDFS file<br>
+ * Future enhancements include options to write into a time slot/windows based files<br>
+ * <br>
+ * 
+ */
+
+
+
 public class HDFSOutputStream
   implements Stream, Sink
 {
