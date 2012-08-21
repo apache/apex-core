@@ -84,6 +84,8 @@ public class DNodeManager
   public DNodeManager(TopologyBuilder topology) {
     this.deployer = new TopologyDeployer();
     this.deployer.init(topology.getContainerCount(), topology);
+
+    this.windowSizeMillis = topology.getConf().getInt(TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS, 500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
     checkpointDir = topology.getConf().get(TopologyBuilder.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");

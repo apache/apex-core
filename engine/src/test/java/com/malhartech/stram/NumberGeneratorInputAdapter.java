@@ -46,7 +46,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputAdapter
   @Override
   public boolean hasFinished()
   {
-    return maxTuples > 0 && maxTuples > generatedNumbers;
+    return maxTuples > 0 && maxTuples < generatedNumbers;
   }
 
   @Override
