@@ -12,6 +12,14 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.util.Collection;
 
+/**
+ * Provides a circular buffer<p>
+ * <br>
+ * get() on the buffer consumes the object from tail<br>
+ * add() adds to the head<br>
+ *
+ */
+
 public class CircularBuffer<T>
 {
   private static final BufferUnderflowException underflow = new BufferUnderflowException();
