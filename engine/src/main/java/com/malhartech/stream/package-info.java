@@ -22,8 +22,8 @@
  * <b>ActiveMQOutputStream</b>: TBD<br>
  * <br>
  * <b>HDFS Streams</b><br>
- * AbstractHDFSInputStream: Provides implementation of reading from HDFS. Users need to probide getRecord implementation. (See example of HDFSInputStream in com.malhartech.example.wordcount)<br>
- * HDFSOutputStream: Provides implementation for writing to to HDFS<br>
+ * <b>AbstractHDFSInputStream</b>: Provides implementation of reading from HDFS. Users need to probide getRecord implementation. (See example of HDFSInputStream in com.malhartech.example.wordcount)<br>
+ * <b>HDFSOutputStream</b>: Provides implementation for writing to to HDFS<br>
  * 
  * <br><b>Buffer Server Streams</b><br>
  * <b>BufferServerInputStream</b>: extends SocketInputStream, takes data from buffer server into the node. Every logical stream will have at least two such objects (BufferServerInputStream
