@@ -13,7 +13,8 @@
  * - One writer node<br>
  * - Any number of listener nodes<br>
  * - Properties defined by the context as per the dag specification<br>
- * <br>
+ * A stream definition in the dag is a logical definition. Multiple logical listerner nodes do not cause a stream to partition. But a single listener node can get partitioned based on user 
+ * definition, load, spike, etc. In such a scenerio the logical stream gets partitioned into physical streams<br>
  * <br>
  * The streams included in com.malhartech.stream include<br>
  * <br>
