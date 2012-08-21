@@ -29,7 +29,7 @@ import com.malhartech.stram.conf.TopologyBuilder;
  * Launcher for topologies in local mode within a single process.
  * Child containers are mapped to threads.
  */
-public class StramLocalCluster {
+public class StramLocalCluster implements Runnable {
 
   private static Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
@@ -124,7 +124,7 @@ public class StramLocalCluster {
     final StramChild child; 
     
     private LocalStramChildLauncher(DeployRequest cdr) {
-      this.containerId = "child-" + containerSeq++;
+      this.containerId = "container-" + containerSeq++;
       this.child = new LocalStramChild(containerId, umbilical);
       dnmgr.assignContainer(cdr, containerId, NetUtils.getConnectAddress(bufferServerAddress));
       Thread launchThread = new Thread(this, containerId);
@@ -169,10 +169,19 @@ public class StramLocalCluster {
     this.bufferServerAddress = ((InetSocketAddress) bindAddr);
     LOG.info("Buffer server started: {}", bufferServerAddress);
   }
+
+  boolean appDone = false;
+
+  StramChild getContainer(int containerSeq) {
+    return this.childContainers.get("container-" + containerSeq);
+  }
   
+  public void runAsync() {
+    new Thread(this, "master").start();
+  }
+  
+  @Override
   public void run() {
-    boolean appDone = false;
-    
     while (!appDone) {
       try {
         Thread.sleep(1000);

@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.beanutils.BeanUtils;
-import org.apache.hadoop.conf.Configuration;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -172,7 +171,7 @@ public class SocketStreamTest
   @Test
   public void testStramChildInit() throws Exception
   {
-    TopologyBuilder b = new TopologyBuilder(new Configuration());
+    TopologyBuilder b = new TopologyBuilder();
 
     NodeConf node1 = b.getOrAddNode("node1");
 

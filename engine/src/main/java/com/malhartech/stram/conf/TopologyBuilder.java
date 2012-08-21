@@ -46,6 +46,7 @@ public class TopologyBuilder {
   public static final String STRAM_CONTAINER_MEMORY_MB = "stram.containerMemoryMB";
   public static final String STRAM_MASTER_MEMORY_MB = "stram.masterMemoryMB";
   public static final String STRAM_CHECKPOINT_DIR = "stram.checkpointDir";
+  public static final String STRAM_WINDOW_SIZE_MILLIS = "stram.windowSizeMillis";
   
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCENODE = "inputNode";
@@ -254,6 +255,13 @@ public class TopologyBuilder {
   final private Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
   private int nodeIndex = 0; // used for cycle validation
   private Stack<NodeConf> stack = new Stack<NodeConf>(); // used for cycle validation
+
+  public TopologyBuilder() {
+    this.nodes = new HashMap<String, NodeConf>();
+    this.streams = new HashMap<String, StreamConf>();
+    this.templates = new HashMap<String,TemplateConf>();
+    this.rootNodes = new HashSet<NodeConf>();
+  }  
   
   /**
    * Create topology from given configuration. 
@@ -261,10 +269,7 @@ public class TopologyBuilder {
    * @param conf
    */
   public TopologyBuilder(Configuration conf) {
-    this.nodes = new HashMap<String, NodeConf>();
-    this.streams = new HashMap<String, StreamConf>();
-    this.templates = new HashMap<String,TemplateConf>();
-    this.rootNodes = new HashSet<NodeConf>();
+    this();
     addFromConfiguration(conf);
   }
 
