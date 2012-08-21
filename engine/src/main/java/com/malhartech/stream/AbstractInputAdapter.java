@@ -13,6 +13,12 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+/**
+  * Abstract Input Adapter class for implementing various instances of input adapters<p>
+  * <br>
+  * Provides the hooks needed to integrate with the streaming platform. Manages windows, streams, and context.<br>
+  */
+
 public abstract class AbstractInputAdapter implements InputAdapter
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractInputAdapter.class);

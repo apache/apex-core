@@ -13,6 +13,15 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+
+/**
+  * Input Adapter for reading from ActiveMQ<p>
+  * <br>
+  * Extends AbstractInputAdapter<br>
+  * Users need to implement getObject. (See example in InputActiveMQStreamTest)<br>
+  * <br>
+ */
+
 public abstract class AbstractActiveMQInputStream
   extends AbstractInputAdapter
   implements MessageListener, ExceptionListener
