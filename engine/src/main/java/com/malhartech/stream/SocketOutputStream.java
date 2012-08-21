@@ -25,6 +25,12 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
+
+/*
+ * Implements Stream and provides basic stream connection for a node to write to a socket. Most likely users would not use it to write to a socket by themselves.
+ *   Would be used in adapters and via BufferServerOutputStream * 
+ */
+
 public class SocketOutputStream extends SimpleChannelDownstreamHandler implements Stream
 {
   private static Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
