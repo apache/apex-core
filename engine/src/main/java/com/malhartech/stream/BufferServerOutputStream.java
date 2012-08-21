@@ -13,6 +13,15 @@ import com.malhartech.dag.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+  * Implements tuple flow of node to then buffer server in a logical stream<p>
+  * <br>
+  * Extends SocketOutputStream as buffer server and node communicate via a socket<br>
+  * This buffer server is a write instance of a stream and hence would take care of persistence and retaining tuples till they are consumed<br>
+  * Partitioning is managed by this instance of the buffer server<br>
+  * <br>
+  */
+
 public class BufferServerOutputStream extends SocketOutputStream implements Sink
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);

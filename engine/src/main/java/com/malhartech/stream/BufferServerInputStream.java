@@ -11,6 +11,13 @@ import org.jboss.netty.channel.MessageEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+  * Implement tuple flow from buffer server to the node in a logical stream<p>
+  * <br>
+  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
+  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
+  */
+
 public class BufferServerInputStream extends SocketInputStream
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
