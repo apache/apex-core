@@ -12,7 +12,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 /**
  * Provides dag level node data<p>
- * This call is needed for restful access to individual node data<br>
+ * This call provides restful access to individual node data<br>
  * 
  */
 
