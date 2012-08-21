@@ -24,7 +24,9 @@ import com.sun.jersey.api.json.JSONConfiguration;
 import com.sun.jersey.api.json.JSONJAXBContext;
 
 /**
- * Application master webapp
+ * The web services interface in the stram. All web services are routed through this interface<p>
+ * This class does all the wiring and controls the context. The implementation is in StramWebServices class
+ * 
  */
 public class StramWebApp extends WebApp {
 
