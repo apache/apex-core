@@ -4,7 +4,7 @@
  * 
 */
 
-/** <b>dag</b> package deals with data nodes, tuple processing, serialization, streams, window boundaries etc. All code needed that is executed by Stram to
+/** <b>com.malhartech.dag</b> package deals with data nodes, tuple processing, serialization, streams, window boundaries etc. All code needed that is executed by Stram to
  * run the dag in Hadoop.<br>Once you have designed your DAG, and designed what each node would do, you would need to write your code by deriving your classes from
  * dag package.<br>
  *  <br>(TBD, expand the following)<br>
