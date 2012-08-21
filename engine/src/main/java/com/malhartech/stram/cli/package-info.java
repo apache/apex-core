@@ -4,7 +4,7 @@
  */
 
 /**
- * <b>com.malhartech.stram.cli</b> package deals with code for command line interface for the streaming platform<p/>
+ * <b>com.malhartech.stram.cli</b> package deals with code for command line interface for the streaming platform<p>
  * <br>
  * The code wraps the webservices layer (<b>com.malhartech.stream.webapp</b>) and thus all access to the start of the current
  * dag is via one single point. All webservice calls for streaming data go through the stram.<br>
