@@ -98,4 +98,16 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     {
         throw new UnsupportedOperationException("Not supported yet.");
     }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
+    {
+        logger.info("Unexpected exception {}", cause.getCause());
+
+        try {
+            ctx.channel().close();
+        }
+        catch (Exception e) {
+        }
+    }
 }
