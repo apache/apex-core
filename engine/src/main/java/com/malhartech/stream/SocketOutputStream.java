@@ -26,9 +26,11 @@ import org.slf4j.LoggerFactory;
  * @author chetan
  */
 
-/*
- * Implements Stream and provides basic stream connection for a node to write to a socket. Most likely users would not use it to write to a socket by themselves.
- *   Would be used in adapters and via BufferServerOutputStream * 
+/**
+ * Implements Stream class and provides basic stream connection for a node to write to a socket<p>
+ * <br>
+ * Most likely users would not use it to write to a socket by themselves. Is used in adapters and by BufferServerOutputStream<br>
+ * <br>
  */
 
 public class SocketOutputStream extends SimpleChannelDownstreamHandler implements Stream
