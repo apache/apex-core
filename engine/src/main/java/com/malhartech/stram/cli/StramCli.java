@@ -41,6 +41,26 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import java.util.*;
 
+/**
+ * 
+ * Provides command line interface for a streaming application on hadoop (yarn)<p>
+ * <br>
+ * Currently supported commands include<br>
+ * <table>
+ * <th><td>Command</td><td>Parameters</td><td>Description</td></th>
+ * <tr><td>help</td><td>nbsp;</td><td>prints help on all cli commands</td></tr>
+ * <tr><td>ls<td>nbsp;</td><td>lists all current running applications</td></tr>
+ * <tr><td>connect</td><td>appId</td><td>Connects to the given application</td></tr>
+ * <tr><td>listnodes</td><td>nbsp;</td><td>Lists deployed streaming nodes</td></tr>
+ * <tr><td>launch</td><td>jarFile, [ topologyFile ]</td><td>Launch topology packaged in jar file</td></tr>
+ * <tr><td>timeout</td><td>duration</td><td>Wait for completion of current application</td></tr>
+ * <tr><td>kill</td><td>nbsp;</td><td>Force termination for current application</td></tr>
+ * <tr><td>exit</td><td>nbsp;</td><td>Exit the app</td></tr>
+ * </table>
+ * <br>
+ */
+
+
 public class StramCli
 {
   private static Logger LOG = LoggerFactory.getLogger(StramCli.class);
