@@ -11,6 +11,12 @@ import java.util.*;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+
+/**
+ * Implements a priority queue<p>
+ * <br>
+ * 
+ */
 public class StablePriorityQueue<E> implements Queue<E>
 {
 

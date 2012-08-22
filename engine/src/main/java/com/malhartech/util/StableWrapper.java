@@ -10,6 +10,14 @@ import java.util.Comparator;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+
+/**
+ * 
+ *  Used to wrap around long int values safely<p>
+ * <br>
+ * Needed to ensure that windowId wrap around safely<br>
+ */
+
 class StableWrapper<E>
 {
   private static final long serialVersionUID = 201207091936L;

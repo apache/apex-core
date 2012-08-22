@@ -27,8 +27,26 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StramClientUtils {
+/**
+ * 
+ * Collection of utility classes for command line interface package<p>
+ * <br>
+ * List includes<br>
+ * Yarn Client Helper<br>
+ * Resource Mgr Client Helper<br> 
+ * <br>
+ * 
+ */
 
+public class StramClientUtils {
+  
+/**
+ * 
+ * TBD<p>
+ * <br>
+ * 
+ */
+    
   public static class YarnClientHelper {
     private static final Logger LOG = LoggerFactory.getLogger(YarnClientHelper.class);
 
@@ -54,7 +72,7 @@ public class StramClientUtils {
     }
 
     /**
-     * Connect to the Resource Manager/Applications Manager
+     * Connect to the Resource Manager/Applications Manager<p>
      * @return Handle to communicate with the ASM
      * @throws IOException 
      */
@@ -88,7 +106,7 @@ public class StramClientUtils {
 
     
     /**
-     * Connect to the Resource Manager
+     * Connect to the Resource Manager<p>
      *
      * @return Handle to communicate with the RM
      */
@@ -118,7 +136,9 @@ public class StramClientUtils {
   }
 
   /**
-   * Bunch of utilities that ease repeating interactions with {@link ClientRMProtocol}
+   * 
+   * Bunch of utilities that ease repeating interactions with {@link ClientRMProtocol}<p>
+   * 
    */
   public static class ClientRMHelper {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);

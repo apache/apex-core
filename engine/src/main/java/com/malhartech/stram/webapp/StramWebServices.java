@@ -25,6 +25,15 @@ import com.google.inject.Inject;
 import com.malhartech.stram.DNodeManager;
 import com.malhartech.stram.StramAppContext;
 
+/**
+ * 
+ * The web services implementation in the stram<p>
+ * <br>
+ * This class would ensure the the caller is authorized and then provide access to all the dag data stored 
+ * in the stram<br>
+ * <br>
+ * 
+ */
 
 @Path("/ws/v1/stram")
 public class StramWebServices {

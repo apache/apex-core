@@ -10,6 +10,15 @@ import com.malhartech.dag.*;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+
+/**
+ * 
+ * Writes tuples to stdout of the container<p>
+ * <br>
+ * Mainly to be used for debugging. Users should be careful to not have this node listen to a high throughput stream<br>
+ * <br>
+ *
+ */
 public class ConsoleOutputStream implements Stream, Sink
 {
   private StreamContext context;

@@ -12,6 +12,17 @@ import java.util.HashSet;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+
+/**
+ * 
+ * Implements stream context for buffer server<p>
+ * <br>
+ * Extends StreamContext and defines upstream and downstream nodes<br>
+ * Provides wiring for the stream<br>
+ * Manages partitioning<br>
+ * <br>
+ */
+
 public class BufferServerStreamContext extends StreamContext
 {
   private String id;

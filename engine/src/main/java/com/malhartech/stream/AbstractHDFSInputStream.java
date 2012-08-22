@@ -16,6 +16,15 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+
+/**
+  * Input Adapter for reading from HDFS<p>
+  * <br>
+  * Extends AbstractInputAdapter<br>
+  * Users need to implement getRecord to get HDFS input adapter to work as per their choice<br>
+  * <br>
+ */
+
 public abstract class AbstractHDFSInputStream extends AbstractInputAdapter implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
