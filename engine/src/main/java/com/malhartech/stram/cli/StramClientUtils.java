@@ -27,6 +27,17 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * Utilities classes for command line interface package<p>
+ * <br>
+ * List includes<br>
+ * Yarn Client Helper<br>
+ * Resource Mgr Client Helper<br> 
+ * <br>
+ * 
+ */
+
 public class StramClientUtils {
 
   public static class YarnClientHelper {
@@ -118,7 +129,9 @@ public class StramClientUtils {
   }
 
   /**
-   * Bunch of utilities that ease repeating interactions with {@link ClientRMProtocol}
+   * 
+   * Bunch of utilities that ease repeating interactions with {@link ClientRMProtocol}<p>
+   * 
    */
   public static class ClientRMHelper {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);
