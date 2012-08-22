@@ -247,12 +247,18 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
     {
         logger.log(
                 Level.WARNING,
                 "Unexpected exception from downstream.",
                 cause.getCause());
-        channelInactive(ctx);
+
+        try {
+            channelInactive(ctx);
+            ctx.channel().close();
+        }
+        catch (Exception e) {
+        }
     }
 }
