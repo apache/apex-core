@@ -222,7 +222,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
 
   /**
    * 
-   * Sends the stats from the node to the hadoop container<p>
+   * Stats of the node that is sent to the hadoop container<p>
    * <br>
    * Hadoop container wraps this together with stats from other nodes and sends it to stram
    * <br>
@@ -455,6 +455,14 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
     }
   }
 
+  
+  /**
+   * 
+   * Response from the stram to the container heartbeat<p>
+   * <br>
+   * 
+   */
+  
   public static class ContainerHeartbeatResponse extends WritableAdapter
   {
     private static final long serialVersionUID = 1L;
