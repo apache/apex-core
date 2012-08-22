@@ -23,6 +23,13 @@ import org.apache.hadoop.yarn.service.CompositeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * Stram side implementation of communication protocol with hadoop container<p>
+ * <br>
+ * 
+ */
+
 public class StreamingNodeParent extends CompositeService implements StreamingNodeUmbilicalProtocol {
 
   private static Logger LOG = LoggerFactory.getLogger(StreamingNodeParent.class);

@@ -5,7 +5,9 @@
 package com.malhartech.stram;
 
 /**
- * Placeholder for constants
+ * 
+ * Placeholder for constants to be used by Stram/Dag<p>
+ * <br>
  */
 public class StramConstants {
 
