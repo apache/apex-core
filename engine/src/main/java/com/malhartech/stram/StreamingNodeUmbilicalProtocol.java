@@ -29,8 +29,11 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
 /**
- * Protocol that streaming node child process uses to contact its parent (application master) process. All communication between child and parent is via this
- * protocol.
+ * Protocol that streaming node child process uses to contact its parent (application master) process<p>
+ * <br>
+ * All communication between child and parent is via this protocol.
+ * 
+ * <br>
  */
 //@TokenInfo(JobTokenSelector.class)
 @InterfaceAudience.Private
@@ -104,6 +107,14 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
     }
   }
 
+  /**
+   * 
+   * A container class for all the nodes, streams in the hadoop container<p>
+   * <br>
+   * 
+   * 
+   */
+  
   public static class StreamingContainerContext extends WritableAdapter
   {
     private static final long serialVersionUID = 1L;
@@ -198,10 +209,14 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
   }
 
   /**
-   * The child obtains its configuration context after container launch. Context will provide all information to initialize or reconfigure the node(s)
+   * 
+   * The child obtains its configuration context after container launch.<p>
+   * <br>
+   * Context will provide all information to initialize or reconfigure the node(s)<br>
    *
    * @return
    * @throws IOException
+   * <br>
    */
   StreamingContainerContext getInitContext(String containerId) throws IOException;
 
