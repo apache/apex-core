@@ -31,14 +31,19 @@ import com.malhartech.stram.conf.ShipContainingJars;
 
 
 /**
- * Launch a streaming application packaged as jar file. Parses the jar file for
+ * 
+ * Launch a streaming application packaged as jar file<p>
+ * <br>
+ * Parses the jar file for
  * dependency pom and topology files. Dependency resolution is based on the
  * bundled pom.xml (if any) and the application is lauched with a modified
  * client classpath that includes application dependencies so that classes
  * defined in the topology can be loaded and {@link ShipContainingJars}
  * annotations processed. Caching is performed for dependency classpath
- * resolution.
+ * resolution.<br>
+ * <br>
  */
+
 public class StramAppLauncher {
   
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
