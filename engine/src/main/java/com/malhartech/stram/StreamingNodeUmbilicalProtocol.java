@@ -220,6 +220,15 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
    */
   StreamingContainerContext getInitContext(String containerId) throws IOException;
 
+  /**
+   * 
+   * Sends the stats from the node to the hadoop container<p>
+   * <br>
+   * Hadoop container wraps this together with stats from other nodes and sends it to stram
+   * <br>
+   */
+  
+  
   public static class StreamingNodeHeartbeat extends WritableAdapter
   {
     private static final long serialVersionUID = 201208171625L;
@@ -359,6 +368,14 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
     }
   }
 
+  
+  /*
+   * 
+   * Sends stats aggregated by all nodes in the this container to the stram<p>
+   * <br>
+   * 
+   */
+  
   public static class ContainerHeartbeat extends WritableAdapter
   {
     private static final long serialVersionUID = 1L;
@@ -390,7 +407,12 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
   }
 
   /**
-   * Request by stram as response to heartbeat for further communication. The child container will continue RPC communication depending on the type of request.
+   * 
+   * Request by stram as response to heartbeat for further communication<p>
+   * <br>
+   * The child container will continue RPC communication depending on the type of request.<br>
+   * <br>
+   * 
    */
   public static class StramToNodeRequest extends WritableAdapter
   {
