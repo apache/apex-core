@@ -41,7 +41,9 @@ public class TopologyDeployer {
   private final static Logger LOG = LoggerFactory.getLogger(TopologyDeployer.class);
   
   /**
-   * Common abstraction for streams and nodes for heartbeat/monitoring. 
+   * Common abstraction for streams and nodes for heartbeat/monitoring.<p>
+   * <br>
+   * 
    */
   public abstract static class PTComponent {
     String id;
@@ -60,7 +62,12 @@ public class TopologyDeployer {
   }
  
   /**
-   * Source in DAG.
+   * 
+   * Representation of an input in the physical layout. A source in the DAG<p>
+   * <br>
+   * This can come from another node or from outside the DAG<br>
+   * <br>
+   * 
    */
   public static class PTInput extends PTComponent {
     final TopologyBuilder.StreamConf logicalStream;
@@ -90,6 +97,12 @@ public class TopologyDeployer {
     
   }
 
+  /**
+   * 
+   * Representation of input adapter in the physical layout<p>
+   * <br>
+   * 
+   */
   public static class PTInputAdapter extends PTInput {
     protected PTInputAdapter(StreamConf logicalStream, PTComponent target, byte[] partition) {
       super(logicalStream, target, partition, null);
@@ -97,7 +110,12 @@ public class TopologyDeployer {
   }
   
   /**
-   * Sink in DAG.
+   * 
+   * Representation of an output in the physical layout. A sink in the DAG<p>
+   * <br>
+   * This can go to another node or to a output Adapter (i.e. outside the DAG)<br>
+   * <br>
+   * 
    */
   public static class PTOutput extends PTComponent {
     final TopologyBuilder.StreamConf logicalStream;
@@ -115,12 +133,26 @@ public class TopologyDeployer {
     
   }
 
+  /**
+   * 
+   * Representation of output adapter in the physical layout<p>
+   * <br>
+   * 
+   */
   public static class PTOutputAdapter extends PTOutput {
     protected PTOutputAdapter(StreamConf logicalStream, PTComponent source) {
       super(logicalStream, source);
     }
   }
   
+  /**
+   * 
+   * Representation of a node in the physical layout<p>
+   * <br>
+   * A generic node in the DAG<br>
+   * <br>
+   * 
+   */
   public static class PTNode extends PTComponent {
     TopologyBuilder.NodeConf logicalNode;
     List<PTInput> inputs;
@@ -144,6 +176,15 @@ public class TopologyDeployer {
     }
       
   }
+  
+  /** 
+   * 
+   * Representation of a container for physical objects of dag to be placed in<p>
+   * <br>
+   * This class directly maps to a hadoop container<br>
+   * <br>
+   * 
+   */
   
   public static class PTContainer {
     List<PTNode> nodes = new ArrayList<PTNode>();
