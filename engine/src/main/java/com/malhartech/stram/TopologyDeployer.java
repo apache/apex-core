@@ -26,6 +26,15 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 /**
  *
+ * Derives the physical model from the logical dag and assigned to hadoop container. De-facto initial query planner<p>
+ * <br>
+ * Does the static binding of dag to physical nodes. Parse the dag and figures out the topology. The upstream
+ * dependencies are deployed first. Static partitions are defined by the dag are enforced. Stram an later on do
+ * dynamic optimization.<br>
+ * In current implementation optimization is not done with number of containers. The number provided in the dag
+ * specification is treated as minimum as well as maximum. Once the optimization layer is built this would change<br>
+ * Topology deployment thus blocks successful running of a streaming job in the current version of the streaming platform<br>
+ * <br>
  */
 public class TopologyDeployer {
 
