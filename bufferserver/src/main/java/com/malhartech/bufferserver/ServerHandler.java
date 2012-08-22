@@ -244,6 +244,15 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
 
             ctx.attr(LOGICALNODE).remove();
         }
+    }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
+    {
+        logger.log(
+                Level.WARNING,
+                "Unexpected exception from downstream.",
+                cause.getCause());
+        channelInactive(ctx);
     }
 }
