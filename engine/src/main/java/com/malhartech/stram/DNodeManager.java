@@ -41,7 +41,9 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import com.malhartech.stram.webapp.NodeInfo;
 
 /**
- * Tracks topology provisioning/allocation to containers.
+ * 
+ * Tracks topology provisioning/allocation to containers<p>
+ * <br>
  */
 public class DNodeManager
 {

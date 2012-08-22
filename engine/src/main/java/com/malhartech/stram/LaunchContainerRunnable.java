@@ -36,7 +36,9 @@ import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
- * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming nodes.
+ * 
+ * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming nodes<p>
+ * <br>
  */
 public class LaunchContainerRunnable implements Runnable
 {
