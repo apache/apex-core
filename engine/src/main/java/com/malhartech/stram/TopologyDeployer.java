@@ -26,7 +26,7 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 /**
  *
- * Derives the physical model from the logical dag and assigned to hadoop container. De-facto initial query planner<p>
+ * Derives the physical model from the logical dag and assigned to hadoop container. Is the initial query planner<p>
  * <br>
  * Does the static binding of dag to physical nodes. Parse the dag and figures out the topology. The upstream
  * dependencies are deployed first. Static partitions are defined by the dag are enforced. Stram an later on do
