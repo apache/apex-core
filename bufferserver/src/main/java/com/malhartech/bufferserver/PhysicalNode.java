@@ -5,7 +5,7 @@
 package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.util.SerializedData;
-import org.jboss.netty.channel.Channel;
+import io.netty.channel.Channel;
 
 /**
  *
@@ -54,13 +54,13 @@ public class PhysicalNode
 
   public final int getId()
   {
-    return getChannel().getId();
+    return getChannel().id();
   }
 
   @Override
   public final int hashCode()
   {
-    return getChannel().getId();
+    return getChannel().id();
   }
 
   /**

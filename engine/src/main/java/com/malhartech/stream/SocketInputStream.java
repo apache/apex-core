@@ -4,23 +4,16 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.bufferserver.netty.ClientPipelineFactory;
+import com.malhartech.bufferserver.netty.ClientInitializer;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.concurrent.Executors;
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBufferFactory;
-import org.jboss.netty.buffer.DirectChannelBufferFactory;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelLocal;
-import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelInboundMessageHandlerAdapter;
+import io.netty.channel.socket.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,81 +21,61 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
-public class SocketInputStream extends SimpleChannelUpstreamHandler implements Stream
+public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerAdapter<T> implements Stream
 {
-  private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
-  protected static final ChannelLocal<StreamContext> contexts = new ChannelLocal<StreamContext>()
-  {
+    private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
+    protected static final AttributeKey<StreamContext> CONTEXT = new AttributeKey<StreamContext>("context");
+    protected Channel channel;
+    private Bootstrap bootstrap;
+    private StreamContext context;
+
     @Override
-    protected StreamContext initialValue(Channel channel)
+    public void setup(StreamConfiguration config)
     {
-      return null;
+        bootstrap = new Bootstrap();
+
+        bootstrap.group(new NioEventLoopGroup())
+                .channel(new NioSocketChannel())
+                .remoteAddress(config.getBufferServerAddress())
+                .handler(new ClientInitializer(this.getClass()));
     }
-  };
-  protected Channel channel;
-  private ClientBootstrap bootstrap;
-  private InetSocketAddress serverAddress;
-  private StreamContext context;
 
-  protected ClientPipelineFactory getClientPipelineFactory()
-  {
-    return new ClientPipelineFactory(this.getClass());
-  }
+    @Override
+    public void setContext(com.malhartech.dag.StreamContext context)
+    {
+        this.context = context;
+    }
 
-  @Override
-  public void setup(StreamConfiguration config)
-  {
-    bootstrap = new ClientBootstrap(
-      new NioClientSocketChannelFactory(
-      Executors.newCachedThreadPool(),
-      Executors.newCachedThreadPool()));
+    @Override
+    public void teardown()
+    {
+        channel.attr(CONTEXT).remove();
+        channel.close().awaitUninterruptibly();
+        bootstrap.shutdown();
+    }
 
-    // Configure the event pipeline factory.
-    bootstrap.setPipelineFactory(getClientPipelineFactory());
+    @Override
+    public StreamContext getContext()
+    {
+        return context;
+    }
 
-    serverAddress = config.getBufferServerAddress();
-  }
+    @Override
+    public void activate()
+    {
+        // Make a new connection.
+        channel = bootstrap.connect().syncUninterruptibly().channel();
 
-  @Override
-  public void setContext(com.malhartech.dag.StreamContext context)
-  {
-    this.context = context;
-//    contexts.set(channel, context);
-  }
+        // Netty does not provide a way to read in all the data that comes
+        // onto the channel into a byte buffer managed by the user. It causes
+        // various problems:
+        // 1. There is excessive copy of data between the 2 buffers.
+        // 2. Once the BufferFactory has given out the buffer, it does not know
+        //    if it can ever recycle it.
+        // 3. Causes fragmentation and need for garbage collection
 
-  @Override
-  public void teardown()
-  {
-    contexts.remove(channel);
-    channel.close();
-    channel.getCloseFuture().awaitUninterruptibly();
-    bootstrap.releaseExternalResources();
-  }
+        // Netty needs some way to prevent it.
 
-  @Override
-  public StreamContext getContext()
-  {
-    return context;
-    //return contexts.get(channel); // results in NPE when called prior to activate
-  }
-
-  @Override
-  public void activate()
-  {
-    // Make a new connection.
-    ChannelFuture future = bootstrap.connect(serverAddress);
-    channel = future.awaitUninterruptibly().getChannel();
-
-    // Netty does not provide a way to read in all the data that comes
-    // onto the channel into a byte buffer managed by the user. It causes
-    // various problems:
-    // 1. There is excessive copy of data between the 2 buffers.
-    // 2. Once the BufferFactory has given out the buffer, it does not know
-    //    if it can ever recycle it.
-    // 3. Causes fragmentation and need for garbage collection
-    
-    // Netty needs some way to prevent it.
-    
 //    channel.getConfig().setBufferFactory(new ChannelBufferFactory() {
 //      @SuppressWarnings("PackageVisibleField")
 //      DirectChannelBufferFactory impl = new DirectChannelBufferFactory(1024 * 1024);
@@ -150,6 +123,6 @@ public class SocketInputStream extends SimpleChannelUpstreamHandler implements S
 //        return bo;
 //      }
 //    });
-    contexts.set(channel, context);
-  }
+        channel.attr(CONTEXT).set(context);
+    }
 }

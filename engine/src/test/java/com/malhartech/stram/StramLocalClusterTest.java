@@ -24,7 +24,7 @@ import com.malhartech.stream.HDFSOutputStream;
 public class StramLocalClusterTest {
 
   @Test
-  public void testLocalClusterInitShutdown() {
+  public void testLocalClusterInitShutdown() throws Exception {
     // create test topology
     Properties props = new Properties();
 
@@ -51,30 +51,30 @@ public class StramLocalClusterTest {
 
     TopologyBuilder tplg = new TopologyBuilder(new Configuration());
     tplg.addFromProperties(props);
-    
+
     StramLocalCluster localCluster = new StramLocalCluster(tplg);
     localCluster.run();
   }
-  
+
   //@Test
-  public void testChildRecovery() {
+  public void testChildRecovery() throws Exception {
 
     TopologyBuilder tb = new TopologyBuilder();
     tb.getConf().setInt(STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
-    
+
     StreamConf input1 = tb.getOrAddStream("input1");
     input1.addProperty(STREAM_CLASSNAME,
                        NumberGeneratorInputAdapter.class.getName());
     input1.addProperty(STREAM_INLINE, "true");
     input1.addProperty("maxTuples", "1");
-    
+
     NodeConf node1 = tb.getOrAddNode("node1");
     node1.addInput(input1);
 
     for (NodeConf nodeConf : tb.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
-    
+
     StramLocalCluster localCluster = new StramLocalCluster(tb);
     localCluster.runAsync();
 
@@ -84,9 +84,9 @@ public class StramLocalClusterTest {
     InputAdapter input = inputAdapters.get(0);
     input.resetWindow(0, 1);
     input.beginWindow(1);
-    
-    
+
+
   }
-  
-  
+
+
 }

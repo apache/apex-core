@@ -3,23 +3,6 @@
  */
 package com.malhartech.stream;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.commons.beanutils.BeanUtils;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.SerDe;
@@ -36,6 +19,22 @@ import com.malhartech.stram.TopologyBuilderTest;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.commons.beanutils.BeanUtils;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -47,7 +46,7 @@ public class SocketStreamTest
   private static Server bufferServer = null;
 
   @BeforeClass
-  public static void setup() throws InterruptedException, IOException
+  public static void setup() throws InterruptedException, IOException, Exception
   {
     //   java.util.logging.Logger.getLogger("").setLevel(java.util.logging.Level.FINEST);
     //    java.util.logging.Logger.getLogger("").info("test");
@@ -161,8 +160,8 @@ public class SocketStreamTest
     BeanUtils.populate(wn, properties);
     Assert.assertTrue(wn.isInput());
     Assert.assertEquals(999, wn.getCheckPointWindowId());
-  }  
-  
+  }
+
   /**
    * Instantiate physical model with adapters and partitioning in mock container.
    *

@@ -74,7 +74,7 @@ import com.malhartech.stram.webapp.StramWebApp;
 public class StramAppMaster
 {
   private static Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
-  // Configuration 
+  // Configuration
   private Configuration conf;
   private YarnClientHelper yarnClient;
   private TopologyBuilder logicalTopology;
@@ -84,11 +84,11 @@ public class StramAppMaster
   private ApplicationAttemptId appAttemptID;
   // TODO
   // For status update for clients - yet to be implemented
-  // Hostname of the container 
+  // Hostname of the container
   private String appMasterHostname = "";
   // Port on which the app master listens for status update requests from clients
   private int appMasterRpcPort = 0;
-  // Tracking url to which app master publishes info for clients to monitor 
+  // Tracking url to which app master publishes info for clients to monitor
   private String appMasterTrackingUrl = "";
   // App Master configuration
   // No. of containers to run shell command on
@@ -102,8 +102,8 @@ public class StramAppMaster
   private AtomicInteger numCompletedContainers = new AtomicInteger();
   // Containers that the RM has allocated to us
   private Map<String, Container> allAllocatedContainers = new HashMap<String, Container>();
-  
-  // Count of failed containers 
+
+  // Count of failed containers
   private AtomicInteger numFailedContainers = new AtomicInteger();
   // Launch threads
   private List<Thread> launchThreads = new ArrayList<Thread>();
@@ -259,7 +259,7 @@ public class StramAppMaster
     catch (Exception e) {
       LOG.error("Error dumping topology.", e);
     };
-    
+
   }
 
   public StramAppMaster() throws Exception
@@ -277,7 +277,7 @@ public class StramAppMaster
    * @throws ParseException
    * @throws IOException
    */
-  public boolean init(String[] args) throws ParseException, IOException
+  public boolean init(String[] args) throws ParseException, IOException, Exception
   {
 
     Options opts = new Options();
@@ -326,7 +326,7 @@ public class StramAppMaster
     if (logicalTopology.isDebug()) {
       dumpOutDebugInfo();
     }
-    
+
     this.dnmgr = new DNodeManager(logicalTopology);
 
     // start RPC server
@@ -390,11 +390,11 @@ public class StramAppMaster
     // Connect to ResourceManager
     resourceManager = yarnClient.connectToRM();
 
-    // Setup local RPC Server to accept status requests directly from clients 
-    // TODO need to setup a protocol for client to be able to communicate to the RPC server 
+    // Setup local RPC Server to accept status requests directly from clients
+    // TODO need to setup a protocol for client to be able to communicate to the RPC server
     // TODO use the rpc port info to register with the RM for the client to send requests to this app master
 
-    // Register self with ResourceManager 
+    // Register self with ResourceManager
     RegisterApplicationMasterResponse response = registerToRM();
     // Dump out information about cluster capability as seen by the resource manager
     int minMem = response.getMinimumResourceCapability().getMemory();
@@ -402,8 +402,8 @@ public class StramAppMaster
     LOG.info("Min mem capabililty of resources in this cluster " + minMem);
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
 
-    // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be 
-    // a multiple of the min value and cannot exceed the max. 
+    // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be
+    // a multiple of the min value and cannot exceed the max.
     // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
     int containerMemory = logicalTopology.getContainerMemoryMB();
     if (containerMemory < minMem) {
@@ -421,23 +421,23 @@ public class StramAppMaster
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
-    // The heartbeat interval after which an AM is timed out by the RM is defined by a config setting: 
+    // The heartbeat interval after which an AM is timed out by the RM is defined by a config setting:
     // RM_AM_EXPIRY_INTERVAL_MS with default defined by DEFAULT_RM_AM_EXPIRY_INTERVAL_MS
-    // The allocate calls to the RM count as heartbeats so, for now, this additional heartbeat emitter 
+    // The allocate calls to the RM count as heartbeats so, for now, this additional heartbeat emitter
     // is not required.
 
     // Setup ask for containers from RM
     // Send request for containers to RM
     // Until we get our fully allocated quota, we keep on polling RM for containers
-    // Keep looping until all containers finished processing 
-    // ( regardless of success/failure). 
+    // Keep looping until all containers finished processing
+    // ( regardless of success/failure).
 
     int loopCounter = -1;
     List<ContainerId> releasedContainers = new ArrayList<ContainerId>();
     int numTotalContainers = 0;
     // keep track of already requested containers to not request them again while waiting for allocation
     int numRequestedContainers = 0;
-    
+
     while (!appDone) {
       loopCounter++;
 
@@ -451,8 +451,8 @@ public class StramAppMaster
                + ", currentAllocated=" + this.allAllocatedContainers.size());
 
       // Sleep before each loop when asking RM for containers
-      // to avoid flooding RM with spurious requests when it 
-      // need not have any available containers 
+      // to avoid flooding RM with spurious requests when it
+      // need not have any available containers
       // Sleeping for 1000 ms.
       try {
         Thread.sleep(1000);
@@ -460,9 +460,9 @@ public class StramAppMaster
       catch (InterruptedException e) {
         LOG.info("Sleep interrupted " + e.getMessage());
       }
-      
-      // No. of containers to request 
-      // For the first loop, askCount will be equal to total containers needed 
+
+      // No. of containers to request
+      // For the first loop, askCount will be equal to total containers needed
       // From that point on, askCount will be based on incremental deploy requests
       int askCount = 0;
 
@@ -485,13 +485,13 @@ public class StramAppMaster
         }
       }
 
-      // Send the request to RM 
+      // Send the request to RM
       LOG.info("Asking RM for containers"
                + ", askCount=" + askCount);
       AMResponse amResp = sendContainerAskToRM(resourceReq, releasedContainers);
       releasedContainers.clear();
-      
-      // Retrieve list of allocated containers from the response 
+
+      // Retrieve list of allocated containers from the response
       List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
       LOG.info("Got response from RM for container ask, allocatedCnt=" + newAllocatedContainers.size());
       numRequestedContainers -= newAllocatedContainers.size();
@@ -534,7 +534,7 @@ public class StramAppMaster
       }
 
       // Check what the current available resources in the cluster are
-      // TODO should we do anything if the available resources are not enough? 
+      // TODO should we do anything if the available resources are not enough?
       Resource availableResources = amResp.getAvailableResources();
       LOG.info("Current available resources in the cluster " + availableResources);
 
@@ -547,10 +547,10 @@ public class StramAppMaster
                  + ", exitStatus=" + containerStatus.getExitStatus()
                  + ", diagnostics=" + containerStatus.getDiagnostics());
 
-        // non complete containers should not be here 
+        // non complete containers should not be here
         assert (containerStatus.getState() == ContainerState.COMPLETE);
         allAllocatedContainers.remove(containerStatus.getContainerId().toString());
-        
+
         // increment counters for completed/failed containers
         int exitStatus = containerStatus.getExitStatus();
         LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
@@ -561,7 +561,7 @@ public class StramAppMaster
           dnmgr.restartContainer(containerStatus.getContainerId().toString());
         }
         else {
-          // container completed successfully 
+          // container completed successfully
           numCompletedContainers.incrementAndGet();
           dnmgr.markComplete(containerStatus.getContainerId().toString());
           LOG.info("Container completed successfully."
@@ -587,7 +587,7 @@ public class StramAppMaster
     }
 
     // Join all launched threads
-    // needed for when we time out 
+    // needed for when we time out
     // and we need to release containers
     for (Thread launchThread : launchThreads) {
       try {
@@ -599,7 +599,7 @@ public class StramAppMaster
       }
     }
 
-    // When the application completes, it should send a finish application signal 
+    // When the application completes, it should send a finish application signal
     // to the RM
     LOG.info("Application completed. Signalling finish to RM");
 
@@ -633,10 +633,10 @@ public class StramAppMaster
   {
     RegisterApplicationMasterRequest appMasterRequest = Records.newRecord(RegisterApplicationMasterRequest.class);
 
-    // set the required info into the registration request: 
-    // application attempt id, 
+    // set the required info into the registration request:
+    // application attempt id,
     // host on which the app master is running
-    // rpc port on which the app master accepts requests from the client 
+    // rpc port on which the app master accepts requests from the client
     // tracking url for the app master
     appMasterRequest.setApplicationAttemptId(appAttemptID);
     appMasterRequest.setHost(appMasterHostname);
@@ -656,9 +656,9 @@ public class StramAppMaster
   {
     ResourceRequest request = Records.newRecord(ResourceRequest.class);
 
-    // setup requirements for hosts 
-    // whether a particular rack/host is needed 
-    // Refer to apis under org.apache.hadoop.net for more 
+    // setup requirements for hosts
+    // whether a particular rack/host is needed
+    // Refer to apis under org.apache.hadoop.net for more
     // details on how to get figure out rack/host mapping.
     // using * as any host will do for the distributed shell app
     request.setHostName("*");
@@ -668,7 +668,7 @@ public class StramAppMaster
 
     // set the priority for the request
     Priority pri = Records.newRecord(Priority.class);
-    // TODO - what is the range for priority? how to decide? 
+    // TODO - what is the range for priority? how to decide?
     pri.setPriority(requestPriority);
     request.setPriority(pri);
 
@@ -711,7 +711,7 @@ public class StramAppMaster
       }
       dnmgr.containerStopRequests.remove(containerIdStr);
     }
-    
+
     req.addAllReleases(releasedContainers);
     //req.setProgress((float) numCompletedContainers.get() / numTotalContainers);
 
