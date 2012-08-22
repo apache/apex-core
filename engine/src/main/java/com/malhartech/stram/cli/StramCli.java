@@ -47,15 +47,15 @@ import java.util.*;
  * <br>
  * Currently supported commands include<br>
  * <table>
- * <th><td>Command</td><td>Parameters</td><td>Description</td></th>
- * <tr><td>help</td><td></td><td>prints help on all cli commands</td></tr>
- * <tr><td>ls</td><td></td><td>lists all current running applications</td></tr>
- * <tr><td>connect</td><td>appId</td><td>Connects to the given application</td></tr>
- * <tr><td>listnodes</td><td></td><td>Lists deployed streaming nodes</td></tr>
- * <tr><td>launch</td><td>jarFile, [ topologyFile ]</td><td>Launch topology packaged in jar file</td></tr>
- * <tr><td>timeout</td><td>duration</td><td>Wait for completion of current application</td></tr>
- * <tr><td>kill</td><td></td><td>Force termination for current application</td></tr>
- * <tr><td>exit</td><td></td><td>Exit the app</td></tr>
+ * <tr><th><b>Command</b></th><th><b>Parameters</b></th><th><b>Description</b></th></tr>
+ * <tr><td><b>help</b></td><td></td><td>prints help on all cli commands</td></tr>
+ * <tr><td><b>ls</b></td><td></td><td>lists all current running applications</td></tr>
+ * <tr><td><b>connect</b></td><td>appId</td><td>Connects to the given application</td></tr>
+ * <tr><td><b>listnodes</b></td><td></td><td>Lists deployed streaming nodes</td></tr>
+ * <tr><td><b>launch</b></td><td>jarFile, [ topologyFile ]</td><td>Launch topology packaged in jar file</td></tr>
+ * <tr><td><b>timeout</b></td><td>duration</td><td>Wait for completion of current application</td></tr>
+ * <tr><td><b>kill</b></td><td></td><td>Force termination for current application</td></tr>
+ * <tr><td><b>exit</b></td><td></td><td>Exit the app</td></tr>
  * </table>
  * <br>
  */
