@@ -39,7 +39,14 @@ import org.slf4j.LoggerFactory;
  */
 
 public class StramClientUtils {
-
+  
+/**
+ * 
+ * TBD<p>
+ * <br>
+ * 
+ */
+    
   public static class YarnClientHelper {
     private static final Logger LOG = LoggerFactory.getLogger(YarnClientHelper.class);
 
@@ -65,7 +72,7 @@ public class StramClientUtils {
     }
 
     /**
-     * Connect to the Resource Manager/Applications Manager
+     * Connect to the Resource Manager/Applications Manager<p>
      * @return Handle to communicate with the ASM
      * @throws IOException 
      */
@@ -99,7 +106,7 @@ public class StramClientUtils {
 
     
     /**
-     * Connect to the Resource Manager
+     * Connect to the Resource Manager<p>
      *
      * @return Handle to communicate with the RM
      */
