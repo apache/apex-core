@@ -52,6 +52,12 @@ public class StramAppLauncher {
   private List<File> topologyList = new ArrayList<File>();
   private LinkedHashSet<URL> launchDependencies;
   
+  /**
+   * 
+   * Starts a command and waits for it to complete<p>
+   * <br>
+   * 
+   */
   public static class ProcessWatcher implements Runnable {
 
     private Process p;
