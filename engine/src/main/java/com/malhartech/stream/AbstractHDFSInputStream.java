@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
   * Input Adapter for reading from HDFS<p>
   * <br>
   * Extends AbstractInputAdapter<br>
-  * Users need to implement getRecord<br>
+  * Users need to implement getRecord to get HDFS input adapter to work as per their choice<br>
   * <br>
  */
 

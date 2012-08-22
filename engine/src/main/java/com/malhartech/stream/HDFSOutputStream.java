@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
  */
 
 
-
 public class HDFSOutputStream
   implements Stream, Sink
 {
