@@ -4,23 +4,21 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.netty.ClientPipelineFactory;
-import java.net.InetSocketAddress;
+import com.malhartech.bufferserver.netty.ClientInitializer;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.socket.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.Executors;
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 /**
  * Sends a list of continent/city pairs to a {@link LocalTimeServer} to get the
  * local times of the specified cities.
  */
-public class Client {
-
+public class Client
+{
     private final String host;
     private final int port;
     private final String node;
@@ -29,7 +27,8 @@ public class Client {
     private final String down_type;
     private final Collection<byte[]> partitions;
 
-    public Client(String host, int port, String node, String type, String id, String down_type, Collection<byte[]> partitions) {
+    public Client(String host, int port, String node, String type, String id, String down_type, Collection<byte[]> partitions)
+    {
         this.host = host;
         this.port = port;
         this.node = node;
@@ -41,7 +40,8 @@ public class Client {
     }
 
     // publisher
-    private Client(String host, int port, String node, String type) {
+    private Client(String host, int port, String node, String type)
+    {
         this.host = host;
         this.port = port;
         this.node = node;
@@ -51,33 +51,28 @@ public class Client {
         this.partitions = null;
     }
 
-    public void run() {
+    public void run() throws Exception
+    {
         // Set up.
-        ClientBootstrap bootstrap = new ClientBootstrap(
-                new NioClientSocketChannelFactory(
-                Executors.newCachedThreadPool(),
-                Executors.newCachedThreadPool()));
-
-        // Configure the event pipeline factory.
-        bootstrap.setPipelineFactory(new ClientPipelineFactory(ClientHandler.class));
+        Bootstrap bootstrap = new Bootstrap();
+        bootstrap.group(new NioEventLoopGroup())
+                .channel(new NioSocketChannel())
+                .remoteAddress(host, port)
+                .handler(new ClientInitializer(ClientHandler.class));
 
         // Make a new connection.
-        ChannelFuture connectFuture =
-                bootstrap.connect(new InetSocketAddress(host, port));
-
-        // Wait until the connection is made successfully.
-        Channel channel = connectFuture.awaitUninterruptibly().getChannel();
+        Channel channel = bootstrap.connect().sync().channel();
 
         if (id == null) {
             ClientHandler.publish(channel, node, type, 0L);
-        } else {
+        }
+        else {
             ClientHandler.registerPartitions(channel, id, down_type, node, type, partitions, 0L);
         }
     }
 
-    
-
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception
+    {
         // Print usage if necessary.
         if (args.length < 4) {
             printUsage();
@@ -94,7 +89,8 @@ public class Client {
 
         if (args.length == 4) { // upstream node
             new Client(host, port, node, type).run();
-        } else { // downstream node
+        }
+        else { // downstream node
             String identifier = args[4];
             String down_type = args[5];
             Collection<byte[]> partitions = parsePartitions(args, 6);
@@ -102,7 +98,8 @@ public class Client {
         }
     }
 
-    private static void printUsage() {
+    private static void printUsage()
+    {
         System.err.println(
                 "Usage: " + Client.class.getSimpleName()
                 + " <host> <port> upstream_node_id upstream_node_type [downstream_node_id downstream_node_type [partitions ...]]");
@@ -114,7 +111,8 @@ public class Client {
                 + " localhost 8080 map1 mapper reduce1 reduce 1 5 7");
     }
 
-    private static List<byte[]> parsePartitions(String[] args, int offset) {
+    private static List<byte[]> parsePartitions(String[] args, int offset)
+    {
         List<byte[]> partitions = new ArrayList<byte[]>();
         for (int i = offset; i < args.length; i++) {
             partitions.add(args[i].trim().getBytes());

@@ -10,6 +10,8 @@ import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
