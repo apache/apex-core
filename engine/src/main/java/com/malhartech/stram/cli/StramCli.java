@@ -45,17 +45,20 @@ import java.util.*;
  * 
  * Provides command line interface for a streaming application on hadoop (yarn)<p>
  * <br>
- * Currently supported commands include<br>
- * <table>
- * <tr><th><b>Command</b></th><th><b>Parameters</b></th><th><b>Description</b></th></tr>
+ * <table border=1 cellspacing=0>
+ * <caption>Currently supported Commands</caption>
+ * <thead>
+ * <tr align=center><th width=10%><b>Command</b></th><th width=20%><b>Parameters</b></th><th width=70%><b>Description</b></th></tr>
+ * </thead><tbody>
  * <tr><td><b>help</b></td><td></td><td>prints help on all cli commands</td></tr>
  * <tr><td><b>ls</b></td><td></td><td>lists all current running applications</td></tr>
  * <tr><td><b>connect</b></td><td>appId</td><td>Connects to the given application</td></tr>
  * <tr><td><b>listnodes</b></td><td></td><td>Lists deployed streaming nodes</td></tr>
- * <tr><td><b>launch</b></td><td>jarFile, [ topologyFile ]</td><td>Launch topology packaged in jar file</td></tr>
+ * <tr><td><b>launch</b></td><td>jarFile [, topologyFile ]</td><td>Launch topology packaged in jar file</td></tr>
  * <tr><td><b>timeout</b></td><td>duration</td><td>Wait for completion of current application</td></tr>
  * <tr><td><b>kill</b></td><td></td><td>Force termination for current application</td></tr>
  * <tr><td><b>exit</b></td><td></td><td>Exit the app</td></tr>
+ * </tbody>
  * </table>
  * <br>
  */
