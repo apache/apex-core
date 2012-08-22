@@ -18,18 +18,15 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundMessageHandlerAdapter;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import java.util.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * Implements Stream class and provides basic stream connection for a node to write to a socket<p>
+ * <br>
+ * Most likely users would not use it to write to a socket by themselves. Is used in adapters and by BufferServerOutputStream<br>
+ * <br>
  * @author chetan
- */
-
-/*
- * Implements Stream and provides basic stream connection for a node to write to a socket. Most likely users would not use it to write to a socket by themselves.
- *   Would be used in adapters and via BufferServerOutputStream *
  */
 public class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter implements Stream
 {

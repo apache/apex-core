@@ -23,15 +23,15 @@ import org.slf4j.LoggerFactory;
  */
 
 /**
- * 
+ *
  * Implements a stream that is read from a socket by a node<p>
  * <br>
  * The main class for all socket based input streams.<br>
  * <br>
- * 
+ *
  */
 
-public class SocketInputStream extends SimpleChannelUpstreamHandler implements Stream
+public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerAdapter<T> implements Stream
 {
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
     protected static final AttributeKey<StreamContext> CONTEXT = new AttributeKey<StreamContext>("context");
