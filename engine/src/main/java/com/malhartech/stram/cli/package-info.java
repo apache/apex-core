@@ -10,8 +10,6 @@
  * dag is via one single point. All webservice calls for streaming data go through the stram.<br>
  * <br>
  * 
- * 
- * 
  */
 package com.malhartech.stram.cli;
 

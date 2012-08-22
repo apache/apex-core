@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 
- * Utilities classes for command line interface package<p>
+ * Collection of utility classes for command line interface package<p>
  * <br>
  * List includes<br>
  * Yarn Client Helper<br>
