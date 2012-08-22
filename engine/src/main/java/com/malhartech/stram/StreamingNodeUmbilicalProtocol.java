@@ -369,7 +369,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
   }
 
   
-  /*
+  /**
    * 
    * Sends stats aggregated by all nodes in the this container to the stram<p>
    * <br>
