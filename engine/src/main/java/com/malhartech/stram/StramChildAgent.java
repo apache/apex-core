@@ -9,6 +9,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyDeployer.PTContainer;
@@ -18,6 +23,7 @@ import com.malhartech.stram.TopologyDeployer.PTNode;
  * Representation of a child container in the master.
  */
 public class StramChildAgent {
+  private static Logger LOG = LoggerFactory.getLogger(StramChildAgent.class);
 
   public static class DeployRequest {
     final AtomicInteger ackCountdown;
@@ -52,7 +58,16 @@ public class StramChildAgent {
       this.nodes = nodes;
       this.streams = streams;
     }
-    
+
+    @Override
+    public String toString()
+    {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+        .append("nodes", this.nodes)
+        //.append("streams", this.streams)
+        .append("executeWhenZero", this.executeWhenZero)
+        .toString();
+    }
   }
 
   public static class UndeployRequest extends DeployRequest {
@@ -99,6 +114,7 @@ public class StramChildAgent {
   
   public void addRequest(DeployRequest r) {
     this.requests.add(r);
+    LOG.info("Adding request {} {}", container.containerId, r);
   }
   
   public ContainerHeartbeatResponse pollRequest() {
@@ -115,6 +131,7 @@ public class StramChildAgent {
         return null;
       } else if (r.executeWhenZero.get() > 0) {
         ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
+        LOG.debug("Request for {} blocked: {}", this.container.containerId, r);
         rsp.setPendingRequests(true);
         // keep polling
         return rsp;

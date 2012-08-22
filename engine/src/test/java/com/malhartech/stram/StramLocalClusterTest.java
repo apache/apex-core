@@ -20,6 +20,7 @@ import org.junit.Test;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InternalNode;
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
@@ -64,7 +65,7 @@ public class StramLocalClusterTest {
     localCluster.run();
   }
   
-  @Test
+  //@Test
   public void testChildRecovery() throws Exception {
 
     TopologyBuilder tb = new TopologyBuilder();
@@ -74,11 +75,18 @@ public class StramLocalClusterTest {
     input1.addProperty(STREAM_CLASSNAME,
         LocalTestInputAdapter.class.getName());
     input1.addProperty(STREAM_INLINE, "true");
-    //input1.addProperty("maxTuples", "1");
+
+    StreamConf n1n2 = tb.getOrAddStream("n1n2");    
     
     NodeConf node1 = tb.getOrAddNode("node1");
     node1.addInput(input1);
-
+    node1.addOutput(n1n2);
+    
+    NodeConf node2 = tb.getOrAddNode("node2");
+    node2.addInput(n1n2);
+    
+    tb.validate();
+    
     for (NodeConf nodeConf : tb.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
@@ -86,7 +94,8 @@ public class StramLocalClusterTest {
     StramLocalCluster localCluster = new StramLocalCluster(tb);
     localCluster.runAsync();
 
-    StramChild c0 = waitForContainer(localCluster, node1);
+    LocalStramChild c0 = waitForContainer(localCluster, node1);
+    Thread.sleep(1000);
     
     List<InputAdapter> inputAdapters = c0.getInputAdapters();
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
@@ -96,6 +105,13 @@ public class StramLocalClusterTest {
 
     // safer to lookup via topology deployer
     InternalNode n1 = nodeMap.get("1");
+    Assert.assertNotNull(n1);
+
+    LocalStramChild c2 = waitForContainer(localCluster, node2);
+    Map<String, InternalNode> c2NodeMap = c2.getNodeMap();
+    Assert.assertEquals("number nodes", 1, c2NodeMap.size());
+    InternalNode n2 = c2NodeMap.get("3");
+    Assert.assertNotNull(n2);
     
     LocalTestInputAdapter input = (LocalTestInputAdapter)inputAdapters.get(0);
     Assert.assertEquals("initial window id", 0, input.getContext().getStartingWindowId());
@@ -115,15 +131,20 @@ public class StramLocalClusterTest {
     // propagate checkpoint to master
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
-    Thread.sleep(100); // TODO: make event driven
+    c0.waitForHeartbeat(5000);
     // simulate node failure 
     localCluster.failContainer(c0);
 
-    StramChild c1 = waitForContainer(localCluster, node1);
+    LocalStramChild c1 = waitForContainer(localCluster, node1);
+    // container will start empty until downstream undeploy completes,
+    // we need to wait for dependencies till nodes are deployed
+    c2.triggerHeartbeat();
+    c1.triggerHeartbeat();
+    
+    c1.waitForHeartbeat(5000);
     Assert.assertNotSame("old container", c0, c1);
     Assert.assertNotSame("old container", c0.getContainerId(), c1.getContainerId());
 
-    Thread.sleep(500); // TODO: container initialized event
     inputAdapters = c1.getInputAdapters();
     input = (LocalTestInputAdapter)inputAdapters.get(0);
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
@@ -133,8 +154,8 @@ public class StramLocalClusterTest {
     
   }
 
-  private StramChild waitForContainer(StramLocalCluster localCluster, NodeConf nodeConf) {
-    StramChild container;
+  private LocalStramChild waitForContainer(StramLocalCluster localCluster, NodeConf nodeConf) throws InterruptedException {
+    LocalStramChild container;
     // wait for containers to come up
     while ((container = localCluster.findContainerByLogicalNode(nodeConf)) == null) {
       try {
@@ -143,6 +164,8 @@ public class StramLocalClusterTest {
       }
     }
     Assert.assertNotNull(container);
+    // await heartbeat after container init complete
+    //container.waitForHeartbeat(5000); 
     return container;
   }
   

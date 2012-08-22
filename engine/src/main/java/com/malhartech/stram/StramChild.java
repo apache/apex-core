@@ -402,7 +402,13 @@ public class StramChild
     }
     
     if (rsp.getDeployRequest() != null) {
-      LOG.warn("Ignoring deploy request: {}", rsp.getDeployRequest());
+      try {
+        LOG.warn("Re-initializing container from deploy request: {}", rsp.getDeployRequest());
+        // TODO: this should not replace existing objects
+        init(rsp.getDeployRequest());
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to initialize container");
+      }
     }
     
     if (rsp.getNodeRequests() != null) {

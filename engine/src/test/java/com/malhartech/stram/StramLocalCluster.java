@@ -11,6 +11,7 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
@@ -42,7 +43,7 @@ public class StramLocalCluster implements Runnable {
   final private UmbilicalProtocolLocalImpl umbilical;
   final private InetSocketAddress bufferServerAddress;
   private Server bufferServer = null;
-  final private Map<String, StramChild> childContainers = new ConcurrentHashMap<String, StramChild>();
+  final private Map<String, LocalStramChild> childContainers = new ConcurrentHashMap<String, LocalStramChild>();
   private int containerSeq = 0;
   private boolean appDone = false;
 
@@ -81,7 +82,15 @@ public class StramLocalCluster implements Runnable {
         r.setShutdown(true);
         return r;
       }
-      return dnmgr.processHeartbeat(msg);
+      try {
+        return dnmgr.processHeartbeat(msg);
+      } finally {
+        LocalStramChild c = childContainers.get(msg.getContainerId());
+        synchronized (c.heartbeatCount) {
+          c.heartbeatCount.incrementAndGet();
+          c.heartbeatCount.notifyAll();
+        }
+      }
     }
 
     @Override
@@ -99,6 +108,11 @@ public class StramLocalCluster implements Runnable {
   
   public static class LocalStramChild extends StramChild
   {
+    /**
+     * Count heartbeat from container and allow other threads to wait for it. 
+     */
+    private AtomicInteger heartbeatCount = new AtomicInteger();
+    
     public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical)
     {
       super(containerId, new Configuration(), umbilical);
@@ -125,6 +139,12 @@ public class StramLocalCluster implements Runnable {
       stramChild.shutdown();
     }
     
+    public void waitForHeartbeat(int waitMillis) throws InterruptedException {
+      synchronized (heartbeatCount) {
+        heartbeatCount.wait(waitMillis);
+      }
+    }
+    
   }
   
   /**
@@ -132,7 +152,7 @@ public class StramLocalCluster implements Runnable {
    */
   private class LocalStramChildLauncher implements Runnable {
     final String containerId;
-    final StramChild child; 
+    final LocalStramChild child; 
     
     private LocalStramChildLauncher(DeployRequest cdr) {
       this.containerId = "container-" + containerSeq++;
@@ -198,7 +218,7 @@ public class StramLocalCluster implements Runnable {
     this.childContainers.remove(c.getContainerId());
   }
 
-  StramChild findContainerByLogicalNode(NodeConf logicalNode) {
+  LocalStramChild findContainerByLogicalNode(NodeConf logicalNode) {
     List<PTNode> nodes = dnmgr.getTopologyDeployer().getNodes(logicalNode);
     if (nodes.isEmpty()) {
       return null;
@@ -206,7 +226,12 @@ public class StramLocalCluster implements Runnable {
     if (nodes.get(0).container.containerId == null) {
       return null;
     }
-    return this.childContainers.get(nodes.get(0).container.containerId);
+  
+    LocalStramChild c = this.childContainers.get(nodes.get(0).container.containerId);
+   // if (c == null) {
+   //   throw new IllegalStateException("Cannot find container for node " + logicalNode);
+   // }
+    return c;
   }
   
   public void runAsync() {
