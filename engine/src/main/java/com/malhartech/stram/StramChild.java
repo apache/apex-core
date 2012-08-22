@@ -12,6 +12,7 @@ import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +71,7 @@ public class StramChild
   final private List<InputAdapter> inputAdapters = new ArrayList<InputAdapter>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
+  private Object heartbeatTrigger = new Object();
   private WindowGenerator windowGenerator;
   private String checkpointDfsPath;
   /**
@@ -89,9 +91,17 @@ public class StramChild
    */
   protected List<InputAdapter> getInputAdapters()
   {
-    return this.inputAdapters;
+    return Collections.unmodifiableList(this.inputAdapters);
   }
 
+  protected Map<String, InternalNode> getNodeMap() {
+    return Collections.unmodifiableMap(this.nodeList);
+  }
+
+  protected String getContainerId() {
+    return this.containerId;
+  }
+  
   /**
    * Initialize stream between 2 nodes
    *
@@ -305,20 +315,28 @@ public class StramChild
 
   }
 
+  protected void triggerHeartbeat() {
+    synchronized (heartbeatTrigger) {
+      heartbeatTrigger.notifyAll();
+    }
+  }
+  
   protected void heartbeatLoop() throws IOException
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
     while (!exitHeartbeatLoop) {
 
-      try {
-        Thread.sleep(heartbeatIntervalMillis);
+      synchronized (this.heartbeatTrigger) {
+        try {
+          this.heartbeatTrigger.wait(heartbeatIntervalMillis);
+        }
+        catch (InterruptedException e1) {
+          LOG.warn("Interrupted in heartbeat loop, exiting..");
+          break;
+        }
       }
-      catch (InterruptedException e1) {
-        LOG.warn("Interrupted in heartbeat loop, exiting..");
-        break;
-      }
-
+      
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
       msg.setContainerId(this.containerId);
@@ -384,7 +402,13 @@ public class StramChild
     }
     
     if (rsp.getDeployRequest() != null) {
-      LOG.warn("Ignoring deploy request: {}", rsp.getDeployRequest());
+      try {
+        LOG.warn("Re-initializing container from deploy request: {}", rsp.getDeployRequest());
+        // TODO: this should not replace existing objects
+        init(rsp.getDeployRequest());
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to initialize container");
+      }
     }
     
     if (rsp.getNodeRequests() != null) {
