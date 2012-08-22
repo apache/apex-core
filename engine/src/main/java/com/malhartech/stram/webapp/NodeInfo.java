@@ -9,6 +9,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
+ * 
  * Provides node level data like node id, container id, throughput, etc.<p>
  * <br>Current data includes<br>
  * <b>Node Id</b><br>
@@ -18,6 +19,7 @@ import javax.xml.bind.annotation.XmlRootElement;
  * <b>Total Bytes processed</b><br>
  * <b>Node Status</b><br>
  * <b>Last Heartbeat Time</b><br>
+ * <br>
  * 
  */
 

@@ -17,6 +17,7 @@ import com.malhartech.stram.StramAppContext;
 
 
 /**
+ * 
  * Provides application level data like user, appId, elapsed time, etc.<p>
  * <br>Current data includes<br>
  * <b>Application Id</b><br>
@@ -24,6 +25,7 @@ import com.malhartech.stram.StramAppContext;
  * <b>User Name</b><br>
  * <b>Start Time</b><br>
  * <b>Elapsed Time</b><br>
+ * <br>
  * 
  */
 

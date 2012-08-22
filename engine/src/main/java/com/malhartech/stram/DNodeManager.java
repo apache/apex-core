@@ -145,8 +145,7 @@ public class DNodeManager
     }
 
     Map<PTContainer, List<PTNode>> resetNodes = new HashMap<PTContainer, List<TopologyDeployer.PTNode>>();
-    // group downstream nodes by container, 
-    // everything but the failed container is downstream dependency
+    // group by container 
     for (PTNode node : checkpoints.keySet()) {
         List<PTNode> nodes = resetNodes.get(node.container);
         if (nodes == null) {
@@ -156,7 +155,7 @@ public class DNodeManager
         nodes.add(node);
     }
 
-    // except for failed container, stop affected downstream nodes
+    // stop affected downstream dependency nodes (all except failed container)
     AtomicInteger undeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
@@ -164,7 +163,7 @@ public class DNodeManager
         UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
         r.setNodes(ctx.getNodes(), ctx.getStreams());
         undeployAckCountdown.incrementAndGet();
-        StramChildAgent downstreamContainer = getContainerAgent(cs.container.containerId);
+        StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
       }
     }

@@ -26,10 +26,15 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Maps;
 
 /**
- * Builder for the DAG logical representation of nodes and streams.
+ * 
+ * Builder for the DAG logical representation of nodes and streams.<p>
+ * <br>
  * Supports reading as name-value pairs from Hadoop Configuration
- * or programmatic interface. 
+ * or programmatic interface.<br>
+ * <br>
+ * 
  */
+
 public class TopologyBuilder {
   
   private static Logger LOG = LoggerFactory.getLogger(TopologyBuilder.class);

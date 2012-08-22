@@ -11,6 +11,16 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * Runs in the hadoop container of the input adapters and generates windows<p>
+ * <br>
+ * Ensures that all input adapters are sync-ed with the same window size and start. There is one instance
+ * of WindowGenerator per hadoop container. All input adapters within a container share it. If a container has
+ * no inputadapter, then WindowGenerator instance is a no-op.<br>
+ * <br>
+ */
+
 public class WindowGenerator implements Runnable
 {
   public static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);

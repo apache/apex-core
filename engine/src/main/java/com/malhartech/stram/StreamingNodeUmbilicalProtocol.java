@@ -29,8 +29,11 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
 /**
- * Protocol that streaming node child process uses to contact its parent (application master) process. All communication between child and parent is via this
- * protocol.
+ * Protocol that streaming node child process uses to contact its parent (application master) process<p>
+ * <br>
+ * All communication between child and parent is via this protocol.
+ * 
+ * <br>
  */
 //@TokenInfo(JobTokenSelector.class)
 @InterfaceAudience.Private
@@ -104,6 +107,14 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
     }
   }
 
+  /**
+   * 
+   * A container class for all the nodes, streams in the hadoop container<p>
+   * <br>
+   * 
+   * 
+   */
+  
   public static class StreamingContainerContext extends WritableAdapter
   {
     private static final long serialVersionUID = 1L;
@@ -198,13 +209,26 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
   }
 
   /**
-   * The child obtains its configuration context after container launch. Context will provide all information to initialize or reconfigure the node(s)
+   * 
+   * The child obtains its configuration context after container launch.<p>
+   * <br>
+   * Context will provide all information to initialize or reconfigure the node(s)<br>
    *
    * @return
    * @throws IOException
+   * <br>
    */
   StreamingContainerContext getInitContext(String containerId) throws IOException;
 
+  /**
+   * 
+   * Stats of the node that is sent to the hadoop container<p>
+   * <br>
+   * Hadoop container wraps this together with stats from other nodes and sends it to stram
+   * <br>
+   */
+  
+  
   public static class StreamingNodeHeartbeat extends WritableAdapter
   {
     private static final long serialVersionUID = 201208171625L;
@@ -344,6 +368,14 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
     }
   }
 
+  
+  /**
+   * 
+   * Sends stats aggregated by all nodes in the this container to the stram<p>
+   * <br>
+   * 
+   */
+  
   public static class ContainerHeartbeat extends WritableAdapter
   {
     private static final long serialVersionUID = 1L;
@@ -375,7 +407,12 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
   }
 
   /**
-   * Request by stram as response to heartbeat for further communication. The child container will continue RPC communication depending on the type of request.
+   * 
+   * Request by stram as response to heartbeat for further communication<p>
+   * <br>
+   * The child container will continue RPC communication depending on the type of request.<br>
+   * <br>
+   * 
    */
   public static class StramToNodeRequest extends WritableAdapter
   {
@@ -418,6 +455,14 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
     }
   }
 
+  
+  /**
+   * 
+   * Response from the stram to the container heartbeat<p>
+   * <br>
+   * 
+   */
+  
   public static class ContainerHeartbeatResponse extends WritableAdapter
   {
     private static final long serialVersionUID = 1L;

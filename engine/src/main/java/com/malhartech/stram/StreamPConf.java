@@ -12,9 +12,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Definition of stream connecting 2 nodes either inline or via buffer server.
- * StramChild to use this to wire the nodes after instantiating them.
+ * 
+ * Definition of stream connecting 2 nodes either inline or via buffer server<p>
+ * <br>
+ * StramChild to use this to wire the nodes after instantiating them.<br>
+ * <br>
  * @author thomas
+ * 
  */
 public class StreamPConf extends StreamingNodeUmbilicalProtocol.WritableAdapter
 {
