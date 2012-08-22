@@ -35,7 +35,6 @@ public class ServerInitializer extends ChannelInitializer<SocketChannel>
             @Override
             public ByteBuf encode(ChannelHandlerContext ctx, SerializedData msg) throws Exception
             {
-                logger.debug("offset = {} and size = {}", msg.offset, msg.size);
                 return wrappedBuffer(msg.bytes, msg.offset, msg.size);
             }
         };

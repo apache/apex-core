@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  */
 public class LogicalNode implements DataListener
 {
-    private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);
     private final String upstream;
     private final String group;
     private final HashSet<PhysicalNode> physicalNodes;
@@ -84,7 +84,7 @@ public class LogicalNode implements DataListener
     public synchronized void catchUp(long longWindowId)
     {
         int baseSeconds = 0;
-        int intervalMillis = 0;
+        int intervalMillis;
         /*
          * fast forward to catch up with the windowId without consuming
          */
@@ -122,9 +122,6 @@ public class LogicalNode implements DataListener
         /*
          * consume as much data as you can before running out of steam
          */
-        // my assumption is that one will never get blocked while writing
-        // since the underlying blocking queue maintained by netty has infinite
-        // capacity. we will have to double check though.
         if (partitions.isEmpty()) {
             while (iterator.hasNext()) {
                 SerializedData data = iterator.next();

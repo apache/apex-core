@@ -1,5 +1,0 @@
-chetan@cnlindes:~/work/core/stram$ mvn test -Dtest=SocketStreamTest 2>&1 | grep offset
-2012-08-21 20:27:52,271 DEBUG [nioEventLoopGroup-2-3] netty.ServerInitializer (ServerInitializer.java:encode(38)) - offset = 0 and size = 12
-2012-08-21 20:27:52,274 DEBUG [nioEventLoopGroup-2-3] netty.ServerInitializer (ServerInitializer.java:encode(38)) - offset = 42 and size = 12
-2012-08-21 20:27:52,274 DEBUG [nioEventLoopGroup-2-3] netty.ServerInitializer (ServerInitializer.java:encode(38)) - offset = 54 and size = -1
-2012-08-21 20:27:52,276 DEBUG [nioEventLoopGroup-2-3] netty.ServerInitializer (ServerInitializer.java:encode(38)) - offset = 42 and size = 12
