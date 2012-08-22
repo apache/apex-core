@@ -57,7 +57,10 @@ import com.malhartech.stream.BufferServerStreamContext;
 import com.malhartech.stream.InlineStream;
 
 /**
- * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.
+ * 
+ * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.<p>
+ * <br>
+ * 
  */
 public class StramChild
 {

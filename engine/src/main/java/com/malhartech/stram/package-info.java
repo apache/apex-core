@@ -10,6 +10,11 @@
  * The application master is also called <b>STRAM</b><br>
  * (TBD - To explain all functionality)<br>
  * <br>
+ * <b>StramAppContext</b>: Context interface for sharing information across components in YARN App<br>
+ * <b>StramAppMaster</b>: Streaming Application Master (see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster})<br>
+ * <b>StramChild</b>: The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}<br>
+ * <b>StramChildAgent</b>: Representation of a child container in the master<br>
+ * <b>StramClient</b>: Submits application to YARN<br>
  * <b>StramConstants</b>: Placeholder for constants to be used by Stram/Dag<br>
  * <b>StramUtils</b>: Utilities for shared use in Stram components<br>
  * <b>StreamPConf</b>: Definition of stream connecting 2 nodes either inline or via buffer server<br>

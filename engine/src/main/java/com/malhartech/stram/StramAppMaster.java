@@ -68,7 +68,9 @@ import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.webapp.StramWebApp;
 
 /**
- * see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster}
+ * 
+ * Streaming Application Master (see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster})<p>
+ * <br>
  *
  */
 public class StramAppMaster

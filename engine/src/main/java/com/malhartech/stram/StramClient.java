@@ -62,7 +62,9 @@ import com.malhartech.stram.conf.ShipContainingJars;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
- * StramClient for application submission to YARN.
+ * 
+ * Submits application to YARN<p>
+ * <br>
  */
 @InterfaceAudience.Public
 @InterfaceStability.Unstable

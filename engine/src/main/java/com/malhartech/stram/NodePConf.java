@@ -15,8 +15,11 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  *
+ * TBD (Stram side implementation of Physcial Node?)<p>
+ * <br>
  * @author thomas
  */
+
 public class NodePConf extends StreamingNodeUmbilicalProtocol.WritableAdapter implements Context
 {
 
