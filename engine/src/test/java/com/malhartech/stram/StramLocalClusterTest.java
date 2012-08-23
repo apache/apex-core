@@ -37,8 +37,8 @@ public class StramLocalClusterTest {
 
   private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
   
-  //@Test
-  public void testLocalClusterInitShutdown() {
+  @Test
+  public void testLocalClusterInitShutdown() throws Exception {
     // create test topology
     Properties props = new Properties();
 
@@ -65,18 +65,18 @@ public class StramLocalClusterTest {
 
     TopologyBuilder tplg = new TopologyBuilder(new Configuration());
     tplg.addFromProperties(props);
-    
+
     StramLocalCluster localCluster = new StramLocalCluster(tplg);
     localCluster.run();
   }
   
-  @Test
+  //@Test
   public void testChildRecovery() throws Exception {
 
     TopologyBuilder tb = new TopologyBuilder();
     tb.getConf().setInt(STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
     tb.getConf().setInt(TopologyBuilder.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
-    
+
     StreamConf input1 = tb.getOrAddStream("input1");
     input1.addProperty(STREAM_CLASSNAME,
         LocalTestInputAdapter.class.getName());
@@ -96,7 +96,7 @@ public class StramLocalClusterTest {
     for (NodeConf nodeConf : tb.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
-    
+
     StramLocalCluster localCluster = new StramLocalCluster(tb);
     localCluster.runAsync();
 
@@ -235,6 +235,6 @@ public class StramLocalClusterTest {
     }
     
   }
-  
-  
+
+
 }

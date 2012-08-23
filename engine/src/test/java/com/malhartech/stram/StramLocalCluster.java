@@ -62,7 +62,7 @@ public class StramLocalCluster implements Runnable {
         long clientVersion, int clientMethodsHash) throws IOException {
       throw new UnsupportedOperationException("not implemented in local mode");
     }
-    
+
     @Override
     public void log(String containerId, String msg) throws IOException {
       LOG.info("child msg: {} context: {}", msg, dnmgr.getContainerAgent(containerId).container);
@@ -103,9 +103,9 @@ public class StramLocalCluster implements Runnable {
     public StramToNodeRequest processPartioningDetails() {
       throw new RuntimeException("processPartioningDetails not implemented");
     }
-    
+
   }
-  
+
   public static class LocalStramChild extends StramChild
   {
     /**
@@ -146,7 +146,7 @@ public class StramLocalCluster implements Runnable {
     }
     
   }
-  
+
   /**
    * Starts the child "container" as thread.
    */
@@ -163,7 +163,7 @@ public class StramLocalCluster implements Runnable {
       childContainers.put(containerId, child);
       LOG.info("Started container {}", containerId);
     }
-    
+
     @Override
     public void run() {
       try {
@@ -179,15 +179,15 @@ public class StramLocalCluster implements Runnable {
     }
   }
 
-  public StramLocalCluster(TopologyBuilder topology) {
+  public StramLocalCluster(TopologyBuilder topology) throws Exception {
 
     try {
       FileContext.getLocalFSFileContext().delete(
           new Path(CLUSTER_WORK_DIR.getAbsolutePath()), true);
     } catch (Exception e) {
       throw new RuntimeException("could not cleanup test dir", e);
-    }     
-    
+    }
+
     if (topology.getConf().get(TopologyBuilder.STRAM_CHECKPOINT_DIR) == null) {
       topology.getConf().set(TopologyBuilder.STRAM_CHECKPOINT_DIR, CLUSTER_WORK_DIR.getPath());
     }
@@ -225,7 +225,7 @@ public class StramLocalCluster implements Runnable {
     }
     return nodes.get(0);
   }
-  
+
   public void runAsync() {
     new Thread(this, "master").start();
   }
@@ -248,15 +248,15 @@ public class StramLocalCluster implements Runnable {
         }
         dnmgr.containerStopRequests.remove(containerIdStr);
       }
-      
+
       // start containers
       while (!dnmgr.containerStartRequests.isEmpty()) {
         DeployRequest cdr = dnmgr.containerStartRequests.poll();
         if (cdr != null) {
           new LocalStramChildLauncher(cdr);
-        }      
+        }
       }
-      
+
       // monitor child containers
       dnmgr.monitorHeartbeat();
 
@@ -271,9 +271,9 @@ public class StramLocalCluster implements Runnable {
         }
       }
     }
-    
+
     LOG.info("Application finished.");
     bufferServer.shutdown();
   }
-  
+
 }

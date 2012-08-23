@@ -93,6 +93,16 @@
       <version>1.06</version>
       <classifier>shaded</classifier>
     </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-common</artifactId>
+      <version>4.0.0.Alpha2</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <version>4.0.0.Alpha2</version>
+    </dependency>
   </dependencies>
 
 
@@ -152,11 +162,11 @@
                 <exclude>**/yarn-site.xml</exclude>
               </excludes>
             </configuration>
-          </plugin>        
+          </plugin>
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
-            <version>1.7</version>            
+            <version>1.7</version>
             <executions>
               <execution>
                 <id>add-test-resource</id>
@@ -220,7 +230,7 @@
         </plugins>
       </build>
     </profile>
-    
+
     <!-- mvn package -P docs -->
     <profile>
       <id>docs</id>
@@ -244,9 +254,9 @@
             </executions>
           </plugin>
         </plugins>
-      </build>    
+      </build>
     </profile>
-    
+
   </profiles>
 
 

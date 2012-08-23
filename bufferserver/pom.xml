@@ -34,16 +34,10 @@
       <id>dtrott</id>
       <url>http://maven.davidtrott.com/repository</url>
     </pluginRepository>
-  </pluginRepositories>  
+  </pluginRepositories>
 
   <dependencies>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty</artifactId>
-      <version>3.5.1.Final</version>
-      <scope>compile</scope>
-    </dependency>
-            
+
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
@@ -63,6 +57,21 @@
       <artifactId>slf4j-api</artifactId>
       <version>1.6.4</version>
       <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-common</artifactId>
+      <version>4.0.0.Alpha2</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <version>4.0.0.Alpha2</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec</artifactId>
+      <version>4.0.0.Alpha2</version>
     </dependency>
   </dependencies>
 

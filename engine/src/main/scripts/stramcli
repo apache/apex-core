@@ -5,17 +5,25 @@ if [ "$HADOOP_PREFIX" = "" ]; then
     exit 1
 fi
 
-HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/malhartech/bufferserver/0.1-SNAPSHOT/bufferserver-0.1-SNAPSHOT.jar
-HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/malhar/app/stram/0.1-SNAPSHOT/stram-0.1-SNAPSHOT.jar
+function addhc
+{
+  if test -z "$HADOOP_CLASSPATH"
+  then
+    export HADOOP_CLASSPATH=~/.m2/repository/$1
+  else 
+    export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/$1
+  fi
+}
 
-#kryo dependencies
-HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/esotericsoftware/kryo/kryo/2.16/kryo-2.16.jar:~/.m2/repository/com/esotericsoftware/reflectasm/reflectasm/1.06/reflectasm-1.06-shaded.jar
-HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/org/mockito/mockito-all/1.8.5/mockito-all-1.8.5.jar
-HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/esotericsoftware/minlog/minlog/1.2/minlog-1.2.jar
-
-HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/com/sun/jersey/jersey-client/1.8/jersey-client-1.8.jar
+addhc com/malhartech/bufferserver/0.1-SNAPSHOT/bufferserver-0.1-SNAPSHOT.jar
+addhc com/malhar/app/stram/0.1-SNAPSHOT/stram-0.1-SNAPSHOT.jar
+addhc com/esotericsoftware/kryo/kryo/2.16/kryo-2.16.jar
+addhc com/esotericsoftware/reflectasm/reflectasm/1.06/reflectasm-1.06-shaded.jar
+addhc com/esotericsoftware/minlog/minlog/1.2/minlog-1.2.jar
+addhc com/sun/jersey/jersey-client/1.8/jersey-client-1.8.jar
+addhc org/mockito/mockito-all/1.8.5/mockito-all-1.8.5.jar
+addhc io/netty/netty/4.0.0.Alpha2/netty-4.0.0.Alpha2.jar
 
 export HADOOP_CLIENT_OPTS="$HADOOP_OPTS"
-export HADOOP_CLASSPATH
 
 $HADOOP_PREFIX/bin/hadoop com.malhartech.stram.cli.StramCli 

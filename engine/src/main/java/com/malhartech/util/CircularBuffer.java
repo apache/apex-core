@@ -51,7 +51,7 @@ public class CircularBuffer<T>
     if (head > tail) {
       return buffer[tail++ % buffer.length];
     }
-    
+
     throw underflow;
   }
 
@@ -70,12 +70,12 @@ public class CircularBuffer<T>
     int size = size();
 
     while (tail < head) {
-      container.add(buffer[tail++]);
+      container.add(buffer[tail++ % buffer.length]);
     }
-    
+
     return size;
   }
-  
+
   @Override
   public String toString()
   {

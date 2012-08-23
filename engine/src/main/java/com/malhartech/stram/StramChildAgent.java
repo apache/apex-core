@@ -20,7 +20,9 @@ import com.malhartech.stram.TopologyDeployer.PTContainer;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 
 /**
- * Representation of a child container in the master.
+ * 
+ * Representation of a child container in the master<p>
+ * <br>
  */
 public class StramChildAgent {
   private static Logger LOG = LoggerFactory.getLogger(StramChildAgent.class);
