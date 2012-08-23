@@ -201,8 +201,8 @@ public class StramLocalCluster implements Runnable {
     LOG.info("Buffer server started: {}", bufferServerAddress);
   }
 
-  StramChild getContainer(int containerSeq) {
-    return this.childContainers.get("container-" + containerSeq);
+  LocalStramChild getContainer(String id) {
+    return this.childContainers.get(id);
   }
 
   /**
@@ -218,24 +218,20 @@ public class StramLocalCluster implements Runnable {
     this.childContainers.remove(c.getContainerId());
   }
 
-  LocalStramChild findContainerByLogicalNode(NodeConf logicalNode) {
+  PTNode findByLogicalNode(NodeConf logicalNode) {
     List<PTNode> nodes = dnmgr.getTopologyDeployer().getNodes(logicalNode);
     if (nodes.isEmpty()) {
       return null;
     }
-    if (nodes.get(0).container.containerId == null) {
-      return null;
-    }
-  
-    LocalStramChild c = this.childContainers.get(nodes.get(0).container.containerId);
-   // if (c == null) {
-   //   throw new IllegalStateException("Cannot find container for node " + logicalNode);
-   // }
-    return c;
+    return nodes.get(0);
   }
   
   public void runAsync() {
     new Thread(this, "master").start();
+  }
+
+  public void shutdown() {
+    appDone = true;
   }
   
   @Override

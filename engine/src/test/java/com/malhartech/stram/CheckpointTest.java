@@ -21,6 +21,7 @@ import org.junit.Test;
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.InternalNode;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -98,11 +99,15 @@ public class CheckpointTest {
     container.processHeartbeatResponse(rsp);
     
     input.endWindow(1);
- 
+    InternalNode node = container.getNodeMap().get(backupRequest.getNodeId());
+    if (node.getContext().getCurrentWindowId() < 1) {
+      Thread.sleep(500);
+    }
+    
     container.shutdown();
 
     File expectedFile = new File(testWorkDir, cc.getNodes().get(0).getDnodeId() + "/1");
-    Assert.assertTrue("checkpoint file exists: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
+    Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
     
   }
 

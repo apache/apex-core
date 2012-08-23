@@ -404,10 +404,12 @@ public class StramChild
     if (rsp.getDeployRequest() != null) {
       try {
         LOG.warn("Re-initializing container from deploy request: {}", rsp.getDeployRequest());
-        // TODO: this should not replace existing objects
+        // TODO: this should not affect existing objects
+        rsp.getDeployRequest().setHeartbeatIntervalMillis(this.heartbeatIntervalMillis);
+        rsp.getDeployRequest().setCheckpointDfsPath(this.checkpointDfsPath);
         init(rsp.getDeployRequest());
       } catch (Exception e) {
-        throw new RuntimeException("Failed to initialize container");
+        throw new RuntimeException("Failed to initialize container", e);
       }
     }
     

@@ -89,6 +89,7 @@ public class DNodeManager
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
     checkpointDir = topology.getConf().get(TopologyBuilder.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
+    this.checkpointIntervalMillis = topology.getConf().getInt(TopologyBuilder.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
     
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
@@ -495,14 +496,16 @@ public class DNodeManager
     }
     
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
-    if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
-      for (PTNode node : cs.container.nodes) {
-        StramToNodeRequest backupRequest = new StramToNodeRequest();
-        backupRequest.setNodeId(node.id);
-        backupRequest.setRequestType(RequestType.CHECKPOINT);
-        requests.add(backupRequest);
+    if (checkpointIntervalMillis > 0) {
+      if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
+        for (PTNode node : cs.container.nodes) {
+          StramToNodeRequest backupRequest = new StramToNodeRequest();
+          backupRequest.setNodeId(node.id);
+          backupRequest.setRequestType(RequestType.CHECKPOINT);
+          requests.add(backupRequest);
+        }
+        cs.lastCheckpointRequestMillis = currentTimeMillis;
       }
-      cs.lastCheckpointRequestMillis = currentTimeMillis;
     }
     rsp.setNodeRequests(requests);
     return rsp;
