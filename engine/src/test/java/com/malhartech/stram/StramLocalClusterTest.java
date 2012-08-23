@@ -37,7 +37,7 @@ public class StramLocalClusterTest {
 
   private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
   
-  @Test
+  //@Test
   public void testLocalClusterInitShutdown() throws Exception {
     // create test topology
     Properties props = new Properties();
@@ -70,7 +70,7 @@ public class StramLocalClusterTest {
     localCluster.run();
   }
   
-  //@Test
+  @Test
   public void testChildRecovery() throws Exception {
 
     TopologyBuilder tb = new TopologyBuilder();
