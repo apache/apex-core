@@ -92,7 +92,7 @@ public class StreamContext implements Context
    */
   public void setSink(final Sink sink)
   {
-    LOG.debug("setSink: {}", sink);
+//    LOG.debug("setSink: {}", sink);
     this.sink = startingWindowId > 0
                 ? new Sink()
     {

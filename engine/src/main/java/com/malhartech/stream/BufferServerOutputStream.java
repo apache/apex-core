@@ -10,8 +10,6 @@ import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,7 +85,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         throw new UnsupportedOperationException("this data type is not handled in the stream");
     }
 
-//    logger.debug("channel write with data {}" + db.build());
+//    logger.debug("{} channel write with data {}", getContext(), db.build());
     channel.write(db.build());
   }
 
