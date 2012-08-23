@@ -16,6 +16,8 @@ import java.util.Properties;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InternalNode;
@@ -24,6 +26,7 @@ import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
@@ -32,7 +35,9 @@ import com.malhartech.stream.HDFSOutputStream;
 
 public class StramLocalClusterTest {
 
-  @Test
+  private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
+  
+  //@Test
   public void testLocalClusterInitShutdown() throws Exception {
     // create test topology
     Properties props = new Properties();
@@ -64,12 +69,13 @@ public class StramLocalClusterTest {
     StramLocalCluster localCluster = new StramLocalCluster(tplg);
     localCluster.run();
   }
-
-  //@Test
+  
+  @Test
   public void testChildRecovery() throws Exception {
 
     TopologyBuilder tb = new TopologyBuilder();
     tb.getConf().setInt(STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
+    tb.getConf().setInt(TopologyBuilder.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
 
     StreamConf input1 = tb.getOrAddStream("input1");
     input1.addProperty(STREAM_CLASSNAME,
@@ -104,70 +110,105 @@ public class StramLocalClusterTest {
     Assert.assertEquals("number nodes", 2, nodeMap.size());
 
     // safer to lookup via topology deployer
-    InternalNode n1 = nodeMap.get("1");
+    InternalNode n1 = nodeMap.get(localCluster.findByLogicalNode(node1).id);
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForContainer(localCluster, node2);
     Map<String, InternalNode> c2NodeMap = c2.getNodeMap();
     Assert.assertEquals("number nodes", 1, c2NodeMap.size());
-    InternalNode n2 = c2NodeMap.get("3");
+    InternalNode n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
     
     LocalTestInputAdapter input = (LocalTestInputAdapter)inputAdapters.get(0);
     Assert.assertEquals("initial window id", 0, input.getContext().getStartingWindowId());
     input.resetWindow(0, 1);
-    input.beginWindow(1);
 
+    input.beginWindow(1);
+    waitForWindow(n1, 1);
     backupNode(c0, n1);
     input.endWindow(1);
     
     input.beginWindow(2);
+    waitForWindow(n2, 2);
+    backupNode(c2, n2);
     input.endWindow(2);
 
-    // wait for node to move to next window
-    while (n1.getContext().getCurrentWindowId() < 2) {
-      Thread.sleep(100);
-    }
-    // propagate checkpoint to master
+    // move window forward and wait for nodes to reach,
+    // to ensure backup in previous windows was processed
+    input.beginWindow(3);
+    input.endWindow(3);
+
+    //waitForWindow(n1, 3);
+    waitForWindow(n2, 3);
+
+    // propagate checkpoints to master
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
     c0.waitForHeartbeat(5000);
+ 
+    c2.triggerHeartbeat();
+    c2.waitForHeartbeat(5000);
+    
     // simulate node failure 
     localCluster.failContainer(c0);
 
-    LocalStramChild c1 = waitForContainer(localCluster, node1);
-    // container will start empty until downstream undeploy completes,
-    // we need to wait for dependencies till nodes are deployed
+    // replacement container will start empty until downstream undeploy completes
     c2.triggerHeartbeat();
-    c1.triggerHeartbeat();
-    
-    c1.waitForHeartbeat(5000);
-    Assert.assertNotSame("old container", c0, c1);
-    Assert.assertNotSame("old container", c0.getContainerId(), c1.getContainerId());
+    c2.waitForHeartbeat(5000);
 
-    inputAdapters = c1.getInputAdapters();
+    // replacement container starts empty 
+    // wait for downstream undeploy to complete
+    LocalStramChild c0Replaced = waitForContainer(localCluster, node1);
+    c0Replaced.triggerHeartbeat();
+    c0Replaced.waitForHeartbeat(5000); // next heartbeat after init
+    
+    Assert.assertNotSame("old container", c0, c0Replaced);
+    Assert.assertNotSame("old container", c0.getContainerId(), c0Replaced.getContainerId());
+
+    inputAdapters = c0Replaced.getInputAdapters();
     input = (LocalTestInputAdapter)inputAdapters.get(0);
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
     Assert.assertEquals("initial window id", 1, input.getContext().getStartingWindowId());
-    
-    int i =0;
+
+    localCluster.shutdown();
     
   }
 
+  /**
+   * Wait until instance of node comes online in a container
+   * @param localCluster
+   * @param nodeConf
+   * @return
+   * @throws InterruptedException
+   */
   private LocalStramChild waitForContainer(StramLocalCluster localCluster, NodeConf nodeConf) throws InterruptedException {
+    PTNode node = localCluster.findByLogicalNode(nodeConf);
+    Assert.assertNotNull("no node for " + nodeConf, node);
+    
     LocalStramChild container;
-    // wait for containers to come up
-    while ((container = localCluster.findContainerByLogicalNode(nodeConf)) == null) {
+    while (true) {
+      if (node.container.containerId != null) {
+        if ((container = localCluster.getContainer(node.container.containerId)) != null) {
+          if (container.getNodeMap().get(node.id) != null) {
+            return container;
+          }
+        }
+      }
       try {
+        LOG.debug("Waiting for {} in container {}", node, node.container.containerId);
         Thread.sleep(500);
       } catch (InterruptedException e) {
       }
     }
-    Assert.assertNotNull(container);
-    // await heartbeat after container init complete
-    //container.waitForHeartbeat(5000); 
-    return container;
   }
+
+  private void waitForWindow(InternalNode node, long windowId) throws InterruptedException {
+    while (node.getContext().getCurrentWindowId() < windowId) {
+      LOG.debug("Waiting for node {} current window {}", node, windowId);
+      Thread.sleep(100);
+    }
+  }
+  
   
   private void backupNode(StramChild c, InternalNode node) {
     StramToNodeRequest backupRequest = new StramToNodeRequest();
@@ -175,7 +216,7 @@ public class StramLocalClusterTest {
     backupRequest.setRequestType(RequestType.CHECKPOINT);
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.setNodeRequests(Collections.singletonList(backupRequest));
-    // TODO: ensure node is running and context set (startup timing)
+    LOG.debug("Requesting backup {} {}", c.getContainerId(), node);
     c.processHeartbeatResponse(rsp);
   }
   

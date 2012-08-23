@@ -62,7 +62,7 @@ import com.malhartech.stram.conf.ShipContainingJars;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
- * 
+ *
  * Submits application to YARN<p>
  * <br>
  */
@@ -86,8 +86,8 @@ public class StramClient
   private ApplicationId appId;
   private TopologyBuilder topology;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
-  // log4j.properties file 
-  // if available, add to local resources and set into classpath 
+  // log4j.properties file
+  // if available, add to local resources and set into classpath
   private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
@@ -185,12 +185,12 @@ public class StramClient
       throw new IllegalArgumentException("No topology property file specified, exiting.");
     }
     LOG.info("Topology: " + topologyPropertyFile);
-    
+
     Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
     topology = new TopologyBuilder(conf);
     topology.addFromProperties(topologyProperties);
     topology.validate();
-    
+
     if (cliParser.hasOption("debug")) {
       topology.getConf().setBoolean(TopologyBuilder.STRAM_DEBUG, true);
     }
@@ -236,12 +236,13 @@ public class StramClient
   public void startApplication() throws IOException
   {
     // process dependencies
-    
+
     // platform jar files - always required
     Class<?>[] defaultClasses = new Class<?>[]{
       com.malhartech.bufferserver.Server.class,
       com.malhartech.stram.StramAppMaster.class,
-      com.malhartech.dag.DefaultSerDe.class
+      com.malhartech.dag.DefaultSerDe.class,
+      io.netty.channel.socket.nio.NioEventLoopGroup.class // there should be another way of handling this!
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
@@ -281,13 +282,13 @@ public class StramClient
       localJarFiles.addAll(Arrays.asList(libJars));
     }
     LOG.info("Local jar file dependencies: " + localJarFiles);
-        
-    // Connect to ResourceManager 	
+
+    // Connect to ResourceManager
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
     rmClient = new ClientRMHelper(yarnClient);
-    assert(rmClient.clientRM != null);		
+    assert(rmClient.clientRM != null);
 
-    // Use ClientRMProtocol handle to general cluster information 
+    // Use ClientRMProtocol handle to general cluster information
     GetClusterMetricsRequest clusterMetricsReq = Records.newRecord(GetClusterMetricsRequest.class);
     GetClusterMetricsResponse clusterMetricsResp = rmClient.clientRM.getClusterMetrics(clusterMetricsReq);
     LOG.info("Got Cluster metric info from ASM"
@@ -322,22 +323,22 @@ public class StramClient
       }
     }
 
-    // Get a new application id 
+    // Get a new application id
     GetNewApplicationResponse newApp = getNewApplication();
     appId = newApp.getApplicationId();
 
     // TODO get min/max resource capabilities from RM and change memory ask if needed
-    // If we do not have min/max, we may not be able to correctly request 
+    // If we do not have min/max, we may not be able to correctly request
     // the required resources from the RM for the app master
-    // Memory ask has to be a multiple of min and less than max. 
+    // Memory ask has to be a multiple of min and less than max.
     // Dump out information about cluster capability as seen by the resource manager
     int minMem = newApp.getMinimumResourceCapability().getMemory();
     int maxMem = newApp.getMaximumResourceCapability().getMemory();
     LOG.info("Min mem capabililty of resources in this cluster " + minMem);
     LOG.info("Max mem capabililty of resources in this cluster " + maxMem);
 
-    // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be 
-    // a multiple of the min value and cannot exceed the max. 
+    // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be
+    // a multiple of the min value and cannot exceed the max.
     // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
     int amMemory = topology.getMasterMemoryMB();
     if (amMemory < minMem) {
@@ -357,7 +358,7 @@ public class StramClient
     LOG.info("Setting up application submission context for ASM");
     ApplicationSubmissionContext appContext = Records.newRecord(ApplicationSubmissionContext.class);
 
-    // set the application id 
+    // set the application id
     appContext.setApplicationId(appId);
     // set the application name
     appContext.setApplicationName(appName);
@@ -385,15 +386,15 @@ public class StramClient
     LOG.info("libjars: {}", libJarsCsv);
     topology.getConf().set(TopologyBuilder.LIBJARS, libJarsCsv);
     topology.getConf().set(TopologyBuilder.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
-    
-    
+
+
     // set local resources for the application master
     // local files or archives as needed
-    // In this scenario, the jar file for the application master is part of the local resources     
+    // In this scenario, the jar file for the application master is part of the local resources
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
     LaunchContainerRunnable.addLibJarsToLocalResources(libJarsCsv, localResources, fs);
 
-    // Set the log4j properties if needed 
+    // Set the log4j properties if needed
     if (!log4jPropFile.isEmpty()) {
       Path log4jSrc = new Path(log4jPropFile);
       Path log4jDst = new Path(fs.getHomeDirectory(), "log4j.props");
@@ -434,10 +435,10 @@ public class StramClient
     LOG.info("Set the environment for the application master");
     Map<String, String> env = new HashMap<String, String>();
 
-    // Add application jar(s) location to classpath 		
-    // At some point we should not be required to add 
-    // the hadoop specific classpaths to the env. 
-    // It should be provided out of the box. 
+    // Add application jar(s) location to classpath
+    // At some point we should not be required to add
+    // the hadoop specific classpaths to the env.
+    // It should be provided out of the box.
     // For now setting all required classpaths including
     // the classpath to "." for the application jar(s)
     StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
@@ -449,10 +450,10 @@ public class StramClient
 
     amContainer.setEnvironment(env);
 
-    // Set the necessary command to execute the application master 
+    // Set the necessary command to execute the application master
     Vector<CharSequence> vargs = new Vector<CharSequence>(30);
 
-    // Set java executable command 
+    // Set java executable command
     LOG.info("Setting up app master command");
     vargs.add(javaCmd);
     if (topology.isDebug()) {
@@ -460,7 +461,7 @@ public class StramClient
     }
     // Set Xmx based on am memory size
     vargs.add("-Xmx" + amMemory + "m");
-    // Set class name 
+    // Set class name
     vargs.add(StramAppMaster.class.getName());
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
@@ -491,30 +492,30 @@ public class StramClient
     // Not needed in this scenario
     // amContainer.setServiceData(serviceData);
 
-    // The following are not required for launching an application master 
-    // amContainer.setContainerId(containerId);		
+    // The following are not required for launching an application master
+    // amContainer.setContainerId(containerId);
 
     appContext.setAMContainerSpec(amContainer);
 
     // Set the priority for the application master
     Priority pri = Records.newRecord(Priority.class);
-    // TODO - what is the range for priority? how to decide? 
+    // TODO - what is the range for priority? how to decide?
     pri.setPriority(amPriority);
     appContext.setPriority(pri);
 
     // Set the queue to which this application is to be submitted in the RM
     appContext.setQueue(amQueue);
-    // Set the user submitting this application 
-    // TODO can it be empty? 
+    // Set the user submitting this application
+    // TODO can it be empty?
     appContext.setUser(amUser);
 
-    // Create the request to send to the applications manager 
+    // Create the request to send to the applications manager
     SubmitApplicationRequest appRequest = Records.newRecord(SubmitApplicationRequest.class);
     appRequest.setApplicationSubmissionContext(appContext);
 
     // Submit the application to the applications manager
     // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
-    // Ignore the response as either a valid response object is returned on success 
+    // Ignore the response as either a valid response object is returned on success
     // or an exception thrown to denote some form of a failure
     LOG.info("Submitting application to ASM");
     rmClient.clientRM.submitApplication(appRequest);
@@ -522,7 +523,7 @@ public class StramClient
     // TODO
     // Try submitting the same request again
     // app submission failure?
-    
+
   }
 
   public ApplicationReport getApplicationReport() throws YarnRemoteException
@@ -533,7 +534,7 @@ public class StramClient
   public void killApplication() throws YarnRemoteException {
     this.rmClient.killApplication(this.appId);
   }
-  
+
   /**
    * Monitor the submitted application for completion. Kill application if time expires.
    *
@@ -566,8 +567,8 @@ public class StramClient
 
 
   /**
-   * Get a new application from the ASM 
-   * 
+   * Get a new application from the ASM
+   *
    * @return New Application
    * @throws YarnRemoteException
    */
