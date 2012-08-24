@@ -105,6 +105,10 @@ public class StramChildAgent {
     return initCtx;
   }
 
+  public boolean hasPendingWork() {
+    return !this.requests.isEmpty() || this.pendingRequest != null;
+  }
+  
   private void ackPendingRequest() {
     if (pendingRequest != null) {
       if (pendingRequest.ackCountdown != null) {
@@ -121,7 +125,7 @@ public class StramChildAgent {
   
   public ContainerHeartbeatResponse pollRequest() {
     ackPendingRequest();
-    
+    //LOG.debug("Number of pending requests for container {}: {}", this.container.containerId, requests.size());    
     DeployRequest r = requests.peek();
     if (r == null) {
       return null;

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -71,7 +72,7 @@ public class StramChild
     final private Map<String, InternalNode> nodeList = new ConcurrentHashMap<String, InternalNode>();
     final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
     final private List<Stream> streams = new ArrayList<Stream>();
-    final private List<InputAdapter> inputAdapters = new ArrayList<InputAdapter>();
+    final private List<InputAdapter> inputAdapters = new CopyOnWriteArrayList<InputAdapter>();
     private long heartbeatIntervalMillis = 1000;
     private boolean exitHeartbeatLoop = false;
     private Object heartbeatTrigger = new Object();
@@ -407,7 +408,15 @@ public class StramChild
                     // keep polling at smaller interval if work is pending
                     while (rsp != null && rsp.isPendingRequests()) {
                         LOG.info("Waiting for pending request.");
-                        Thread.sleep(500);
+                        synchronized (this.heartbeatTrigger) {
+                          try {
+                              this.heartbeatTrigger.wait(500);
+                          }
+                          catch (InterruptedException e1) {
+                              LOG.warn("Interrupted in heartbeat loop, exiting..");
+                              break;
+                          }
+                        }
                         rsp = umbilical.pollRequest(this.containerId);
                         if (rsp != null) {
                             processHeartbeatResponse(rsp);
@@ -531,6 +540,8 @@ public class StramChild
         }
 
         nodeList.remove(node_id);
+        LOG.debug("Removed node {}", node_id);
+
     }
 
     /**
