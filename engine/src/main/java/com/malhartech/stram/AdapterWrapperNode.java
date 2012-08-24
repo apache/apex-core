@@ -21,7 +21,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Wrapper node to connects adapter "stream" to another source or sink stream. Provides uniform view of adapter as node for stram deployment and monitoring.
+ * 
+ * Wrapper node to connects adapter "stream" to another source or sink stream<p>
+ * <br>
+ * Provides uniform view of adapter as node for stram deployment and monitoring<br>
+ * <br>
+ * 
  */
 public class AdapterWrapperNode extends AbstractNode implements Sink
 {
