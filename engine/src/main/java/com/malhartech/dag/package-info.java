@@ -20,9 +20,9 @@
  * <br>
  * There are pre-defined library nodes that you can use: see ...<br>
  * Examples are in the following packages<br>
- * com.malhartech.example.wordcount<br>
- * com.malhattech.example.twitter<br>
- * com.malhartech.example.ads<br>
+ * <b>com.malhartech.example.wordcount</b><br>
+ * <b>com.malhattech.example.twitter</b><br>
+ * <b>com.malhartech.example.ads</b><br>
  * <br>
  * com.malhartech.dag package contains the following classes<br>
  * <b>AbstractNode</b>: The base class for node implementation. Emits and consumes tuples<br>
