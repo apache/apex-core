@@ -11,20 +11,25 @@ package com.malhartech.dag;
 import java.util.Collection;
 
 /**
+ * 
+ * Serializing and Deserializing the data tuples and controlling the partitioning<p>
+ * <br>
  * Data flows from one Node to another Node through a stream. For load balancing the 
  * downstream nodes, we can use sticky partitions. Since the framework has no knowledge
  * about the internals of the data flowing between the node, it has to ask the 
  * application if payload can be partitioned and appropriately creates downstream
  * nodes to share the load as per the partitions. The logic to correspond about 
- * partitions is abstracted out in SerDe which is defined on each stream. 
- * 
+ * partitions is abstracted out in SerDe which is defined on each stream.<br>
+ * <br>
  * The default SerDe does not define any partitions so it cannot be used for sticky
- * partitions. It can still do load balancing using Round Robin, Least Connection etc.
- * 
+ * partitions. It can still do load balancing using Round Robin, Least Connection etc.<br>
+ * <br>
  * Since stream has upstream node and downstream node which can emit and consume different
  * type of objects, the objects values associated with fromByteArray and toByteArray
  * could differ. In most cases they would be identical and is recommended to keep them
- * that way.
+ * that way.<br>
+ * <br>
+ * 
  * @author chetan
  */
 public interface SerDe
