@@ -50,7 +50,7 @@ public class StramLocalClusterTest {
     // fake output adapter - to be ignored when determine shutdown
     props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
     props.put("stram.stream.output.inputNode", "node2");
-    props.put("stram.stream.output.filepath", "localclustertest-testSetupShutdown.out");
+    props.put("stram.stream.output.filepath", "target/"+StramLocalClusterTest.class.getName()+"-testSetupShutdown.out");
     props.put("stram.stream.output.append", "false");
     
     props.put("stram.stream.n1n2.inputNode", "node1");
