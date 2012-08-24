@@ -68,8 +68,8 @@ public class StramChild
   final private StreamingNodeUmbilicalProtocol umbilical;
   final private Map<String, InternalNode> nodeList = new ConcurrentHashMap<String, InternalNode>();
   final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
-  final private Map<StreamContext, Stream> streams = new ConcurrentHashMap<StreamContext, Stream>();
-  final private Map<StreamContext, InputAdapter> inputAdapters = new ConcurrentHashMap<StreamContext, InputAdapter>();
+  final private Map<Stream, StreamContext> streams = new ConcurrentHashMap<Stream, StreamContext>();
+  final private Map<InputAdapter, StreamContext> inputAdapters = new ConcurrentHashMap<InputAdapter, StreamContext>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   private Object heartbeatTrigger = new Object();
@@ -90,7 +90,7 @@ public class StramChild
   /**
    * Make accessible for unit testing
    */
-  protected Map<StreamContext, InputAdapter> getInputAdapters()
+  protected Map<InputAdapter, StreamContext> getInputAdapters()
   {
     return Collections.unmodifiableMap(inputAdapters);
   }
@@ -118,7 +118,7 @@ public class StramChild
     if (sourceNode instanceof AdapterWrapperNode) {
       AdapterWrapperNode wrapper = (AdapterWrapperNode)sourceNode;
       // input adapter
-      this.inputAdapters.put(wrapper.getAdapterContext(), (InputAdapter)wrapper.getAdapterStream());
+      this.inputAdapters.put((InputAdapter)wrapper.getAdapterStream(), wrapper.getAdapterContext());
     }
 
     InternalNode targetNode = nodeList.get(sc.getTargetNodeId());
@@ -134,7 +134,7 @@ public class StramChild
       // operation is additive - there can be multiple output streams
       sourceNode.addOutputStream(dsc);
 
-      this.streams.put(dsc, stream);
+      this.streams.put(stream, dsc);
     }
     else {
 
@@ -158,7 +158,7 @@ public class StramChild
 
         streamContext.setSink(oss);
         sourceNode.addOutputStream(streamContext);
-        this.streams.put(streamContext, oss);
+        this.streams.put(oss, streamContext);
       }
 
       if (targetNode != null) {
@@ -181,7 +181,7 @@ public class StramChild
 
         streamContext.setPartitions(sc.getPartitionKeys());
 
-        this.streams.put(streamContext, iss);
+        this.streams.put(iss, streamContext);
       }
     }
   }
@@ -220,9 +220,9 @@ public class StramChild
 
     // ideally we would like to activate the output streams for a node before the input streams
     // are activated. But does not look like we have that fine control here. we should get it.
-    for (Entry<StreamContext, Stream> e: streams.entrySet()) {
-      LOG.debug("activate {} with startWindowId {}", e.getValue(), e.getKey().getStartingWindowId());
-      e.getValue().activate(e.getKey());
+    for (Entry<Stream, StreamContext> e: streams.entrySet()) {
+      LOG.debug("activate {} with startWindowId {}", e.getValue(), e.getValue().getStartingWindowId());
+      e.getKey().activate(e.getValue());
     }
 
     for (Entry<String, InternalNode> e: nodeList.entrySet()) {
@@ -251,11 +251,11 @@ public class StramChild
     }
 
     // activate all the input adapters if any
-    for (Entry<StreamContext, InputAdapter> e: inputAdapters.entrySet()) {
-      e.getValue().activate(e.getKey());
+    for (Entry<InputAdapter, StreamContext> e: inputAdapters.entrySet()) {
+      e.getKey().activate(e.getValue());
     }
 
-    windowGenerator = new WindowGenerator(this.inputAdapters.values(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
+    windowGenerator = new WindowGenerator(this.inputAdapters.keySet(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
     if (ctx.getWindowSizeMillis() > 0) {
       windowGenerator.start();
     }
@@ -291,7 +291,7 @@ public class StramChild
     /*
      * stop all the streams.
      */
-    for (Stream s: this.streams.values()) {
+    for (Stream s: this.streams.keySet()) {
       LOG.debug("teardown " + s);
       s.teardown();
 //      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
@@ -453,9 +453,9 @@ public class StramChild
     /*
      * lets find out all the input streams for this node.
      */
-    for (Entry<StreamContext, InputAdapter> e: inputAdapters.entrySet()) {
-      if (e.getKey().getSinkId().equals(node_id)) {
-        inputStreams.add(e.getValue());
+    for (Entry<InputAdapter, StreamContext> e: inputAdapters.entrySet()) {
+      if (e.getValue().getSinkId().equals(node_id)) {
+        inputStreams.add(e.getKey());
       }
     }
 
@@ -464,12 +464,12 @@ public class StramChild
     /*
      * lets also find out remaining input streams and output streams.
      */
-    for (Entry<StreamContext, Stream> e: streams.entrySet()) {
-      if (node_id.equals(e.getKey().getSinkId())) {
-        inputStreams.add(e.getValue());
+    for (Entry<Stream, StreamContext> e: streams.entrySet()) {
+      if (node_id.equals(e.getValue().getSinkId())) {
+        inputStreams.add(e.getKey());
       }
-      else if (node_id.equals(e.getKey().getSourceId())) {
-        outputStreams.add(e.getValue());
+      else if (node_id.equals(e.getValue().getSourceId())) {
+        outputStreams.add(e.getKey());
       }
     }
 

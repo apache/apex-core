@@ -85,10 +85,10 @@ public class CheckpointTest {
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);
 
-    Map<StreamContext, InputAdapter> inputAdapters = container.getInputAdapters();
+    Map<InputAdapter, StreamContext> inputAdapters = container.getInputAdapters();
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
 
-    InputAdapter input = (InputAdapter)inputAdapters.values().toArray()[0];
+    InputAdapter input = (InputAdapter)inputAdapters.keySet().toArray()[0];
     input.resetWindow(0, 1);
     input.beginWindow(1);
 

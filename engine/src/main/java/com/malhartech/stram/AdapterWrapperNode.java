@@ -21,12 +21,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
+ *
  * Wrapper node to connects adapter "stream" to another source or sink stream<p>
  * <br>
  * Provides uniform view of adapter as node for stram deployment and monitoring<br>
  * <br>
- * 
+ *
  */
 public class AdapterWrapperNode extends AbstractNode implements Sink
 {
@@ -101,7 +101,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     props.put(TopologyBuilder.STREAM_CLASSNAME, this.streamClassName);
     StreamConfiguration streamConf = new StreamConfiguration(props);
 
-    Entry<StreamContext, Stream> e;
+    Entry<Stream, StreamContext> e;
     if (isInput()) {
       e = initAdapterStream(streamConf, this);
     }
@@ -109,8 +109,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
       e = initAdapterStream(streamConf, null);
     }
 
-    adapterContext = e.getKey();
-    adapterStream = e.getValue();
+    adapterStream = e.getKey();
+    adapterContext = e.getValue();
 //        LOG.debug("adapter stream {} with startWindowId {}", adapterStream, adapterStream.getContext().getStartingWindowId());
   }
 
@@ -140,7 +140,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
         return (Sink)adapterStream;
     }
 
-    public static <T extends Stream> Entry<StreamContext, T> initAdapterStream(StreamConfiguration streamConf, AbstractNode targetNode)
+    public static <T extends Stream> Entry<T, StreamContext> initAdapterStream(StreamConfiguration streamConf, AbstractNode targetNode)
     {
         Map<String, String> properties = streamConf.getDagProperties();
         String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
@@ -180,22 +180,22 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
 
             ctx.setSerde(StramUtils.getSerdeInstance(properties));
 
-          return new Entry<StreamContext, T>()
+          return new Entry<T, StreamContext>()
           {
             @Override
-            public StreamContext getKey()
-            {
-              return ctx;
-            }
-
-            @Override
-            public T getValue()
+            public T getKey()
             {
               return instance;
             }
 
             @Override
-            public T setValue(T value)
+            public StreamContext getValue()
+            {
+              return ctx;
+            }
+
+            @Override
+            public StreamContext setValue(StreamContext value)
             {
               throw new UnsupportedOperationException("Not supported yet.");
             }

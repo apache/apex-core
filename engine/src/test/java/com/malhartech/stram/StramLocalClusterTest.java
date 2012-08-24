@@ -4,21 +4,6 @@
  */
 package com.malhartech.stram;
 
-import static com.malhartech.stram.conf.TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS;
-import static com.malhartech.stram.conf.TopologyBuilder.STREAM_CLASSNAME;
-import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InternalNode;
 import com.malhartech.dag.StreamConfiguration;
@@ -30,10 +15,20 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.Re
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
+import static com.malhartech.stram.conf.TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS;
+import static com.malhartech.stram.conf.TopologyBuilder.STREAM_CLASSNAME;
+import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import com.malhartech.stream.AbstractInputAdapter;
 import com.malhartech.stream.HDFSOutputStream;
-import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Properties;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StramLocalClusterTest {
 
@@ -105,7 +100,7 @@ public class StramLocalClusterTest {
     LocalStramChild c0 = waitForContainer(localCluster, node1);
     Thread.sleep(1000);
 
-    Map<StreamContext, InputAdapter> inputAdapters = c0.getInputAdapters();
+    Map<InputAdapter, StreamContext> inputAdapters = c0.getInputAdapters();
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
 
     Map<String, InternalNode> nodeMap = c0.getNodeMap();
@@ -121,8 +116,8 @@ public class StramLocalClusterTest {
     InternalNode n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
-    LocalTestInputAdapter input = (LocalTestInputAdapter)inputAdapters.values().toArray()[0];
-    Assert.assertEquals("initial window id", 0, ((StreamContext)inputAdapters.keySet().toArray()[0]).getStartingWindowId());
+    LocalTestInputAdapter input = (LocalTestInputAdapter)inputAdapters.keySet().toArray()[0];
+    Assert.assertEquals("initial window id", 0, ((StreamContext)inputAdapters.values().toArray()[0]).getStartingWindowId());
     input.resetWindow(0, 1);
 
     input.beginWindow(1);
