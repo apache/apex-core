@@ -15,8 +15,8 @@ import java.util.Collection;
 /**
  * Provides a circular buffer<p>
  * <br>
- * get() gets objects from the tail and increments the tail<br>
- * add() adds to the head<br>
+ * {@see StablePriorityQueue}<br>
+ * {@see StableWrapper}<br>
  *
  */
 
@@ -34,7 +34,7 @@ public class CircularBuffer<T>
    * 
    * Constructing a circular buffer of 'n' integers<p>
    * <br>
-   * @param n: size of the buffer to be constructed
+   * @param n size of the buffer to be constructed
    * <br>
    */
   public CircularBuffer(int n)
@@ -48,7 +48,7 @@ public class CircularBuffer<T>
    * 
    * Add object at the head<p>
    * <br>
-   * @param T: object to be added
+   * @param T object to be added
    * 
    */
   public void add(T toAdd)
@@ -65,7 +65,7 @@ public class CircularBuffer<T>
    * 
    * Get object from the tail<p>
    * <br>
-   * @return T: object removed from the buffer returned
+   * @return object removed from the buffer returned
    * <br>
    */
   public T get()
@@ -81,7 +81,7 @@ public class CircularBuffer<T>
    * 
    * Number of objects in the buffer<p>
    * <br>
-   * @return int: Number of objects in the buffer
+   * @return Number of objects in the buffer
    * <br>
    */
   public final int size()
@@ -93,7 +93,7 @@ public class CircularBuffer<T>
    * 
    * Total design capacity of the buffer<p>
    * <br>
-   * @return int: Total return capacity of the buffer
+   * @return Total return capacity of the buffer
    * <br>
    */
   public int capacity()
@@ -105,8 +105,8 @@ public class CircularBuffer<T>
    * 
    * Drain the buffer<p>
    * <br>
-   * @param T: {@link java.util.Collection} class to which the buffer objects are added
-   * @return int: Number of objects removed from the buffer
+   * @param T {@link java.util.Collection} class to which the buffer objects are added
+   * @return Number of objects removed from the buffer
    * <br>
    */
   public int drainTo(Collection<? super T> container)
@@ -124,7 +124,7 @@ public class CircularBuffer<T>
    * 
    * Printing status for debugging<p>
    * <br>
-   * @return String: String contains capacity, head, and tail
+   * @return String containing capacity, head, and tail
    * <br>
    */
   @Override
