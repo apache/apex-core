@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 public class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter implements Stream
 {
     private static Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
-    protected StreamContext context;
     protected Bootstrap bootstrap;
     protected Channel channel;
 
@@ -47,18 +46,6 @@ public class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter imp
     }
 
     @Override
-    public void setContext(StreamContext context)
-    {
-        this.context = context;
-    }
-
-    @Override
-    public StreamContext getContext()
-    {
-        return context;
-    }
-
-    @Override
     public void teardown()
     {
         channel.close().awaitUninterruptibly();
@@ -66,7 +53,7 @@ public class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter imp
     }
 
     @Override
-    public void activate()
+    public void activate(StreamContext context)
     {
         channel = bootstrap.connect().syncUninterruptibly().channel();
     }

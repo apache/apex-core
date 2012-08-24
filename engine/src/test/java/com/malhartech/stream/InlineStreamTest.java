@@ -63,7 +63,7 @@ public class InlineStreamTest
     InlineStream stream12 = new InlineStream();
     StreamContext sc1 = new StreamContext("node1", "node2");
     sc1.setSink(node2.getSink(sc1));
-    stream12.setContext(sc1);
+//    stream12.setContext(sc1);
 
     node1.addOutputStream(sc1);
 
@@ -75,7 +75,7 @@ public class InlineStreamTest
     launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
 
     StreamContext streamContext = new StreamContext("source", "node1");
-    
+
     Sink node1InputPort = node1.getSink(streamContext);
     streamContext.setSink(node1InputPort);
 

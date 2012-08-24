@@ -4,6 +4,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.jms.*;
@@ -13,21 +14,17 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-
 /**
-  * Input Adapter for reading from ActiveMQ<p>
-  * <br>
-  * Extends AbstractInputAdapter<br>
-  * Users need to implement getObject. (See example in InputActiveMQStreamTest)<br>
-  * <br>
+ * Input Adapter for reading from ActiveMQ<p>
+ * <br>
+ * Extends AbstractInputAdapter<br>
+ * Users need to implement getObject. (See example in InputActiveMQStreamTest)<br>
+ * <br>
  */
-
-public abstract class AbstractActiveMQInputStream
-  extends AbstractInputAdapter
-  implements MessageListener, ExceptionListener
+public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter implements MessageListener, ExceptionListener
 {
   private static final Logger logger = Logger.getLogger(
-    AbstractActiveMQInputStream.class.getName());
+          AbstractActiveMQInputStream.class.getName());
   private boolean transacted;
   private int maxiumMessages;
   private int receiveTimeOut;
@@ -41,9 +38,9 @@ public abstract class AbstractActiveMQInputStream
   private void internalSetup(StreamConfiguration config) throws Exception
   {
     ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-      config.get("user"),
-      config.get("password"),
-      config.get("url"));
+            config.get("user"),
+            config.get("password"),
+            config.get("url"));
 
     connection = connectionFactory.createConnection();
     if (config.getBoolean("durable", false)) {
@@ -70,7 +67,7 @@ public abstract class AbstractActiveMQInputStream
     replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
     if (config.getBoolean("durable", false) && config.getBoolean("topic", false)) {
-      consumer = getSession().createDurableSubscriber((Topic) destination, config.get("consumerName"));
+      consumer = getSession().createDurableSubscriber((Topic)destination, config.get("consumerName"));
     }
     else {
       consumer = getSession().createConsumer(destination);
@@ -110,7 +107,7 @@ public abstract class AbstractActiveMQInputStream
   }
 
   @Override
-  public void activate()
+  public void activate(StreamContext context)
   {
     try {
       getConsumer().setMessageListener(this);

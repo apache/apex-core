@@ -12,7 +12,7 @@ import com.malhartech.dag.*;
  */
 
 /**
- * 
+ *
  * Writes tuples to stdout of the container<p>
  * <br>
  * Mainly to be used for debugging. Users should be careful to not have this node listen to a high throughput stream<br>
@@ -26,18 +26,6 @@ public class ConsoleOutputStream implements Stream, Sink
   @Override
   public void setup(StreamConfiguration config)
   {
-  }
-
-  @Override
-  public void setContext(StreamContext context)
-  {
-    this.context = context;
-  }
-
-  @Override
-  public StreamContext getContext()
-  {
-    return context;
   }
 
   @Override
@@ -61,7 +49,7 @@ public class ConsoleOutputStream implements Stream, Sink
   }
 
   @Override
-  public void activate()
+  public void activate(StreamContext context)
   {
   }
 }

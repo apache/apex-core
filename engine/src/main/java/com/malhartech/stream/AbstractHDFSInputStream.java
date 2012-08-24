@@ -5,6 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import java.io.IOException;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -54,7 +55,7 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
   }
 
   @Override
-  public void activate()
+  public void activate(StreamContext context)
   {
     Thread t = new Thread(this);
     t.start();

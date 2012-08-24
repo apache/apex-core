@@ -24,11 +24,7 @@ public interface Stream extends DAGPart<StreamConfiguration, StreamContext>
   @Override
   public void setup(StreamConfiguration config);
 
-  public void setContext(StreamContext context);
-
-  public StreamContext getContext();
-
-  public void activate();
+  public void activate(StreamContext context);
 
   @Override
   public void teardown();

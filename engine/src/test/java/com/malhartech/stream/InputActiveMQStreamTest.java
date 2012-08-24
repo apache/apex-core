@@ -151,7 +151,7 @@ public class InputActiveMQStreamTest
     assertNull(instance.getConsumer());
     assertNull(instance.getSession());
 
-    instance.setup(config); // make sure that test framework's teardown method 
+    instance.setup(config); // make sure that test framework's teardown method
     // does not fail.
   }
 
@@ -159,7 +159,7 @@ public class InputActiveMQStreamTest
   public void testProcess()
   {
     System.out.println("process");
-    instance.setContext(context);
+//    instance.setContext(context);
     try {
       Thread.sleep(10000);
     }

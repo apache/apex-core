@@ -4,6 +4,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.stream.AbstractInputAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +73,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputAdapter
   }
 
   @Override
-  public void activate()
+  public void activate(StreamContext context)
   {
     Thread t = new Thread(this);
     t.start();

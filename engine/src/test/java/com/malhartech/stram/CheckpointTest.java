@@ -21,6 +21,7 @@ import org.junit.Test;
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -30,6 +31,7 @@ import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import java.util.Collection;
 
 /**
  *
@@ -37,7 +39,7 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 public class CheckpointTest {
 
   private static File testWorkDir = new File("target", CheckpointTest.class.getName());
-  
+
   @BeforeClass
   public static void setup() {
     try {
@@ -45,9 +47,9 @@ public class CheckpointTest {
           new Path(testWorkDir.getAbsolutePath()), true);
     } catch (Exception e) {
       throw new RuntimeException("could not cleanup test dir", e);
-    }     
+    }
   }
-    
+
   /**
    * Test saving of node state at window boundary.
    *
@@ -65,7 +67,7 @@ public class CheckpointTest {
                        NumberGeneratorInputAdapter.class.getName());
     input1.addProperty(TopologyBuilder.STREAM_INLINE, "true");
     input1.addProperty("maxTuples", "1");
-    
+
     node1.addInput(input1);
 
     for (NodeConf nodeConf : b.getAllNodes().values()) {
@@ -82,10 +84,10 @@ public class CheckpointTest {
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);
 
-    List<InputAdapter> inputAdapters = container.getInputAdapters();
+    Map<StreamContext, InputAdapter> inputAdapters = container.getInputAdapters();
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
 
-    InputAdapter input = inputAdapters.get(0);
+    InputAdapter input = (InputAdapter)inputAdapters.values().toArray()[0];
     input.resetWindow(0, 1);
     input.beginWindow(1);
 
@@ -96,14 +98,14 @@ public class CheckpointTest {
     rsp.setNodeRequests(Collections.singletonList(backupRequest));
     // TODO: ensure node is running and context set (startup timing)
     container.processHeartbeatResponse(rsp);
-    
+
     input.endWindow(1);
- 
+
     container.shutdown();
 
     File expectedFile = new File(testWorkDir, cc.getNodes().get(0).getDnodeId() + "/1");
     Assert.assertTrue("checkpoint file exists: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
-    
+
   }
 
   @Test
@@ -115,19 +117,19 @@ public class CheckpointTest {
 
     NodeConf node2 = b.getOrAddNode("node2");
     StreamConf n1n2 = b.getOrAddStream("n1n2");
-    
-    
+
+
     StreamConf input1 = b.getOrAddStream("input1");
     input1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
                        NumberGeneratorInputAdapter.class.getName());
     input1.addProperty(TopologyBuilder.STREAM_INLINE, "true");
     input1.addProperty("maxTuples", "1");
-    
+
     node1.addInput(input1);
     node1.addOutput(n1n2);
 
     node2.addInput(n1n2);
-    
+
     for (NodeConf nodeConf : b.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
@@ -143,38 +145,38 @@ public class CheckpointTest {
     Assert.assertNotNull(nodes2);
     Assert.assertEquals(1, nodes2.size());
     PTNode pnode2 = nodes2.get(0);
-    
+
     Map<PTNode, Long> checkpoints = new HashMap<PTNode, Long>();
     long cp = dnm.getRecoveryCheckpoint(pnode2, checkpoints);
     Assert.assertEquals("no checkpoints " + pnode2, 0, cp);
-    
+
     cp = dnm.getRecoveryCheckpoint(pnode1, new HashMap<PTNode, Long>());
     Assert.assertEquals("no checkpoints " + pnode1, 0, cp);
 
     // adding checkpoints to upstream only does not move recovery checkpoint
-    pnode1.checkpointWindows.add(3L); 
-    pnode1.checkpointWindows.add(5L); 
+    pnode1.checkpointWindows.add(3L);
+    pnode1.checkpointWindows.add(5L);
     cp = dnm.getRecoveryCheckpoint(pnode1, new HashMap<PTNode, Long>());
     Assert.assertEquals("no checkpoints " + pnode1, 0L, cp);
-    
+
     pnode2.checkpointWindows.add(3L);
     checkpoints = new HashMap<PTNode, Long>();
     cp = dnm.getRecoveryCheckpoint(pnode1, checkpoints);
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
-    
+
     pnode2.checkpointWindows.add(4L);
     checkpoints = new HashMap<PTNode, Long>();
     cp = dnm.getRecoveryCheckpoint(pnode1, checkpoints);
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
-    
-    pnode1.checkpointWindows.add(1, 4L); 
+
+    pnode1.checkpointWindows.add(1, 4L);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[]{3L, 4L, 5L}));
     checkpoints = new HashMap<PTNode, Long>();
     cp = dnm.getRecoveryCheckpoint(pnode1, checkpoints);
     Assert.assertEquals("checkpoint pnode1", 4L, cp);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[]{4L, 5L}));
-    
+
   }
-  
-  
+
+
 }

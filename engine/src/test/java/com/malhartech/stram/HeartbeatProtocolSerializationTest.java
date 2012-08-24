@@ -45,21 +45,21 @@ public class HeartbeatProtocolSerializationTest
 
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.setDeployRequest(scc);
-    
+
     out = new DataOutputByteBuffer();
     rsp.write(out);
 
     in = new DataInputByteBuffer();
     in.reset(out.getData());
-    
+
     ContainerHeartbeatResponse cloneRsp = new ContainerHeartbeatResponse();
     cloneRsp.readFields(in);
 
     Assert.assertNotNull(cloneRsp.getDeployRequest());
     Assert.assertEquals("node1", cloneRsp.getDeployRequest().getNodes().get(0).getLogicalId());
-    
+
   }
-  
+
   @Test
   public void testMiniClusterTestNode()
   {
@@ -98,17 +98,6 @@ public class HeartbeatProtocolSerializationTest
       }
 
       @Override
-      public void setContext(StreamContext context)
-      {
-      }
-
-      @Override
-      public StreamContext getContext()
-      {
-        return null;
-      }
-
-      @Override
       public void endWindow(int windowId)
       {
         endWindowCount.incrementAndGet();
@@ -132,7 +121,7 @@ public class HeartbeatProtocolSerializationTest
       }
 
       @Override
-      public void activate()
+      public void activate(StreamContext context)
       {
         throw new UnsupportedOperationException("Not supported yet.");
       }

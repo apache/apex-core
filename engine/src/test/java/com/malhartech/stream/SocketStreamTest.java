@@ -110,7 +110,7 @@ public class SocketStreamTest
 
         BufferServerInputStream iss = new BufferServerInputStream();
         iss.setup(sconf);
-        iss.setContext(issContext);
+  //      iss.setContext(issContext);
 
         BufferServerStreamContext ossContext = new BufferServerStreamContext(upstreamNodeId, downstreamNodeId);
         ossContext.setSerde(serde);
@@ -118,11 +118,11 @@ public class SocketStreamTest
 
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(sconf);
-        oss.setContext(ossContext);
+//        oss.setContext(ossContext);
 
-        oss.activate();
+        oss.activate(ossContext);
         LOG.debug("output stream activated");
-        iss.activate();
+        iss.activate(issContext);
         LOG.debug("input stream activated");
 
 

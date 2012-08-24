@@ -12,7 +12,7 @@ import com.malhartech.dag.*;
  */
 
 /**
- * 
+ *
  * Inline streams are used for performance enhancement when both the nodes are in the same hadoop container<p>
  * <br>
  * Inline is a hint that the stram can choose to ignore. Stram may also convert a normal stream into an inline one
@@ -21,7 +21,7 @@ import com.malhartech.dag.*;
  * Inline streams currently cannot be partitioned. Since the main reason for partitioning
  * is to load balance and that means across different hadoop containers. In future we may take a look at it.<br>
  * <br>
- * 
+ *
  */
 public class InlineStream implements Sink, Stream
 {
@@ -40,25 +40,13 @@ public class InlineStream implements Sink, Stream
   }
 
   @Override
-  public void setContext(StreamContext context)
-  {
-    this.context = context;
-  }
-
-  @Override
   public void teardown()
   {
     // nothing to do?
   }
 
   @Override
-  public StreamContext getContext()
-  {
-    return this.context;
-  }
-
-  @Override
-  public void activate()
+  public void activate(StreamContext context)
   {
   }
 }

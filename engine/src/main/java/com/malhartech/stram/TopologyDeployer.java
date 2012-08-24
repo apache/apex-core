@@ -4,6 +4,10 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.SerDe;
+import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
+import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,16 +17,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.dag.SerDe;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 /**
  *
@@ -39,15 +37,15 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 public class TopologyDeployer {
 
   private final static Logger LOG = LoggerFactory.getLogger(TopologyDeployer.class);
-  
+
   /**
    * Common abstraction for streams and nodes for heartbeat/monitoring.<p>
    * <br>
-   * 
+   *
    */
   public abstract static class PTComponent {
     String id;
-    
+
     abstract public String getLogicalId();
     // stats
 
@@ -58,16 +56,16 @@ public class TopologyDeployer {
           append("logicalId", getLogicalId()).
           toString();
     }
-  
+
   }
- 
+
   /**
-   * 
+   *
    * Representation of an input in the physical layout. A source in the DAG<p>
    * <br>
    * This can come from another node or from outside the DAG<br>
    * <br>
-   * 
+   *
    */
   public static class PTInput extends PTComponent {
     final TopologyBuilder.StreamConf logicalStream;
@@ -86,7 +84,7 @@ public class TopologyDeployer {
     public String getLogicalId() {
       return logicalStream.getId();
     }
-    
+
     public InetSocketAddress getBufferServerAddress() {
       if (source instanceof PTNode) {
         return ((PTNode)source).container.bufferServerAddress;
@@ -94,33 +92,33 @@ public class TopologyDeployer {
         return ((PTNode)target).container.bufferServerAddress;
       }
     }
-    
+
   }
 
   /**
-   * 
+   *
    * Representation of input adapter in the physical layout<p>
    * <br>
-   * 
+   *
    */
   public static class PTInputAdapter extends PTInput {
     protected PTInputAdapter(StreamConf logicalStream, PTComponent target, byte[] partition) {
       super(logicalStream, target, partition, null);
     }
   }
-  
+
   /**
-   * 
+   *
    * Representation of an output in the physical layout. A sink in the DAG<p>
    * <br>
    * This can go to another node or to a output Adapter (i.e. outside the DAG)<br>
    * <br>
-   * 
+   *
    */
   public static class PTOutput extends PTComponent {
     final TopologyBuilder.StreamConf logicalStream;
     final PTComponent source;
-    
+
     protected PTOutput(StreamConf logicalStream, PTComponent source) {
       this.logicalStream = logicalStream;
       this.source = source;
@@ -130,28 +128,28 @@ public class TopologyDeployer {
     public String getLogicalId() {
       return logicalStream.getId();
     }
-    
+
   }
 
   /**
-   * 
+   *
    * Representation of output adapter in the physical layout<p>
    * <br>
-   * 
+   *
    */
   public static class PTOutputAdapter extends PTOutput {
     protected PTOutputAdapter(StreamConf logicalStream, PTComponent source) {
       super(logicalStream, source);
     }
   }
-  
+
   /**
-   * 
+   *
    * Representation of a node in the physical layout<p>
    * <br>
    * A generic node in the DAG<br>
    * <br>
-   * 
+   *
    */
   public static class PTNode extends PTComponent {
     TopologyBuilder.NodeConf logicalNode;
@@ -159,7 +157,7 @@ public class TopologyDeployer {
     List<PTOutput> outputs;
     PTContainer container;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
-    
+
     public NodeConf getLogicalNode() {
       return this.logicalNode;
     }
@@ -169,23 +167,23 @@ public class TopologyDeployer {
         return checkpointWindows.getLast();
       return 0;
     }
-    
+
     @Override
     public String getLogicalId() {
       return logicalNode.getId();
     }
-      
+
   }
-  
-  /** 
-   * 
+
+  /**
+   *
    * Representation of a container for physical objects of dag to be placed in<p>
    * <br>
    * This class directly maps to a hadoop container<br>
    * <br>
-   * 
+   *
    */
-  
+
   public static class PTContainer {
     List<PTNode> nodes = new ArrayList<PTNode>();
     String containerId; // assigned to yarn container
@@ -204,7 +202,7 @@ public class TopologyDeployer {
   private Map<StreamConf, PTInputAdapter> inputAdapters = new HashMap<StreamConf, PTInputAdapter>();
   private List<PTContainer> containers = new ArrayList<PTContainer>();
   private int maxContainers = 1;
-  
+
   private PTContainer getContainer(int index) {
     if (index >= containers.size()) {
       if (index >= maxContainers) {
@@ -216,7 +214,7 @@ public class TopologyDeployer {
     }
     return containers.get(index);
   }
-  
+
   public void init(int maxContainers, TopologyBuilder tb) {
 
     this.maxContainers = Math.max(maxContainers,1);
@@ -224,9 +222,9 @@ public class TopologyDeployer {
     for (NodeConf n : tb.getAllNodes().values()) {
       pendingNodes.push(n);
     }
-    
+
     int nodeCount = 0;
-    
+
     while (!pendingNodes.isEmpty()) {
       NodeConf n = pendingNodes.pop();
 
@@ -240,7 +238,7 @@ public class TopologyDeployer {
       byte[][] partitions = null;
       boolean upstreamDeployed = true;
       PTNode inlineUpstreamNode = null;
-      
+
       for (StreamConf s : n.getInputStreams()) {
         if (s.getSourceNode() != null && !deployedNodes.containsKey(s.getSourceNode())) {
           pendingNodes.push(n);
@@ -267,7 +265,7 @@ public class TopologyDeployer {
           }
         }
       }
-      
+
       if (upstreamDeployed) {
         // ready to deploy this node
         List<PTNode> pnodes = new ArrayList<PTNode>();
@@ -275,7 +273,7 @@ public class TopologyDeployer {
           // create node per partition,
           // distribute over available containers
           for (int i = 0; i < partitions.length; i++) {
-            PTNode pNode = createPTNode(n, partitions[i], pnodes.size()); 
+            PTNode pNode = createPTNode(n, partitions[i], pnodes.size());
             pnodes.add(pNode);
             PTContainer container = getContainer((nodeCount++) % maxContainers);
             container.nodes.add(pNode);
@@ -285,7 +283,7 @@ public class TopologyDeployer {
           // single instance, no partitions
           PTNode pNode = createPTNode(n, null, pnodes.size());
           pnodes.add(pNode);
-          
+
           PTContainer container;
           if (inlineUpstreamNode != null) {
             container = inlineUpstreamNode.container;
@@ -298,11 +296,11 @@ public class TopologyDeployer {
         this.deployedNodes.put(n, pnodes);
       }
     }
-        
+
   }
 
   private AtomicInteger nodeSequence = new AtomicInteger();
-  
+
   private PTNode createPTNode(NodeConf nodeConf, byte[] partition, int instanceCount) {
 
     PTNode pNode = new PTNode();
@@ -310,9 +308,9 @@ public class TopologyDeployer {
     pNode.inputs = new ArrayList<PTInput>();
     pNode.outputs = new ArrayList<PTOutput>();
     pNode.id = ""+nodeSequence.incrementAndGet();
-    
+
     for (StreamConf inputStream : nodeConf.getInputStreams()) {
-      // find upstream node(s), 
+      // find upstream node(s),
       // (can be multiple with partitioning or load balancing)
       if (inputStream.getSourceNode() != null) {
         List<PTNode> upstreamNodes = deployedNodes.get(inputStream.getSourceNode());
@@ -341,7 +339,7 @@ public class TopologyDeployer {
         }
       }
     }
-    
+
     for (StreamConf outputStream : nodeConf.getOutputStreams()) {
       if (outputStream.getTargetNode() != null) {
         pNode.outputs.add(new PTOutput(outputStream, pNode));
@@ -363,7 +361,7 @@ public class TopologyDeployer {
 
     return pNode;
   }
-  
+
   private byte[][] getStreamPartitions(StreamConf streamConf)
   {
     try {
@@ -380,17 +378,17 @@ public class TopologyDeployer {
     return null;
   }
 
-  
+
   protected List<PTContainer> getContainers() {
     return this.containers;
   }
- 
+
   protected List<PTNode> getNodes(NodeConf nodeConf) {
     return this.deployedNodes.get(nodeConf);
   }
-  
+
   protected PTInputAdapter getInputAdapter(StreamConf streamConf) {
     return this.inputAdapters.get(streamConf);
   }
-  
+
 }

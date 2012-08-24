@@ -37,7 +37,6 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
     protected static final AttributeKey<StreamContext> CONTEXT = new AttributeKey<StreamContext>("context");
     protected Channel channel;
     private Bootstrap bootstrap;
-    private StreamContext context;
 
     @Override
     public void setup(StreamConfiguration config)
@@ -51,12 +50,6 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
     }
 
     @Override
-    public void setContext(com.malhartech.dag.StreamContext context)
-    {
-        this.context = context;
-    }
-
-    @Override
     public void teardown()
     {
         channel.attr(CONTEXT).remove();
@@ -65,13 +58,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
     }
 
     @Override
-    public StreamContext getContext()
-    {
-        return context;
-    }
-
-    @Override
-    public void activate()
+    public void activate(StreamContext context)
     {
         // Make a new connection.
         channel = bootstrap.connect().syncUninterruptibly().channel();

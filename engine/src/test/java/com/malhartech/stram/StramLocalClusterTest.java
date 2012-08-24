@@ -20,6 +20,7 @@ import org.junit.Test;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InternalNode;
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -29,6 +30,7 @@ import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import com.malhartech.stream.AbstractInputAdapter;
 import com.malhartech.stream.HDFSOutputStream;
+import java.util.Collection;
 
 public class StramLocalClusterTest {
 
@@ -76,17 +78,17 @@ public class StramLocalClusterTest {
         LocalTestInputAdapter.class.getName());
     input1.addProperty(STREAM_INLINE, "true");
 
-    StreamConf n1n2 = tb.getOrAddStream("n1n2");    
-    
+    StreamConf n1n2 = tb.getOrAddStream("n1n2");
+
     NodeConf node1 = tb.getOrAddNode("node1");
     node1.addInput(input1);
     node1.addOutput(n1n2);
-    
+
     NodeConf node2 = tb.getOrAddNode("node2");
     node2.addInput(n1n2);
-    
+
     tb.validate();
-    
+
     for (NodeConf nodeConf : tb.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
@@ -96,8 +98,8 @@ public class StramLocalClusterTest {
 
     LocalStramChild c0 = waitForContainer(localCluster, node1);
     Thread.sleep(1000);
-    
-    List<InputAdapter> inputAdapters = c0.getInputAdapters();
+
+    Map<StreamContext, InputAdapter> inputAdapters = c0.getInputAdapters();
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
 
     Map<String, InternalNode> nodeMap = c0.getNodeMap();
@@ -112,15 +114,15 @@ public class StramLocalClusterTest {
     Assert.assertEquals("number nodes", 1, c2NodeMap.size());
     InternalNode n2 = c2NodeMap.get("3");
     Assert.assertNotNull(n2);
-    
-    LocalTestInputAdapter input = (LocalTestInputAdapter)inputAdapters.get(0);
-    Assert.assertEquals("initial window id", 0, input.getContext().getStartingWindowId());
+
+    LocalTestInputAdapter input = (LocalTestInputAdapter)inputAdapters.values().toArray()[0];
+    Assert.assertEquals("initial window id", 0, ((StreamContext)inputAdapters.keySet().toArray()[0]).getStartingWindowId());
     input.resetWindow(0, 1);
     input.beginWindow(1);
 
     backupNode(c0, n1);
     input.endWindow(1);
-    
+
     input.beginWindow(2);
     input.endWindow(2);
 
@@ -132,7 +134,7 @@ public class StramLocalClusterTest {
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
     c0.waitForHeartbeat(5000);
-    // simulate node failure 
+    // simulate node failure
     localCluster.failContainer(c0);
 
     LocalStramChild c1 = waitForContainer(localCluster, node1);
@@ -140,18 +142,14 @@ public class StramLocalClusterTest {
     // we need to wait for dependencies till nodes are deployed
     c2.triggerHeartbeat();
     c1.triggerHeartbeat();
-    
+
     c1.waitForHeartbeat(5000);
     Assert.assertNotSame("old container", c0, c1);
     Assert.assertNotSame("old container", c0.getContainerId(), c1.getContainerId());
 
     inputAdapters = c1.getInputAdapters();
-    input = (LocalTestInputAdapter)inputAdapters.get(0);
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
-    Assert.assertEquals("initial window id", 1, input.getContext().getStartingWindowId());
-    
-    int i =0;
-    
+    Assert.assertEquals("initial window id", 1, ((StreamContext)inputAdapters.keySet().toArray()[0]).getStartingWindowId());
   }
 
   private LocalStramChild waitForContainer(StramLocalCluster localCluster, NodeConf nodeConf) throws InterruptedException {
@@ -165,10 +163,10 @@ public class StramLocalClusterTest {
     }
     Assert.assertNotNull(container);
     // await heartbeat after container init complete
-    //container.waitForHeartbeat(5000); 
+    //container.waitForHeartbeat(5000);
     return container;
   }
-  
+
   private void backupNode(StramChild c, InternalNode node) {
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(node.getContext().getId());
@@ -178,7 +176,7 @@ public class StramLocalClusterTest {
     // TODO: ensure node is running and context set (startup timing)
     c.processHeartbeatResponse(rsp);
   }
-  
+
   public static class LocalTestInputAdapter extends AbstractInputAdapter {
 
     @Override
@@ -186,13 +184,13 @@ public class StramLocalClusterTest {
     }
 
     @Override
-    public void activate() {
+    public void activate(StreamContext context) {
     }
 
     @Override
     public void teardown() {
     }
-    
+
   }
 
 

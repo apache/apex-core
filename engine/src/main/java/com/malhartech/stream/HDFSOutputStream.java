@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-
 /**
  * Adapter for writing to HDFS<p>
  * <br>
@@ -23,16 +22,13 @@ import org.slf4j.LoggerFactory;
  * Currently all tuples are written to a single HDFS file<br>
  * Future enhancements include options to write into a time slot/windows based files<br>
  * <br>
- * 
+ *
  */
-
-
-public class HDFSOutputStream
-  implements Stream, Sink
+public class HDFSOutputStream implements Stream, Sink
 {
   private static org.slf4j.Logger LOG = LoggerFactory.getLogger(HDFSOutputStream.class);
-  private StreamContext context;
   private FSDataOutputStream output;
+  private SerDe serde;
 
   @Override
   public void setup(StreamConfiguration config)
@@ -61,12 +57,6 @@ public class HDFSOutputStream
   }
 
   @Override
-  public void setContext(StreamContext context)
-  {
-    this.context = context;
-  }
-
-  @Override
   public void teardown()
   {
     try {
@@ -85,7 +75,6 @@ public class HDFSOutputStream
       case SIMPLE_DATA:
       case PARTITIONED_DATA:
         LOG.debug("writing out " + t.getObject());
-        SerDe serde = context.getSerDe();
         byte[] serialized = serde.toByteArray(t.getObject());
         try {
           output.write(serialized);
@@ -101,19 +90,14 @@ public class HDFSOutputStream
     }
   }
 
-  @Override
-  public StreamContext getContext()
-  {
-    return this.context;
-  }
-
   public boolean hasFinished()
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @Override
-  public void activate()
+  public void activate(StreamContext context)
   {
+    serde = context.getSerDe();
   }
 }

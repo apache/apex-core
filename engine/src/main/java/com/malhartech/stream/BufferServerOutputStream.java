@@ -8,23 +8,25 @@ import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.ResetWindowTuple;
+import com.malhartech.dag.SerDe;
 import com.malhartech.dag.Sink;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
-  * Implements tuple flow of node to then buffer server in a logical stream<p>
-  * <br>
-  * Extends SocketOutputStream as buffer server and node communicate via a socket<br>
-  * This buffer server is a write instance of a stream and hence would take care of persistence and retaining tuples till they are consumed<br>
-  * Partitioning is managed by this instance of the buffer server<br>
-  * <br>
-  */
-
+ * Implements tuple flow of node to then buffer server in a logical stream<p>
+ * <br>
+ * Extends SocketOutputStream as buffer server and node communicate via a socket<br>
+ * This buffer server is a write instance of a stream and hence would take care of persistence and retaining tuples till they are consumed<br>
+ * Partitioning is managed by this instance of the buffer server<br>
+ * <br>
+ */
 public class BufferServerOutputStream extends SocketOutputStream implements Sink
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
+  SerDe serde;
 
   @Override
   @SuppressWarnings("fallthrough")
@@ -32,7 +34,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
   {
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
     db.setType(t.getType());
-    db.setWindowId((int) t.getWindowId());
+    db.setWindowId((int)t.getWindowId());
 
     switch (t.getType()) {
       case BEGIN_WINDOW:
@@ -45,7 +47,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
       case END_WINDOW:
         Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
         ew.setNode("SOS");
-        ew.setTupleCount(((EndWindowTuple) t).getTupleCount());
+        ew.setTupleCount(((EndWindowTuple)t).getTupleCount());
 
         db.setEndWindow(ew);
         break;
@@ -56,10 +58,10 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
       case PARTITIONED_DATA:
         logger.warn("got partitioned data " + t.getObject());
       case SIMPLE_DATA:
-        byte partition[] = context.getSerDe().getPartition(t.getObject());
+        byte partition[] = serde.getPartition(t.getObject());
         if (partition == null) {
           Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
-          sdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.getObject())));
+          sdb.setData(ByteString.copyFrom(serde.toByteArray(t.getObject())));
 
           db.setType(Buffer.Data.DataType.SIMPLE_DATA);
           db.setSimpleData(sdb);
@@ -67,7 +69,7 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
         else {
           Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
           pdb.setPartition(ByteString.copyFrom(partition));
-          pdb.setData(ByteString.copyFrom(context.getSerDe().toByteArray(t.getObject())));
+          pdb.setData(ByteString.copyFrom(serde.toByteArray(t.getObject())));
 
           db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
           db.setPartitionedData(pdb);
@@ -76,8 +78,8 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
 
       case RESET_WINDOW:
         Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
-        rw.setWidth(((ResetWindowTuple) t).getIntervalMillis());
-        db.setWindowId(((ResetWindowTuple) t).getBaseSeconds());
+        rw.setWidth(((ResetWindowTuple)t).getIntervalMillis());
+        db.setWindowId(((ResetWindowTuple)t).getBaseSeconds());
         db.setResetWindow(rw);
         break;
 
@@ -90,12 +92,12 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
   }
 
   @Override
-  public void activate()
+  public void activate(StreamContext context)
   {
-    super.activate();
+    super.activate(context);
 
-    BufferServerStreamContext sc = (BufferServerStreamContext) getContext();
-    logger.debug("registering publisher: {} {}", sc.getSourceId(), sc.getId());
-    ClientHandler.publish(channel, sc.getSourceId(), sc.getId(), sc.getStartingWindowId());
+    serde = context.getSerDe();
+    logger.debug("registering publisher: {} {}", context.getSourceId(), context.getId());
+    ClientHandler.publish(channel, context.getSourceId(), context.getId(), context.getStartingWindowId());
   }
 }

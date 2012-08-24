@@ -28,18 +28,6 @@ public abstract class AbstractInputAdapter implements InputAdapter
   protected volatile long windowId;
   protected volatile boolean finished;
 
-  @Override
-  public void setContext(StreamContext context)
-  {
-    this.context = context;
-  }
-
-  @Override
-  public StreamContext getContext()
-  {
-    return this.context;
-  }
-
   public void emit(Object o)
   {
     Tuple t = new Tuple(o);

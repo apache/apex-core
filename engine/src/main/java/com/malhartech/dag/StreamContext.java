@@ -32,6 +32,11 @@ public class StreamContext implements Context
     this.startingWindowId = startingWindowId;
   }
 
+  public String getId()
+  {
+    return "move the code from BufferStreamContext";
+  }
+
   /**
    * @return the sourceId
    */

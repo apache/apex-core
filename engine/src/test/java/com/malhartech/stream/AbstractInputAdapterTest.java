@@ -29,13 +29,14 @@ public class AbstractInputAdapterTest
   }
   @SuppressWarnings("PackageVisibleField")
   AbstractInputAdapter instance;
+  StreamContext context;
 
   @Before
   public void setUp()
   {
-    StreamContext sc = new StreamContext("irrelevant_source", "irrelevant_sink");
+    context = new StreamContext("irrelevant_source", "irrelevant_sink");
     instance = new AbstractInputAdapterImpl();
-    instance.setContext(sc);
+    // instance.setContext(context);
   }
 
   @After
@@ -55,7 +56,7 @@ public class AbstractInputAdapterTest
     final int baseSeconds = 0xcafebabe;
     final int intervalMillis = 0x1234abcd;
 
-    instance.getContext().setSink(new Sink()
+    context.setSink(new Sink()
     {
       @Override
       public void doSomething(Tuple t)
@@ -136,7 +137,7 @@ public class AbstractInputAdapterTest
     }
 
     @Override
-    public void activate()
+    public void activate(StreamContext context)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }

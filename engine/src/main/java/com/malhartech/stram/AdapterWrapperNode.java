@@ -3,14 +3,6 @@
  */
 package com.malhartech.stram;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-
-import org.apache.commons.beanutils.BeanUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.NodeConfiguration;
@@ -20,6 +12,13 @@ import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.conf.TopologyBuilder;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.commons.beanutils.BeanUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Wrapper node to connects adapter "stream" to another source or sink stream. Provides uniform view of adapter as node for stram deployment and monitoring.
@@ -38,7 +37,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     private boolean isInput;
     private String streamClassName;
     private long checkPointWindowId;
-    private Stream adapterStream = null;
+    private Stream adapterStream;
+  private StreamContext adapterContext;
 
     public String getStreamClassName()
     {
@@ -89,27 +89,32 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
         sink.sink(t);
     }
 
-    @Override
-    public void setup(NodeConfiguration config)
-    {
-        Map<String, String> props = config.getDagProperties();
-        props.put(TopologyBuilder.STREAM_CLASSNAME, this.streamClassName);
-        StreamConfiguration streamConf = new StreamConfiguration(props);
-        if (isInput()) {
-            adapterStream = initAdapterStream(streamConf, this);
-        }
-        else {
-            adapterStream = initAdapterStream(streamConf, null);
-        }
-        LOG.debug("adapter stream {} with startWindowId {}", adapterStream, adapterStream.getContext().getStartingWindowId());
+  @Override
+  public void setup(NodeConfiguration config)
+  {
+    Map<String, String> props = config.getDagProperties();
+    props.put(TopologyBuilder.STREAM_CLASSNAME, this.streamClassName);
+    StreamConfiguration streamConf = new StreamConfiguration(props);
+
+    Entry<StreamContext, Stream> e;
+    if (isInput()) {
+      e = initAdapterStream(streamConf, this);
     }
+    else {
+      e = initAdapterStream(streamConf, null);
+    }
+
+    adapterContext = e.getKey();
+    adapterStream = e.getValue();
+//        LOG.debug("adapter stream {} with startWindowId {}", adapterStream, adapterStream.getContext().getStartingWindowId());
+  }
 
     @Override
     public void teardown()
     {
         if (adapterStream != null) {
             adapterStream.teardown();
-            adapterStream.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
+            adapterContext = Stream.DISCONNECTED_STREAM_CONTEXT;
         }
     }
     private com.malhartech.dag.StreamContext sink;
@@ -130,7 +135,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
         return (Sink)adapterStream;
     }
 
-    public static <T extends Stream> T initAdapterStream(StreamConfiguration streamConf, AbstractNode targetNode)
+    public static <T extends Stream> Entry<StreamContext, T> initAdapterStream(StreamConfiguration streamConf, AbstractNode targetNode)
     {
         Map<String, String> properties = streamConf.getDagProperties();
         String className = properties.get(TopologyBuilder.STREAM_CLASSNAME);
@@ -143,14 +148,14 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
             Class<? extends Stream> subClass = clazz.asSubclass(Stream.class);
             Constructor<? extends Stream> c = subClass.getConstructor();
             @SuppressWarnings("unchecked")
-            T instance = (T)c.newInstance();
+            final T instance = (T)c.newInstance();
             // populate custom properties
             BeanUtils.populate(instance, properties);
 
             instance.setup(streamConf);
 
             long checkpointWindowId = streamConf.getLong(CHECKPOINT_WINDOW_ID, 0);
-            StreamContext ctx = new StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCENODE),
+            final StreamContext ctx = new StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCENODE),
                                                   streamConf.get(TopologyBuilder.STREAM_TARGETNODE));
             ctx.setStartingWindowId(checkpointWindowId);
             if (targetNode == null) {
@@ -169,9 +174,27 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
             }
 
             ctx.setSerde(StramUtils.getSerdeInstance(properties));
-            instance.setContext(ctx);
 
-            return instance;
+          return new Entry<StreamContext, T>()
+          {
+            @Override
+            public StreamContext getKey()
+            {
+              return ctx;
+            }
+
+            @Override
+            public T getValue()
+            {
+              return instance;
+            }
+
+            @Override
+            public T setValue(T value)
+            {
+              throw new UnsupportedOperationException("Not supported yet.");
+            }
+          };
         }
         catch (ClassNotFoundException e) {
             throw new IllegalArgumentException("Node class not found: " + className, e);
@@ -200,4 +223,17 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
             stop();
         }
     }
+
+  StreamContext getAdapterContext()
+  {
+    return adapterContext;
+  }
+
+  /**
+   * @param adapterContext the adapterContext to set
+   */
+  public void setAdapterContext(StreamContext adapterContext)
+  {
+    this.adapterContext = adapterContext;
+  }
 }

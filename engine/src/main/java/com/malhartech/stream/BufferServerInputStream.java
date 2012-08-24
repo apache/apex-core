@@ -21,16 +21,15 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
     private long baseSeconds = 0;
 
-    @Override
-    public void activate()
-    {
-        super.activate();
+  @Override
+  public void activate(StreamContext context)
+  {
+    super.activate(context);
 
-        BufferServerStreamContext sc = (BufferServerStreamContext)getContext();
-        String type = "paramNotRequired?"; // TODO: why do we need this?
-        logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {sc.getSinkId(), sc.getSourceId(), sc.getId()});
-        ClientHandler.registerPartitions(channel, sc.getSinkId(), sc.getId() + '/' + sc.getSinkId(), sc.getSourceId(), type, sc.getPartitions(), sc.getStartingWindowId());
-    }
+    String type = "paramNotRequired?"; // TODO: why do we need this?
+    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId()});
+    ClientHandler.registerPartitions(channel, context.getSinkId(), context.getId() + '/' + context.getSinkId(), context.getSourceId(), type, ((BufferServerStreamContext)context).getPartitions(), context.getStartingWindowId());
+  }
 
     @Override
     public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
