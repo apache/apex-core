@@ -69,8 +69,8 @@ import com.malhartech.stram.webapp.StramWebApp;
 
 /**
  * 
- * Streaming Application Master (see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster})<p>
- * <br>
+ * Streaming Application Master<p>
+ * <br>(see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster})<br>
  * The engine of the streaming platform. Runs as a YARN application master<br>
  * As part of initialization the following tasks are done<br>
  * The DAG is parsed, and properties are read to create a physical query map<br>
