@@ -10,6 +10,9 @@ import java.io.OutputStream;
 
 /**
  *
+ * Interface that defines how to write checkpoint state<p>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface BackupAgent

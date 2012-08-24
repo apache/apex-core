@@ -41,8 +41,17 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import com.malhartech.stram.webapp.NodeInfo;
 
 /**
- * Tracks topology provisioning/allocation to containers.
+ * 
+ * Tracks topology provisioning/allocation to containers<p>
+ * <br>
+ * The tasks include<br>
+ * Provisioning nodes one container at a time. Each container gets assinged the nodes, streams and its context<br>
+ * Monitors run time operations incluging heartbeat protocol and node status<br>
+ * Node recovery and restart<br> 
+ * <br>
+ * 
  */
+
 public class DNodeManager
 {
   private final static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);

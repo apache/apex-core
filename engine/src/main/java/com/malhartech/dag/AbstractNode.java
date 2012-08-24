@@ -13,6 +13,10 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 
+ * The base class for node implementation<p>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class AbstractNode implements InternalNode

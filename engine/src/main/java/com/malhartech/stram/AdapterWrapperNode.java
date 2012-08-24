@@ -22,7 +22,12 @@ import com.malhartech.dag.Tuple;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
- * Wrapper node to connects adapter "stream" to another source or sink stream. Provides uniform view of adapter as node for stram deployment and monitoring.
+ * 
+ * Wrapper node to connects adapter "stream" to another source or sink stream<p>
+ * <br>
+ * Provides uniform view of adapter as node for stram deployment and monitoring<br>
+ * <br>
+ * 
  */
 public class AdapterWrapperNode extends AbstractNode implements Sink
 {

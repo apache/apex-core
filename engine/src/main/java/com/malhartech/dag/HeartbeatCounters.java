@@ -8,6 +8,11 @@ import java.io.Serializable;
 
 /**
  *
+ * Data for heartbeat from node to stram<p>
+ * <br>
+ * Basic data sent by nodes to stram during heartbeat<br>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class HeartbeatCounters implements Serializable
