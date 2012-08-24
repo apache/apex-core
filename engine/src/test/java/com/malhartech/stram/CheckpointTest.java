@@ -17,6 +17,8 @@ import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import scala.actors.threadpool.Arrays;
 
@@ -36,6 +38,7 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
  *
  */
 public class CheckpointTest {
+  private static Logger LOG = LoggerFactory.getLogger(CheckpointTest.class);
 
   private static File testWorkDir = new File("target", CheckpointTest.class.getName());
   
@@ -100,14 +103,19 @@ public class CheckpointTest {
     
     input.endWindow(1);
     InternalNode node = container.getNodeMap().get(backupRequest.getNodeId());
-    if (node.getContext().getCurrentWindowId() < 1) {
+    
+    input.beginWindow(2);
+    input.endWindow(2);
+    if (node.getContext().getCurrentWindowId() < 2) {
       Thread.sleep(500);
     }
+    Assert.assertEquals("node @ window 2", 2, node.getContext().getCurrentWindowId());
     
-    container.shutdown();
-
     File expectedFile = new File(testWorkDir, cc.getNodes().get(0).getDnodeId() + "/1");
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
+
+    LOG.debug("Shutdown container {}", container.getContainerId());
+    container.shutdown();
     
   }
 

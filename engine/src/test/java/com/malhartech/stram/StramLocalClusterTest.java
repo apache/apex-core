@@ -37,7 +37,7 @@ public class StramLocalClusterTest {
 
   private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
   
-  //@Test
+  @Test
   public void testLocalClusterInitShutdown() throws Exception {
     // create test topology
     Properties props = new Properties();
@@ -50,8 +50,9 @@ public class StramLocalClusterTest {
     // fake output adapter - to be ignored when determine shutdown
     props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
     props.put("stram.stream.output.inputNode", "node2");
-    props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
-
+    props.put("stram.stream.output.filepath", "target/"+StramLocalClusterTest.class.getName()+"-testSetupShutdown.out");
+    props.put("stram.stream.output.append", "false");
+    
     props.put("stram.stream.n1n2.inputNode", "node1");
     props.put("stram.stream.n1n2.outputNode", "node2");
     props.put("stram.stream.n1n2.template", "defaultstream");
@@ -70,7 +71,7 @@ public class StramLocalClusterTest {
     localCluster.run();
   }
   
-  @Test
+  //@Test
   public void testChildRecovery() throws Exception {
 
     TopologyBuilder tb = new TopologyBuilder();
