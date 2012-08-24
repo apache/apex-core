@@ -118,6 +118,7 @@ public class DNodeManager
   
   /**
    * Check periodically that child containers phone home
+   * @return void
    */
   public void monitorHeartbeat() {
     long currentTms = System.currentTimeMillis();
@@ -213,11 +214,12 @@ public class DNodeManager
   }
   
   /**
-   * Create node tracking context for logical node. Exposed here for tests.
-   *
+   * Create node tracking context for logical node. Exposed here for tests<p>
+   * <br>
    * @param dnodeId
    * @param nodeConf
-   * @return
+   * @return {@link malhartech.stram.NodePConf}
+   * 
    */
   public static NodePConf createNodeContext(String dnodeId, NodeConf nodeConf)
   {
