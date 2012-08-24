@@ -102,28 +102,19 @@ public class StramChild
         return Collections.unmodifiableMap(this.nodeList);
     }
 
-    protected String getContainerId()
+    public String getContainerId()
     {
         return this.containerId;
     }
 
     /**
-     * Initialize stream between 2 nodes
-     *
-     * @param sc
-     * @param ctx
+     * Initialize stream connections.
      */
-    private void initStream(StreamPConf sc, Map<String, NodePConf> nodeConfMap)
+    private void initStream(StreamPConf sc, Map<String, NodePConf> nodeConfMap, List<Stream> newStreams)
     {
         InternalNode sourceNode = nodeList.get(sc.getSourceNodeId());
-
-        if (sourceNode instanceof AdapterWrapperNode) {
-            AdapterWrapperNode wrapper = (AdapterWrapperNode)sourceNode;
-            // input adapter
-            this.inputAdapters.add((InputAdapter)wrapper.getAdapterStream());
-        }
-
         InternalNode targetNode = nodeList.get(sc.getTargetNodeId());
+
         if (sc.isInline()) {
             LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
             InlineStream stream = new InlineStream();
@@ -137,7 +128,7 @@ public class StramChild
             // operation is additive - there can be multiple output streams
             sourceNode.addOutputStream(dsc);
 
-            this.streams.add(stream);
+            newStreams.add(stream);
         }
         else {
 
@@ -146,7 +137,7 @@ public class StramChild
 
             StreamConfiguration streamConf = new StreamConfiguration(sc.getProperties());
             streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
-            if (sourceNode != null) {
+            if (sourceNode != null && nodeConfMap.containsKey(sc.getSourceNodeId())) {
                 BufferServerStreamContext streamContext = new BufferServerStreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
                 streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
                 streamContext.setId(sc.getId());
@@ -162,10 +153,10 @@ public class StramChild
 
                 streamContext.setSink(oss);
                 sourceNode.addOutputStream(streamContext);
-                this.streams.add(oss);
+                newStreams.add(oss);
             }
 
-            if (targetNode != null) {
+            if (targetNode != null && nodeConfMap.containsKey(sc.getTargetNodeId())) {
                 BufferServerStreamContext streamContext = new BufferServerStreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
                 streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
                 streamContext.setId(sc.getId());
@@ -186,13 +177,21 @@ public class StramChild
                 streamContext.setPartitions(sc.getPartitionKeys());
 
                 iss.setContext(streamContext);
-                this.streams.add(iss);
+                newStreams.add(iss);
             }
         }
     }
 
+    
+    /**
+     * Initialize container with nodes and streams in the context. 
+     * Existing nodes are not affected by this operation.
+     * @param ctx
+     * @throws IOException
+     */
     protected void init(StreamingContainerContext ctx) throws IOException
     {
+      
         this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
         if (this.heartbeatIntervalMillis == 0) {
             this.heartbeatIntervalMillis = 1000;
@@ -202,35 +201,67 @@ public class StramChild
             this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
         }
 
-        final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
+        initNodes(ctx.getNodes(), ctx.getStreams());
+        
+        windowGenerator = new WindowGenerator(this.inputAdapters, ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
+        if (ctx.getWindowSizeMillis() > 0) {
+            windowGenerator.start();
+        }
 
+    }
+    
+    /**
+     * Deploy new nodes and activate connecting streams. 
+     * @param nodeConfList
+     * @param streamConfList
+     */
+    private void initNodes(List<NodePConf> nodeConfList, List<StreamPConf> streamConfList) {
+        
+        final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
+        List<InputAdapter> newInputAdapters = new ArrayList<InputAdapter>();
+        
         // create nodes
-        for (NodePConf nodeConf: ctx.getNodes()) {
+        for (NodePConf nodeConf: nodeConfList) {
             nodeConfMap.put(nodeConf.getDnodeId(), nodeConf);
             InternalNode dnode = initOrRestoreNode(nodeConf, conf);
             NodeConfiguration nc = new NodeConfiguration(nodeConf.getProperties());
             dnode.setup(nc);
 //      LOG.info("Initialized node {} ({})", snc.getDnodeId(), snc.getLogicalId());
             nodeList.put(nodeConf.getDnodeId(), dnode);
+
+            if (dnode instanceof AdapterWrapperNode) {
+              Stream wrappedStream = ((AdapterWrapperNode)dnode).getAdapterStream();
+              if (wrappedStream instanceof InputAdapter) {
+                newInputAdapters.add((InputAdapter)wrappedStream);
+              }
+          }
         }
 
         // wire stream connections
-        for (StreamPConf sc: ctx.getStreams()) {
+        List<Stream> newStreams = new ArrayList<Stream>();
+        for (StreamPConf sc: streamConfList) {
 //      LOG.debug("Deploying stream " + sc.getId());
             if (sc.getSourceNodeId() == null || sc.getTargetNodeId() == null) {
                 throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.getId());
             }
-            initStream(sc, nodeConfMap);
+            initStream(sc, nodeConfMap, newStreams);
         }
 
         // ideally we would like to activate the output streams for a node before the input streams
         // are activated. But does not look like we have that fine control here. we should get it.
-        for (Stream s: this.streams) {
+        for (Stream s: newStreams) {
             LOG.debug("activate {} with startWindowId {}", s, s.getContext().getStartingWindowId());
             s.activate();
+            this.streams.add(s);
         }
-
+        
         for (Entry<String, InternalNode> e: nodeList.entrySet()) {
+
+          if (!nodeConfMap.containsKey(e.getKey())) {
+            // not part of deploy set
+            continue;
+          }
+          
             final InternalNode node = e.getValue();
             final String id = e.getKey();
             // launch nodes
@@ -256,14 +287,13 @@ public class StramChild
         }
 
         // activate all the input adapters if any
-        for (Stream ia: inputAdapters) {
+        for (InputAdapter ia: newInputAdapters) {
             ia.activate();
+            // TODO: catch up to current window if this is not initial deployment
+            // and window generator is already running
+            this.inputAdapters.add(ia);
         }
 
-        windowGenerator = new WindowGenerator(this.inputAdapters, ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
-        if (ctx.getWindowSizeMillis() > 0) {
-            windowGenerator.start();
-        }
     }
 
     protected void shutdown()
@@ -276,40 +306,33 @@ public class StramChild
         /*
          * first stop all the input adapters.
          */
-        for (InternalNode node: nodeList.values()) {
+        for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
+          InternalNode node = nodeEntry.getValue();
             if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode)node).isInput()) {
                 LOG.debug("teardown " + node);
-                node.stop();
+                teardownNode(nodeEntry.getKey());
             }
         }
 
         /*
          * now stop all the nodes.
          */
-        for (InternalNode node: nodeList.values()) {
+        for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
+          InternalNode node = nodeEntry.getValue();
             if (!(node instanceof AdapterWrapperNode)) {
                 LOG.debug("teardown " + node);
-                node.stop();
+                teardownNode(nodeEntry.getKey());
             }
         }
 
         /*
-         * stop all the streams.
-         */
-        for (Stream s: this.streams) {
-            LOG.debug("teardown " + s);
-            s.teardown();
-            s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
-        }
-
-
-        /*
          * stop all the output adapters
          */
-        for (InternalNode node: this.nodeList.values()) {
+        for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
+          InternalNode node = nodeEntry.getValue();
             if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode)node).isInput()) {
                 LOG.debug("teardown " + node);
-                node.stop();
+                teardownNode(nodeEntry.getKey());
             }
         }
 
@@ -409,16 +432,16 @@ public class StramChild
         }
 
         if (rsp.getUndeployRequest() != null) {
-          LOG.warn("Ignoring undeploy request: {}", rsp.getUndeployRequest());
+          LOG.info("Undeploy request: {}", rsp.getUndeployRequest());
+          for (NodePConf nodeConf : rsp.getUndeployRequest().getNodes()) {
+            teardownNode(nodeConf.getDnodeId());
+          }
         }
         
         if (rsp.getDeployRequest() != null) {
+          LOG.info("Deploy request: {}", rsp.getDeployRequest());
           try {
-            LOG.warn("Re-initializing container from deploy request: {}", rsp.getDeployRequest());
-            // TODO: this should not affect existing objects
-            rsp.getDeployRequest().setHeartbeatIntervalMillis(this.heartbeatIntervalMillis);
-            rsp.getDeployRequest().setCheckpointDfsPath(this.checkpointDfsPath);
-            init(rsp.getDeployRequest());
+            initNodes(rsp.getDeployRequest().getNodes(), rsp.getDeployRequest().getStreams());
           } catch (Exception e) {
             throw new RuntimeException("Failed to initialize container", e);
           }
@@ -444,7 +467,7 @@ public class StramChild
     // whether the source id and sink id are unique in a container. Does it still hold true
     // when load balancing happens within a container? The following logic works provided
     // assumption of node_id, source and sink ids are correct.
-    public void shutdown(String node_id)
+    public void teardownNode(String node_id)
     {
         /*
          * make sure that we have a node we are asked to shutdown in this container.
@@ -459,9 +482,13 @@ public class StramChild
          * lets find out all the input streams for this node.
          */
         for (Stream s: inputAdapters) {
-            if (s.getContext().getSinkId().equals(node_id)) {
+          try {
+            if (node_id.equals(s.getContext().getSinkId())) {
                 inputStreams.add(s);
             }
+          } catch (NullPointerException e) {
+            throw new RuntimeException("Failed to collect input streams for " + in, e);
+          }
         }
 
 
@@ -477,8 +504,6 @@ public class StramChild
                 outputStreams.add(s);
             }
         }
-
-        assert (!(inputStreams.isEmpty() && outputStreams.isEmpty()));
 
         /*
          * we bring down the node by first stopping inputs, then outputs and then the nodes itself.
@@ -503,7 +528,6 @@ public class StramChild
 
         if (activeNodeList.containsKey(node_id)) {
             in.stop();
-            activeNodeList.remove(node_id);
         }
 
         nodeList.remove(node_id);

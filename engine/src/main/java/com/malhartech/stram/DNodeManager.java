@@ -121,7 +121,7 @@ public class DNodeManager
            // issue stop as probably process is still hanging around (would have been detected by Yarn otherwise)
            LOG.info("Triggering restart for container {} after heartbeat timeout.", containerId);
            containerStopRequests.put(containerId, containerId);
-           restartContainer(containerId);
+           //restartContainer(containerId);
          }
        }
     }
