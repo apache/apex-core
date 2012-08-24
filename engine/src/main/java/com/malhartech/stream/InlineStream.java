@@ -49,4 +49,9 @@ public class InlineStream implements Sink, Stream
   public void activate(StreamContext context)
   {
   }
+
+  @Override
+  public void deactivate()
+  {
+  }
 }

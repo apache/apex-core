@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
-
 /**
  *
  * Implements a stream that is read from a socket by a node<p>
@@ -30,48 +29,45 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  */
-
 public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerAdapter<T> implements Stream
 {
-    private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
-    protected static final AttributeKey<StreamContext> CONTEXT = new AttributeKey<StreamContext>("context");
-    protected Channel channel;
-    private Bootstrap bootstrap;
+  private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
+  protected static final AttributeKey<StreamContext> CONTEXT = new AttributeKey<StreamContext>("context");
+  protected Channel channel;
+  private Bootstrap bootstrap;
 
-    @Override
-    public void setup(StreamConfiguration config)
-    {
-        bootstrap = new Bootstrap();
+  @Override
+  public void setup(StreamConfiguration config)
+  {
+    bootstrap = new Bootstrap();
 
-        bootstrap.group(new NioEventLoopGroup())
-                .channel(new NioSocketChannel())
-                .remoteAddress(config.getBufferServerAddress())
-                .handler(new ClientInitializer(this.getClass()));
-    }
+    bootstrap.group(new NioEventLoopGroup())
+            .channel(new NioSocketChannel())
+            .remoteAddress(config.getBufferServerAddress())
+            .handler(new ClientInitializer(this.getClass()));
+  }
 
-    @Override
-    public void teardown()
-    {
-        channel.attr(CONTEXT).remove();
-        channel.close().awaitUninterruptibly();
-        bootstrap.shutdown();
-    }
+  @Override
+  public void teardown()
+  {
+    bootstrap.shutdown();
+  }
 
-    @Override
-    public void activate(StreamContext context)
-    {
-        // Make a new connection.
-        channel = bootstrap.connect().syncUninterruptibly().channel();
+  @Override
+  public void activate(StreamContext context)
+  {
+    // Make a new connection.
+    channel = bootstrap.connect().syncUninterruptibly().channel();
 
-        // Netty does not provide a way to read in all the data that comes
-        // onto the channel into a byte buffer managed by the user. It causes
-        // various problems:
-        // 1. There is excessive copy of data between the 2 buffers.
-        // 2. Once the BufferFactory has given out the buffer, it does not know
-        //    if it can ever recycle it.
-        // 3. Causes fragmentation and need for garbage collection
+    // Netty does not provide a way to read in all the data that comes
+    // onto the channel into a byte buffer managed by the user. It causes
+    // various problems:
+    // 1. There is excessive copy of data between the 2 buffers.
+    // 2. Once the BufferFactory has given out the buffer, it does not know
+    //    if it can ever recycle it.
+    // 3. Causes fragmentation and need for garbage collection
 
-        // Netty needs some way to prevent it.
+    // Netty needs some way to prevent it.
 
 //    channel.getConfig().setBufferFactory(new ChannelBufferFactory() {
 //      @SuppressWarnings("PackageVisibleField")
@@ -120,6 +116,13 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
 //        return bo;
 //      }
 //    });
-        channel.attr(CONTEXT).set(context);
-    }
+    channel.attr(CONTEXT).set(context);
+  }
+
+  @Override
+  public void deactivate()
+  {
+    channel.attr(CONTEXT).remove();
+    channel.close().awaitUninterruptibly();
+  }
 }

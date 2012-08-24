@@ -6,6 +6,8 @@ package com.malhartech.stream;
 
 import com.malhartech.dag.*;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -29,43 +31,29 @@ public class HDFSOutputStream implements Stream, Sink
   private static org.slf4j.Logger LOG = LoggerFactory.getLogger(HDFSOutputStream.class);
   private FSDataOutputStream output;
   private SerDe serde;
+  private FileSystem fs;
+  private Path filepath;
+  private boolean append;
 
   @Override
   public void setup(StreamConfiguration config)
   {
     try {
-      FileSystem fs = FileSystem.get(config);
-      Path filepath = new Path(config.get("filepath"));
-
-      if (fs.exists(filepath)) {
-        if (config.getBoolean("append", true)) {
-          output = fs.append(filepath);
-        }
-        else {
-          fs.delete(filepath, true);
-          output = fs.create(filepath);
-        }
-      }
-      else {
-        output = fs.create(filepath);
-      }
+      fs = FileSystem.get(config);
+      filepath = new Path(config.get("filepath"));
+      append = config.getBoolean("append", true);
     }
     catch (IOException ex) {
       LOG.info("", ex);
     }
-
   }
 
   @Override
   public void teardown()
   {
-    try {
-      output.close();
-      output = null;
-    }
-    catch (IOException ex) {
-      LOG.info("", ex);
-    }
+    fs = null;
+    filepath = null;
+    append = false;
   }
 
   @Override
@@ -99,5 +87,36 @@ public class HDFSOutputStream implements Stream, Sink
   public void activate(StreamContext context)
   {
     serde = context.getSerDe();
+    try {
+      if (fs.exists(filepath)) {
+        if (append) {
+          output = fs.append(filepath);
+        }
+        else {
+          fs.delete(filepath, true);
+          output = fs.create(filepath);
+        }
+      }
+      else {
+        output = fs.create(filepath);
+      }
+    }
+    catch (IOException ex) {
+      Logger.getLogger(HDFSOutputStream.class.getName()).log(Level.SEVERE, null, ex);
+    }
+  }
+
+  @Override
+  public void deactivate()
+  {
+    try {
+      output.close();
+      output = null;
+    }
+    catch (IOException ex) {
+      LOG.info("", ex);
+    }
+
+    serde = null;
   }
 }

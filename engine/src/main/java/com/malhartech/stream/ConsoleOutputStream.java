@@ -52,4 +52,10 @@ public class ConsoleOutputStream implements Stream, Sink
   public void activate(StreamContext context)
   {
   }
+
+  @Override
+  public void deactivate()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }
