@@ -226,6 +226,10 @@ public class StramLocalCluster implements Runnable {
     return nodes.get(0);
   }
 
+  StramChildAgent getContainerAgent(StramChild c) {
+      return this.dnmgr.getContainerAgent(c.getContainerId());
+  }
+  
   public void runAsync() {
     new Thread(this, "master").start();
   }

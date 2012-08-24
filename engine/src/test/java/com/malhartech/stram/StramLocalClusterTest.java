@@ -37,7 +37,7 @@ public class StramLocalClusterTest {
 
   private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
   
-  @Test
+  //@Test
   public void testLocalClusterInitShutdown() throws Exception {
     // create test topology
     Properties props = new Properties();
@@ -71,7 +71,7 @@ public class StramLocalClusterTest {
     localCluster.run();
   }
   
-  //@Test
+  @Test
   public void testChildRecovery() throws Exception {
 
     TopologyBuilder tb = new TopologyBuilder();
@@ -116,7 +116,7 @@ public class StramLocalClusterTest {
 
     LocalStramChild c2 = waitForContainer(localCluster, node2);
     Map<String, InternalNode> c2NodeMap = c2.getNodeMap();
-    Assert.assertEquals("number nodes", 1, c2NodeMap.size());
+    Assert.assertEquals("number nodes downstream", 1, c2NodeMap.size());
     InternalNode n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
     
@@ -153,12 +153,8 @@ public class StramLocalClusterTest {
     // simulate node failure 
     localCluster.failContainer(c0);
 
-    // replacement container will start empty until downstream undeploy completes
-    c2.triggerHeartbeat();
-    c2.waitForHeartbeat(5000);
-
     // replacement container starts empty 
-    // wait for downstream undeploy to complete
+    // nodes will deploy after downstream node was removed
     LocalStramChild c0Replaced = waitForContainer(localCluster, node1);
     c0Replaced.triggerHeartbeat();
     c0Replaced.waitForHeartbeat(5000); // next heartbeat after init
@@ -166,11 +162,28 @@ public class StramLocalClusterTest {
     Assert.assertNotSame("old container", c0, c0Replaced);
     Assert.assertNotSame("old container", c0.getContainerId(), c0Replaced.getContainerId());
 
+    // verify change in downstream container
+    LOG.debug("triggering c2 heartbeat processing");
+    StramChildAgent c2Agent = localCluster.getContainerAgent(c2);
+    
+    // wait for downstream re-deploy to complete
+    while (c2Agent.hasPendingWork()) {
+      Thread.sleep(500);
+      c2.triggerHeartbeat();
+      LOG.debug("Waiting for {} to complete pending work.", c2.getContainerId());
+    }
+
+    Assert.assertEquals("downstream nodes after redeploy " + c2.getNodeMap(), 1, c2.getNodeMap().size());
+    // verify that the downstream node was replaced
+    InternalNode n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    Assert.assertNotNull(n2Replaced);
+    Assert.assertNotSame("node2 redeployed", n2, n2Replaced);
+    
     inputAdapters = c0Replaced.getInputAdapters();
     input = (LocalTestInputAdapter)inputAdapters.get(0);
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
     Assert.assertEquals("initial window id", 1, input.getContext().getStartingWindowId());
-
+    
     localCluster.shutdown();
     
   }
@@ -205,7 +218,7 @@ public class StramLocalClusterTest {
 
   private void waitForWindow(InternalNode node, long windowId) throws InterruptedException {
     while (node.getContext().getCurrentWindowId() < windowId) {
-      LOG.debug("Waiting for node {} current window {}", node, windowId);
+      LOG.debug("Waiting for window {} at node {}", windowId, node);
       Thread.sleep(100);
     }
   }

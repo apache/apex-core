@@ -189,14 +189,11 @@ public class DNodeManager
     AtomicInteger redeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
-        
-        // TODO: pass in the start window id
-        
         StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
         DeployRequest r = new DeployRequest(e.getKey(), redeployAckCountdown, failedContainerDeployCnt);
         r.setNodes(ctx.getNodes(), ctx.getStreams());
         redeployAckCountdown.incrementAndGet();
-        StramChildAgent downstreamContainer = getContainerAgent(cs.container.containerId);
+        StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
       }
     }
