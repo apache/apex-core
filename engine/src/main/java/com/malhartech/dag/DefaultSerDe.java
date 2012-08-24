@@ -12,7 +12,9 @@ import java.util.Collection;
 
 /**
  * 
- * Default SerDe for streams if nothing is configured<p>
+ * Default SerDe for streams if nothing is configured. Has no partitioning<p>
+ * <br>
+ * No partitioning is done and it uses Kryo serializer for serde<br>
  * <br>
  * 
  * Requires kryo and its dependencies in deployment

@@ -6,6 +6,9 @@ package com.malhartech.dag;
 
 /**
  *
+ * Base interface for all streams in the streaming platform<p>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 /*

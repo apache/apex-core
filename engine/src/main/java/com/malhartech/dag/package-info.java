@@ -25,16 +25,28 @@
  * com.malhartech.example.ads<br>
  * <br>
  * com.malhartech.dag package contains the following classes<br>
- * <b>AbstractNode</b>: The base class for node implementation<br>
+ * <b>AbstractNode</b>: The base class for node implementation. Emits and consumes tuples<br>
  * <b>BackupAgent</b>: Interface that defines how to write checkpoint state<br>
  * <b>BlackHole</b>: To send tuples to no where<br>
  * <b>Context</b>: The base interface for context for all of the streaming platform objects<br>
- * <b>DAGPart</b>: The common base interface for runtime objects of streams and nodes<<br>
+ * <b>DAGPart</b>: The base interface for runtime objects of streams and nodes<<br>
  * <b>DefaultSerDe</b>: Default SerDe for streams if nothing is configured<br>
  * <b>EndStreamTuple</b>: Defines end of streaming tuple<br>
  * <b>EndWindowTuple</b>: End of window tuple<br>
  * <b>HeartbeatCounters</b>: Data for heartbeat from node to stram<br>
- * <b>InputAdapter</b>: InputAdapter for streams that are inbound from outside (to be changed)<br>
+ * <b>InputAdapter</b>: Interface for streams that are inbound from outside (to be changed)<br>
+ * <b>InternalNode</b>: Base interface for a node<br>
+ * <b>Node</b>: TBD<br>
+ * <b>NodeConfiguration</b>: Extends {@link org.apache.hadoop.conf.Configuration} for nodes of the dag<br>
+ * <b>NodeContext</b>: The for context for all of the nodes<br>
+ * <b>ResetWindowTuple</b>: Resets window id<br>
+ * <b>SerDe</b>: Serializing and Deserializing the data tuples and controlling the partitioning<<br>
+ * <b>Sink</b>:
+ * <b>Stream</b>: Base interface for all streaming in the streaming platform<br>
+ * <b>StreamConfiguration</b>: Configuration object provided per stream object<br>
+ * <b>StreamContext</b>: Defines the destination for tuples processed<br>
+ * <b>Tuple</b>: Basic object to be streamed<br>
+ * <br>
  * 
  * 
  */
