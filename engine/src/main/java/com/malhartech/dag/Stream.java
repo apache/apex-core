@@ -20,12 +20,4 @@ public interface Stream extends DAGPart<StreamConfiguration, StreamContext>
     {
     }
   };
-
-  @Override
-  public void setup(StreamConfiguration config);
-
-  public void activate(StreamContext context);
-
-  @Override
-  public void teardown();
 }

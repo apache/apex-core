@@ -11,23 +11,10 @@ package com.malhartech.dag;
 public interface Node extends DAGPart<NodeConfiguration, NodeContext>
 {
   /**
-   * This method gets called as soon as the node is allocated resources.
-   * 
-   * @param config - configuration object created from the topology.
-   */
-  public void setup(NodeConfiguration config);
-
-  /**
    * This method gets called at the beginning of each window.
    *
    */
   public void beginWindow();
-
-  /**
-   * This method gets called at the end of each window.
-   *
-   */
-  public void endWindow();
 
   /**
    * This method gets called for each tuple that is received by this node.
@@ -37,7 +24,8 @@ public interface Node extends DAGPart<NodeConfiguration, NodeContext>
   public void process(Object payload);
 
   /**
-   * This method gets called just before the node is terminated.
+   * This method gets called at the end of each window.
+   *
    */
-  public void teardown();
+  public void endWindow();
 }

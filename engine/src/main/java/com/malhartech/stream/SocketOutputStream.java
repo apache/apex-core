@@ -26,42 +26,48 @@ import org.slf4j.LoggerFactory;
  * <br>
  * Most likely users would not use it to write to a socket by themselves. Is used in adapters and by BufferServerOutputStream<br>
  * <br>
+ *
  * @author chetan
  */
 public class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter implements Stream
 {
-    private static Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
-    protected Bootstrap bootstrap;
-    protected Channel channel;
+  private static Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
+  protected Bootstrap bootstrap;
+  protected Channel channel;
 
-    @Override
-    public void setup(StreamConfiguration config)
-    {
-        bootstrap = new Bootstrap();
+  @Override
+  public void setup(StreamConfiguration config)
+  {
+    bootstrap = new Bootstrap();
 
-        bootstrap.group(new NioEventLoopGroup())
-                .channel(new NioSocketChannel())
-                .remoteAddress(config.getBufferServerAddress())
-                .handler(new ClientInitializer(this.getClass()));
-    }
+    bootstrap.group(new NioEventLoopGroup())
+            .channel(new NioSocketChannel())
+            .remoteAddress(config.getBufferServerAddress())
+            .handler(new ClientInitializer(this.getClass()));
+  }
 
-    @Override
-    public void teardown()
-    {
-        channel.close().awaitUninterruptibly();
-        bootstrap.shutdown();
-    }
+  @Override
+  public void teardown()
+  {
+    bootstrap.shutdown();
+  }
 
-    @Override
-    public void activate(StreamContext context)
-    {
-        channel = bootstrap.connect().syncUninterruptibly().channel();
-    }
+  @Override
+  public void activate(StreamContext context)
+  {
+    channel = bootstrap.connect().syncUninterruptibly().channel();
+  }
 
-    @Override
-    public void flush(ChannelHandlerContext ctx, ChannelFuture future) throws Exception
-    {
-        ctx.outboundMessageBuffer().drainTo(ctx.nextOutboundMessageBuffer());
-        ctx.flush(future);
-    }
+  @Override
+  public void flush(ChannelHandlerContext ctx, ChannelFuture future) throws Exception
+  {
+    ctx.outboundMessageBuffer().drainTo(ctx.nextOutboundMessageBuffer());
+    ctx.flush(future);
+  }
+
+  @Override
+  public void deactivate()
+  {
+    channel.close().awaitUninterruptibly();
+  }
 }

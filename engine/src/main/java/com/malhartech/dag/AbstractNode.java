@@ -134,7 +134,7 @@ public abstract class AbstractNode implements InternalNode
     }
 
     @Override
-    final public void stop()
+    final public void deactivate()
     {
         alive = false;
 
@@ -152,7 +152,7 @@ public abstract class AbstractNode implements InternalNode
      */
     @SuppressWarnings("fallthrough")
     @Override
-    final public void start(NodeContext ctx)
+    final public void activate(NodeContext ctx)
     {
         this.ctx = ctx;
 

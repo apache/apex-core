@@ -149,7 +149,7 @@ public class StramLocalClusterTest {
     // simulate node failure
     localCluster.failContainer(c0);
 
-    // replacement container will start empty until downstream undeploy completes
+    // replacement container will activate empty until downstream undeploy completes
     c2.triggerHeartbeat();
     c2.waitForHeartbeat(5000);
 
@@ -228,6 +228,11 @@ public class StramLocalClusterTest {
 
     @Override
     public void teardown() {
+    }
+
+    @Override
+    public void deactivate()
+    {
     }
 
   }

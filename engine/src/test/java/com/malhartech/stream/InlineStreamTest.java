@@ -90,8 +90,8 @@ public class InlineStreamTest
     Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
     Assert.assertEquals("active nodes", 2, activeNodes.size());
 
-    node1.stop();
-    node2.stop();
+    node1.deactivate();
+    node2.deactivate();
     Thread.sleep(100);
     Assert.assertEquals("active nodes", 0, activeNodes.size());
 
@@ -108,7 +108,7 @@ public class InlineStreamTest
         @Override
         public void run()
         {
-          node.start(ctx);
+          node.activate(ctx);
           // processing has ended
           activeNodes.remove(ctx.getId());
         }

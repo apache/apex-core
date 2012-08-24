@@ -230,10 +230,10 @@ public class TopologyBuilderTest {
     properties.put(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestSerDe.class.getName());
     properties.put(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
 
-    Entry<StreamContext, NumberGeneratorInputAdapter> e = AdapterWrapperNode.initAdapterStream(new StreamConfiguration(properties), null);
-    NumberGeneratorInputAdapter s = e.getValue();
-    Assert.assertNotNull("context serde", e.getKey().getSerDe());
-    Assert.assertEquals("context serde class", TestSerDe.class, e.getKey().getSerDe().getClass());
+    Entry<NumberGeneratorInputAdapter, StreamContext> e = AdapterWrapperNode.initAdapterStream(new StreamConfiguration(properties), null);
+    NumberGeneratorInputAdapter s = e.getKey();
+    Assert.assertNotNull("context serde", e.getValue().getSerDe());
+    Assert.assertEquals("context serde class", TestSerDe.class, e.getValue().getSerDe().getClass());
     s.teardown();
   }
 
@@ -272,7 +272,7 @@ public class TopologyBuilderTest {
     @Override
     public void handleIdleTimeout()
     {
-      stop();
+      deactivate();
     }
   }
 

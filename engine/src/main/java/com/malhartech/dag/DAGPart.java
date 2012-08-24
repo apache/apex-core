@@ -13,5 +13,7 @@ import org.apache.hadoop.conf.Configuration;
 public interface DAGPart<T1 extends Configuration, T2 extends Context>
 {
   public void setup(T1 config);
+  public void activate(T2 context);
+  public void deactivate();
   public void teardown();
 }

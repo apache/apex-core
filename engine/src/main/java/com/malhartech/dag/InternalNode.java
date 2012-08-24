@@ -13,9 +13,5 @@ public interface InternalNode extends Node
 
   public void addOutputStream(StreamContext output);
 
-  public void start(NodeContext nodeContext);
-
-  public void stop();
-
   public NodeContext getContext();
 }

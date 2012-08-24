@@ -237,7 +237,7 @@ public class StramChild
           NodePConf nodeConf = nodeConfMap.get(id);
           NodeContext nc = new NodeContext(id);
           nc.setCurrentWindowId(nodeConf.getCheckpointWindowId());
-          node.start(nc);
+          node.activate(nc);
           /*
            * processing has ended
            */
@@ -269,27 +269,27 @@ public class StramChild
     // we do not have a choice because the things are not setup to facilitate it, so brute force.
 
     /*
-     * first stop all the input adapters.
+     * first deactivate all the input adapters.
      */
     for (InternalNode node: nodeList.values()) {
       if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode)node).isInput()) {
         LOG.debug("teardown " + node);
-        node.stop();
+        node.deactivate();
       }
     }
 
     /*
-     * now stop all the nodes.
+     * now deactivate all the nodes.
      */
     for (InternalNode node: nodeList.values()) {
       if (!(node instanceof AdapterWrapperNode)) {
         LOG.debug("teardown " + node);
-        node.stop();
+        node.deactivate();
       }
     }
 
     /*
-     * stop all the streams.
+     * deactivate all the streams.
      */
     for (Stream s: this.streams.keySet()) {
       LOG.debug("teardown " + s);
@@ -299,12 +299,12 @@ public class StramChild
 
 
     /*
-     * stop all the output adapters
+     * deactivate all the output adapters
      */
     for (InternalNode node: this.nodeList.values()) {
       if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode)node).isInput()) {
         LOG.debug("teardown " + node);
-        node.stop();
+        node.deactivate();
       }
     }
 
@@ -497,7 +497,7 @@ public class StramChild
     }
 
     if (activeNodeList.containsKey(node_id)) {
-      in.stop();
+      in.deactivate();
       activeNodeList.remove(node_id);
     }
 
@@ -569,7 +569,7 @@ public class StramChild
         childUGI.addToken(token);
       }
 
-      // TODO: start node in doAs block
+      // TODO: activate node in doAs block
       childUGI.doAs(new PrivilegedExceptionAction<Object>()
       {
         @Override
@@ -612,7 +612,7 @@ public class StramChild
       RPC.stopProxy(umbilical);
       DefaultMetricsSystem.shutdown();
       // Shutting down log4j of the child-vm...
-      // This assumes that on return from Task.start()
+      // This assumes that on return from Task.activate()
       // there is no more logging done.
       LogManager.shutdown();
     }
