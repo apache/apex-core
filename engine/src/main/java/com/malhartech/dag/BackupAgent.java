@@ -25,7 +25,7 @@ public interface BackupAgent
    * Return the input stream for restoring the node. 
    * Caller is responsible for closing stream once done.
    * @param nodeId
-   * @return
+   * @return {@link java.io.InputStream}
    * @throws IOException
    */
   public InputStream getInputStream(String nodeId, long windowId) throws IOException;

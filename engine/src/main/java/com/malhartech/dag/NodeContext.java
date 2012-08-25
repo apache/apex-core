@@ -93,7 +93,7 @@ public class NodeContext implements Context
   /**
    * Reset counts for next heartbeat interval and return current counts. This is called as part of the heartbeat processing.
    *
-   * @return
+   * @return int
    */
   public final synchronized int drainHeartbeatCounters(Collection<? super HeartbeatCounters> counters)
   {

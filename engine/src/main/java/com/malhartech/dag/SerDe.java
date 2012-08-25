@@ -61,7 +61,7 @@ public interface SerDe
   /**
    * Possible partitions that can be generated.
    * Currently stram assumes that this is idempotent.
-   * @return
+   * @return byte[][]
    */
   byte[][] getPartitions();
   
