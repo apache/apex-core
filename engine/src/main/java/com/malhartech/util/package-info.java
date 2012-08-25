@@ -11,9 +11,8 @@
  * <b>com.malhartech.util</b> package consists of utilities classes that Malhar provides<p>
  * <br>
  * The current utilities include<br>
- * <b>CircularBuffer</b>: Takes a class T and provides a circular buffer. get() on the buffer consumes the object from tail, and add() adds to the head<br>
- * <b>StablePriorityQueue</b>: Implements a priority queue (Queue<E>) and is mainly used to queue tuples.<br> 
- * <b>StableWrapper</b>: Used to wrap around long int values safely. Used for windowIds<br>
+ * <b>{@link com.malhartech.util.CircularBuffer}</b>: Takes a class T and provides a circular buffer<br>
+ * <b>{@link com.malhartech.util.StablePriorityQueue}</b>: Implements a priority queue (Queue<E>) and is mainly used to queue tuples<br> 
  * <br>
  */
 

@@ -12,7 +12,6 @@ import java.util.*;
  * Implements a priority queue by implementing {@link java.util.queue} interface<p>
  * <br>
  * {@see CircularBuffer}<br>
- * {@see StableWrapper}<br>
  * <br>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */

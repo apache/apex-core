@@ -16,7 +16,6 @@ import java.util.Collection;
  * Provides a circular buffer<p>
  * <br>
  * {@see StablePriorityQueue}<br>
- * {@see StableWrapper}<br>
  *
  */
 
