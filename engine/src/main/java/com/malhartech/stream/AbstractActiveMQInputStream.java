@@ -5,10 +5,10 @@ package com.malhartech.stream;
 
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -23,8 +23,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  */
 public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter implements MessageListener, ExceptionListener
 {
-  private static final Logger logger = Logger.getLogger(
-          AbstractActiveMQInputStream.class.getName());
+  private static final Logger logger = LoggerFactory.getLogger(AbstractActiveMQInputStream.class);
   private boolean transacted;
   private int maxiumMessages;
   private int receiveTimeOut;
@@ -85,7 +84,7 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
       internalSetup(config);
     }
     catch (Exception e) {
-      logger.log(Level.SEVERE, "Exception while setting up ActiveMQ consumer.", e.getCause());
+      logger.error("Exception while setting up ActiveMQ consumer.", e.getCause());
     }
   }
   private int ackMode = Session.AUTO_ACKNOWLEDGE;
@@ -113,7 +112,22 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
       getConsumer().setMessageListener(this);
     }
     catch (JMSException ex) {
-      Logger.getLogger(AbstractActiveMQInputStream.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error("Exception while activating ActiveMQ", ex.getCause());
+    }
+  }
+
+  @Override
+  public void deactivate()
+  {
+    try {
+      replyProducer.close();
+      getConsumer().close();
+      getSession().close();
+      getConnection().close();
+
+    }
+    catch (JMSException ex) {
+      logger.error("exception while deactivating", ex);
     }
   }
 
@@ -132,14 +146,14 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
       connection = null;
     }
     catch (JMSException ex) {
-      Logger.getLogger(AbstractActiveMQInputStream.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(null, ex);
     }
   }
 
   @Override
   public void onException(JMSException jmse)
   {
-    logger.log(Level.SEVERE, "Exception thrown by ActiveMQ consumer setup.", jmse.getCause());
+    logger.error("Exception thrown by ActiveMQ consumer setup.", jmse.getCause());
   }
 
   @Override
@@ -155,7 +169,7 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
           getConsumer().setMessageListener(null);
         }
         catch (JMSException ex) {
-          Logger.getLogger(AbstractActiveMQInputStream.class.getName()).log(Level.SEVERE, null, ex);
+          logger.error(null, ex);
         }
       }
     }
@@ -185,7 +199,7 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
       }
     }
     catch (JMSException ex) {
-      Logger.getLogger(AbstractActiveMQInputStream.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(null, ex);
     }
   }
 

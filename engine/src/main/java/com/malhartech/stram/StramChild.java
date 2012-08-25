@@ -128,11 +128,11 @@ public class StramChild
       StreamContext dsc = new StreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
       dsc.setStartingWindowId(nodeConfMap.get(sc.getSourceNodeId()).getCheckpointWindowId());
 
-      Sink sink = targetNode.getSink(dsc);
+      Sink sink = targetNode.connectPort("", dsc);
 //      LOG.info(dsc + " setting sink to " + sink);
       dsc.setSink(sink);
       // operation is additive - there can be multiple output streams
-      sourceNode.addOutputStream(dsc);
+      sourceNode.connectOutput(dsc);
 
       this.streams.put(stream, dsc);
     }
@@ -157,7 +157,7 @@ public class StramChild
 //        LOG.info(streamContext + " setting sink to " + oss);
 
         streamContext.setSink(oss);
-        sourceNode.addOutputStream(streamContext);
+        sourceNode.connectOutput(streamContext);
         this.streams.put(oss, streamContext);
       }
 
@@ -169,7 +169,7 @@ public class StramChild
 
         streamContext.setStartingWindowId(nodeConfMap.get(sc.getTargetNodeId()).getCheckpointWindowId());
 
-        Sink sink = targetNode.getSink(streamContext);
+        Sink sink = targetNode.connectPort("", streamContext);
 //        LOG.info(streamContext + " setting sink to " + sink);
 
         streamContext.setSink(sink);

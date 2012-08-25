@@ -92,28 +92,6 @@ public class StreamContext implements Context
     sinkState = State.UNDEFINED;
   }
 
-  /**
-   * @param sink - target node, not required for output adapter
-   */
-  public void setSink(final Sink sink)
-  {
-//    LOG.debug("setSink: {}", sink);
-    this.sink = startingWindowId > 0
-                ? new Sink()
-    {
-      @Override
-      public void doSomething(Tuple t)
-      {
-        if (startingWindowId <= t.getWindowId()) {
-          LOG.debug("Sink {} kicking in after window {}", sink, startingWindowId);
-          StreamContext.this.sink = sink;
-          sink.doSomething(t);
-        }
-      }
-    }
-                : sink;
-  }
-
   public SerDe getSerDe()
   {
     return serde; // required for socket connection
@@ -122,33 +100,6 @@ public class StreamContext implements Context
   public void setSerde(SerDe serde)
   {
     this.serde = serde;
-  }
-
-  public void sink(Tuple t)
-  {
-    //LOG.info(this + " " + t);
-    switch (t.getType()) {
-      case SIMPLE_DATA:
-      case PARTITIONED_DATA:
-        tupleCount++;
-        break;
-
-      case BEGIN_WINDOW:
-        tupleCount = 0;
-        break;
-
-      case END_WINDOW:
-        if (tupleCount != ((EndWindowTuple) t).getTupleCount()) {
-          EndWindowTuple ewt = new EndWindowTuple();
-          ewt.setTupleCount(tupleCount);
-          ewt.setWindowId(t.getWindowId());
-          t = ewt;
-          break;
-        }
-    }
-
-    t.setContext(this);
-    sink.doSomething(t);
   }
 
   public int getTupleCount()

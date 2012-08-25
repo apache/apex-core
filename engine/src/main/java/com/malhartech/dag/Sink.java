@@ -10,5 +10,9 @@ package com.malhartech.dag;
  */
 public interface Sink
 {
-  public void doSomething(Tuple t);
+  /**
+   *
+   * @param t the value of t
+   */
+  public void process(Object payload);
 }

@@ -55,6 +55,15 @@ public class CircularBuffer<T>
     throw underflow;
   }
 
+  public T poll()
+  {
+    if (head > tail) {
+      return null;
+    }
+
+    return buffer[tail % buffer.length];
+  }
+
   public final int size()
   {
     return head - tail;

@@ -4,10 +4,11 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.bufferserver.Buffer.Data.DataType;
-import com.malhartech.util.StablePriorityQueue;
-import java.util.Comparator;
-import java.util.HashSet;
+import com.malhartech.util.CircularBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import org.apache.commons.lang.UnhandledException;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.LoggerFactory;
@@ -17,364 +18,355 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractNode implements InternalNode
 {
-    private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
-    private transient final HashSet<StreamContext> outputStreams = new HashSet<StreamContext>();
-    private transient final HashSet<StreamContext> inputStreams = new HashSet<StreamContext>();
-    private transient final StablePriorityQueue<Tuple> inputQueue;
-    private transient final Sink sink = new Sink()
-    {
-        @Override
-        public void doSomething(Tuple t)
-        {
-            //logger.debug("received tuple {}", t);
-            synchronized (inputQueue) {
-                inputQueue.add(t);
-                inputQueue.notify();
-            }
-        }
+  private String port;
+  enum PortType
+  {
+    DEAD,
+    INPUT,
+    OUTPUT,
+    BIDI
+  };
+  @SuppressWarnings("ProtectedField")
+  protected transient NodeContext ctx;
+  private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
+  private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
+  private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  private transient int consumedTupleCount;
+  private transient volatile boolean alive;
 
-        @Override
-        public String toString()
-        {
-            return AbstractNode.this.toString();
-        }
-    };
-    private transient int consumedTupleCount;
-    private transient volatile boolean alive;
-    @SuppressWarnings("ProtectedField")
-    protected transient NodeContext ctx;
+  private PortType getPortType(String id)
+  {
+    throw new UnsupportedOperationException("Not yet implemented");
+  }
 
-    public AbstractNode()
+  @Override
+  final public NodeContext getContext()
+  {
+    return ctx;
+  }
+
+  @Override
+  public void setup(NodeConfiguration config)
+  {
+  }
+
+  @Override
+  public void beginWindow()
+  {
+  }
+
+  @Override
+  public abstract void process(Object payload);
+
+  @Override
+  public void endWindow()
+  {
+  }
+
+  @Override
+  public void teardown()
+  {
+  }
+
+  public void handleIdleTimeout()
+  {
+  }
+
+  class CompoundSink extends CircularBuffer<Object> implements Sink
+  {
+    final String id;
+    final DAGComponent dagpart;
+
+    public CompoundSink(String id, DAGComponent dagpart)
     {
-        // initial capacity should be some function of the window length
-        this.inputQueue = new StablePriorityQueue<Tuple>(1024 * 1024, new TupleComparator());
+      super(1024);
+      this.id = id;
+      this.dagpart = dagpart;
     }
 
     @Override
-    final public NodeContext getContext()
+    public final void process(Object payload)
     {
-        return ctx;
+      add(payload);
     }
 
     @Override
-    public void setup(NodeConfiguration config)
+    public final String toString()
     {
+      return id;
     }
 
-    @Override
-    public void beginWindow()
+    public final DAGComponent getDAGPart()
     {
+      return dagpart;
     }
+  }
 
-    @Override
-    public void endWindow()
-    {
+  /**
+   *
+   * Connect a dagpart to this node on a port identified by id.
+   *
+   * @return if the port is input port, Sink object is returned.
+   *
+   * @param id the value of id
+   * @param dagpart the value of stream
+   */
+  @Override
+  public Sink connect(String id, DAGComponent dagpart)
+  {
+    switch (getPortType(id)) {
+      case BIDI:
+        logger.info("stream is connected to a bidi port, can we have a bidi stream?");
+        outputs.put(id, dagpart);
+
+      case INPUT:
+        CompoundSink cs = new CompoundSink(id, dagpart);
+        inputs.put(id, cs);
+        return cs;
+
+      case OUTPUT:
+        outputs.put(id, dagpart);
+        return null;
+
+      case DEAD:
+        logger.warn("stream is connected to a dead port!");
+        return null;
+
+      default:
+        throw new IllegalArgumentException("Unrecognized Port");
     }
+  }
 
-    @Override
-    public abstract void process(Object payload);
-
-    @Override
-    public void teardown()
-    {
+  /**
+   * Emit the payload to all active output ports
+   *
+   * @param o
+   */
+  public void emit(final Object payload)
+  {
+    for (final Sink d: outputs.values()) {
+      d.process(payload);
     }
+  }
 
-    public void handleIdleTimeout()
-    {
+  /**
+   * Emit the payload to the specified output port.
+   *
+   * It's expected that the output port is active, otherwise NullPointerException is thrown.
+   *
+   * @param id
+   * @param o
+   */
+  public final void emit(String id, Object payload)
+  {
+    try {
+      outputs.get(id).process(payload);
     }
-
-    @Override
-    public Sink getSink(StreamContext context)
-    {
-        inputStreams.add(context);
-        return sink;
+    catch (Exception e) {
+      logger.warn(e.getLocalizedMessage());
     }
+  }
 
-    // this about object sharing among the nodes. it would be nice
-    // to know if the object can be shared among multiple downstream
-    // nodes. will save on serialization/deserialization etc.
-    public void emit(final Object o)
-    {
-//    logger.debug("emitting {}", o);
-        for (final StreamContext context: outputStreams) {
-            emitStream(o, context);
-        }
-    }
+  @Override
+  final public void deactivate()
+  {
+    alive = false;
+  }
 
-    public final void emitStream(final Object o, final StreamContext output)
-    {
-        final Tuple t = new Tuple(o);
-        t.setWindowId(ctx.getCurrentWindowId());
-        t.setType(DataType.SIMPLE_DATA);
-        output.sink(t);
-    }
+  protected final String getActivePort()
+  {
+    return port;
+  }
 
-    @Override
-    public void addOutputStream(StreamContext context)
-    {
-        outputStreams.add(context);
-    }
+  protected final void setActivePort(String port)
+  {
+    this.port = port;
+  }
+  /**
+   * Originally this method was defined in an attempt to implement the interface Runnable.
+   *
+   * Although it seems that it's called from another thread which implements Runnable, so we take this
+   * opportunity to pass the NodeContext through the run method. Note that activate does not return as
+   * long as there is useful workload for the node.
+   */
+  @Override
+  @SuppressWarnings("SleepWhileInLoop")
+  final public void activate(NodeContext ctx)
+  {
+    int totalQueues = inputs.size();
+    this.ctx = ctx;
 
-    final private class TupleComparator implements Comparator<Tuple>
-    {
-        @Override
-        public int compare(Tuple t1, Tuple t2)
-        {
-            long wid1 = t1.getWindowId();
-            long wid2 = t2.getWindowId();
-            if (wid1 < wid2) {
-                return -1;
-            }
-            else if (wid1 > wid2) {
-                return 1;
-            }
+    ArrayList<CompoundSink> activeQueues = new ArrayList<CompoundSink>();
+    activeQueues.addAll(inputs.values());
 
-            return t1.getType().compareTo(t2.getType());
-        }
-    }
+    int expectingBeginWindow = activeQueues.size();
+    int resetTuples = activeQueues.size();
+    int receivedEndWindow = 0;
 
-    @Override
-    final public void deactivate()
-    {
-        alive = false;
+    boolean shouldWait;
+    ctx.setCurrentWindowId(0);
+    alive = true;
 
-        /*
-         * Since the thread may be waiting for data to come on the queue, we need to notify. We do not need notifyAll since the queue is not exposed outside.
-         */
-        synchronized (inputQueue) {
-            inputQueue.notify();
-        }
-    }
+    do {
+      shouldWait = true;
 
-    /**
-     * Originally this method was defined in an attempt to implement the interface Runnable. Although it seems that it's called from another thread which
-     * implements Runnable, so we take this opportunity to pass the NodeContext through the run method.
-     */
-    @SuppressWarnings("fallthrough")
-    @Override
-    final public void activate(NodeContext ctx)
-    {
-        this.ctx = ctx;
-
-        /*
-         * We use skip tuple to skip the loops efficiently.
-         */
-        final Tuple skipTuple = new Tuple(null);
-        skipTuple.setType(DataType.NO_DATA);
-
-        alive = true;
-        ctx.setCurrentWindowId(0);
-
-        int resetTuples = inputStreams.size();
-        int insideWindowStreamCount = 0;
-        do {
-            Tuple t;
-            synchronized (inputQueue) {
-                if ((t = inputQueue.peek()) == null) {
-//          logger.debug(this + " empty queue!");
-                    t = skipTuple;
+      Iterator<CompoundSink> buffers = activeQueues.iterator();
+      while (buffers.hasNext()) {
+        CompoundSink cb = buffers.next();
+        Object payload;
+        while ((payload = cb.poll()) != null) {
+          if (payload instanceof Tuple) {
+            final Tuple t = (Tuple)payload;
+            switch (t.getType()) {
+              case BEGIN_WINDOW:
+                if (expectingBeginWindow == totalQueues) {
+                  cb.get();
+                  expectingBeginWindow--;
+                  ctx.setCurrentWindowId(t.getWindowId());
+                  beginWindow();
+                  for (final Sink output: outputs.values()) {
+                    output.process(t);
+                  }
+                  receivedEndWindow = 0;
+                }
+                else if (t.getWindowId() == ctx.getCurrentWindowId()) {
+                  cb.get();
+                  expectingBeginWindow--;
                 }
                 else {
-//          logger.debug(this + " " + t + " windows = " + insideWindowStreamCount + " context = " + t.getContext());
-                    switch (t.getType()) {
-                        case BEGIN_WINDOW:
-                            if (t.getContext().getSinkState() == StreamContext.State.INSIDE_WINDOW) {
-                                logger.warn("Got BEGIN_WINDOW while expecting END_WINDOW on {}", t.getContext());
-                                t = skipTuple;
-                            }
-                            else if (insideWindowStreamCount == 0) {
-                                t.getContext().setSinkState(StreamContext.State.INSIDE_WINDOW);
-                                insideWindowStreamCount = 1 - 2 * inputStreams.size();
-
-                                /*
-                                 * This tuple is starting a new window for the node.
-                                 */
-                                ctx.setCurrentWindowId(t.getWindowId());
-
-                                inputQueue.poll();
-                            }
-                            else if (t.getWindowId() == ctx.getCurrentWindowId()) {
-                                t.getContext().setSinkState(StreamContext.State.INSIDE_WINDOW);
-                                insideWindowStreamCount++;
-
-                                /*
-                                 * Some other tuple already started this window.
-                                 */
-                                t = skipTuple;
-
-                                inputQueue.poll();
-                            }
-                            else {
-                                /*
-                                 * This stream is not moving in synch with the rest of the streams. May be we should just wait for more data.
-                                 */
-                                t = skipTuple;
-                            }
-                            break;
-
-                        case END_WINDOW:
-                            if (t.getContext().getSinkState() == StreamContext.State.OUTSIDE_WINDOW) {
-                                logger.warn("Got END_WINDOW while expecting BEGIN_WINDOW on {0}", t.getContext());
-                                t = skipTuple;
-                            }
-                            else if (t.getWindowId() == ctx.getCurrentWindowId()) {
-                                t.getContext().setSinkState(StreamContext.State.OUTSIDE_WINDOW);
-                                if (++insideWindowStreamCount < 0) {
-                                    t = skipTuple;
-                                }
-
-                                inputQueue.poll();
-                            }
-                            else {
-                                /*
-                                 * out of sync stream, wait for other streams to move or to get more packets on this stream.
-                                 */
-                                t = skipTuple;
-                            }
-                            break;
-
-                        case RESET_WINDOW:
-                            /**
-                             * we will receive tuples which are equal to the number of input streams.
-                             */
-                            inputQueue.poll();
-                            if (--resetTuples == 0) {
-                                resetTuples = inputStreams.size();
-                            }
-                            else {
-                                t = skipTuple;
-                            }
-                            break;
-
-                        default:
-                            if (t.getWindowId() == ctx.getCurrentWindowId()) {
-                                inputQueue.poll();
-                            }
-                            else {
-                                t = skipTuple;
-                            }
-                            break;
-                    }
+                  buffers.remove();
                 }
+                break;
 
-                if (t == skipTuple) {
-                    try {
-                        int queueSize = inputQueue.size();
-                        inputQueue.wait(ctx.getIdleTimeout());
-                        if (inputQueue.size() == queueSize) {
-                            handleIdleTimeout();
-                        }
-                    }
-                    catch (InterruptedException ex) {
-                        logger.error("wait interrupted", ex);
-                    }
-                }
-            }
-
-            /*
-             * we process this outside to keep the critical region free.
-             */
-            switch (t.getType()) {
-                case NO_DATA:
-                    // special packet which allows us to skip the data processing.
-                    break;
-
-                case BEGIN_WINDOW:
-                    beginWindow();
-                    for (StreamContext stream: outputStreams) {
-                        stream.sink(t);
-                    }
-                    break;
-
-                case PARTITIONED_DATA:
-                    logger.warn("partitioned data should not be called " + t);
-
-                case SIMPLE_DATA:
-                    /*
-                     * process payload
-                     */
-                    process(t.getObject());
-                    consumedTupleCount++;
-                    break;
-
-                case END_WINDOW:
+              case END_WINDOW:
+                if (t.getWindowId() == ctx.getCurrentWindowId()) {
+                  cb.get();
+                  if (++receivedEndWindow == totalQueues) {
                     endWindow();
-                    for (StreamContext stream: outputStreams) {
-                        stream.sink(t);
+                    for (final Sink output: outputs.values()) {
+                      output.process(t);
                     }
+                  }
+                  ctx.report(consumedTupleCount, 0L);
+                  consumedTupleCount = 0;
+                  /*
+                   * we prefer to do quite a few operations at the end of the window boundary.
+                   */
+                  // I wanted to take this opportunity to do multiple tasks at the same time
+                  // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
+                  // over elements but cannot remove them without access to iterator.
 
-                    ctx.report(consumedTupleCount, 0L);
-                    consumedTupleCount = 0;
+                  // the default is UNSPECIFIED which we ignore anyways as we ignore everything
+                  // that we do not understand!
+                  try {
+                    switch (ctx.getRequestType()) {
+                      case BACKUP:
+                        ctx.backup(this);
+                        break;
 
-                    /*
-                     * we prefer to do quite a few operations at the end of the window boundary.
-                     */
-                    // I wanted to take this opportunity to do multiple tasks at the same time
-                    // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
-                    // over elements but cannot remove them without access to iterator.
+                      case RESTORE:
+                        logger.info("restore requests are not implemented");
+                        break;
 
-                    // the default is UNSPECIFIED which we ignore anyways as we ignore everything
-                    // that we do not understand!
-                    try {
-                        switch (ctx.getRequestType()) {
-                            case BACKUP:
-                                ctx.backup(this);
-                                break;
-
-                            case RESTORE:
-                                logger.info("restore requests are not implemented");
-                                break;
-
-                            case TERMINATE:
-                                alive = false;
-                                break;
-                        }
+                      case TERMINATE:
+                        alive = false;
+                        break;
                     }
-                    catch (Exception e) {
-                        logger.warn("Exception while catering to external request", e.getLocalizedMessage());
-                    }
-                    break;
+                  }
+                  catch (Exception e) {
+                    logger.warn("Exception while catering to external request", e.getLocalizedMessage());
+                  }
 
-                case END_STREAM:
-                    if (inputStreams.remove(t.getContext())) {
-                        if (inputStreams.isEmpty()) {
-                            alive = false;
-                        }
-                    }
-                    else {
-                        logger.error("Got EndOfStream on from a stream which is not registered");
-                    }
-                    break;
+                  expectingBeginWindow = activeQueues.size();
 
-                case RESET_WINDOW:
-                    for (StreamContext stream: outputStreams) {
-                        stream.sink(t);
-                    }
-                    break;
+                  buffers.remove();
+                  assert (activeQueues.isEmpty());
+                  activeQueues.addAll(inputs.values());
+                }
+                else {
+                  buffers.remove();
+                }
+                break;
 
-                default:
-                    logger.warn("got an unhandled packet " + t);
-                    break;
+              case RESET_WINDOW:
+                /**
+                 * we will receive tuples which are equal to the number of input streams.
+                 */
+                cb.get();
+                if (--resetTuples == 0) {
+                  for (final Sink output: outputs.values()) {
+                    output.process(t);
+                  }
+                  resetTuples = totalQueues;
+                }
+                break;
+
+              case END_STREAM:
+                totalQueues--;
+                inputs.remove(getActivePort());
+                activeQueues.remove(cb);
+                if (totalQueues == 0) {
+                  alive = false;
+                }
+                break;
+
+              default:
+                throw new UnhandledException("Unrecognized Control Tuple", new IllegalArgumentException(t.toString()));
             }
-
+          }
+          else {
+            process(cb.get());
+            consumedTupleCount++;
+            shouldWait = false;
+          }
         }
-        while (alive);
+      }
 
-        teardown();
-
-        /*
-         * since we are going away, we should let all the downstream nodes know that.
-         */
-        EndStreamTuple est = new EndStreamTuple();
-        est.setWindowId(ctx.getCurrentWindowId());
-        for (StreamContext stream: outputStreams) {
-            stream.sink(est);
+      if (shouldWait) {
+        if (activeQueues.isEmpty()) {
+          logger.error("Invalid State - the node is blocked forever!!!");
         }
-    }
 
-    @Override
-    public String toString()
-    {
-        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", ctx == null ? "unassigned" : ctx.getId()).toString();
+        int oldCount = 0;
+        for (CircularBuffer cb: activeQueues) {
+          oldCount += cb.size();
+        }
+        try {
+          Thread.sleep(100);
+          int newCount = 0;
+          for (CircularBuffer cb: activeQueues) {
+            newCount += cb.size();
+          }
+
+          if (oldCount != newCount) {
+            handleIdleTimeout();
+          }
+        }
+        catch (InterruptedException ex) {
+          /*
+           * we got interrupted while we were checking if we need to call handleTimeout.
+           * This is excepitional condition since someone is in too much hurry, so we
+           * proceed further without actually giving node a chance to handle idle time.
+           */
+        }
+      }
     }
+    while (alive);
+
+    /*
+     * since we are going away, we should let all the downstream nodes know that.
+     */
+    EndStreamTuple est = new EndStreamTuple();
+
+    est.setWindowId(ctx.getCurrentWindowId());
+    for (final Sink output: outputs.values()) {
+      output.process(est);
+    }
+  }
+
+  @Override
+  public String toString()
+  {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", ctx == null ? "unassigned" : ctx.getId()).toString();
+  }
 }

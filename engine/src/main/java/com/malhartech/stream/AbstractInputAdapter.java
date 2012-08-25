@@ -31,7 +31,6 @@ public abstract class AbstractInputAdapter implements InputAdapter
   public void emit(Object o)
   {
     Tuple t = new Tuple(o);
-    t.setContext(context);
     t.setType(DataType.SIMPLE_DATA);
 
     synchronized (this) {
@@ -55,7 +54,6 @@ public abstract class AbstractInputAdapter implements InputAdapter
     this.baseSeconds = (long) baseSeconds << 32;
 
     ResetWindowTuple t = new ResetWindowTuple();
-    t.setContext(context);
     t.setWindowId(this.baseSeconds | intervalMillis);
     context.sink(t);
   }
@@ -67,7 +65,6 @@ public abstract class AbstractInputAdapter implements InputAdapter
 
     Tuple t = new Tuple(null);
     t.setType(DataType.BEGIN_WINDOW);
-    t.setContext(context);
 
     t.setWindowId(this.windowId);
     context.sink(t);
@@ -78,7 +75,6 @@ public abstract class AbstractInputAdapter implements InputAdapter
   public synchronized void endWindow(int windowId)
   {
     EndWindowTuple t = new EndWindowTuple();
-    t.setContext(context);
     t.setWindowId(this.windowId);
     context.sink(t);
     this.windowId = 0;
@@ -87,7 +83,6 @@ public abstract class AbstractInputAdapter implements InputAdapter
   public synchronized void endStream()
   {
     EndStreamTuple t = new EndStreamTuple();
-    t.setContext(context);
 
     try {
       while (windowId == 0) {

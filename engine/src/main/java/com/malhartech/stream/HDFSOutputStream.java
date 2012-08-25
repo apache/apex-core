@@ -56,8 +56,12 @@ public class HDFSOutputStream implements Stream, Sink
     append = false;
   }
 
+  /**
+   *
+   * @param t the value of t
+   */
   @Override
-  public void doSomething(Tuple t)
+  public void sink(Object t)
   {
     switch (t.getType()) {
       case SIMPLE_DATA:

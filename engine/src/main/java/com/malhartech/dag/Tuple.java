@@ -2,10 +2,6 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.malhartech.dag;
 
 import com.malhartech.bufferserver.Buffer.Data.DataType;
@@ -18,28 +14,11 @@ public class Tuple
 {
   protected long windowId;
   private DataType type;
-  private StreamContext context;
   private final Object object;
 
   public Tuple(Object object)
   {
     this.object = object;
-  }
-
-  /**
-   * @return the context
-   */
-  public StreamContext getContext()
-  {
-    return context;
-  }
-
-  /**
-   * @param context the context to set
-   */
-  public void setContext(StreamContext context)
-  {
-    this.context = context;
   }
 
   public Object getObject()

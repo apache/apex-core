@@ -31,8 +31,12 @@ public class InlineStreamTest
 
     Sink node2Sink = new Sink()
     {
+      /**
+       *
+       * @param t the value of t
+       */
       @Override
-      public void doSomething(Tuple t)
+      public void sink(Object t)
       {
         if (prev == null) {
           prev = t.getObject();
@@ -62,25 +66,25 @@ public class InlineStreamTest
 
     InlineStream stream12 = new InlineStream();
     StreamContext sc1 = new StreamContext("node1", "node2");
-    sc1.setSink(node2.getSink(sc1));
+    sc1.setSink(node2.connectPort("", sc1));
 //    stream12.setContext(sc1);
 
-    node1.addOutputStream(sc1);
+    node1.connectOutput(sc1);
 
     StreamContext sc2 = new StreamContext("node2", "node2sink");
     sc2.setSink(node2Sink);
-    node2.addOutputStream(sc2);
+    node2.connectOutput(sc2);
 
     Map<String, Thread> activeNodes = new ConcurrentHashMap<String, Thread>();
     launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
 
     StreamContext streamContext = new StreamContext("source", "node1");
 
-    Sink node1InputPort = node1.getSink(streamContext);
+    Sink node1InputPort = node1.connectPort("", streamContext);
     streamContext.setSink(node1InputPort);
 
     for (int i = 0; i < totalTupleCount; i++) {
-      node1InputPort.doSomething(StramTestSupport.generateTuple(i, 0, streamContext));
+      node1InputPort.sink(StramTestSupport.generateTuple(i, 0, streamContext));
     }
 
     synchronized (s) {

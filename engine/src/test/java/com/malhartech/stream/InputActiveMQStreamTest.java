@@ -49,8 +49,12 @@ public class InputActiveMQStreamTest
       return this;
     }
 
+    /**
+     *
+     * @param t the value of t
+     */
     @Override
-    public void doSomething(Tuple t)
+    public void sink(Object t)
     {
       System.out.println("sinking " + t.getObject());
     }

@@ -27,8 +27,12 @@ public class InlineStream implements Sink, Stream
 {
   private StreamContext context;
 
+  /**
+   *
+   * @param t the value of t
+   */
   @Override
-  public void doSomething(Tuple t)
+  public void sink(Object t)
   {
     context.sink(t);
   }

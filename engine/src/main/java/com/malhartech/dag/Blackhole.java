@@ -7,15 +7,14 @@ package com.malhartech.dag;
 
 /**
  * Just for fun!
- * 
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class Blackhole implements Sink {
 
   @Override
-  public void doSomething(Tuple t)
+  public void sink(Object payload)
   {
-    t.setContext(null);
   }
 
 }

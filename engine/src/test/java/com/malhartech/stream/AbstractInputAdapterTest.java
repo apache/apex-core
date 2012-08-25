@@ -58,8 +58,12 @@ public class AbstractInputAdapterTest
 
     context.setSink(new Sink()
     {
+      /**
+       *
+       * @param t the value of t
+       */
       @Override
-      public void doSomething(Tuple t)
+      public void sink(Object t)
       {
         assert (t.getType() == Buffer.Data.DataType.RESET_WINDOW);
         assert (t.getWindowId() == 0xcafebabe00000000L);
@@ -144,6 +148,12 @@ public class AbstractInputAdapterTest
 
     @Override
     public void teardown()
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void deactivate()
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }

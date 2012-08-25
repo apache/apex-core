@@ -23,68 +23,74 @@ import org.slf4j.LoggerFactory;
  * Partitioning is managed by this instance of the buffer server<br>
  * <br>
  */
-public class BufferServerOutputStream extends SocketOutputStream implements Sink
+public class BufferServerOutputStream extends SocketOutplutStream implements Sink
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   SerDe serde;
 
-  @Override
-  @SuppressWarnings("fallthrough")
-  public void doSomething(Tuple t)
+  public void sink(Object payload)
   {
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
-    db.setType(t.getType());
-    db.setWindowId((int)t.getWindowId());
+    if (payload instanceof Tuple) {
+      final Tuple t = (Tuple)payload;
+      db.setType(t.getType());
+      db.setWindowId((int)t.getWindowId());
 
-    switch (t.getType()) {
-      case BEGIN_WINDOW:
-        Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
-        bw.setNode("SOS");
+      switch (t.getType()) {
+        case BEGIN_WINDOW:
+          Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
+          bw.setNode("SOS");
 
-        db.setBeginWindow(bw);
-        break;
+          db.setBeginWindow(bw);
+          break;
 
-      case END_WINDOW:
-        Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
-        ew.setNode("SOS");
-        ew.setTupleCount(((EndWindowTuple)t).getTupleCount());
+        case END_WINDOW:
+          Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
+          ew.setNode("SOS");
+          ew.setTupleCount(((EndWindowTuple)t).getTupleCount());
 
-        db.setEndWindow(ew);
-        break;
+          db.setEndWindow(ew);
+          break;
 
-      case END_STREAM:
-        break;
+        case END_STREAM:
+          break;
 
-      case PARTITIONED_DATA:
-        logger.warn("got partitioned data " + t.getObject());
-      case SIMPLE_DATA:
-        byte partition[] = serde.getPartition(t.getObject());
-        if (partition == null) {
-          Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
-          sdb.setData(ByteString.copyFrom(serde.toByteArray(t.getObject())));
+        case PARTITIONED_DATA:
+          logger.warn("got partitioned data " + t.getObject());
+        case SIMPLE_DATA:
+          break;
 
-          db.setType(Buffer.Data.DataType.SIMPLE_DATA);
-          db.setSimpleData(sdb);
-        }
-        else {
-          Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
-          pdb.setPartition(ByteString.copyFrom(partition));
-          pdb.setData(ByteString.copyFrom(serde.toByteArray(t.getObject())));
+        case RESET_WINDOW:
+          Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
+          rw.setWidth(((ResetWindowTuple)t).getIntervalMillis());
+          db.setWindowId(((ResetWindowTuple)t).getBaseSeconds());
+          db.setResetWindow(rw);
+          break;
 
-          db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
-          db.setPartitionedData(pdb);
-        }
-        break;
+        default:
+          throw new UnsupportedOperationException("this data type is not handled in the stream");
+      }
+    }
+    else {
+      db.setType(Buffer.Data.DataType.SIMPLE_DATA);
+      byte partition[] = serde.getPartition(payload);
+      if (partition == null) {
+        Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
+        sdb.setData(ByteString.copyFrom(serde.toByteArray(payload)));
 
-      case RESET_WINDOW:
-        Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
-        rw.setWidth(((ResetWindowTuple)t).getIntervalMillis());
-        db.setWindowId(((ResetWindowTuple)t).getBaseSeconds());
-        db.setResetWindow(rw);
-        break;
+        db.setType(Buffer.Data.DataType.SIMPLE_DATA);
+        db.setSimpleData(sdb);
+      }
+      else {
+        Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
+        pdb.setPartition(ByteString.copyFrom(partition));
+        pdb.setData(ByteString.copyFrom(serde.toByteArray(payload)));
 
-      default:
-        throw new UnsupportedOperationException("this data type is not handled in the stream");
+        db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
+        db.setPartitionedData(pdb);
+      }
+
+
     }
 
 //    logger.debug("{} channel write with data {}", getContext(), db.build());

@@ -87,8 +87,12 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
         throw new UnsupportedOperationException("Adapter nodes do not implement process. " + payload);
     }
 
-    @Override
-    public void doSomething(Tuple t)
+    /**
+   *
+   * @param t the value of t
+   */
+  @Override
+    public void sink(Object t)
     {
 //        LOG.debug("sending tuple {} to {}", t, sink);
         sink.sink(t);
@@ -125,19 +129,30 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
     private com.malhartech.dag.StreamContext sink;
 
     @Override
-    public void addOutputStream(StreamContext context)
+    public void connectOutput(StreamContext context)
     {
         this.sink = context;
     }
 
-    @Override
-    public Sink getSink(StreamContext context)
+    /**
+   *
+   * @param id the value of id
+   * @param context the value of context
+   */
+  /**
+   *
+   * @param id the value of id
+   * @param context the value of context
+   */
+
+  @Override
+    public void connect(String id, Stream context)
     {
         if (isInput()) {
-            return this;
+//            return this;
         }
 
-        return (Sink)adapterStream;
+//        return (Sink)adapterStream;
     }
 
     public static <T extends Stream> Entry<T, StreamContext> initAdapterStream(StreamConfiguration streamConf, AbstractNode targetNode)
@@ -173,7 +188,7 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
                 }
             }
             else {
-                Sink sink = targetNode.getSink(ctx);
+                Sink sink = targetNode.connectPort("", ctx);
 //        logger.info(ctx + " setting sink for instance " + instance + " to " + sink);
                 ctx.setSink(sink);
             }

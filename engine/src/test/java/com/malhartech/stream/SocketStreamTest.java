@@ -73,8 +73,12 @@ public class SocketStreamTest
         final AtomicInteger messageCount = new AtomicInteger();
         Sink sink = new Sink()
         {
-            @Override
-            public void doSomething(Tuple t)
+            /**
+         *
+         * @param t the value of t
+         */
+        @Override
+            public void sink(Object t)
             {
                 switch (t.getType()) {
                     case BEGIN_WINDOW:
