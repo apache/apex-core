@@ -34,6 +34,10 @@ public class HDFSOutputStream
   private StreamContext context;
   private FSDataOutputStream output;
 
+  /**
+   * 
+   * @param config 
+   */
   @Override
   public void setup(StreamConfiguration config)
   {
@@ -60,12 +64,19 @@ public class HDFSOutputStream
 
   }
 
+  /**
+   * 
+   * @param context 
+   */
   @Override
   public void setContext(StreamContext context)
   {
     this.context = context;
   }
 
+  /**
+   * 
+   */
   @Override
   public void teardown()
   {
@@ -78,6 +89,10 @@ public class HDFSOutputStream
     }
   }
 
+  /**
+   * 
+   * @param t 
+   */
   @Override
   public void doSomething(Tuple t)
   {
@@ -101,17 +116,28 @@ public class HDFSOutputStream
     }
   }
 
+  /**
+   * 
+   * @return {@link com.malhartech.dag.StreamContext}
+   */
   @Override
   public StreamContext getContext()
   {
     return this.context;
   }
 
+  /**
+   * 
+   * @return boolean
+   */
   public boolean hasFinished()
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  /**
+   * 
+   */
   @Override
   public void activate()
   {

@@ -35,6 +35,10 @@ public class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter imp
     protected Bootstrap bootstrap;
     protected Channel channel;
 
+    /**
+     * 
+     * @param config 
+     */
     @Override
     public void setup(StreamConfiguration config)
     {
@@ -46,18 +50,29 @@ public class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter imp
                 .handler(new ClientInitializer(this.getClass()));
     }
 
+    /**
+     * 
+     * @param context 
+     */
     @Override
     public void setContext(StreamContext context)
     {
         this.context = context;
     }
 
+    /**
+     * 
+     * @return {@link com.malhartech.dag.StreamContext}
+     */
     @Override
     public StreamContext getContext()
     {
         return context;
     }
 
+    /**
+     * 
+     */
     @Override
     public void teardown()
     {
@@ -65,12 +80,21 @@ public class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter imp
         bootstrap.shutdown();
     }
 
+    /**
+     * 
+     */
     @Override
     public void activate()
     {
         channel = bootstrap.connect().syncUninterruptibly().channel();
     }
 
+    /**
+     * 
+     * @param ctx
+     * @param future
+     * @throws Exception 
+     */
     @Override
     public void flush(ChannelHandlerContext ctx, ChannelFuture future) throws Exception
     {

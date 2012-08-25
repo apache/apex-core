@@ -39,6 +39,10 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
     private Bootstrap bootstrap;
     private StreamContext context;
 
+    /**
+     * 
+     * @param config 
+     */
     @Override
     public void setup(StreamConfiguration config)
     {
@@ -50,12 +54,19 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
                 .handler(new ClientInitializer(this.getClass()));
     }
 
+    /**
+     * 
+     * @param context 
+     */
     @Override
     public void setContext(com.malhartech.dag.StreamContext context)
     {
         this.context = context;
     }
 
+    /**
+     * 
+     */
     @Override
     public void teardown()
     {
@@ -64,12 +75,19 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
         bootstrap.shutdown();
     }
 
+    /**
+     * 
+     * @return {@link com.malhartech.dag.StreamContext}
+     */
     @Override
     public StreamContext getContext()
     {
         return context;
     }
 
+    /**
+     * 
+     */
     @Override
     public void activate()
     {

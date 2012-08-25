@@ -27,36 +27,58 @@ public class InlineStream implements Sink, Stream
 {
   private StreamContext context;
 
+  /**
+   * 
+   * @param t 
+   */
   @Override
   public void doSomething(Tuple t)
   {
     context.sink(t);
   }
 
+  /**
+   * 
+   * @param config 
+   */
   @Override
   public void setup(StreamConfiguration config)
   {
     // nothing to do?
   }
 
+  /**
+   * 
+   * @param context 
+   */
   @Override
   public void setContext(StreamContext context)
   {
     this.context = context;
   }
 
+  /**
+   * 
+   */
   @Override
   public void teardown()
   {
     // nothing to do?
   }
 
+  /**
+   * 
+   * @return {@link com.malhartech.dag.StreamContext}
+   */
   @Override
   public StreamContext getContext()
   {
     return this.context;
   }
 
+  /**
+   * 
+   */
   @Override
   public void activate()
   {
