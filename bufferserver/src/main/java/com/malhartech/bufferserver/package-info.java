@@ -17,8 +17,8 @@
  * <b>{@link com.malhartech.bufferserver.LogicalNode}</b>: LogicalNode represents a logical node in a DAG<br>
  * <b>{@link com.malhartech.bufferserver.PhysicalNode}</b>: <br>
  * <b>{@link com.malhartech.bufferserver.ProtobufDataInspector}</b>: <br>
- * <b>{@link com.malhartech.bufferserver.Server}</b>: <br>
- * <b>{@link com.malhartech.bufferserver.ServerHandler}</b>: <br>
+ * <b>{@link com.malhartech.bufferserver.Server}</b>: The buffer server application<br>
+ * <b>{@link com.malhartech.bufferserver.ServerHandler}</b>: Handler to serve connections accepted by the server<br>
  * <br>
  */
 
