@@ -10,6 +10,9 @@ import java.nio.ByteBuffer;
 
 /**
  *
+ * Looks at the data and provide information about it<p>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface DataIntrospector

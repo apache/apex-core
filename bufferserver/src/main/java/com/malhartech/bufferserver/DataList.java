@@ -18,6 +18,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
+ * Maintains list of data and manages addition and deletion of the data<p>
+ * <br>
  * @author chetan
  */
 public class DataList
