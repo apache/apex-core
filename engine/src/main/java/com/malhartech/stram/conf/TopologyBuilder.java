@@ -130,7 +130,7 @@ public class TopologyBuilder {
 
     /**
      * Immutable properties. Template values (if set) become defaults. 
-     * @return
+     * @return Map<String, String>
      */
     public Map<String, String> getProperties() {
       return Maps.fromProperties(properties);
@@ -142,7 +142,7 @@ public class TopologyBuilder {
     
     /**
      * Hint to manager that adjacent nodes should be deployed in same container.
-     * @return
+     * @return boolean
      */
     public boolean isInline() {
       return Boolean.TRUE.toString().equals(properties.getProperty(STREAM_INLINE, Boolean.FALSE.toString()));
@@ -153,6 +153,10 @@ public class TopologyBuilder {
   class PropertiesWithModifiableDefaults extends Properties {
     private static final long serialVersionUID = -4675421720308249982L;
 
+    /**
+     * Hint to manager that adjacent nodes should be deployed in same container.
+     * @param defaults
+     */
     void setDefaultProperties(Properties defaults) {
         super.defaults = defaults;
     }
@@ -246,7 +250,7 @@ public class TopologyBuilder {
     
     /**
      * Properties for the node. Template values (if set) become property defaults. 
-     * @return
+     * @return Map<String, String>
      */
     public Map<String, String> getProperties() {
       return Maps.fromProperties(properties);
@@ -362,7 +366,6 @@ public class TopologyBuilder {
    * entirety.
    * 
    * @param props
-   * @return
    */
   public void addFromProperties(Properties props) {
     
@@ -435,12 +438,15 @@ public class TopologyBuilder {
   
   /**
    * Map of fully constructed node configurations with inputs/outputs set.
-   * @return
+   * @return Map<String, NodeConf>
    */
   public Map<String, NodeConf> getAllNodes() {
     return Collections.unmodifiableMap(this.nodes);
   }
 
+  /**
+   * @return Set<NodeConf>
+   */
   public Set<NodeConf> getRootNodes() {
     return Collections.unmodifiableSet(this.rootNodes);
   }
@@ -525,7 +531,7 @@ public class TopologyBuilder {
 
   /**
    * Configured class dependencies for the topology. Used to determine jar file dependencies. 
-   * @return
+   * @return Set<String>
    */
   public Set<String> getClassNames() {
     Set<String> classNames = new HashSet<String>();

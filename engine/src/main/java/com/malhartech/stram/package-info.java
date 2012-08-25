@@ -12,10 +12,10 @@
  * <br>
  * <b>AdapterWrapperNode</b>: Wrapper node to connects adapter "stream" to another source or sink stream<br>
  * <b>DNodeManager</b>: Tracks topology provisioning/allocation to containers<br>
- * <b>LaunchContainerRunnable</b>: Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming nodes<br>
+ * <b>LaunchContainerRunnable</b>: Runnable to connect to the {@link org.apache.hadoop.yarn.api.ContainerManager} and launch the container that will host streaming nodes<br>
  * <b>NodePConf</b>: TBD (Stram side implementation of Physcial Node?)<br>
  * <b>StramAppContext</b>: Context interface for sharing information across components in YARN App<br>
- * <b>StramAppMaster</b>: Streaming Application Master (see {@link org.apache.hadoop.yarn.applications.distributedshell.ApplicationMaster})<br>
+ * <b>StramAppMaster</b>: Streaming Application Master<br>
  * <b>StramChild</b>: The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}<br>
  * <b>StramChildAgent</b>: Representation of a child container in the master<br>
  * <b>StramClient</b>: Submits application to YARN<br>

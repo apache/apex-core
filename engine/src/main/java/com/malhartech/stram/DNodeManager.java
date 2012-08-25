@@ -118,6 +118,7 @@ public class DNodeManager
   
   /**
    * Check periodically that child containers phone home
+   * 
    */
   public void monitorHeartbeat() {
     long currentTms = System.currentTimeMillis();
@@ -211,11 +212,12 @@ public class DNodeManager
   }
   
   /**
-   * Create node tracking context for logical node. Exposed here for tests.
-   *
+   * Create node tracking context for logical node. Exposed here for tests<p>
+   * <br>
    * @param dnodeId
    * @param nodeConf
-   * @return
+   * @return {@link com.malhartech.stram.NodePConf}
+   * 
    */
   public static NodePConf createNodeContext(String dnodeId, NodeConf nodeConf)
   {
@@ -286,7 +288,7 @@ public class DNodeManager
    *
    * @param containerId
    * @param bufferServerAddress Buffer server for publishers on the container.
-   * @return
+   * @param cdr
    */
   public void assignContainer(DeployRequest cdr, String containerId, InetSocketAddress bufferServerAddress) {
     PTContainer container = cdr.container;
@@ -315,7 +317,9 @@ public class DNodeManager
   /**
    * Create the protocol mandated node/stream info for bootstrapping StramChild.
    * @param container
-   * @return
+   * @param deployNodes
+   * @param checkpoints
+   * @return StreamingContainerContext
    */
   private StreamingContainerContext createStramChildInitContext(List<PTNode> deployNodes, PTContainer container, Map<PTNode, Long> checkpoints) {
     StreamingContainerContext scc = new StreamingContainerContext();

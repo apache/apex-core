@@ -215,7 +215,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
      * <br>
      * Context will provide all information to initialize or reconfigure the node(s)<br>
      *
-     * @return
+     * @param containerId
      * @throws IOException
      * <br>
      */
@@ -540,8 +540,8 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
 
     /**
      * Called to fetch pending request.
-     *
-     * @return
+     * @param containerId
+     * @return {com.malhartech.stram.ContainerHeartbeatResponse}
      */
     ContainerHeartbeatResponse pollRequest(String containerId);
 
@@ -549,7 +549,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
      * Reporting of partitioning stats - requested by stram for nodes that participate in partitioning when the basic heartbeat indicates a bottleneck. The
      * details would then be used by stram to split or merge nodes to re-balance load.
      *
-     * @return
+     * @return {com.malhartech.stram.StramToNodeRequest}
      */
     StramToNodeRequest processPartioningDetails();
 }
