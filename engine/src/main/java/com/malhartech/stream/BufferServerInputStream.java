@@ -7,6 +7,7 @@ import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.dag.*;
+import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,69 +19,84 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
 {
-    private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
-    private long baseSeconds = 0;
+  private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
+  private HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  private long baseSeconds = 0;
+  private Iterable<Sink> sinks;
 
   @Override
   public void activate(StreamContext context)
   {
     super.activate(context);
 
+    sinks = outputs.values();
     String type = "paramNotRequired?"; // TODO: why do we need this?
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId()});
     ClientHandler.registerPartitions(channel, context.getSinkId(), context.getId() + '/' + context.getSinkId(), context.getSourceId(), type, ((BufferServerStreamContext)context).getPartitions(), context.getStartingWindowId());
   }
 
-    @Override
-    public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
-    {
-        StreamContext context = ctx.channel().attr(CONTEXT).get();
-        if (context == null) {
-            logger.warn("Context is not setup for the InputSocketStream");
-        }
-        else {
-            Tuple t;
-            switch (data.getType()) {
-                case SIMPLE_DATA:
-                    t = new Tuple(context.getSerDe().fromByteArray(data.getSimpleData().getData().toByteArray()));
-                    t.setType(Buffer.Data.DataType.SIMPLE_DATA);
-                    t.setWindowId(baseSeconds | data.getWindowId());
-                    break;
-
-                case PARTITIONED_DATA:
-                    t = new Tuple(context.getSerDe().fromByteArray(data.getPartitionedData().getData().toByteArray()));
-                    /*
-                     * we really do not distinguish between SIMPLE_DATA and PARTITIONED_DATA
-                     */
-                    t.setType(Buffer.Data.DataType.SIMPLE_DATA);
-                    t.setWindowId(baseSeconds | data.getWindowId());
-                    break;
-
-                case END_WINDOW:
-                    t = new EndWindowTuple();
-                    t.setWindowId(baseSeconds | data.getWindowId());
-                    break;
-
-                case END_STREAM:
-                    t = new EndStreamTuple();
-                    t.setWindowId(baseSeconds | data.getWindowId());
-                    break;
-
-                case RESET_WINDOW:
-                    t = new ResetWindowTuple();
-                    baseSeconds = (long)data.getWindowId() << 32;
-                    t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
-                    break;
-
-                default:
-                    t = new Tuple(null);
-                    t.setType(data.getType());
-                    t.setWindowId(baseSeconds | data.getWindowId());
-                    break;
-            }
-
-            context.sink(t);
-        }
-
+  @Override
+  public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
+  {
+    StreamContext context = ctx.channel().attr(CONTEXT).get();
+    if (context == null) {
+      logger.warn("Context is not setup for the InputSocketStream");
     }
+    else {
+      Tuple t;
+      switch (data.getType()) {
+        case SIMPLE_DATA:
+          Object o = context.getSerDe().fromByteArray(data.getSimpleData().getData().toByteArray());
+          for (Sink s: sinks) {
+            s.process(o);
+          }
+          return;
+
+        case PARTITIONED_DATA:
+          o = context.getSerDe().fromByteArray(data.getPartitionedData().getData().toByteArray());
+          for (Sink s: sinks) {
+            s.process(o);
+          }
+          return;
+
+        case END_WINDOW:
+          t = new EndWindowTuple();
+          t.setWindowId(baseSeconds | data.getWindowId());
+          break;
+
+        case END_STREAM:
+          t = new EndStreamTuple();
+          t.setWindowId(baseSeconds | data.getWindowId());
+          break;
+
+        case RESET_WINDOW:
+          t = new ResetWindowTuple();
+          baseSeconds = (long)data.getWindowId() << 32;
+          t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
+          break;
+
+        default:
+          t = new Tuple(data.getType());
+          t.setWindowId(baseSeconds | data.getWindowId());
+          break;
+      }
+
+      for (Sink s: sinks) {
+        s.process(t);
+      }
+    }
+  }
+
+  @Override
+  public Sink connect(String id, DAGComponent component)
+  {
+    outputs.put(id, component);
+    return null;
+  }
+
+  @Override
+  public final void process(Object payload)
+  {
+    throw new IllegalAccessError("Attempt to pass payload from source other than buffer server!");
+  }
 }

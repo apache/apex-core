@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  */
-public class HDFSOutputStream implements Stream, Sink
+public class HDFSOutputStream implements Stream
 {
   private static org.slf4j.Logger LOG = LoggerFactory.getLogger(HDFSOutputStream.class);
   private FSDataOutputStream output;
@@ -61,24 +61,20 @@ public class HDFSOutputStream implements Stream, Sink
    * @param t the value of t
    */
   @Override
-  public void sink(Object t)
+  public void process(Object t)
   {
-    switch (t.getType()) {
-      case SIMPLE_DATA:
-      case PARTITIONED_DATA:
-        LOG.debug("writing out " + t.getObject());
-        byte[] serialized = serde.toByteArray(t.getObject());
-        try {
-          output.write(serialized);
-        }
-        catch (IOException ex) {
-          LOG.info("", ex);
-        }
-        break;
+    if (t instanceof Tuple) {
+      LOG.debug("ignoring tuple " + t);
+    }
+    else {
+      byte[] serialized = serde.toByteArray(t);
+      try {
+        output.write(serialized);
+      }
+      catch (IOException ex) {
+        LOG.info("", ex);
+      }
 
-      default:
-        LOG.debug("ignoring tuple " + t);
-        break;
     }
   }
 
@@ -122,5 +118,11 @@ public class HDFSOutputStream implements Stream, Sink
     }
 
     serde = null;
+  }
+
+  @Override
+  public Sink connect(String id, DAGComponent component)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }

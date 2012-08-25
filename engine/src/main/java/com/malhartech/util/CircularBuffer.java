@@ -25,8 +25,8 @@ public class CircularBuffer<T>
   private static final BufferUnderflowException underflow = new BufferUnderflowException();
   private static final BufferOverflowException overflow = new BufferOverflowException();
   private T[] buffer;
-  private int tail;
-  private int head;
+  private volatile int tail;
+  private volatile int head;
 
   @SuppressWarnings("unchecked")
   public CircularBuffer(int n)

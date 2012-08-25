@@ -16,8 +16,7 @@ public class EndWindowTuple extends Tuple
 
   public EndWindowTuple()
   {
-    super(null);
-    super.setType(Buffer.Data.DataType.END_WINDOW);
+    super(Buffer.Data.DataType.END_WINDOW);
   }
 
   /**

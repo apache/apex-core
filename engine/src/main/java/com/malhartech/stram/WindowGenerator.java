@@ -4,15 +4,25 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.bufferserver.Buffer;
+import com.malhartech.dag.Context;
+import com.malhartech.dag.DAGComponent;
+import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.ResetWindowTuple;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Tuple;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
+ *
  * Runs in the hadoop container of the input adapters and generates windows<p>
  * <br>
  * Ensures that all input adapters are sync-ed with the same window size and start. There is one instance
@@ -20,24 +30,17 @@ import org.slf4j.LoggerFactory;
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
  */
-
-public class WindowGenerator implements Runnable
+public class WindowGenerator implements DAGComponent, Runnable
 {
   public static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
-  private final long startMillis; // Window start time
-  private final int intervalMillis; // Window size
-  private long currentWindowMillis = -1;
-  private final Collection<? extends InputAdapter> inputAdapters;
   private ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1);
+  private long startMillis; // Window start time
+  private int intervalMillis; // Window size
+  HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  volatile Collection<Sink> sinks;
+  private long currentWindowMillis = -1;
+  private long baseSeconds;
   private int windowId;
-
-  public WindowGenerator(Collection<? extends InputAdapter> inputs, long startMillis, int intervalMillis)
-  {
-    this.inputAdapters = inputs;
-    this.startMillis = startMillis;
-    this.intervalMillis = intervalMillis;
-    this.currentWindowMillis = this.startMillis;
-  }
 
   public final void advanceWindow()
   {
@@ -48,10 +51,12 @@ public class WindowGenerator implements Runnable
   protected final void nextWindow()
   {
     if (windowId == InputAdapter.MAX_VALUE_WINDOW) {
-//      logger.debug("generating end -> reset window {}", Integer.toHexString(windowId));
-      for (InputAdapter ia : inputAdapters) {
-        ia.endWindow(windowId);
+      EndWindowTuple t = new EndWindowTuple();
+      t.setWindowId(windowId);
+      for (Sink s: sinks) {
+        s.process(t);
       }
+
       advanceWindow();
       run();
     }
@@ -59,9 +64,15 @@ public class WindowGenerator implements Runnable
 //      logger.debug("generating end -> begin {}", Integer.toHexString(windowId));
       int previousWindowId = windowId;
       advanceWindow();
-      for (InputAdapter ia : inputAdapters) {
-        ia.endWindow(previousWindowId);
-        ia.beginWindow(windowId);
+
+      EndWindowTuple ewt = new EndWindowTuple();
+      ewt.setWindowId(previousWindowId);
+
+      Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
+      bwt.setWindowId(baseSeconds | windowId);
+      for (Sink s: sinks) {
+        s.process(ewt);
+        s.process(bwt);
       }
     }
   }
@@ -71,15 +82,33 @@ public class WindowGenerator implements Runnable
   {
     windowId = 0;
 //    logger.debug("generating reset -> begin {}", Long.toHexString(currentWindowMillis));
-    int baseSeconds = (int) (currentWindowMillis / 1000);
-    for (InputAdapter ia : inputAdapters) {
-      ia.resetWindow(baseSeconds, intervalMillis);
-      ia.beginWindow(windowId);
+    baseSeconds = (currentWindowMillis / 1000) << 32;
+
+    ResetWindowTuple rwt = new ResetWindowTuple();
+    rwt.setWindowId(baseSeconds | intervalMillis);
+
+    Tuple t = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
+    t.setWindowId(baseSeconds | windowId);
+
+    for (Sink s: sinks) {
+      s.process(rwt);
+      s.process(t);
     }
   }
 
-  public void start()
+  @Override
+  public void setup(Configuration config)
   {
+    startMillis = config.getLong("StartTimeMillis", System.currentTimeMillis());
+    intervalMillis = config.getInt("IntervalMillis", 500);
+  }
+
+  @Override
+  public void activate(Context context)
+  {
+    sinks = outputs.values();
+    currentWindowMillis = startMillis;
+
     Runnable subsequentRun = new Runnable()
     {
       @Override
@@ -95,7 +124,8 @@ public class WindowGenerator implements Runnable
       run();
       do {
         nextWindow();
-      } while (currentWindowMillis < currentTms);
+      }
+      while (currentWindowMillis < currentTms);
     }
     else {
       stpe.schedule(this, currentWindowMillis - currentTms, TimeUnit.MILLISECONDS);
@@ -104,8 +134,29 @@ public class WindowGenerator implements Runnable
     stpe.scheduleAtFixedRate(subsequentRun, currentWindowMillis - currentTms + intervalMillis, intervalMillis, TimeUnit.MILLISECONDS);
   }
 
-  public void stop()
+  @Override
+  public void deactivate()
   {
+    sinks = Collections.EMPTY_LIST;
     stpe.shutdown();
+  }
+
+  @Override
+  public void teardown()
+  {
+    outputs.clear();
+  }
+
+  @Override
+  public Sink connect(String id, DAGComponent component)
+  {
+    outputs.put(id, component);
+    return null;
+  }
+
+  @Override
+  public void process(Object payload)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }

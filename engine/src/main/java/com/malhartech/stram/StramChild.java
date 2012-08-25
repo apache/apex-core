@@ -22,7 +22,7 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbea
 import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.BufferServerOutputStream;
 import com.malhartech.stream.BufferServerStreamContext;
-import com.malhartech.stream.InlineStream;
+import com.malhartech.stream.MuxStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -124,7 +124,7 @@ public class StramChild
     InternalNode targetNode = nodeList.get(sc.getTargetNodeId());
     if (sc.isInline()) {
       LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
-      InlineStream stream = new InlineStream();
+      MuxStream stream = new MuxStream();
       StreamContext dsc = new StreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
       dsc.setStartingWindowId(nodeConfMap.get(sc.getSourceNodeId()).getCheckpointWindowId());
 

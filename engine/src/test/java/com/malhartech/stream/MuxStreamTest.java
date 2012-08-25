@@ -16,9 +16,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Test for message flow through DAG
  */
-public class InlineStreamTest
+public class MuxStreamTest
 {
-  private static Logger LOG = LoggerFactory.getLogger(InlineStreamTest.class);
+  private static Logger LOG = LoggerFactory.getLogger(MuxStreamTest.class);
   private Object prev;
 
   @Test
@@ -64,7 +64,7 @@ public class InlineStreamTest
     AbstractNode node1 = new PassThroughNode();
     AbstractNode node2 = new PassThroughNode();
 
-    InlineStream stream12 = new InlineStream();
+    MuxStream stream12 = new MuxStream();
     StreamContext sc1 = new StreamContext("node1", "node2");
     sc1.setSink(node2.connectPort("", sc1));
 //    stream12.setContext(sc1);
@@ -163,5 +163,12 @@ public class InlineStreamTest
         LOG.info("emit: " + o);
       }
     }
+
+    @Override
+    public void connectOutput(StreamContext output)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
   }
 }

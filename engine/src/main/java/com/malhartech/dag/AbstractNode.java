@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractNode implements InternalNode
 {
   private String port;
+
   enum PortType
   {
     DEAD,
@@ -114,27 +115,45 @@ public abstract class AbstractNode implements InternalNode
   @Override
   public Sink connect(String id, DAGComponent dagpart)
   {
+    Sink s;
     switch (getPortType(id)) {
       case BIDI:
         logger.info("stream is connected to a bidi port, can we have a bidi stream?");
         outputs.put(id, dagpart);
 
       case INPUT:
-        CompoundSink cs = new CompoundSink(id, dagpart);
-        inputs.put(id, cs);
-        return cs;
+        s = new CompoundSink(id, dagpart);
+        inputs.put(id, ((CompoundSink)s));
+        break;
 
       case OUTPUT:
         outputs.put(id, dagpart);
-        return null;
+        s = null;
+        break;
 
       case DEAD:
         logger.warn("stream is connected to a dead port!");
-        return null;
+        s = null;
+        break;
 
       default:
         throw new IllegalArgumentException("Unrecognized Port");
     }
+
+    connected(id, dagpart);
+    return s;
+  }
+
+  /**
+   * An opportunity for the derived node to use the connected dagcomponents.
+   *
+   * Motivation is that the derived node can tie the dagparts to class fields and use them for efficiency reasons instead of asking this class to do lookup.
+   * @param id
+   * @param dagpart
+   */
+  public void connected(String id, DAGComponent dagpart)
+  {
+    /* optional implementation */
   }
 
   /**
@@ -182,6 +201,7 @@ public abstract class AbstractNode implements InternalNode
   {
     this.port = port;
   }
+
   /**
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *

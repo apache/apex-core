@@ -6,6 +6,7 @@ package com.malhartech.stream;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.dag.DAGComponent;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.SerDe;
@@ -23,12 +24,13 @@ import org.slf4j.LoggerFactory;
  * Partitioning is managed by this instance of the buffer server<br>
  * <br>
  */
-public class BufferServerOutputStream extends SocketOutplutStream implements Sink
+public class BufferServerOutputStream extends SocketOutputStream
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   SerDe serde;
 
-  public void sink(Object payload)
+  @Override
+  public void process(Object payload)
   {
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
     if (payload instanceof Tuple) {
@@ -40,7 +42,6 @@ public class BufferServerOutputStream extends SocketOutplutStream implements Sin
         case BEGIN_WINDOW:
           Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
           bw.setNode("SOS");
-
           db.setBeginWindow(bw);
           break;
 
@@ -55,11 +56,6 @@ public class BufferServerOutputStream extends SocketOutplutStream implements Sin
         case END_STREAM:
           break;
 
-        case PARTITIONED_DATA:
-          logger.warn("got partitioned data " + t.getObject());
-        case SIMPLE_DATA:
-          break;
-
         case RESET_WINDOW:
           Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
           rw.setWidth(((ResetWindowTuple)t).getIntervalMillis());
@@ -72,7 +68,6 @@ public class BufferServerOutputStream extends SocketOutplutStream implements Sin
       }
     }
     else {
-      db.setType(Buffer.Data.DataType.SIMPLE_DATA);
       byte partition[] = serde.getPartition(payload);
       if (partition == null) {
         Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
@@ -89,8 +84,6 @@ public class BufferServerOutputStream extends SocketOutplutStream implements Sin
         db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
         db.setPartitionedData(pdb);
       }
-
-
     }
 
 //    logger.debug("{} channel write with data {}", getContext(), db.build());
@@ -105,5 +98,11 @@ public class BufferServerOutputStream extends SocketOutplutStream implements Sin
     serde = context.getSerDe();
     logger.debug("registering publisher: {} {}", context.getSourceId(), context.getId());
     ClientHandler.publish(channel, context.getSourceId(), context.getId(), context.getStartingWindowId());
+  }
+
+  @Override
+  public Sink connect(String id, DAGComponent component)
+  {
+    return this;
   }
 }

@@ -13,7 +13,7 @@ package com.malhartech.dag;
 public class Blackhole implements Sink {
 
   @Override
-  public void sink(Object payload)
+  public void process(Object payload)
   {
   }
 

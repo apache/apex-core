@@ -10,7 +10,6 @@ import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
 import com.malhartech.stram.conf.TopologyBuilder;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;

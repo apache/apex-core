@@ -11,15 +11,5 @@ package com.malhartech.dag;
  */
 public interface InternalNode extends Node
 {
-  /**
-   *
-   * @param id the value of id
-   * @param input the value of input
-   */
-  public void connectOutput(StreamContext output);
-
-//  public void connect(int id, Stream stream);
-//  public void connectPorts(Collection<Stream> streams);
-
   public NodeContext getContext();
 }

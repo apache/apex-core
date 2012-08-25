@@ -10,7 +10,6 @@ import com.malhartech.dag.*;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-
 /**
  *
  * Writes tuples to stdout of the container<p>
@@ -19,10 +18,8 @@ import com.malhartech.dag.*;
  * <br>
  *
  */
-public class ConsoleOutputStream implements Stream, Sink
+public class ConsoleOutputStream implements Stream
 {
-  private StreamContext context;
-
   @Override
   public void setup(StreamConfiguration config)
   {
@@ -38,18 +35,9 @@ public class ConsoleOutputStream implements Stream, Sink
    * @param t the value of t
    */
   @Override
-  public void sink(Object t)
+  public void process(Object t)
   {
-    switch (t.getType()) {
-      case SIMPLE_DATA:
-      case PARTITIONED_DATA:
-        System.out.println(t.getObject());
-        break;
-
-      default:
-        System.out.println(t);
-        break;
-    }
+    System.out.println(t);
   }
 
   @Override
@@ -60,6 +48,11 @@ public class ConsoleOutputStream implements Stream, Sink
   @Override
   public void deactivate()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public Sink connect(String id, DAGComponent component)
+  {
+    return this;
   }
 }

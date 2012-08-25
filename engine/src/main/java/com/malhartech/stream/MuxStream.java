@@ -5,12 +5,14 @@
 package com.malhartech.stream;
 
 import com.malhartech.dag.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 
 /**
  *
  * @author chetan
  */
-
 /**
  *
  * Inline streams are used for performance enhancement when both the nodes are in the same hadoop container<p>
@@ -23,19 +25,10 @@ import com.malhartech.dag.*;
  * <br>
  *
  */
-public class InlineStream implements Sink, Stream
+public class MuxStream implements Stream
 {
-  private StreamContext context;
-
-  /**
-   *
-   * @param t the value of t
-   */
-  @Override
-  public void sink(Object t)
-  {
-    context.sink(t);
-  }
+  HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  Collection<Sink> sinks = Collections.EMPTY_LIST;
 
   @Override
   public void setup(StreamConfiguration config)
@@ -46,16 +39,39 @@ public class InlineStream implements Sink, Stream
   @Override
   public void teardown()
   {
-    // nothing to do?
+    outputs.clear();
   }
 
   @Override
   public void activate(StreamContext context)
   {
+    sinks = outputs.values();
   }
 
   @Override
   public void deactivate()
   {
+    sinks.clear();
+  }
+
+  @Override
+  public Sink connect(String id, DAGComponent component)
+  {
+    if ("input".equals(id)) {
+      return this;
+    }
+    else {
+      outputs.put(id, component);
+    }
+
+    return null;
+  }
+
+  @Override
+  public void process(Object payload)
+  {
+    for (Sink s: sinks) {
+      s.process(payload);
+    }
   }
 }

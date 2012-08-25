@@ -4,8 +4,13 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.bufferserver.Buffer;
+import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
 import java.io.IOException;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -26,7 +31,7 @@ import org.slf4j.LoggerFactory;
   * <br>
  */
 
-public abstract class AbstractHDFSInputStream extends AbstractInputAdapter implements Runnable
+public abstract class AbstractHDFSInputStream extends AbstractInputNode implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
   protected FSDataInputStream input;
@@ -41,8 +46,10 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
   }
 
   @Override
-  public void setup(StreamConfiguration config)
+  public void setup(NodeConfiguration config)
   {
+    super.setup(config);
+
     try {
       FileSystem fs = FileSystem.get(config);
       Path filepath = new Path(config.get("filepath"));
@@ -55,8 +62,9 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
   }
 
   @Override
-  public void activate(StreamContext context)
+  public void activate(NodeContext context)
   {
+    super.activate(context);
     Thread t = new Thread(this);
     t.start();
   }
@@ -71,7 +79,7 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
     }
 
     if (!skipEndStream) {
-      endStream();
+      emit(new Tuple(Buffer.Data.DataType.END_STREAM));
     } else {
       logger.info("Skipping endStream.");
     }

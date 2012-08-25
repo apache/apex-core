@@ -19,8 +19,9 @@ public interface BackupAgent
   public void returnOutputStream(OutputStream os) throws IOException;
 
   /**
-   * Return the input stream for restoring the node. 
+   * Return the input stream for restoring the node.
    * Caller is responsible for closing stream once done.
+   *
    * @param nodeId
    * @return
    * @throws IOException

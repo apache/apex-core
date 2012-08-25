@@ -14,8 +14,7 @@ public class ResetWindowTuple extends Tuple
 {
   public ResetWindowTuple()
   {
-    super(null);
-    setType(Buffer.Data.DataType.RESET_WINDOW);
+    super(Buffer.Data.DataType.RESET_WINDOW);
   }
 
   @Override

@@ -13,19 +13,12 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
 public class Tuple
 {
   protected long windowId;
-  private DataType type;
-  private final Object object;
+  private final DataType type;
 
-  public Tuple(Object object)
+  public Tuple(DataType t)
   {
-    this.object = object;
+    type = t;
   }
-
-  public Object getObject()
-  {
-    return object;
-  }
-
   /**
    * @return the windowId
    */
@@ -48,14 +41,6 @@ public class Tuple
   public DataType getType()
   {
     return type;
-  }
-
-  /**
-   * @param type the type to set
-   */
-  public void setType(DataType type)
-  {
-    this.type = type;
   }
 
   @Override

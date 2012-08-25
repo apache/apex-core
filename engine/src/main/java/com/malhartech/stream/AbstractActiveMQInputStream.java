@@ -3,6 +3,9 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import javax.jms.*;
@@ -21,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * Users need to implement getObject. (See example in InputActiveMQStreamTest)<br>
  * <br>
  */
-public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter implements MessageListener, ExceptionListener
+public abstract class AbstractActiveMQInputStream extends AbstractInputNode implements MessageListener, ExceptionListener
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractActiveMQInputStream.class);
   private boolean transacted;
@@ -34,7 +37,7 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
 
   public abstract Object getObject(Object object);
 
-  private void internalSetup(StreamConfiguration config) throws Exception
+  private void internalSetup(NodeConfiguration config) throws Exception
   {
     ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
             config.get("user"),
@@ -78,8 +81,9 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
   }
 
   @Override
-  public void setup(StreamConfiguration config)
+  public void setup(NodeConfiguration config)
   {
+    super.setup(config);
     try {
       internalSetup(config);
     }
@@ -106,8 +110,9 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
   }
 
   @Override
-  public void activate(StreamContext context)
+  public void activate(NodeContext context)
   {
+    super.activate(context);
     try {
       getConsumer().setMessageListener(this);
     }
@@ -119,6 +124,7 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
   @Override
   public void deactivate()
   {
+    super.deactivate();
     try {
       replyProducer.close();
       getConsumer().close();
@@ -148,6 +154,8 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputAdapter i
     catch (JMSException ex) {
       logger.error(null, ex);
     }
+
+    super.teardown();
   }
 
   @Override
