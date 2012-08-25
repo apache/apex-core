@@ -21,6 +21,9 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
     private long baseSeconds = 0;
 
+    /**
+     * 
+     */
     @Override
     public void activate()
     {
@@ -32,6 +35,12 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
         ClientHandler.registerPartitions(channel, sc.getSinkId(), sc.getId() + '/' + sc.getSinkId(), sc.getSourceId(), type, sc.getPartitions(), sc.getStartingWindowId());
     }
 
+    /**
+     * 
+     * @param ctx
+     * @param data
+     * @throws Exception 
+     */
     @Override
     public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
     {

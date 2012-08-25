@@ -26,6 +26,10 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
 
+  /**
+   * 
+   * @param t 
+   */
   @Override
   @SuppressWarnings("fallthrough")
   public void doSomething(Tuple t)
@@ -89,6 +93,9 @@ public class BufferServerOutputStream extends SocketOutputStream implements Sink
     channel.write(db.build());
   }
 
+  /**
+   * 
+   */
   @Override
   public void activate()
   {
