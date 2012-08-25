@@ -571,7 +571,7 @@ public class StramAppMaster
           // StramChild failure or process killed
           numFailedContainers.incrementAndGet();
           LOG.info("Container {} failed, launching new container.", containerStatus.getContainerId());
-          dnmgr.restartContainer(containerStatus.getContainerId().toString());
+          dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
         }
         else {
           // container completed successfully
