@@ -78,7 +78,7 @@ public class DataList
 
     /**
      * @param capacity - it's ignored if we are reusing block
-     * @return
+     * @return DataArray
      */
     private DataArray getDataArray(int capacity)
     {

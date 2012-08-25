@@ -14,8 +14,9 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Sends a list of continent/city pairs to a {@link LocalTimeServer} to get the
- * local times of the specified cities.
+ * Sends a list of continent/city pairs to a LocalTimeServer to get the local times of the specified cities<p>
+ * <br>
+ * Is an application
  */
 public class Client
 {
@@ -27,6 +28,16 @@ public class Client
     private final String down_type;
     private final Collection<byte[]> partitions;
 
+    /**
+     * 
+     * @param host
+     * @param port
+     * @param node
+     * @param type
+     * @param id
+     * @param down_type
+     * @param partitions 
+     */
     public Client(String host, int port, String node, String type, String id, String down_type, Collection<byte[]> partitions)
     {
         this.host = host;
@@ -51,6 +62,10 @@ public class Client
         this.partitions = null;
     }
 
+    /**
+     * 
+     * @throws Exception 
+     */
     public void run() throws Exception
     {
         // Set up.
@@ -71,6 +86,11 @@ public class Client
         }
     }
 
+    /**
+     * 
+     * @param args
+     * @throws Exception 
+     */
     public static void main(String[] args) throws Exception
     {
         // Print usage if necessary.

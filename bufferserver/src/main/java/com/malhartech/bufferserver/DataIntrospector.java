@@ -14,11 +14,30 @@ import java.nio.ByteBuffer;
  */
 public interface DataIntrospector
 {
+    /**
+     * 
+     * @param data
+     * @return DataType
+     */
   public DataType getType(SerializedData data);
 
+  /**
+   * 
+   * @param data
+   * @return long
+   */
   public long getWindowId(SerializedData data);
 
+  /**
+   * 
+   * @param data
+   * @return Object
+   */
   public Object getData(SerializedData data);
 
+  /**
+   * 
+   * @param previous 
+   */
   public void wipeData(SerializedData previous);
 }
