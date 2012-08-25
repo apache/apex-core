@@ -11,8 +11,6 @@ import java.util.*;
  * 
  * Implements a priority queue by implementing {@link java.util.queue} interface<p>
  * <br>
- * {@see CircularBuffer}<br>
- * <br>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class StablePriorityQueue<E> implements Queue<E>
@@ -53,7 +51,7 @@ public class StablePriorityQueue<E> implements Queue<E>
    * 
    * Constructs a {@link com.malhartech.util.StablePriorityQueue} class with provided capacity<p>
    * <br>
-   * @param intialCapacity Size of the queue to be set up
+   * @param initialCapacity Size of the queue to be set up
    * @param comparator {@link java.util.Comparator} object for comparison
    * <br>
    */

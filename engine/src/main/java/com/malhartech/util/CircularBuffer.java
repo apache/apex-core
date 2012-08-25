@@ -15,7 +15,6 @@ import java.util.Collection;
 /**
  * Provides a circular buffer<p>
  * <br>
- * {@see StablePriorityQueue}<br>
  *
  */
 
@@ -47,7 +46,7 @@ public class CircularBuffer<T>
    * 
    * Add object at the head<p>
    * <br>
-   * @param T object to be added
+   * @param toAdd object to be added
    * 
    */
   public void add(T toAdd)
@@ -104,7 +103,7 @@ public class CircularBuffer<T>
    * 
    * Drain the buffer<p>
    * <br>
-   * @param T {@link java.util.Collection} class to which the buffer objects are added
+   * @param container {@link java.util.Collection} class to which the buffer objects are added
    * @return Number of objects removed from the buffer
    * <br>
    */
