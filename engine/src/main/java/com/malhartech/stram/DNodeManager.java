@@ -143,13 +143,14 @@ public class DNodeManager
    * or after heartbeat timeout occurs.
    * @param containerId
    */
-  public void restartContainer(String containerId) {
+  public void scheduleContainerRestart(String containerId) {
     LOG.info("Initiating recovery for container {}", containerId);
 
     StramChildAgent cs = getContainerAgent(containerId);
 
     // building the checkpoint dependency, 
     // downstream nodes will appear first in map
+    // TODO: traversal needs to include inline upstream nodes 
     Map<PTNode, Long> checkpoints = new LinkedHashMap<PTNode, Long>();
     for (PTNode node : cs.container.nodes) {
       getRecoveryCheckpoint(node, checkpoints);

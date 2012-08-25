@@ -213,7 +213,7 @@ public class StramLocalCluster implements Runnable {
     injectShutdown.put(c.getContainerId(), c);
     c.triggerHeartbeat();
     LOG.info("Container {} failed, launching new container.", c.getContainerId());
-    dnmgr.restartContainer(c.getContainerId());
+    dnmgr.scheduleContainerRestart(c.getContainerId());
     // simplify testing: remove immediately rather than waiting for thread to exit
     this.childContainers.remove(c.getContainerId());
   }
