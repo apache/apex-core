@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * The buffer server application<p>
+ * <br>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class Server
@@ -32,6 +34,11 @@ public class Server
         this.port = port;
     }
 
+    /**
+     * 
+     * @return {@link java.net.SocketAddress}
+     * @throws Exception 
+     */
     public SocketAddress run() throws Exception
     {
         // Configure the server.
@@ -51,12 +58,20 @@ public class Server
         return f.channel().localAddress();
     }
 
+    /**
+     * 
+     */
     public void shutdown()
     {
         logger.info("Server instance {} being shutdown", this);
         bootstrap.shutdown();
     }
 
+    /**
+     * 
+     * @param args
+     * @throws Exception 
+     */
     public static void main(String[] args) throws Exception
     {
         int port;

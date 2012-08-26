@@ -28,18 +28,30 @@ public abstract class AbstractInputAdapter implements InputAdapter
   protected volatile long windowId;
   protected volatile boolean finished;
 
+  /**
+   * 
+   * @param context 
+   */
   @Override
   public void setContext(StreamContext context)
   {
     this.context = context;
   }
 
+  /**
+   * 
+   * @return 
+   */
   @Override
   public StreamContext getContext()
   {
     return this.context;
   }
 
+  /**
+   * 
+   * @param o 
+   */
   public void emit(Object o)
   {
     Tuple t = new Tuple(o);
@@ -61,6 +73,11 @@ public abstract class AbstractInputAdapter implements InputAdapter
     }
   }
 
+  /**
+   * 
+   * @param baseSeconds
+   * @param intervalMillis 
+   */
   @Override
   public synchronized void resetWindow(int baseSeconds, int intervalMillis)
   {
@@ -72,6 +89,10 @@ public abstract class AbstractInputAdapter implements InputAdapter
     context.sink(t);
   }
 
+  /**
+   * 
+   * @param windowId 
+   */
   @Override
   public synchronized void beginWindow(int windowId)
   {
@@ -86,6 +107,10 @@ public abstract class AbstractInputAdapter implements InputAdapter
     this.notifyAll();
   }
 
+  /**
+   * 
+   * @param windowId 
+   */
   @Override
   public synchronized void endWindow(int windowId)
   {
@@ -96,6 +121,9 @@ public abstract class AbstractInputAdapter implements InputAdapter
     this.windowId = 0;
   }
 
+  /**
+   * 
+   */
   public synchronized void endStream()
   {
     EndStreamTuple t = new EndStreamTuple();
@@ -117,6 +145,10 @@ public abstract class AbstractInputAdapter implements InputAdapter
     finished = true;
   }
 
+  /**
+   * 
+   * @return boolean
+   */
   @Override
   public boolean hasFinished()
   {

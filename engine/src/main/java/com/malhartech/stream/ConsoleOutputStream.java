@@ -23,28 +23,47 @@ public class ConsoleOutputStream implements Stream, Sink
 {
   private StreamContext context;
 
+  /**
+   * 
+   * @param config 
+   */
   @Override
   public void setup(StreamConfiguration config)
   {
   }
 
+  /**
+   * 
+   * @param context 
+   */
   @Override
   public void setContext(StreamContext context)
   {
     this.context = context;
   }
 
+  /**
+   * 
+   * @return {@link com.malhartech.dag.StreamContext}
+   */
   @Override
   public StreamContext getContext()
   {
     return context;
   }
 
+  /**
+   * 
+   */
   @Override
   public void teardown()
   {
   }
 
+  /**
+   * 
+   * @param t 
+   */
   @Override
   public void doSomething(Tuple t)
   {
@@ -60,6 +79,9 @@ public class ConsoleOutputStream implements Stream, Sink
     }
   }
 
+  /**
+   * 
+   */
   @Override
   public void activate()
   {

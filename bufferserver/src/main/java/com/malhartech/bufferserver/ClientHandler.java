@@ -18,7 +18,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * this class is called the last while reading the response from server.
+ * This class is called the last while reading the response from server<p>
+ * <br>
  *
  * @author chetan
  */
@@ -28,6 +29,13 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     // Stateful properties
     private volatile Channel channel;
 
+    /**
+     * 
+     * @param channel
+     * @param identifier
+     * @param type
+     * @param startingWindowId 
+     */
     public static void publish(Channel channel, String identifier, String type, long startingWindowId)
     {
         Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
@@ -64,6 +72,16 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
         channel.write(db.build());//.addListener(cfl);
     }
 
+    /**
+     * 
+     * @param channel
+     * @param id
+     * @param down_type
+     * @param node
+     * @param type
+     * @param partitions
+     * @param startingWindowId 
+     */
     public static void registerPartitions(Channel channel, String id,
             String down_type,
             String node,
@@ -93,12 +111,23 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
         channel.write(builder.build());
     }
 
+    /**
+     * 
+     * @param arg0
+     * @param arg1
+     * @throws Exception 
+     */
     @Override
     public void messageReceived(ChannelHandlerContext arg0, Object arg1) throws Exception
     {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    /**
+     * 
+     * @param ctx
+     * @param cause 
+     */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
     {

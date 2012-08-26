@@ -23,6 +23,10 @@ public class ProtobufDataInspector implements DataIntrospector
   SerializedData previousSerializedMessage;
   Data previousMessage;
 
+  /**
+   * 
+   * @param data 
+   */
   private void readyMessage(SerializedData data)
   {
     if (data != previousSerializedMessage) {
@@ -45,6 +49,11 @@ public class ProtobufDataInspector implements DataIntrospector
     }
   }
 
+  /**
+   * 
+   * @param data
+   * @return DataType
+   */
   @Override
   public final DataType getType(SerializedData data)
   {
@@ -52,6 +61,11 @@ public class ProtobufDataInspector implements DataIntrospector
     return previousMessage == null ? Data.DataType.NO_DATA : previousMessage.getType();
   }
 
+  /**
+   * 
+   * @param data
+   * @return long
+   */
   @Override
   public final long getWindowId(SerializedData data)
   {
@@ -59,6 +73,11 @@ public class ProtobufDataInspector implements DataIntrospector
     return previousMessage instanceof Data ? 0 : previousMessage.getWindowId();
   }
 
+  /**
+   * 
+   * @param data
+   * @return Data
+   */
   @Override
   public final Data getData(SerializedData data)
   {
@@ -66,6 +85,10 @@ public class ProtobufDataInspector implements DataIntrospector
     return previousMessage;
   }
 
+  /**
+   * 
+   * @param data 
+   */
   @Override
   public void wipeData(SerializedData data)
   {

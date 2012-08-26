@@ -21,7 +21,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Handler to serve connections accepted by the server.
+ * Handler to serve connections accepted by the server<p>
+ * <br>
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
@@ -36,6 +37,12 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
     final ConcurrentHashMap<String, Channel> publisher_channels = new ConcurrentHashMap<String, Channel>();
     final ConcurrentHashMap<String, Channel> subscriber_channels = new ConcurrentHashMap<String, Channel>();
 
+    /**
+     * 
+     * @param ctx
+     * @param data
+     * @throws Exception 
+     */
     @Override
     public void messageReceived(ChannelHandlerContext ctx, Data data) throws Exception
     {
@@ -61,6 +68,12 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
         }
     }
 
+    /**
+     * 
+     * @param request
+     * @param ctx
+     * @param windowId 
+     */
     public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
     {
         String identifier = request.getIdentifier();
@@ -91,6 +104,12 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
         ctx.attr(DATALIST).set(dl);
     }
 
+    /**
+     * 
+     * @param request
+     * @param ctx
+     * @param windowId 
+     */
     public void handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
     {
         String identifier = request.getIdentifier();
@@ -150,6 +169,12 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
         ctx.attr(LOGICALNODE).set(ln);
     }
 
+    /**
+     * 
+     * @param policytype
+     * @param type
+     * @return 
+     */
     public Policy getPolicy(Buffer.SubscriberRequest.PolicyType policytype, String type)
     {
         Policy p = null;
@@ -246,6 +271,11 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
         }
     }
 
+    /**
+     * 
+     * @param ctx
+     * @param cause 
+     */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
     {

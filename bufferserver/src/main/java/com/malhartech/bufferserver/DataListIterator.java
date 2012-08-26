@@ -22,6 +22,11 @@ class DataListIterator implements Iterator<SerializedData>
     SerializedData previous = null;
     SerializedData current = new SerializedData();
 
+    /**
+     * 
+     * @param da
+     * @param di 
+     */
     public DataListIterator(DataList.DataArray da, DataIntrospector di)
     {
         this.da = da;
@@ -30,6 +35,10 @@ class DataListIterator implements Iterator<SerializedData>
         current.bytes = da.data;
     }
 
+    /**
+     * 
+     * @return boolean
+     */
     public boolean hasNext()
     {
         da.getNextData(current);
@@ -57,6 +66,10 @@ class DataListIterator implements Iterator<SerializedData>
         }
     }
 
+    /**
+     * 
+     * @return {@link com.malhartech.bufferserver.util.SerializedData}
+     */
     public SerializedData next()
     {
         previous = current;
@@ -80,16 +93,28 @@ class DataListIterator implements Iterator<SerializedData>
         di.wipeData(previous);
     }
 
+    /**
+     * 
+     * @return DataType
+     */
     DataType getType()
     {
         return di.getType(previous);
     }
 
+    /**
+     * 
+     * @return long
+     */
     long getWindowId()
     {
         return di.getWindowId(previous);
     }
 
+    /**
+     * 
+     * @return Object
+     */
     Object getData()
     {
         return di.getData(previous);

@@ -31,14 +31,26 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
   protected FSDataInputStream input;
   private boolean skipEndStream = false;
 
+  /**
+   * 
+   * @return boolean
+   */
   public boolean isSkipEndStream() {
     return skipEndStream;
   }
 
+  /**
+   * 
+   * @param skip 
+   */
   public void setSkipEndStream(boolean skip) {
     this.skipEndStream = skip;
   }
 
+  /**
+   * 
+   * @param config 
+   */
   @Override
   public void setup(StreamConfiguration config)
   {
@@ -53,6 +65,9 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
 
   }
 
+  /**
+   * 
+   */
   @Override
   public void activate()
   {
@@ -60,6 +75,9 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
     t.start();
   }
 
+  /**
+   * 
+   */
   @Override
   public void run()
   {
@@ -76,6 +94,9 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
     }
   }
 
+  /**
+   * 
+   */
   @Override
   public void teardown()
   {
@@ -87,5 +108,10 @@ public abstract class AbstractHDFSInputStream extends AbstractInputAdapter imple
     }
   }
 
+  /**
+   * 
+   * @param input
+   * @return 
+   */
   public abstract Object getRecord(FSDataInputStream input);
 }
