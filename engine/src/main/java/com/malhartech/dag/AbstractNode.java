@@ -4,6 +4,9 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.util.CircularBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +17,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
+ *
  * The base class for node implementation<p>
  * <br>
  * Extends the base interface {@link com.malhartech.dag.InternalNode}<br>
@@ -24,20 +27,12 @@ import org.slf4j.LoggerFactory;
  * Upon window boundary it does house cleaning, state sync up etc<br>
  * Interacts with Stram with a heartbeat protocol<br>
  * <br>
- * 
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class AbstractNode implements InternalNode
 {
   private String port;
-
-  enum PortType
-  {
-    DEAD,
-    INPUT,
-    OUTPUT,
-    BIDI
-  };
   @SuppressWarnings("ProtectedField")
   protected transient NodeContext ctx;
   private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
@@ -46,9 +41,21 @@ public abstract class AbstractNode implements InternalNode
   private transient int consumedTupleCount;
   private transient volatile boolean alive;
 
+  // optimize the performance of this method.
   private PortType getPortType(String id)
   {
-    throw new UnsupportedOperationException("Not yet implemented");
+    Class<? extends Node> clazz = this.getClass();
+    NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
+    if (na != null) {
+      PortAnnotation[] ports = na.ports();
+      for (PortAnnotation pa: ports) {
+        if (id.equals(pa.name())) {
+          return pa.type();
+        }
+      }
+    }
+
+    throw new IllegalArgumentException("Port " + id + " not found!");
   }
 
   @Override
@@ -159,6 +166,7 @@ public abstract class AbstractNode implements InternalNode
    * An opportunity for the derived node to use the connected dagcomponents.
    *
    * Motivation is that the derived node can tie the dagparts to class fields and use them for efficiency reasons instead of asking this class to do lookup.
+   *
    * @param id
    * @param dagpart
    */

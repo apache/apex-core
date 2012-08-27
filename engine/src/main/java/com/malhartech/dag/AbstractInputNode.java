@@ -4,11 +4,14 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map.Entry;
 
 /**
  *
@@ -18,8 +21,8 @@ public abstract class AbstractInputNode implements Node
 {
   int spinMillis;
   int bufferCapacity;
-  CircularBuffer afterBeginWindow;
-  CircularBuffer<Tuple> afterEndWindow;
+  HashMap<String, CircularBuffer> afterBeginWindows;
+  HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   Collection<Sink> sinks;
 
@@ -28,8 +31,21 @@ public abstract class AbstractInputNode implements Node
   {
     spinMillis = config.getInt("SpinMillis", 100);
     bufferCapacity = config.getInt("BufferCapacity", 1024);
-    afterBeginWindow = new CircularBuffer(bufferCapacity);
-    afterEndWindow = new CircularBuffer<Tuple>(bufferCapacity);
+
+    afterBeginWindows = new HashMap<String, CircularBuffer>();
+    afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
+
+    Class<? extends Node> clazz = this.getClass();
+    NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
+    if (na != null) {
+      PortAnnotation[] ports = na.ports();
+      for (PortAnnotation pa: ports) {
+        if (pa.type() == PortAnnotation.PortType.OUTPUT || pa.type() == PortAnnotation.PortType.BIDI) {
+          afterBeginWindows.put(pa.name(), new CircularBuffer(bufferCapacity));
+          afterEndWindows.put(pa.name(), new CircularBuffer<Tuple>(bufferCapacity));
+        }
+      }
+    }
   }
 
   @Override
@@ -48,8 +64,11 @@ public abstract class AbstractInputNode implements Node
   public void teardown()
   {
     outputs.clear();
-    afterEndWindow = null;
-    afterBeginWindow = null;
+
+    afterEndWindows.clear();
+    afterEndWindows = null;
+    afterBeginWindows.clear();
+    afterBeginWindows = null;
   }
 
   @Override
@@ -73,29 +92,32 @@ public abstract class AbstractInputNode implements Node
         for (Sink s: sinks) {
           s.process(payload);
         }
-        for (int i = afterBeginWindow.size(); i > 0; i--) {
-          Object o = afterBeginWindow.get();
-          for (Sink s: sinks) {
-            s.process(o);
+        for (Entry<String, CircularBuffer> e: afterBeginWindows.entrySet()) {
+          Sink s = outputs.get(e.getKey());
+          CircularBuffer cb = e.getValue();
+          for (int i = cb.size(); i > 0; i--) {
+            s.process(cb.get());
           }
         }
         break;
 
       case END_WINDOW:
-        for (int i = afterBeginWindow.size(); i > 0; i--) {
-          Object o = afterBeginWindow.get();
-          for (Sink s: sinks) {
-            s.process(o);
+        for (Entry<String, CircularBuffer> e: afterBeginWindows.entrySet()) {
+          Sink s = outputs.get(e.getKey());
+          CircularBuffer cb = e.getValue();
+          for (int i = cb.size(); i > 0; i--) {
+            s.process(cb.get());
           }
         }
         for (Sink s: sinks) {
           s.process(payload);
         }
-        for (int i = afterEndWindow.size(); i > 0; i--) {
-          Tuple o = afterEndWindow.get();
-          o.setWindowId(t.getWindowId());
-          for (Sink s: sinks) {
-            s.process(t);
+        // i think there should be just one queue instead of one per port - lets defer till we find an example.
+        for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
+          Sink s = outputs.get(e.getKey());
+          CircularBuffer cb = e.getValue();
+          for (int i = cb.size(); i > 0; i--) {
+            s.process(cb.get());
           }
         }
         break;
@@ -116,7 +138,7 @@ public abstract class AbstractInputNode implements Node
     if (payload instanceof Tuple) {
       while (true) {
         try {
-          afterEndWindow.add((Tuple)payload);
+          afterEndWindows.get(id).add((Tuple)payload);
           break;
         }
         catch (BufferOverflowException ex) {
@@ -132,7 +154,7 @@ public abstract class AbstractInputNode implements Node
     else {
       while (true) {
         try {
-          afterBeginWindow.add(payload);
+          afterBeginWindows.get(id).add(payload);
           break;
         }
         catch (BufferOverflowException ex) {
