@@ -16,16 +16,31 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Extend {@link io.netty.channel.ChannelInitializer}
+ * 
+ */
+
 public class ClientInitializer extends ChannelInitializer<SocketChannel>
 {
     private static final Logger logger = LoggerFactory.getLogger(ClientInitializer.class);
     final Class<? extends ChannelHandler> handler;
 
+    /**
+     * 
+     * @param handler 
+     */
     public ClientInitializer(Class<? extends ChannelHandler> handler)
     {
         this.handler = handler;
     }
 
+    
+    /**
+     * 
+     * @param channel
+     * @throws Exception 
+     */
     @Override
     public void initChannel(SocketChannel channel) throws Exception
     {
