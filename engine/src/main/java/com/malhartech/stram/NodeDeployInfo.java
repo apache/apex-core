@@ -1,0 +1,181 @@
+/**
+ * Copyright (c) 2012-2012 Malhar, Inc.
+ * All rights reserved.
+ */
+package com.malhartech.stram;
+
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
+/**
+ * Node deployment info passed from master to container as part of initialization 
+ * or incremental undeploy/deploy during topology recovery, balancing or other modification.
+ */
+public class NodeDeployInfo implements Serializable
+{
+  private static final long serialVersionUID = 1L;
+
+  /**
+   * Input to node, either inline or from socket stream.
+   */
+  public static class NodeInputDeployInfo implements Serializable
+  {
+    private static final long serialVersionUID = 1L;
+
+    public boolean isInline() {
+      return bufferServerHost == null;
+    }
+    
+    /**
+     * Port name matching the node's port declaration 
+     */
+    public String portName;
+
+    /**
+     * Name of stream declared in logical topology 
+     */
+    public String declaredStreamId;
+
+    /**
+     * If inline connection, id of source node in same container.
+     * For buffer server, upstream publisher id.
+     */
+    public String sourceNodeId;
+
+    /**
+     * Buffer server subscriber info, set only stream is not inline.
+     */
+    public String bufferServerHost;
+
+    public int bufferServerPort;
+
+    /**
+     * The subscriber type/group. This would be different for every partition
+     * and same for all nodes within a partition (or no partition).
+     */
+    public String bufferServerSubscriberType;
+    
+    /**
+     * Partition keys. For dynamic partitioning, set is initially empty (after
+     * topology initialization) and will be populated from node processing stats
+     * if the node emits partitioned data. Value(s), once assigned assigned by
+     * stram limit what data flows between 2 physical nodes. Once values are set,
+     * node uses them subscribe to buffer server. Stram may request detailed
+     * partition stats as heartbeat response, based on which it can load balance
+     * (split/merge nodes) if node is elastic.
+     */
+    public List<byte[]> partitionKeys;
+
+    @Override
+    public String toString()
+    {
+        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+                .append("portName", this.portName)
+                .append("streamId", this.declaredStreamId)
+                .append("inline", this.isInline())
+                .toString();
+    }
+    
+  }
+  
+  /**
+   * Node output, publisher info. For inline streams, reference target node within container.
+   * For buffer server output, node id will be used as publisher id and referenced by subscribers. 
+   */
+  public static class NodeOutputDeployInfo implements Serializable
+  {
+    private static final long serialVersionUID = 1L;
+
+    public boolean isInline() {
+      return bufferServerHost == null;
+    }
+
+    /**
+     * Port name matching the node's port declaration 
+     */
+    public String portName;
+
+    /**
+     * Name of stream declared in logical topology 
+     */
+    public String declaredStreamId;
+    
+    /**
+     * If inline connection, id of source node in same container.
+     */
+    public String inlineTargetNodeId;
+
+    /**
+     * Buffer server publisher info, set when stream not inline.
+     */
+    public String bufferServerHost;
+
+    public int bufferServerPort;
+
+    @Override
+    public String toString()
+    {
+        return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+                .append("portName", this.portName)
+                .append("streamId", this.declaredStreamId)
+                .append("inline", this.isInline())
+                .toString();
+    }
+    
+  }
+  
+
+  public Map<String, String> properties;
+
+  /**
+   * Serialized state of the node. Either by serializing the declared node object or checkpoint state.
+   */
+  public byte[] serializedNode;
+
+  /**
+   * Unique id in the DAG, assigned by the master and immutable (restart/recovery)
+   */
+  public String id;
+
+  /**
+   * Logical node name from the topology declaration.
+   */
+  public String declaredId;
+
+  /**
+   * The checkpoint window identifier.
+   * Used to restore node and incoming streams as part of recovery.
+   * Value 0 indicates fresh initialization, no restart.   
+   * @return long
+   */
+  public long checkpointWindowId = 0;
+
+  /**
+   * Inputs to node, either from socket stream or inline from other node(s).
+   */
+  public List<NodeInputDeployInfo> inputs;
+  
+  /**
+   * Outputs from node, either to socket stream or inline to other node(s).
+   */
+  public List<NodeOutputDeployInfo> outputs;
+  
+  /**
+   * 
+   * @return String
+   */
+  @Override
+  public String toString()
+  {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", this.id).
+            append("declaredId", this.declaredId).
+            append("inputs", this.inputs).
+            append("outputs", this.outputs).
+            toString();
+  }
+  
+}

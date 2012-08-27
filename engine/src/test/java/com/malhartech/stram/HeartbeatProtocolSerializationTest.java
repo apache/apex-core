@@ -3,20 +3,24 @@
  */
 package com.malhartech.stram;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+import junit.framework.Assert;
+
+import org.apache.hadoop.io.DataInputByteBuffer;
+import org.apache.hadoop.io.DataOutputByteBuffer;
+import org.junit.Test;
+
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import junit.framework.Assert;
-import org.apache.hadoop.io.DataInputByteBuffer;
-import org.apache.hadoop.io.DataOutputByteBuffer;
-import org.junit.Test;
 
 public class HeartbeatProtocolSerializationTest
 {
@@ -57,6 +61,49 @@ public class HeartbeatProtocolSerializationTest
 
     Assert.assertNotNull(cloneRsp.getDeployRequest());
     Assert.assertEquals("node1", cloneRsp.getDeployRequest().getNodes().get(0).getLogicalId());
+    
+  }
+
+  @Test
+  public void testNodeDeployInfo() throws Exception {
+    NodeDeployInfo ndi = new NodeDeployInfo();
+    ndi.declaredId = "node1";
+    ndi.id ="1";
+    
+    NodeDeployInfo.NodeInputDeployInfo input = new NodeDeployInfo.NodeInputDeployInfo();
+    input.declaredStreamId = "streamToNode";
+    input.portName = "inputPortNameOnNode";
+    input.sourceNodeId = "sourceNodeId";
+
+    ndi.inputs = new ArrayList<NodeDeployInfo.NodeInputDeployInfo>();
+    ndi.inputs.add(input);
+
+    NodeDeployInfo.NodeOutputDeployInfo output = new NodeDeployInfo.NodeOutputDeployInfo();
+    output.declaredStreamId = "streamFromNode";
+    output.portName = "outputPortNameOnNode";
+
+    ndi.outputs = new ArrayList<NodeDeployInfo.NodeOutputDeployInfo>();
+    ndi.outputs.add(output);
+    
+    StreamingContainerContext scc = new StreamingContainerContext();
+    scc.nodeList = Collections.singletonList(ndi);
+
+    DataOutputByteBuffer out = new DataOutputByteBuffer();
+    scc.write(out);
+
+    DataInputByteBuffer in = new DataInputByteBuffer();
+    in.reset(out.getData());
+
+    StreamingContainerContext clone = new StreamingContainerContext();
+    clone.readFields(in);
+
+    Assert.assertNotNull(clone.nodeList);
+    Assert.assertEquals(1, clone.nodeList.size());
+    Assert.assertEquals("node1", clone.nodeList.get(0).declaredId);
+    
+    String nodeToString = ndi.toString();
+    Assert.assertTrue(nodeToString.contains(input.portName));
+    Assert.assertTrue(nodeToString.contains(output.portName));
     
   }
   
