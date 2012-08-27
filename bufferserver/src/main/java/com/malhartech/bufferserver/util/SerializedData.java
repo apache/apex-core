@@ -1,3 +1,8 @@
+/*
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
+ */
+
 package com.malhartech.bufferserver.util;
 
 /**
@@ -28,6 +33,10 @@ public final class SerializedData
    */
   public int size;
 
+  /**
+   * 
+   * @return String
+   */
   @Override
   public String toString()
   {

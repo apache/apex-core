@@ -11,7 +11,7 @@
  * <br>
  * <b>com.malhartech.bufferserver.util</b> includes<br>
  * <b>{@link com.malhartech.bufferserver.util.Codec}</b>: <br>
- * <b>{@link com.malhartech.bufferserver.util.SerializedData}</b>:  * Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying array.<br>
+ * <b>{@link com.malhartech.bufferserver.util.SerializedData}</b>: Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying array.<br>
  * <br>
  * 
  */
