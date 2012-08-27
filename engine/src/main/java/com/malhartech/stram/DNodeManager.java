@@ -118,6 +118,7 @@ public class DNodeManager
   
   /**
    * Check periodically that child containers phone home
+   * 
    */
   public void monitorHeartbeat() {
     long currentTms = System.currentTimeMillis();
@@ -130,7 +131,7 @@ public class DNodeManager
            // issue stop as probably process is still hanging around (would have been detected by Yarn otherwise)
            LOG.info("Triggering restart for container {} after heartbeat timeout.", containerId);
            containerStopRequests.put(containerId, containerId);
-           restartContainer(containerId);
+           //restartContainer(containerId);
          }
        }
     }
@@ -142,13 +143,14 @@ public class DNodeManager
    * or after heartbeat timeout occurs.
    * @param containerId
    */
-  public void restartContainer(String containerId) {
+  public void scheduleContainerRestart(String containerId) {
     LOG.info("Initiating recovery for container {}", containerId);
 
     StramChildAgent cs = getContainerAgent(containerId);
 
     // building the checkpoint dependency, 
     // downstream nodes will appear first in map
+    // TODO: traversal needs to include inline upstream nodes 
     Map<PTNode, Long> checkpoints = new LinkedHashMap<PTNode, Long>();
     for (PTNode node : cs.container.nodes) {
       getRecoveryCheckpoint(node, checkpoints);
@@ -189,14 +191,11 @@ public class DNodeManager
     AtomicInteger redeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
-        
-        // TODO: pass in the start window id
-        
         StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
         DeployRequest r = new DeployRequest(e.getKey(), redeployAckCountdown, failedContainerDeployCnt);
         r.setNodes(ctx.getNodes(), ctx.getStreams());
         redeployAckCountdown.incrementAndGet();
-        StramChildAgent downstreamContainer = getContainerAgent(cs.container.containerId);
+        StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
       }
     }
@@ -213,11 +212,12 @@ public class DNodeManager
   }
   
   /**
-   * Create node tracking context for logical node. Exposed here for tests.
-   *
+   * Create node tracking context for logical node. Exposed here for tests<p>
+   * <br>
    * @param dnodeId
    * @param nodeConf
-   * @return
+   * @return {@link com.malhartech.stram.NodePConf}
+   * 
    */
   public static NodePConf createNodeContext(String dnodeId, NodeConf nodeConf)
   {
@@ -288,7 +288,7 @@ public class DNodeManager
    *
    * @param containerId
    * @param bufferServerAddress Buffer server for publishers on the container.
-   * @return
+   * @param cdr
    */
   public void assignContainer(DeployRequest cdr, String containerId, InetSocketAddress bufferServerAddress) {
     PTContainer container = cdr.container;
@@ -317,7 +317,9 @@ public class DNodeManager
   /**
    * Create the protocol mandated node/stream info for bootstrapping StramChild.
    * @param container
-   * @return
+   * @param deployNodes
+   * @param checkpoints
+   * @return StreamingContainerContext
    */
   private StreamingContainerContext createStramChildInitContext(List<PTNode> deployNodes, PTContainer container, Map<PTNode, Long> checkpoints) {
     StreamingContainerContext scc = new StreamingContainerContext();

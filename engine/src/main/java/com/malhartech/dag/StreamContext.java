@@ -10,7 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Defines the destination for tuples processed.
+ * Defines the destination for tuples processed<p>
+ * <br>
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
@@ -46,7 +47,7 @@ public class StreamContext implements Context
   }
 
   /**
-   * @param sourceId the sourceId to set
+   * @param upstreamNodeId the sourceId to set
    */
   public void setSourceId(String upstreamNodeId)
   {
@@ -54,7 +55,7 @@ public class StreamContext implements Context
   }
 
   /**
-   * @return the sinkId
+   * @return String (the sink id)
    */
   public String getSinkId()
   {
@@ -62,7 +63,7 @@ public class StreamContext implements Context
   }
 
   /**
-   * @param sinkId the sinkId to set
+   * @param downstreamNodeId the sinkId to set this value
    */
   public void setSinkId(String downstreamNodeId)
   {

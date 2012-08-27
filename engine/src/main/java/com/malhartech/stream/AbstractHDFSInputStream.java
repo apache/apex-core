@@ -37,14 +37,26 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
   protected FSDataInputStream input;
   private boolean skipEndStream = false;
 
+  /**
+   * 
+   * @return boolean
+   */
   public boolean isSkipEndStream() {
     return skipEndStream;
   }
 
+  /**
+   * 
+   * @param skip 
+   */
   public void setSkipEndStream(boolean skip) {
     this.skipEndStream = skip;
   }
 
+  /**
+   * 
+   * @param config 
+   */
   @Override
   public void setup(NodeConfiguration config)
   {
@@ -61,6 +73,9 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
 
   }
 
+  /**
+   * 
+   */
   @Override
   public void activate(NodeContext context)
   {
@@ -69,6 +84,9 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
     t.start();
   }
 
+  /**
+   * 
+   */
   @Override
   public void run()
   {
@@ -85,6 +103,9 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
     }
   }
 
+  /**
+   * 
+   */
   @Override
   public void teardown()
   {
@@ -96,5 +117,10 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
     }
   }
 
+  /**
+   * 
+   * @param input
+   * @return 
+   */
   public abstract Object getRecord(FSDataInputStream input);
 }

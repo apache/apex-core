@@ -15,7 +15,7 @@ public class Codec
    *
    * @param value
    * @param offset
-   * @return
+   * @return int
    */
   public static int writeRawVarint32(int value, byte[] buffer, int offset)
   {

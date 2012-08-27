@@ -25,6 +25,9 @@ public class ConsoleOutputStream implements Stream
   {
   }
 
+  /**
+   * 
+   */
   @Override
   public void teardown()
   {
@@ -40,6 +43,9 @@ public class ConsoleOutputStream implements Stream
     System.out.println(t);
   }
 
+  /**
+   * 
+   */
   @Override
   public void activate(StreamContext context)
   {

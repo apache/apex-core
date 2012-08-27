@@ -8,6 +8,13 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
 
 /**
  *
+ * Basic object that is streamed<p>
+ * <br>
+ * Tuples are of the following type<br>
+ * Data:<br>
+ * Control: begin window, end window, reset window, end stream<br>
+ * heartbeat: To be done, not a high priority<br>
+ * <br>
  * @author chetan
  */
 public class Tuple

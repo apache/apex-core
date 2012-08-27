@@ -28,21 +28,38 @@ public class BufferServerStreamContext extends StreamContext
   private String id;
   private HashSet<byte[]> partitions;
 
+  /**
+   * 
+   * @param upstreamNodeId
+   * @param downstreamNodeId 
+   */
   public BufferServerStreamContext(String upstreamNodeId, String downstreamNodeId)
   {
     super(upstreamNodeId, downstreamNodeId);
   }
 
+  /**
+   * 
+   * @param id 
+   */
   public void setId(String id)
   {
     this.id = id;
   }
   
+  /**
+   * 
+   * @return String
+   */
   public String getId()
   {
     return id;
   }
 
+  /**
+   * 
+   * @param partitionKeys 
+   */
   public void setPartitions(Collection<byte[]> partitionKeys)
   {
     if (partitionKeys == null) {
@@ -54,6 +71,10 @@ public class BufferServerStreamContext extends StreamContext
     }
   }
 
+  /**
+   * 
+   * @return Collection<byte[]>
+   */
   Collection<byte[]> getPartitions()
   {
     return partitions;

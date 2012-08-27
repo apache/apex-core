@@ -16,7 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * The for context for all of the nodes<p>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class NodeContext implements Context
@@ -91,7 +93,7 @@ public class NodeContext implements Context
   /**
    * Reset counts for next heartbeat interval and return current counts. This is called as part of the heartbeat processing.
    *
-   * @return
+   * @return int
    */
   public final synchronized int drainHeartbeatCounters(Collection<? super HeartbeatCounters> counters)
   {

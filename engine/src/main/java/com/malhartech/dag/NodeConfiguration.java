@@ -9,6 +9,9 @@ import org.apache.hadoop.conf.Configuration;
 
 /**
  *
+ * Extends {@link org.apache.hadoop.conf.Configuration} for nodes of the dag<p>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class NodeConfiguration extends Configuration

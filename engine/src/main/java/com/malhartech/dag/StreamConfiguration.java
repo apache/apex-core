@@ -11,7 +11,8 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 
 /**
- * Configuration object provided per stream object.
+ * Configuration object provided per stream object<p>
+ * <br>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class StreamConfiguration extends Configuration

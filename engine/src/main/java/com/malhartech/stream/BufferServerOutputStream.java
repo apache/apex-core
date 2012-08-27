@@ -29,6 +29,10 @@ public class BufferServerOutputStream extends SocketOutputStream
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   SerDe serde;
 
+  /**
+   * 
+   * @param t 
+   */
   @Override
   public void process(Object payload)
   {
@@ -90,6 +94,9 @@ public class BufferServerOutputStream extends SocketOutputStream
     channel.write(db.build());
   }
 
+  /**
+   * 
+   */
   @Override
   public void activate(StreamContext context)
   {

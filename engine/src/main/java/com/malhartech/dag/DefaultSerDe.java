@@ -11,6 +11,12 @@ import com.malhartech.stram.conf.ShipContainingJars;
 import java.util.Collection;
 
 /**
+ * 
+ * Default SerDe for streams if nothing is configured. Has no partitioning<p>
+ * <br>
+ * No partitioning is done and it uses Kryo serializer for serde<br>
+ * <br>
+ * 
  * Requires kryo and its dependencies in deployment
  */
 @ShipContainingJars (classes={Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})

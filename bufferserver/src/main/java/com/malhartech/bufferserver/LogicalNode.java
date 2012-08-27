@@ -17,8 +17,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * LogicalNode represents a logical node in a DAG. Logical node can be split into multiple physical nodes. The type of the logical node groups the multiple
+ * LogicalNode represents a logical node in a DAG<p>
+ * <br>
+ * Logical node can be split into multiple physical nodes. The type of the logical node groups the multiple
  * physical nodes together in a group.
+ * <br>
  *
  * @author chetan
  */

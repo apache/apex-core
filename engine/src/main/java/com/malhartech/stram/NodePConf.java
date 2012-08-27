@@ -29,41 +29,73 @@ public class NodePConf extends StreamingNodeUmbilicalProtocol.WritableAdapter im
   private String dnodeId;
   private String logicalId;
 
+  /**
+   * 
+   * @return Map<String, String>
+   */
   public Map<String, String> getProperties()
   {
     return properties;
   }
 
+  /**
+   * 
+   * @param properties 
+   */
   public void setProperties(Map<String, String> properties)
   {
     this.properties = properties;
   }
 
+  /**
+   * 
+   * @return String
+   */
   public String getDnodeClassName()
   {
     return dnodeClassName;
   }
 
+  /**
+   * 
+   * @param dnodeClassName 
+   */
   public void setDnodeClassName(String dnodeClassName)
   {
     this.dnodeClassName = dnodeClassName;
   }
 
+  /**
+   * 
+   * @return String
+   */
   public String getDnodeId()
   {
     return dnodeId;
   }
 
+  /**
+   * 
+   * @param dnodeId 
+   */
   public void setDnodeId(String dnodeId)
   {
     this.dnodeId = dnodeId;
   }
 
+  /**
+   * 
+   * @return String
+   */
   public String getLogicalId()
   {
     return logicalId;
   }
 
+  /**
+   * 
+   * @param logicalId 
+   */
   public void setLogicalId(String logicalId)
   {
     this.logicalId = logicalId;
@@ -75,16 +107,24 @@ public class NodePConf extends StreamingNodeUmbilicalProtocol.WritableAdapter im
    * The checkpoint window identifier.
    * Used to restore node and incoming streams as part of recovery.
    * Value 0 indicates fresh initialization, no restart.   
-   * @return
+   * @return long
    */
   public long getCheckpointWindowId() {
     return checkpointWindowId;
   }
 
+  /**
+   * 
+   * @param checkpointWindowId 
+   */
   public void setCheckpointWindowId(long checkpointWindowId) {
     this.checkpointWindowId = checkpointWindowId;
   }
 
+  /**
+   * 
+   * @return String
+   */
   @Override
   public String toString()
   {

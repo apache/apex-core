@@ -212,7 +212,7 @@ public class SocketStreamTest
         // TODO: validate data flow
 
         for (LocalStramChild cc: containers) {
-            LOG.info("shutting down " + cc);
+            LOG.info("shutting down " + cc.getContainerId());
             cc.shutdown();
         }
 

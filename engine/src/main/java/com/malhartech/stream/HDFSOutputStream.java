@@ -35,6 +35,10 @@ public class HDFSOutputStream implements Stream
   private Path filepath;
   private boolean append;
 
+  /**
+   * 
+   * @param config 
+   */
   @Override
   public void setup(StreamConfiguration config)
   {
@@ -106,6 +110,10 @@ public class HDFSOutputStream implements Stream
     }
   }
 
+  /**
+   * 
+   * @param context 
+   */
   @Override
   public void deactivate()
   {
@@ -120,6 +128,10 @@ public class HDFSOutputStream implements Stream
     serde = null;
   }
 
+  /**
+   * 
+   * @param t 
+   */
   @Override
   public Sink connect(String id, DAGComponent component)
   {

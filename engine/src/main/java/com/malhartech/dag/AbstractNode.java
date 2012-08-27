@@ -14,6 +14,17 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 
+ * The base class for node implementation<p>
+ * <br>
+ * Extends the base interface {@link com.malhartech.dag.InternalNode}<br>
+ * <br>
+ * This is the basic functional blog of the dag. It is responsible for the following<br>
+ * It emits and consumes tuples<br>
+ * Upon window boundary it does house cleaning, state sync up etc<br>
+ * Interacts with Stram with a heartbeat protocol<br>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class AbstractNode implements InternalNode

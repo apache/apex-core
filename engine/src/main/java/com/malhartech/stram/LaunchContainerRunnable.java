@@ -192,10 +192,8 @@ public class LaunchContainerRunnable implements Runnable
   /**
    * Build the command to launch the child VM in the container TODO: Build based on streaming node configuration
    *
-   * @param callbackListenerAddr
-   * @param task
    * @param jvmID
-   * @return
+   * @return List<CharSequence>
    */
   public List<CharSequence> getChildVMCommand(
     String jvmID)

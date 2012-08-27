@@ -27,7 +27,7 @@ import com.google.common.collect.Maps;
 
 /**
  * 
- * Builder for the DAG logical representation of nodes and streams.<p>
+ * Builder for the DAG logical representation of nodes and streams<p>
  * <br>
  * Supports reading as name-value pairs from Hadoop Configuration
  * or programmatic interface.<br>
@@ -84,21 +84,36 @@ public class TopologyBuilder {
   public class TemplateConf {
     private String id;
     private Properties properties = new Properties();
-    
+ 
+    /**
+     * 
+     * @param id 
+     */
     private TemplateConf(String id) {
       this.id = id;
     }
 
+    /**
+     * 
+     * @return String
+     */
     public String getId() {
       return id;
     }
 
+    /**
+     * 
+     * @param key
+     * @param value 
+     */
     public void addProperty(String key, String value) {
       properties.setProperty(key, value);
     }
   }
   
-  
+  /**
+   * 
+   */
   public class StreamConf {
     private String id;
     private NodeConf sourceNode;
@@ -107,42 +122,64 @@ public class TopologyBuilder {
     private PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
     private TemplateConf template;
 
-    
+
     private StreamConf(String id) {
       this.id = id;
     }
 
+    /**
+     * 
+     * @return String
+     */
     public String getId() {
       return id;
     }
 
+    /**
+     * 
+     * @return {com.malhartech.stram.conf.NodeConf}
+     */
     public NodeConf getSourceNode() {
       return sourceNode;
     }
 
+    /**
+     * 
+     * @return {com.malhartech.stram.conf.NodeConf}
+     */
     public NodeConf getTargetNode() {
       return targetNode;
     }
 
+    /**
+     * 
+     * @param key get property of key
+     * @return String
+     */
     public String getProperty(String key) {
       return properties.getProperty(key);
     }
 
     /**
      * Immutable properties. Template values (if set) become defaults. 
-     * @return
+     * @return Map<String, String>
      */
     public Map<String, String> getProperties() {
       return Maps.fromProperties(properties);
     }
     
+    /**
+     * 
+     * @param key
+     * @param value 
+     */
     public void addProperty(String key, String value) {
       properties.put(key, value);
     }
     
     /**
      * Hint to manager that adjacent nodes should be deployed in same container.
-     * @return
+     * @return boolean
      */
     public boolean isInline() {
       return Boolean.TRUE.toString().equals(properties.getProperty(STREAM_INLINE, Boolean.FALSE.toString()));
@@ -150,9 +187,16 @@ public class TopologyBuilder {
     
   }
 
+  /**
+   * 
+   */
   class PropertiesWithModifiableDefaults extends Properties {
     private static final long serialVersionUID = -4675421720308249982L;
 
+    /**
+     * Hint to manager that adjacent nodes should be deployed in same container.
+     * @param defaults
+     */
     void setDefaultProperties(Properties defaults) {
         super.defaults = defaults;
     }
@@ -184,10 +228,18 @@ public class TopologyBuilder {
     private Integer nindex; // for cycle detection
     private Integer lowlink; // for cycle detection   
 
+    /**
+     * 
+     * @return String
+     */
     public String getId() {
       return id;
     }
 
+    /**
+     * 
+     * @return String
+     */
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
@@ -195,6 +247,11 @@ public class TopologyBuilder {
           toString();
     }
 
+    /**
+     * 
+     * @param stream
+     * @return {com.malhartech.stram.conf.NodeConf}
+     */
     public NodeConf addInput(StreamConf stream) {
       if (stream.targetNode != null) {
         // multiple targets not allowed
@@ -209,14 +266,28 @@ public class TopologyBuilder {
       return this;
     }
 
+    /**
+     * 
+     * @param streamId
+     * @return StreamConf
+     */
     public StreamConf getInput(String streamId) {
       return inputs.get(streamId);
     }
 
+    /**
+     * 
+     * @return Collection<StreamConf>
+     */
     public Collection<StreamConf> getInputStreams() {
       return inputs.values();
     }
     
+    /**
+     * 
+     * @param stream
+     * @return {com.malhartech.stram.conf.NodeConf}
+     */
     public NodeConf addOutput(StreamConf stream) {
       if (stream.sourceNode != null) {
         // multiple targets not allowed
@@ -246,7 +317,7 @@ public class TopologyBuilder {
     
     /**
      * Properties for the node. Template values (if set) become property defaults. 
-     * @return
+     * @return Map<String, String>
      */
     public Map<String, String> getProperties() {
       return Maps.fromProperties(properties);
@@ -362,7 +433,6 @@ public class TopologyBuilder {
    * entirety.
    * 
    * @param props
-   * @return
    */
   public void addFromProperties(Properties props) {
     
@@ -435,12 +505,15 @@ public class TopologyBuilder {
   
   /**
    * Map of fully constructed node configurations with inputs/outputs set.
-   * @return
+   * @return Map<String, NodeConf>
    */
   public Map<String, NodeConf> getAllNodes() {
     return Collections.unmodifiableMap(this.nodes);
   }
 
+  /**
+   * @return Set<NodeConf>
+   */
   public Set<NodeConf> getRootNodes() {
     return Collections.unmodifiableSet(this.rootNodes);
   }
@@ -450,6 +523,7 @@ public class TopologyBuilder {
    * This is done by attempting to find a strongly connected components,
    * see http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm
    * @param n
+   * @param cycles
    */
   public void findStronglyConnected(NodeConf n, List<List<String>> cycles) {
     n.nindex = nodeIndex;
@@ -494,6 +568,9 @@ public class TopologyBuilder {
     }
   }
 
+  /**
+   * 
+   */
   public void validate() {   
     // clear visited on all nodes
     for (NodeConf n : nodes.values()) {
@@ -525,7 +602,7 @@ public class TopologyBuilder {
 
   /**
    * Configured class dependencies for the topology. Used to determine jar file dependencies. 
-   * @return
+   * @return Set<String>
    */
   public Set<String> getClassNames() {
     Set<String> classNames = new HashSet<String>();

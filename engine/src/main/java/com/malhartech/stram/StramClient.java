@@ -121,6 +121,9 @@ public class StramClient
   }
 
   /**
+   * 
+   * @param conf
+   * @throws Exception 
    */
   public StramClient(Configuration conf) throws Exception
   {
@@ -128,7 +131,10 @@ public class StramClient
     this.conf = conf;
   }
 
+
   /**
+   * 
+   * @throws Exception 
    */
   public StramClient() throws Exception
   {
@@ -538,7 +544,6 @@ public class StramClient
   /**
    * Monitor the submitted application for completion. Kill application if time expires.
    *
-   * @param appId Application Id of application to be monitored
    * @return true if application completed successfully
    * @throws YarnRemoteException
    */

@@ -8,14 +8,10 @@ import java.lang.reflect.Array;
 import java.util.*;
 
 /**
- *
- * @author Chetan Narsude <chetan@malhar-inc.com>
- */
-
-/**
- * Implements a priority queue<p>
- * <br>
  * 
+ * Implements a priority queue by implementing {@link java.util.queue} interface<p>
+ * <br>
+ * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class StablePriorityQueue<E> implements Queue<E>
 {
@@ -24,11 +20,25 @@ public class StablePriorityQueue<E> implements Queue<E>
   private static final long serialVersionUID = 201207091837L;
   private int counter = 0;
 
+  /**
+   * 
+   * Constructs a {@link com.malhartech.util.StablePriorityQueue} class<p>
+   * <br>
+   * @param initialCapacity The size of the queue to be set up
+   * <br>
+   */
   public StablePriorityQueue(int initialCapacity)
   {
     queue = new PriorityQueue<StableWrapper<E>>(initialCapacity, new StableWrapperNaturalComparator<E>());
   }
 
+  /**
+   * 
+   * Constructs a {@link com.malhartech.util.StablePriorityQueue} class by absorbing all objects from a {@link java.util.Collection} object<p>
+   * <br>
+   * @param c a {@link java.util.Collection} object
+   * <br>
+   */
   public StablePriorityQueue(Collection<? extends E> c)
   {
     queue = new PriorityQueue<StableWrapper<E>>(c.size(), new StableWrapperNaturalComparator<E>());
@@ -37,6 +47,14 @@ public class StablePriorityQueue<E> implements Queue<E>
     }
   }
 
+  /**
+   * 
+   * Constructs a {@link com.malhartech.util.StablePriorityQueue} class with provided capacity<p>
+   * <br>
+   * @param initialCapacity Size of the queue to be set up
+   * @param comparator {@link java.util.Comparator} object for comparison
+   * <br>
+   */
   public StablePriorityQueue(int initialCapacity, Comparator<? super E> comparator)
   {
     queue = new PriorityQueue<StableWrapper<E>>(initialCapacity, new StableWrapperProvidedComparator<E>(comparator));

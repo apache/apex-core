@@ -10,6 +10,9 @@ import java.io.OutputStream;
 
 /**
  *
+ * Interface that defines how to write checkpoint state<p>
+ * <br>
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface BackupAgent
@@ -23,7 +26,7 @@ public interface BackupAgent
    * Caller is responsible for closing stream once done.
    *
    * @param nodeId
-   * @return
+   * @return {@link java.io.InputStream}
    * @throws IOException
    */
   public InputStream getInputStream(String nodeId, long windowId) throws IOException;
