@@ -14,9 +14,12 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PortAnnotation {
   public enum PortType {
-    INPUT, OUTPUT;
+    DEAD,
+    INPUT,
+    OUTPUT,
+    BIDI
   }
-  
+
   public String name();
   public PortType type();
 }
