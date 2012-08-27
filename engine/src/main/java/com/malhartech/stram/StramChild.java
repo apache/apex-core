@@ -186,7 +186,7 @@ public class StramChild
             dsc.setStartingWindowId(nodeConfMap.get(sc.getSourceNodeId()).getCheckpointWindowId());
             stream.setContext(dsc);
 
-            Sink sink = targetNode.getSink(dsc);
+             Sink sink = targetNode.connectPort("", dsc);
 //      LOG.info(dsc + " setting sink to " + sink);
       dsc.setSink(sink);
       // operation is additive - there can be multiple output streams
@@ -245,16 +245,16 @@ public class StramChild
         }
     }
 
-    
+
     /**
-     * Initialize container with nodes and streams in the context. 
+     * Initialize container with nodes and streams in the context.
      * Existing nodes are not affected by this operation.
      * @param ctx
      * @throws IOException
      */
     protected void init(StreamingContainerContext ctx) throws IOException
     {
-      
+
         this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
         if (this.heartbeatIntervalMillis == 0) {
             this.heartbeatIntervalMillis = 1000;
@@ -263,24 +263,24 @@ public class StramChild
     final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
 
         initNodes(ctx.getNodes(), ctx.getStreams());
-        
+
         windowGenerator = new WindowGenerator(this.inputAdapters, ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
         if (ctx.getWindowSizeMillis() > 0) {
             windowGenerator.start();
         }
 
     }
-    
+
     /**
-     * Deploy new nodes and activate connecting streams. 
+     * Deploy new nodes and activate connecting streams.
      * @param nodeConfList
      * @param streamConfList
      */
     private void initNodes(List<NodePConf> nodeConfList, List<StreamPConf> streamConfList) {
-        
+
         final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
         List<InputAdapter> newInputAdapters = new ArrayList<InputAdapter>();
-        
+
         // create nodes
         for (NodePConf nodeConf: nodeConfList) {
             nodeConfMap.put(nodeConf.getDnodeId(), nodeConf);
@@ -315,14 +315,14 @@ public class StramChild
             s.activate();
             this.streams.add(s);
         }
-        
+
         for (Entry<String, InternalNode> e: nodeList.entrySet()) {
 
           if (!nodeConfMap.containsKey(e.getKey())) {
             // not part of deploy set
             continue;
           }
-          
+
             final InternalNode node = e.getValue();
             final String id = e.getKey();
             // launch nodes
@@ -506,7 +506,7 @@ public class StramChild
             teardownNode(nodeConf.getDnodeId());
           }
         }
-        
+
         if (rsp.getDeployRequest() != null) {
           LOG.info("Deploy request: {}", rsp.getDeployRequest());
           try {
@@ -515,7 +515,7 @@ public class StramChild
             throw new RuntimeException("Failed to initialize container", e);
           }
         }
-        
+
         if (rsp.getNodeRequests() != null) {
           // extended processing per node
           for (StramToNodeRequest req : rsp.getNodeRequests()) {

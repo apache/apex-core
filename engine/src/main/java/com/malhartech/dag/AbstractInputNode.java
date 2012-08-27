@@ -108,8 +108,11 @@ public abstract class AbstractInputNode implements Node
   }
 
   @SuppressWarnings("SleepWhileInLoop")
-  public void emit(Object payload)
+  public void emit(String id, Object payload)
   {
+    // once we have annotation done property, we would like to send the tuples to
+    // a queue corresponding to the port instead of in one. the followig implementation
+    // ignores the id, that means it's good only for the nodes which have one o/p port.
     if (payload instanceof Tuple) {
       while (true) {
         try {

@@ -27,9 +27,9 @@ public class CircularBuffer<T>
   private volatile int head;
 
   @SuppressWarnings("unchecked")
-    
+
   /**
-   * 
+   *
    * Constructing a circular buffer of 'n' integers<p>
    * <br>
    * @param n size of the buffer to be constructed
@@ -43,11 +43,11 @@ public class CircularBuffer<T>
   }
 
   /**
-   * 
+   *
    * Add object at the head<p>
    * <br>
    * @param toAdd object to be added
-   * 
+   *
    */
   public void add(T toAdd)
   {
@@ -60,7 +60,7 @@ public class CircularBuffer<T>
   }
 
   /**
-   * 
+   *
    * Get object from the tail<p>
    * <br>
    * @return object removed from the buffer returned
@@ -84,13 +84,20 @@ public class CircularBuffer<T>
     return buffer[tail % buffer.length];
   }
 
+   /**
+   *
+   * Number of objects in the buffer<p>
+   * <br>
+   * @return Number of objects in the buffer
+   * <br>
+   */
   public final int size()
   {
     return head - tail;
   }
 
   /**
-   * 
+   *
    * Total design capacity of the buffer<p>
    * <br>
    * @return Total return capacity of the buffer
@@ -102,7 +109,7 @@ public class CircularBuffer<T>
   }
 
   /**
-   * 
+   *
    * Drain the buffer<p>
    * <br>
    * @param container {@link java.util.Collection} class to which the buffer objects are added
@@ -121,7 +128,7 @@ public class CircularBuffer<T>
   }
 
   /**
-   * 
+   *
    * Printing status for debugging<p>
    * <br>
    * @return String containing capacity, head, and tail
