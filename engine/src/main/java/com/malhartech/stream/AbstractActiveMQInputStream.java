@@ -35,8 +35,6 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
   private Session session;
   private MessageProducer replyProducer;
 
-  public abstract Object getObject(Object object);
-
   private void internalSetup(NodeConfiguration config) throws Exception
   {
     ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
@@ -182,11 +180,7 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
       }
     }
 
-
-    Object o = getObject(message);
-    if (o != null) {
-      emit(o);
-    }
+    emitMessage(message);
 
     try {
       if (message.getJMSReplyTo() != null) {
@@ -250,4 +244,6 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
   {
     return connection;
   }
+
+  protected abstract void emitMessage(Message message);
 }

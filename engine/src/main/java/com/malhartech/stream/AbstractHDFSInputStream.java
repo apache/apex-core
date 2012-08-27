@@ -4,12 +4,14 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 import java.io.IOException;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -22,15 +24,13 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-
 /**
-  * Input Adapter for reading from HDFS<p>
-  * <br>
-  * Extends AbstractInputAdapter<br>
-  * Users need to implement getRecord to get HDFS input adapter to work as per their choice<br>
-  * <br>
+ * Input Adapter for reading from HDFS<p>
+ * <br>
+ * Extends AbstractInputAdapter<br>
+ * Users need to implement getRecord to get HDFS input adapter to work as per their choice<br>
+ * <br>
  */
-
 public abstract class AbstractHDFSInputStream extends AbstractInputNode implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
@@ -38,24 +38,26 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
   private boolean skipEndStream = false;
 
   /**
-   * 
+   *
    * @return boolean
    */
-  public boolean isSkipEndStream() {
+  public boolean isSkipEndStream()
+  {
     return skipEndStream;
   }
 
   /**
-   * 
-   * @param skip 
+   *
+   * @param skip
    */
-  public void setSkipEndStream(boolean skip) {
+  public void setSkipEndStream(boolean skip)
+  {
     this.skipEndStream = skip;
   }
 
   /**
-   * 
-   * @param config 
+   *
+   * @param config
    */
   @Override
   public void setup(NodeConfiguration config)
@@ -74,7 +76,7 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void activate(NodeContext context)
@@ -85,26 +87,40 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void run()
   {
     logger.debug("ready to read hdfs file");
-    Object o;
-    while ((o = getRecord(input)) != null) {
-      emit(o);
+    try {
+      while (true) {
+        emitRecord(input);
+      }
     }
-
-    if (!skipEndStream) {
-      emit(new Tuple(Buffer.Data.DataType.END_STREAM));
-    } else {
-      logger.info("Skipping endStream.");
+    catch (Exception e) {
+      logger.info("Exception on HDFS Input: {}", e.getLocalizedMessage());
+      if (skipEndStream) {
+        logger.info("Skipping end stream as requested");
+      }
+      else {
+        logger.info("Ending the stream");
+        Class<? extends Node> clazz = this.getClass();
+        NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
+        if (na != null) {
+          PortAnnotation[] ports = na.ports();
+          for (PortAnnotation pa: ports) {
+            if (pa.type() == PortType.OUTPUT || pa.type() == PortType.BIDI) {
+              emit(pa.name(), new Tuple(Buffer.Data.DataType.END_STREAM));
+            }
+          }
+        }
+      }
     }
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void teardown()
@@ -117,10 +133,5 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
     }
   }
 
-  /**
-   * 
-   * @param input
-   * @return 
-   */
-  public abstract Object getRecord(FSDataInputStream input);
+  protected abstract void emitRecord(FSDataInputStream input);
 }
