@@ -42,12 +42,19 @@ public class WindowGenerator implements DAGComponent, Runnable
   private long baseSeconds;
   private int windowId;
 
+  /**
+   * Increments window by 1
+   */
   public final void advanceWindow()
   {
     currentWindowMillis += intervalMillis;
     windowId++;
   }
 
+  /**
+   * Updates window in a circular buffer on inputAdapters<p>
+   * This code generates the windows
+   */
   protected final void nextWindow()
   {
     if (windowId == InputAdapter.MAX_VALUE_WINDOW) {
@@ -77,6 +84,9 @@ public class WindowGenerator implements DAGComponent, Runnable
     }
   }
 
+  /**
+   * 
+   */
   @Override
   public void run()
   {

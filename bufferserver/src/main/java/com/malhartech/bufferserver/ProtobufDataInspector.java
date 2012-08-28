@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class ProtobufDataInspector implements DataIntrospector

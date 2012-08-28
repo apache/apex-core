@@ -31,6 +31,10 @@ public class Codec
     }
   }
 
+  /**
+   * 
+   * @param current 
+   */
   public static void readRawVarInt32(SerializedData current)
   {
     final byte[] data = current.bytes;

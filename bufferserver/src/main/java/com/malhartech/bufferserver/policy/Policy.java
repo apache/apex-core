@@ -9,11 +9,19 @@ import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Set;
 
 /**
- *
+ * 
+ * The base interface for implementing/specifying partition policies<p>
+ * <br>
+ * 
  * @author chetan
  */
 public interface Policy
 {
 
+ /**
+   * 
+   * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
+   * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
+   */
   public void distribute(Set<PhysicalNode> nodes, SerializedData data);
 }

@@ -4,8 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.HeartbeatCounters;
-import com.malhartech.dag.NodeContext;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
@@ -27,6 +25,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.VersionedProtocol;
+
+import com.malhartech.dag.HeartbeatCounters;
 
 /**
  * Protocol that streaming node child process uses to contact its parent (application master) process<p>
@@ -117,16 +117,28 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
     public static class StreamingContainerContext extends WritableAdapter
     {
         private static final long serialVersionUID = 1L;
+
+        /**
+         * The list of nodes to deploy in the container
+         */
+        public List<NodeDeployInfo> nodeList;
+      
+//        
+// BEGIN OLD STUFF TO BE REMOVED
+//        
         /**
          * Nodes that are hosted in the container.
          */
+        @Deprecated
         private List<NodePConf> nodes;
 
+        @Deprecated
         public List<NodePConf> getNodes()
         {
             return nodes;
         }
 
+        @Deprecated
         public void setNodes(List<NodePConf> nodes)
         {
             this.nodes = nodes;
@@ -134,17 +146,23 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
         /**
          * Streams that have input/output from container.
          */
+        @Deprecated
         private List<StreamPConf> streams;
 
+        @Deprecated
         public List<StreamPConf> getStreams()
         {
             return streams;
         }
 
+        @Deprecated
         public void setStreams(List<StreamPConf> streams)
         {
             this.streams = streams;
         }
+//        
+// END OLD STUFF TO BE REMOVED        
+//        
         /**
          * How frequently should nodes heartbeat to stram. Recommended setting is 1000ms. Can be set to 0 for unit testing.
          */

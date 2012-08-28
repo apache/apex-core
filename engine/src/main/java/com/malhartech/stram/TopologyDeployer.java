@@ -45,10 +45,18 @@ public class TopologyDeployer {
    */
   public abstract static class PTComponent {
     String id;
-
+    
+    /**
+     * 
+     * @return String
+     */
     abstract public String getLogicalId();
     // stats
 
+    /**
+     * 
+     * @return String
+     */
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
@@ -73,6 +81,13 @@ public class TopologyDeployer {
     final byte[] partition;
     final PTComponent source;
 
+    /**
+     * 
+     * @param logicalStream
+     * @param target
+     * @param partition
+     * @param source 
+     */
     protected PTInput(StreamConf logicalStream, PTComponent target, byte[] partition, PTComponent source) {
       this.logicalStream = logicalStream;
       this.target = target;
@@ -80,11 +95,19 @@ public class TopologyDeployer {
       this.source = source;
     }
 
+    /**
+     * 
+     * @return String
+     */
     @Override
     public String getLogicalId() {
       return logicalStream.getId();
     }
-
+    
+    /**
+     * 
+     * @return InetSocketAddress
+     */
     public InetSocketAddress getBufferServerAddress() {
       if (source instanceof PTNode) {
         return ((PTNode)source).container.bufferServerAddress;
@@ -118,12 +141,21 @@ public class TopologyDeployer {
   public static class PTOutput extends PTComponent {
     final TopologyBuilder.StreamConf logicalStream;
     final PTComponent source;
-
+    
+    /**
+     * Constructor
+     * @param logicalStream
+     * @param source 
+     */
     protected PTOutput(StreamConf logicalStream, PTComponent source) {
       this.logicalStream = logicalStream;
       this.source = source;
     }
 
+    /**
+     * 
+     * @return String
+     */
     @Override
     public String getLogicalId() {
       return logicalStream.getId();
@@ -138,6 +170,11 @@ public class TopologyDeployer {
    *
    */
   public static class PTOutputAdapter extends PTOutput {
+      /**
+       * 
+       * @param logicalStream
+       * @param source 
+       */
     protected PTOutputAdapter(StreamConf logicalStream, PTComponent source) {
       super(logicalStream, source);
     }
@@ -157,17 +194,29 @@ public class TopologyDeployer {
     List<PTOutput> outputs;
     PTContainer container;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
-
+    
+    /**
+     * 
+     * @return {@link com.malhartech.stram.conf.NodeConf}
+     */
     public NodeConf getLogicalNode() {
       return this.logicalNode;
     }
 
+    /**
+     * 
+     * @return long
+     */
     public long getRecentCheckpoint() {
       if (checkpointWindows != null && !checkpointWindows.isEmpty())
         return checkpointWindows.getLast();
       return 0;
     }
-
+    
+    /**
+     * 
+     * @return String
+     */
     @Override
     public String getLogicalId() {
       return logicalNode.getId();
@@ -189,6 +238,10 @@ public class TopologyDeployer {
     String containerId; // assigned to yarn container
     InetSocketAddress bufferServerAddress;
 
+    /**
+     * 
+     * @return String
+     */
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
@@ -214,7 +267,12 @@ public class TopologyDeployer {
     }
     return containers.get(index);
   }
-
+  
+  /**
+   * 
+   * @param maxContainers
+   * @param tb 
+   */
   public void init(int maxContainers, TopologyBuilder tb) {
 
     this.maxContainers = Math.max(maxContainers,1);

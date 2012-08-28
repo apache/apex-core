@@ -34,6 +34,14 @@ public class LogicalNode implements DataListener
     private final HashSet<ByteBuffer> partitions;
     private final Policy policy;
     private final DataListIterator iterator;
+    
+    /**
+     * 
+     * @param upstream
+     * @param group
+     * @param iterator
+     * @param policy 
+     */
 
     LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy)
     {
@@ -51,16 +59,28 @@ public class LogicalNode implements DataListener
         }
     }
 
+    /**
+     * 
+     * @return String
+     */
     public String getGroup()
     {
         return group;
     }
 
+    /**
+     * 
+     * @return Iterator<SerializedData>
+     */
     public Iterator<SerializedData> getIterator()
     {
         return iterator;
     }
 
+    /**
+     * 
+     * @param channel 
+     */
     public void addChannel(Channel channel)
     {
         PhysicalNode pn = new PhysicalNode(channel);
@@ -69,6 +89,10 @@ public class LogicalNode implements DataListener
         }
     }
 
+    /**
+     * 
+     * @param channel 
+     */
     public void removeChannel(Channel channel)
     {
         for (PhysicalNode pn: physicalNodes) {
@@ -79,11 +103,19 @@ public class LogicalNode implements DataListener
         }
     }
 
+    /**
+     * 
+     * @param partition 
+     */
     public void addPartition(ByteBuffer partition)
     {
         partitions.add(partition);
     }
 
+    /**
+     * 
+     * @param longWindowId 
+     */
     public synchronized void catchUp(long longWindowId)
     {
         int baseSeconds = 0;
@@ -120,6 +152,10 @@ public class LogicalNode implements DataListener
 
     }
 
+    /**
+     * 
+     * @param partition 
+     */
     public synchronized void dataAdded(ByteBuffer partition)
     {
         /*
@@ -161,12 +197,21 @@ public class LogicalNode implements DataListener
         }
     }
 
+    /**
+     * 
+     * @param partitions
+     * @return int
+     */
     public int getPartitions(Collection<ByteBuffer> partitions)
     {
         partitions.addAll(this.partitions);
         return partitions.size();
     }
 
+    /**
+     * 
+     * @return int
+     */
     public final int getPhysicalNodeCount()
     {
         return physicalNodes.size();
