@@ -46,6 +46,11 @@ public class NodeDeployInfo implements Serializable
     public String sourceNodeId;
 
     /**
+     * Port of the upstream node from where this input stream originates.
+     */
+    public String sourcePortName;
+
+    /**
      * Buffer server subscriber info, set only stream is not inline.
      */
     public String bufferServerHost;
