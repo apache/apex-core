@@ -19,6 +19,10 @@ import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * 
+ */
 public class ServerInitializer extends ChannelInitializer<SocketChannel>
 {
     private static final Logger logger = LoggerFactory.getLogger(ServerInitializer.class);
@@ -26,6 +30,9 @@ public class ServerInitializer extends ChannelInitializer<SocketChannel>
     private final ProtobufDecoder protobufDecoder;
     private final MessageToMessageEncoder<SerializedData, ByteBuf> encoder;
 
+    /**
+     * 
+     */
     public ServerInitializer()
     {
         serverHandler = new ServerHandler();
@@ -40,6 +47,11 @@ public class ServerInitializer extends ChannelInitializer<SocketChannel>
         };
     }
 
+    /**
+     * 
+     * @param channel
+     * @throws Exception 
+     */
     @Override
     public void initChannel(SocketChannel channel) throws Exception
     {

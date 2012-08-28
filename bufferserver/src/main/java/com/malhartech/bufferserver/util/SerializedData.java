@@ -1,7 +1,13 @@
+/*
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
+ */
+
 package com.malhartech.bufferserver.util;
 
 /**
- * Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying array.
+ * Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying array.<p>
+ * 
  *
  * <b>Note:</b> Multibyte accessors all use big-endian order.
  */
@@ -27,6 +33,10 @@ public final class SerializedData
    */
   public int size;
 
+  /**
+   * 
+   * @return String
+   */
   @Override
   public String toString()
   {

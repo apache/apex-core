@@ -31,6 +31,12 @@ public class WindowGenerator implements Runnable
   private ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1);
   private int windowId;
 
+  /**
+   * 
+   * @param inputs
+   * @param startMillis
+   * @param intervalMillis 
+   */
   public WindowGenerator(Collection<? extends InputAdapter> inputs, long startMillis, int intervalMillis)
   {
     this.inputAdapters = inputs;
@@ -39,12 +45,19 @@ public class WindowGenerator implements Runnable
     this.currentWindowMillis = this.startMillis;
   }
 
+  /**
+   * Increments window by 1
+   */
   public final void advanceWindow()
   {
     currentWindowMillis += intervalMillis;
     windowId++;
   }
 
+  /**
+   * Updates window in a circular buffer on inputAdapters<p>
+   * This code generates the windows
+   */
   protected final void nextWindow()
   {
     if (windowId == InputAdapter.MAX_VALUE_WINDOW) {
@@ -66,6 +79,9 @@ public class WindowGenerator implements Runnable
     }
   }
 
+  /**
+   * 
+   */
   @Override
   public void run()
   {
@@ -78,6 +94,9 @@ public class WindowGenerator implements Runnable
     }
   }
 
+  /**
+   * 
+   */
   public void start()
   {
     Runnable subsequentRun = new Runnable()
@@ -104,6 +123,9 @@ public class WindowGenerator implements Runnable
     stpe.scheduleAtFixedRate(subsequentRun, currentWindowMillis - currentTms + intervalMillis, intervalMillis, TimeUnit.MILLISECONDS);
   }
 
+  /**
+   * 
+   */
   public void stop()
   {
     stpe.shutdown();

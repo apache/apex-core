@@ -173,7 +173,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
      * 
      * @param policytype
      * @param type
-     * @return 
+     * @return Policy
      */
     public Policy getPolicy(Buffer.SubscriberRequest.PolicyType policytype, String type)
     {
