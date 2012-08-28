@@ -164,11 +164,5 @@ public class MuxStreamTest
       }
     }
 
-    @Override
-    public void connectOutput(StreamContext output)
-    {
-      throw new UnsupportedOperationException("Not supported yet.");
-    }
-
   }
 }

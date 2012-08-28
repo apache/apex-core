@@ -27,19 +27,20 @@ import java.util.HashMap;
  */
 public class MuxStream implements Stream
 {
-  HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  HashMap<String, Sink> outputs;
   Collection<Sink> sinks = Collections.EMPTY_LIST;
 
   @Override
   public void setup(StreamConfiguration config)
   {
-    // nothing to do?
+     outputs = new HashMap<String, Sink>();
   }
 
   @Override
   public void teardown()
   {
     outputs.clear();
+    outputs = null;
   }
 
   @Override

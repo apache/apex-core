@@ -4,42 +4,12 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.net.InetSocketAddress;
-import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FSError;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
 import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.InternalNode;
+import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.Sink;
@@ -70,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -95,23 +66,23 @@ import org.slf4j.LoggerFactory;
  */
 public class StramChild
 {
-    private static Logger LOG = LoggerFactory.getLogger(StramChild.class);
-    final private String containerId;
-    final private Configuration conf;
-    final private StreamingNodeUmbilicalProtocol umbilical;
-    final private Map<String, InternalNode> nodeList = new ConcurrentHashMap<String, InternalNode>();
-    final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
-    final private List<Stream> streams = new ArrayList<Stream>();
-    final private List<InputAdapter> inputAdapters = new CopyOnWriteArrayList<InputAdapter>();
-    private long heartbeatIntervalMillis = 1000;
-    private boolean exitHeartbeatLoop = false;
-    private Object heartbeatTrigger = new Object();
-    private WindowGenerator windowGenerator;
-    private String checkpointDfsPath;
-    /**
-     * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
-     */
-    private Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
+  private static Logger LOG = LoggerFactory.getLogger(StramChild.class);
+  final private String containerId;
+  final private Configuration conf;
+  final private StreamingNodeUmbilicalProtocol umbilical;
+  final private Map<String, InternalNode> nodeList = new ConcurrentHashMap<String, InternalNode>();
+  final private Map<String, Thread> activeNodeList = new ConcurrentHashMap<String, Thread>();
+  final private List<Stream> streams = new ArrayList<Stream>();
+  final private List<InputAdapter> inputAdapters = new CopyOnWriteArrayList<InputAdapter>();
+  private long heartbeatIntervalMillis = 1000;
+  private boolean exitHeartbeatLoop = false;
+  private Object heartbeatTrigger = new Object();
+  private WindowGenerator windowGenerator;
+  private String checkpointDfsPath;
+  /**
+   * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
+   */
+  private Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
 
   protected StramChild(String containerId, Configuration conf, StreamingNodeUmbilicalProtocol umbilical)
   {
@@ -161,50 +132,56 @@ public class StramChild
       StreamContext dsc = new StreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
       dsc.setStartingWindowId(nodeConfMap.get(sc.getSourceNodeId()).getCheckpointWindowId());
 
-    protected Map<String, InternalNode> getNodeMap()
-    {
-        return Collections.unmodifiableMap(this.nodeList);
-    }
 
-    public String getContainerId()
-    {
-        return this.containerId;
-    }
 
-    /**
-     * Initialize stream connections.
-     */
-    private void initStream(StreamPConf sc, Map<String, NodePConf> nodeConfMap, List<Stream> newStreams)
-    {
-        InternalNode sourceNode = nodeList.get(sc.getSourceNodeId());
-        InternalNode targetNode = nodeList.get(sc.getTargetNodeId());
 
-        if (sc.isInline()) {
-            LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
-            InlineStream stream = new InlineStream();
-            StreamContext dsc = new StreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
-            dsc.setStartingWindowId(nodeConfMap.get(sc.getSourceNodeId()).getCheckpointWindowId());
-            stream.setContext(dsc);
 
-             Sink sink = targetNode.connectPort("", dsc);
+
+
+  protected Map<String, InternalNode> getNodeMap()
+  {
+    return Collections.unmodifiableMap(this.nodeList);
+  }
+
+  public String getContainerId()
+  {
+    return this.containerId;
+  }
+
+  /**
+   * Initialize stream connections.
+   */
+  private void initStream(StreamPConf sc, Map<String, NodePConf> nodeConfMap, List<Stream> newStreams)
+  {
+    InternalNode sourceNode = nodeList.get(sc.getSourceNodeId());
+    InternalNode targetNode = nodeList.get(sc.getTargetNodeId());
+
+    if (sc.isInline()) {
+      LOG.info("inline connection from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
+      InlineStream stream = new InlineStream();
+      StreamContext dsc = new StreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
+      dsc.setStartingWindowId(nodeConfMap.get(sc.getSourceNodeId()).getCheckpointWindowId());
+      stream.setContext(dsc);
+
+      Sink sink = targetNode.connectPort("", dsc);
 //      LOG.info(dsc + " setting sink to " + sink);
       dsc.setSink(sink);
       // operation is additive - there can be multiple output streams
       sourceNode.connectOutput(dsc);
 
-            newStreams.add(stream);
-        }
-        else {
+      newStreams.add(stream);
+    }
+    else {
 
       // buffer server connection between nodes
       LOG.info("buffer server stream from {} to {}", sc.getSourceNodeId(), sc.getTargetNodeId());
 
-            StreamConfiguration streamConf = new StreamConfiguration(sc.getProperties());
-            streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
-            if (sourceNode != null && nodeConfMap.containsKey(sc.getSourceNodeId())) {
-                BufferServerStreamContext streamContext = new BufferServerStreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
-                streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
-                streamContext.setId(sc.getId());
+      StreamConfiguration streamConf = new StreamConfiguration(sc.getProperties());
+      streamConf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(sc.getBufferServerHost(), sc.getBufferServerPort()));
+      if (sourceNode != null && nodeConfMap.containsKey(sc.getSourceNodeId())) {
+        BufferServerStreamContext streamContext = new BufferServerStreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
+        streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
+        streamContext.setId(sc.getId());
 
         // setup output stream as sink for source node
 //        LOG.info("Node {} is publisher for {}/{}", new Object[]{sourceNode, sc.getId(), sc.getSourceNodeId()});
@@ -214,15 +191,15 @@ public class StramChild
 
 //        LOG.info(streamContext + " setting sink to " + oss);
 
-                streamContext.setSink(oss);
-                sourceNode.addOutputStream(streamContext);
-                newStreams.add(oss);
-            }
+        streamContext.setSink(oss);
+        sourceNode.addOutputStream(streamContext);
+        newStreams.add(oss);
+      }
 
-            if (targetNode != null && nodeConfMap.containsKey(sc.getTargetNodeId())) {
-                BufferServerStreamContext streamContext = new BufferServerStreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
-                streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
-                streamContext.setId(sc.getId());
+      if (targetNode != null && nodeConfMap.containsKey(sc.getTargetNodeId())) {
+        BufferServerStreamContext streamContext = new BufferServerStreamContext(sc.getSourceNodeId(), sc.getTargetNodeId());
+        streamContext.setSerde(StramUtils.getSerdeInstance(sc.getProperties()));
+        streamContext.setId(sc.getId());
 
 
         streamContext.setStartingWindowId(nodeConfMap.get(sc.getTargetNodeId()).getCheckpointWindowId());
@@ -239,422 +216,99 @@ public class StramChild
 
         streamContext.setPartitions(sc.getPartitionKeys());
 
-                iss.setContext(streamContext);
-                newStreams.add(iss);
-            }
-        }
+        iss.setContext(streamContext);
+        newStreams.add(iss);
+      }
     }
+  }
 
+  /**
+   * Initialize container with nodes and streams in the context.
+   * Existing nodes are not affected by this operation.
+   *
+   * @param ctx
+   * @throws IOException
+   */
+  protected void init(StreamingContainerContext ctx) throws IOException
+  {
 
-    /**
-     * Initialize container with nodes and streams in the context.
-     * Existing nodes are not affected by this operation.
-     * @param ctx
-     * @throws IOException
-     */
-    protected void init(StreamingContainerContext ctx) throws IOException
-    {
-
-        this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
-        if (this.heartbeatIntervalMillis == 0) {
-            this.heartbeatIntervalMillis = 1000;
-        }
+    this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
+    if (this.heartbeatIntervalMillis == 0) {
+      this.heartbeatIntervalMillis = 1000;
+    }
 
     final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
 
-        initNodes(ctx.getNodes(), ctx.getStreams());
+    deployNodes(ctx.nodeList);
+    initNodes(ctx.getNodes(), ctx.getStreams());
+  }
 
-        windowGenerator = new WindowGenerator(this.inputAdapters, ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
-        if (ctx.getWindowSizeMillis() > 0) {
-            windowGenerator.start();
-        }
+  /**
+   * Deploy new nodes and activate connecting streams.
+   *
+   * @param nodeConfList
+   * @param streamConfList
+   */
+  private void initNodes(List<NodePConf> nodeConfList, List<StreamPConf> streamConfList)
+  {
 
-    }
+    final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
+    List<InputAdapter> newInputAdapters = new ArrayList<InputAdapter>();
 
-    /**
-     * Deploy new nodes and activate connecting streams.
-     * @param nodeConfList
-     * @param streamConfList
-     */
-    private void initNodes(List<NodePConf> nodeConfList, List<StreamPConf> streamConfList) {
-
-        final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
-        List<InputAdapter> newInputAdapters = new ArrayList<InputAdapter>();
-
-        // create nodes
-        for (NodePConf nodeConf: nodeConfList) {
-            nodeConfMap.put(nodeConf.getDnodeId(), nodeConf);
-            InternalNode dnode = initOrRestoreNode(nodeConf, conf);
-            NodeConfiguration nc = new NodeConfiguration(nodeConf.getProperties());
-            dnode.setup(nc);
+    // create nodes
+    for (NodePConf nodeConf: nodeConfList) {
+      nodeConfMap.put(nodeConf.getDnodeId(), nodeConf);
+      InternalNode dnode = initOrRestoreNode(nodeConf, conf);
+      NodeConfiguration nc = new NodeConfiguration(nodeConf.getProperties());
+      dnode.setup(nc);
 //      LOG.info("Initialized node {} ({})", snc.getDnodeId(), snc.getLogicalId());
-            nodeList.put(nodeConf.getDnodeId(), dnode);
+      nodeList.put(nodeConf.getDnodeId(), dnode);
 
-            if (dnode instanceof AdapterWrapperNode) {
-              Stream wrappedStream = ((AdapterWrapperNode)dnode).getAdapterStream();
-              if (wrappedStream instanceof InputAdapter) {
-                newInputAdapters.add((InputAdapter)wrappedStream);
-              }
-          }
+      if (dnode instanceof AdapterWrapperNode) {
+        Stream wrappedStream = ((AdapterWrapperNode)dnode).getAdapterStream();
+        if (wrappedStream instanceof InputAdapter) {
+          newInputAdapters.add((InputAdapter)wrappedStream);
         }
+      }
+    }
 
-        // wire stream connections
-        List<Stream> newStreams = new ArrayList<Stream>();
-        for (StreamPConf sc: streamConfList) {
+    // wire stream connections
+    List<Stream> newStreams = new ArrayList<Stream>();
+    for (StreamPConf sc: streamConfList) {
 //      LOG.debug("Deploying stream " + sc.getId());
-            if (sc.getSourceNodeId() == null || sc.getTargetNodeId() == null) {
-                throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.getId());
-            }
-            initStream(sc, nodeConfMap, newStreams);
-        }
-
-        // ideally we would like to activate the output streams for a node before the input streams
-        // are activated. But does not look like we have that fine control here. we should get it.
-        for (Stream s: newStreams) {
-            LOG.debug("activate {} with startWindowId {}", s, s.getContext().getStartingWindowId());
-            s.activate();
-            this.streams.add(s);
-        }
-
-        for (Entry<String, InternalNode> e: nodeList.entrySet()) {
-
-          if (!nodeConfMap.containsKey(e.getKey())) {
-            // not part of deploy set
-            continue;
-          }
-
-            final InternalNode node = e.getValue();
-            final String id = e.getKey();
-            // launch nodes
-            Runnable nodeRunnable = new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    NodePConf nodeConf = nodeConfMap.get(id);
-                    NodeContext nc = new NodeContext(id);
-                    nc.setCurrentWindowId(nodeConf.getCheckpointWindowId());
-                    node.start(nc);
-                    /*
-                     * processing has ended
-                     */
-                    activeNodeList.remove(id);
-                }
-            };
-
-            Thread launchThread = new Thread(nodeRunnable, "node-" + e.getKey());
-            activeNodeList.put(e.getKey(), launchThread);
-            launchThread.start();
-        }
-
-        // activate all the input adapters if any
-        for (InputAdapter ia: newInputAdapters) {
-            ia.activate();
-            // TODO: catch up to current window if this is not initial deployment
-            // and window generator is already running
-            this.inputAdapters.add(ia);
-        }
-
+      if (sc.getSourceNodeId() == null || sc.getTargetNodeId() == null) {
+        throw new IllegalArgumentException("Invalid stream conf (source and target need to be set): " + sc.getId());
+      }
+      initStream(sc, nodeConfMap, newStreams);
     }
 
-    protected void shutdown()
-    {
-        windowGenerator.stop();
-
-        // ideally we should do the graph traversal and shutdown as we descend down. At this time
-        // we do not have a choice because the things are not setup to facilitate it, so brute force.
-
-        /*
-         * first stop all the input adapters.
-         */
-        for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
-          InternalNode node = nodeEntry.getValue();
-            if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode)node).isInput()) {
-                LOG.debug("teardown " + node);
-                teardownNode(nodeEntry.getKey());
-            }
-        }
-
-        /*
-         * now stop all the nodes.
-         */
-        for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
-          InternalNode node = nodeEntry.getValue();
-            if (!(node instanceof AdapterWrapperNode)) {
-                LOG.debug("teardown " + node);
-                teardownNode(nodeEntry.getKey());
-            }
-        }
-
-        /*
-         * stop all the output adapters
-         */
-        for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
-          InternalNode node = nodeEntry.getValue();
-            if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode)node).isInput()) {
-                LOG.debug("teardown " + node);
-                teardownNode(nodeEntry.getKey());
-            }
-        }
-
-        for (Thread t: activeNodeList.values()) {
-            try {
-                LOG.debug("Joining thread {}", t.getName());
-                t.join(2000);
-            }
-            catch (Exception e) {
-                LOG.warn("Interrupted while waiting for thread {} to complete.", t.getName());
-            }
-        }
-
+    // ideally we would like to activate the output streams for a node before the input streams
+    // are activated. But does not look like we have that fine control here. we should get it.
+    for (Stream s: newStreams) {
+      LOG.debug("activate {} with startWindowId {}", s, s.getContext().getStartingWindowId());
+      s.activate();
+      this.streams.add(s);
     }
 
-    protected void triggerHeartbeat()
-    {
-        synchronized (heartbeatTrigger) {
-            heartbeatTrigger.notifyAll();
-        }
-    }
+    for (Entry<String, InternalNode> e: nodeList.entrySet()) {
 
-    protected void heartbeatLoop() throws IOException
-    {
-        umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
-        LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
-        while (!exitHeartbeatLoop) {
+      if (!nodeConfMap.containsKey(e.getKey())) {
+        // not part of deploy set
+        continue;
+      }
 
-            synchronized (this.heartbeatTrigger) {
-                try {
-                    this.heartbeatTrigger.wait(heartbeatIntervalMillis);
-                }
-                catch (InterruptedException e1) {
-                    LOG.warn("Interrupted in heartbeat loop, exiting..");
-                    break;
-                }
-            }
-
-            long currentTime = System.currentTimeMillis();
-            ContainerHeartbeat msg = new ContainerHeartbeat();
-            msg.setContainerId(this.containerId);
-            List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.size());
-
-            // gather heartbeat info for all nodes
-            for (Map.Entry<String, InternalNode> e: nodeList.entrySet()) {
-                StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
-                hb.setNodeId(e.getKey());
-                hb.setGeneratedTms(currentTime);
-                hb.setIntervalMs(heartbeatIntervalMillis);
-                hb.setCurrentWindowId(e.getValue().getContext().getCurrentWindowId());
-                e.getValue().getContext().drainHeartbeatCounters(hb.getHeartbeatsContainer());
-                DNodeState state = DNodeState.PROCESSING;
-                if (!activeNodeList.containsKey(e.getKey())) {
-                    state = DNodeState.IDLE;
-                }
-                hb.setState(state.name());
-                // propagate the backup window, if any
-                Long backupWindowId = backupInfo.get(e.getKey());
-                if (backupWindowId != null) {
-                    hb.setLastBackupWindowId(backupWindowId);
-                }
-                heartbeats.add(hb);
-            }
-            msg.setDnodeEntries(heartbeats);
-
-            // heartbeat call and follow-up processing
-            LOG.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
-            try {
-                ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
-                if (rsp != null) {
-                    processHeartbeatResponse(rsp);
-                    // keep polling at smaller interval if work is pending
-                    while (rsp != null && rsp.isPendingRequests()) {
-                        LOG.info("Waiting for pending request.");
-                        synchronized (this.heartbeatTrigger) {
-                          try {
-                              this.heartbeatTrigger.wait(500);
-                          }
-                          catch (InterruptedException e1) {
-                              LOG.warn("Interrupted in heartbeat loop, exiting..");
-                              break;
-                          }
-                        }
-                        rsp = umbilical.pollRequest(this.containerId);
-                        if (rsp != null) {
-                            processHeartbeatResponse(rsp);
-                        }
-                    }
-                }
-            }
-            catch (Exception e) {
-                LOG.warn("Exception received (may be during shutdown?) {}", e.getLocalizedMessage(), e);
-            }
-        }
-        LOG.debug("Exiting hearbeat loop");
-        umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
-    }
-
-    protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
-    {
-        if (rsp.isShutdown()) {
-            LOG.info("Received shutdown request");
-            this.exitHeartbeatLoop = true;
-            return;
-        }
-
-        if (rsp.getUndeployRequest() != null) {
-          LOG.info("Undeploy request: {}", rsp.getUndeployRequest());
-          for (NodePConf nodeConf : rsp.getUndeployRequest().getNodes()) {
-            teardownNode(nodeConf.getDnodeId());
-          }
-        }
-
-        if (rsp.getDeployRequest() != null) {
-          LOG.info("Deploy request: {}", rsp.getDeployRequest());
-          try {
-            initNodes(rsp.getDeployRequest().getNodes(), rsp.getDeployRequest().getStreams());
-          } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize container", e);
-          }
-        }
-
-        if (rsp.getNodeRequests() != null) {
-          // extended processing per node
-          for (StramToNodeRequest req : rsp.getNodeRequests()) {
-            InternalNode n = nodeList.get(req.getNodeId());
-            if (n == null) {
-              LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
-            }
-            else {
-                LOG.debug("Stram request: {}", req);
-                processStramRequest(n, req);
-            }
-          }
-        }
-    }
-
-    // look at the implementation of the stream context it stores the source and sink ids.
-    // I am not sure of node_id is unique (should be since it's stored in the map) and
-    // whether the source id and sink id are unique in a container. Does it still hold true
-    // when load balancing happens within a container? The following logic works provided
-    // assumption of node_id, source and sink ids are correct.
-    public void teardownNode(String node_id)
-    {
-        /*
-         * make sure that we have a node we are asked to shutdown in this container.
-         */
-        InternalNode in = nodeList.get(node_id);
-        if (in == null) {
-            throw new IllegalArgumentException("node with nodeid " + node_id + " does not exist");
-        }
-
-        ArrayList<Stream> inputStreams = new ArrayList<Stream>();
-        /*
-         * lets find out all the input streams for this node.
-         */
-        for (Stream s: inputAdapters) {
-          try {
-            if (node_id.equals(s.getContext().getSinkId())) {
-                inputStreams.add(s);
-            }
-          } catch (NullPointerException e) {
-            throw new RuntimeException("Failed to collect input streams for " + in, e);
-          }
-        }
-
-
-        ArrayList<Stream> outputStreams = new ArrayList<Stream>();
-        /*
-         * lets also find out remaining input streams and output streams.
-         */
-        for (Stream s: streams) {
-            if (node_id.equals(s.getContext().getSinkId())) {
-                inputStreams.add(s);
-            }
-            else if (node_id.equals(s.getContext().getSourceId())) {
-                outputStreams.add(s);
-            }
-        }
-
-        /*
-         * we bring down the node by first stopping inputs, then outputs and then the nodes itself.
-         */
-
-        for (Stream s: inputStreams) {
-            s.teardown();
-            s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
-            if (s instanceof InputAdapter) {
-                inputAdapters.remove((InputAdapter)s);
-            }
-            else {
-                streams.remove(s);
-            }
-        }
-
-        for (Stream s: outputStreams) {
-            s.teardown();
-            s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
-            streams.remove(s);
-        }
-
-        if (activeNodeList.containsKey(node_id)) {
-            in.stop();
-        }
-
-        nodeList.remove(node_id);
-        LOG.debug("Removed node {}", node_id);
-
-    }
-
-    /**
-     * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
-     *
-     * @param n
-     * @param snr
-     */
-    private void processStramRequest(InternalNode n, StramToNodeRequest snr)
-    {
-        assert (n.getContext() != null);
-        switch (snr.getRequestType()) {
-            case REPORT_PARTION_STATS:
-                LOG.warn("Ignoring stram request {}", snr);
-                break;
-
-            case CHECKPOINT:
-                n.getContext().requestBackup(new HdfsBackupAgent());
-                break;
-
-            default:
-                LOG.error("Unknown request from stram {}", snr);
-        }
-    }
-
-    public static void main(String[] args) throws Throwable
-    {
-        LOG.debug("Child starting with classpath: {}", System.getProperty("java.class.path"));
-
-        final Configuration defaultConf = new Configuration();
-        // TODO: streaming node config
-        //defaultConf.addResource(MRJobConfig.JOB_CONF_FILE);
-        UserGroupInformation.setConfiguration(defaultConf);
-
-        String host = args[0];
-        int port = Integer.parseInt(args[1]);
-        final InetSocketAddress address =
-                NetUtils.createSocketAddrForHost(host, port);
-
-        final String childId = args[2];
-        //Token<JobTokenIdentifier> jt = loadCredentials(defaultConf, address);
-
-        // Communicate with parent as actual task owner.
-        UserGroupInformation taskOwner =
-                UserGroupInformation.createRemoteUser(StramChild.class.getName());
-        //taskOwner.addToken(jt);
-        final StreamingNodeUmbilicalProtocol umbilical =
-                taskOwner.doAs(new PrivilegedExceptionAction<StreamingNodeUmbilicalProtocol>()
+      final InternalNode node = e.getValue();
+      final String id = e.getKey();
+      // launch nodes
+      Runnable nodeRunnable = new Runnable()
+      {
+        @Override
+        public void run()
         {
           NodePConf nodeConf = nodeConfMap.get(id);
           NodeContext nc = new NodeContext(id);
           nc.setCurrentWindowId(nodeConf.getCheckpointWindowId());
-          node.activate(nc);
+          node.start(nc);
           /*
            * processing has ended
            */
@@ -668,14 +322,13 @@ public class StramChild
     }
 
     // activate all the input adapters if any
-    for (Entry<InputAdapter, StreamContext> e: inputAdapters.entrySet()) {
-      e.getKey().activate(e.getValue());
+    for (InputAdapter ia: newInputAdapters) {
+      ia.activate();
+      // TODO: catch up to current window if this is not initial deployment
+      // and window generator is already running
+      this.inputAdapters.add(ia);
     }
 
-    windowGenerator = new WindowGenerator(this.inputAdapters.keySet(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
-    if (ctx.getWindowSizeMillis() > 0) {
-      windowGenerator.start();
-    }
   }
 
   protected void shutdown()
@@ -686,42 +339,35 @@ public class StramChild
     // we do not have a choice because the things are not setup to facilitate it, so brute force.
 
     /*
-     * first deactivate all the input adapters.
+     * first stop all the input adapters.
      */
-    for (InternalNode node: nodeList.values()) {
+    for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
+      InternalNode node = nodeEntry.getValue();
       if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode)node).isInput()) {
         LOG.debug("teardown " + node);
-        node.deactivate();
+        teardownNode(nodeEntry.getKey());
       }
     }
 
     /*
-     * now deactivate all the nodes.
+     * now stop all the nodes.
      */
-    for (InternalNode node: nodeList.values()) {
+    for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
+      InternalNode node = nodeEntry.getValue();
       if (!(node instanceof AdapterWrapperNode)) {
         LOG.debug("teardown " + node);
-        node.deactivate();
+        teardownNode(nodeEntry.getKey());
       }
     }
 
     /*
-     * deactivate all the streams.
+     * stop all the output adapters
      */
-    for (Stream s: this.streams.keySet()) {
-      LOG.debug("teardown " + s);
-      s.teardown();
-//      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
-    }
-
-
-    /*
-     * deactivate all the output adapters
-     */
-    for (InternalNode node: this.nodeList.values()) {
+    for (Map.Entry<String, InternalNode> nodeEntry: nodeList.entrySet()) {
+      InternalNode node = nodeEntry.getValue();
       if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode)node).isInput()) {
         LOG.debug("teardown " + node);
-        node.deactivate();
+        teardownNode(nodeEntry.getKey());
       }
     }
 
@@ -796,7 +442,15 @@ public class StramChild
           // keep polling at smaller interval if work is pending
           while (rsp != null && rsp.isPendingRequests()) {
             LOG.info("Waiting for pending request.");
-            Thread.sleep(500);
+            synchronized (this.heartbeatTrigger) {
+              try {
+                this.heartbeatTrigger.wait(500);
+              }
+              catch (InterruptedException e1) {
+                LOG.warn("Interrupted in heartbeat loop, exiting..");
+                break;
+              }
+            }
             rsp = umbilical.pollRequest(this.containerId);
             if (rsp != null) {
               processHeartbeatResponse(rsp);
@@ -821,17 +475,19 @@ public class StramChild
     }
 
     if (rsp.getUndeployRequest() != null) {
-      LOG.warn("Ignoring undeploy request: {}", rsp.getUndeployRequest());
+      LOG.info("Undeploy request: {}", rsp.getUndeployRequest());
+      for (NodePConf nodeConf: rsp.getUndeployRequest().getNodes()) {
+        teardownNode(nodeConf.getDnodeId());
+      }
     }
 
     if (rsp.getDeployRequest() != null) {
+      LOG.info("Deploy request: {}", rsp.getDeployRequest());
       try {
-        LOG.warn("Re-initializing container from deploy request: {}", rsp.getDeployRequest());
-        // TODO: this should not replace existing objects
-        init(rsp.getDeployRequest());
+        initNodes(rsp.getDeployRequest().getNodes(), rsp.getDeployRequest().getStreams());
       }
       catch (Exception e) {
-        throw new RuntimeException("Failed to initialize container");
+        throw new RuntimeException("Failed to initialize container", e);
       }
     }
 
@@ -855,8 +511,7 @@ public class StramChild
   // whether the source id and sink id are unique in a container. Does it still hold true
   // when load balancing happens within a container? The following logic works provided
   // assumption of node_id, source and sink ids are correct.
-  @SuppressWarnings("element-type-mismatch")
-  public void shutdown(String node_id)
+  public void teardownNode(String node_id)
   {
     /*
      * make sure that we have a node we are asked to shutdown in this container.
@@ -870,9 +525,14 @@ public class StramChild
     /*
      * lets find out all the input streams for this node.
      */
-    for (Entry<InputAdapter, StreamContext> e: inputAdapters.entrySet()) {
-      if (e.getValue().getSinkId().equals(node_id)) {
-        inputStreams.add(e.getKey());
+    for (Stream s: inputAdapters) {
+      try {
+        if (node_id.equals(s.getContext().getSinkId())) {
+          inputStreams.add(s);
+        }
+      }
+      catch (NullPointerException e) {
+        throw new RuntimeException("Failed to collect input streams for " + in, e);
       }
     }
 
@@ -881,16 +541,14 @@ public class StramChild
     /*
      * lets also find out remaining input streams and output streams.
      */
-    for (Entry<Stream, StreamContext> e: streams.entrySet()) {
-      if (node_id.equals(e.getValue().getSinkId())) {
-        inputStreams.add(e.getKey());
+    for (Stream s: streams) {
+      if (node_id.equals(s.getContext().getSinkId())) {
+        inputStreams.add(s);
       }
-      else if (node_id.equals(e.getValue().getSourceId())) {
-        outputStreams.add(e.getKey());
+      else if (node_id.equals(s.getContext().getSourceId())) {
+        outputStreams.add(s);
       }
     }
-
-    assert (!(inputStreams.isEmpty() && outputStreams.isEmpty()));
 
     /*
      * we bring down the node by first stopping inputs, then outputs and then the nodes itself.
@@ -898,7 +556,7 @@ public class StramChild
 
     for (Stream s: inputStreams) {
       s.teardown();
-      //s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
+      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
       if (s instanceof InputAdapter) {
         inputAdapters.remove((InputAdapter)s);
       }
@@ -909,16 +567,17 @@ public class StramChild
 
     for (Stream s: outputStreams) {
       s.teardown();
-      //s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
+      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
       streams.remove(s);
     }
 
     if (activeNodeList.containsKey(node_id)) {
-      in.deactivate();
-      activeNodeList.remove(node_id);
+      in.stop();
     }
 
     nodeList.remove(node_id);
+    LOG.debug("Removed node {}", node_id);
+
   }
 
   /**
@@ -1055,6 +714,33 @@ public class StramChild
     }
   }
 
+  private void deployNodes(List<NodeDeployInfo> nodeList)
+  {
+    Kryo kryo = new Kryo();
+    for (NodeDeployInfo ndi: nodeList) {
+      deployNode(kryo, ndi);
+    }
+  }
+
+  private void deployNode(Kryo kryo, NodeDeployInfo ndi)
+  {
+    Object foreignObject = kryo.readClassAndObject(new Input(ndi.serializedNode));
+    try {
+      Node node = (Node)foreignObject;
+      NodeConfiguration nc = new NodeConfiguration(ndi.properties);
+      node.setup(nc);
+
+      // Ideally I would pass the state here.
+
+      // now go on to plumbing
+      for ()
+
+    }
+    catch (ClassCastException cce) {
+      LOG.error("Expected {} but found {}", Node.class, foreignObject.getClass());
+    }
+  }
+
   private class HdfsBackupAgent implements BackupAgent
   {
     private FSDataOutputStream output;
@@ -1090,3 +776,321 @@ public class StramChild
     }
   }
 }
+//
+//          NodePConf nodeConf = nodeConfMap.get(id);
+//          NodeContext nc = new NodeContext(id);
+//          nc.setCurrentWindowId(nodeConf.getCheckpointWindowId());
+//          node.activate(nc);
+//          /*
+//           * processing has ended
+//           */
+//          activeNodeList.remove(id);
+//        }
+//      };
+//
+//      Thread launchThread = new Thread(nodeRunnable, "node-" + e.getKey());
+//      activeNodeList.put(e.getKey(), launchThread);
+//      launchThread.start();
+//    }
+//
+//    // activate all the input adapters if any
+//    for (Entry<InputAdapter, StreamContext> e: inputAdapters.entrySet()) {
+//      e.getKey().activate(e.getValue());
+//    }
+//
+//    windowGenerator = new WindowGenerator(this.inputAdapters.keySet(), ctx.getStartWindowMillis(), ctx.getWindowSizeMillis());
+//    if (ctx.getWindowSizeMillis() > 0) {
+//      windowGenerator.start();
+//    }
+//  }
+//
+//  protected void shutdown()
+//  {
+//    windowGenerator.stop();
+//
+//    // ideally we should do the graph traversal and shutdown as we descend down. At this time
+//    // we do not have a choice because the things are not setup to facilitate it, so brute force.
+//
+//    /*
+//     * first deactivate all the input adapters.
+//     */
+//    for (InternalNode node: nodeList.values()) {
+//      if (node instanceof AdapterWrapperNode && ((AdapterWrapperNode)node).isInput()) {
+//        LOG.debug("teardown " + node);
+//        node.deactivate();
+//      }
+//    }
+//
+//    /*
+//     * now deactivate all the nodes.
+//     */
+//    for (InternalNode node: nodeList.values()) {
+//      if (!(node instanceof AdapterWrapperNode)) {
+//        LOG.debug("teardown " + node);
+//        node.deactivate();
+//      }
+//    }
+//
+//    /*
+//     * deactivate all the streams.
+//     */
+//    for (Stream s: this.streams.keySet()) {
+//      LOG.debug("teardown " + s);
+//      s.teardown();
+////      s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
+//    }
+//
+//
+//    /*
+//     * deactivate all the output adapters
+//     */
+//    for (InternalNode node: this.nodeList.values()) {
+//      if (node instanceof AdapterWrapperNode && !((AdapterWrapperNode)node).isInput()) {
+//        LOG.debug("teardown " + node);
+//        node.deactivate();
+//      }
+//    }
+//
+//    for (Thread t: activeNodeList.values()) {
+//      try {
+//        LOG.debug("Joining thread {}", t.getName());
+//        t.join(2000);
+//      }
+//      catch (Exception e) {
+//        LOG.warn("Interrupted while waiting for thread {} to complete.", t.getName());
+//      }
+//    }
+//
+//  }
+//
+//  protected void triggerHeartbeat()
+//  {
+//    synchronized (heartbeatTrigger) {
+//      heartbeatTrigger.notifyAll();
+//    }
+//  }
+//
+//  protected void heartbeatLoop() throws IOException
+//  {
+//    umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
+//    LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
+//    while (!exitHeartbeatLoop) {
+//
+//      synchronized (this.heartbeatTrigger) {
+//        try {
+//          this.heartbeatTrigger.wait(heartbeatIntervalMillis);
+//        }
+//        catch (InterruptedException e1) {
+//          LOG.warn("Interrupted in heartbeat loop, exiting..");
+//          break;
+//        }
+//      }
+//
+//      long currentTime = System.currentTimeMillis();
+//      ContainerHeartbeat msg = new ContainerHeartbeat();
+//      msg.setContainerId(this.containerId);
+//      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodeList.size());
+//
+//      // gather heartbeat info for all nodes
+//      for (Map.Entry<String, InternalNode> e: nodeList.entrySet()) {
+//        StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
+//        hb.setNodeId(e.getKey());
+//        hb.setGeneratedTms(currentTime);
+//        hb.setIntervalMs(heartbeatIntervalMillis);
+//        hb.setCurrentWindowId(e.getValue().getContext().getCurrentWindowId());
+//        e.getValue().getContext().drainHeartbeatCounters(hb.getHeartbeatsContainer());
+//        DNodeState state = DNodeState.PROCESSING;
+//        if (!activeNodeList.containsKey(e.getKey())) {
+//          state = DNodeState.IDLE;
+//        }
+//        hb.setState(state.name());
+//        // propagate the backup window, if any
+//        Long backupWindowId = backupInfo.get(e.getKey());
+//        if (backupWindowId != null) {
+//          hb.setLastBackupWindowId(backupWindowId);
+//        }
+//        heartbeats.add(hb);
+//      }
+//      msg.setDnodeEntries(heartbeats);
+//
+//      // heartbeat call and follow-up processing
+//      LOG.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
+//      try {
+//        ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
+//        if (rsp != null) {
+//          processHeartbeatResponse(rsp);
+//          // keep polling at smaller interval if work is pending
+//          while (rsp != null && rsp.isPendingRequests()) {
+//            LOG.info("Waiting for pending request.");
+//            Thread.sleep(500);
+//            rsp = umbilical.pollRequest(this.containerId);
+//            if (rsp != null) {
+//              processHeartbeatResponse(rsp);
+//            }
+//          }
+//        }
+//      }
+//      catch (Exception e) {
+//        LOG.warn("Exception received (may be during shutdown?) {}", e.getLocalizedMessage(), e);
+//      }
+//    }
+//    LOG.debug("Exiting hearbeat loop");
+//    umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
+//  }
+//
+//  protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
+//  {
+//    if (rsp.isShutdown()) {
+//      LOG.info("Received shutdown request");
+//      this.exitHeartbeatLoop = true;
+//      return;
+//    }
+//
+//    if (rsp.getUndeployRequest() != null) {
+//      LOG.warn("Ignoring undeploy request: {}", rsp.getUndeployRequest());
+//    }
+//
+//    if (rsp.getDeployRequest() != null) {
+//      try {
+//        LOG.warn("Re-initializing container from deploy request: {}", rsp.getDeployRequest());
+//        // TODO: this should not replace existing objects
+//        init(rsp.getDeployRequest());
+//      }
+//      catch (Exception e) {
+//        throw new RuntimeException("Failed to initialize container");
+//      }
+//    }
+//
+//    if (rsp.getNodeRequests() != null) {
+//      // extended processing per node
+//      for (StramToNodeRequest req: rsp.getNodeRequests()) {
+//        InternalNode n = nodeList.get(req.getNodeId());
+//        if (n == null) {
+//          LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
+//        }
+//        else {
+//          LOG.debug("Stram request: {}", req);
+//          processStramRequest(n, req);
+//        }
+//      }
+//    }
+//  }
+//
+//  // look at the implementation of the stream context it stores the source and sink ids.
+//  // I am not sure of node_id is unique (should be since it's stored in the map) and
+//  // whether the source id and sink id are unique in a container. Does it still hold true
+//  // when load balancing happens within a container? The following logic works provided
+//  // assumption of node_id, source and sink ids are correct.
+//  @SuppressWarnings("element-type-mismatch")
+//  public void shutdown(String node_id)
+//  {
+//    /*
+//     * make sure that we have a node we are asked to shutdown in this container.
+//     */
+//    InternalNode in = nodeList.get(node_id);
+//    if (in == null) {
+//      throw new IllegalArgumentException("node with nodeid " + node_id + " does not exist");
+//    }
+//
+//    ArrayList<Stream> inputStreams = new ArrayList<Stream>();
+//    /*
+//     * lets find out all the input streams for this node.
+//     */
+//    for (Entry<InputAdapter, StreamContext> e: inputAdapters.entrySet()) {
+//      if (e.getValue().getSinkId().equals(node_id)) {
+//        inputStreams.add(e.getKey());
+//      }
+//    }
+//
+//
+//    ArrayList<Stream> outputStreams = new ArrayList<Stream>();
+//    /*
+//     * lets also find out remaining input streams and output streams.
+//     */
+//    for (Entry<Stream, StreamContext> e: streams.entrySet()) {
+//      if (node_id.equals(e.getValue().getSinkId())) {
+//        inputStreams.add(e.getKey());
+//      }
+//      else if (node_id.equals(e.getValue().getSourceId())) {
+//        outputStreams.add(e.getKey());
+//      }
+//    }
+//
+//    assert (!(inputStreams.isEmpty() && outputStreams.isEmpty()));
+//
+//    /*
+//     * we bring down the node by first stopping inputs, then outputs and then the nodes itself.
+//     */
+//
+//    for (Stream s: inputStreams) {
+//      s.teardown();
+//      //s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
+//      if (s instanceof InputAdapter) {
+//        inputAdapters.remove((InputAdapter)s);
+//      }
+//      else {
+//        streams.remove(s);
+//      }
+//    }
+//
+//    for (Stream s: outputStreams) {
+//      s.teardown();
+//      //s.setContext(Stream.DISCONNECTED_STREAM_CONTEXT);
+//      streams.remove(s);
+//    }
+//
+//    if (activeNodeList.containsKey(node_id)) {
+//      in.deactivate();
+//      activeNodeList.remove(node_id);
+//    }
+//
+//    nodeList.remove(node_id);
+//  }
+//
+//  /**
+//   * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
+//   *
+//   * @param n
+//   * @param snr
+//   */
+//  private void processStramRequest(InternalNode n, StramToNodeRequest snr)
+//  {
+//    assert (n.getContext() != null);
+//    switch (snr.getRequestType()) {
+//      case REPORT_PARTION_STATS:
+//        LOG.warn("Ignoring stram request {}", snr);
+//        break;
+//
+//      case CHECKPOINT:
+//        n.getContext().requestBackup(new HdfsBackupAgent());
+//        break;
+//
+//      default:
+//        LOG.error("Unknown request from stram {}", snr);
+//    }
+//  }
+//
+//  public static void main(String[] args) throws Throwable
+//  {
+//    LOG.debug("Child starting with classpath: {}", System.getProperty("java.class.path"));
+//
+//    final Configuration defaultConf = new Configuration();
+//    // TODO: streaming node config
+//    //defaultConf.addResource(MRJobConfig.JOB_CONF_FILE);
+//    UserGroupInformation.setConfiguration(defaultConf);
+//
+//    String host = args[0];
+//    int port = Integer.parseInt(args[1]);
+//    final InetSocketAddress address =
+//            NetUtils.createSocketAddrForHost(host, port);
+//
+//    final String childId = args[2];
+//    //Token<JobTokenIdentifier> jt = loadCredentials(defaultConf, address);
+//
+//    // Communicate with parent as actual task owner.
+//    UserGroupInformation taskOwner =
+//            UserGroupInformation.createRemoteUser(StramChild.class.getName());
+//    //taskOwner.addToken(jt);
+//    final StreamingNodeUmbilicalProtocol umbilical =
+//            taskOwner.doAs(new PrivilegedExceptionAction<StreamingNodeUmbilicalProtocol>()
+//    {

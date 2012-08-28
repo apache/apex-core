@@ -7,36 +7,35 @@ package com.malhartech.stram;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
- * Node deployment info passed from master to container as part of initialization 
+ * Node deployment info passed from master to container as part of initialization
  * or incremental undeploy/deploy during topology recovery, balancing or other modification.
  */
 public class NodeDeployInfo implements Serializable
 {
-  private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 201208271956L;
 
   /**
    * Input to node, either inline or from socket stream.
    */
   public static class NodeInputDeployInfo implements Serializable
   {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 201208271957L;
 
     public boolean isInline() {
       return bufferServerHost == null;
     }
-    
+
     /**
-     * Port name matching the node's port declaration 
+     * Port name matching the node's port declaration
      */
     public String portName;
 
     /**
-     * Name of stream declared in logical topology 
+     * Name of stream declared in logical topology
      */
     public String declaredStreamId;
 
@@ -58,7 +57,7 @@ public class NodeDeployInfo implements Serializable
      * and same for all nodes within a partition (or no partition).
      */
     public String bufferServerSubscriberType;
-    
+
     /**
      * Partition keys. For dynamic partitioning, set is initially empty (after
      * topology initialization) and will be populated from node processing stats
@@ -79,31 +78,31 @@ public class NodeDeployInfo implements Serializable
                 .append("inline", this.isInline())
                 .toString();
     }
-    
+
   }
-  
+
   /**
    * Node output, publisher info. For inline streams, reference target node within container.
-   * For buffer server output, node id will be used as publisher id and referenced by subscribers. 
+   * For buffer server output, node id will be used as publisher id and referenced by subscribers.
    */
   public static class NodeOutputDeployInfo implements Serializable
   {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 201208271958L;
 
     public boolean isInline() {
       return bufferServerHost == null;
     }
 
     /**
-     * Port name matching the node's port declaration 
+     * Port name matching the node's port declaration
      */
     public String portName;
 
     /**
-     * Name of stream declared in logical topology 
+     * Name of stream declared in logical topology
      */
     public String declaredStreamId;
-    
+
     /**
      * If inline connection, id of source node in same container.
      */
@@ -125,9 +124,9 @@ public class NodeDeployInfo implements Serializable
                 .append("inline", this.isInline())
                 .toString();
     }
-    
+
   }
-  
+
 
   public Map<String, String> properties;
 
@@ -149,7 +148,7 @@ public class NodeDeployInfo implements Serializable
   /**
    * The checkpoint window identifier.
    * Used to restore node and incoming streams as part of recovery.
-   * Value 0 indicates fresh initialization, no restart.   
+   * Value 0 indicates fresh initialization, no restart.
    * @return long
    */
   public long checkpointWindowId = 0;
@@ -158,14 +157,14 @@ public class NodeDeployInfo implements Serializable
    * Inputs to node, either from socket stream or inline from other node(s).
    */
   public List<NodeInputDeployInfo> inputs;
-  
+
   /**
    * Outputs from node, either to socket stream or inline to other node(s).
    */
   public List<NodeOutputDeployInfo> outputs;
-  
+
   /**
-   * 
+   *
    * @return String
    */
   @Override
@@ -177,5 +176,5 @@ public class NodeDeployInfo implements Serializable
             append("outputs", this.outputs).
             toString();
   }
-  
+
 }
