@@ -41,15 +41,15 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import com.malhartech.stram.webapp.NodeInfo;
 
 /**
- * 
+ *
  * Tracks topology provisioning/allocation to containers<p>
  * <br>
  * The tasks include<br>
  * Provisioning nodes one container at a time. Each container gets assinged the nodes, streams and its context<br>
- * Monitors run time operations incluging heartbeat protocol and node status<br>
- * Node recovery and restart<br> 
+ * Monitors run time operations including heartbeat protocol and node status<br>
+ * Node recovery and restart<br>
  * <br>
- * 
+ *
  */
 
 public class DNodeManager
@@ -59,7 +59,7 @@ public class DNodeManager
   private int windowSizeMillis = 500;
   private int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
-  
+
   private class NodeStatus
   {
     StreamingNodeHeartbeat lastHeartbeat;
@@ -67,7 +67,7 @@ public class DNodeManager
     final PTContainer container;
     int tuplesTotal;
     int bytesTotal;
-    
+
     private NodeStatus(PTContainer container, PTComponent node) {
       this.node = node;
       this.container = container;
@@ -82,14 +82,14 @@ public class DNodeManager
       return (node instanceof PTOutputAdapter);
     }
   }
-    
+
   final protected Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   final protected ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   final private Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
   final private String checkpointDir;
-  
+
   public DNodeManager(TopologyBuilder topology) {
     this.deployer = new TopologyDeployer();
     this.deployer.init(topology.getContainerCount(), topology);
@@ -99,12 +99,12 @@ public class DNodeManager
     windowStartMillis -= (windowStartMillis % 1000);
     checkpointDir = topology.getConf().get(TopologyBuilder.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
     this.checkpointIntervalMillis = topology.getConf().getInt(TopologyBuilder.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
-    
+
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
       this.containerStartRequests.add(new DeployRequest(container, null));
     }
-    
+
   }
 
   public int getNumRequiredContainers()
@@ -115,10 +115,10 @@ public class DNodeManager
   protected TopologyDeployer getTopologyDeployer() {
     return deployer;
   }
-  
+
   /**
    * Check periodically that child containers phone home
-   * 
+   *
    */
   public void monitorHeartbeat() {
     long currentTms = System.currentTimeMillis();
@@ -148,16 +148,16 @@ public class DNodeManager
 
     StramChildAgent cs = getContainerAgent(containerId);
 
-    // building the checkpoint dependency, 
+    // building the checkpoint dependency,
     // downstream nodes will appear first in map
-    // TODO: traversal needs to include inline upstream nodes 
+    // TODO: traversal needs to include inline upstream nodes
     Map<PTNode, Long> checkpoints = new LinkedHashMap<PTNode, Long>();
     for (PTNode node : cs.container.nodes) {
       getRecoveryCheckpoint(node, checkpoints);
     }
 
     Map<PTContainer, List<PTNode>> resetNodes = new HashMap<PTContainer, List<TopologyDeployer.PTNode>>();
-    // group by container 
+    // group by container
     for (PTNode node : checkpoints.keySet()) {
         List<PTNode> nodes = resetNodes.get(node.container);
         if (nodes == null) {
@@ -179,14 +179,14 @@ public class DNodeManager
         downstreamContainer.addRequest(r);
       }
     }
-    
+
     // schedule deployment for replacement container, depends on above downstream nodes stop
     AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
     DeployRequest dr = new DeployRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
     dr.checkpoints = checkpoints;
     // launch replacement container, the deploy request will be queued with new container agent in assignContainer
-    containerStartRequests.add(dr); 
-    
+    containerStartRequests.add(dr);
+
     // (re)deploy affected downstream nodes
     AtomicInteger redeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
@@ -199,7 +199,7 @@ public class DNodeManager
         downstreamContainer.addRequest(r);
       }
     }
-    
+
   }
 
   public void markComplete(String containerId) {
@@ -210,14 +210,14 @@ public class DNodeManager
     }
     cs.isComplete = true;
   }
-  
+
   /**
    * Create node tracking context for logical node. Exposed here for tests<p>
    * <br>
    * @param dnodeId
    * @param nodeConf
    * @return {@link com.malhartech.stram.NodePConf}
-   * 
+   *
    */
   public static NodePConf createNodeContext(String dnodeId, NodeConf nodeConf)
   {
@@ -231,7 +231,7 @@ public class DNodeManager
     snc.setDnodeId(dnodeId);
     return snc;
   }
-  
+
   private NodePConf newAdapterNodeContext(String id, StreamConf streamConf, Long checkpointWindowId)
   {
     NodePConf snc = new NodePConf();
@@ -308,7 +308,7 @@ public class DNodeManager
     cdr.setNodes(initCtx.getNodes(), initCtx.getStreams());
     initCtx.setNodes(new ArrayList<NodePConf>(0));
     initCtx.setStreams(new ArrayList<StreamPConf>(0));
-    
+
     StramChildAgent sca = new StramChildAgent(container, initCtx);
     containers.put(containerId, sca);
     sca.addRequest(cdr);
@@ -326,11 +326,11 @@ public class DNodeManager
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setCheckpointDfsPath(this.checkpointDir);
-    
+
     List<StreamPConf> streams = new ArrayList<StreamPConf>();
     Map<NodePConf, PTComponent> nodes = new LinkedHashMap<NodePConf, PTComponent>();
     Map<String, StreamPConf> publishers = new LinkedHashMap<String, StreamPConf>();
-    
+
     for (PTNode node : deployNodes) {
       NodePConf pnodeConf = createNodeContext(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
@@ -339,7 +339,7 @@ public class DNodeManager
         pnodeConf.setCheckpointWindowId(checkpointWindowId);
       }
       nodes.put(pnodeConf, node);
-      
+
       for (PTOutput out : node.outputs) {
         final StreamConf streamConf = out.logicalStream;
         if (out instanceof PTOutputAdapter) {
@@ -348,7 +348,7 @@ public class DNodeManager
           List<PTNode> upstreamNodes = deployer.getNodes(streamConf.getSourceNode());
           if (upstreamNodes.size() == 1) {
             // inline adapter and source node
-            StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null, 
+            StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null,
                 node.id, adapterNode.getDnodeId());
             sc.setInline(true);
             sc.setProperties(streamConf.getProperties());
@@ -371,7 +371,7 @@ public class DNodeManager
             }
           }
         } else {
-          // buffer server or inline publisher, intra container case handled below 
+          // buffer server or inline publisher, intra container case handled below
           StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null, node.id, "-1subscriberInOtherContainer");
           sc.setBufferServerChannelType(streamConf.getSourceNode().getId());
           sc.setProperties(streamConf.getProperties());
@@ -381,7 +381,7 @@ public class DNodeManager
     }
 
     // after we know all publishers within container, determine subscribers
-    
+
     for (PTNode subscriberNode : deployNodes) {
       for (PTInput in : subscriberNode.inputs) {
         final StreamConf streamConf = in.logicalStream;
@@ -400,7 +400,7 @@ public class DNodeManager
           }
           else {
             // multiple target nodes - adapter publishes to buffer server
-            StreamPConf sc = newStreamContext(streamConf, in.getBufferServerAddress(), in.partition, 
+            StreamPConf sc = newStreamContext(streamConf, in.getBufferServerAddress(), in.partition,
                 adapterNode.getDnodeId(), subscriberNode.id);
             sc.setInline(false);
             // type is adapter name for multiple downstream nodes to be able to subscribe
@@ -439,16 +439,16 @@ public class DNodeManager
 
     // add remaining publishers (subscribers in other containers)
     streams.addAll(publishers.values());
-    
+
     scc.setNodes(new ArrayList<NodePConf>(nodes.keySet()));
     scc.setStreams(streams);
-    
+
     for (Map.Entry<NodePConf, PTComponent> e : nodes.entrySet()) {
       this.nodeStatusMap.put(e.getKey().getDnodeId(), new NodeStatus(container, e.getValue()));
     }
-    
+
     return scc;
-    
+
   }
 
   public StramChildAgent getContainerAgent(String containerId) {
@@ -461,10 +461,10 @@ public class DNodeManager
 
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
-//addContainerStopRequest(heartbeat.getContainerId());    
+//addContainerStopRequest(heartbeat.getContainerId());
     boolean containerIdle = true;
     long currentTimeMillis = System.currentTimeMillis();
-    
+
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
 
       NodeStatus status = nodeStatusMap.get(shb.getNodeId());
@@ -489,12 +489,12 @@ public class DNodeManager
     StramChildAgent cs = getContainerAgent(heartbeat.getContainerId());
     cs.lastHeartbeatMillis = currentTimeMillis;
     LOG.info("Heartbeat container {}", heartbeat.getContainerId());
-    
+
     ContainerHeartbeatResponse rsp = cs.pollRequest();
     if (rsp == null) {
       rsp = new ContainerHeartbeatResponse();
     }
-    
+
     // below should be merged into pollRequest
     if (containerIdle && isApplicationIdle()) {
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
@@ -505,7 +505,7 @@ public class DNodeManager
         rsp.setShutdown(true);
       }
     }
-    
+
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
     if (checkpointIntervalMillis > 0) {
       if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
@@ -538,7 +538,7 @@ public class DNodeManager
       LOG.warn("Cannot find the configuration for node {}", shb.getNodeId());
       return;
     }
-    
+
     NodeConf nodeConf = ((PTNode)status.node).getLogicalNode();
     // check load constraints
     int tuplesProcessed = shb.getNumberTuplesProcessed();
@@ -574,13 +574,13 @@ public class DNodeManager
         }
       }
     }
-    
+
   }
 
   /**
    * Compute checkpoint required for a given node to be recovered.
    * This is done by looking at checkpoints available for downstream dependencies first,
-   * and then selecting the most recent available checkpoint that is smaller than downstream. 
+   * and then selecting the most recent available checkpoint that is smaller than downstream.
    * @param node Node for which to find recovery checkpoint
    * @param recoveryCheckpoints Map to collect all downstream recovery checkpoints
    * @return Checkpoint that can be used to recover node (along with dependent nodes in recoveryCheckpoints).
@@ -589,7 +589,7 @@ public class DNodeManager
     long maxCheckpoint = node.getRecentCheckpoint();
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : node.outputs) {
-      NodeConf lDownNode = out.logicalStream.getTargetNode(); 
+      NodeConf lDownNode = out.logicalStream.getTargetNode();
       if (lDownNode != null) {
         List<PTNode> downNodes = deployer.getNodes(lDownNode);
         for (PTNode downNode : downNodes) {
@@ -602,7 +602,7 @@ public class DNodeManager
         }
       }
     }
-    // find most recent checkpoint for downstream dependency    
+    // find most recent checkpoint for downstream dependency
     long c1 = 0;
     synchronized (node.checkpointWindows) {
       if (node.checkpointWindows != null && !node.checkpointWindows.isEmpty()) {
@@ -622,7 +622,7 @@ public class DNodeManager
     recoveryCheckpoints.put(node, c1);
     return c1;
   }
-  
+
   /**
    * Mark all containers for shutdown, next container heartbeat response
    * will propagate the shutdown request. This is controlled soft shutdown.
@@ -634,11 +634,11 @@ public class DNodeManager
       cs.shutdownRequested = true;
     }
   }
-  
+
   public void addContainerStopRequest(String containerId) {
     containerStopRequests.put(containerId, containerId);
   }
-  
+
   public ArrayList<NodeInfo> getNodeInfoList() {
     ArrayList<NodeInfo> nodeInfoList = new ArrayList<NodeInfo>(this.nodeStatusMap.size());
     for (NodeStatus ns : this.nodeStatusMap.values()) {
@@ -664,5 +664,5 @@ public class DNodeManager
     }
     return nodeInfoList;
   }
-  
+
 }
