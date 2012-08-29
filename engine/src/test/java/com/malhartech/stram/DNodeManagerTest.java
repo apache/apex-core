@@ -14,6 +14,8 @@ import org.junit.Test;
 
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.TopologyBuilderTest.EchoNode;
+import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
@@ -29,16 +31,18 @@ public class DNodeManagerTest {
     NodeConf node2 = b.getOrAddNode("node2");
     NodeConf node3 = b.getOrAddNode("node3");
 
-    StreamConf input1 = b.getOrAddStream("input1");
-    input1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
-    node1.addInput(input1);
+    //StreamConf input1 = b.getOrAddStream("input1");
+    //input1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
+    //node1.addInput(input1);
     
-    node1.addOutput(b.getOrAddStream("n1n2"));
-    node2.addInput(b.getOrAddStream("n1n2"));
+    b.getOrAddStream("n1n2")
+      .setSource(EchoNode.OUTPUT1, node1)
+      .addSink(EchoNode.INPUT1, node2);
 
-    node2.addOutput(b.getOrAddStream("n2n3"));
-    node3.addInput(b.getOrAddStream("n2n3"));
-    b.getOrAddStream("n2n3").addProperty(TopologyBuilder.STREAM_INLINE, "true");
+    b.getOrAddStream("n2n3")
+      .addProperty(TopologyBuilder.STREAM_INLINE, "true")
+      .setSource(EchoNode.OUTPUT1, node2)
+      .addSink(EchoNode.INPUT1, node3);
     
     Assert.assertEquals("number nodes", 3, b.getAllNodes().values().size());
     Assert.assertEquals("number root nodes", 1, b.getRootNodes().size());
@@ -48,8 +52,9 @@ public class DNodeManagerTest {
         nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
 
-    b.setContainerCount(2);
-    DNodeManager dnm = new DNodeManager(b);
+    Topology tplg = b.getTopology();
+    tplg.setContainerCount(2);
+    DNodeManager dnm = new DNodeManager(tplg);
     Assert.assertEquals("number required containers", 2, dnm.getNumRequiredContainers());
     
     String container1Id = "container1";

@@ -115,16 +115,23 @@ public class NodeContext implements Context
     }
   }
 
+  /**
+   * TODO: should not be here but in a configurable serializer
+   * @param aThis
+   */
+  public static void serializeNode(Node aThis, OutputStream os) {
+    Kryo kryo = new Kryo();
+    Output output = new Output(os);
+    kryo.writeClassAndObject(output, aThis);
+    output.flush();
+  }
+  
   void backup(AbstractNode aThis) throws IOException
   {
     LOG.debug("Backup node={}, window={}", id, getCurrentWindowId());
     OutputStream os = backupAgent.borrowOutputStream(id, getCurrentWindowId());
     try {
-      Kryo kryo = new Kryo();
-      Output output = new Output(os);
-      kryo.writeClassAndObject(output, aThis);
-      output.flush();
-
+      serializeNode(aThis, os);
       /*
        * we purposely do not close the stream here since it may close the underlying stream which we did not open. We do not want the foreign logic to have to
        * reopen the stream which may be inconvenient where as closing it is possible and easy when we return the stream back to the agent.

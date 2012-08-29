@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram;
 
-import static com.malhartech.stram.conf.TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS;
 import static com.malhartech.stram.conf.TopologyBuilder.STREAM_CLASSNAME;
 import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
 
@@ -29,6 +28,7 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatRes
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.TopologyDeployer.PTNode;
+import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import static com.malhartech.stram.conf.TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS;
@@ -75,7 +75,7 @@ public class StramLocalClusterTest {
 
     props.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
 
-    props.setProperty(TopologyBuilder.NUM_CONTAINERS, "2");
+    props.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
 
     TopologyBuilder tplg = new TopologyBuilder(new Configuration());
     tplg.addFromProperties(props);
@@ -89,8 +89,8 @@ public class StramLocalClusterTest {
   public void testChildRecovery() throws Exception {
 
     TopologyBuilder tb = new TopologyBuilder();
-    tb.getConf().setInt(STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
-    tb.getConf().setInt(TopologyBuilder.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
+    tb.getConf().setInt(Topology.STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
+    tb.getConf().setInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
 
     StreamConf input1 = tb.getOrAddStream("input1");
     input1.addProperty(STREAM_CLASSNAME,
