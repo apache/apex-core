@@ -39,8 +39,10 @@ import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -72,8 +74,9 @@ public class StramChild
   final private Configuration conf;
   final private StreamingNodeUmbilicalProtocol umbilical;
   final private Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
-  final private Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
+  final private Set<ComponentContextPair<Node, NodeContext>> activeNodes = new HashSet<ComponentContextPair<Node, NodeContext>>();
   final private Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
+  final private Set<ComponentContextPair<Stream, StreamContext>> activeStreams = new HashSet<ComponentContextPair<Stream, StreamContext>>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   private Object heartbeatTrigger = new Object();
@@ -153,7 +156,7 @@ public class StramChild
         hb.setCurrentWindowId(e.getValue().context.getCurrentWindowId());
         e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
         DNodeState state = DNodeState.PROCESSING;
-        if (!activeNodes.containsKey(e.getKey())) {
+        if (!activeNodes.contains(e.getValue())) {
           state = DNodeState.IDLE;
         }
         hb.setState(state.name());
@@ -463,11 +466,27 @@ public class StramChild
       }
     }
 
+    activeStreams.addAll(streams.values());
+    for (ComponentContextPair pair: activeStreams) {
+      pair.component.activate(pair.context);
+    }
 
-    // we activate all the streams
-    // we activate all the nodes
-    // we activate window generator
+    for (final ComponentContextPair pair: nodes.values()) {
+      Thread t = new Thread() {
+        @Override
+        public void run()
+        {
+          pair.component.activate(pair.context);
+          activeNodes.remove(pair);
+        }
+      };
+      t.start();
+      activeNodes.add(pair);
+    }
 
+    if (windowGenerator != null) {
+      windowGenerator.activate(null);
+    }
   }
 
   private void estimateStreams(HashMap<String, ArrayList<String>> plumbing, NodeDeployInfo ndi)
