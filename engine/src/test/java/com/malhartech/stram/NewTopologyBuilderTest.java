@@ -12,6 +12,8 @@ import java.io.Serializable;
 
 import junit.framework.Assert;
 
+import org.junit.Test;
+
 import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
@@ -68,8 +70,8 @@ public class NewTopologyBuilderTest {
     }
   }
   
-  
-  public static void main(String[] args) throws Exception {
+  @Test
+  public void testBuilder() throws Exception {
 
     NewTopologyBuilder b = new NewTopologyBuilder();
     

@@ -22,91 +22,9 @@ import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 
-public class HeartbeatProtocolSerializationTest
+public class WindowGeneratorTest
 {
-  @Test
-  public void testContainerContextSerialization() throws IOException
-  {
 
-    NodePConf snc = new NodePConf();
-    snc.setLogicalId("node1");
-
-    StreamingContainerContext scc = new StreamingContainerContext();
-    scc.setNodes(Collections.singletonList(snc));
-
-    DataOutputByteBuffer out = new DataOutputByteBuffer();
-    scc.write(out);
-
-    DataInputByteBuffer in = new DataInputByteBuffer();
-    in.reset(out.getData());
-
-    StreamingContainerContext clone = new StreamingContainerContext();
-    clone.readFields(in);
-
-    Assert.assertNotNull(clone.getNodes());
-    Assert.assertEquals(1, clone.getNodes().size());
-    Assert.assertEquals("node1", clone.getNodes().get(0).getLogicalId());
-
-    ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
-    rsp.setDeployRequest(scc);
-
-    out = new DataOutputByteBuffer();
-    rsp.write(out);
-
-    in = new DataInputByteBuffer();
-    in.reset(out.getData());
-
-    ContainerHeartbeatResponse cloneRsp = new ContainerHeartbeatResponse();
-    cloneRsp.readFields(in);
-
-    Assert.assertNotNull(cloneRsp.getDeployRequest());
-    Assert.assertEquals("node1", cloneRsp.getDeployRequest().getNodes().get(0).getLogicalId());
-
-  }
-
-  @Test
-  public void testNodeDeployInfo() throws Exception {
-    NodeDeployInfo ndi = new NodeDeployInfo();
-    ndi.declaredId = "node1";
-    ndi.id ="1";
-    
-    NodeDeployInfo.NodeInputDeployInfo input = new NodeDeployInfo.NodeInputDeployInfo();
-    input.declaredStreamId = "streamToNode";
-    input.portName = "inputPortNameOnNode";
-    input.sourceNodeId = "sourceNodeId";
-
-    ndi.inputs = new ArrayList<NodeDeployInfo.NodeInputDeployInfo>();
-    ndi.inputs.add(input);
-
-    NodeDeployInfo.NodeOutputDeployInfo output = new NodeDeployInfo.NodeOutputDeployInfo();
-    output.declaredStreamId = "streamFromNode";
-    output.portName = "outputPortNameOnNode";
-
-    ndi.outputs = new ArrayList<NodeDeployInfo.NodeOutputDeployInfo>();
-    ndi.outputs.add(output);
-    
-    StreamingContainerContext scc = new StreamingContainerContext();
-    scc.nodeList = Collections.singletonList(ndi);
-
-    DataOutputByteBuffer out = new DataOutputByteBuffer();
-    scc.write(out);
-
-    DataInputByteBuffer in = new DataInputByteBuffer();
-    in.reset(out.getData());
-
-    StreamingContainerContext clone = new StreamingContainerContext();
-    clone.readFields(in);
-
-    Assert.assertNotNull(clone.nodeList);
-    Assert.assertEquals(1, clone.nodeList.size());
-    Assert.assertEquals("node1", clone.nodeList.get(0).declaredId);
-    
-    String nodeToString = ndi.toString();
-    Assert.assertTrue(nodeToString.contains(input.portName));
-    Assert.assertTrue(nodeToString.contains(output.portName));
-    
-  }
-  
   @Test
   public void testMiniClusterTestNode()
   {

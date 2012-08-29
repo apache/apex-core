@@ -262,7 +262,7 @@ public class Topology implements Serializable, TopologyConstants {
     return this.conf.getInt(STRAM_MAX_CONTAINERS, 3);
   }
 
-  public void setContainerCount(int containerCount) {
+  public void setMaxContainerCount(int containerCount) {
     this.conf.setInt(STRAM_MAX_CONTAINERS, containerCount);
   }
 

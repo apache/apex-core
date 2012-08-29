@@ -20,7 +20,6 @@ import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 public class TopologyDeployerTest {
 
@@ -47,7 +46,7 @@ public class TopologyDeployerTest {
     }
 
     Topology tplg = b.getTopology();
-    tplg.setContainerCount(2);
+    tplg.setMaxContainerCount(2);
     
     TopologyDeployer td = new TopologyDeployer(tplg);
     
@@ -93,7 +92,7 @@ public class TopologyDeployerTest {
 
     int maxContainers = 5;
     Topology tplg = b.getTopology();
-    tplg.setContainerCount(maxContainers);
+    tplg.setMaxContainerCount(maxContainers);
     TopologyDeployer deployer1 = new TopologyDeployer(tplg);
     Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
     Assert.assertEquals("nodes container 0", 3, deployer1.getContainers().get(0).nodes.size());

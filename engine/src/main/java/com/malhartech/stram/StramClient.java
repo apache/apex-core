@@ -222,7 +222,7 @@ public class StramClient
                                          + ", numContainer=" + containerCount);
     }
 
-    topology.setContainerCount(containerCount);
+    topology.setMaxContainerCount(containerCount);
     topology.getConf().setInt(Topology.STRAM_MASTER_MEMORY_MB, amMemory);
     topology.getConf().setInt(Topology.STRAM_CONTAINER_MEMORY_MB, containerMemory);
 

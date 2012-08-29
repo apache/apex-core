@@ -5,11 +5,15 @@
 package com.malhartech.stram;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import junit.framework.Assert;
 
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.DataInputByteBuffer;
+import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
 import com.malhartech.dag.DefaultSerDe;
@@ -17,6 +21,7 @@ import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyBuilderTest.EchoNode;
+import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
@@ -25,9 +30,51 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 public class DNodeManagerTest {
 
   @Test
+  public void testNodeDeployInfoSerialization() throws Exception {
+    NodeDeployInfo ndi = new NodeDeployInfo();
+    ndi.declaredId = "node1";
+    ndi.id ="1";
+    
+    NodeDeployInfo.NodeInputDeployInfo input = new NodeDeployInfo.NodeInputDeployInfo();
+    input.declaredStreamId = "streamToNode";
+    input.portName = "inputPortNameOnNode";
+    input.sourceNodeId = "sourceNodeId";
+
+    ndi.inputs = new ArrayList<NodeDeployInfo.NodeInputDeployInfo>();
+    ndi.inputs.add(input);
+
+    NodeDeployInfo.NodeOutputDeployInfo output = new NodeDeployInfo.NodeOutputDeployInfo();
+    output.declaredStreamId = "streamFromNode";
+    output.portName = "outputPortNameOnNode";
+
+    ndi.outputs = new ArrayList<NodeDeployInfo.NodeOutputDeployInfo>();
+    ndi.outputs.add(output);
+    
+    StreamingContainerContext scc = new StreamingContainerContext();
+    scc.nodeList = Collections.singletonList(ndi);
+
+    DataOutputByteBuffer out = new DataOutputByteBuffer();
+    scc.write(out);
+
+    DataInputByteBuffer in = new DataInputByteBuffer();
+    in.reset(out.getData());
+
+    StreamingContainerContext clone = new StreamingContainerContext();
+    clone.readFields(in);
+
+    Assert.assertNotNull(clone.nodeList);
+    Assert.assertEquals(1, clone.nodeList.size());
+    Assert.assertEquals("node1", clone.nodeList.get(0).declaredId);
+    
+    String nodeToString = ndi.toString();
+    Assert.assertTrue(nodeToString.contains(input.portName));
+    Assert.assertTrue(nodeToString.contains(output.portName));
+  }
+  
+  @Test
   public void testAssignContainer() {
 
-    TopologyBuilder b = new TopologyBuilder(new Configuration());
+    TopologyBuilder b = new TopologyBuilder();
 
     NodeConf node1 = b.getOrAddNode("node1");
     NodeConf node2 = b.getOrAddNode("node2");
@@ -49,7 +96,7 @@ public class DNodeManagerTest {
     Assert.assertEquals("number root nodes", 1, b.getRootNodes().size());
 
     Topology tplg = b.getTopology();
-    tplg.setContainerCount(2);
+    tplg.setMaxContainerCount(2);
     DNodeManager dnm = new DNodeManager(tplg);
     Assert.assertEquals("number required containers", 2, dnm.getNumRequiredContainers());
     
@@ -98,138 +145,77 @@ public class DNodeManagerTest {
     Assert.assertNull("partitionKeys " + c2n3In, c2n3In.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n3In, node2DI.id, c2n3In.sourceNodeId);
     Assert.assertEquals("sourcePortName " + c2n3In, EchoNode.OUTPUT1, c2n3In.sourcePortName); // required for inline
-    
   }
-/*
+
   @Test
   public void testStaticPartitioning() {
-    TopologyBuilder b = new TopologyBuilder(new Configuration());
+    TopologyBuilder b = new TopologyBuilder();
     
     NodeConf node1 = b.getOrAddNode("node1");
     NodeConf node2 = b.getOrAddNode("node2");
-
     NodeConf mergeNode = b.getOrAddNode("mergeNode");
-    
-    StreamConf n1n2 = b.getOrAddStream("n1n2");
-    n1n2.addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
-    
-    node1.addOutput(n1n2);
-    node2.addInput(n1n2);
-
-    StreamConf mergeStream = b.getOrAddStream("mergeStream");
-    node2.addOutput(mergeStream);
-    mergeNode.addInput(mergeStream);
-    
     for (NodeConf nodeConf : b.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
     
-    b.setContainerCount(5);
-    DNodeManager dnm = new DNodeManager(b);
+    StreamConf n1n2 = b.getOrAddStream("n1n2")
+      .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName())
+      .setSource(EchoNode.OUTPUT1, node1)
+      .addSink(EchoNode.INPUT1, node2);
+    
+    StreamConf mergeStream = b.getOrAddStream("mergeStream")
+        .setSource(EchoNode.OUTPUT1, node2)
+        .addSink(EchoNode.INPUT1, mergeNode);
+    
+    Topology tplg = b.getTopology();
+    tplg.setMaxContainerCount(5);
+    
+    DNodeManager dnm = new DNodeManager(tplg);
     Assert.assertEquals("number required containers", 5, dnm.getNumRequiredContainers());
 
     String container1Id = "container1";
     StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
-    Assert.assertEquals("number nodes assigned to container", 1, c1.getNodes().size());
+    Assert.assertEquals("number nodes assigned to container", 1, c1.nodeList.size());
     Assert.assertTrue(node2.getId() + " assigned to " + container1Id, containsNodeContext(c1, node1));
 
     for (int i=0; i<TestStaticPartitioningSerDe.partitions.length; i++) {
       String containerId = "container"+(i+1);
       StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
-      Assert.assertEquals("number nodes assigned to container", 1, cc.getNodes().size());
+      Assert.assertEquals("number nodes assigned to container", 1, cc.nodeList.size());
       Assert.assertTrue(node2.getId() + " assigned to " + containerId, containsNodeContext(cc, node2));
   
       // n1n2 in, mergeStream out
-      Assert.assertEquals("stream connections for " + containerId, 2, cc.getStreams().size());
-      StreamPConf sc = getStreamContext(cc, "n1n2");
-      Assert.assertNotNull("stream connection for " + containerId, sc);
-      Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], sc.getPartitionKeys().get(0)));
+      NodeDeployInfo ndi = cc.nodeList.get(0);
+      Assert.assertEquals("inputs " + ndi, 1, ndi.inputs.size());
+      Assert.assertEquals("outputs " + ndi, 1, ndi.outputs.size());
+      
+      NodeInputDeployInfo nidi = ndi.inputs.get(0);
+      Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
+      Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], nidi.partitionKeys.get(0)));
     }
     
     // mergeNode container 
     String mergeContainerId = "mergeNodeContainer";
     StreamingContainerContext cmerge = dnm.assignContainerForTest(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
-    Assert.assertEquals("number nodes assigned to " + mergeContainerId, 1, cmerge.getNodes().size());
-    Assert.assertTrue(mergeNode.getId() + " assigned to " + container1Id, containsNodeContext(cmerge, mergeNode));
-    Assert.assertEquals("stream connections for " + mergeContainerId, 3, cmerge.getStreams().size());
-    
-  }  
-  
-  @Test
-  public void testAdaptersWithStaticPartitioning() {
-    TopologyBuilder b = new TopologyBuilder(new Configuration());
+    Assert.assertEquals("number nodes assigned to " + mergeContainerId, 1, cmerge.nodeList.size());
 
-    NodeConf node1 = b.getOrAddNode("node1");
-    
-    StreamConf input1 = b.getOrAddStream("input1");
-    input1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
-    input1.addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
-
-    StreamConf output1 = b.getOrAddStream("output1");
-    output1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
-    
-    node1.addInput(input1);
-    node1.addOutput(output1);
-    
-    for (NodeConf nodeConf : b.getAllNodes().values()) {
-      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+    NodeDeployInfo mergeNodeDI = getNodeDeployInfo(cmerge,  mergeNode);
+    Assert.assertNotNull(mergeNode.getId() + " assigned to " + container1Id, mergeNodeDI);
+    Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
+    List<String> sourceNodeIds = new ArrayList<String>();
+    for (NodeInputDeployInfo nidi : mergeNodeDI.inputs) {
+      Assert.assertEquals("streamName " + nidi, mergeStream.getId(), nidi.declaredStreamId);
+      Assert.assertEquals("streamName " + nidi, EchoNode.INPUT1, nidi.portName);
+      Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
+      sourceNodeIds.add(nidi.sourceNodeId);
     }
-
-    int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
-    b.setContainerCount(expectedContainerCount);
-    DNodeManager dnm = new DNodeManager(b);
-
-    Assert.assertEquals("number required containers", expectedContainerCount, dnm.getNumRequiredContainers());
     
-    for (int i=0; i<expectedContainerCount; i++) {
-      String containerId = "container"+(i+1);
-      StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
-
-      NodePConf node1PNode = getNodeContext(cc, node1.getId());
-      Assert.assertNotNull(node1.getId() + " assigned to " + containerId, node1PNode);
-      
-      if (i==0) {
-        // the input and output adapter should be assigned to first container (deployed with first partition)
-        Assert.assertEquals("number nodes assigned to " + containerId, 3, cc.getNodes().size());
-        // output subscribes to all upstream partitions
-        Assert.assertEquals("number streams " + containerId, 1+TestStaticPartitioningSerDe.partitions.length, cc.getStreams().size());
-        
-        NodePConf input1PNode = getNodeContext(cc, input1.getId());
-        Assert.assertNotNull(input1.getId() + " assigned to " + containerId, input1PNode);
-        
-        NodePConf output1PNode = getNodeContext(cc, output1.getId());
-        Assert.assertNotNull(output1.getId() + " assigned to " + containerId, output1PNode);
-        
-        int inlineStreamCount = 0;
-        for (StreamPConf pstream : cc.getStreams()) {
-          if (pstream.getTargetNodeId() == output1PNode.getDnodeId() && pstream.getSourceNodeId() == node1PNode.getDnodeId()) {
-            Assert.assertTrue("stream from " + node1PNode + " to " + output1PNode + " inline", pstream.isInline());
-            inlineStreamCount++;
-          }
-        }
-        Assert.assertEquals("number inline streams", 1, inlineStreamCount);
-        
-      } else {
-        Assert.assertEquals("number nodes assigned to " + containerId, 1, cc.getNodes().size());
-        Assert.assertEquals("number streams " + containerId, 2, cc.getStreams().size());
-      }
-        
-      StreamPConf scIn1 = getStreamContext(cc, "input1");
-      Assert.assertNotNull("in stream connection for " + containerId, scIn1);
-      Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], scIn1.getPartitionKeys().get(0)));
-      Assert.assertFalse(scIn1.isInline());
-      
-      StreamPConf scOut1 = getStreamContext(cc, "output1");
-      Assert.assertNotNull("out stream connection for " + containerId, scOut1);
-      
-      if (i==0) {
-        Assert.assertTrue(containerId +"/" + scOut1.getId() + " inline", scOut1.isInline()); // first stream inline
-      } else {
-        Assert.assertFalse(containerId +"/" + scOut1.getId() + " not inline", scOut1.isInline()); // first stream inline
-      }
+    for (PTNode node : dnm.getTopologyDeployer().getNodes(tplg.getNode(node2.getId()))) {
+      Assert.assertTrue(sourceNodeIds + " contains " + node.id, sourceNodeIds.contains(node.id));
     }
+    Assert.assertEquals("outputs " + mergeNodeDI, 0, mergeNodeDI.outputs.size());
   }  
-*/
+
   public static class TestStaticPartitioningSerDe extends DefaultSerDe {
 
     public final static byte[][] partitions = new byte[][]{
