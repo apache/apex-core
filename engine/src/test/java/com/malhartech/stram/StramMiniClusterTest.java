@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.HeartbeatCounters;
+import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stream.HDFSOutputStream;
 import com.sun.jersey.api.client.Client;
@@ -160,10 +161,10 @@ public class StramMiniClusterTest
 
     props.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
 
-    props.setProperty(TopologyBuilder.STRAM_CONTAINER_MEMORY_MB, "256");
-    props.setProperty(TopologyBuilder.STRAM_CONTAINER_MEMORY_MB, "64");
-    props.setProperty(TopologyBuilder.STRAM_DEBUG, "true");
-    props.setProperty(TopologyBuilder.NUM_CONTAINERS, "2");
+    props.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "256");
+    props.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
+    props.setProperty(Topology.STRAM_DEBUG, "true");
+    props.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
 
     File tmpFile = createTmpPropFile(props);
 

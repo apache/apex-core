@@ -18,6 +18,3 @@ import java.lang.annotation.Target;
 public @interface NodeAnnotation {
   public PortAnnotation[] ports();
 }
-
-
-
