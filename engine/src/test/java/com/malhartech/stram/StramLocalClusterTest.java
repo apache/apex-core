@@ -4,24 +4,10 @@
  */
 package com.malhartech.stram;
 
-import static com.malhartech.stram.conf.TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS;
-import static com.malhartech.stram.conf.TopologyBuilder.STREAM_CLASSNAME;
-import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
+import com.malhartech.dag.Context;
 import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.InternalNode;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -35,23 +21,30 @@ import static com.malhartech.stram.conf.TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS
 import static com.malhartech.stram.conf.TopologyBuilder.STREAM_CLASSNAME;
 import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import com.malhartech.stream.AbstractInputAdapter;
 import com.malhartech.stream.HDFSOutputStream;
+import com.malhartech.util.ScheduledExecutorService;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StramLocalClusterTest {
-
+public class StramLocalClusterTest
+{
   private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
-  
+
   @Test
-  public void testLocalClusterInitShutdown() throws Exception {
+  public void testLocalClusterInitShutdown() throws Exception
+  {
     // create test topology
     Properties props = new Properties();
 
@@ -63,9 +56,9 @@ public class StramLocalClusterTest {
     // fake output adapter - to be ignored when determine shutdown
     props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
     props.put("stram.stream.output.inputNode", "node2");
-    props.put("stram.stream.output.filepath", "target/"+StramLocalClusterTest.class.getName()+"-testSetupShutdown.out");
+    props.put("stram.stream.output.filepath", "target/" + StramLocalClusterTest.class.getName() + "-testSetupShutdown.out");
     props.put("stram.stream.output.append", "false");
-    
+
     props.put("stram.stream.n1n2.inputNode", "node1");
     props.put("stram.stream.n1n2.outputNode", "node2");
     props.put("stram.stream.n1n2.template", "defaultstream");
@@ -83,10 +76,101 @@ public class StramLocalClusterTest {
     StramLocalCluster localCluster = new StramLocalCluster(tplg);
     localCluster.run();
   }
- 
+
+  class MyScheduledExecutorService extends ScheduledThreadPoolExecutor implements ScheduledExecutorService
+  {
+    class TimedRunnable
+    {
+      public Runnable runnable;
+      public long time;
+    }
+    PriorityQueue<TimedRunnable> queue = new PriorityQueue<TimedRunnable>(16, new Comparator<TimedRunnable>()
+    {
+      @Override
+      public int compare(TimedRunnable o1, TimedRunnable o2)
+      {
+        return (int)(o1.time - o2.time);
+      }
+    });
+    long currentTime = 0;
+
+    public MyScheduledExecutorService(int corePoolSize)
+    {
+      super(corePoolSize);
+    }
+
+    @Override
+    public long getCurrentTimeMillis()
+    {
+      return currentTime;
+    }
+
+    public void setCurrentTimeMillis(long current)
+    {
+      currentTime = current;
+    }
+
+    @Override
+    public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit)
+    {
+      TimedRunnable tr = new TimedRunnable();
+      tr.runnable = command;
+      tr.time = getCurrentTimeMillis();
+      queue.add(tr);
+      return null; // we do not need to worry about this since this is a test
+    }
+
+    @Override
+    public ScheduledFuture<?> scheduleAtFixedRate(final Runnable command, long initialDelay, final long period, TimeUnit unit)
+    {
+      Runnable scheduler = new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          command.run();
+          TimedRunnable tr = new TimedRunnable();
+          tr.runnable = this;
+          tr.time = getCurrentTimeMillis() + period;
+          queue.add(tr);
+        }
+      };
+
+      TimedRunnable tr = new TimedRunnable();
+      tr.runnable = scheduler;
+      tr.time = getCurrentTimeMillis() + initialDelay;
+      queue.add(tr);
+      return null; // we do not need to worry about this since this is a test
+    }
+
+    public void tick(long steps)
+    {
+      currentTime += steps;
+
+      TimedRunnable tr;
+      while ((tr = queue.peek()) != null) {
+        if (tr.time > currentTime) {
+          break;
+        }
+        tr.runnable.run();
+        queue.poll();
+      }
+    }
+  }
+
   @Ignore // we have a problem with windows randomly getting lost
   @Test
-  public void testChildRecovery() throws Exception {
+  public void testChildRecovery() throws Exception
+  {
+    MyScheduledExecutorService mses = new MyScheduledExecutorService(1);
+    WindowGenerator wingen = new WindowGenerator(mses);
+
+    Configuration config = new Configuration();
+    config.setLong("StartMillis", 0);
+    config.setInt("IntervalMillis", 1);
+
+    wingen.setup(config);
+    wingen.activate(new Context() {});
 
     TopologyBuilder tb = new TopologyBuilder();
     tb.getConf().setInt(STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
@@ -94,7 +178,7 @@ public class StramLocalClusterTest {
 
     StreamConf input1 = tb.getOrAddStream("input1");
     input1.addProperty(STREAM_CLASSNAME,
-        LocalTestInputAdapter.class.getName());
+                       LocalTestInputAdapter.class.getName());
     input1.addProperty(STREAM_INLINE, "true");
 
     StreamConf n1n2 = tb.getOrAddStream("n1n2");
@@ -108,7 +192,7 @@ public class StramLocalClusterTest {
 
     tb.validate();
 
-    for (NodeConf nodeConf : tb.getAllNodes().values()) {
+    for (NodeConf nodeConf: tb.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
 
@@ -136,22 +220,21 @@ public class StramLocalClusterTest {
 
     LocalTestInputAdapter input = (LocalTestInputAdapter)inputAdapters.keySet().toArray()[0];
     Assert.assertEquals("initial window id", 0, ((StreamContext)inputAdapters.values().toArray()[0]).getStartingWindowId());
-    input.resetWindow(0, 1);
+    mses.tick(1);
 
-    input.beginWindow(1);
     waitForWindow(n1, 1);
     backupNode(c0, n1);
-    input.endWindow(1);
 
-    input.beginWindow(2);
+    mses.tick(1);
+
     waitForWindow(n2, 2);
     backupNode(c2, n2);
-    input.endWindow(2);
+
+    mses.tick(1);
 
     // move window forward and wait for nodes to reach,
     // to ensure backup in previous windows was processed
-    input.beginWindow(3);
-    input.endWindow(3);
+    mses.tick(1);
 
     //waitForWindow(n1, 3);
     waitForWindow(n2, 3);
@@ -167,7 +250,7 @@ public class StramLocalClusterTest {
     // simulate node failure
     localCluster.failContainer(c0);
 
-    // replacement container starts empty 
+    // replacement container starts empty
     // nodes will deploy after downstream node was removed
     LocalStramChild c0Replaced = waitForContainer(localCluster, node1);
     c0Replaced.triggerHeartbeat();
@@ -179,7 +262,7 @@ public class StramLocalClusterTest {
     // verify change in downstream container
     LOG.debug("triggering c2 heartbeat processing");
     StramChildAgent c2Agent = localCluster.getContainerAgent(c2);
-    
+
     // wait for downstream re-deploy to complete
     while (c2Agent.hasPendingWork()) {
       Thread.sleep(500);
@@ -192,23 +275,25 @@ public class StramLocalClusterTest {
     InternalNode n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2Replaced);
     Assert.assertNotSame("node2 redeployed", n2, n2Replaced);
-    
+
     inputAdapters = c0Replaced.getInputAdapters();
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
     Assert.assertEquals("initial window id", 1, input.getContext().getStartingWindowId());
-    
+
     localCluster.shutdown();
 
   }
 
   /**
    * Wait until instance of node comes online in a container
+   *
    * @param localCluster
    * @param nodeConf
    * @return
    * @throws InterruptedException
    */
-  private LocalStramChild waitForContainer(StramLocalCluster localCluster, NodeConf nodeConf) throws InterruptedException {
+  private LocalStramChild waitForContainer(StramLocalCluster localCluster, NodeConf nodeConf) throws InterruptedException
+  {
     PTNode node = localCluster.findByLogicalNode(nodeConf);
     Assert.assertNotNull("no node for " + nodeConf, node);
 
@@ -224,20 +309,22 @@ public class StramLocalClusterTest {
       try {
         LOG.debug("Waiting for {} in container {}", node, node.container.containerId);
         Thread.sleep(500);
-      } catch (InterruptedException e) {
+      }
+      catch (InterruptedException e) {
       }
     }
   }
 
-  private void waitForWindow(InternalNode node, long windowId) throws InterruptedException {
+  private void waitForWindow(InternalNode node, long windowId) throws InterruptedException
+  {
     while (node.getContext().getCurrentWindowId() < windowId) {
       LOG.debug("Waiting for window {} at node {}", windowId, node);
       Thread.sleep(100);
     }
   }
 
-
-  private void backupNode(StramChild c, InternalNode node) {
+  private void backupNode(StramChild c, InternalNode node)
+  {
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(node.getContext().getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
@@ -247,26 +334,26 @@ public class StramLocalClusterTest {
     c.processHeartbeatResponse(rsp);
   }
 
-  public static class LocalTestInputAdapter extends AbstractInputAdapter {
-
+  public static class LocalTestInputAdapter extends AbstractInputAdapter
+  {
     @Override
-    public void setup(StreamConfiguration config) {
+    public void setup(StreamConfiguration config)
+    {
     }
 
     @Override
-    public void activate(StreamContext context) {
+    public void activate(StreamContext context)
+    {
     }
 
     @Override
-    public void teardown() {
+    public void teardown()
+    {
     }
 
     @Override
     public void deactivate()
     {
     }
-
   }
-
-
 }

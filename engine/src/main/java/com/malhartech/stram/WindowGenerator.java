@@ -8,14 +8,13 @@ import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.Context;
 import com.malhartech.dag.EndWindowTuple;
-import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
+import com.malhartech.util.ScheduledExecutorService;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
@@ -37,7 +36,7 @@ public class WindowGenerator implements Component, Runnable
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
   public static final int MAX_VALUE_WINDOW = 0x3fff - (0x3fff % 1000) - 1;
-  private ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1);
+  private final ScheduledExecutorService ses;
   private long startMillis; // Window start time
   private int intervalMillis; // Window size
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
@@ -46,6 +45,10 @@ public class WindowGenerator implements Component, Runnable
   private long baseSeconds;
   private int windowId;
 
+  public WindowGenerator(ScheduledExecutorService service)
+  {
+    ses = service;
+  }
   /**
    * Increments window by 1
    */
@@ -113,7 +116,7 @@ public class WindowGenerator implements Component, Runnable
   @Override
   public void setup(Configuration config)
   {
-    startMillis = config.getLong("StartMillis", System.currentTimeMillis());
+    startMillis = config.getLong("StartMillis", ses.getCurrentTimeMillis());
     intervalMillis = config.getInt("IntervalMillis", 500);
   }
 
@@ -132,7 +135,7 @@ public class WindowGenerator implements Component, Runnable
       }
     };
 
-    long currentTms = System.currentTimeMillis();
+    long currentTms = ses.getCurrentTimeMillis();
 
     if (currentWindowMillis < currentTms) {
       run();
@@ -142,17 +145,17 @@ public class WindowGenerator implements Component, Runnable
       while (currentWindowMillis < currentTms);
     }
     else {
-      stpe.schedule(this, currentWindowMillis - currentTms, TimeUnit.MILLISECONDS);
+      ses.schedule(this, currentWindowMillis - currentTms, TimeUnit.MILLISECONDS);
     }
 
-    stpe.scheduleAtFixedRate(subsequentRun, currentWindowMillis - currentTms + intervalMillis, intervalMillis, TimeUnit.MILLISECONDS);
+    ses.scheduleAtFixedRate(subsequentRun, currentWindowMillis - currentTms + intervalMillis, intervalMillis, TimeUnit.MILLISECONDS);
   }
 
   @Override
   public void deactivate()
   {
     sinks = Collections.EMPTY_LIST;
-    stpe.shutdown();
+    ses.shutdown();
   }
 
   @Override

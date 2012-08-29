@@ -27,6 +27,7 @@ import com.malhartech.stream.BufferServerOutputStream;
 import com.malhartech.stream.InlineStream;
 import com.malhartech.stream.MuxStream;
 import com.malhartech.stream.PartitionAwareSink;
+import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,9 +69,8 @@ public class StramChild
   final private String containerId;
   final private Configuration conf;
   final private StreamingNodeUmbilicalProtocol umbilical;
-  final private Map<String, Node> nodes = new ConcurrentHashMap<String, Node>();
+  final private Map<String, Pair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, Pair<Node, NodeContext>>();
   final private Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
-  final private Map<String, NodeContext> nodeContexts = new ConcurrentHashMap<String, NodeContext>();
   final private Map<String, Stream> streams = new ConcurrentHashMap<String, Stream>();
   final private Map<String, StreamContext> streamContexts = new ConcurrentHashMap<String, StreamContext>();
 
@@ -408,7 +408,7 @@ public class StramChild
           dagConfig.setLong("StartMillis", System.currentTimeMillis()); // no need to set if done right
           dagConfig.setInt("IntervalMillis", 500); // no need to set if done right
 
-          windowGenerator = new WindowGenerator();
+          windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
           windowGenerator.setup(dagConfig);
         }
 
@@ -451,6 +451,7 @@ public class StramChild
         }
       }
     }
+
 
     // we activate all the streams
     // we activate all the nodes
