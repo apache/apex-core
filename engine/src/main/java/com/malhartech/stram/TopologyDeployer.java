@@ -125,6 +125,12 @@ public class TopologyDeployer {
    *
    */
   public static class PTInputAdapter extends PTInput {
+      /**
+       * 
+       * @param logicalStream
+       * @param target
+       * @param partition 
+       */
     protected PTInputAdapter(StreamConf logicalStream, PTComponent target, byte[] partition) {
       super(logicalStream, target, partition, null);
     }
