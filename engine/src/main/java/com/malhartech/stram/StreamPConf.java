@@ -23,6 +23,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
  * @author thomas
  *
  */
+@Deprecated
 public class StreamPConf extends StreamingNodeUmbilicalProtocol.WritableAdapter
 {
     private static final long serialVersionUID = 1L;

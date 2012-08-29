@@ -24,12 +24,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.InternalNode;
+import com.malhartech.dag.SerDe;
+import com.malhartech.stram.StramUtils;
+import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.conf.Topology.StreamDecl;
 
 /**
  * 
  * Builder for the DAG logical representation of nodes and streams<p>
  * <br>
- * Supports reading as name-value pairs from Hadoop Configuration
+ * Supports reading as name-value pairs from Hadoop Config
+import com.malhartech.stram.StramUtils;
+uration
  * or programmatic interface.<br>
  * <br>
  * 
@@ -42,21 +50,10 @@ public class TopologyBuilder {
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
   private static final String STRAM_SITE_XML_FILE = "stram-site.xml";
 
-  /**
-   * Comma separated list of jar files that will be made available to stram app master and child containers
-   */
-  public static final String LIBJARS = "stram.libjars";
-  public static final String NUM_CONTAINERS = "stram.numContainers";
-  public static final String STRAM_DEBUG = "stram.debug";
-  public static final String STRAM_CONTAINER_MEMORY_MB = "stram.containerMemoryMB";
-  public static final String STRAM_MASTER_MEMORY_MB = "stram.masterMemoryMB";
-  public static final String STRAM_WINDOW_SIZE_MILLIS = "stram.windowSizeMillis";
-  public static final String STRAM_CHECKPOINT_DIR = "stram.checkpointDir";
-  public static final String STRAM_CHECKPOINT_INTERVAL_MILLIS = "stram.checkpointIntervalMillis"; 
   
   public static final String STREAM_PREFIX = "stram.stream";
-  public static final String STREAM_SOURCENODE = "inputNode";
-  public static final String STREAM_TARGETNODE = "outputNode";
+  public static final String STREAM_SOURCE = "input";
+  public static final String STREAM_TARGET = "output";
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_INLINE = "inline";
   public static final String STREAM_SERDE_CLASSNAME = "serdeClassname";
@@ -117,7 +114,7 @@ public class TopologyBuilder {
   public class StreamConf {
     private String id;
     private NodeConf sourceNode;
-    private NodeConf targetNode;
+    private Set<NodeConf> targetNodes = new HashSet<NodeConf>();
     
     private PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
     private TemplateConf template;
@@ -147,8 +144,8 @@ public class TopologyBuilder {
      * 
      * @return {com.malhartech.stram.conf.NodeConf}
      */
-    public NodeConf getTargetNode() {
-      return targetNode;
+    public Set<NodeConf> getTargetNodes() {
+      return targetNodes;
     }
 
     /**
@@ -173,8 +170,9 @@ public class TopologyBuilder {
      * @param key
      * @param value 
      */
-    public void addProperty(String key, String value) {
+    public StreamConf addProperty(String key, String value) {
       properties.put(key, value);
+      return this;
     }
     
     /**
@@ -183,6 +181,42 @@ public class TopologyBuilder {
      */
     public boolean isInline() {
       return Boolean.TRUE.toString().equals(properties.getProperty(STREAM_INLINE, Boolean.FALSE.toString()));
+    }
+
+    /**
+     * Set source on stream to the node output port.
+     * @param portName
+     * @param sourceNode
+     */
+    public StreamConf setSource(String portName, NodeConf node) {
+      if (this.sourceNode != null) {
+        throw new IllegalArgumentException(String.format("Stream already receives input from %s", sourceNode));
+      }
+      node.outputs.put(portName, this);
+      this.sourceNode = node;
+      rootNodes.removeAll(this.targetNodes);
+      return this;
+    }
+    
+    public StreamConf addSink(String portName, NodeConf targetNode) {
+      if (targetNode.inputs.containsKey(portName)) {
+        throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, targetNode.inputs.get(portName)));
+      }
+      //LOG.debug("Adding {} to {}", targetNode, this);
+      targetNode.inputs.put(portName, this);
+      targetNodes.add(targetNode);
+      // root nodes don't receive input from other node(s)
+      if (sourceNode != null) {
+        rootNodes.remove(targetNode);
+      }
+      return this;
+    }
+    
+    @Override
+    public String toString() {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+          append("id", this.id).
+          toString();
     }
     
   }
@@ -236,6 +270,14 @@ public class TopologyBuilder {
       return id;
     }
 
+    public String getNodeClassNameReqd() {
+      String className = properties.getProperty(NODE_CLASSNAME);
+      if (className == null) {
+        throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", getId(), TopologyBuilder.NODE_CLASSNAME));
+      }
+      return className;
+    }
+    
     /**
      * 
      * @return String
@@ -249,30 +291,11 @@ public class TopologyBuilder {
 
     /**
      * 
-     * @param stream
-     * @return {com.malhartech.stram.conf.NodeConf}
-     */
-    public NodeConf addInput(StreamConf stream) {
-      if (stream.targetNode != null) {
-        // multiple targets not allowed
-        throw new IllegalArgumentException("Stream already connected to target " + stream.targetNode);
-      }
-      inputs.put(stream.id, stream);
-      stream.targetNode = this;
-      if (stream.sourceNode != null) {
-        // root nodes don't receive input from another node
-        rootNodes.remove(stream.targetNode);
-      }
-      return this;
-    }
-
-    /**
-     * 
-     * @param streamId
+     * @param portName
      * @return StreamConf
      */
-    public StreamConf getInput(String streamId) {
-      return inputs.get(streamId);
+    public StreamConf getInput(String portName) {
+      return inputs.get(portName);
     }
 
     /**
@@ -282,28 +305,9 @@ public class TopologyBuilder {
     public Collection<StreamConf> getInputStreams() {
       return inputs.values();
     }
-    
-    /**
-     * 
-     * @param stream
-     * @return {com.malhartech.stram.conf.NodeConf}
-     */
-    public NodeConf addOutput(StreamConf stream) {
-      if (stream.sourceNode != null) {
-        // multiple targets not allowed
-        throw new IllegalArgumentException("Stream already connected to source " + stream.sourceNode);
-      }
-      outputs.put(stream.id, stream);
-      stream.sourceNode = this;
-      if (stream.targetNode != null) {
-        // root nodes don't receive input from another node
-        rootNodes.remove(stream.targetNode);
-      }
-      return this;
-    }
-    
-    public StreamConf getOutput(String streamId) {
-      return outputs.get(streamId);
+        
+    public StreamConf getOutput(String portName) {
+      return outputs.get(portName);
     }
     
     public Collection<StreamConf> getOutputStreams() {
@@ -350,33 +354,6 @@ public class TopologyBuilder {
     addFromConfiguration(conf);
   }
 
-  public Configuration getConf() {
-    return this.conf;
-  }
-  
-  public int getContainerCount() {
-    return this.conf.getInt(NUM_CONTAINERS, 3);
-  }
-
-  public void setContainerCount(int containerCount) {
-    this.conf.setInt(NUM_CONTAINERS, containerCount);
-  }
-
-  public String getLibJars() {
-    return conf.get(LIBJARS, "");
-  }
-
-  public boolean isDebug() {
-    return conf.getBoolean(STRAM_DEBUG, false);
-  }
-
-  public int getContainerMemoryMB() {
-    return conf.getInt(STRAM_CONTAINER_MEMORY_MB, 64);
-  }
-  
-  public int getMasterMemoryMB() {
-    return conf.getInt(STRAM_MASTER_MEMORY_MB, 256);
-  }
   
   public NodeConf getOrAddNode(String nodeId) {
     NodeConf nc = nodes.get(nodeId);
@@ -426,7 +403,15 @@ public class TopologyBuilder {
     }
     return props;
   }
-  
+
+  private String[] getNodeAndPortId(String s) {
+    String[] parts = s.split("\\.");
+    if (parts.length != 2) {
+      throw new IllegalArgumentException("Invalid node.port reference: " + s);
+    }
+    return parts;
+  }
+    
   /**
    * Read node configurations from properties. The properties can be in any
    * random order, as long as they represent a consistent configuration in their
@@ -434,7 +419,7 @@ public class TopologyBuilder {
    * 
    * @param props
    */
-  public void addFromProperties(Properties props) {
+  public TopologyBuilder addFromProperties(Properties props) {
     
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
@@ -450,18 +435,16 @@ public class TopologyBuilder {
         String streamId = keyComps[2];
         String propertyKey = keyComps[3];
         StreamConf stream = getOrAddStream(streamId);
-        if (STREAM_SOURCENODE.equals(propertyKey)) {
+        if (STREAM_SOURCE.equals(propertyKey)) {
             if (stream.sourceNode != null) {
               // multiple sources not allowed
               throw new IllegalArgumentException("Duplicate " + propertyName);
             }
-            getOrAddNode(propertyValue).addOutput(stream);
-        } else if (STREAM_TARGETNODE.equals(propertyKey)) {
-          if (stream.targetNode != null) {
-              // multiple targets not allowed
-              throw new IllegalArgumentException("Duplicate " + propertyName);
-            }
-            getOrAddNode(propertyValue).addInput(stream);
+            String[] parts = getNodeAndPortId(propertyValue);
+            stream.setSource(parts[1], getOrAddNode(parts[0]));
+        } else if (STREAM_TARGET.equals(propertyKey)) {
+            String[] parts = getNodeAndPortId(propertyValue);
+            stream.addSink(parts[1], getOrAddNode(parts[0]));
         } else if (STREAM_TEMPLATE.equals(propertyKey)) {
           stream.template = getOrAddTemplate(propertyValue);
           // TODO: defer until all keys are read?
@@ -501,6 +484,7 @@ public class TopologyBuilder {
         tc.properties.setProperty(propertyKey, propertyValue);
       }
     }
+    return this;
   }
   
   /**
@@ -533,7 +517,7 @@ public class TopologyBuilder {
 
     // depth first successors traversal
     for (StreamConf downStream : n.outputs.values()) {
-       NodeConf successor = downStream.targetNode;
+      for (NodeConf successor : downStream.targetNodes) {
        if (successor == null) {
          continue;
        }
@@ -548,6 +532,7 @@ public class TopologyBuilder {
        } else if (stack.contains(successor)) {
           n.lowlink = Math.min(n.lowlink, successor.nindex);
        }
+      }
     }
 
     // pop stack for all root nodes    
@@ -589,9 +574,9 @@ public class TopologyBuilder {
     }
     
     for (StreamConf s : streams.values()) {
-      if (s.getSourceNode() == null && s.getTargetNode() == null) {
+      if (s.getSourceNode() == null && (s.getTargetNodes() == null || s.getTargetNodes().isEmpty())) {
         throw new IllegalStateException(String.format("Source or target needs to be defined for stream %s", s.getId()));
-      } else if (s.getSourceNode() == null || s.getTargetNode() == null) {
+      } else if (s.getSourceNode() == null || ((s.getTargetNodes() == null || s.getTargetNodes().isEmpty()))) {
         if (s.getProperty(TopologyBuilder.STREAM_CLASSNAME) == null) {
           throw new IllegalStateException(String.format("Property %s needs to be defined for adapter stream %s", TopologyBuilder.STREAM_CLASSNAME, s.getId()));
         }
@@ -619,6 +604,59 @@ public class TopologyBuilder {
       }
     }
     return classNames;
+  }
+
+  
+  public Topology getTopology() {
+
+    Topology tplg = new Topology(conf);
+
+    Map<NodeConf, NodeDecl> nodeMap = new HashMap<NodeConf, NodeDecl>(this.nodes.size());
+    // add all nodes first
+    for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
+      NodeConf nodeConf = nodeConfEntry.getValue();
+      InternalNode node = StramUtils.initNode(nodeConf.getNodeClassNameReqd(), nodeConf.getProperties());
+      NodeDecl nd = tplg.addNode(nodeConfEntry.getKey(), (AbstractNode)node);
+      nd.getProperties().putAll(nodeConf.getProperties());
+      nodeMap.put(nodeConf, nd);
+    }
+    
+    // wire nodes
+    for (Map.Entry<String, StreamConf> streamConfEntry : this.streams.entrySet()) {
+      StreamConf streamConf = streamConfEntry.getValue();
+      StreamDecl sd = tplg.addStream(streamConfEntry.getKey());
+      sd.setInline(streamConf.isInline());
+      
+      String serdeClassName = streamConf.getProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME);
+      if (serdeClassName != null) {
+        sd.setSerDeClass(StramUtils.classForName(serdeClassName, SerDe.class));
+      }
+        
+      if (streamConf.sourceNode != null) {
+        String portName = null;
+        for (Map.Entry<String, StreamConf> e : streamConf.sourceNode.outputs.entrySet()) {
+          if (e.getValue() == streamConf) {
+            portName = e.getKey();
+          }
+        }
+        NodeDecl sourceDecl = nodeMap.get(streamConf.sourceNode);
+        sd.setSource(sourceDecl.getOutput(portName));
+      } 
+      
+      for (NodeConf targetNode : streamConf.targetNodes) {
+        String portName = null;
+        for (Map.Entry<String, StreamConf> e : targetNode.inputs.entrySet()) {
+          if (e.getValue() == streamConf) {
+            portName = e.getKey();
+          }
+        }
+        NodeDecl targetDecl = nodeMap.get(targetNode);
+        sd.addSink(targetDecl.getInput(portName));
+      }
+    }
+    
+    return tplg;
+    
   }
   
   

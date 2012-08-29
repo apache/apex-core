@@ -26,9 +26,14 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Sets;
+import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
@@ -52,14 +57,14 @@ public class TopologyBuilderTest {
     
     NodeConf node1 = assertNode(nodeConfs, "node1");
     NodeConf node2 = assertNode(nodeConfs, "node2");
-    assertNode(nodeConfs, "node3");
-    assertNode(nodeConfs, "node4");
+    NodeConf node3 = assertNode(nodeConfs, "node3");
+    NodeConf node4 = assertNode(nodeConfs, "node4");
 
     assertNotNull("nodeConf for root", node1);
     assertEquals("nodeId set", "node1", node1.getId());
 
     // verify node instantiation
-    AbstractNode dNode = initNode(node1, conf);
+    AbstractNode dNode = initNode(node1);
     assertNotNull(dNode);
     assertEquals(dNode.getClass(), EchoNode.class);
     EchoNode echoNode = (EchoNode)dNode;
@@ -68,21 +73,21 @@ public class TopologyBuilderTest {
     // check links
     assertEquals("node1 inputs", 0, node1.getInputStreams().size());
     assertEquals("node1 outputs", 1, node1.getOutputStreams().size());
-    StreamConf n1n2 = node2.getInput("n1n2");
+    StreamConf n1n2 = node2.getInput("inputPort");
     assertNotNull("n1n2", n1n2);
    
     // output/input stream object same
-    assertEquals("rootNode out is node2 in", n1n2, node1.getOutput("n1n2"));
+    assertEquals("rootNode out is node2 in", n1n2, node1.getOutput("outputPort"));
     assertEquals("n1n2 source", node1, n1n2.getSourceNode());
-    assertEquals("n1n2 target", node2, n1n2.getTargetNode());
+    Assert.assertArrayEquals("n1n2 target", new Object[]{node2}, n1n2.getTargetNodes().toArray());
     assertEquals("partitionPolicy", n1n2.getProperty("partitionPolicy"), "someTargetPolicy");
     assertEquals("stream name", "n1n2", n1n2.getId());
     Assert.assertFalse("n1n2 not inline (default)", n1n2.isInline());
     
     // node 2 streams to node 3 and node 4
-    assertEquals("node 2 number of outputs", 2, node2.getOutputStreams().size());
-    assertNotNull(node2.getOutput("n2n3"));
-    assertNotNull(node2.getOutput("n2n4"));
+    assertEquals("node 2 number of outputs", 1, node2.getOutputStreams().size());
+    StreamConf node2Output = node2.getOutputStreams().iterator().next();
+    Assert.assertEquals("outputs " + node2Output, Sets.newHashSet(node3, node4), node2Output.getTargetNodes());
 
     topConf.validate();
 
@@ -100,9 +105,8 @@ public class TopologyBuilderTest {
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends AbstractNode> T initNode(NodeConf nodeConf, Configuration conf) {
-    NodePConf snc = DNodeManager.createNodeContext(nodeConf.getId(), nodeConf);
-    return (T)StramUtils.initNode(snc, conf);
+  private <T extends AbstractNode> T initNode(NodeConf nodeConf) {
+    return (T)StramUtils.initNode(nodeConf.getNodeClassNameReqd(), nodeConf.getProperties());
   }
   
   public void printTopology(NodeConf node, Map<String, NodeConf> allNodes, int level) {
@@ -112,8 +116,10 @@ public class TopologyBuilderTest {
       }
       System.out.println(prefix + node.getId());
       for (StreamConf downStream : node.getOutputStreams()) {
-          if (downStream.getTargetNode() != null) {
-            printTopology(downStream.getTargetNode(), allNodes, level+1);
+          if (!downStream.getTargetNodes().isEmpty()) {
+            for (NodeConf targetNode : downStream.getTargetNodes()) {
+              printTopology(targetNode, allNodes, level+1);
+            }
           }
       }
   }
@@ -127,8 +133,8 @@ public class TopologyBuilderTest {
         fail("Could not load " + resourcePath);
       }
       props.load(is);
-      TopologyBuilder b = new TopologyBuilder(new Configuration());
-      b.addFromProperties(props);
+      TopologyBuilder b = new TopologyBuilder()
+        .addFromProperties(props);
       assertEquals("number of node confs", 4, b.getAllNodes().size());
       assertEquals("number of root nodes", 3, b.getRootNodes().size());
 
@@ -143,13 +149,13 @@ public class TopologyBuilderTest {
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", node3Props.get("myStringProperty"));
       assertEquals("node3.classname", EchoNode.class.getName(), node3Props.get(TopologyBuilder.NODE_CLASSNAME));
 
-      EchoNode dnode3 = initNode(node3, new Configuration());
+      EchoNode dnode3 = initNode(node3);
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", dnode3.myStringProperty);
       assertFalse("node3.booleanProperty", dnode3.booleanProperty);
       
       NodeConf node4 = b.getOrAddNode("node4");
       assertEquals("node4.myStringProperty", "overrideNode4", node4.getProperties().get("myStringProperty"));
-      EchoNode dnode4 = (EchoNode)initNode(node4, new Configuration());
+      EchoNode dnode4 = (EchoNode)initNode(node4);
       assertEquals("node4.myStringProperty", "overrideNode4", dnode4.myStringProperty);
       assertTrue("node4.booleanProperty", dnode4.booleanProperty);
 
@@ -157,18 +163,17 @@ public class TopologyBuilderTest {
       assertNotNull(input1);
       assertEquals("n1n2 policy default", "defaultStreamPolicy", s1.getProperty("partitionPolicy"));
       Assert.assertNull("input1 no source", input1.getSourceNode());
-      Assert.assertEquals("input1 target ", b.getOrAddNode("node1"), input1.getTargetNode());
+      Assert.assertEquals("input1 target ", b.getOrAddNode("node1"), input1.getTargetNodes().iterator().next());
       assertEquals("input1.myConfigProperty", "myConfigPropertyValue", input1.getProperty("myConfigProperty"));
       assertEquals("input1 classname", NumberGeneratorInputAdapter.class.getName(), input1.getProperty(TopologyBuilder.STREAM_CLASSNAME));
       assertEquals("input1 properties count", 2, input1.getProperties().size());
       b.validate();
+      
   }
   
   @Test
   public void testCycleDetection() {
-     // blank configuration w/o default stram resources
-     Configuration conf = new Configuration();    
-     TopologyBuilder b = new TopologyBuilder(conf);
+     TopologyBuilder b = new TopologyBuilder();
      
      //NodeConf node1 = b.getOrAddNode("node1");
      NodeConf node2 = b.getOrAddNode("node2");
@@ -179,24 +184,28 @@ public class TopologyBuilderTest {
      NodeConf node7 = b.getOrAddNode("node7");
 
      // strongly connect n2-n3-n4-n2
-     node2.addOutput(b.getOrAddStream("n2n3"));
-     node3.addInput(b.getOrAddStream("n2n3"));
+     b.getOrAddStream("n2n3")
+       .setSource("out1", node2)
+       .addSink("in1", node3);
 
-     node3.addOutput(b.getOrAddStream("n3n4"));
-     node4.addInput(b.getOrAddStream("n3n4"));
+     b.getOrAddStream("n3n4")
+       .setSource("out1", node3)
+       .addSink("in1", node4);
+       
+     b.getOrAddStream("n4n2")
+       .setSource("out1", node4)
+       .addSink("in2", node2);
 
-     node4.addOutput(b.getOrAddStream("n4n2"));
-     node2.addInput(b.getOrAddStream("n4n2"));
-     
      // self referencing node cycle
-     node7.addInput(b.getOrAddStream("n7n7"));
+     StreamConf n7n7 = b.getOrAddStream("n7n7")
+         .setSource("out1", node7)
+         .addSink("in1", node7);
      try {
-       node7.addInput(b.getOrAddStream("n7n7"));
+       n7n7.addSink("in1", node7);
        fail("cannot add to stream again");
      } catch (Exception e) {
        // expected, stream can have single input/output only
      }
-     node7.addOutput(b.getOrAddStream("n7n7"));
 
      List<List<String>> cycles = new ArrayList<List<String>>();
      b.findStronglyConnected(node7, cycles);
@@ -237,8 +246,23 @@ public class TopologyBuilderTest {
   public static class TestSerDe extends DefaultSerDe {
     
   }
-  
+
+  /**
+   * Node for topology testing. 
+   * Test should reference the ports defined using the constants.
+   */
+  @NodeAnnotation(
+      ports = {
+          @PortAnnotation(name = EchoNode.INPUT1,  type = PortType.INPUT),
+          @PortAnnotation(name = EchoNode.INPUT2,  type = PortType.INPUT),
+          @PortAnnotation(name = EchoNode.OUTPUT1, type = PortType.OUTPUT)
+      }
+  )
   public static class EchoNode extends AbstractNode {
+    public static final String INPUT1 = "input1";
+    public static final String INPUT2 = "input2";
+    public static final String OUTPUT1 = "output1";
+
     private static final Logger logger = LoggerFactory.getLogger(EchoNode.class);
 
     boolean booleanProperty;

@@ -4,114 +4,67 @@
  */
 package com.malhartech.stram.conf;
 
-import com.malhartech.annotation.NodeAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractNode;
+import com.malhartech.stram.conf.Topology.InputPort;
+import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.conf.Topology.OutputPort;
+import com.malhartech.stram.conf.Topology.StreamDecl;
 
 
 public class NewTopologyBuilder {
 
-  class InputPort {
-  }
+  private Topology topology = new Topology();;
+  
+  public class StreamBuilder {
+    final private StreamDecl streamDecl;
 
-  class OutputPort {
-  }
-
-  class StreamDeclaration {
-    StreamDeclaration addSink(InputPort port) {
+    private StreamBuilder(StreamDecl streamDecl) {
+      this.streamDecl = streamDecl;
+    }
+    
+    public StreamBuilder setInline(boolean inline) {
+      streamDecl.setInline(inline);
       return this;
     }
     
-    StreamDeclaration setSource(OutputPort port) {
+    public StreamBuilder addSink(InputPort port) {
+      streamDecl.addSink(port);
       return this;
     }
-  }
-  
-  class NodeDeclaration {
-    NodeDeclaration(String id, AbstractNode node) {
-      
-    }
 
-    InputPort getInput(String portName) {
-      throw new UnsupportedOperationException();
+    public StreamBuilder setSource(OutputPort port) {
+      streamDecl.setSource(port);
+      return this;
     }
-    
-    OutputPort getOutput(String portName) {
-      throw new UnsupportedOperationException();
-    }
-    
-  }
-
-  NodeDeclaration addNode(String id, AbstractNode node) {
-     return new NodeDeclaration(id, node);
     
   }
   
-  StreamDeclaration addStream(String id) {
-    throw new UnsupportedOperationException();
+  public class NodeBuilder {
+    final private NodeDecl decl;
+    
+    private NodeBuilder(NodeDecl decl) {
+      this.decl = decl;
+    }
+
+    public InputPort getInput(String portName) {
+      return decl.getInput(portName);
+    }
+    
+    public OutputPort getOutput(String portName) {
+      return decl.getOutput(portName);
+    }
   }
 
+  public NodeBuilder addNode(String id, AbstractNode node) {
+    return new NodeBuilder(topology.addNode(id, node));
+  }
   
-  public static void main(String[] args) {
-
-    @NodeAnnotation(
-        ports = {
-            @PortAnnotation(name = "goodOutputPort",  type = PortType.OUTPUT),
-            @PortAnnotation(name = "badOutputPort",  type = PortType.OUTPUT)
-        }
-    )
-    class ValidationNode extends AbstractNode {
-      @Override
-      public void process(Object payload) {
-        // classify tuples
-      }
-    }
-
-    @NodeAnnotation(
-        ports = {
-            @PortAnnotation(name = "countInputPort",  type = PortType.INPUT)
-        }
-    )
-    class CounterNode extends AbstractNode {
-      @Override
-      public void process(Object payload) {
-        // count tuples
-      }
-    }
-
-    @NodeAnnotation(
-        ports = {
-            @PortAnnotation(name = "echoInputPort",  type = PortType.INPUT)
-        }
-    )
-    class ConsoleOutputNode extends AbstractNode {
-      @Override
-      public void process(Object payload) {
-        // print tuples
-      }
-    }
-    
-    
-    NewTopologyBuilder b = new NewTopologyBuilder();
-    
-    NodeDeclaration validationNode = b.addNode("validationNode", new ValidationNode());
-    NodeDeclaration countGoodNode = b.addNode("countGoodNode", new CounterNode());
-    NodeDeclaration countBadNode = b.addNode("countBadNode", new CounterNode());
-    NodeDeclaration echoBadNode = b.addNode("echoBadNode", new ConsoleOutputNode());
-
-    // good tuples to counter node
-    b.addStream("goodTuplesStream")
-      .setSource(validationNode.getOutput("goodOutputPort"))
-      .addSink(countGoodNode.getInput("countInputPort"));
-
-    // bad tuples to separate stream and echo node
-    // (stream with 2 outputs)
-    b.addStream("badTuplesStream")
-      .setSource(validationNode.getOutput("badOutputPort"))
-      .addSink(countBadNode.getInput("countInputPort"))
-      .addSink(echoBadNode.getInput("echoInputPort"));
+  public StreamBuilder addStream(String id) {
+    return new StreamBuilder(topology.addStream(id));
+  }
+  
+  public Topology getTopology() {
+    return topology;
   }
   
 } 
-  

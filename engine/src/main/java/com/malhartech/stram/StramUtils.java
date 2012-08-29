@@ -9,7 +9,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 import org.apache.commons.beanutils.BeanUtils;
-import org.apache.hadoop.conf.Configuration;
 
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.InternalNode;
@@ -26,19 +25,28 @@ public abstract class StramUtils {
   public static SerDe getSerdeInstance(Map<String, String> streamProps) {
     String className = streamProps.get(TopologyBuilder.STREAM_SERDE_CLASSNAME);
     if (className != null) {
-      try {
-        Class<? extends SerDe> serdeClass = Class.forName(className).asSubclass(SerDe.class);
-        return serdeClass.newInstance();
-      } catch (ClassNotFoundException e) {
-        throw new IllegalArgumentException("SerDe class not found: " + className, e);
-      } catch (IllegalAccessException e) {
-        throw new IllegalArgumentException("Failed to instantiate SerDe", e);
-      } catch (InstantiationException e) {
-        throw new IllegalArgumentException("Failed to instantiate SerDe", e);
-      }      
+      return newInstance(classForName(className, SerDe.class));
     } else {
       return new DefaultSerDe();
     }
+  }
+
+  public static final <T> Class<? extends T> classForName(String className, Class<T> superClass) {
+    try {
+      return Class.forName(className).asSubclass(superClass);
+    } catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException("Class not found: " + className, e);
+    }      
+  }
+  
+  public static final <T> T newInstance(Class<T> clazz) {
+    try {
+      return clazz.newInstance();
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
+    } catch (InstantiationException e) {
+      throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
+    }      
   }
   
   /**
@@ -47,18 +55,15 @@ public abstract class StramUtils {
    * @param nodeConf
    * @param conf
    */
-  public static InternalNode initNode(NodePConf nodeConf, Configuration conf)
+  public static InternalNode initNode(String className, Map<String, String> properties)
   {      
     try {
-      Class<? extends InternalNode> nodeClass = Class.forName(nodeConf.getDnodeClassName()).asSubclass(InternalNode.class);
+      Class<? extends InternalNode> nodeClass = classForName(className, InternalNode.class);
       Constructor<? extends InternalNode> c = nodeClass.getConstructor();
       InternalNode node = c.newInstance();
       // populate custom properties
-      BeanUtils.populate(node, nodeConf.getProperties());
+      BeanUtils.populate(node, properties);
       return node;
-    }
-    catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Node class not found: " + nodeConf.getDnodeClassName(), e);
     }
     catch (IllegalAccessException e) {
       throw new IllegalArgumentException("Error setting node properties", e);
@@ -67,13 +72,13 @@ public abstract class StramUtils {
       throw new IllegalArgumentException("Error setting node properties", e);
     }
     catch (SecurityException e) {
-      throw new IllegalArgumentException("Error creating instance of class: " + nodeConf.getDnodeClassName(), e);
+      throw new IllegalArgumentException("Error creating instance of class: " + className, e);
     }
     catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeConf.getDnodeClassName(), e);
+      throw new IllegalArgumentException("Constructor with NodeContext not found: " + className, e);
     }
     catch (InstantiationException e) {
-      throw new IllegalArgumentException("Failed to instantiate: " + nodeConf.getDnodeClassName(), e);
+      throw new IllegalArgumentException("Failed to instantiate: " + className, e);
     }
   }
   

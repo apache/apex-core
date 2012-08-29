@@ -16,9 +16,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.fusesource.hawtbuf.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.dag.NodeContext;
+import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
+import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StramChildAgent.UndeployRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
@@ -31,15 +35,15 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbea
 import com.malhartech.stram.TopologyDeployer.PTComponent;
 import com.malhartech.stram.TopologyDeployer.PTContainer;
 import com.malhartech.stram.TopologyDeployer.PTInput;
-import com.malhartech.stram.TopologyDeployer.PTInputAdapter;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.TopologyDeployer.PTOutput;
 import com.malhartech.stram.TopologyDeployer.PTOutputAdapter;
+import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.InputPort;
+import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.conf.Topology.StreamDecl;
 import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import com.malhartech.stram.webapp.NodeInfo;
-
 /**
  * 
  * Tracks topology provisioning/allocation to containers<p>
@@ -90,15 +94,14 @@ public class DNodeManager
   final private TopologyDeployer deployer;
   final private String checkpointDir;
   
-  public DNodeManager(TopologyBuilder topology) {
-    this.deployer = new TopologyDeployer();
-    this.deployer.init(topology.getContainerCount(), topology);
+  public DNodeManager(Topology topology) {
+    this.deployer = new TopologyDeployer(topology);
 
-    this.windowSizeMillis = topology.getConf().getInt(TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS, 500);
+    this.windowSizeMillis = topology.getConf().getInt(Topology.STRAM_WINDOW_SIZE_MILLIS, 500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
-    checkpointDir = topology.getConf().get(TopologyBuilder.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
-    this.checkpointIntervalMillis = topology.getConf().getInt(TopologyBuilder.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
+    checkpointDir = topology.getConf().get(Topology.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
+    this.checkpointIntervalMillis = topology.getConf().getInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
     
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
@@ -219,54 +222,26 @@ public class DNodeManager
    * @return {@link com.malhartech.stram.NodePConf}
    * 
    */
-  public static NodePConf createNodeContext(String dnodeId, NodeConf nodeConf)
+  private static NodeDeployInfo createNodeContext(String dnodeId, NodeDecl nodeDecl)
   {
-    NodePConf snc = new NodePConf();
-    snc.setDnodeClassName(nodeConf.getProperties().get(TopologyBuilder.NODE_CLASSNAME));
-    if (snc.getDnodeClassName() == null) {
-      throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", nodeConf.getId(), TopologyBuilder.NODE_CLASSNAME));
+    NodeDeployInfo ndi = new NodeDeployInfo();
+    
+    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    try {
+      NodeContext.serializeNode(nodeDecl.getNode(), os);
+      ndi.serializedNode = os.toByteArray();
+      os.close();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to serialize " + nodeDecl + "(" + nodeDecl.getNode() + ")");
     }
-    snc.setProperties(nodeConf.getProperties());
-    snc.setLogicalId(nodeConf.getId());
-    snc.setDnodeId(dnodeId);
-    return snc;
-  }
-  
-  private NodePConf newAdapterNodeContext(String id, StreamConf streamConf, Long checkpointWindowId)
-  {
-    NodePConf snc = new NodePConf();
-    snc.setDnodeClassName(AdapterWrapperNode.class.getName());
-    Map<String, String> properties = new HashMap<String, String>(streamConf.getProperties());
-    String streamClassName = properties.get(TopologyBuilder.STREAM_CLASSNAME);
-    if (streamClassName == null) {
-      throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", streamConf.getId(), TopologyBuilder.STREAM_CLASSNAME));
-    }
-    properties.put(AdapterWrapperNode.KEY_STREAM_CLASS_NAME, streamClassName);
-    properties.put(AdapterWrapperNode.KEY_IS_INPUT, String.valueOf(streamConf.getSourceNode() == null));
-    if (checkpointWindowId != null) {
-      properties.put(AdapterWrapperNode.CHECKPOINT_WINDOW_ID, String.valueOf(checkpointWindowId.longValue()));
-    }
-    snc.setProperties(properties);
-    snc.setLogicalId(streamConf.getId());
-    snc.setDnodeId(id);
-    return snc;
-  }
-
-  private StreamPConf newStreamContext(StreamConf streamConf, InetSocketAddress bufferServerAddress,
-                                       byte[] subscriberPartition, String sourceNodeId, String targetNodeId)
-  {
-    // create new stream info and assign buffer server
-    StreamPConf sc = new StreamPConf();
-    sc.setId(streamConf.getId());
-    sc.setBufferServerHost(bufferServerAddress.getHostName());
-    sc.setBufferServerPort(bufferServerAddress.getPort());
-    sc.setInline(streamConf.isInline());
-    if (subscriberPartition != null) {
-      sc.setPartitionKeys(Arrays.asList(subscriberPartition));
-    }
-    sc.setSourceNodeId(sourceNodeId);
-    sc.setTargetNodeId(targetNodeId);
-    return sc;
+    //snc.setDnodeClassName(nodeDecl.getProperties().get(TopologyBuilder.NODE_CLASSNAME));
+    //if (snc.getDnodeClassName() == null) {
+    //  throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", nodeDecl.getId(), TopologyBuilder.NODE_CLASSNAME));
+    //}
+    ndi.properties = nodeDecl.getProperties();
+    ndi.declaredId = nodeDecl.getId();
+    ndi.id = dnodeId;
+    return ndi;
   }
 
   public StreamingContainerContext assignContainerForTest(String containerId, InetSocketAddress bufferServerAddress)
@@ -327,124 +302,89 @@ public class DNodeManager
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setCheckpointDfsPath(this.checkpointDir);
     
-    List<StreamPConf> streams = new ArrayList<StreamPConf>();
-    Map<NodePConf, PTComponent> nodes = new LinkedHashMap<NodePConf, PTComponent>();
-    Map<String, StreamPConf> publishers = new LinkedHashMap<String, StreamPConf>();
+//    List<StreamPConf> streams = new ArrayList<StreamPConf>();
+    Map<NodeDeployInfo, PTNode> nodes = new LinkedHashMap<NodeDeployInfo, PTNode>();
+    Map<String, NodeOutputDeployInfo> publishers = new LinkedHashMap<String, NodeOutputDeployInfo>();
     
     for (PTNode node : deployNodes) {
-      NodePConf pnodeConf = createNodeContext(node.id, node.getLogicalNode());
+      NodeDeployInfo ndi = createNodeContext(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
       if (checkpointWindowId != null) {
         LOG.debug("Node {} has checkpoint state {}", node.id, checkpointWindowId);
-        pnodeConf.setCheckpointWindowId(checkpointWindowId);
+        ndi.checkpointWindowId = checkpointWindowId;
       }
-      nodes.put(pnodeConf, node);
+      nodes.put(ndi, node);
+      ndi.inputs = new ArrayList<NodeInputDeployInfo>(node.inputs.size());
+      ndi.outputs = new ArrayList<NodeOutputDeployInfo>(node.outputs.size());
       
       for (PTOutput out : node.outputs) {
-        final StreamConf streamConf = out.logicalStream;
-        if (out instanceof PTOutputAdapter) {
-          NodePConf adapterNode = newAdapterNodeContext(out.id, streamConf, checkpointWindowId);
-          nodes.put(adapterNode, out);
-          List<PTNode> upstreamNodes = deployer.getNodes(streamConf.getSourceNode());
-          if (upstreamNodes.size() == 1) {
-            // inline adapter and source node
-            StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null, 
-                node.id, adapterNode.getDnodeId());
-            sc.setInline(true);
-            sc.setProperties(streamConf.getProperties());
-            streams.add(sc);
-          } else {
-            // partitioned source node - adapter subscribes to buffer server(s)
-            for (PTNode upstreamNode : upstreamNodes) {
-              // merge node
-              StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null,
-                  upstreamNode.id, adapterNode.getDnodeId());
-              if (upstreamNode == node) {
-                // adapter deployed to same container
-                sc.setInline(true);
-              } else {
-                sc.setInline(false);
-              }
-              sc.setBufferServerChannelType(streamConf.getId());
-              sc.setProperties(streamConf.getProperties());
-              streams.add(sc);
-            }
-          }
+        final StreamDecl streamDecl = out.logicalStream;
+        // buffer server or inline publisher
+        NodeOutputDeployInfo portInfo = new NodeOutputDeployInfo();
+        portInfo.declaredStreamId = streamDecl.getId();
+        portInfo.portName = out.portName;
+
+        if (!streamDecl.isInline()) {
+          portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
+          portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
         } else {
-          // buffer server or inline publisher, intra container case handled below 
-          StreamPConf sc = newStreamContext(streamConf, node.container.bufferServerAddress, null, node.id, "-1subscriberInOtherContainer");
-          sc.setBufferServerChannelType(streamConf.getSourceNode().getId());
-          sc.setProperties(streamConf.getProperties());
-          publishers.put(node.id + "/" + streamConf.getId(), sc);
+          // target set below 
+          portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
         }
+        //portInfo.setBufferServerChannelType(streamDecl.getSource().getNode().getId());
+
+        ndi.outputs.add(portInfo);
+        publishers.put(node.id + "/" + streamDecl.getId(), portInfo);
       }
     }
 
     // after we know all publishers within container, determine subscribers
     
-    for (PTNode subscriberNode : deployNodes) {
-      for (PTInput in : subscriberNode.inputs) {
-        final StreamConf streamConf = in.logicalStream;
-        if (in instanceof PTInputAdapter) {
-          // input adapter, with implementation class
-          NodePConf adapterNode = newAdapterNodeContext(in.id, streamConf, checkpoints.get(subscriberNode));
-          nodes.put(adapterNode, in);
-          List<PTNode> subscriberNodes = deployer.getNodes(streamConf.getTargetNode());
-          if (subscriberNodes.size() == 1) {
-            // inline adapter and target node
-            StreamPConf sc = newStreamContext(streamConf, in.getBufferServerAddress(), null,
-                adapterNode.getDnodeId(), subscriberNode.id);
-            sc.setInline(true);
-            sc.setProperties(streamConf.getProperties());
-            streams.add(sc);
-          }
-          else {
-            // multiple target nodes - adapter publishes to buffer server
-            StreamPConf sc = newStreamContext(streamConf, in.getBufferServerAddress(), in.partition, 
-                adapterNode.getDnodeId(), subscriberNode.id);
-            sc.setInline(false);
-            // type is adapter name for multiple downstream nodes to be able to subscribe
-            sc.setBufferServerChannelType(streamConf.getId());
-            sc.setProperties(streamConf.getProperties());
-            streams.add(sc);
-          }
-        } else {
-          // input from other node(s) OR input adapter
-          if (streamConf.getSourceNode() == null) {
-            // source is input adapter
-            StreamPConf sc = newStreamContext(streamConf, in.getBufferServerAddress(), in.partition,
-                in.source.id, subscriberNode.id);
-            sc.setBufferServerChannelType(streamConf.getId());
-            sc.setProperties(streamConf.getProperties());
-            streams.add(sc);
-          } else {
-            PTNode sourceNode = (PTNode)in.source;
-            StreamPConf sc = newStreamContext(streamConf, in.getBufferServerAddress(), in.partition,
-                in.source.id, subscriberNode.id);
-            sc.setBufferServerChannelType(streamConf.getSourceNode().getId());
-            sc.setProperties(streamConf.getProperties());
-            sc.setInline(false);
-            if (sourceNode.container == subscriberNode.container) {
-              // connection within container
-              publishers.remove(in.source.id + "/" + streamConf.getId());
-              if (deployer.getNodes(streamConf.getSourceNode()).size() == 1 && streamConf.isInline()) {
-                sc.setInline(true);
-              }
-            }
-            streams.add(sc);
-          }
+    for (Map.Entry<NodeDeployInfo, PTNode> nodeEntry : nodes.entrySet()) {
+      NodeDeployInfo ndi = nodeEntry.getKey();
+      PTNode node = nodeEntry.getValue();
+      for (PTInput in : node.inputs) {
+        final StreamDecl streamDecl = in.logicalStream;
+        // input from other node(s) OR input adapter
+        if (streamDecl.getSource() == null) {
+          throw new IllegalStateException("source is null: " + in);
         }
+        PTNode sourceNode = (PTNode)in.source;
+
+        NodeInputDeployInfo portInfo = new NodeInputDeployInfo();
+        portInfo.declaredStreamId = streamDecl.getId();
+        portInfo.portName = in.portName;
+        portInfo.sourceNodeId = sourceNode.id;
+        String partSuffix = "";
+        if (in.partition != null) {
+          portInfo.partitionKeys = Arrays.asList(in.partition);
+          partSuffix = "/" + ndi.id; // each partition is separate group
+        }
+
+        if (streamDecl.isInline() && sourceNode.container == node.container) {
+          // inline input (both nodes in same container and inline hint set)
+          NodeOutputDeployInfo outputInfo = publishers.get(sourceNode.id + "/" + streamDecl.getId());
+          if (outputInfo == null) {
+            throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
+          }
+          // set the id required to inline link both nodes
+          outputInfo.inlineTargetNodeId = node.id;
+        } else {
+          // buffer server input
+          portInfo.bufferServerHost = in.getBufferServerAddress().getHostName();
+          portInfo.bufferServerPort = in.getBufferServerAddress().getPort();
+          // buffer server wide unique subscriber grouping:
+          // publisher id + stream name + partition identifier (if any)
+          portInfo.bufferServerSubscriberType = sourceNode.id + "/" + streamDecl.getId() + partSuffix;
+        } 
+        ndi.inputs.add(portInfo);
       }
     }
 
-    // add remaining publishers (subscribers in other containers)
-    streams.addAll(publishers.values());
+    scc.nodeList = new ArrayList<NodeDeployInfo>(nodes.keySet());
     
-    scc.setNodes(new ArrayList<NodePConf>(nodes.keySet()));
-    scc.setStreams(streams);
-    
-    for (Map.Entry<NodePConf, PTComponent> e : nodes.entrySet()) {
-      this.nodeStatusMap.put(e.getKey().getDnodeId(), new NodeStatus(container, e.getValue()));
+    for (Map.Entry<NodeDeployInfo, PTNode> e : nodes.entrySet()) {
+      this.nodeStatusMap.put(e.getKey().id, new NodeStatus(container, e.getValue()));
     }
     
     return scc;
@@ -461,7 +401,6 @@ public class DNodeManager
 
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
-//addContainerStopRequest(heartbeat.getContainerId());    
     boolean containerIdle = true;
     long currentTimeMillis = System.currentTimeMillis();
     
@@ -539,7 +478,7 @@ public class DNodeManager
       return;
     }
     
-    NodeConf nodeConf = ((PTNode)status.node).getLogicalNode();
+    NodeDecl nodeConf = ((PTNode)status.node).getLogicalNode();
     // check load constraints
     int tuplesProcessed = shb.getNumberTuplesProcessed();
     // TODO: populate into bean at initialization time
@@ -589,16 +528,18 @@ public class DNodeManager
     long maxCheckpoint = node.getRecentCheckpoint();
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : node.outputs) {
-      NodeConf lDownNode = out.logicalStream.getTargetNode(); 
-      if (lDownNode != null) {
-        List<PTNode> downNodes = deployer.getNodes(lDownNode);
-        for (PTNode downNode : downNodes) {
-          Long downstreamCheckpoint = recoveryCheckpoints.get(downNode);
-          if (downstreamCheckpoint == null) {
-            // downstream traversal
-            downstreamCheckpoint = getRecoveryCheckpoint(downNode, recoveryCheckpoints);
+      for (InputPort targetPort : out.logicalStream.getSinks()) {
+        NodeDecl lDownNode = targetPort.getNode(); 
+        if (lDownNode != null) {
+          List<PTNode> downNodes = deployer.getNodes(lDownNode);
+          for (PTNode downNode : downNodes) {
+            Long downstreamCheckpoint = recoveryCheckpoints.get(downNode);
+            if (downstreamCheckpoint == null) {
+              // downstream traversal
+              downstreamCheckpoint = getRecoveryCheckpoint(downNode, recoveryCheckpoints);
+            }
+            maxCheckpoint = Math.min(maxCheckpoint, downstreamCheckpoint);
           }
-          maxCheckpoint = Math.min(maxCheckpoint, downstreamCheckpoint);
         }
       }
     }

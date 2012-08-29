@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.ShipContainingJars;
+import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
@@ -390,8 +391,8 @@ public class StramClient
     }
 
     LOG.info("libjars: {}", libJarsCsv);
-    topology.getConf().set(TopologyBuilder.LIBJARS, libJarsCsv);
-    topology.getConf().set(TopologyBuilder.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
+    topology.getConf().set(Topology.STRAM_LIBJARS, libJarsCsv);
+    topology.getConf().set(Topology.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
 
 
     // set local resources for the application master

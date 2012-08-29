@@ -20,9 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.SerDe;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.conf.Topology.StreamDecl;
 
 /**
  *
@@ -78,11 +78,12 @@ public class TopologyDeployer {
    * 
    */
   public static class PTInput extends PTComponent {
-    final TopologyBuilder.StreamConf logicalStream;
+    final Topology.StreamDecl logicalStream;
     final PTComponent target;
     final byte[] partition;
     final PTComponent source;
-
+    final String portName;
+    
     /**
      * 
      * @param logicalStream
@@ -90,11 +91,12 @@ public class TopologyDeployer {
      * @param partition
      * @param source 
      */
-    protected PTInput(StreamConf logicalStream, PTComponent target, byte[] partition, PTComponent source) {
+    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, byte[] partition, PTComponent source) {
       this.logicalStream = logicalStream;
       this.target = target;
       this.partition = partition;
       this.source = source;
+      this.portName = portName;
     }
 
     /**
@@ -127,8 +129,8 @@ public class TopologyDeployer {
    * 
    */
   public static class PTInputAdapter extends PTInput {
-    protected PTInputAdapter(StreamConf logicalStream, PTComponent target, byte[] partition) {
-      super(logicalStream, target, partition, null);
+    protected PTInputAdapter(String portName, StreamDecl logicalStream, PTComponent target, byte[] partition) {
+      super(portName, logicalStream, target, partition, null);
     }
   }
   
@@ -141,17 +143,19 @@ public class TopologyDeployer {
    * 
    */
   public static class PTOutput extends PTComponent {
-    final TopologyBuilder.StreamConf logicalStream;
+    final Topology.StreamDecl logicalStream;
     final PTComponent source;
+    final String portName;
     
     /**
      * Constructor
      * @param logicalStream
      * @param source 
      */
-    protected PTOutput(StreamConf logicalStream, PTComponent source) {
+    protected PTOutput(String portName, StreamDecl logicalStream, PTComponent source) {
       this.logicalStream = logicalStream;
       this.source = source;
+      this.portName = portName;
     }
 
     /**
@@ -177,8 +181,8 @@ public class TopologyDeployer {
        * @param logicalStream
        * @param source 
        */
-    protected PTOutputAdapter(StreamConf logicalStream, PTComponent source) {
-      super(logicalStream, source);
+    protected PTOutputAdapter(String portName, StreamDecl logicalStream, PTComponent source) {
+      super(portName, logicalStream, source);
     }
   }
   
@@ -191,7 +195,7 @@ public class TopologyDeployer {
    * 
    */
   public static class PTNode extends PTComponent {
-    TopologyBuilder.NodeConf logicalNode;
+    Topology.NodeDecl logicalNode;
     List<PTInput> inputs;
     List<PTOutput> outputs;
     PTContainer container;
@@ -201,7 +205,7 @@ public class TopologyDeployer {
      * 
      * @return {@link com.malhartech.stram.conf.NodeConf}
      */
-    public NodeConf getLogicalNode() {
+    public NodeDecl getLogicalNode() {
       return this.logicalNode;
     }
 
@@ -252,9 +256,8 @@ public class TopologyDeployer {
     }
   }
 
-  private Map<NodeConf, List<PTNode>> deployedNodes = new HashMap<NodeConf, List<PTNode>>();
-  private Map<StreamConf, PTOutputAdapter> outputAdapters = new HashMap<StreamConf, PTOutputAdapter>();
-  private Map<StreamConf, PTInputAdapter> inputAdapters = new HashMap<StreamConf, PTInputAdapter>();
+  private Map<NodeDecl, List<PTNode>> deployedNodes = new HashMap<NodeDecl, List<PTNode>>();
+  private Map<StreamDecl, PTInputAdapter> inputAdapters = new HashMap<StreamDecl, PTInputAdapter>();
   private List<PTContainer> containers = new ArrayList<PTContainer>();
   private int maxContainers = 1;
   
@@ -273,20 +276,22 @@ public class TopologyDeployer {
   /**
    * 
    * @param maxContainers
-   * @param tb 
+   * @param tplg
    */
-  public void init(int maxContainers, TopologyBuilder tb) {
+  public TopologyDeployer(Topology tplg) {
 
-    this.maxContainers = Math.max(maxContainers,1);
-    Stack<NodeConf> pendingNodes = new Stack<NodeConf>();
-    for (NodeConf n : tb.getAllNodes().values()) {
+    this.maxContainers = Math.max(tplg.getMaxContainerCount(),1);
+    LOG.debug("Initializing topology for {} containers.", this.maxContainers);
+    
+    Stack<NodeDecl> pendingNodes = new Stack<NodeDecl>();
+    for (NodeDecl n : tplg.getAllNodes()) {
       pendingNodes.push(n);
     }
     
     int nodeCount = 0;
     
     while (!pendingNodes.isEmpty()) {
-      NodeConf n = pendingNodes.pop();
+      NodeDecl n = pendingNodes.pop();
 
       if (deployedNodes.containsKey(n)) {
         // node already deployed as upstream dependency
@@ -299,10 +304,10 @@ public class TopologyDeployer {
       boolean upstreamDeployed = true;
       PTNode inlineUpstreamNode = null;
       
-      for (StreamConf s : n.getInputStreams()) {
-        if (s.getSourceNode() != null && !deployedNodes.containsKey(s.getSourceNode())) {
+      for (StreamDecl s : n.getInputStreams().values()) {
+        if (s.getSource() != null && !deployedNodes.containsKey(s.getSource().getNode())) {
           pendingNodes.push(n);
-          pendingNodes.push(s.getSourceNode());
+          pendingNodes.push(s.getSource().getNode());
           upstreamDeployed = false;
           break;
         }
@@ -317,9 +322,9 @@ public class TopologyDeployer {
         } else {
           if (s.isInline()) {
             // node to be deployed with source node
-            if (s.getSourceNode() != null) {
+            if (s.getSource() != null) {
               // find the container for the node?
-              List<PTNode> deployedNodes = this.deployedNodes.get(s.getSourceNode());
+              List<PTNode> deployedNodes = this.deployedNodes.get(s.getSource().getNode());
               inlineUpstreamNode = deployedNodes.get(0);
             }
           }
@@ -361,79 +366,52 @@ public class TopologyDeployer {
 
   private AtomicInteger nodeSequence = new AtomicInteger();
   
-  private PTNode createPTNode(NodeConf nodeConf, byte[] partition, int instanceCount) {
+  private PTNode createPTNode(NodeDecl nodeDecl, byte[] partition, int instanceCount) {
 
     PTNode pNode = new PTNode();
-    pNode.logicalNode = nodeConf;
+    pNode.logicalNode = nodeDecl;
     pNode.inputs = new ArrayList<PTInput>();
     pNode.outputs = new ArrayList<PTOutput>();
     pNode.id = ""+nodeSequence.incrementAndGet();
     
-    for (StreamConf inputStream : nodeConf.getInputStreams()) {
+    for (Map.Entry<String, StreamDecl> inputEntry : nodeDecl.getInputStreams().entrySet()) {
       // find upstream node(s), 
       // (can be multiple with partitioning or load balancing)
-      if (inputStream.getSourceNode() != null) {
-        List<PTNode> upstreamNodes = deployedNodes.get(inputStream.getSourceNode());
+      StreamDecl streamDecl = inputEntry.getValue();
+      if (streamDecl.getSource() != null) {
+        List<PTNode> upstreamNodes = deployedNodes.get(streamDecl.getSource().getNode());
         for (PTNode upNode : upstreamNodes) {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
-            if (upstreamOut.logicalStream == inputStream) {
-              PTInput input = new PTInput(inputStream, pNode, partition, upNode);
+            if (upstreamOut.logicalStream == streamDecl) {
+              PTInput input = new PTInput(inputEntry.getKey(), streamDecl, pNode, partition, upNode);
               pNode.inputs.add(input);
             }
           }
         }
-      } else {
-        // input adapter
-        if (instanceCount == 0) {
-          // create adapter wrapper node
-          PTInputAdapter adapter = new PTInputAdapter(inputStream, pNode, partition);
-          adapter.id = ""+nodeSequence.incrementAndGet();
-          pNode.inputs.add(adapter);
-          inputAdapters.put(inputStream, adapter);
-        } else {
-          // stream from adapter wrapper node
-          PTInputAdapter adapter = inputAdapters.get(inputStream);
-          PTInput input = new PTInput(inputStream, pNode, partition, adapter);
-          pNode.inputs.add(input);
-        }
       }
     }
     
-    for (StreamConf outputStream : nodeConf.getOutputStreams()) {
-      if (outputStream.getTargetNode() != null) {
-        pNode.outputs.add(new PTOutput(outputStream, pNode));
-      } else {
-        // output adapter
-        if (instanceCount == 0) {
-          // create single adapter wrapper node
-          PTOutputAdapter adapter = new PTOutputAdapter(outputStream, pNode);
-          adapter.id = ""+nodeSequence.incrementAndGet();
-          pNode.outputs.add(adapter);
-          outputAdapters.put(outputStream, adapter);
-        } else {
-          // stream to adapter wrapper node
-          PTOutput output = new PTOutput(outputStream, pNode);
-          pNode.outputs.add(output);
-        }
-      }
+    for (Map.Entry<String, StreamDecl> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
+      pNode.outputs.add(new PTOutput(outputEntry.getKey(), outputEntry.getValue(), pNode));
     }
 
     return pNode;
   }
   
-  private byte[][] getStreamPartitions(StreamConf streamConf)
+  private byte[][] getStreamPartitions(StreamDecl streamConf)
   {
-    try {
-      SerDe serde = StramUtils.getSerdeInstance(streamConf.getProperties());
-      byte[][] partitions = serde.getPartitions();
-      if (partitions != null) {
-        //return new ArrayList<byte[]>(Arrays.asList(serde.getPartitions()));
-        return partitions;
+    if (streamConf.getSerDeClass() != null) {
+      try {
+        SerDe serde = StramUtils.newInstance(streamConf.getSerDeClass());
+        byte[][] partitions = serde.getPartitions();
+        if (partitions != null) {
+          return partitions;
+        }
       }
-    }
-    catch (Exception e) {
-      LOG.error("Failed to get partition info from SerDe", e);
+      catch (Exception e) {
+        throw new RuntimeException("Failed to get partition info from " + streamConf.getSerDeClass(), e);
+      }
     }
     return null;
   }
@@ -443,12 +421,12 @@ public class TopologyDeployer {
     return this.containers;
   }
  
-  protected List<PTNode> getNodes(NodeConf nodeConf) {
-    return this.deployedNodes.get(nodeConf);
+  protected List<PTNode> getNodes(NodeDecl nodeDecl) {
+    return this.deployedNodes.get(nodeDecl);
   }
   
-  protected PTInputAdapter getInputAdapter(StreamConf streamConf) {
-    return this.inputAdapters.get(streamConf);
+  protected PTInputAdapter getInputAdapter(StreamDecl streamDecl) {
+    return this.inputAdapters.get(streamDecl);
   }
   
 }

@@ -32,14 +32,14 @@
   <!--  Stream connecting node1 and node2 -->
 
   <property>
-    <name>stram.stream.n1n2.inputNode</name>
-    <value>node1</value>
+    <name>stram.stream.n1n2.input.0</name>
+    <value>node1.outputPort</value>
     <description></description>
   </property>
 
   <property>
-    <name>stram.stream.n1n2.outputNode</name>
-    <value>node2</value>
+    <name>stram.stream.n1n2.output.0</name>
+    <value>node2.inputPort</value>
     <description></description>
   </property>
 
@@ -58,14 +58,14 @@
   </property>
 
   <property>
-    <name>stram.stream.n2n3.inputNode</name>
-    <value>node2</value>
+    <name>stram.stream.n2n3.input.n2</name>
+    <value>node2.outputPort</value>
     <description>Node 3 receives input from node 2.</description>
   </property>
 
   <property>
-    <name>stram.stream.n2n3.outputNode</name>
-    <value>node3</value>
+    <name>stram.stream.n2n3.output.n3</name>
+    <value>node3.inputPort</value>
     <description>Node 3 receives input from node 2.</description>
   </property>
 
@@ -78,14 +78,8 @@
   </property>
 
   <property>
-    <name>stram.stream.n2n4.inputNode</name>
-    <value>node2</value>
-    <description>Node 2 sends to node 4.</description>
-  </property>
-
-  <property>
-    <name>stram.stream.n2n4.outputNode</name>
-    <value>node4</value>
+    <name>stram.stream.n2n3.output.node4</name>
+    <value>node4.inputPort</value>
     <description>Node 4 receives from node 2.</description>
   </property>
 
@@ -98,14 +92,14 @@
   </property>
 
   <property>
-    <name>stram.stream.n4n5.inputNode</name>
-    <value>node4</value>
+    <name>stram.stream.n4n5.input.node4</name>
+    <value>node4.outputPort</value>
     <description>Node 5 receives input from node 4.</description>
   </property>
 
   <property>
-    <name>stram.stream.n4n5.outputNode</name>
-    <value>node5</value>
+    <name>stram.stream.n4n5.output.node5</name>
+    <value>node5.inputPort</value>
     <description>Node 5 receives input from node 4.</description>
   </property>
 

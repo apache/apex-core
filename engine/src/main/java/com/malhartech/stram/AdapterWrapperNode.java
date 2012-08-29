@@ -155,8 +155,8 @@ public class AdapterWrapperNode extends AbstractNode implements Sink
             instance.setup(streamConf);
 
             long checkpointWindowId = streamConf.getLong(CHECKPOINT_WINDOW_ID, 0);
-            StreamContext ctx = new StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCENODE),
-                                                  streamConf.get(TopologyBuilder.STREAM_TARGETNODE));
+            StreamContext ctx = new StreamContext(streamConf.get(TopologyBuilder.STREAM_SOURCE),
+                                                  streamConf.get(TopologyBuilder.STREAM_TARGET));
             ctx.setStartingWindowId(checkpointWindowId);
             if (targetNode == null) {
                 /*

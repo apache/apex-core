@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
@@ -46,13 +47,13 @@ public class LaunchContainerRunnable implements Runnable
   final private YarnClientHelper yarnClient;
   final private Map<String, String> containerEnv = new HashMap<String, String>();
   final private InetSocketAddress heartbeatAddress;
-  final private TopologyBuilder topology;
+  final private Topology topology;
   final private Container container;
 
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, TopologyBuilder topology, InetSocketAddress heartbeatAddress)
+  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, Topology topology, InetSocketAddress heartbeatAddress)
   {
     this.container = lcontainer;
     this.yarnClient = yarnClient;

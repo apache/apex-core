@@ -20,7 +20,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
  * @author thomas
  */
 
-public class NodePConf extends StreamingNodeUmbilicalProtocol.WritableAdapter implements Context
+public class NodePConf extends StreamingNodeUmbilicalProtocol.WritableAdapter
 {
 
   private static final long serialVersionUID = 1L;
