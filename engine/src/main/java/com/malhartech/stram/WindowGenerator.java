@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
  */
-public class WindowGenerator implements Component, Runnable
+public class WindowGenerator implements Component<Configuration, Context>, Runnable
 {
   public static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
   /**
@@ -154,7 +154,7 @@ public class WindowGenerator implements Component, Runnable
   @Override
   public void deactivate()
   {
-    sinks = Collections.EMPTY_LIST;
+    sinks = Collections.emptyList();
     ses.shutdown();
   }
 

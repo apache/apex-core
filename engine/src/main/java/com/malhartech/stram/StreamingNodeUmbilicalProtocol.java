@@ -123,46 +123,6 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
          */
         public List<NodeDeployInfo> nodeList;
       
-//        
-// BEGIN OLD STUFF TO BE REMOVED
-//        
-        /**
-         * Nodes that are hosted in the container.
-         */
-        @Deprecated
-        private List<NodePConf> nodes;
-
-        @Deprecated
-        public List<NodePConf> getNodes()
-        {
-            return nodes;
-        }
-
-        @Deprecated
-        public void setNodes(List<NodePConf> nodes)
-        {
-            this.nodes = nodes;
-        }
-        /**
-         * Streams that have input/output from container.
-         */
-        @Deprecated
-        private List<StreamPConf> streams;
-
-        @Deprecated
-        public List<StreamPConf> getStreams()
-        {
-            return streams;
-        }
-
-        @Deprecated
-        public void setStreams(List<StreamPConf> streams)
-        {
-            this.streams = streams;
-        }
-//        
-// END OLD STUFF TO BE REMOVED        
-//        
         /**
          * How frequently should nodes heartbeat to stram. Recommended setting is 1000ms. Can be set to 0 for unit testing.
          */
@@ -221,8 +181,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
         public String toString()
         {
             return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-                    .append("nodes", this.nodes)
-                    .append("streams", this.streams)
+                    .append("nodes", this.nodeList)
                     .toString();
         }
     }

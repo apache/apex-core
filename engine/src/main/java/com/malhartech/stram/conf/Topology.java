@@ -9,8 +9,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -278,6 +280,35 @@ public class Topology implements Serializable, TopologyConstants {
   
   public int getMasterMemoryMB() {
     return conf.getInt(STRAM_MASTER_MEMORY_MB, 256);
+  }
+
+  /**
+   * Class dependencies for the topology. Used to determine jar file dependencies. 
+   * @return Set<String>
+   */
+  public Set<String> getClassNames() {
+    Set<String> classNames = new HashSet<String>();
+    for (NodeDecl n : this.nodes.values()) {
+      String className = n.node.getClass().getName();
+      if (className != null) {
+        classNames.add(className);
+      }
+    }
+    for (StreamDecl n : this.streams.values()) {
+      if (n.serDeClass != null) {
+        classNames.add(n.serDeClass.getName());
+      }
+    }
+    return classNames;
+  }
+  
+  @Override
+  public String toString() {
+    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+        append("nodes", this.nodes).
+        append("streams", this.streams).
+        append("properties", this.conf).
+        toString();
   }
   
 }

@@ -176,7 +176,7 @@ public class DNodeManager
       if (e.getKey() != cs.container) {
         StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
         UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
-        r.setNodes(ctx.getNodes(), ctx.getStreams());
+        r.setNodes(ctx.nodeList);
         undeployAckCountdown.incrementAndGet();
         StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
@@ -196,7 +196,7 @@ public class DNodeManager
       if (e.getKey() != cs.container) {
         StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
         DeployRequest r = new DeployRequest(e.getKey(), redeployAckCountdown, failedContainerDeployCnt);
-        r.setNodes(ctx.getNodes(), ctx.getStreams());
+        r.setNodes(ctx.nodeList);
         redeployAckCountdown.incrementAndGet();
         StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
@@ -280,9 +280,8 @@ public class DNodeManager
       checkpoints = Collections.emptyMap();
     }
     StreamingContainerContext initCtx = createStramChildInitContext(container.nodes, container, checkpoints);
-    cdr.setNodes(initCtx.getNodes(), initCtx.getStreams());
-    initCtx.setNodes(new ArrayList<NodePConf>(0));
-    initCtx.setStreams(new ArrayList<StreamPConf>(0));
+    cdr.setNodes(initCtx.nodeList);
+    initCtx.nodeList = new ArrayList<NodeDeployInfo>(0);
 
     StramChildAgent sca = new StramChildAgent(container, initCtx);
     containers.put(containerId, sca);
@@ -369,6 +368,7 @@ public class DNodeManager
           }
           // set the id required to inline link both nodes
           outputInfo.inlineTargetNodeId = node.id;
+          portInfo.sourcePortName = outputInfo.portName;
         } else {
           // buffer server input
           portInfo.bufferServerHost = in.getBufferServerAddress().getHostName();

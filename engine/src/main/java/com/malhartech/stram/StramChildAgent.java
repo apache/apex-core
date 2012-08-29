@@ -31,8 +31,7 @@ public class StramChildAgent {
     final AtomicInteger ackCountdown;
     final PTContainer container;
     final AtomicInteger executeWhenZero; 
-    private List<NodePConf> nodes;
-    private List<StreamPConf> streams;
+    private List<NodeDeployInfo> nodes;
     Map<PTNode, Long> checkpoints;
     
     public DeployRequest(PTContainer container, AtomicInteger ackCountdown) {
@@ -56,9 +55,8 @@ public class StramChildAgent {
       ackCountdown.decrementAndGet();
     }
     
-    void setNodes(List<NodePConf> nodes, List<StreamPConf> streams) {
+    void setNodes(List<NodeDeployInfo> nodes) {
       this.nodes = nodes;
-      this.streams = streams;
     }
 
     @Override
@@ -99,8 +97,7 @@ public class StramChildAgent {
   public StreamingContainerContext getInitContext() {
     ContainerHeartbeatResponse rsp = pollRequest();
     if (rsp != null && rsp.getDeployRequest() != null) {
-      initCtx.setNodes(rsp.getDeployRequest().getNodes());
-      initCtx.setStreams(rsp.getDeployRequest().getStreams());
+      initCtx.nodeList = rsp.getDeployRequest().nodeList;
     }
     return initCtx;
   }
@@ -153,8 +150,7 @@ public class StramChildAgent {
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (r.nodes != null) {
       StreamingContainerContext scc = new StreamingContainerContext();
-      scc.setNodes(r.nodes);
-      scc.setStreams(r.streams);
+      scc.nodeList = r.nodes;
       if (r instanceof UndeployRequest) {
         rsp.setUndeployRequest(scc);
       } else {

@@ -111,8 +111,6 @@ public class StramChild
       this.heartbeatIntervalMillis = 1000;
     }
 
-    final Map<String, NodePConf> nodeConfMap = new HashMap<String, NodePConf>();
-
     deployNodes(ctx.nodeList);
   }
 

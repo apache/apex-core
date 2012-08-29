@@ -13,6 +13,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 
 import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
+import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.conf.Topology;
@@ -30,11 +32,10 @@ public class DNodeManagerTest {
     NodeConf node1 = b.getOrAddNode("node1");
     NodeConf node2 = b.getOrAddNode("node2");
     NodeConf node3 = b.getOrAddNode("node3");
+    for (NodeConf nodeConf : b.getAllNodes().values()) {
+      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+    }
 
-    //StreamConf input1 = b.getOrAddStream("input1");
-    //input1.addProperty(TopologyBuilder.STREAM_CLASSNAME, NumberGeneratorInputAdapter.class.getName());
-    //node1.addInput(input1);
-    
     b.getOrAddStream("n1n2")
       .setSource(EchoNode.OUTPUT1, node1)
       .addSink(EchoNode.INPUT1, node2);
@@ -47,11 +48,6 @@ public class DNodeManagerTest {
     Assert.assertEquals("number nodes", 3, b.getAllNodes().values().size());
     Assert.assertEquals("number root nodes", 1, b.getRootNodes().size());
 
-    for (NodeConf nodeConf : b.getAllNodes().values()) {
-        // required to construct context
-        nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-    }
-
     Topology tplg = b.getTopology();
     tplg.setContainerCount(2);
     DNodeManager dnm = new DNodeManager(tplg);
@@ -62,40 +58,49 @@ public class DNodeManagerTest {
     
     // node1 needs to be deployed first, regardless in which order they were given
     StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
-    Assert.assertEquals("number nodes assigned to container", 2, c1.getNodes().size());
-    Assert.assertTrue(node1.getId() + " assigned to " + container1Id, containsNodeContext(c1, node1));
-    NodePConf input1PNode = getNodeContext(c1, input1.getId());
-    Assert.assertNotNull(input1.getId() + " assigned to " + container1Id, input1PNode);
-
-    Assert.assertEquals("stream connections for container1", 2, c1.getStreams().size());
-
-    StreamPConf c1n1n2 = getStreamContext(c1, "n1n2");
+    Assert.assertEquals("number nodes assigned to c1", 1, c1.nodeList.size());
+    NodeDeployInfo node1DI = getNodeDeployInfo(c1, node1);
+    Assert.assertNotNull(node1.getId() + " assigned to " + container1Id, node1DI);
+    Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
+    Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
+    Assert.assertNotNull("serializedNode " + node1DI.declaredId, node1DI.serializedNode);
+    
+    NodeOutputDeployInfo c1n1n2 = node1DI.outputs.get(0);
     Assert.assertNotNull("stream connection for container1", c1n1n2);
-    Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1n1n2.getBufferServerHost());
-    Assert.assertEquals("stream connects to upstream port", 9001, c1n1n2.getBufferServerPort());
+    Assert.assertEquals("stream connection for container1", "n1n2", c1n1n2.declaredStreamId);
+    Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1n1n2.bufferServerHost);
+    Assert.assertEquals("stream connects to upstream port", 9001, c1n1n2.bufferServerPort);
+    Assert.assertFalse("stream inline", c1n1n2.isInline());
 
-    StreamPConf input1Phys = getStreamContext(c1, input1.getId());
-    Assert.assertNotNull("stream connection " + input1.getId(), input1Phys);
-    Assert.assertEquals(input1.getId() + " sourceId", input1PNode.getDnodeId(), input1Phys.getSourceNodeId());
-    Assert.assertEquals(input1.getId() + " targetId", c1n1n2.getSourceNodeId(), input1Phys.getTargetNodeId());
-    Assert.assertNotNull(input1.getId() + " properties", input1Phys.getProperties());
-    Assert.assertEquals(input1.getId() + " classname", NumberGeneratorInputAdapter.class.getName(), input1Phys.getProperties().get(TopologyBuilder.STREAM_CLASSNAME));
-    Assert.assertTrue(input1Phys.isInline());
-    
     StreamingContainerContext c2 = dnm.assignContainerForTest(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
-    Assert.assertEquals("number nodes assigned to container", 2, c2.getNodes().size());
-    Assert.assertTrue(node2.getId() + " assigned to " + container2Id, containsNodeContext(c2, node2));
-    Assert.assertTrue(node3.getId() + " assigned to " + container2Id, containsNodeContext(c2, node3));
+    Assert.assertEquals("number nodes assigned to container", 2, c2.nodeList.size());
+    NodeDeployInfo node2DI = getNodeDeployInfo(c2, node2);
+    NodeDeployInfo node3DI = getNodeDeployInfo(c2, node3);
+    Assert.assertNotNull(node2.getId() + " assigned to " + container2Id, node2DI);
+    Assert.assertNotNull(node3.getId() + " assigned to " + container2Id, node3DI);
     
-    Assert.assertEquals("one stream connection for container2", 2, c2.getStreams().size());
-    StreamPConf c2n1n2 = getStreamContext(c2, "n1n2");
+    // buffer server input node2 from node1
+    NodeInputDeployInfo c2n1n2 = getInputDeployInfo(node2DI, "n1n2");
     Assert.assertNotNull("stream connection for container2", c2n1n2);
-    Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c2n1n2.getBufferServerHost());
-    Assert.assertEquals("stream connects to upstream port", 9001, c2n1n2.getBufferServerPort());
+    Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c2n1n2.bufferServerHost);
+    Assert.assertEquals("stream connects to upstream port", 9001, c2n1n2.bufferServerPort);
+    Assert.assertEquals("portName " + c2n1n2, EchoNode.INPUT1, c2n1n2.portName);
+    Assert.assertNull("partitionKeys " + c2n1n2, c2n1n2.partitionKeys);
+    Assert.assertEquals("sourceNodeId " + c2n1n2, node1DI.id, c2n1n2.sourceNodeId);
+
+    // inline input node3 from node2
+    NodeInputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");
+    Assert.assertNotNull("input " + c2n3In, node2DI);
+    Assert.assertEquals("portName " + c2n3In, EchoNode.INPUT1, c2n3In.portName);
+    Assert.assertNotNull("stream connection for container2", c2n3In);
+    Assert.assertNull("bufferServerHost " + c2n3In, c2n3In.bufferServerHost);
+    Assert.assertEquals("bufferServerPort " + c2n3In, 0, c2n3In.bufferServerPort);
+    Assert.assertNull("partitionKeys " + c2n3In, c2n3In.partitionKeys);
+    Assert.assertEquals("sourceNodeId " + c2n3In, node2DI.id, c2n3In.sourceNodeId);
+    Assert.assertEquals("sourcePortName " + c2n3In, EchoNode.OUTPUT1, c2n3In.sourcePortName); // required for inline
     
   }
-
-  
+/*
   @Test
   public void testStaticPartitioning() {
     TopologyBuilder b = new TopologyBuilder(new Configuration());
@@ -224,8 +229,7 @@ public class DNodeManagerTest {
       }
     }
   }  
-
-   
+*/
   public static class TestStaticPartitioningSerDe extends DefaultSerDe {
 
     public final static byte[][] partitions = new byte[][]{
@@ -238,24 +242,23 @@ public class DNodeManagerTest {
     }
   }
   
-  
   private boolean containsNodeContext(StreamingContainerContext scc, NodeConf nodeConf) {
-    return getNodeContext(scc, nodeConf.getId()) != null;
+    return getNodeDeployInfo(scc, nodeConf) != null;
   }
 
-  private static NodePConf getNodeContext(StreamingContainerContext scc, String logicalName) {
-    for (NodePConf snc : scc.getNodes()) {
-      if (logicalName.equals(snc.getLogicalId())) {
-        return snc;
+  private static NodeDeployInfo getNodeDeployInfo(StreamingContainerContext scc, NodeConf nodeConf) {
+    for (NodeDeployInfo ndi : scc.nodeList) {
+      if (nodeConf.getId().equals(ndi.declaredId)) {
+        return ndi;
       }
     }
     return null;
   }
   
-  private static StreamPConf getStreamContext(StreamingContainerContext scc, String streamId) {
-    for (StreamPConf sc : scc.getStreams()) {
-      if (streamId.equals(sc.getId())) {
-        return sc;
+  private static NodeInputDeployInfo getInputDeployInfo(NodeDeployInfo ndi, String streamId) {
+    for (NodeInputDeployInfo in : ndi.inputs) {
+      if (streamId.equals(in.declaredStreamId)) {
+        return in;
       }
     }
     return null;

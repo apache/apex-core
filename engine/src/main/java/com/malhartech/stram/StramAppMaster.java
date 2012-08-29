@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.webapp.StramWebApp;
 
@@ -89,7 +90,7 @@ public class StramAppMaster
   // Configuration
   private Configuration conf;
   private YarnClientHelper yarnClient;
-  private TopologyBuilder logicalTopology;
+  private Topology topology;
   // Handle to communicate with the Resource Manager
   private AMRMProtocol resourceManager;
   // Application Attempt Id ( combination of attemptId and fail count )
@@ -264,9 +265,7 @@ public class StramAppMaster
     };
 
     try {
-      LOG.info("Topology: ");
-      Properties tplgProperties = TopologyBuilder.toProperties(logicalTopology.getConf());
-      tplgProperties.store(System.out, "topology for " + appAttemptID);
+      LOG.info("Topology: {}", topology.toString());
     }
     catch (Exception e) {
       LOG.error("Error dumping topology.", e);
@@ -330,16 +329,17 @@ public class StramAppMaster
     requestPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
 
     // set topology - read from localized dfs location populated by submit client
-    logicalTopology = new TopologyBuilder(conf);
+    TopologyBuilder b = new TopologyBuilder(conf);
     Properties tplgProperties = readProperties("./stram.properties");
-    logicalTopology.addFromProperties(tplgProperties);
+    b.addFromProperties(tplgProperties);
 
+    this.topology = b.getTopology();
     // "debug" simply dumps all data using LOG.info
-    if (logicalTopology.isDebug()) {
+    if (topology.isDebug()) {
       dumpOutDebugInfo();
     }
 
-    this.dnmgr = new DNodeManager(logicalTopology);
+    this.dnmgr = new DNodeManager(topology);
 
     // start RPC server
     rpcImpl = new StreamingNodeParent(this.getClass().getName(), dnmgr);
@@ -347,7 +347,7 @@ public class StramAppMaster
     rpcImpl.start();
     LOG.info("Container callback server listening at " + rpcImpl.getAddress());
 
-    LOG.info("Initializing logical topology with {} nodes in {} containers", logicalTopology.getAllNodes().size(), dnmgr.getNumRequiredContainers());
+    LOG.info("Initializing logical topology with {} nodes in {} containers", topology.getAllNodes().size(), dnmgr.getNumRequiredContainers());
 
     // start buffer server
     com.malhartech.bufferserver.Server s = new Server(0);
@@ -417,7 +417,7 @@ public class StramAppMaster
     // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be
     // a multiple of the min value and cannot exceed the max.
     // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
-    int containerMemory = logicalTopology.getContainerMemoryMB();
+    int containerMemory = topology.getContainerMemoryMB();
     if (containerMemory < minMem) {
       LOG.info("Container memory specified below min threshold of cluster. Using min value."
                + ", specified=" + containerMemory
@@ -528,7 +528,7 @@ public class StramAppMaster
           dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), NetUtils.getConnectAddress(this.bufferServerAddress));
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
-          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, logicalTopology, rpcImpl.getAddress());
+          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, topology, rpcImpl.getAddress());
           Thread launchThread = new Thread(runnableLaunchContainer);
           launchThreads.add(launchThread);
           launchThread.start();

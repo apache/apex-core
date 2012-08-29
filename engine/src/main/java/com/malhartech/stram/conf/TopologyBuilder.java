@@ -35,8 +35,6 @@ import com.malhartech.stram.conf.Topology.StreamDecl;
  * Builder for the DAG logical representation of nodes and streams<p>
  * <br>
  * Supports reading as name-value pairs from Hadoop Config
-import com.malhartech.stram.StramUtils;
-uration
  * or programmatic interface.<br>
  * <br>
  * 
@@ -584,27 +582,10 @@ public class TopologyBuilder {
     
   }
 
-  /**
-   * Configured class dependencies for the topology. Used to determine jar file dependencies. 
-   * @return Set<String>
-   */
-  public Set<String> getClassNames() {
-    Set<String> classNames = new HashSet<String>();
-    for (NodeConf n : this.nodes.values()) {
-      String className = n.properties.getProperty(NODE_CLASSNAME);
-      if (className != null) {
-        classNames.add(className);
-      }
-    }
-    for (StreamConf n : this.streams.values()) {
-      String className = n.properties.getProperty(TopologyBuilder.STREAM_CLASSNAME);
-      if (className != null) {
-        classNames.add(className);
-      }
-    }
-    return classNames;
+  @Deprecated
+  public Configuration getConf() {
+    return this.conf;
   }
-
   
   public Topology getTopology() {
 

@@ -85,7 +85,7 @@ public class StramClient
   // User to run app master as
   private String amUser = "";
   private ApplicationId appId;
-  private TopologyBuilder topology;
+  private Topology topology;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
@@ -194,12 +194,13 @@ public class StramClient
     LOG.info("Topology: " + topologyPropertyFile);
 
     Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
-    topology = new TopologyBuilder(conf);
-    topology.addFromProperties(topologyProperties);
-    topology.validate();
+    TopologyBuilder tb = new TopologyBuilder(conf);
+    tb.addFromProperties(topologyProperties);
+    tb.validate();
 
+    topology = tb.getTopology();
     if (cliParser.hasOption("debug")) {
-      topology.getConf().setBoolean(TopologyBuilder.STRAM_DEBUG, true);
+      topology.getConf().setBoolean(Topology.STRAM_DEBUG, true);
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
@@ -213,17 +214,17 @@ public class StramClient
     }
 
     int containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", ""+topology.getContainerMemoryMB()));
-    int containerCount = Integer.parseInt(cliParser.getOptionValue("num_containers", ""+ topology.getContainerCount()));
+    int containerCount = Integer.parseInt(cliParser.getOptionValue("num_containers", ""+ topology.getMaxContainerCount()));
 
-    if (containerMemory < 0 || topology.getContainerCount() < 1) {
+    if (containerMemory < 0 || topology.getMaxContainerCount() < 1) {
       throw new IllegalArgumentException("Invalid no. of containers or container memory specified, exiting."
                                          + " Specified containerMemory=" + containerMemory
                                          + ", numContainer=" + containerCount);
     }
 
     topology.setContainerCount(containerCount);
-    topology.getConf().setInt(TopologyBuilder.STRAM_MASTER_MEMORY_MB, amMemory);
-    topology.getConf().setInt(TopologyBuilder.STRAM_CONTAINER_MEMORY_MB, containerMemory);
+    topology.getConf().setInt(Topology.STRAM_MASTER_MEMORY_MB, amMemory);
+    topology.getConf().setInt(Topology.STRAM_CONTAINER_MEMORY_MB, containerMemory);
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
     if (clientTimeout == 0) {
