@@ -8,6 +8,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
+import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeConfiguration;
@@ -24,6 +25,7 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbea
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.BufferServerOutputStream;
+import com.malhartech.stream.BufferServerStreamContext;
 import com.malhartech.stream.InlineStream;
 import com.malhartech.stream.MuxStream;
 import com.malhartech.stream.PartitionAwareSink;
@@ -37,8 +39,10 @@ import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -69,11 +73,10 @@ public class StramChild
   final private String containerId;
   final private Configuration conf;
   final private StreamingNodeUmbilicalProtocol umbilical;
-  final private Map<String, Pair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, Pair<Node, NodeContext>>();
-  final private Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
-  final private Map<String, Stream> streams = new ConcurrentHashMap<String, Stream>();
-  final private Map<String, StreamContext> streamContexts = new ConcurrentHashMap<String, StreamContext>();
-
+  final private Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
+  final private Set<ComponentContextPair<Node, NodeContext>> activeNodes = new HashSet<ComponentContextPair<Node, NodeContext>>();
+  final private Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
+  final private Set<ComponentContextPair<Stream, StreamContext>> activeStreams = new HashSet<ComponentContextPair<Stream, StreamContext>>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   private Object heartbeatTrigger = new Object();
@@ -143,15 +146,15 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all nodes
-      for (Map.Entry<String, Node> e: nodes.entrySet()) {
+      for (Map.Entry<String, ComponentContextPair<Node, NodeContext>> e: nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
-        hb.setCurrentWindowId(nodeContexts.get(e.getKey()).getCurrentWindowId());
-        nodeContexts.get(e.getKey()).drainHeartbeatCounters(hb.getHeartbeatsContainer());
+        hb.setCurrentWindowId(e.getValue().context.getCurrentWindowId());
+        e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
         DNodeState state = DNodeState.PROCESSING;
-        if (!activeNodes.containsKey(e.getKey())) {
+        if (!activeNodes.contains(e.getValue())) {
           state = DNodeState.IDLE;
         }
         hb.setState(state.name());
@@ -218,13 +221,13 @@ public class StramChild
     if (rsp.getNodeRequests() != null) {
       // extended processing per node
       for (StramToNodeRequest req: rsp.getNodeRequests()) {
-        Node n = nodes.get(req.getNodeId());
-        if (n == null) {
+        ComponentContextPair<Node, NodeContext> pair = nodes.get(req.getNodeId());
+        if (pair == null) {
           LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
         else {
           LOG.debug("Stram request: {}", req);
-          processStramRequest(n, nodeContexts.get(req.getNodeId()), req);
+          processStramRequest(pair, req);
         }
       }
     }
@@ -236,7 +239,7 @@ public class StramChild
    * @param n
    * @param snr
    */
-  private void processStramRequest(Node n, NodeContext nc, StramToNodeRequest snr)
+  private void processStramRequest(ComponentContextPair<Node, NodeContext> pair, StramToNodeRequest snr)
   {
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
@@ -244,7 +247,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        nc.requestBackup(new HdfsBackupAgent());
+        pair.context.requestBackup(new HdfsBackupAgent());
         break;
 
       default:
@@ -348,11 +351,12 @@ public class StramChild
     Kryo kryo = new Kryo();
     HashMap<String, ArrayList<String>> one2ManyPlumbing = new HashMap<String, ArrayList<String>>();  // this holds all the plumbing hints
     for (NodeDeployInfo ndi: nodeList) {
+      NodeContext nc = new NodeContext(ndi.id);
       Object foreignObject = kryo.readClassAndObject(new Input(ndi.serializedNode));
       try {
         Node node = (Node)foreignObject;
         node.setup(new NodeConfiguration(ndi.properties));
-        nodes.put(ndi.id, node);
+        nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
         estimateStreams(one2ManyPlumbing, ndi);
       }
       catch (ClassCastException cce) {
@@ -362,10 +366,12 @@ public class StramChild
 
     // lets create all the output streams
     for (NodeDeployInfo ndi: nodeList) {
-      Node node = nodes.get(ndi.id);
+      Node node = nodes.get(ndi.id).component;
       for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
         String source = ndi.id.concat(".").concat(nodi.portName);
+        String target = nodi.inlineTargetNodeId.concat(".").concat(nodi.targetPortName);
         Stream stream;
+        StreamContext context;
 
         ArrayList<String> collection = one2ManyPlumbing.get(source);
         if (collection == null) {
@@ -377,28 +383,34 @@ public class StramChild
 
           stream = new BufferServerOutputStream();
           stream.setup(config);
+
+          context = new BufferServerStreamContext(source, target);
         }
         else if (collection.size() == 1) {
           assert (nodi.isInline());
 
           stream = new InlineStream();
           stream.setup(new StreamConfiguration());
+
+          context = new StreamContext(source, target);
         }
         else {
           stream = new MuxStream();
           stream.setup(new StreamConfiguration());
+
+          context = new StreamContext(source, target);
         }
 
         Sink s = stream.connect(Component.INPUT, node);
         node.connect(nodi.portName, s);
 
-        streams.put(source, stream);
+        streams.put(source, new ComponentContextPair<Stream, StreamContext>(stream, context));
       }
     }
 
     // lets create all the input streams
     for (NodeDeployInfo ndi: nodeList) {
-      Node node = nodes.get(ndi.id);
+      Node node = nodes.get(ndi.id).component;
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         // this node is load generator aka input adapter node
         if (windowGenerator == null) {
@@ -417,44 +429,62 @@ public class StramChild
         for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
           String source = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
 
-          Stream stream = streams.get(source);
-          if (stream == null) {
+          ComponentContextPair<Stream, StreamContext> pair = streams.get(source);
+          if (pair == null) {
             // it's buffer server stream
             assert (nidi.isInline() == false);
 
             StreamConfiguration config = new StreamConfiguration();
             config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
 
-            stream = new BufferServerInputStream();
+            Stream stream = new BufferServerInputStream();
             stream.setup(config);
 
+            pair = new ComponentContextPair<Stream, StreamContext>(stream,
+                                                                   new BufferServerStreamContext(nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName), ndi.id.concat(".").concat(nidi.portName)));
             Sink s = node.connect(nidi.portName, stream);
             stream.connect(ndi.id.concat(".").concat(nidi.portName), s); // what this id should be?
           }
           else if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-            Sink s = node.connect(nidi.portName, stream);
-            stream.connect(ndi.id.concat(".").concat(nidi.portName), s); // what this id should be?
+            Sink s = node.connect(nidi.portName, pair.component);
+            pair.component.connect(ndi.id.concat(".").concat(nidi.portName), s); // what this id should be?
           }
           else {
             /*
              * generally speaking we do not have partitions on the inline streams so the control should not
              * come here but if it comes, then we are ready to handle it using the partition aware streams.
              */
-            Sink s = node.connect(nidi.portName, stream);
+            Sink s = node.connect(nidi.portName, pair.component);
             PartitionAwareSink pas = new PartitionAwareSink(new DefaultSerDe(), nidi.partitionKeys, s); // serde should be something else
-            stream.connect(ndi.id.concat(".").concat(nidi.portName), pas); // what this id should be?
+            pair.component.connect(ndi.id.concat(".").concat(nidi.portName), pas); // what this id should be?
           }
 
-          streams.put(ndi.id.concat(".").concat(nidi.portName), stream);
+          streams.put(ndi.id.concat(".").concat(nidi.portName), pair);
         }
       }
     }
 
+    activeStreams.addAll(streams.values());
+    for (ComponentContextPair pair: activeStreams) {
+      pair.component.activate(pair.context);
+    }
 
-    // we activate all the streams
-    // we activate all the nodes
-    // we activate window generator
+    for (final ComponentContextPair pair: nodes.values()) {
+      Thread t = new Thread() {
+        @Override
+        public void run()
+        {
+          pair.component.activate(pair.context);
+          activeNodes.remove(pair);
+        }
+      };
+      t.start();
+      activeNodes.add(pair);
+    }
 
+    if (windowGenerator != null) {
+      windowGenerator.activate(null);
+    }
   }
 
   private void estimateStreams(HashMap<String, ArrayList<String>> plumbing, NodeDeployInfo ndi)
