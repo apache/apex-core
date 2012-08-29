@@ -4,20 +4,18 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.Node;
+import com.malhartech.dag.SerDe;
+import com.malhartech.stram.conf.TopologyBuilder;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
-
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.InternalNode;
-import com.malhartech.dag.SerDe;
-import com.malhartech.stram.conf.TopologyBuilder;
-
 /**
- * 
+ *
  * Utilities for shared use in Stram components<p>
  * <br>
  */
@@ -35,24 +33,24 @@ public abstract class StramUtils {
         throw new IllegalArgumentException("Failed to instantiate SerDe", e);
       } catch (InstantiationException e) {
         throw new IllegalArgumentException("Failed to instantiate SerDe", e);
-      }      
+      }
     } else {
       return new DefaultSerDe();
     }
   }
-  
+
   /**
    * Instantiate node from configuration. (happens in the child container, not the stram master process.)
    *
    * @param nodeConf
    * @param conf
    */
-  public static InternalNode initNode(NodePConf nodeConf, Configuration conf)
-  {      
+  public static Node initNode(NodePConf nodeConf, Configuration conf)
+  {
     try {
-      Class<? extends InternalNode> nodeClass = Class.forName(nodeConf.getDnodeClassName()).asSubclass(InternalNode.class);
-      Constructor<? extends InternalNode> c = nodeClass.getConstructor();
-      InternalNode node = c.newInstance();
+      Class<? extends Node> nodeClass = Class.forName(nodeConf.getDnodeClassName()).asSubclass(Node.class);
+      Constructor<? extends Node> c = nodeClass.getConstructor();
+      Node node = c.newInstance();
       // populate custom properties
       BeanUtils.populate(node, nodeConf.getProperties());
       return node;
@@ -76,5 +74,5 @@ public abstract class StramUtils {
       throw new IllegalArgumentException("Failed to instantiate: " + nodeConf.getDnodeClassName(), e);
     }
   }
-  
+
 }

@@ -33,7 +33,7 @@ public class MuxStream implements Stream
   @Override
   public void setup(StreamConfiguration config)
   {
-     outputs = new HashMap<String, Sink>();
+    outputs = new HashMap<String, Sink>();
   }
 
   @Override
@@ -56,13 +56,13 @@ public class MuxStream implements Stream
   }
 
   @Override
-  public Sink connect(String id, DAGComponent component)
+  public Sink connect(String id, Sink sink)
   {
-    if ("input".equals(id)) {
+    if (INPUT.equals(id)) {
       return this;
     }
     else {
-      outputs.put(id, component);
+      outputs.put(id, sink);
     }
 
     return null;

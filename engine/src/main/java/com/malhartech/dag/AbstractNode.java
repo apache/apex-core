@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode implements InternalNode
+public abstract class AbstractNode implements Node
 {
   private String port;
   @SuppressWarnings("ProtectedField")
@@ -56,12 +56,6 @@ public abstract class AbstractNode implements InternalNode
     }
 
     throw new IllegalArgumentException("Port " + id + " not found!");
-  }
-
-  @Override
-  final public NodeContext getContext()
-  {
-    return ctx;
   }
 
   @Override
@@ -94,9 +88,9 @@ public abstract class AbstractNode implements InternalNode
   class CompoundSink extends CircularBuffer<Object> implements Sink
   {
     final String id;
-    final DAGComponent dagpart;
+    final Sink dagpart;
 
-    public CompoundSink(String id, DAGComponent dagpart)
+    public CompoundSink(String id, Sink dagpart)
     {
       super(1024);
       this.id = id;
@@ -115,7 +109,7 @@ public abstract class AbstractNode implements InternalNode
       return id;
     }
 
-    public final DAGComponent getDAGPart()
+    public final Sink getSink()
     {
       return dagpart;
     }
@@ -131,7 +125,7 @@ public abstract class AbstractNode implements InternalNode
    * @param dagpart the value of stream
    */
   @Override
-  public Sink connect(String id, DAGComponent dagpart)
+  public Sink connect(String id, Sink dagpart)
   {
     Sink s;
     switch (getPortType(id)) {
@@ -170,9 +164,9 @@ public abstract class AbstractNode implements InternalNode
    * @param id
    * @param dagpart
    */
-  public void connected(String id, DAGComponent dagpart)
+  public void connected(String id, Sink dagpart)
   {
-    /* optional implementation */
+    /* implementation to be optionally overridden by the user */
   }
 
   /**

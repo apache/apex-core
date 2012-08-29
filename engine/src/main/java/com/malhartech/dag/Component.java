@@ -10,8 +10,13 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface DAGComponent<T1 extends Configuration, T2 extends Context> extends Sink
+public interface Component<T1 extends Configuration, T2 extends Context> extends Sink
 {
+  /*
+   * if the Component is capable of taking only 1 input, it will be called INPUT.
+   */
+  public static final String INPUT = "input";
+
   public void setup(T1 config);
 
   public void activate(T2 context);
@@ -20,5 +25,5 @@ public interface DAGComponent<T1 extends Configuration, T2 extends Context> exte
 
   public void teardown();
 
-  public Sink connect(String id, DAGComponent component);
+  public Sink connect(String port, Sink sink); // connect to output port
 }

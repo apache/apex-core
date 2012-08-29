@@ -5,8 +5,8 @@
 package com.malhartech.stram;
 
 import com.malhartech.bufferserver.Buffer;
+import com.malhartech.dag.Component;
 import com.malhartech.dag.Context;
-import com.malhartech.dag.DAGComponent;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.ResetWindowTuple;
@@ -30,9 +30,13 @@ import org.slf4j.LoggerFactory;
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
  */
-public class WindowGenerator implements DAGComponent, Runnable
+public class WindowGenerator implements Component, Runnable
 {
   public static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
+  /**
+   * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
+   */
+  public static final int MAX_VALUE_WINDOW = 0x3fff - (0x3fff % 1000) - 1;
   private ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1);
   private long startMillis; // Window start time
   private int intervalMillis; // Window size
@@ -57,7 +61,7 @@ public class WindowGenerator implements DAGComponent, Runnable
    */
   protected final void nextWindow()
   {
-    if (windowId == InputAdapter.MAX_VALUE_WINDOW) {
+    if (windowId == MAX_VALUE_WINDOW) {
       EndWindowTuple t = new EndWindowTuple();
       t.setWindowId(windowId);
       for (Sink s: sinks) {
@@ -85,7 +89,7 @@ public class WindowGenerator implements DAGComponent, Runnable
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void run()
@@ -109,7 +113,7 @@ public class WindowGenerator implements DAGComponent, Runnable
   @Override
   public void setup(Configuration config)
   {
-    startMillis = config.getLong("StartTimeMillis", System.currentTimeMillis());
+    startMillis = config.getLong("StartMillis", System.currentTimeMillis());
     intervalMillis = config.getInt("IntervalMillis", 500);
   }
 
@@ -158,7 +162,7 @@ public class WindowGenerator implements DAGComponent, Runnable
   }
 
   @Override
-  public Sink connect(String id, DAGComponent component)
+  public Sink connect(String id, Sink component)
   {
     outputs.put(id, component);
     return null;

@@ -8,10 +8,10 @@ package com.malhartech.dag;
  *
  * TBD<p>
  * <br>
- * 
+ *
  * @author chetan
  */
-public interface Node extends DAGComponent<NodeConfiguration, NodeContext>
+public interface Node extends Component<NodeConfiguration, NodeContext>
 {
   /**
    * This method gets called at the beginning of each window.

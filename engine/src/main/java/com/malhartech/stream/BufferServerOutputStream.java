@@ -6,7 +6,7 @@ package com.malhartech.stream;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.DAGComponent;
+import com.malhartech.dag.Component;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.SerDe;
@@ -30,8 +30,8 @@ public class BufferServerOutputStream extends SocketOutputStream
   SerDe serde;
 
   /**
-   * 
-   * @param t 
+   *
+   * @param t
    */
   @Override
   public void process(Object payload)
@@ -95,7 +95,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void activate(StreamContext context)
@@ -108,7 +108,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   }
 
   @Override
-  public Sink connect(String id, DAGComponent component)
+  public Sink connect(String id, Sink sink)
   {
     return this;
   }

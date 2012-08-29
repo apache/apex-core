@@ -72,13 +72,13 @@ public abstract class AbstractInputNode implements Node
   }
 
   @Override
-  public Sink connect(String id, DAGComponent component)
+  public Sink connect(String port, Sink component)
   {
-    if ("input".equals(id)) {
+    if ("input".equals(port)) {
       return this;
     }
     else {
-      outputs.put(id, component);
+      outputs.put(port, component);
       return null;
     }
   }

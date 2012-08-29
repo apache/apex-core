@@ -36,8 +36,8 @@ public class HDFSOutputStream implements Stream
   private boolean append;
 
   /**
-   * 
-   * @param config 
+   *
+   * @param config
    */
   @Override
   public void setup(StreamConfiguration config)
@@ -111,8 +111,8 @@ public class HDFSOutputStream implements Stream
   }
 
   /**
-   * 
-   * @param context 
+   *
+   * @param context
    */
   @Override
   public void deactivate()
@@ -129,12 +129,12 @@ public class HDFSOutputStream implements Stream
   }
 
   /**
-   * 
-   * @param t 
+   *
+   * @param t
    */
   @Override
-  public Sink connect(String id, DAGComponent component)
+  public Sink connect(String id, Sink sink)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return this;
   }
 }

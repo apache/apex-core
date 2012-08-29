@@ -26,7 +26,7 @@ public class ConsoleOutputStream implements Stream
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void teardown()
@@ -44,7 +44,7 @@ public class ConsoleOutputStream implements Stream
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void activate(StreamContext context)
@@ -57,7 +57,7 @@ public class ConsoleOutputStream implements Stream
   }
 
   @Override
-  public Sink connect(String id, DAGComponent component)
+  public Sink connect(String id, Sink sink)
   {
     return this;
   }

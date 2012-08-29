@@ -111,7 +111,12 @@ public class NodeDeployInfo implements Serializable
     /**
      * If inline connection, id of source node in same container.
      */
-    public String inlineTargetNodeId;
+    public String inlineTargetNodeId; // should this be just called targetNodeId?
+
+    /**
+     * if inline connection, port of the target node.
+     */
+    public String targetPortName;
 
     /**
      * Buffer server publisher info, set when stream not inline.

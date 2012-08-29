@@ -88,9 +88,9 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   }
 
   @Override
-  public Sink connect(String id, DAGComponent component)
+  public Sink connect(String id, Sink sink)
   {
-    outputs.put(id, component);
+    outputs.put(id, sink);
     return null;
   }
 
