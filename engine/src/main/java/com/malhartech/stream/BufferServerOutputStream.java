@@ -28,7 +28,7 @@ public class BufferServerOutputStream extends SocketOutputStream
 {
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   SerDe serde;
-
+  int windowId;
   /**
    *
    * @param t
@@ -47,6 +47,7 @@ public class BufferServerOutputStream extends SocketOutputStream
           Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
           bw.setNode("SOS");
           db.setBeginWindow(bw);
+          this.windowId = db.getWindowId();
           break;
 
         case END_WINDOW:
@@ -72,6 +73,7 @@ public class BufferServerOutputStream extends SocketOutputStream
       }
     }
     else {
+      db.setWindowId(this.windowId);
       byte partition[] = serde.getPartition(payload);
       if (partition == null) {
         Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();

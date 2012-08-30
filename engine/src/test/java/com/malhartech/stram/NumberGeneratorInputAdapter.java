@@ -9,15 +9,16 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.EndStreamTuple;
+import com.malhartech.dag.NodeContext;
 
 @NodeAnnotation(
     ports = {
         @PortAnnotation(name = NumberGeneratorInputAdapter.OUTPUT_PORT, type = PortType.OUTPUT)
     }
 )
-public class NumberGeneratorInputAdapter extends AbstractNode
+public class NumberGeneratorInputAdapter extends AbstractInputNode
   implements Runnable
 {
   private static Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
@@ -55,25 +56,17 @@ public class NumberGeneratorInputAdapter extends AbstractNode
   }
 
   @Override
-  public void handleIdleTimeout() {
-    if (hasFinished()) {
-      deactivate();
-    }
-  }
-
-  private boolean hasFinished() {
-    if (maxTuples > 0 && maxTuples < generatedNumbers) {
-      return true;
-    }
-    return false;
-  }
-  
-  @Override
   public void run()
   {
-    while (!shutdown && !hasFinished()) {
+    while (!shutdown) {
       LOG.debug("sending tuple");
-      emit(String.valueOf(generatedNumbers++));
+      emit(OUTPUT_PORT, String.valueOf(generatedNumbers++));
+
+      if (maxTuples > 0 && maxTuples < generatedNumbers) {
+        emit(OUTPUT_PORT, new EndStreamTuple());
+        break;
+      }
+      
       try {
         Thread.sleep(1000);
       }
@@ -90,10 +83,27 @@ public class NumberGeneratorInputAdapter extends AbstractNode
     shutdown = true;
   }
 
-  @Override // this was activate
-  public void setup(NodeConfiguration config) {
-    Thread t = new Thread(this);
-    t.start();
+  @Override
+  public void activate(NodeContext context) {
+    super.activate(context);
+    run();
+//    Thread t = new Thread(this);
+//    t.start();
   }
 
+  @Override
+  public void deactivate() {
+    this.shutdown = true;
+    super.deactivate();
+  }
+  
+  @Override
+  public void beginWindow() {
+  }
+
+  @Override
+  public void endWindow() {
+  }
+  
+  
 }

@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,7 @@ import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.SerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.Tuple;
 import com.malhartech.stram.DNodeManager;
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.NumberGeneratorInputAdapter;
@@ -60,11 +62,12 @@ public class SocketStreamTest
     }
 
     /**
-     * Send tuple on outputstream and receive tuple from inputstream
+     * Test buffer server stream by sending 
+     * tuple on outputstream and receive same tuple from inputstream
      *
      * @throws Exception
      */
-/*    @Test
+    @Test
     public void testBufferServerStream() throws Exception
     {
 
@@ -72,8 +75,10 @@ public class SocketStreamTest
         Sink sink = new Sink()
         {
         @Override
-            public void sink(Object t)
+            public void process(Object payload)
             {
+              if (payload instanceof Tuple) {
+                Tuple t = (Tuple)payload;
                 switch (t.getType()) {
                     case BEGIN_WINDOW:
                         break;
@@ -83,11 +88,11 @@ public class SocketStreamTest
                             SocketStreamTest.this.notifyAll();
                         }
                         break;
-
-                    case SIMPLE_DATA:
-                        System.out.println("received: " + t.getObject());
-                        messageCount.incrementAndGet();
                 }
+              } else {
+                  System.out.println("received: " + payload);
+                  messageCount.incrementAndGet();
+              }
             }
         };
 
@@ -99,7 +104,6 @@ public class SocketStreamTest
 
 
         BufferServerStreamContext issContext = new BufferServerStreamContext(upstreamNodeId, downstreamNodeId);
-        issContext.setSink(sink);
         issContext.setSerde(serde);
         issContext.setId(streamName);
 
@@ -108,7 +112,7 @@ public class SocketStreamTest
 
         BufferServerInputStream iss = new BufferServerInputStream();
         iss.setup(sconf);
-  //      iss.setContext(issContext);
+        iss.connect("testSink", sink);
 
         BufferServerStreamContext ossContext = new BufferServerStreamContext(upstreamNodeId, downstreamNodeId);
         ossContext.setSerde(serde);
@@ -116,7 +120,6 @@ public class SocketStreamTest
 
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(sconf);
-//        oss.setContext(ossContext);
 
         oss.activate(ossContext);
         LOG.debug("output stream activated");
@@ -125,10 +128,10 @@ public class SocketStreamTest
 
 
         LOG.debug("Sending hello message");
-        oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0, ossContext));
-        oss.doSomething(StramTestSupport.generateTuple("hello", 0, ossContext));
-        oss.doSomething(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1, ossContext));
-        oss.doSomething(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1, ossContext));
+        oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
+        oss.process(StramTestSupport.generateTuple("hello", 0));
+        oss.process(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1));
+        oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1));
         synchronized (SocketStreamTest.this) {
             if (messageCount.get() == 0) { // don't wait if already notified
                 SocketStreamTest.this.wait(2000);
@@ -139,12 +142,13 @@ public class SocketStreamTest
         System.out.println("exiting...");
 
     }
-*/
+
     /**
      * Instantiate physical model with adapters and partitioning in mock container.
      *
      * @throws Exception
      */
+    @Ignore
     @Test
     public void testStramChildInit() throws Exception
     {
