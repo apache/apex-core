@@ -65,8 +65,8 @@ public class InlineStreamTest
             if (Integer.valueOf(payload.toString()) - Integer.valueOf(prev.toString()) != 1) {
               LOG.info("Got the tuples out of order!");
               LOG.info(prev + " followed by " + payload);
-              synchronized (this) {
-                this.notify();
+              synchronized (InlineStreamTest.this) {
+                InlineStreamTest.this.notify();
               }
             }
 
@@ -75,8 +75,8 @@ public class InlineStreamTest
 
           if (Integer.valueOf(prev.toString()) == totalTupleCount - 1) {
             LOG.info("last tuple received.");
-            synchronized (this) {
-              this.notify();
+            synchronized (InlineStreamTest.this) {
+              InlineStreamTest.this.notify();
             }
           }
         }
@@ -154,19 +154,20 @@ public class InlineStreamTest
   })
   public static class PassThroughNode extends AbstractNode
   {
-    private boolean appendNodeId = false;
+    private String nodeId;
+    private boolean logMessages = false;
+
+    @Override
+    public void setup(NodeConfiguration config)
+    {
+      nodeId = config.get("NodeId", null);
+      super.setup(config);
+    }
 
     public boolean isAppendNodeId()
     {
-      return appendNodeId;
+      return nodeId != null;
     }
-
-    public void setAppendNodeId(boolean appendNodeId)
-    {
-      LOG.info("appendNodeId=" + appendNodeId);
-      this.appendNodeId = appendNodeId;
-    }
-    private boolean logMessages = false;
 
     public boolean isLogMessages()
     {
@@ -181,12 +182,11 @@ public class InlineStreamTest
     @Override
     public void process(Object o)
     {
-      if (appendNodeId) {
-        o = this.getContext().getId() + " > " + o;
+      if (nodeId == null) {
+        emit("output", o);
       }
-      emit(o);
-      if (logMessages) {
-        LOG.info("emit: " + o);
+      else {
+        emit("output", nodeId.concat(" > ").concat(o.toString()));
       }
     }
   }
