@@ -10,8 +10,8 @@ import java.util.Map;
 
 import org.apache.commons.beanutils.BeanUtils;
 
-import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.Node;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.conf.TopologyBuilder;
 
@@ -22,8 +22,7 @@ import com.malhartech.stram.conf.TopologyBuilder;
  */
 public abstract class StramUtils {
 
-  public static SerDe getSerdeInstance(Map<String, String> streamProps) {
-    String className = streamProps.get(TopologyBuilder.STREAM_SERDE_CLASSNAME);
+  public static SerDe getSerdeInstance(String className) {
     if (className != null) {
       return newInstance(classForName(className, SerDe.class));
     } else {
@@ -55,12 +54,12 @@ public abstract class StramUtils {
    * @param nodeConf
    * @param conf
    */
-  public static AbstractNode initNode(String className, Map<String, String> properties)
+  public static Node initNode(String className, Map<String, String> properties)
   {      
     try {
-      Class<? extends AbstractNode> nodeClass = classForName(className, AbstractNode.class);
-      Constructor<? extends AbstractNode> c = nodeClass.getConstructor();
-      AbstractNode node = c.newInstance();
+      Class<? extends Node> nodeClass = classForName(className, Node.class);
+      Constructor<? extends Node> c = nodeClass.getConstructor();
+      Node node = c.newInstance();
       // populate custom properties
       BeanUtils.populate(node, properties);
       return node;

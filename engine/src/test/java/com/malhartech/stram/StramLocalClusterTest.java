@@ -4,11 +4,23 @@
  */
 package com.malhartech.stram;
 
+import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Properties;
+
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.dag.AbstractInputNode;
 import com.malhartech.dag.Context;
 import com.malhartech.dag.InputAdapter;
 import com.malhartech.dag.Node;
-import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -16,26 +28,11 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import com.malhartech.stream.HDFSOutputStream;
-import com.malhartech.util.ScheduledExecutorService;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Properties;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StramLocalClusterTest
 {
@@ -69,10 +66,10 @@ public class StramLocalClusterTest
 
     props.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
 
-    TopologyBuilder tplg = new TopologyBuilder(new Configuration());
-    tplg.addFromProperties(props);
+    TopologyBuilder tb = new TopologyBuilder(new Configuration());
+    tb.addFromProperties(props);
 
-    StramLocalCluster localCluster = new StramLocalCluster(tplg);
+    StramLocalCluster localCluster = new StramLocalCluster(tb.getTopology());
     localCluster.run();
   }
 
@@ -211,10 +208,10 @@ public class StramLocalClusterTest
    * @return
    * @throws InterruptedException
    */
-  private LocalStramChild waitForContainer(StramLocalCluster localCluster, NodeConf nodeConf) throws InterruptedException
+  private LocalStramChild waitForContainer(StramLocalCluster localCluster, NodeDecl nodeDecl) throws InterruptedException
   {
-    PTNode node = localCluster.findByLogicalNode(nodeConf);
-    Assert.assertNotNull("no node for " + nodeConf, node);
+    PTNode node = localCluster.findByLogicalNode(nodeDecl);
+    Assert.assertNotNull("no node for " + nodeDecl, node);
 
     LocalStramChild container;
     while (true) {

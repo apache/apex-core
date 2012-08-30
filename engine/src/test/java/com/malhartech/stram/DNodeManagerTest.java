@@ -193,6 +193,7 @@ public class DNodeManagerTest {
       NodeInputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], nidi.partitionKeys.get(0)));
+      Assert.assertEquals("serde " + nidi, TestStaticPartitioningSerDe.class.getName(), nidi.serDeClassName);
     }
     
     // mergeNode container 

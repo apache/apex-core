@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
-import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.Node;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.StramUtils;
 import com.malhartech.stram.conf.Topology.NodeDecl;
@@ -590,7 +590,7 @@ public class TopologyBuilder {
     // add all nodes first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
-      AbstractNode node = StramUtils.initNode(nodeConf.getNodeClassNameReqd(), nodeConf.getProperties());
+      Node node = StramUtils.initNode(nodeConf.getNodeClassNameReqd(), nodeConf.getProperties());
       NodeDecl nd = tplg.addNode(nodeConfEntry.getKey(), node);
       nd.getProperties().putAll(nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);

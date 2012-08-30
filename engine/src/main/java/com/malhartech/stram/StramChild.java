@@ -418,7 +418,7 @@ public class StramChild
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         // this node is load generator aka input adapter node
         if (windowGenerator == null) {
-          Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicing here.
+          Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicking here.
           dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, System.currentTimeMillis()); // no need to set if done right
           dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 500); // no need to set if done right
 
@@ -484,12 +484,12 @@ public class StramChild
     }
 
     activeStreams.addAll(streams.values());
-    for (ComponentContextPair pair: activeStreams) {
+    for (ComponentContextPair<Stream, StreamContext> pair: activeStreams) {
       pair.component.activate(pair.context);
     }
 
-    for (final ComponentContextPair pair: nodes.values()) {
-      Thread t = new Thread()
+    for (final ComponentContextPair<Node, NodeContext> pair: nodes.values()) {
+      Thread t = new Thread("node-"+pair.context.getId())
       {
         @Override
         public void run()
@@ -529,7 +529,7 @@ public class StramChild
     }
   }
 
-  private void shutdown()
+  protected void shutdown()
   {
     throw new UnsupportedOperationException("Not yet implemented");
   }

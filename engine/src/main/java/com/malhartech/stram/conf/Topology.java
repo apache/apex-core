@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration;
 import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.Node;
 import com.malhartech.dag.SerDe;
 
 /**
@@ -151,10 +151,10 @@ public class Topology implements Serializable, TopologyConstants {
     final Map<String, StreamDecl> inputStreams = new HashMap<String, StreamDecl>();
     final Map<String, StreamDecl> outputStreams = new HashMap<String, StreamDecl>();
     final Map<String, String> properties = new HashMap<String, String>();
-    final AbstractNode node;
+    final Node node;
     final String id;
     
-    private NodeDecl(String id, AbstractNode node) {
+    private NodeDecl(String id, Node node) {
       this.node = node;
       this.id = id;
     }
@@ -187,7 +187,7 @@ public class Topology implements Serializable, TopologyConstants {
       return this.outputStreams;
     }
 
-    public AbstractNode getNode() {
+    public Node getNode() {
       return this.node;
     }
     
@@ -224,7 +224,7 @@ public class Topology implements Serializable, TopologyConstants {
   }
 
   
-  NodeDecl addNode(String id, AbstractNode node) {
+  NodeDecl addNode(String id, Node node) {
     if (nodes.containsKey(id)) {
       throw new IllegalArgumentException("duplicate node id: " + nodes.get(id));
     }

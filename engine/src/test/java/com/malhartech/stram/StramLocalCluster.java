@@ -26,8 +26,8 @@ import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyDeployer.PTNode;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
+import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.NodeDecl;
 
 /**
  * Launcher for topologies in local mode within a single process.
@@ -179,7 +179,7 @@ public class StramLocalCluster implements Runnable {
     }
   }
 
-  public StramLocalCluster(TopologyBuilder topology) throws Exception {
+  public StramLocalCluster(Topology topology) throws Exception {
 
     try {
       FileContext.getLocalFSFileContext().delete(
@@ -188,8 +188,8 @@ public class StramLocalCluster implements Runnable {
       throw new RuntimeException("could not cleanup test dir", e);
     }
 
-    if (topology.getConf().get(TopologyBuilder.STRAM_CHECKPOINT_DIR) == null) {
-      topology.getConf().set(TopologyBuilder.STRAM_CHECKPOINT_DIR, CLUSTER_WORK_DIR.getPath());
+    if (topology.getConf().get(Topology.STRAM_CHECKPOINT_DIR) == null) {
+      topology.getConf().set(Topology.STRAM_CHECKPOINT_DIR, CLUSTER_WORK_DIR.getPath());
     }
     this.dnmgr = new DNodeManager(topology);
     this.umbilical = new UmbilicalProtocolLocalImpl();
@@ -218,7 +218,7 @@ public class StramLocalCluster implements Runnable {
     this.childContainers.remove(c.getContainerId());
   }
 
-  PTNode findByLogicalNode(NodeConf logicalNode) {
+  PTNode findByLogicalNode(NodeDecl logicalNode) {
     List<PTNode> nodes = dnmgr.getTopologyDeployer().getNodes(logicalNode);
     if (nodes.isEmpty()) {
       return null;

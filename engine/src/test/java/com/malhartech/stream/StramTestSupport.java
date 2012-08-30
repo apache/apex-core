@@ -7,9 +7,7 @@ package com.malhartech.stream;
 import static org.junit.Assert.assertTrue;
 
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.dag.EndWindowTuple;
-import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 
 /**
