@@ -64,15 +64,24 @@ public class AbstractInputAdapterTest
     config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0x1234abcd);
 
     generator.setup(config);
-    generator.connect("output", new Sink() {
+    generator.connect("output", new Sink()
+    {
+      boolean firsttime = true;
 
       @Override
       public void process(Object payload)
       {
-        assert(payload instanceof ResetWindowTuple);
-        assert(((ResetWindowTuple)payload).getWindowId() == 0xcafebabe00000000L);
-        assert(((ResetWindowTuple)payload).getBaseSeconds() * 1000L == config.getLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0));
-        assert(((ResetWindowTuple)payload).getIntervalMillis() == config.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0));
+        if (firsttime) {
+          assert (payload instanceof ResetWindowTuple);
+          assert (((ResetWindowTuple)payload).getWindowId() == 0xcafebabe00000000L);
+          assert (((ResetWindowTuple)payload).getBaseSeconds() * 1000L == config.getLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0));
+          assert (((ResetWindowTuple)payload).getIntervalMillis() == config.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0));
+          firsttime = false;
+        }
+        else {
+          assert (payload instanceof Tuple);
+          assert (((Tuple)payload).getWindowId() == 0xcafebabe00000000L);
+        }
       }
     });
 
