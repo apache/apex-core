@@ -32,6 +32,8 @@ import org.slf4j.LoggerFactory;
 public class WindowGenerator implements Component<Configuration, Context>, Runnable
 {
   public static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
+  public static final String FIRST_WINDOW_MILLIS = "FirstWindowMillis";
+  public static final String WINDOW_WIDTH_MILLIS = "WindowWidthMillis";
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
@@ -116,8 +118,8 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void setup(Configuration config)
   {
-    startMillis = config.getLong("StartMillis", ses.getCurrentTimeMillis());
-    intervalMillis = config.getInt("IntervalMillis", 500);
+    startMillis = config.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis());
+    intervalMillis = config.getInt(WINDOW_WIDTH_MILLIS, 500);
   }
 
   @Override

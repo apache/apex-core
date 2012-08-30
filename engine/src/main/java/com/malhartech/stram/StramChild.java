@@ -419,8 +419,8 @@ public class StramChild
         // this node is load generator aka input adapter node
         if (windowGenerator == null) {
           Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicing here.
-          dagConfig.setLong("StartMillis", System.currentTimeMillis()); // no need to set if done right
-          dagConfig.setInt("IntervalMillis", 500); // no need to set if done right
+          dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, System.currentTimeMillis()); // no need to set if done right
+          dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 500); // no need to set if done right
 
           windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
           windowGenerator.setup(dagConfig);
@@ -457,7 +457,7 @@ public class StramChild
           else {
             Sink s = node.connect(nidi.portName, pair.component);
             String streamSinkId = pair.context.getSinkId();
-            
+
             if (streamSinkId == null) {
               pair.context.setSinkId(sink);
             }

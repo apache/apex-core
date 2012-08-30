@@ -177,8 +177,8 @@ public class StramLocalClusterTest
     WindowGenerator wingen = new WindowGenerator(mses);
 
     Configuration config = new Configuration();
-    config.setLong("StartMillis", 0);
-    config.setInt("IntervalMillis", 1);
+    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0);
+    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
 
     wingen.setup(config);
     wingen.activate(new Context() {});
