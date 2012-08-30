@@ -41,17 +41,18 @@ public class NodeDeployInfo implements Serializable
 
     /**
      * If inline connection, id of source node in same container.
-     * For buffer server, upstream publisher id.
+     * For buffer server, upstream publisher node id.
      */
     public String sourceNodeId;
 
     /**
      * Port of the upstream node from where this input stream originates.
+     * Required to uniquely identify publisher end point.
      */
     public String sourcePortName;
 
     /**
-     * Buffer server subscriber info, set only stream is not inline.
+     * Buffer server subscriber info, set only when stream is not inline.
      */
     public String bufferServerHost;
 
@@ -63,6 +64,11 @@ public class NodeDeployInfo implements Serializable
      */
     public String bufferServerSubscriberType;
 
+    /**
+     * Class name of tuple SerDe (buffer server stream only).
+     */
+    public String serDeClassName;
+    
     /**
      * Partition keys. For dynamic partitioning, set is initially empty (after
      * topology initialization) and will be populated from node processing stats
@@ -117,6 +123,11 @@ public class NodeDeployInfo implements Serializable
 
     public int bufferServerPort;
 
+    /**
+     * Class name of tuple SerDe (buffer server stream only).
+     */
+    public String serDeClassName;
+    
     @Override
     public String toString()
     {

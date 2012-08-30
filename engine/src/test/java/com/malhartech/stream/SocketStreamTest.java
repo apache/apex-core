@@ -150,7 +150,6 @@ public class SocketStreamTest
      *
      * @throws Exception
      */
-    @Ignore
     @Test
     public void testStramChildInit() throws Exception
     {

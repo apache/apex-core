@@ -326,6 +326,9 @@ public class DNodeManager
         if (!streamDecl.isInline()) {
           portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
           portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
+          if (streamDecl.getSerDeClass() != null) {
+            portInfo.serDeClassName = streamDecl.getSerDeClass().getName();
+          }
         } else {
           // target set below 
           //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
@@ -373,6 +376,9 @@ public class DNodeManager
           // buffer server input
           inputInfo.bufferServerHost = in.getBufferServerAddress().getHostName();
           inputInfo.bufferServerPort = in.getBufferServerAddress().getPort();
+          if (streamDecl.getSerDeClass() != null) {
+            inputInfo.serDeClassName = streamDecl.getSerDeClass().getName();
+          }
           // buffer server wide unique subscriber grouping:
           // publisher id + stream name + partition identifier (if any)
           inputInfo.bufferServerSubscriberType = sourceNode.id + "/" + streamDecl.getId() + partSuffix;
