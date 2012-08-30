@@ -17,7 +17,6 @@ import org.junit.*;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-@Ignore
 public final class OutputSocketStreamTest
 {
   static class MyOutputSocketStream extends SocketOutputStream

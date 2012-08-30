@@ -18,28 +18,28 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Extend {@link io.netty.channel.ChannelInitializer}
- * 
+ *
  */
 
 public class ClientInitializer extends ChannelInitializer<SocketChannel>
 {
     private static final Logger logger = LoggerFactory.getLogger(ClientInitializer.class);
-    final Class<? extends ChannelHandler> handler;
+    final ChannelHandler handler;
 
     /**
-     * 
-     * @param handler 
+     *
+     * @param handler
      */
-    public ClientInitializer(Class<? extends ChannelHandler> handler)
+    public ClientInitializer(ChannelHandler handler)
     {
-        this.handler = handler;
+      this.handler = handler;
     }
 
-    
+
     /**
-     * 
+     *
      * @param channel
-     * @throws Exception 
+     * @throws Exception
      */
     @Override
     public void initChannel(SocketChannel channel) throws Exception
@@ -61,6 +61,6 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel>
 //      }
 //    });
 
-        p.addLast("handler", handler.newInstance());
+        p.addLast("handler", handler);
     }
 }

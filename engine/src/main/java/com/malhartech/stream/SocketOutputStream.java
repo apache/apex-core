@@ -43,7 +43,7 @@ public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAd
     bootstrap.group(new NioEventLoopGroup())
             .channel(new NioSocketChannel())
             .remoteAddress(config.getBufferServerAddress())
-            .handler(new ClientInitializer(this.getClass()));
+            .handler(new ClientInitializer(this));
   }
 
   @Override

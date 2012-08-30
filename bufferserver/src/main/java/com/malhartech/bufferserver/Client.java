@@ -29,14 +29,14 @@ public class Client
     private final Collection<byte[]> partitions;
 
     /**
-     * 
+     *
      * @param host
      * @param port
      * @param node
      * @param type
      * @param id
      * @param down_type
-     * @param partitions 
+     * @param partitions
      */
     public Client(String host, int port, String node, String type, String id, String down_type, Collection<byte[]> partitions)
     {
@@ -63,8 +63,8 @@ public class Client
     }
 
     /**
-     * 
-     * @throws Exception 
+     *
+     * @throws Exception
      */
     public void run() throws Exception
     {
@@ -73,7 +73,7 @@ public class Client
         bootstrap.group(new NioEventLoopGroup())
                 .channel(new NioSocketChannel())
                 .remoteAddress(host, port)
-                .handler(new ClientInitializer(ClientHandler.class));
+                .handler(new ClientInitializer(new ClientHandler()));
 
         // Make a new connection.
         Channel channel = bootstrap.connect().sync().channel();
@@ -87,9 +87,9 @@ public class Client
     }
 
     /**
-     * 
+     *
      * @param args
-     * @throws Exception 
+     * @throws Exception
      */
     public static void main(String[] args) throws Exception
     {

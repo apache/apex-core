@@ -150,51 +150,51 @@ public class SocketStreamTest
      *
      * @throws Exception
      */
-    @Ignore
-    @Test
-    public void testStramChildInit() throws Exception
-    {
-        TopologyBuilder b = new TopologyBuilder();
-
-        NodeConf generatorNode = b.getOrAddNode("generatorNode");
-        generatorNode.setClassName(NumberGeneratorInputAdapter.class.getName());
-
-        NodeConf node1 = b.getOrAddNode("node1");
-        node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-
-        StreamConf generatorOutput = b.getOrAddStream("generatorOutput");
-        generatorOutput.setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, generatorNode)
-          .addSink(EchoNode.INPUT1, node1)
-          .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
-
-        //StreamConf output1 = b.getOrAddStream("output1");
-        //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
-        //                    ConsoleOutputStream.class.getName());
-        Topology tplg = b.getTopology();
-
-        DNodeManager dnm = new DNodeManager(tplg);
-        int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
-        Assert.assertEquals("number required containers",
-                            expectedContainerCount,
-                            dnm.getNumRequiredContainers());
-
-        List<LocalStramChild> containers = new ArrayList<LocalStramChild>();
-
-        for (int i = 0; i < expectedContainerCount; i++) {
-            String containerId = "container" + (i + 1);
-            StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-            LocalStramChild container = new LocalStramChild(containerId, null);
-            container.init(cc);
-            containers.add(container);
-        }
-
-        // TODO: validate data flow
-
-        for (LocalStramChild cc: containers) {
-            LOG.info("shutting down " + cc.getContainerId());
-            cc.shutdown();
-        }
-
-        containers = null;
-    }
+//    @Ignore
+//    @Test
+//    public void testStramChildInit() throws Exception
+//    {
+//        TopologyBuilder b = new TopologyBuilder();
+//
+//        NodeConf generatorNode = b.getOrAddNode("generatorNode");
+//        generatorNode.setClassName(NumberGeneratorInputAdapter.class.getName());
+//
+//        NodeConf node1 = b.getOrAddNode("node1");
+//        node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+//
+//        StreamConf generatorOutput = b.getOrAddStream("generatorOutput");
+//        generatorOutput.setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, generatorNode)
+//          .addSink(EchoNode.INPUT1, node1)
+//          .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
+//
+//        //StreamConf output1 = b.getOrAddStream("output1");
+//        //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
+//        //                    ConsoleOutputStream.class.getName());
+//        Topology tplg = b.getTopology();
+//
+//        DNodeManager dnm = new DNodeManager(tplg);
+//        int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
+//        Assert.assertEquals("number required containers",
+//                            expectedContainerCount,
+//                            dnm.getNumRequiredContainers());
+//
+//        List<LocalStramChild> containers = new ArrayList<LocalStramChild>();
+//
+//        for (int i = 0; i < expectedContainerCount; i++) {
+//            String containerId = "container" + (i + 1);
+//            StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+//            LocalStramChild container = new LocalStramChild(containerId, null);
+//            container.init(cc);
+//            containers.add(container);
+//        }
+//
+//        // TODO: validate data flow
+//
+//        for (LocalStramChild cc: containers) {
+//            LOG.info("shutting down " + cc.getContainerId());
+//            cc.shutdown();
+//        }
+//
+//        containers = null;
+//    }
 }

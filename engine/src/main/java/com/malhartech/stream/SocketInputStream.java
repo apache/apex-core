@@ -44,7 +44,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
     bootstrap.group(new NioEventLoopGroup())
             .channel(new NioSocketChannel())
             .remoteAddress(config.getBufferServerAddress())
-            .handler(new ClientInitializer(this.getClass()));
+            .handler(new ClientInitializer(this));
   }
 
   @Override
