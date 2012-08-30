@@ -23,11 +23,13 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   private HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   private long baseSeconds = 0;
   private Iterable<Sink> sinks;
+  private SerDe serde;
 
   @Override
   public void activate(StreamContext context)
   {
     super.activate(context);
+    serde = context.getSerDe();
 
     sinks = outputs.values();
     String type = "paramNotRequired?"; // TODO: why do we need this?
@@ -38,22 +40,22 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   @Override
   public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
   {
-    StreamContext context = ctx.channel().attr(CONTEXT).get();
-    if (context == null) {
-      logger.warn("Context is not setup for the InputSocketStream");
-    }
-    else {
+//    StreamContext context = ctx.channel().attr(CONTEXT).get();
+//    if (serde == null) {
+//      logger.warn("serde is not setup for the InputSocketStream");
+//    }
+//    else {
       Tuple t;
       switch (data.getType()) {
         case SIMPLE_DATA:
-          Object o = context.getSerDe().fromByteArray(data.getSimpleData().getData().toByteArray());
+          Object o = serde.fromByteArray(data.getSimpleData().getData().toByteArray());
           for (Sink s: sinks) {
             s.process(o);
           }
           return;
 
         case PARTITIONED_DATA:
-          o = context.getSerDe().fromByteArray(data.getPartitionedData().getData().toByteArray());
+          o = serde.fromByteArray(data.getPartitionedData().getData().toByteArray());
           for (Sink s: sinks) {
             s.process(o);
           }
@@ -84,7 +86,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
       for (Sink s: sinks) {
         s.process(t);
       }
-    }
+//    }
   }
 
   @Override

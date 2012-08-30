@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerAdapter<T> implements Stream
 {
   private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
-  protected static final AttributeKey<StreamContext> CONTEXT = new AttributeKey<StreamContext>("context");
+//  protected static final AttributeKey<StreamContext> CONTEXT = new AttributeKey<StreamContext>("context");
   protected Channel channel;
   private Bootstrap bootstrap;
 
@@ -116,13 +116,13 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
 //        return bo;
 //      }
 //    });
-    channel.attr(CONTEXT).set(context);
+//    channel.attr(CONTEXT).set(context);
   }
 
   @Override
   public void deactivate()
   {
-    channel.attr(CONTEXT).remove();
+//    channel.attr(CONTEXT).remove();
     channel.close().awaitUninterruptibly();
   }
 }

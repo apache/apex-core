@@ -377,12 +377,12 @@ public class StramChild
     for (NodeDeployInfo ndi: nodeList) {
       Node node = nodes.get(ndi.id).component;
       for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
-        String source = ndi.id.concat(".").concat(nodi.portName);
+        String sourceId = ndi.id.concat(".").concat(nodi.portName);
 
         Stream stream;
         StreamContext context;
 
-        ArrayList<String> collection = one2ManyPlumbing.get(source);
+        ArrayList<String> collection = one2ManyPlumbing.get(sourceId);
         if (collection == null) {
           // this must be buffer stream
           assert (nodi.isInline() == false);
@@ -394,30 +394,57 @@ public class StramChild
           stream.setup(config);
 
           context = new StreamContext(nodi.declaredStreamId);
-          context.setSourceId(source);
-          context.setSinkId(nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)));
+          context.setSourceId(sourceId);
+          context.setSinkId(nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceId));
         }
         else if (collection.size() == 1) {
-          assert (nodi.isInline());
+          if (nodi.isInline()) {
+            stream = new InlineStream();
+            stream.setup(new StreamConfiguration());
 
-          stream = new InlineStream();
-          stream.setup(new StreamConfiguration());
+            context = new StreamContext(nodi.declaredStreamId);
+            context.setSourceId(sourceId);
+          }
+          else {
+            /*
+             * this means we may have another party interested in the output of this port but it's in some
+             * other container, so we will create a mux stream and one stream would fork off to the buffer
+             * server and the other stream would connect to the party which is in this container.
+             */
+            stream = new MuxStream();
+            stream.setup(new StreamConfiguration());
 
-          context = new StreamContext(nodi.declaredStreamId);
-          context.setSourceId(source);
+            context = new StreamContext(nodi.declaredStreamId);
+            context.setSourceId(sourceId);
+
+            StreamConfiguration config = new StreamConfiguration();
+            config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+
+            BufferServerOutputStream bsos = new BufferServerOutputStream();
+            bsos.setup(config);
+
+            BufferServerStreamContext bssc = new BufferServerStreamContext(nodi.declaredStreamId);
+            bssc.setSourceId(sourceId);
+            bssc.setSinkId(nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceId));
+
+            Sink s = bsos.connect("input", stream);
+            stream.connect(bssc.getSinkId(), s);
+
+            streams.put(bssc.getSinkId(), new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
+          }
         }
         else {
           stream = new MuxStream();
           stream.setup(new StreamConfiguration());
 
           context = new StreamContext(nodi.declaredStreamId);
-          context.setSourceId(source);
+          context.setSourceId(sourceId);
         }
 
         Sink s = stream.connect(Component.INPUT, node);
         node.connect(nodi.portName, s);
 
-        streams.put(source, new ComponentContextPair<Stream, StreamContext>(stream, context));
+        streams.put(sourceId, new ComponentContextPair<Stream, StreamContext>(stream, context));
       }
     }
 
@@ -438,10 +465,10 @@ public class StramChild
       }
       else {
         for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
-          String source = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
-          String sink = ndi.id.concat(".").concat(nidi.portName);
+          String sourceId = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
+          String sinkId = ndi.id.concat(".").concat(nidi.portName);
 
-          ComponentContextPair<Stream, StreamContext> pair = streams.get(source);
+          ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceId);
           if (pair == null) {
             // it's buffer server stream
             assert (nidi.isInline() == false);
@@ -454,26 +481,26 @@ public class StramChild
 
             StreamContext context = new BufferServerStreamContext(nidi.declaredStreamId);
             ((BufferServerStreamContext)context).setPartitions(nidi.partitionKeys);
-            context.setSourceId(source);
-            context.setSinkId(sink);
+            context.setSourceId(nidi.bufferServerHost.concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceId));
+            context.setSinkId(sinkId);
             pair = new ComponentContextPair<Stream, StreamContext>(stream, context);
 
             Sink s = node.connect(nidi.portName, stream);
-            stream.connect(sink, s);
+            stream.connect(sinkId, s);
           }
           else {
             Sink s = node.connect(nidi.portName, pair.component);
             String streamSinkId = pair.context.getSinkId();
 
             if (streamSinkId == null) {
-              pair.context.setSinkId(sink);
+              pair.context.setSinkId(sinkId);
             }
             else {
-              pair.context.setSinkId(streamSinkId.concat(", ").concat(sink));
+              pair.context.setSinkId(streamSinkId.concat(", ").concat(sinkId));
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              pair.component.connect(sink, s);
+              pair.component.connect(sinkId, s);
             }
             else {
               /*
@@ -481,11 +508,11 @@ public class StramChild
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
               PartitionAwareSink pas = new PartitionAwareSink(new DefaultSerDe(), nidi.partitionKeys, s); // serde should be something else
-              pair.component.connect(sink, pas);
+              pair.component.connect(sinkId, pas);
             }
           }
 
-          streams.put(sink, pair);
+          streams.put(sinkId, pair);
         }
       }
     }
@@ -496,7 +523,7 @@ public class StramChild
     }
 
     for (final ComponentContextPair<Node, NodeContext> pair: nodes.values()) {
-      Thread t = new Thread("node-"+pair.context.getId())
+      Thread t = new Thread("node-" + pair.context.getId())
       {
         @Override
         public void run()
@@ -538,7 +565,7 @@ public class StramChild
 
   protected void shutdown()
   {
-    throw new UnsupportedOperationException("Not yet implemented");
+//    throw new UnsupportedOperationException("Not yet implemented");
   }
 
   private void undeployNodes(List<NodeDeployInfo> nodeList)
