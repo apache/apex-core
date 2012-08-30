@@ -369,8 +369,7 @@ public class StramChild
       Node node = nodes.get(ndi.id).component;
       for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
         String source = ndi.id.concat(".").concat(nodi.portName);
-        // FIXME: no single target reference
-        String target = nodi.inlineTargetNodeId.concat(".").concat(nodi.targetPortName);
+
         Stream stream;
         StreamContext context;
 
@@ -385,7 +384,9 @@ public class StramChild
           stream = new BufferServerOutputStream();
           stream.setup(config);
 
-          context = new BufferServerStreamContext(source, target);
+          context = new StreamContext(nodi.declaredStreamId);
+          context.setSourceId(source);
+          context.setSinkId(nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)));
         }
         else if (collection.size() == 1) {
           assert (nodi.isInline());
@@ -393,13 +394,15 @@ public class StramChild
           stream = new InlineStream();
           stream.setup(new StreamConfiguration());
 
-          context = new StreamContext(source, target);
+          context = new StreamContext(nodi.declaredStreamId);
+          context.setSourceId(source);
         }
         else {
           stream = new MuxStream();
           stream.setup(new StreamConfiguration());
 
-          context = new StreamContext(source, target);
+          context = new StreamContext(nodi.declaredStreamId);
+          context.setSourceId(source);
         }
 
         Sink s = stream.connect(Component.INPUT, node);
@@ -429,6 +432,7 @@ public class StramChild
       else {
         for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
           String source = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
+          String sink = ndi.id.concat(".").concat(nidi.portName);
 
           ComponentContextPair<Stream, StreamContext> pair = streams.get(source);
           if (pair == null) {
@@ -441,26 +445,40 @@ public class StramChild
             Stream stream = new BufferServerInputStream();
             stream.setup(config);
 
-            pair = new ComponentContextPair<Stream, StreamContext>(stream,
-                                                                   new BufferServerStreamContext(nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName), ndi.id.concat(".").concat(nidi.portName)));
+            StreamContext context = new BufferServerStreamContext(nidi.declaredStreamId);
+            ((BufferServerStreamContext)context).setPartitions(nidi.partitionKeys);
+            context.setSourceId(source);
+            context.setSinkId(sink);
+            pair = new ComponentContextPair<Stream, StreamContext>(stream, context);
+
             Sink s = node.connect(nidi.portName, stream);
-            stream.connect(ndi.id.concat(".").concat(nidi.portName), s); // what this id should be?
-          }
-          else if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-            Sink s = node.connect(nidi.portName, pair.component);
-            pair.component.connect(ndi.id.concat(".").concat(nidi.portName), s); // what this id should be?
+            stream.connect(sink, s);
           }
           else {
-            /*
-             * generally speaking we do not have partitions on the inline streams so the control should not
-             * come here but if it comes, then we are ready to handle it using the partition aware streams.
-             */
             Sink s = node.connect(nidi.portName, pair.component);
-            PartitionAwareSink pas = new PartitionAwareSink(new DefaultSerDe(), nidi.partitionKeys, s); // serde should be something else
-            pair.component.connect(ndi.id.concat(".").concat(nidi.portName), pas); // what this id should be?
+            String streamSinkId = pair.context.getSinkId();
+            
+            if (streamSinkId == null) {
+              pair.context.setSinkId(sink);
+            }
+            else {
+              pair.context.setSinkId(streamSinkId.concat(", ").concat(sink));
+            }
+
+            if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
+              pair.component.connect(sink, s);
+            }
+            else {
+              /*
+               * generally speaking we do not have partitions on the inline streams so the control should not
+               * come here but if it comes, then we are ready to handle it using the partition aware streams.
+               */
+              PartitionAwareSink pas = new PartitionAwareSink(new DefaultSerDe(), nidi.partitionKeys, s); // serde should be something else
+              pair.component.connect(sink, pas);
+            }
           }
 
-          streams.put(ndi.id.concat(".").concat(nidi.portName), pair);
+          streams.put(sink, pair);
         }
       }
     }
@@ -471,7 +489,8 @@ public class StramChild
     }
 
     for (final ComponentContextPair pair: nodes.values()) {
-      Thread t = new Thread() {
+      Thread t = new Thread()
+      {
         @Override
         public void run()
         {

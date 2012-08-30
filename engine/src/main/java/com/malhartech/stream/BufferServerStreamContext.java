@@ -14,7 +14,7 @@ import java.util.HashSet;
  */
 
 /**
- * 
+ *
  * Implements stream context for buffer server<p>
  * <br>
  * Extends StreamContext and defines upstream and downstream nodes<br>
@@ -25,40 +25,21 @@ import java.util.HashSet;
 
 public class BufferServerStreamContext extends StreamContext
 {
-  private String id;
   private HashSet<byte[]> partitions;
 
   /**
-   * 
+   *
    * @param upstreamNodeId
-   * @param downstreamNodeId 
+   * @param downstreamNodeId
    */
-  public BufferServerStreamContext(String upstreamNodeId, String downstreamNodeId)
+  public BufferServerStreamContext(String id)
   {
-    super(upstreamNodeId, downstreamNodeId);
+    super(id);
   }
 
   /**
-   * 
-   * @param id 
-   */
-  public void setId(String id)
-  {
-    this.id = id;
-  }
-  
-  /**
-   * 
-   * @return String
-   */
-  public String getId()
-  {
-    return id;
-  }
-
-  /**
-   * 
-   * @param partitionKeys 
+   *
+   * @param partitionKeys
    */
   public void setPartitions(Collection<byte[]> partitionKeys)
   {
@@ -72,7 +53,7 @@ public class BufferServerStreamContext extends StreamContext
   }
 
   /**
-   * 
+   *
    * @return Collection<byte[]>
    */
   Collection<byte[]> getPartitions()

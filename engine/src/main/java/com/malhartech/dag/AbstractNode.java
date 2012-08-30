@@ -223,7 +223,7 @@ public abstract class AbstractNode implements Node
    * long as there is useful workload for the node.
    */
   @Override
-  //@SuppressWarnings("SleepWhileInLoop")
+  @SuppressWarnings("SleepWhileInLoop")
   final public void activate(NodeContext ctx)
   {
     int totalQueues = inputs.size();

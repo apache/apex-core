@@ -17,6 +17,13 @@ import org.slf4j.LoggerFactory;
  */
 public class StreamContext implements Context
 {
+  String id;
+
+  public StreamContext(String id)
+  {
+    this.id = id;
+  }
+
   /**
    * @return the startingWindowId
    */
@@ -33,9 +40,22 @@ public class StreamContext implements Context
     this.startingWindowId = startingWindowId;
   }
 
+  /**
+   *
+   * @param id
+   */
+  public void setId(String id)
+  {
+    this.id = id;
+  }
+
+  /**
+   *
+   * @return String
+   */
   public String getId()
   {
-    return "move the code from BufferStreamContext";
+    return id;
   }
 
   /**
@@ -81,17 +101,9 @@ public class StreamContext implements Context
   private Sink sink;
   private SerDe serde;
   private int tupleCount;
-  private State sinkState;
   private String sourceId;
   private String sinkId;
   private long startingWindowId;
-
-  public StreamContext(String sourceId, String sinkId)
-  {
-    this.sourceId = sourceId;
-    this.sinkId = sinkId;
-    sinkState = State.UNDEFINED;
-  }
 
   public SerDe getSerDe()
   {
@@ -108,24 +120,13 @@ public class StreamContext implements Context
     return tupleCount;
   }
 
-  State getSinkState()
-  {
-    return sinkState;
-  }
-
-  void setSinkState(State state)
-  {
-    sinkState = state;
-  }
-
   @Override
   public String toString()
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-    .append("sourceId", sourceId)
-    .append("sinkId", sinkId)
-    .append("tuples" , tupleCount)
-    .append("state", sinkState)
-    .toString();
+            .append("sourceId", sourceId)
+            .append("sinkId", sinkId)
+            .append("tuples", tupleCount)
+            .toString();
   }
 }
