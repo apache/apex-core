@@ -4,48 +4,33 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.Buffer.Data;
+import static org.junit.Assert.assertTrue;
+
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
-import com.malhartech.bufferserver.Buffer.EndWindow;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Bunch of utilities shared between tests.
  */
 abstract public class StramTestSupport {
 
-  static Tuple generateTuple(Object payload, int windowId, StreamContext sc) {
-    Tuple t = new Tuple(payload);
-    t.setWindowId(windowId);
-    t.setType(DataType.SIMPLE_DATA);
-    return t;
+  static Object generateTuple(Object payload, int windowId) {
+    return payload;
   }
 
-  static Tuple generateBeginWindowTuple(String nodeid, int windowId, StreamContext sc)
+  static Tuple generateBeginWindowTuple(String nodeid, int windowId)
   {
-    Tuple t = new Tuple(null);
-    t.setType(DataType.BEGIN_WINDOW);
-    t.setWindowId(windowId);
-
-    return t;
+    Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
+    bwt.setWindowId(windowId);    
+    return bwt;
   }
 
 
-  static Tuple generateEndWindowTuple(String nodeid, int windowId, int tupleCount, StreamContext sc)
+  static Tuple generateEndWindowTuple(String nodeid, int windowId, int tupleCount)
   {
-    EndWindow.Builder ewb = EndWindow.newBuilder();
-    ewb.setNode(nodeid);
-    ewb.setTupleCount(tupleCount);
-
-    Data.Builder db = Data.newBuilder();
-    db.setType(DataType.END_WINDOW);
-    db.setWindowId(windowId);
-    db.setEndWindow(ewb);
-
-    //Data data = db.build();
     EndWindowTuple t = new EndWindowTuple();
     t.setTupleCount(tupleCount);
     t.setWindowId(windowId);

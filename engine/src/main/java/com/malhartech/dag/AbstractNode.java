@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractNode implements Node
 {
   private String port;
-  //@SuppressWarnings("ProtectedField")
+  @SuppressWarnings("ProtectedField")
   protected transient NodeContext ctx;
   private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();

@@ -21,7 +21,7 @@ public abstract class AbstractInputNode implements Node
 {
   int spinMillis;
   int bufferCapacity;
-  HashMap<String, CircularBuffer> afterBeginWindows;
+  HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   Collection<Sink> sinks;
@@ -32,7 +32,7 @@ public abstract class AbstractInputNode implements Node
     spinMillis = config.getInt("SpinMillis", 100);
     bufferCapacity = config.getInt("BufferCapacity", 1024);
 
-    afterBeginWindows = new HashMap<String, CircularBuffer>();
+    afterBeginWindows = new HashMap<String, CircularBuffer<Object>>();
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
 
     Class<? extends Node> clazz = this.getClass();
@@ -41,7 +41,7 @@ public abstract class AbstractInputNode implements Node
       PortAnnotation[] ports = na.ports();
       for (PortAnnotation pa: ports) {
         if (pa.type() == PortAnnotation.PortType.OUTPUT || pa.type() == PortAnnotation.PortType.BIDI) {
-          afterBeginWindows.put(pa.name(), new CircularBuffer(bufferCapacity));
+          afterBeginWindows.put(pa.name(), new CircularBuffer<Object>(bufferCapacity));
           afterEndWindows.put(pa.name(), new CircularBuffer<Tuple>(bufferCapacity));
         }
       }
@@ -57,7 +57,7 @@ public abstract class AbstractInputNode implements Node
   @Override
   public void deactivate()
   {
-    sinks = Collections.EMPTY_LIST;
+    sinks = Collections.emptyList();
   }
 
   @Override
@@ -92,9 +92,9 @@ public abstract class AbstractInputNode implements Node
         for (Sink s: sinks) {
           s.process(payload);
         }
-        for (Entry<String, CircularBuffer> e: afterBeginWindows.entrySet()) {
+        for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
           Sink s = outputs.get(e.getKey());
-          CircularBuffer cb = e.getValue();
+          CircularBuffer<?> cb = e.getValue();
           for (int i = cb.size(); i > 0; i--) {
             s.process(cb.get());
           }
@@ -102,9 +102,9 @@ public abstract class AbstractInputNode implements Node
         break;
 
       case END_WINDOW:
-        for (Entry<String, CircularBuffer> e: afterBeginWindows.entrySet()) {
+        for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
           Sink s = outputs.get(e.getKey());
-          CircularBuffer cb = e.getValue();
+          CircularBuffer<?> cb = e.getValue();
           for (int i = cb.size(); i > 0; i--) {
             s.process(cb.get());
           }
@@ -115,7 +115,7 @@ public abstract class AbstractInputNode implements Node
         // i think there should be just one queue instead of one per port - lets defer till we find an example.
         for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
           Sink s = outputs.get(e.getKey());
-          CircularBuffer cb = e.getValue();
+          CircularBuffer<?> cb = e.getValue();
           for (int i = cb.size(); i > 0; i--) {
             s.process(cb.get());
           }
