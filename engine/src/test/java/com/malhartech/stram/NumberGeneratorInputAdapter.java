@@ -3,16 +3,26 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.stream.AbstractInputAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NumberGeneratorInputAdapter extends AbstractInputAdapter
+import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.annotation.PortAnnotation.PortType;
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.NodeConfiguration;
+
+@NodeAnnotation(
+    ports = {
+        @PortAnnotation(name = NumberGeneratorInputAdapter.OUTPUT_PORT, type = PortType.OUTPUT)
+    }
+)
+public class NumberGeneratorInputAdapter extends AbstractNode
   implements Runnable
 {
   private static Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
+  public static final String OUTPUT_PORT = "outputPort";
+  
   private volatile boolean shutdown = false;
   private String myConfigProperty;
   private int maxTuples = -1;
@@ -40,21 +50,29 @@ public class NumberGeneratorInputAdapter extends AbstractInputAdapter
   }
 
   @Override
-  public void setup(StreamConfiguration config)
-  {
+  public void process(Object payload) {
+    
   }
 
   @Override
-  public boolean hasFinished()
-  {
-    return maxTuples > 0 && maxTuples < generatedNumbers;
+  public void handleIdleTimeout() {
+    if (hasFinished()) {
+      deactivate();
+    }
   }
 
+  private boolean hasFinished() {
+    if (maxTuples > 0 && maxTuples < generatedNumbers) {
+      return true;
+    }
+    return false;
+  }
+  
   @Override
   public void run()
   {
     while (!shutdown && !hasFinished()) {
-      LOG.info("sending tuple to: " + context);
+      LOG.debug("sending tuple");
       emit(String.valueOf(generatedNumbers++));
       try {
         Thread.sleep(1000);
@@ -72,10 +90,10 @@ public class NumberGeneratorInputAdapter extends AbstractInputAdapter
     shutdown = true;
   }
 
-  @Override
-  public void activate(StreamContext context)
-  {
+  @Override // this was activate
+  public void setup(NodeConfiguration config) {
     Thread t = new Thread(this);
     t.start();
   }
+
 }

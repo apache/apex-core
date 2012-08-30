@@ -162,7 +162,6 @@ public class TopologyBuilderTest {
       Assert.assertNull("input1 no source", input1.getSourceNode());
       Assert.assertEquals("input1 target ", b.getOrAddNode("node1"), input1.getTargetNodes().iterator().next());
       assertEquals("input1.myConfigProperty", "myConfigPropertyValue", input1.getProperty("myConfigProperty"));
-      assertEquals("input1 classname", NumberGeneratorInputAdapter.class.getName(), input1.getProperty(TopologyBuilder.STREAM_CLASSNAME));
       assertEquals("input1 properties count", 2, input1.getProperties().size());
       b.validate();
       

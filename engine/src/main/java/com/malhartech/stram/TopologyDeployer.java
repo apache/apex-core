@@ -124,18 +124,6 @@ public class TopologyDeployer {
 
   /**
    *
-   * Representation of input adapter in the physical layout<p>
-   * <br>
-   *
-   */
-  public static class PTInputAdapter extends PTInput {
-    protected PTInputAdapter(String portName, StreamDecl logicalStream, PTComponent target, byte[] partition) {
-      super(portName, logicalStream, target, partition, null);
-    }
-  }
-
-  /**
-   *
    * Representation of an output in the physical layout. A sink in the DAG<p>
    * <br>
    * This can go to another node or to a output Adapter (i.e. outside the DAG)<br>
@@ -257,7 +245,6 @@ public class TopologyDeployer {
   }
 
   private Map<NodeDecl, List<PTNode>> deployedNodes = new HashMap<NodeDecl, List<PTNode>>();
-  private Map<StreamDecl, PTInputAdapter> inputAdapters = new HashMap<StreamDecl, PTInputAdapter>();
   private List<PTContainer> containers = new ArrayList<PTContainer>();
   private int maxContainers = 1;
 
@@ -425,8 +412,4 @@ public class TopologyDeployer {
     return this.deployedNodes.get(nodeDecl);
   }
   
-  protected PTInputAdapter getInputAdapter(StreamDecl streamDecl) {
-    return this.inputAdapters.get(streamDecl);
-  }
-
 }

@@ -87,8 +87,10 @@ public class NodeDeployInfo implements Serializable
   }
 
   /**
-   * Node output, publisher info. For inline streams, reference target node within container.
-   * For buffer server output, node id will be used as publisher id and referenced by subscribers.
+   * Node output, publisher info. 
+   * Streams can have multiple sinks, hence output won't reference target node or port.
+   * For inline streams, input info will have source node for wiring.
+   * For buffer server output, node id/port will be used as publisher id and referenced by subscribers.
    */
   public static class NodeOutputDeployInfo implements Serializable
   {
@@ -107,16 +109,6 @@ public class NodeDeployInfo implements Serializable
      * Name of stream declared in logical topology
      */
     public String declaredStreamId;
-
-    /**
-     * If inline connection, id of source node in same container.
-     */
-    public String inlineTargetNodeId; // should this be just called targetNodeId?
-
-    /**
-     * if inline connection, port of the target node.
-     */
-    public String targetPortName;
 
     /**
      * Buffer server publisher info, set when stream not inline.

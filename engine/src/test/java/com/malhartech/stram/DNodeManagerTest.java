@@ -134,6 +134,7 @@ public class DNodeManagerTest {
     Assert.assertEquals("portName " + c2n1n2, EchoNode.INPUT1, c2n1n2.portName);
     Assert.assertNull("partitionKeys " + c2n1n2, c2n1n2.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n1n2, node1DI.id, c2n1n2.sourceNodeId);
+    Assert.assertEquals("sourcePortName " + c2n1n2, EchoNode.OUTPUT1, c2n1n2.sourcePortName);
 
     // inline input node3 from node2
     NodeInputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");
@@ -144,7 +145,7 @@ public class DNodeManagerTest {
     Assert.assertEquals("bufferServerPort " + c2n3In, 0, c2n3In.bufferServerPort);
     Assert.assertNull("partitionKeys " + c2n3In, c2n3In.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n3In, node2DI.id, c2n3In.sourceNodeId);
-    Assert.assertEquals("sourcePortName " + c2n3In, EchoNode.OUTPUT1, c2n3In.sourcePortName); // required for inline
+    Assert.assertEquals("sourcePortName " + c2n3In, EchoNode.OUTPUT1, c2n3In.sourcePortName);
   }
 
   @Test

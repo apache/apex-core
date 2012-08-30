@@ -22,9 +22,6 @@ import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.NewTopologyBuilder.NodeBuilder;
 import com.malhartech.stram.conf.Topology;
 
-/**
- *
- */
 public class NewTopologyBuilderTest {
 
   @NodeAnnotation(
@@ -108,6 +105,5 @@ public class NewTopologyBuilderTest {
     Assert.assertEquals("number nodes in clode", 1, tplgClone.getRootNodes().size());
     
   }
-  
   
 }

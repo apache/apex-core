@@ -94,7 +94,7 @@ public class StramChild
     this.conf = conf;
   }
 
-  protected String getContainerId()
+  public String getContainerId()
   {
     return this.containerId;
   }
@@ -369,6 +369,7 @@ public class StramChild
       Node node = nodes.get(ndi.id).component;
       for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
         String source = ndi.id.concat(".").concat(nodi.portName);
+        // FIXME: no single target reference
         String target = nodi.inlineTargetNodeId.concat(".").concat(nodi.targetPortName);
         Stream stream;
         StreamContext context;

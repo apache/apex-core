@@ -74,6 +74,10 @@ public class Topology implements Serializable, TopologyConstants {
       return node;
     }
 
+    public String getPortName() {
+      return portAnnotation.name();
+    }
+    
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).

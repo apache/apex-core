@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractNode implements Node
 {
   private String port;
-  @SuppressWarnings("ProtectedField")
+  //@SuppressWarnings("ProtectedField")
   protected transient NodeContext ctx;
   private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
@@ -223,7 +223,7 @@ public abstract class AbstractNode implements Node
    * long as there is useful workload for the node.
    */
   @Override
-  @SuppressWarnings("SleepWhileInLoop")
+  //@SuppressWarnings("SleepWhileInLoop")
   final public void activate(NodeContext ctx)
   {
     int totalQueues = inputs.size();
@@ -361,13 +361,13 @@ public abstract class AbstractNode implements Node
         }
 
         int oldCount = 0;
-        for (CircularBuffer cb: activeQueues) {
+        for (CircularBuffer<?> cb: activeQueues) {
           oldCount += cb.size();
         }
         try {
           Thread.sleep(100);
           int newCount = 0;
-          for (CircularBuffer cb: activeQueues) {
+          for (CircularBuffer<?> cb: activeQueues) {
             newCount += cb.size();
           }
 

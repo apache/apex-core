@@ -328,7 +328,7 @@ public class DNodeManager
           portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
         } else {
           // target set below 
-          portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
+          //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
         }
         //portInfo.setBufferServerChannelType(streamDecl.getSource().getNode().getId());
 
@@ -350,13 +350,14 @@ public class DNodeManager
         }
         PTNode sourceNode = (PTNode)in.source;
 
-        NodeInputDeployInfo portInfo = new NodeInputDeployInfo();
-        portInfo.declaredStreamId = streamDecl.getId();
-        portInfo.portName = in.portName;
-        portInfo.sourceNodeId = sourceNode.id;
+        NodeInputDeployInfo inputInfo = new NodeInputDeployInfo();
+        inputInfo.declaredStreamId = streamDecl.getId();
+        inputInfo.portName = in.portName;
+        inputInfo.sourceNodeId = sourceNode.id;
+        inputInfo.sourcePortName = in.logicalStream.getSource().getPortName();
         String partSuffix = "";
         if (in.partition != null) {
-          portInfo.partitionKeys = Arrays.asList(in.partition);
+          inputInfo.partitionKeys = Arrays.asList(in.partition);
           partSuffix = "/" + ndi.id; // each partition is separate group
         }
 
@@ -367,17 +368,16 @@ public class DNodeManager
             throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
           }
           // set the id required to inline link both nodes
-          outputInfo.inlineTargetNodeId = node.id;
-          portInfo.sourcePortName = outputInfo.portName;
+          //outputInfo.inlineTargetNodeId = node.id;
         } else {
           // buffer server input
-          portInfo.bufferServerHost = in.getBufferServerAddress().getHostName();
-          portInfo.bufferServerPort = in.getBufferServerAddress().getPort();
+          inputInfo.bufferServerHost = in.getBufferServerAddress().getHostName();
+          inputInfo.bufferServerPort = in.getBufferServerAddress().getPort();
           // buffer server wide unique subscriber grouping:
           // publisher id + stream name + partition identifier (if any)
-          portInfo.bufferServerSubscriberType = sourceNode.id + "/" + streamDecl.getId() + partSuffix;
+          inputInfo.bufferServerSubscriberType = sourceNode.id + "/" + streamDecl.getId() + partSuffix;
         } 
-        ndi.inputs.add(portInfo);
+        ndi.inputs.add(inputInfo);
       }
     }
 
