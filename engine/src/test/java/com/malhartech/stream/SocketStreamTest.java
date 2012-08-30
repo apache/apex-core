@@ -62,7 +62,7 @@ public class SocketStreamTest
     }
 
     /**
-     * Test buffer server stream by sending 
+     * Test buffer server stream by sending
      * tuple on outputstream and receive same tuple from inputstream
      *
      * @throws Exception
@@ -103,9 +103,10 @@ public class SocketStreamTest
         String downstreamNodeId = "downStreamNodeId";
 
 
-        BufferServerStreamContext issContext = new BufferServerStreamContext(upstreamNodeId, downstreamNodeId);
+        BufferServerStreamContext issContext = new BufferServerStreamContext(streamName);
+        issContext.setSourceId(upstreamNodeId);
+        issContext.setSinkId(downstreamNodeId);
         issContext.setSerde(serde);
-        issContext.setId(streamName);
 
         StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
         sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
@@ -114,9 +115,10 @@ public class SocketStreamTest
         iss.setup(sconf);
         iss.connect("testSink", sink);
 
-        BufferServerStreamContext ossContext = new BufferServerStreamContext(upstreamNodeId, downstreamNodeId);
+        BufferServerStreamContext ossContext = new BufferServerStreamContext(streamName);
+        ossContext.setSourceId(upstreamNodeId);
+        ossContext.setSinkId(downstreamNodeId);
         ossContext.setSerde(serde);
-        ossContext.setId(streamName);
 
         BufferServerOutputStream oss = new BufferServerOutputStream();
         oss.setup(sconf);
@@ -156,20 +158,20 @@ public class SocketStreamTest
 
         NodeConf generatorNode = b.getOrAddNode("generatorNode");
         generatorNode.setClassName(NumberGeneratorInputAdapter.class.getName());
-        
+
         NodeConf node1 = b.getOrAddNode("node1");
         node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-        
+
         StreamConf generatorOutput = b.getOrAddStream("generatorOutput");
         generatorOutput.setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, generatorNode)
           .addSink(EchoNode.INPUT1, node1)
           .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
-        
+
         //StreamConf output1 = b.getOrAddStream("output1");
         //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
         //                    ConsoleOutputStream.class.getName());
         Topology tplg = b.getTopology();
-        
+
         DNodeManager dnm = new DNodeManager(tplg);
         int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
         Assert.assertEquals("number required containers",
