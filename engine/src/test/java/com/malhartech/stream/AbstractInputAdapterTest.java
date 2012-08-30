@@ -6,6 +6,9 @@ package com.malhartech.stream;
 
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.*;
+import com.malhartech.stram.ManualScheduledExecutorService;
+import com.malhartech.stram.WindowGenerator;
+import org.apache.hadoop.conf.Configuration;
 import org.junit.*;
 
 /**
@@ -28,15 +31,14 @@ public class AbstractInputAdapterTest
   {
   }
   @SuppressWarnings("PackageVisibleField")
-  AbstractInputAdapter instance;
+  AbstractInputNode instance;
   StreamContext context;
 
   @Before
   public void setUp()
   {
-    context = new StreamContext("irrelevant_source", "irrelevant_sink");
+    context = new StreamContext("irrelevant_id");
     instance = new AbstractInputAdapterImpl();
-    // instance.setContext(context);
   }
 
   @After
@@ -53,27 +55,29 @@ public class AbstractInputAdapterTest
   {
     System.out.println("resetWindow");
 
-    final int baseSeconds = 0xcafebabe;
-    final int intervalMillis = 0x1234abcd;
+    ManualScheduledExecutorService msse = new ManualScheduledExecutorService(1);
+    msse.setCurrentTimeMillis(0xcafebabe * 1000L);
+    WindowGenerator generator = new WindowGenerator(msse);
 
-    context.setSink(new Sink()
-    {
-      /**
-       *
-       * @param t the value of t
-       */
+    final Configuration config = new Configuration();
+    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, msse.getCurrentTimeMillis());
+    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0x1234abcd);
+
+    generator.setup(config);
+    generator.connect("output", new Sink() {
+
       @Override
-      public void sink(Object t)
+      public void process(Object payload)
       {
-        assert (t.getType() == Buffer.Data.DataType.RESET_WINDOW);
-        assert (t.getWindowId() == 0xcafebabe00000000L);
-        assert (((ResetWindowTuple) t).getBaseSeconds() == baseSeconds);
-        assert (((ResetWindowTuple) t).getIntervalMillis() == intervalMillis);
+        assert(payload instanceof ResetWindowTuple);
+        assert(((ResetWindowTuple)payload).getWindowId() == 0xcafebabe00000000L);
+        assert(((ResetWindowTuple)payload).getBaseSeconds() * 1000L == config.getLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0));
+        assert(((ResetWindowTuple)payload).getIntervalMillis() == config.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0));
       }
     });
 
-
-    instance.resetWindow(baseSeconds, intervalMillis);
+    generator.activate(null);
+    msse.tick(1);
   }
 
 //  /**
@@ -132,28 +136,16 @@ public class AbstractInputAdapterTest
 //    fail("The test case is a prototype.");
 //  }
   @SuppressWarnings("PublicInnerClass")
-  public class AbstractInputAdapterImpl extends AbstractInputAdapter
+  public class AbstractInputAdapterImpl extends AbstractInputNode
   {
     @Override
-    public void setup(StreamConfiguration config)
+    public void beginWindow()
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
-    public void activate(StreamContext context)
-    {
-      throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public void teardown()
-    {
-      throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public void deactivate()
+    public void endWindow()
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
