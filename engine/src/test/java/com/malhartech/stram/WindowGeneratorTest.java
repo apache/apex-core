@@ -3,28 +3,18 @@
  */
 package com.malhartech.stram;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.Tuple;
+import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
 import junit.framework.Assert;
-
-import org.apache.hadoop.io.DataInputByteBuffer;
-import org.apache.hadoop.io.DataOutputByteBuffer;
+import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
-
-import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 
 public class WindowGeneratorTest
 {
-
   @Test
   public void testMiniClusterTestNode()
   {
@@ -50,68 +40,55 @@ public class WindowGeneratorTest
 
     final AtomicLong windowXor = new AtomicLong();
 
-    InputAdapter ia = new InputAdapter()
+    Sink s = new Sink()
     {
       @Override
-      public void teardown()
+      public void process(Object payload)
       {
-      }
+        long windowId = ((Tuple)payload).getWindowId();
 
-      @Override
-      public void setup(StreamConfiguration config)
-      {
-      }
+        switch (((Tuple)payload).getType()) {
+          case BEGIN_WINDOW:
+            currentWindow.set(windowId);
+            beginWindowCount.incrementAndGet();
+            windowXor.set(windowXor.get() ^ windowId);
+            System.out.println("begin: " + windowId + " (" + System.currentTimeMillis() + ")");
+            break;
 
-      @Override
-      public void endWindow(int windowId)
-      {
-        endWindowCount.incrementAndGet();
-        windowXor.set(windowXor.get() ^ windowId);
-        System.out.println("end  : " + windowId + " (" + System.currentTimeMillis() + ")");
-      }
+          case END_WINDOW:
+            endWindowCount.incrementAndGet();
+            windowXor.set(windowXor.get() ^ windowId);
+            System.out.println("end  : " + windowId + " (" + System.currentTimeMillis() + ")");
+            break;
 
-      @Override
-      public void beginWindow(int windowId)
-      {
-        currentWindow.set(windowId);
-        beginWindowCount.incrementAndGet();
-        windowXor.set(windowXor.get() ^ windowId);
-        System.out.println("begin: " + windowId + " (" + System.currentTimeMillis() + ")");
-      }
+          case RESET_WINDOW:
+            break;
 
-      @Override
-      public boolean hasFinished()
-      {
-        throw new UnsupportedOperationException("Not supported yet.");
-      }
-
-      @Override
-      public void activate(StreamContext context)
-      {
-        throw new UnsupportedOperationException("Not supported yet.");
-      }
-
-      @Override
-      public void resetWindow(int baseSeconds, int sizeMillis)
-      {
+          default:
+            currentWindow.set(0);
+            break;
+        }
       }
     };
 
-    long startTime = System.currentTimeMillis();
-    startTime = startTime - 1000;
-    int intervalMillis = 200;
-    WindowGenerator wg = new WindowGenerator(Collections.singletonList(ia), startTime, intervalMillis);
-    wg.start();
+    Configuration config = new Configuration();
+    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, System.currentTimeMillis() - 1000);
+    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 200);
 
+    WindowGenerator wg = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
+    wg.setup(config);
+
+    wg.activate(null);
     Thread.sleep(300);
+    wg.deactivate();
 
-    wg.stop();
     System.out.println("completed windows: " + endWindowCount.get());
     Assert.assertEquals("only last window open", currentWindow.get(), windowXor.get());
 
-    long expectedCnt = (System.currentTimeMillis() - startTime) / intervalMillis;
+    long expectedCnt = (System.currentTimeMillis() - config.getLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0L))
+            / config.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
+
     Assert.assertEquals("begin window count", expectedCnt + 1, beginWindowCount.get());
     Assert.assertEquals("end window count", expectedCnt, endWindowCount.get());
-
   }
 }

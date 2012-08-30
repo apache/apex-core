@@ -4,20 +4,10 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.AbstractInputNode;
 import com.malhartech.dag.Context;
-import static com.malhartech.stram.conf.TopologyBuilder.STREAM_CLASSNAME;
-import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Ignore;
-
 import com.malhartech.dag.InputAdapter;
+import com.malhartech.dag.Node;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -28,8 +18,6 @@ import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import static com.malhartech.stram.conf.TopologyBuilder.STRAM_WINDOW_SIZE_MILLIS;
-import static com.malhartech.stram.conf.TopologyBuilder.STREAM_CLASSNAME;
 import static com.malhartech.stram.conf.TopologyBuilder.STREAM_INLINE;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 import com.malhartech.stream.HDFSOutputStream;
@@ -39,12 +27,12 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Properties;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -216,17 +204,17 @@ public class StramLocalClusterTest
     Map<InputAdapter, StreamContext> inputAdapters = c0.getInputAdapters();
     Assert.assertEquals("number input adapters", 1, inputAdapters.size());
 
-    Map<String, InternalNode> nodeMap = c0.getNodeMap();
+    Map<String, Node> nodeMap = c0.getNodeMap();
     Assert.assertEquals("number nodes", 2, nodeMap.size());
 
     // safer to lookup via topology deployer
-    InternalNode n1 = nodeMap.get(localCluster.findByLogicalNode(node1).id);
+    Node n1 = nodeMap.get(localCluster.findByLogicalNode(node1).id);
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForContainer(localCluster, node2);
-    Map<String, InternalNode> c2NodeMap = c2.getNodeMap();
+    Map<String, Node> c2NodeMap = c2.getNodeMap();
     Assert.assertEquals("number nodes downstream", 1, c2NodeMap.size());
-    InternalNode n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    Node n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
     LocalTestInputAdapter input = (LocalTestInputAdapter)inputAdapters.keySet().toArray()[0];
@@ -283,7 +271,7 @@ public class StramLocalClusterTest
 
     Assert.assertEquals("downstream nodes after redeploy " + c2.getNodeMap(), 1, c2.getNodeMap().size());
     // verify that the downstream node was replaced
-    InternalNode n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    Node n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2Replaced);
     Assert.assertNotSame("node2 redeployed", n2, n2Replaced);
 
@@ -326,7 +314,7 @@ public class StramLocalClusterTest
     }
   }
 
-  private void waitForWindow(InternalNode node, long windowId) throws InterruptedException
+  private void waitForWindow(Node node, long windowId) throws InterruptedException
   {
     while (node.getContext().getCurrentWindowId() < windowId) {
       LOG.debug("Waiting for window {} at node {}", windowId, node);
@@ -334,7 +322,7 @@ public class StramLocalClusterTest
     }
   }
 
-  private void backupNode(StramChild c, InternalNode node)
+  private void backupNode(StramChild c, Node node)
   {
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(node.getContext().getId());
@@ -345,25 +333,16 @@ public class StramLocalClusterTest
     c.processHeartbeatResponse(rsp);
   }
 
-  public static class LocalTestInputAdapter extends AbstractInputAdapter
+  public static class LocalTestInputAdapter extends AbstractInputNode
   {
+
     @Override
-    public void setup(StreamConfiguration config)
+    public void beginWindow()
     {
     }
 
     @Override
-    public void activate(StreamContext context)
-    {
-    }
-
-    @Override
-    public void teardown()
-    {
-    }
-
-    @Override
-    public void deactivate()
+    public void endWindow()
     {
     }
   }

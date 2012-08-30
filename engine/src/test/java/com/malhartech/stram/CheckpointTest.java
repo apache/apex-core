@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.InternalNode;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -34,7 +33,6 @@ import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
-import java.util.Collection;
 
 /**
  *
@@ -105,20 +103,20 @@ public class CheckpointTest {
 
     input.endWindow(1);
     InternalNode node = container.getNodeMap().get(backupRequest.getNodeId());
-    
+
     input.beginWindow(2);
     input.endWindow(2);
     if (node.getContext().getCurrentWindowId() < 2) {
       Thread.sleep(500);
     }
     Assert.assertEquals("node @ window 2", 2, node.getContext().getCurrentWindowId());
-    
+
     File expectedFile = new File(testWorkDir, cc.getNodes().get(0).getDnodeId() + "/1");
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
 
     LOG.debug("Shutdown container {}", container.getContainerId());
     container.shutdown();
-    
+
   }
 
   @Test
