@@ -77,6 +77,7 @@ public class WindowGeneratorTest
 
     WindowGenerator wg = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
     wg.setup(config);
+    wg.connect("GeneratorTester", s);
 
     wg.activate(null);
     Thread.sleep(300);
