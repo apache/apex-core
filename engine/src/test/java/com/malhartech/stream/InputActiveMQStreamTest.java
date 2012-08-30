@@ -4,15 +4,17 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.dag.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.jms.JMSException;
+import javax.jms.Message;
 import javax.jms.TextMessage;
+import org.junit.*;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import org.junit.*;
-
 
 /**
  *
@@ -21,60 +23,53 @@ import org.junit.*;
 @Ignore
 public class InputActiveMQStreamTest
 {
-
-  static StreamConfiguration config;
+  static NodeConfiguration config;
   static AbstractActiveMQInputStream instance;
-  static StreamContext context;
+  static MyStreamContext context;
 
-
-  private static final class MyStreamContext extends StreamContext implements Sink
+  private static final class MyStreamContext extends NodeContext implements Sink
   {
-
     DefaultSerDe myserde;
 
     public MyStreamContext()
     {
-      super("irrelevant_source", "irrelevant_sink");
+      super("irrelevant_id");
       myserde = new DefaultSerDe();
     }
 
     @Override
-    public SerDe getSerDe()
+    public void process(Object payload)
     {
-      return myserde;
-    }
-
-    public Sink getSink()
-    {
-      return this;
-    }
-
-    /**
-     *
-     * @param t the value of t
-     */
-    @Override
-    public void sink(Object t)
-    {
-      System.out.println("sinking " + t.getObject());
+      System.out.print("processing ".concat(payload.toString()));
     }
   }
 
+  @NodeAnnotation(ports = {
+    @PortAnnotation(name = "output", type = PortAnnotation.PortType.OUTPUT)
+  })
   private static final class InputActiveMQStream extends AbstractActiveMQInputStream
   {
-
     @Override
-    public Object getObject(Object object)
+    protected void emitMessage(Message message)
     {
-      if (object instanceof TextMessage) {
+      if (message instanceof TextMessage) {
         try {
-          return ((TextMessage) object).getText();
+          emit("output", ((TextMessage)message).getText());
         }
         catch (JMSException ex) {
           Logger.getLogger(InputActiveMQStreamTest.class.getName()).log(Level.SEVERE, null, ex);
         }
       }
-      return null;
+    }
+
+    @Override
+    public void beginWindow()
+    {
+    }
+
+    @Override
+    public void endWindow()
+    {
     }
   }
 
@@ -85,7 +80,7 @@ public class InputActiveMQStreamTest
   @BeforeClass
   public static void setUpClass() throws Exception
   {
-    config = new StreamConfiguration();
+    config = new NodeConfiguration(null);
     config.set("user", "");
     config.set("password", "");
     config.set("url", "tcp://localhost:61616");
@@ -155,15 +150,24 @@ public class InputActiveMQStreamTest
     assertNull(instance.getConsumer());
     assertNull(instance.getSession());
 
-    instance.setup(config); // make sure that test framework's teardown method
-    // does not fail.
+    instance.setup(config); // make sure that test framework's teardown method does not fail.
   }
 
   @Test
   public void testProcess()
   {
     System.out.println("process");
-//    instance.setContext(context);
+
+    instance.connect("output", context);
+    new Thread()
+    {
+      @Override
+      public void run()
+      {
+        instance.activate(context);
+      }
+    }.start();
+
     try {
       Thread.sleep(10000);
     }

@@ -6,8 +6,6 @@ package com.malhartech.stream;
 import com.malhartech.dag.AbstractInputNode;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
 import javax.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.slf4j.Logger;
@@ -117,6 +115,8 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
     catch (JMSException ex) {
       logger.error("Exception while activating ActiveMQ", ex.getCause());
     }
+
+    // find a way to keep the thread busy - w/o it this implementation is incomplete.
   }
 
   @Override
