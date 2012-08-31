@@ -72,19 +72,23 @@ public abstract class AbstractInputNode implements Node
   }
 
   @Override
-  public Sink connect(String port, Sink component)
+  public final Sink connect(String port, Sink component)
   {
+    Sink retvalue;
     if ("input".equals(port)) {
-      return this;
+      retvalue = this;
     }
     else {
       outputs.put(port, component);
-      return null;
+      retvalue = null;
     }
+
+    connected(port, component);
+    return retvalue;
   }
 
   @Override
-  public void process(Object payload)
+  public final void process(Object payload)
   {
     Tuple t = (Tuple)payload;
     switch (t.getType()) {
@@ -167,5 +171,9 @@ public abstract class AbstractInputNode implements Node
         }
       }
     }
+  }
+
+  public void connected(String port, Sink component)
+  {
   }
 }
