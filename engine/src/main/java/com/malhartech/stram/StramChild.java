@@ -9,7 +9,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
@@ -130,7 +129,7 @@ public class StramChild
     }
 
     dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, ctx.getStartWindowMillis());
-    dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis()); // no need to set if done right
+    dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis());
 
     deployNodes(ctx.nodeList);
   }
@@ -368,7 +367,7 @@ public class StramChild
     if (windowGenerator != null) {
       windowGenerator.deactivate();
     }
-    
+
     for (ComponentContextPair<Node, NodeContext> pair: activeNodes) {
       pair.component.deactivate();
     }
