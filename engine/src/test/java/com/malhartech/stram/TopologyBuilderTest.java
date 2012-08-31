@@ -43,8 +43,11 @@ public class TopologyBuilderTest {
       return n;
   }
 
+  /**
+   * Test read from stram-site.xml in Hadoop configuration format.
+   */
   @Test
-  public void testTopologyRead() {
+  public void testLoadFromConfigXml() {
     Configuration conf = TopologyBuilder.addStramResources(new Configuration());
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
@@ -83,8 +86,8 @@ public class TopologyBuilderTest {
 
     // node 2 streams to node 3 and node 4
     assertEquals("node 2 number of outputs", 1, node2.getOutputStreams().size());
-    StreamConf node2Output = node2.getOutputStreams().iterator().next();
-    Assert.assertEquals("outputs " + node2Output, Sets.newHashSet(node3, node4), node2Output.getTargetNodes());
+    StreamConf fromNode2 = node2.getOutputStreams().iterator().next();
+    Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(node3, node4), fromNode2.getTargetNodes());
 
     topConf.validate();
 

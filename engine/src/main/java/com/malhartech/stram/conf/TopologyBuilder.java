@@ -49,8 +49,8 @@ public class TopologyBuilder {
 
   
   public static final String STREAM_PREFIX = "stram.stream";
-  public static final String STREAM_SOURCE = "input";
-  public static final String STREAM_TARGET = "output";
+  public static final String STREAM_SOURCE = "source";
+  public static final String STREAM_SINKS = "sinks";
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_INLINE = "inline";
   public static final String STREAM_SERDE_CLASSNAME = "serdeClassname";
@@ -314,6 +314,10 @@ public class TopologyBuilder {
     public void setClassName(String className) {
       this.properties.put(NODE_CLASSNAME, className);
     }
+
+    public void setProperty(String name, String value) {
+      this.properties.put(name, value);
+    }
     
     /**
      * Properties for the node. Template values (if set) become property defaults. 
@@ -438,9 +442,12 @@ public class TopologyBuilder {
             }
             String[] parts = getNodeAndPortId(propertyValue);
             stream.setSource(parts[1], getOrAddNode(parts[0]));
-        } else if (STREAM_TARGET.equals(propertyKey)) {
-            String[] parts = getNodeAndPortId(propertyValue);
-            stream.addSink(parts[1], getOrAddNode(parts[0]));
+        } else if (STREAM_SINKS.equals(propertyKey)) {
+            String[] targetPorts = propertyValue.split(",");
+            for (String nodeAndPort : targetPorts) {
+              String[] parts = getNodeAndPortId(nodeAndPort.trim());
+              stream.addSink(parts[1], getOrAddNode(parts[0]));
+            }
         } else if (STREAM_TEMPLATE.equals(propertyKey)) {
           stream.template = getOrAddTemplate(propertyValue);
           // TODO: defer until all keys are read?

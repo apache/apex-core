@@ -42,8 +42,10 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.HeartbeatCounters;
+import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stream.HDFSOutputStream;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -140,33 +142,39 @@ public class StramMiniClusterTest
     LOG.info("testJar: " + testJar);
 
     // create test topology
-    Properties props = new Properties();
+    TopologyBuilder tb = new TopologyBuilder();
 
-    // input adapter to ensure shutdown works while windows are generated
-//    props.put("stram.stream.input1.classname", NumberGeneratorInputAdapter.class.getName());
-//    props.put("stram.stream.input1.outputNode", "node1");
-//    props.put("stram.stream.input1.maxTuples", "1");
-
+    // input node (ensure shutdown works while windows are generated)
+    NodeConf genNode = tb.getOrAddNode("numGen");
+    genNode.setClassName(NumberGeneratorInputAdapter.class.getName());
+    genNode.setProperty("maxTuples", "1");
+    
     // fake output adapter - to be ignored when determine shutdown
-    props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
-    props.put("stram.stream.output.inputNode", "node2");
-    props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
+    //props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
+    //props.put("stram.stream.output.inputNode", "node2");
+    //props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    props.put("stram.stream.n1n2.inputNode", "node1");
-    props.put("stram.stream.n1n2.outputNode", "node2");
-    props.put("stram.stream.n1n2.template", "defaultstream");
+    NodeConf node1 = tb.getOrAddNode("node1");
+    node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+    
+    NodeConf node2 = tb.getOrAddNode("node2");
+    node2.setClassName(TopologyBuilderTest.EchoNode.class.getName());
 
-    props.put("stram.node.node1.classname", TopologyBuilderTest.EchoNode.class.getName());
-    props.put("stram.node.node1.myStringProperty", "myStringPropertyValue");
+    tb.getOrAddStream("fromNumGen")
+      .setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, genNode)
+      .addSink(EchoNode.INPUT1, node1);
+    
+    tb.getOrAddStream("n1n2")
+      .setSource(EchoNode.OUTPUT1, node1)
+      .addSink(EchoNode.INPUT1, node2);
+    
+    tb.getConf().set(Topology.STRAM_CONTAINER_MEMORY_MB, "256");
+    tb.getConf().set(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
+    tb.getConf().set(Topology.STRAM_DEBUG, "true");
+    tb.getConf().set(Topology.STRAM_MAX_CONTAINERS, "2");
 
-    props.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
-
-    props.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "256");
-    props.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
-    props.setProperty(Topology.STRAM_DEBUG, "true");
-    props.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
-
-    File tmpFile = createTmpPropFile(props);
+    Properties tplgProperties = TopologyBuilder.toProperties(tb.getConf());
+    File tmpFile = createTmpPropFile(tplgProperties);
 
     String[] args = {
       "--topologyProperties",
