@@ -106,7 +106,7 @@ public class InlineStreamTest
     }
 
     synchronized (this) {
-      this.wait(50);
+      this.wait(100);
     }
 
     Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
@@ -116,7 +116,7 @@ public class InlineStreamTest
     node1.deactivate();
     stream.deactivate();
 
-    Thread.sleep(100);
+    Thread.sleep(200);
 
     node2.teardown();
     node1.teardown();
