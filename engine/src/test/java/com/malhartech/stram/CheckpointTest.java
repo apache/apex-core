@@ -102,7 +102,7 @@ public class CheckpointTest {
 
     Assert.assertTrue("node >= window 2" , 2 <= nodePair.context.getLastProcessedWindowId());
 
-    File expectedFile = new File(testWorkDir, backupRequest.getNodeId() + "/1");
+    File expectedFile = new File(testWorkDir, backupRequest.getNodeId() + "/2");
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
 
     LOG.debug("Shutdown container {}", container.getContainerId());
