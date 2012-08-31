@@ -61,7 +61,6 @@ public class CheckpointTest {
   @Test
   public void testBackup() throws Exception
   {
-    TestWindowGenerator wingen = new TestWindowGenerator();
     NewTopologyBuilder tb = new NewTopologyBuilder();
     // node with no inputs will be connected to window generator
     tb.addNode("node1", new NumberGeneratorInputAdapter())
@@ -72,10 +71,12 @@ public class CheckpointTest {
 
     String containerId = "container1";
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
+    TestWindowGenerator wingen = new TestWindowGenerator();
     LocalStramChild container = new LocalStramChild(containerId, null, wingen.wingen);
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);
-
+    wingen.activate();
+      
     wingen.tick(1);
 
     Assert.assertEquals("number nodes", 1, container.getNodes().size());

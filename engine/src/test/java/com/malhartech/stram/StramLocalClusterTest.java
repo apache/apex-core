@@ -74,8 +74,6 @@ public class StramLocalClusterTest
   @Test
   public void testChildRecovery() throws Exception
   {
-    TestWindowGenerator wingen = new TestWindowGenerator();
-
     NewTopologyBuilder tb = new NewTopologyBuilder();
 
     NodeDecl node1 = tb.addNode("node1", new EchoNode());
@@ -91,7 +89,7 @@ public class StramLocalClusterTest
     tplg.getConf().setInt(Topology.STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
     tplg.getConf().setInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
 
-
+    TestWindowGenerator wingen = new TestWindowGenerator();
     StramLocalCluster localCluster = new StramLocalCluster(tplg);
     localCluster.runAsync();
 
@@ -236,12 +234,17 @@ public class StramLocalClusterTest
       config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
 
       wingen.setup(config);
-      wingen.activate(new Context() {});
     }
 
     public void tick(long steps) {
       mses.tick(steps);
     }
+
+    public void activate() {
+      wingen.activate(new Context() {});
+    }
+    
+    
   }
 
 }

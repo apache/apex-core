@@ -47,8 +47,8 @@ public class StramLocalCluster implements Runnable {
   private int containerSeq = 0;
   private boolean appDone = false;
 
-  final private Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>(); 
-  
+  final private Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>();
+
   private class UmbilicalProtocolLocalImpl implements StreamingNodeUmbilicalProtocol {
 
     @Override
@@ -109,10 +109,10 @@ public class StramLocalCluster implements Runnable {
   public static class LocalStramChild extends StramChild
   {
     /**
-     * Count heartbeat from container and allow other threads to wait for it. 
+     * Count heartbeat from container and allow other threads to wait for it.
      */
     private AtomicInteger heartbeatCount = new AtomicInteger();
-    
+
     public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical, WindowGenerator wgen)
     {
       super(containerId, new Configuration(), umbilical);
@@ -139,13 +139,13 @@ public class StramLocalCluster implements Runnable {
       // shutdown
       stramChild.shutdown();
     }
-    
+
     public void waitForHeartbeat(int waitMillis) throws InterruptedException {
       synchronized (heartbeatCount) {
         heartbeatCount.wait(waitMillis);
       }
     }
-    
+
   }
 
   /**
@@ -153,8 +153,8 @@ public class StramLocalCluster implements Runnable {
    */
   private class LocalStramChildLauncher implements Runnable {
     final String containerId;
-    final LocalStramChild child; 
-    
+    final LocalStramChild child;
+
     private LocalStramChildLauncher(DeployRequest cdr) {
       this.containerId = "container-" + containerSeq++;
       this.child = new LocalStramChild(containerId, umbilical, null);
@@ -181,7 +181,6 @@ public class StramLocalCluster implements Runnable {
   }
 
   public StramLocalCluster(Topology topology) throws Exception {
-
     try {
       FileContext.getLocalFSFileContext().delete(
           new Path(CLUSTER_WORK_DIR.getAbsolutePath()), true);
@@ -230,7 +229,7 @@ public class StramLocalCluster implements Runnable {
   StramChildAgent getContainerAgent(StramChild c) {
       return this.dnmgr.getContainerAgent(c.getContainerId());
   }
-  
+
   public void runAsync() {
     new Thread(this, "master").start();
   }
@@ -238,7 +237,7 @@ public class StramLocalCluster implements Runnable {
   public void shutdown() {
     appDone = true;
   }
-  
+
   @Override
   public void run() {
     while (!appDone) {
