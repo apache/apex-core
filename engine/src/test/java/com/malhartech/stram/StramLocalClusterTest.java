@@ -239,12 +239,5 @@ public class StramLocalClusterTest
     public void tick(long steps) {
       mses.tick(steps);
     }
-
-    public void activate() {
-      wingen.activate(new Context() {});
-    }
-    
-    
   }
-
 }
