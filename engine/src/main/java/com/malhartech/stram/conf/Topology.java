@@ -199,6 +199,11 @@ public class Topology implements Serializable, TopologyConstants {
       return properties;
     }
     
+    public NodeDecl setProperty(String name, String value) {
+      properties.put(name, value);
+      return this;
+    }
+    
     private PortAnnotation findPortAnnotationByName(String portName, PortType type) {
       Class<?> clazz = this.node.getClass();
       NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);

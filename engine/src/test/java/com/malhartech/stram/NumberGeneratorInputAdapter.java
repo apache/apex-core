@@ -12,6 +12,7 @@ import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractInputNode;
 import com.malhartech.dag.EndStreamTuple;
 import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.Sink;
 
 @NodeAnnotation(
     ports = {
@@ -28,7 +29,8 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   private String myConfigProperty;
   private int maxTuples = -1;
   private int generatedNumbers = 0;
-
+  private boolean outputConnected = false;
+  
   public int getMaxTuples()
   {
     return maxTuples;
@@ -49,10 +51,12 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   {
     this.myConfigProperty = myConfigProperty;
   }
-
+  
   @Override
-  public void process(Object payload) {
-    
+  public void connected(String id, Sink dagpart) {
+    if (OUTPUT_PORT.equals(id)) {
+      this.outputConnected = true;
+    }
   }
 
   @Override
@@ -60,13 +64,14 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   {
     while (!shutdown) {
       LOG.debug("sending tuple");
-      emit(OUTPUT_PORT, String.valueOf(generatedNumbers++));
-
-      if (maxTuples > 0 && maxTuples < generatedNumbers) {
-        emit(OUTPUT_PORT, new EndStreamTuple());
-        break;
-      }
-      
+      if (outputConnected) {
+        generatedNumbers++;
+        emit(OUTPUT_PORT, String.valueOf(generatedNumbers));
+        if (maxTuples > 0 && maxTuples < generatedNumbers) {
+          emit(OUTPUT_PORT, new EndStreamTuple());
+          break;
+        }
+      }      
       try {
         Thread.sleep(1000);
       }

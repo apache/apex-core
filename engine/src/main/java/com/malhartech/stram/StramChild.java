@@ -82,6 +82,8 @@ public class StramChild
   private Object heartbeatTrigger = new Object();
   private WindowGenerator windowGenerator;
   private String checkpointDfsPath;
+  private Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicking here.
+
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
@@ -99,6 +101,14 @@ public class StramChild
     return this.containerId;
   }
 
+  protected Map<String, ComponentContextPair<Node, NodeContext>> getNodes() {
+    return this.nodes;
+  }
+
+  protected void setWindowGenerator(WindowGenerator wgen) {
+    this.windowGenerator = wgen;
+  }
+  
   /**
    * Initialize container with nodes and streams in the context.
    * Existing nodes are not affected by this operation.
@@ -114,6 +124,9 @@ public class StramChild
       this.heartbeatIntervalMillis = 1000;
     }
 
+    dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, ctx.getStartWindowMillis());
+    dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis()); // no need to set if done right
+    
     deployNodes(ctx.nodeList);
   }
 
@@ -519,9 +532,6 @@ public class StramChild
          * unaware of the windows. So for that reason, AbstractInputNode allows Component.INPUT port.
          */
         if (windowGenerator == null) {
-          Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicking here.
-          dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, System.currentTimeMillis()); // no need to set if done right
-          dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 500); // no need to set if done right
 
           windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
           windowGenerator.setup(dagConfig);

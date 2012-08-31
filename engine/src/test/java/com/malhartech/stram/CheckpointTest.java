@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
@@ -22,17 +21,19 @@ import org.slf4j.LoggerFactory;
 
 import scala.actors.threadpool.Arrays;
 
-import com.malhartech.dag.InputAdapter;
-import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.ComponentContextPair;
+import com.malhartech.dag.Node;
+import com.malhartech.dag.NodeContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.StramLocalClusterTest.TestWindowGenerator;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import com.malhartech.stram.conf.NewTopologyBuilder;
+import com.malhartech.stram.conf.Topology.NodeDecl;
 
 /**
  *
@@ -60,58 +61,46 @@ public class CheckpointTest {
   @Test
   public void testBackup() throws Exception
   {
-    TopologyBuilder b = new TopologyBuilder(new Configuration());
+    TestWindowGenerator wingen = new TestWindowGenerator();
+    NewTopologyBuilder tb = new NewTopologyBuilder();
+    // node with no inputs will be connected to window generator
+    tb.addNode("node1", new NumberGeneratorInputAdapter())
+        .setProperty("maxTuples", "1");
+    DNodeManager dnm = new DNodeManager(tb.getTopology());
 
-    NodeConf node1 = b.getOrAddNode("node1");
-
-    StreamConf input1 = b.getOrAddStream("input1");
-    input1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
-                       NumberGeneratorInputAdapter.class.getName());
-    input1.addProperty(TopologyBuilder.STREAM_INLINE, "true");
-    input1.addProperty("maxTuples", "1");
-
-    node1.addInput(input1);
-
-    for (NodeConf nodeConf : b.getAllNodes().values()) {
-      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-    }
-
-    DNodeManager dnm = new DNodeManager(b);
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
     String containerId = "container1";
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
-    LocalStramChild container = new LocalStramChild(containerId, null);
-    cc.setWindowSizeMillis(0); // disable window generator
+    LocalStramChild container = new LocalStramChild(containerId, null, wingen.wingen);
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);
 
-    Map<InputAdapter, StreamContext> inputAdapters = container.getInputAdapters();
-    Assert.assertEquals("number input adapters", 1, inputAdapters.size());
+    wingen.tick(1);
 
-    InputAdapter input = (InputAdapter)inputAdapters.keySet().toArray()[0];
-    input.resetWindow(0, 1);
-    input.beginWindow(1);
-
+    Assert.assertEquals("number nodes", 1, container.getNodes().size());
+    ComponentContextPair<Node, NodeContext> nodePair = container.getNodes().get(cc.nodeList.get(0).id);
+    
+    Assert.assertNotNull("node deployed " + cc.nodeList.get(0), nodePair);
+    Assert.assertEquals("nodeId", cc.nodeList.get(0).id, nodePair.context.getId());
+    Assert.assertEquals("maxTupes", 1, ((NumberGeneratorInputAdapter)nodePair.component).getMaxTuples());
+    
     StramToNodeRequest backupRequest = new StramToNodeRequest();
-    backupRequest.setNodeId(cc.getNodes().get(0).getDnodeId());
+    backupRequest.setNodeId(nodePair.context.getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.setNodeRequests(Collections.singletonList(backupRequest));
-    // TODO: ensure node is running and context set (startup timing)
     container.processHeartbeatResponse(rsp);
 
-    input.endWindow(1);
-    InternalNode node = container.getNodeMap().get(backupRequest.getNodeId());
-
-    input.beginWindow(2);
-    input.endWindow(2);
-    if (node.getContext().getCurrentWindowId() < 2) {
+    
+    wingen.tick(1);
+    // node to move to next window before we verify the checkpoint state
+    if (nodePair.context.getCurrentWindowId() < 2) {
       Thread.sleep(500);
     }
-    Assert.assertEquals("node @ window 2", 2, node.getContext().getCurrentWindowId());
+    Assert.assertEquals("node @ window 2", 2, nodePair.context.getCurrentWindowId());
 
-    File expectedFile = new File(testWorkDir, cc.getNodes().get(0).getDnodeId() + "/1");
+    File expectedFile = new File(testWorkDir, backupRequest.getNodeId() + "/1");
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
 
     LOG.debug("Shutdown container {}", container.getContainerId());
@@ -122,30 +111,16 @@ public class CheckpointTest {
   @Test
   public void testRecoveryCheckpoint() throws Exception
   {
-    TopologyBuilder b = new TopologyBuilder(new Configuration());
+    NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeConf node1 = b.getOrAddNode("node1");
+    NodeDecl node1 = b.addNode("node1", new EchoNode());
+    NodeDecl node2 = b.addNode("node2", new EchoNode());
 
-    NodeConf node2 = b.getOrAddNode("node2");
-    StreamConf n1n2 = b.getOrAddStream("n1n2");
+    b.addStream("n1n2")
+      .setSource(node1.getOutput(EchoNode.OUTPUT1))
+      .addSink(node2.getInput(EchoNode.INPUT1));
 
-
-    StreamConf input1 = b.getOrAddStream("input1");
-    input1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
-                       NumberGeneratorInputAdapter.class.getName());
-    input1.addProperty(TopologyBuilder.STREAM_INLINE, "true");
-    input1.addProperty("maxTuples", "1");
-
-    node1.addInput(input1);
-    node1.addOutput(n1n2);
-
-    node2.addInput(n1n2);
-
-    for (NodeConf nodeConf : b.getAllNodes().values()) {
-      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-    }
-
-    DNodeManager dnm = new DNodeManager(b);
+    DNodeManager dnm = new DNodeManager(b.getTopology());
     TopologyDeployer deployer = dnm.getTopologyDeployer();
     List<PTNode> nodes1 = deployer.getNodes(node1);
     Assert.assertNotNull(nodes1);

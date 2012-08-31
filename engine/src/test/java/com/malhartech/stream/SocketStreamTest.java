@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -182,7 +181,7 @@ public class SocketStreamTest
         for (int i = 0; i < expectedContainerCount; i++) {
             String containerId = "container" + (i + 1);
             StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-            LocalStramChild container = new LocalStramChild(containerId, null);
+            LocalStramChild container = new LocalStramChild(containerId, null, null);
             container.init(cc);
             containers.add(container);
         }

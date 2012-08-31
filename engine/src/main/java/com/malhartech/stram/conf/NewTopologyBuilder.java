@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram.conf;
 
-import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.Node;
 import com.malhartech.stram.conf.Topology.InputPort;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.Topology.OutputPort;
@@ -39,24 +39,8 @@ public class NewTopologyBuilder {
     
   }
   
-  public class NodeBuilder {
-    final private NodeDecl decl;
-    
-    private NodeBuilder(NodeDecl decl) {
-      this.decl = decl;
-    }
-
-    public InputPort getInput(String portName) {
-      return decl.getInput(portName);
-    }
-    
-    public OutputPort getOutput(String portName) {
-      return decl.getOutput(portName);
-    }
-  }
-
-  public NodeBuilder addNode(String id, AbstractNode node) {
-    return new NodeBuilder(topology.addNode(id, node));
+  public NodeDecl addNode(String id, Node node) {
+    return topology.addNode(id, node);
   }
   
   public StreamBuilder addStream(String id) {

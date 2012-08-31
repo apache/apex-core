@@ -51,6 +51,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   {
     ses = service;
   }
+  
   /**
    * Increments window by 1
    */

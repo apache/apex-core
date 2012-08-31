@@ -19,8 +19,8 @@ import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
-import com.malhartech.stram.conf.NewTopologyBuilder.NodeBuilder;
 import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.NodeDecl;
 
 public class NewTopologyBuilderTest {
 
@@ -72,10 +72,10 @@ public class NewTopologyBuilderTest {
 
     NewTopologyBuilder b = new NewTopologyBuilder();
     
-    NodeBuilder validationNode = b.addNode("validationNode", new ValidationNode());
-    NodeBuilder countGoodNode = b.addNode("countGoodNode", new CounterNode());
-    NodeBuilder countBadNode = b.addNode("countBadNode", new CounterNode());
-    NodeBuilder echoBadNode = b.addNode("echoBadNode", new ConsoleOutputNode());
+    NodeDecl validationNode = b.addNode("validationNode", new ValidationNode());
+    NodeDecl countGoodNode = b.addNode("countGoodNode", new CounterNode());
+    NodeDecl countBadNode = b.addNode("countBadNode", new CounterNode());
+    NodeDecl echoBadNode = b.addNode("echoBadNode", new ConsoleOutputNode());
 
     // good tuples to counter node
     b.addStream("goodTuplesStream")
