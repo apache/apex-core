@@ -62,8 +62,8 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   public void run()
   {
     while (!shutdown) {
-      LOG.debug("sending tuple");
       if (outputConnected) {
+        LOG.debug("sending tuple");
         generatedNumbers++;
         emit(OUTPUT_PORT, String.valueOf(generatedNumbers));
         if (maxTuples > 0 && maxTuples < generatedNumbers) {

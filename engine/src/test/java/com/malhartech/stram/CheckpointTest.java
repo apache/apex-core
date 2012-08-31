@@ -61,7 +61,6 @@ public class CheckpointTest {
   @Test
   public void testBackup() throws Exception
   {
-    TestWindowGenerator wingen = new TestWindowGenerator();
     NewTopologyBuilder tb = new NewTopologyBuilder();
     // node with no inputs will be connected to window generator
     tb.addNode("node1", new NumberGeneratorInputAdapter())
@@ -72,11 +71,12 @@ public class CheckpointTest {
 
     String containerId = "container1";
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
+    TestWindowGenerator wingen = new TestWindowGenerator();
     LocalStramChild container = new LocalStramChild(containerId, null, wingen.wingen);
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);
 
-    wingen.tick(1);
+    wingen.tick(1); // begin window 1
 
     Assert.assertEquals("number nodes", 1, container.getNodes().size());
     ComponentContextPair<Node, NodeContext> nodePair = container.getNodes().get(cc.nodeList.get(0).id);
@@ -92,17 +92,17 @@ public class CheckpointTest {
     rsp.setNodeRequests(Collections.singletonList(backupRequest));
     container.processHeartbeatResponse(rsp);
 
-
-    wingen.tick(1);
+    wingen.tick(1); // end window 1, begin window 2
 
     // node to move to next window before we verify the checkpoint state
-    if (nodePair.context.getLastProcessedWindowId() < 2) {
-      Thread.sleep(500);
-    }
+    // if (nodePair.context.getLastProcessedWindowId() < 2) {
+    // Thread.sleep(500);
+    // }
 
-    Assert.assertTrue("node >= window 2" , 2 <= nodePair.context.getLastProcessedWindowId());
+    Assert.assertTrue("node >= window 1",
+        1 <= nodePair.context.getLastProcessedWindowId());
 
-    File expectedFile = new File(testWorkDir, backupRequest.getNodeId() + "/2");
+    File expectedFile = new File(testWorkDir, backupRequest.getNodeId() + "/1");
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
 
     LOG.debug("Shutdown container {}", container.getContainerId());
