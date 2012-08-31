@@ -106,12 +106,11 @@ public class SocketStreamTest
         BufferServerStreamContext issContext = new BufferServerStreamContext(streamName);
         issContext.setSourceId(upstreamNodeId);
         issContext.setSinkId(downstreamNodeId);
-        issContext.setSerde(serde);
 
         StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
         sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
-        BufferServerInputStream iss = new BufferServerInputStream();
+        BufferServerInputStream iss = new BufferServerInputStream(serde);
         iss.setup(sconf);
         iss.connect("testSink", sink);
 

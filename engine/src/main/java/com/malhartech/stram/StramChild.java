@@ -127,8 +127,8 @@ public class StramChild
 
     if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
       this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
-    }    
-    
+    }
+
     dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, ctx.getStartWindowMillis());
     dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis()); // no need to set if done right
 
@@ -365,6 +365,10 @@ public class StramChild
 
   private void deactivate()
   {
+    if (windowGenerator != null) {
+      windowGenerator.deactivate();
+    }
+    
     for (ComponentContextPair<Node, NodeContext> pair: activeNodes) {
       pair.component.deactivate();
     }
@@ -390,7 +394,7 @@ public class StramChild
     deactivate();
 
     Kryo kryo = new Kryo();
-    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();  // this holds all the plumbing hints
+    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
     for (NodeDeployInfo ndi: nodeList) {
       NodeContext nc = new NodeContext(ndi.id);
       Object foreignObject = kryo.readClassAndObject(new Input(ndi.serializedNode));
@@ -545,42 +549,45 @@ public class StramChild
       }
       else {
         for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
-          String sourceId = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
-          String sinkId = ndi.id.concat(".").concat(nidi.portName);
+          String sourceIdentifier = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
+          String sinkIdentifier = ndi.id.concat(".").concat(nidi.portName);
 
-          ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceId);
+          ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
             // it's buffer server stream
             assert (nidi.isInline() == false);
+            sourceIdentifier = nidi.bufferServerHost.concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
             StreamConfiguration config = new StreamConfiguration();
             config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
 
-            Stream stream = new BufferServerInputStream();
+            Stream stream = new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
             stream.setup(config);
 
-            StreamContext context = new BufferServerStreamContext(nidi.declaredStreamId);
-            ((BufferServerStreamContext)context).setPartitions(nidi.partitionKeys);
-            context.setSourceId(nidi.bufferServerHost.concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceId));
-            context.setSinkId(sinkId);
+            BufferServerStreamContext context = new BufferServerStreamContext(nidi.declaredStreamId);
+            context.setPartitions(nidi.partitionKeys);
+            context.setSourceId(sourceIdentifier);
+            context.setSinkId(sinkIdentifier);
+
             pair = new ComponentContextPair<Stream, StreamContext>(stream, context);
+            streams.put(sinkIdentifier, pair);
 
             Sink s = node.connect(nidi.portName, stream);
-            stream.connect(sinkId, s);
+            stream.connect(sinkIdentifier, s);
           }
           else {
             Sink s = node.connect(nidi.portName, pair.component);
             String streamSinkId = pair.context.getSinkId();
 
             if (streamSinkId == null) {
-              pair.context.setSinkId(sinkId);
+              pair.context.setSinkId(sinkIdentifier);
             }
             else {
-              pair.context.setSinkId(streamSinkId.concat(", ").concat(sinkId));
+              pair.context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              pair.component.connect(sinkId, s);
+              pair.component.connect(sinkIdentifier, s);
             }
             else {
               /*
@@ -588,11 +595,9 @@ public class StramChild
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
               PartitionAwareSink pas = new PartitionAwareSink(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, s);
-              pair.component.connect(sinkId, pas);
+              pair.component.connect(sinkIdentifier, pas);
             }
           }
-
-          streams.put(sinkId, pair);
         }
       }
     }

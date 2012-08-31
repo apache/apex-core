@@ -25,11 +25,15 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   private Iterable<Sink> sinks;
   private SerDe serde;
 
+  public BufferServerInputStream(SerDe serde)
+  {
+    this.serde = serde;
+  }
+
   @Override
   public void activate(StreamContext context)
   {
     super.activate(context);
-    serde = context.getSerDe();
 
     sinks = outputs.values();
     String type = "paramNotRequired?"; // TODO: why do we need this?
@@ -40,53 +44,47 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   @Override
   public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
   {
-//    StreamContext context = ctx.channel().attr(CONTEXT).get();
-//    if (serde == null) {
-//      logger.warn("serde is not setup for the InputSocketStream");
-//    }
-//    else {
-      Tuple t;
-      switch (data.getType()) {
-        case SIMPLE_DATA:
-          Object o = serde.fromByteArray(data.getSimpleData().getData().toByteArray());
-          for (Sink s: sinks) {
-            s.process(o);
-          }
-          return;
+    Tuple t;
+    switch (data.getType()) {
+      case SIMPLE_DATA:
+        Object o = serde.fromByteArray(data.getSimpleData().getData().toByteArray());
+        for (Sink s: sinks) {
+          s.process(o);
+        }
+        return;
 
-        case PARTITIONED_DATA:
-          o = serde.fromByteArray(data.getPartitionedData().getData().toByteArray());
-          for (Sink s: sinks) {
-            s.process(o);
-          }
-          return;
+      case PARTITIONED_DATA:
+        o = serde.fromByteArray(data.getPartitionedData().getData().toByteArray());
+        for (Sink s: sinks) {
+          s.process(o);
+        }
+        return;
 
-        case END_WINDOW:
-          t = new EndWindowTuple();
-          t.setWindowId(baseSeconds | data.getWindowId());
-          break;
+      case END_WINDOW:
+        t = new EndWindowTuple();
+        t.setWindowId(baseSeconds | data.getWindowId());
+        break;
 
-        case END_STREAM:
-          t = new EndStreamTuple();
-          t.setWindowId(baseSeconds | data.getWindowId());
-          break;
+      case END_STREAM:
+        t = new EndStreamTuple();
+        t.setWindowId(baseSeconds | data.getWindowId());
+        break;
 
-        case RESET_WINDOW:
-          t = new ResetWindowTuple();
-          baseSeconds = (long)data.getWindowId() << 32;
-          t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
-          break;
+      case RESET_WINDOW:
+        t = new ResetWindowTuple();
+        baseSeconds = (long)data.getWindowId() << 32;
+        t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
+        break;
 
-        default:
-          t = new Tuple(data.getType());
-          t.setWindowId(baseSeconds | data.getWindowId());
-          break;
-      }
+      default:
+        t = new Tuple(data.getType());
+        t.setWindowId(baseSeconds | data.getWindowId());
+        break;
+    }
 
-      for (Sink s: sinks) {
-        s.process(t);
-      }
-//    }
+    for (Sink s: sinks) {
+      s.process(t);
+    }
   }
 
   @Override

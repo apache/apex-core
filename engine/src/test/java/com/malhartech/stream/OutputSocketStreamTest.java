@@ -55,7 +55,6 @@ public final class OutputSocketStreamTest
     sc.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, new InetSocketAddress("localhost", 5033));
 
     ctx = new StreamContext("irrelevant_id");
-    ctx.setSerde(new DefaultSerDe());
   }
 
   @AfterClass

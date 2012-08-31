@@ -30,7 +30,7 @@ public class HDFSOutputStream implements Stream
 {
   private static org.slf4j.Logger LOG = LoggerFactory.getLogger(HDFSOutputStream.class);
   private FSDataOutputStream output;
-  private SerDe serde;
+  private SerDe serde; // it was taken from context before, but now what, it's not a stream but a node!
   private FileSystem fs;
   private Path filepath;
   private boolean append;
@@ -78,7 +78,6 @@ public class HDFSOutputStream implements Stream
       catch (IOException ex) {
         LOG.info("", ex);
       }
-
     }
   }
 
@@ -90,7 +89,6 @@ public class HDFSOutputStream implements Stream
   @Override
   public void activate(StreamContext context)
   {
-    serde = context.getSerDe();
     try {
       if (fs.exists(filepath)) {
         if (append) {

@@ -6,8 +6,6 @@ package com.malhartech.dag;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Defines the destination for tuples processed<p>
@@ -97,23 +95,10 @@ public class StreamContext implements Context
     INSIDE_WINDOW,
     TERMINATED
   }
-  private final Logger LOG = LoggerFactory.getLogger(StreamContext.class);
-  private Sink sink;
-  private SerDe serde;
   private int tupleCount;
   private String sourceId;
   private String sinkId;
   private long startingWindowId;
-
-  public SerDe getSerDe()
-  {
-    return serde; // required for socket connection
-  }
-
-  public void setSerde(SerDe serde)
-  {
-    this.serde = serde;
-  }
 
   public int getTupleCount()
   {
