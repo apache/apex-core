@@ -40,9 +40,9 @@ public class InlineStreamTest
     stream.setup(new StreamConfiguration());
 
     Sink sink = stream.connect(Component.INPUT, node1);
-    node1.connect("output", sink);
+    node1.connect(Component.OUTPUT, sink);
 
-    sink = node2.connect("input", stream);
+    sink = node2.connect(Component.INPUT, stream);
     stream.connect("node2.input", sink);
 
     sink = new Sink()
@@ -82,9 +82,9 @@ public class InlineStreamTest
         }
       }
     };
-    node2.connect("output", sink);
+    node2.connect(Component.OUTPUT, sink);
 
-    sink = node1.connect("input", new Sink()
+    sink = node1.connect(Component.INPUT, new Sink()
     {
       // we just needed some random sink
       @Override
@@ -185,10 +185,10 @@ public class InlineStreamTest
     public void process(Object o)
     {
       if (nodeId == null) {
-        emit("output", o);
+        emit(Component.OUTPUT, o);
       }
       else {
-        emit("output", nodeId.concat(" > ").concat(o.toString()));
+        emit(Component.OUTPUT, nodeId.concat(" > ").concat(o.toString()));
       }
     }
   }

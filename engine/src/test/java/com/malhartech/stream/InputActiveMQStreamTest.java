@@ -45,7 +45,7 @@ public class InputActiveMQStreamTest
   }
 
   @NodeAnnotation(ports = {
-    @PortAnnotation(name = "output", type = PortAnnotation.PortType.OUTPUT)
+    @PortAnnotation(name = Component.OUTPUT, type = PortAnnotation.PortType.OUTPUT)
   })
   private static final class InputActiveMQStream extends AbstractActiveMQInputStream
   {
@@ -54,7 +54,7 @@ public class InputActiveMQStreamTest
     {
       if (message instanceof TextMessage) {
         try {
-          emit("output", ((TextMessage)message).getText());
+          emit(Component.OUTPUT, ((TextMessage)message).getText());
         }
         catch (JMSException ex) {
           Logger.getLogger(InputActiveMQStreamTest.class.getName()).log(Level.SEVERE, null, ex);
@@ -158,7 +158,7 @@ public class InputActiveMQStreamTest
   {
     System.out.println("process");
 
-    instance.connect("output", context);
+    instance.connect(Component.OUTPUT, context);
     new Thread()
     {
       @Override

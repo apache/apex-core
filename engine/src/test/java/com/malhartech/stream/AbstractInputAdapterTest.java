@@ -64,7 +64,7 @@ public class AbstractInputAdapterTest
     config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0x1234abcd);
 
     generator.setup(config);
-    generator.connect("output", new Sink()
+    generator.connect(Component.OUTPUT, new Sink()
     {
       boolean firsttime = true;
 
