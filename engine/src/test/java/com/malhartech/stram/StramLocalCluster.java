@@ -113,9 +113,10 @@ public class StramLocalCluster implements Runnable {
      */
     private AtomicInteger heartbeatCount = new AtomicInteger();
     
-    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical)
+    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical, WindowGenerator wgen)
     {
       super(containerId, new Configuration(), umbilical);
+      super.setWindowGenerator(wgen);
     }
 
     @Override
@@ -156,7 +157,7 @@ public class StramLocalCluster implements Runnable {
     
     private LocalStramChildLauncher(DeployRequest cdr) {
       this.containerId = "container-" + containerSeq++;
-      this.child = new LocalStramChild(containerId, umbilical);
+      this.child = new LocalStramChild(containerId, umbilical, null);
       dnmgr.assignContainer(cdr, containerId, NetUtils.getConnectAddress(bufferServerAddress));
       Thread launchThread = new Thread(this, containerId);
       launchThread.start();

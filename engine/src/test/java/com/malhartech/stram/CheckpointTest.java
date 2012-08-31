@@ -64,25 +64,26 @@ public class CheckpointTest {
     TestWindowGenerator wingen = new TestWindowGenerator();
     NewTopologyBuilder tb = new NewTopologyBuilder();
     // node with no inputs will be connected to window generator
-    tb.addNode("node1", new EchoNode());
+    tb.addNode("node1", new NumberGeneratorInputAdapter())
+        .setProperty("maxTuples", "1");
     DNodeManager dnm = new DNodeManager(tb.getTopology());
 
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
     String containerId = "container1";
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
-    LocalStramChild container = new LocalStramChild(containerId, null);
-    cc.setWindowSizeMillis(0); // disable default window generator
+    LocalStramChild container = new LocalStramChild(containerId, null, wingen.wingen);
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);
 
     wingen.tick(1);
 
-    Assert.assertEquals("number nodes", 1, container.getNodes());
+    Assert.assertEquals("number nodes", 1, container.getNodes().size());
     ComponentContextPair<Node, NodeContext> nodePair = container.getNodes().get(cc.nodeList.get(0).id);
     
     Assert.assertNotNull("node deployed " + cc.nodeList.get(0), nodePair);
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, nodePair.context.getId());
+    Assert.assertEquals("maxTupes", 1, ((NumberGeneratorInputAdapter)nodePair.component).getMaxTuples());
     
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(nodePair.context.getId());

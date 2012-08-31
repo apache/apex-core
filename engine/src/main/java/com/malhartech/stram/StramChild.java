@@ -104,6 +104,10 @@ public class StramChild
   protected Map<String, ComponentContextPair<Node, NodeContext>> getNodes() {
     return this.nodes;
   }
+
+  protected void setWindowGenerator(WindowGenerator wgen) {
+    this.windowGenerator = wgen;
+  }
   
   /**
    * Initialize container with nodes and streams in the context.
@@ -454,7 +458,7 @@ public class StramChild
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         // this node is load generator aka input adapter node
         // window size 0 is used for tests to turn off the window generator
-        if (windowGenerator == null && dagConfig.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0) != 0) {
+        if (windowGenerator == null) {
 
           windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
           windowGenerator.setup(dagConfig);

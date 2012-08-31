@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.fusesource.hawtbuf.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -228,6 +229,8 @@ public class DNodeManager
     
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
+      // populate custom properties
+      BeanUtils.populate(nodeDecl.getNode(), nodeDecl.getProperties());
       NodeContext.serializeNode(nodeDecl.getNode(), os);
       ndi.serializedNode = os.toByteArray();
       os.close();

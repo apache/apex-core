@@ -228,9 +228,8 @@ public class StramLocalClusterTest
 
   public static class TestWindowGenerator {
     private final ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
-    
+    public final WindowGenerator wingen = new WindowGenerator(mses);
     public TestWindowGenerator() {
-      WindowGenerator wingen = new WindowGenerator(mses);
 
       Configuration config = new Configuration();
       config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0);
