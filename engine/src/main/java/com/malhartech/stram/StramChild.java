@@ -531,7 +531,6 @@ public class StramChild
          * unaware of the windows. So for that reason, AbstractInputNode allows Component.INPUT port.
          */
         if (windowGenerator == null) {
-
           windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
           windowGenerator.setup(dagConfig);
         }
