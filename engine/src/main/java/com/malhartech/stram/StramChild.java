@@ -9,7 +9,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
@@ -29,6 +28,7 @@ import com.malhartech.stream.BufferServerStreamContext;
 import com.malhartech.stream.InlineStream;
 import com.malhartech.stream.MuxStream;
 import com.malhartech.stream.PartitionAwareSink;
+import com.malhartech.stream.SocketInputStream;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -171,8 +171,10 @@ public class StramChild
         hb.setIntervalMs(heartbeatIntervalMillis);
         e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
         DNodeState state = DNodeState.PROCESSING;
-        if (!activeNodes.contains(e.getValue())) {
-          state = DNodeState.IDLE;
+        synchronized (activeNodes) {
+          if (!activeNodes.contains(e.getValue())) {
+            state = DNodeState.IDLE;
+          }
         }
         hb.setState(state.name());
         // propagate the backup window, if any
@@ -368,9 +370,11 @@ public class StramChild
     if (windowGenerator != null) {
       windowGenerator.deactivate();
     }
-    
-    for (ComponentContextPair<Node, NodeContext> pair: activeNodes) {
-      pair.component.deactivate();
+
+    synchronized (activeNodes) {
+      for (ComponentContextPair<Node, NodeContext> pair: activeNodes) {
+        pair.component.deactivate();
+      }
     }
 
     for (ComponentContextPair<Stream, StreamContext> pair: activeStreams) {
@@ -379,6 +383,7 @@ public class StramChild
     activeStreams.clear();
   }
 
+  @SuppressWarnings("SleepWhileInLoop")
   private void deployNodes(List<NodeDeployInfo> nodeList)
   {
     for (NodeDeployInfo ndi: nodeList) {
@@ -602,9 +607,11 @@ public class StramChild
       }
     }
 
-    activeStreams.addAll(streams.values());
-    for (ComponentContextPair<Stream, StreamContext> pair: activeStreams) {
-      pair.component.activate(pair.context);
+    for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
+      if (!(pair.component instanceof SocketInputStream)) {
+        pair.component.activate(pair.context);
+        activeStreams.add(pair);
+      }
     }
 
     for (final ComponentContextPair<Node, NodeContext> pair: nodes.values()) {
@@ -613,12 +620,40 @@ public class StramChild
         @Override
         public void run()
         {
+          synchronized (activeNodes) {
+            activeNodes.add(pair);
+          }
           pair.component.activate(pair.context);
-          activeNodes.remove(pair);
+          synchronized (activeNodes) {
+            activeNodes.remove(pair);
+          }
         }
       };
       t.start();
-      activeNodes.add(pair);
+    }
+
+    /**
+     * we need to make sure that before any of the nodes gets the first message, it's activated.
+     */
+    try {
+      int size;
+      do {
+        Thread.sleep(20);
+        synchronized (activeNodes) {
+          size = activeNodes.size();
+        }
+      }
+      while (size < nodes.size());
+    }
+    catch (InterruptedException ex) {
+      LOG.debug(ex.getLocalizedMessage());
+    }
+
+    for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
+      if (pair.component instanceof SocketInputStream) {
+        pair.component.activate(pair.context);
+        activeStreams.add(pair);
+      }
     }
 
     if (windowGenerator != null) {
@@ -656,9 +691,11 @@ public class StramChild
       windowGenerator = null;
     }
 
-    for (ComponentContextPair<Node, NodeContext> pair: activeNodes) {
-      pair.component.deactivate();
-      pair.component.teardown();
+    synchronized (activeNodes) {
+      for (ComponentContextPair<Node, NodeContext> pair: activeNodes) {
+        pair.component.deactivate();
+        pair.component.teardown();
+      }
     }
 
     for (ComponentContextPair<Stream, StreamContext> pair: activeStreams) {
@@ -672,7 +709,12 @@ public class StramChild
   {
     for (NodeDeployInfo ndi: nodeList) {
       ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
-      if (activeNodes.contains(pair)) {
+      boolean contains;
+      synchronized (activeNodes) {
+        contains = activeNodes.contains(pair);
+      }
+
+      if (contains) {
         pair.component.deactivate();
         pair.component.teardown();
 
