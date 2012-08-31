@@ -79,7 +79,7 @@ public class StramChild
   final private Set<ComponentContextPair<Stream, StreamContext>> activeStreams = new HashSet<ComponentContextPair<Stream, StreamContext>>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
-  private Object heartbeatTrigger = new Object();
+  private final Object heartbeatTrigger = new Object();
   private WindowGenerator windowGenerator;
   private String checkpointDfsPath;
   private Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicking here.
@@ -386,6 +386,9 @@ public class StramChild
   @SuppressWarnings("SleepWhileInLoop")
   private void deployNodes(List<NodeDeployInfo> nodeList)
   {
+    /**
+     * A little bit of sanity check would reduce the percentage of deploy failures upfront.
+     */
     for (NodeDeployInfo ndi: nodeList) {
       if (nodes.containsKey(ndi.id)) {
         throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
@@ -393,8 +396,8 @@ public class StramChild
     }
 
     /**
-     * changes midflight are always dangerous and will always result in disaster.
-     * So we temporarily halt the engine. We will need to discuss the midflight changes.
+     * changes midflight are always dangerous and will result in disaster if not done correctly.
+     * So we temporarily halt the engine. We will need to discuss the midflight changes for good handling.
      */
     deactivate();
 
@@ -707,6 +710,8 @@ public class StramChild
 
   private void undeployNodes(List<NodeDeployInfo> nodeList)
   {
+    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
+
     for (NodeDeployInfo ndi: nodeList) {
       ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
       boolean contains;
@@ -717,11 +722,10 @@ public class StramChild
       if (contains) {
         pair.component.deactivate();
         pair.component.teardown();
-
-        // find out the streams connected to the output ports and undeploy them
-        for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
-        }
       }
+
+      // we need to do the same thing as we did during undeployment to figure out how the streams were laid out
+      groupInputStreams(groupedInputStreams, ndi);
     }
 
 
