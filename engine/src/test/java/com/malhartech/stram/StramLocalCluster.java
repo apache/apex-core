@@ -239,6 +239,7 @@ public class StramLocalCluster implements Runnable {
   }
 
   @Override
+  @SuppressWarnings("SleepWhileInLoop")
   public void run() {
     while (!appDone) {
 
@@ -264,7 +265,7 @@ public class StramLocalCluster implements Runnable {
       // monitor child containers
       dnmgr.monitorHeartbeat();
 
-      if (childContainers.size() == 0 && dnmgr.containerStartRequests.isEmpty()) {
+      if (childContainers.isEmpty() && dnmgr.containerStartRequests.isEmpty()) {
         appDone = true;
       } else {
         try {

@@ -20,7 +20,6 @@ import com.malhartech.dag.Sink;
     }
 )
 public class NumberGeneratorInputAdapter extends AbstractInputNode
-  implements Runnable
 {
   private static Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
   public static final String OUTPUT_PORT = "outputPort";
@@ -59,7 +58,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
     }
   }
 
-  @Override
+  @SuppressWarnings("SleepWhileInLoop")
   public void run()
   {
     while (!shutdown) {
@@ -107,6 +106,4 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   @Override
   public void endWindow() {
   }
-
-
 }
