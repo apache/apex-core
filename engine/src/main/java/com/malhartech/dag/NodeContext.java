@@ -126,7 +126,7 @@ public class NodeContext implements Context
     output.flush();
   }
   
-  void backup(AbstractNode aThis) throws IOException
+  void backup(Node aThis) throws IOException
   {
     LOG.debug("Backup node={}, window={}", id, getCurrentWindowId());
     OutputStream os = backupAgent.borrowOutputStream(id, getCurrentWindowId());

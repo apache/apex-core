@@ -83,6 +83,11 @@ public abstract class AbstractInputNode implements Node
     }
   }
 
+  public void connected(String id, Sink dagpart)
+  {
+    /* implementation to be optionally overridden by the user */
+  }
+  
   @Override
   public void process(Object payload)
   {
