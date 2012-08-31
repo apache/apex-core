@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -35,13 +34,12 @@ import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology.NodeDecl;
-import java.util.ArrayList;
 
 /**
  *
  */
 public class CheckpointTest {
-  private static Logger LOG = LoggerFactory.getLogger(CheckpointTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CheckpointTest.class);
 
   private static File testWorkDir = new File("target", CheckpointTest.class.getName());
 
@@ -102,7 +100,7 @@ public class CheckpointTest {
       Thread.sleep(500);
     }
 
-    Assert.assertEquals("node @ window 2", 2, nodePair.context.getLastProcessedWindowId());
+    Assert.assertTrue("node >= window 2" , 2 <= nodePair.context.getLastProcessedWindowId());
 
     File expectedFile = new File(testWorkDir, backupRequest.getNodeId() + "/1");
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());

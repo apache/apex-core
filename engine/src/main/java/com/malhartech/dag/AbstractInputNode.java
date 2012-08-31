@@ -12,6 +12,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map.Entry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -19,12 +21,15 @@ import java.util.Map.Entry;
  */
 public abstract class AbstractInputNode implements Node
 {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractInputNode.class);
   int spinMillis;
   int bufferCapacity;
   HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   Collection<Sink> sinks;
+  private NodeContext ctx;
+  private int producedTupleCount;
 
   @Override
   public void setup(NodeConfiguration config)
@@ -51,6 +56,7 @@ public abstract class AbstractInputNode implements Node
   @Override
   public void activate(NodeContext context)
   {
+    ctx = context;
     sinks = outputs.values();
   }
 
@@ -121,6 +127,27 @@ public abstract class AbstractInputNode implements Node
         for (Sink s: sinks) {
           s.process(payload);
         }
+
+        ctx.report(producedTupleCount, 0L, ((Tuple)payload).getWindowId());
+        producedTupleCount = 0;
+
+        // the default is UNSPECIFIED which we ignore anyways as we ignore everything
+        // that we do not understand!
+        try {
+          switch (ctx.getRequestType()) {
+            case BACKUP:
+              ctx.backup(this, ((Tuple)payload).getWindowId());
+              break;
+
+            case RESTORE:
+              logger.info("restore requests are not implemented");
+              break;
+          }
+        }
+        catch (Exception e) {
+          logger.warn("Exception while catering to external request", e.getLocalizedMessage());
+        }
+
         // i think there should be just one queue instead of one per port - lets defer till we find an example.
         for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
           Sink s = outputs.get(e.getKey());
@@ -176,5 +203,7 @@ public abstract class AbstractInputNode implements Node
         }
       }
     }
+
+    producedTupleCount++;
   }
 }
