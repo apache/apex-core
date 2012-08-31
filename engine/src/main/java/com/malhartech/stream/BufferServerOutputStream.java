@@ -29,6 +29,11 @@ public class BufferServerOutputStream extends SocketOutputStream
   private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   SerDe serde;
   int windowId;
+
+  // see if you can do this in setup instead of in constructor.
+  public BufferServerOutputStream(SerDe serde) {
+    this.serde = serde;
+  }
   /**
    *
    * @param t
@@ -103,8 +108,6 @@ public class BufferServerOutputStream extends SocketOutputStream
   public void activate(StreamContext context)
   {
     super.activate(context);
-
-    serde = context.getSerDe();
     logger.debug("registering publisher: {} {}", context.getSourceId(), context.getId());
     ClientHandler.publish(channel, context.getSourceId(), context.getId(), context.getStartingWindowId());
   }

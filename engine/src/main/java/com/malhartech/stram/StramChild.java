@@ -83,7 +83,6 @@ public class StramChild
   private WindowGenerator windowGenerator;
   private String checkpointDfsPath;
   private Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicking here.
-
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
@@ -101,11 +100,13 @@ public class StramChild
     return this.containerId;
   }
 
-  protected Map<String, ComponentContextPair<Node, NodeContext>> getNodes() {
+  protected Map<String, ComponentContextPair<Node, NodeContext>> getNodes()
+  {
     return this.nodes;
   }
 
-  protected void setWindowGenerator(WindowGenerator wgen) {
+  protected void setWindowGenerator(WindowGenerator wgen)
+  {
     this.windowGenerator = wgen;
   }
 
@@ -423,7 +424,7 @@ public class StramChild
           StreamConfiguration config = new StreamConfiguration();
           config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
-          stream = new BufferServerOutputStream();
+          stream = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
           stream.setup(config);
 
           sinkIdentifier = nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
@@ -451,7 +452,7 @@ public class StramChild
             StreamConfiguration config = new StreamConfiguration();
             config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
-            BufferServerOutputStream bsos = new BufferServerOutputStream();
+            BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
             bsos.setup(config);
 
             sinkIdentifier = nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
@@ -492,7 +493,7 @@ public class StramChild
             StreamConfiguration config = new StreamConfiguration();
             config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
-            BufferServerOutputStream bsos = new BufferServerOutputStream();
+            BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
             bsos.setup(config);
 
             sinkIdentifier = nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
@@ -582,7 +583,7 @@ public class StramChild
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink pas = new PartitionAwareSink(new DefaultSerDe(), nidi.partitionKeys, s); // serde should be something else
+              PartitionAwareSink pas = new PartitionAwareSink(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, s);
               pair.component.connect(sinkId, pas);
             }
           }
