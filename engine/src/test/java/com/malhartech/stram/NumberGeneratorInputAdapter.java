@@ -24,13 +24,13 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
 {
   private static Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
   public static final String OUTPUT_PORT = "outputPort";
-  
+
   private volatile boolean shutdown = false;
   private String myConfigProperty;
   private int maxTuples = -1;
   private int generatedNumbers = 0;
   private boolean outputConnected = false;
-  
+
   public int getMaxTuples()
   {
     return maxTuples;
@@ -51,7 +51,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   {
     this.myConfigProperty = myConfigProperty;
   }
-  
+
   @Override
   public void connected(String id, Sink dagpart) {
     if (OUTPUT_PORT.equals(id)) {
@@ -71,7 +71,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
           emit(OUTPUT_PORT, new EndStreamTuple());
           break;
         }
-      }      
+      }
       try {
         Thread.sleep(1000);
       }
@@ -92,8 +92,6 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   public void activate(NodeContext context) {
     super.activate(context);
     run();
-//    Thread t = new Thread(this);
-//    t.start();
   }
 
   @Override
@@ -101,7 +99,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
     this.shutdown = true;
     super.deactivate();
   }
-  
+
   @Override
   public void beginWindow() {
   }
@@ -109,6 +107,6 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   @Override
   public void endWindow() {
   }
-  
-  
+
+
 }

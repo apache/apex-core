@@ -27,7 +27,7 @@ public abstract class AbstractInputNode implements Node
   HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  Collection<Sink> sinks;
+  private volatile Collection<Sink> sinks;
   private NodeContext ctx;
   private int producedTupleCount;
 
