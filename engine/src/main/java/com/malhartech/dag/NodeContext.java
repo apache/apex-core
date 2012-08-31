@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The for context for all of the nodes<p>
  * <br>
- * 
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class NodeContext implements Context
@@ -36,7 +36,6 @@ public class NodeContext implements Context
     TERMINATE
   }
   private String id;
-  private long windowId;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
   private volatile RequestType request = RequestType.UNDEFINED;
@@ -80,16 +79,6 @@ public class NodeContext implements Context
     return id;
   }
 
-  public long getCurrentWindowId()
-  {
-    return windowId;
-  }
-
-  public void setCurrentWindowId(long windowId)
-  {
-    this.windowId = windowId;
-  }
-
   /**
    * Reset counts for next heartbeat interval and return current counts. This is called as part of the heartbeat processing.
    *
@@ -100,8 +89,16 @@ public class NodeContext implements Context
     return heartbeatCounters.drainTo(counters);
   }
 
-  synchronized void report(int consumedTupleCount, long processedBytes)
+  long lastProcessedWidnowId;
+  public final synchronized long getLastProcessedWindowId()
   {
+    return lastProcessedWidnowId;
+  }
+
+  synchronized void report(int consumedTupleCount, long processedBytes, long windowId)
+  {
+    lastProcessedWidnowId = windowId;
+    
     HeartbeatCounters newWindow = new HeartbeatCounters();
     newWindow.windowId = windowId;
     newWindow.tuplesProcessed = consumedTupleCount;
@@ -125,11 +122,11 @@ public class NodeContext implements Context
     kryo.writeClassAndObject(output, aThis);
     output.flush();
   }
-  
-  void backup(Node aThis) throws IOException
+
+  void backup(Node aThis, long windowId) throws IOException
   {
-    LOG.debug("Backup node={}, window={}", id, getCurrentWindowId());
-    OutputStream os = backupAgent.borrowOutputStream(id, getCurrentWindowId());
+    LOG.debug("Backup node={}, window={}", id, windowId);
+    OutputStream os = backupAgent.borrowOutputStream(id, windowId);
     try {
       serializeNode(aThis, os);
       /*

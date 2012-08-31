@@ -237,7 +237,7 @@ public abstract class AbstractNode implements Node
     int receivedEndWindow = 0;
 
     boolean shouldWait;
-    ctx.setCurrentWindowId(0);
+    long currentWindowId = 0;
     alive = true;
 
     do {
@@ -255,14 +255,14 @@ public abstract class AbstractNode implements Node
                 if (expectingBeginWindow == totalQueues) {
                   cb.get();
                   expectingBeginWindow--;
-                  ctx.setCurrentWindowId(t.getWindowId());
+                  currentWindowId = t.getWindowId();
                   beginWindow();
                   for (final Sink output: outputs.values()) {
                     output.process(t);
                   }
                   receivedEndWindow = 0;
                 }
-                else if (t.getWindowId() == ctx.getCurrentWindowId()) {
+                else if (t.getWindowId() == currentWindowId) {
                   cb.get();
                   expectingBeginWindow--;
                 }
@@ -272,7 +272,7 @@ public abstract class AbstractNode implements Node
                 break;
 
               case END_WINDOW:
-                if (t.getWindowId() == ctx.getCurrentWindowId()) {
+                if (t.getWindowId() == currentWindowId) {
                   cb.get();
                   if (++receivedEndWindow == totalQueues) {
                     endWindow();
@@ -280,7 +280,7 @@ public abstract class AbstractNode implements Node
                       output.process(t);
                     }
                   }
-                  ctx.report(consumedTupleCount, 0L);
+                  ctx.report(consumedTupleCount, 0L, currentWindowId);
                   consumedTupleCount = 0;
                   /*
                    * we prefer to do quite a few operations at the end of the window boundary.
@@ -294,7 +294,7 @@ public abstract class AbstractNode implements Node
                   try {
                     switch (ctx.getRequestType()) {
                       case BACKUP:
-                        ctx.backup(this);
+                        ctx.backup(this, currentWindowId);
                         break;
 
                       case RESTORE:
@@ -389,9 +389,10 @@ public abstract class AbstractNode implements Node
     /*
      * since we are going away, we should let all the downstream nodes know that.
      */
+    // we need to think about this as well.
     EndStreamTuple est = new EndStreamTuple();
 
-    est.setWindowId(ctx.getCurrentWindowId());
+    est.setWindowId(currentWindowId);
     for (final Sink output: outputs.values()) {
       output.process(est);
     }

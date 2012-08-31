@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.ComponentContextPair;
+import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -34,6 +35,7 @@ import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology.NodeDecl;
+import java.util.ArrayList;
 
 /**
  *
@@ -80,11 +82,11 @@ public class CheckpointTest {
 
     Assert.assertEquals("number nodes", 1, container.getNodes().size());
     ComponentContextPair<Node, NodeContext> nodePair = container.getNodes().get(cc.nodeList.get(0).id);
-    
+
     Assert.assertNotNull("node deployed " + cc.nodeList.get(0), nodePair);
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, nodePair.context.getId());
     Assert.assertEquals("maxTupes", 1, ((NumberGeneratorInputAdapter)nodePair.component).getMaxTuples());
-    
+
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(nodePair.context.getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
@@ -92,13 +94,15 @@ public class CheckpointTest {
     rsp.setNodeRequests(Collections.singletonList(backupRequest));
     container.processHeartbeatResponse(rsp);
 
-    
+
     wingen.tick(1);
+
     // node to move to next window before we verify the checkpoint state
-    if (nodePair.context.getCurrentWindowId() < 2) {
+    if (nodePair.context.getLastProcessedWindowId() < 2) {
       Thread.sleep(500);
     }
-    Assert.assertEquals("node @ window 2", 2, nodePair.context.getCurrentWindowId());
+
+    Assert.assertEquals("node @ window 2", 2, nodePair.context.getLastProcessedWindowId());
 
     File expectedFile = new File(testWorkDir, backupRequest.getNodeId() + "/1");
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());

@@ -75,7 +75,7 @@ public class StramLocalClusterTest
   public void testChildRecovery() throws Exception
   {
     TestWindowGenerator wingen = new TestWindowGenerator();
-    
+
     NewTopologyBuilder tb = new NewTopologyBuilder();
 
     NodeDecl node1 = tb.addNode("node1", new EchoNode());
@@ -86,7 +86,7 @@ public class StramLocalClusterTest
       addSink(node2.getInput(EchoNode.INPUT1));
 
     //tb.validate();
-    
+
     Topology tplg = tb.getTopology();
     tplg.getConf().setInt(Topology.STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
     tplg.getConf().setInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
@@ -111,7 +111,7 @@ public class StramLocalClusterTest
     ComponentContextPair<Node, NodeContext> n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
-    Assert.assertEquals("initial window id", 0, n1.context.getCurrentWindowId());
+    Assert.assertEquals("initial window id", 0, n1.context.getLastProcessedWindowId());
     wingen.tick(1);
 
     waitForWindow(n1.context, 1);
@@ -170,7 +170,7 @@ public class StramLocalClusterTest
 
     ComponentContextPair<Node, NodeContext> n1Replaced = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1Replaced);
-    Assert.assertEquals("initial window id", 1, n1Replaced.context.getCurrentWindowId());
+    Assert.assertEquals("initial window id", 1, n1Replaced.context.getLastProcessedWindowId());
 
     localCluster.shutdown();
 
@@ -209,7 +209,7 @@ public class StramLocalClusterTest
 
   private void waitForWindow(NodeContext nodeCtx, long windowId) throws InterruptedException
   {
-    while (nodeCtx.getCurrentWindowId() < windowId) {
+    while (nodeCtx.getLastProcessedWindowId() < windowId) {
       LOG.debug("Waiting for window {} at node {}", windowId, nodeCtx.getId());
       Thread.sleep(100);
     }
@@ -243,5 +243,5 @@ public class StramLocalClusterTest
       mses.tick(steps);
     }
   }
-  
+
 }

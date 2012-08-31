@@ -108,7 +108,7 @@ public class StramChild
   protected void setWindowGenerator(WindowGenerator wgen) {
     this.windowGenerator = wgen;
   }
-  
+
   /**
    * Initialize container with nodes and streams in the context.
    * Existing nodes are not affected by this operation.
@@ -126,7 +126,7 @@ public class StramChild
 
     dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, ctx.getStartWindowMillis());
     dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis()); // no need to set if done right
-    
+
     deployNodes(ctx.nodeList);
   }
 
@@ -164,7 +164,6 @@ public class StramChild
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
-        hb.setCurrentWindowId(e.getValue().context.getCurrentWindowId());
         e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
         DNodeState state = DNodeState.PROCESSING;
         if (!activeNodes.contains(e.getValue())) {

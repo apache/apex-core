@@ -91,7 +91,7 @@ public abstract class AbstractInputNode implements Node
   {
     /* implementation to be optionally overridden by the user */
   }
-  
+
   @Override
   public final void process(Object payload)
   {
@@ -176,9 +176,5 @@ public abstract class AbstractInputNode implements Node
         }
       }
     }
-  }
-
-  public void connected(String port, Sink component)
-  {
   }
 }

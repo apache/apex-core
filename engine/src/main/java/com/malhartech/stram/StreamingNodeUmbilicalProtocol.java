@@ -122,7 +122,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
          * The list of nodes to deploy in the container
          */
         public List<NodeDeployInfo> nodeList;
-      
+
         /**
          * How frequently should nodes heartbeat to stram. Recommended setting is 1000ms. Can be set to 0 for unit testing.
          */
@@ -317,20 +317,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
 
             return numberBytesProcessed;
         }
-        /**
-         * The current window being processed by the node. To be used by stram to monitor window synchronization.
-         */
-        private long currentWindowId;
 
-        public long getCurrentWindowId()
-        {
-            return currentWindowId;
-        }
-
-        public void setCurrentWindowId(long currentWindowSeq)
-        {
-            this.currentWindowId = currentWindowSeq;
-        }
         private long lastBackupWindowId;
 
         public long getLastBackupWindowId()
