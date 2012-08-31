@@ -89,7 +89,7 @@ public class CheckpointTest {
     backupRequest.setNodeId(nodePair.context.getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
-    rsp.setNodeRequests(Collections.singletonList(backupRequest));
+    rsp.nodeRequests = Collections.singletonList(backupRequest);
     container.processHeartbeatResponse(rsp);
 
     wingen.tick(1); // end window 1, begin window 2

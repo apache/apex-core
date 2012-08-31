@@ -79,7 +79,7 @@ public class StramLocalCluster implements Runnable {
     public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) {
       if (injectShutdown.containsKey(msg.getContainerId())) {
         ContainerHeartbeatResponse r = new ContainerHeartbeatResponse();
-        r.setShutdown(true);
+        r.shutdown = true;
         return r;
       }
       try {
@@ -248,7 +248,7 @@ public class StramLocalCluster implements Runnable {
         StramChild c = childContainers.get(containerIdStr);
         if (c != null) {
           ContainerHeartbeatResponse r = new ContainerHeartbeatResponse();
-          r.setShutdown(true);
+          r.shutdown = true;
           c.processHeartbeatResponse(r);
         }
         dnmgr.containerStopRequests.remove(containerIdStr);
