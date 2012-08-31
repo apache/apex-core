@@ -346,10 +346,34 @@ public class StramChild
     }
   }
 
+  private void deactivate()
+  {
+    for (ComponentContextPair<Node, NodeContext> pair: activeNodes) {
+      pair.component.deactivate();
+    }
+
+    for (ComponentContextPair<Stream, StreamContext> pair: activeStreams) {
+      pair.component.deactivate();
+    }
+    activeStreams.clear();
+  }
+
   private void deployNodes(List<NodeDeployInfo> nodeList)
   {
+    for (NodeDeployInfo ndi: nodeList) {
+      if (nodes.containsKey(ndi.id)) {
+        throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
+      }
+    }
+
+    /**
+     * changes midflight are always dangerous and will always result in disaster.
+     * So we temporarily halt the engine. We will need to discuss the midflight changes.
+     */
+    deactivate();
+
     Kryo kryo = new Kryo();
-    HashMap<String, ArrayList<String>> one2ManyPlumbing = new HashMap<String, ArrayList<String>>();  // this holds all the plumbing hints
+    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();  // this holds all the plumbing hints
     for (NodeDeployInfo ndi: nodeList) {
       NodeContext nc = new NodeContext(ndi.id);
       Object foreignObject = kryo.readClassAndObject(new Input(ndi.serializedNode));
@@ -357,25 +381,31 @@ public class StramChild
         Node node = (Node)foreignObject;
         node.setup(new NodeConfiguration(ndi.properties));
         nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
-        estimateStreams(one2ManyPlumbing, ndi);
+
+        groupInputStreams(groupedInputStreams, ndi);
       }
       catch (ClassCastException cce) {
-        LOG.error("Expected {} but found {}", Node.class, foreignObject.getClass());
+        LOG.error(cce.getLocalizedMessage());
       }
     }
 
     // lets create all the output streams
     for (NodeDeployInfo ndi: nodeList) {
       Node node = nodes.get(ndi.id).component;
+
       for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
-        String sourceId = ndi.id.concat(".").concat(nodi.portName);
+        String sourceIdentifier = ndi.id.concat(".").concat(nodi.portName);
+        String sinkIdentifier;
 
         Stream stream;
-        StreamContext context;
 
-        ArrayList<String> collection = one2ManyPlumbing.get(sourceId);
+        ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
         if (collection == null) {
-          // this must be buffer stream
+          /**
+           * Let's create a stream to carry the data to the Buffer Server.
+           * Nobody in this container is interested in the output placed on this stream, but
+           * this stream exists. That means someone outside of this container must be interested.
+           */
           assert (nodi.isInline() == false);
 
           StreamConfiguration config = new StreamConfiguration();
@@ -384,29 +414,27 @@ public class StramChild
           stream = new BufferServerOutputStream();
           stream.setup(config);
 
-          context = new StreamContext(nodi.declaredStreamId);
-          context.setSourceId(sourceId);
-          context.setSinkId(nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceId));
+          sinkIdentifier = nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
         }
         else if (collection.size() == 1) {
           if (nodi.isInline()) {
+            /**
+             * Let's create an inline stream to carry data from output port to input port of some other node.
+             * There is only one node interested in output placed on this stream, and that node is in this container.
+             */
             stream = new InlineStream();
             stream.setup(new StreamConfiguration());
 
-            context = new StreamContext(nodi.declaredStreamId);
-            context.setSourceId(sourceId);
+            sinkIdentifier = null;
           }
           else {
-            /*
-             * this means we may have another party interested in the output of this port but it's in some
-             * other container, so we will create a mux stream and one stream would fork off to the buffer
-             * server and the other stream would connect to the party which is in this container.
+            /**
+             * Let's create 2 streams: 1 inline and 1 going to the Buffer Server.
+             * Although there is a node in this container interested in output placed on this stream, there
+             * seems to at least one more party interested but place in a container other than this one.
              */
             stream = new MuxStream();
             stream.setup(new StreamConfiguration());
-
-            context = new StreamContext(nodi.declaredStreamId);
-            context.setSourceId(sourceId);
 
             StreamConfiguration config = new StreamConfiguration();
             config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
@@ -414,28 +442,70 @@ public class StramChild
             BufferServerOutputStream bsos = new BufferServerOutputStream();
             bsos.setup(config);
 
+            sinkIdentifier = nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
+
             BufferServerStreamContext bssc = new BufferServerStreamContext(nodi.declaredStreamId);
-            bssc.setSourceId(sourceId);
-            bssc.setSinkId(nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceId));
+            bssc.setSourceId(sourceIdentifier);
+            bssc.setSinkId(sinkIdentifier);
 
-            Sink s = bsos.connect("input", stream);
-            stream.connect(bssc.getSinkId(), s);
+            Sink s = bsos.connect(Component.INPUT, stream);
+            stream.connect(sinkIdentifier, s);
 
-            streams.put(bssc.getSinkId(), new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
+            streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
           }
         }
         else {
-          stream = new MuxStream();
-          stream.setup(new StreamConfiguration());
+          /**
+           * Since there are multiple parties interested in this node itself, we are going to come
+           * to this block multiple times. The actions we take subsequent times are going to be different
+           * than the first time.
+           */
+          ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
+          if (pair == null) {
+            /**
+             * Let's multiplex the output placed on this stream.
+             * This container itself contains more than one parties interested.
+             */
+            stream = new MuxStream();
+            stream.setup(new StreamConfiguration());
+          }
+          else {
+            stream = pair.component;
+          }
 
-          context = new StreamContext(nodi.declaredStreamId);
-          context.setSourceId(sourceId);
+          if (nodi.isInline()) {
+            sinkIdentifier = null;
+          }
+          else {
+            StreamConfiguration config = new StreamConfiguration();
+            config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+
+            BufferServerOutputStream bsos = new BufferServerOutputStream();
+            bsos.setup(config);
+
+            sinkIdentifier = nodi.bufferServerHost.concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
+
+            BufferServerStreamContext bssc = new BufferServerStreamContext(nodi.declaredStreamId);
+            bssc.setSourceId(sourceIdentifier);
+            bssc.setSinkId(sinkIdentifier);
+
+            Sink s = bsos.connect(Component.INPUT, stream);
+            stream.connect(sinkIdentifier, s);
+
+            streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
+          }
         }
 
-        Sink s = stream.connect(Component.INPUT, node);
-        node.connect(nodi.portName, s);
+        if (!streams.containsKey(sourceIdentifier)) {
+          Sink s = stream.connect(Component.INPUT, node);
+          node.connect(nodi.portName, s);
 
-        streams.put(sourceId, new ComponentContextPair<Stream, StreamContext>(stream, context));
+          StreamContext context = new StreamContext(nodi.declaredStreamId);
+          context.setSourceId(sourceIdentifier);
+          context.setSinkId(sinkIdentifier);
+
+          streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
+        }
       }
     }
 
@@ -443,7 +513,11 @@ public class StramChild
     for (NodeDeployInfo ndi: nodeList) {
       Node node = nodes.get(ndi.id).component;
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
-        // this node is load generator aka input adapter node
+        /**
+         * This has to be AbstractInputNode, so let's hook the WindowGenerator to it.
+         * A node which does not take any input cannot exist in the DAG since it would be completely
+         * unaware of the windows. So for that reason, AbstractInputNode allows Component.INPUT port.
+         */
         if (windowGenerator == null) {
           Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicking here.
           dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, System.currentTimeMillis()); // no need to set if done right
@@ -534,7 +608,7 @@ public class StramChild
     }
   }
 
-  private void estimateStreams(HashMap<String, ArrayList<String>> plumbing, NodeDeployInfo ndi)
+  private void groupInputStreams(HashMap<String, ArrayList<String>> plumbing, NodeDeployInfo ndi)
   {
     for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
       String source = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
@@ -558,12 +632,39 @@ public class StramChild
 
   protected void shutdown()
   {
-//    throw new UnsupportedOperationException("Not yet implemented");
+    if (windowGenerator != null) {
+      windowGenerator.deactivate();
+      windowGenerator.teardown();
+      windowGenerator = null;
+    }
+
+    for (ComponentContextPair<Node, NodeContext> pair: activeNodes) {
+      pair.component.deactivate();
+      pair.component.teardown();
+    }
+
+    for (ComponentContextPair<Stream, StreamContext> pair: activeStreams) {
+      pair.component.deactivate();
+      pair.component.teardown();
+    }
+    activeStreams.clear();
   }
 
   private void undeployNodes(List<NodeDeployInfo> nodeList)
   {
-    throw new UnsupportedOperationException("Not yet implemented");
+    for (NodeDeployInfo ndi: nodeList) {
+      ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
+      if (activeNodes.contains(pair)) {
+        pair.component.deactivate();
+        pair.component.teardown();
+
+        // find out the streams connected to the output ports and undeploy them
+        for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
+        }
+      }
+    }
+
+
   }
 
   private class HdfsBackupAgent implements BackupAgent
