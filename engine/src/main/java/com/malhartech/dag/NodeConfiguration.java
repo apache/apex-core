@@ -11,7 +11,7 @@ import org.apache.hadoop.conf.Configuration;
  *
  * Extends {@link org.apache.hadoop.conf.Configuration} for nodes of the dag<p>
  * <br>
- * 
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class NodeConfiguration extends Configuration
@@ -31,8 +31,10 @@ public class NodeConfiguration extends Configuration
 
   public static void addAll(Configuration conf, Map<String, String> properties)
   {
-    for (Map.Entry<String, String> e: properties.entrySet()) {
-      conf.set(e.getKey(), e.getValue());
+    if (properties != null) {
+      for (Map.Entry<String, String> e: properties.entrySet()) {
+        conf.set(e.getKey(), e.getValue());
+      }
     }
   }
 }

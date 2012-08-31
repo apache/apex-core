@@ -27,6 +27,7 @@ import com.malhartech.stram.DNodeManager;
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.NumberGeneratorInputAdapter;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.StramUtils;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyBuilderTest;
 import com.malhartech.stram.TopologyBuilderTest.EchoNode;
@@ -117,9 +118,8 @@ public class SocketStreamTest
         BufferServerStreamContext ossContext = new BufferServerStreamContext(streamName);
         ossContext.setSourceId(upstreamNodeId);
         ossContext.setSinkId(downstreamNodeId);
-        ossContext.setSerde(serde);
 
-        BufferServerOutputStream oss = new BufferServerOutputStream();
+        BufferServerOutputStream oss = new BufferServerOutputStream(serde);
         oss.setup(sconf);
 
         oss.activate(ossContext);

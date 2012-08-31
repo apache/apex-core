@@ -35,7 +35,7 @@ public class DNodeManagerTest {
     NodeDeployInfo ndi = new NodeDeployInfo();
     ndi.declaredId = "node1";
     ndi.id ="1";
-    
+
     NodeDeployInfo.NodeInputDeployInfo input = new NodeDeployInfo.NodeInputDeployInfo();
     input.declaredStreamId = "streamToNode";
     input.portName = "inputPortNameOnNode";
@@ -50,7 +50,7 @@ public class DNodeManagerTest {
 
     ndi.outputs = new ArrayList<NodeDeployInfo.NodeOutputDeployInfo>();
     ndi.outputs.add(output);
-    
+
     StreamingContainerContext scc = new StreamingContainerContext();
     scc.nodeList = Collections.singletonList(ndi);
 
@@ -66,12 +66,12 @@ public class DNodeManagerTest {
     Assert.assertNotNull(clone.nodeList);
     Assert.assertEquals(1, clone.nodeList.size());
     Assert.assertEquals("node1", clone.nodeList.get(0).declaredId);
-    
+
     String nodeToString = ndi.toString();
     Assert.assertTrue(nodeToString.contains(input.portName));
     Assert.assertTrue(nodeToString.contains(output.portName));
   }
-  
+
   @Test
   public void testAssignContainer() {
 
@@ -92,7 +92,7 @@ public class DNodeManagerTest {
       .addProperty(TopologyBuilder.STREAM_INLINE, "true")
       .setSource(EchoNode.OUTPUT1, node2)
       .addSink(EchoNode.INPUT1, node3);
-    
+
     Assert.assertEquals("number nodes", 3, b.getAllNodes().values().size());
     Assert.assertEquals("number root nodes", 1, b.getRootNodes().size());
 
@@ -100,10 +100,10 @@ public class DNodeManagerTest {
     tplg.setMaxContainerCount(2);
     DNodeManager dnm = new DNodeManager(tplg);
     Assert.assertEquals("number required containers", 2, dnm.getNumRequiredContainers());
-    
+
     String container1Id = "container1";
     String container2Id = "container2";
-    
+
     // node1 needs to be deployed first, regardless in which order they were given
     StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("number nodes assigned to c1", 1, c1.nodeList.size());
@@ -112,7 +112,7 @@ public class DNodeManagerTest {
     Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
     Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
     Assert.assertNotNull("serializedNode " + node1DI.declaredId, node1DI.serializedNode);
-    
+
     NodeOutputDeployInfo c1n1n2 = node1DI.outputs.get(0);
     Assert.assertNotNull("stream connection for container1", c1n1n2);
     Assert.assertEquals("stream connection for container1", "n1n2", c1n1n2.declaredStreamId);
@@ -126,7 +126,7 @@ public class DNodeManagerTest {
     NodeDeployInfo node3DI = getNodeDeployInfo(c2, node3);
     Assert.assertNotNull(node2.getId() + " assigned to " + container2Id, node2DI);
     Assert.assertNotNull(node3.getId() + " assigned to " + container2Id, node3DI);
-    
+
     // buffer server input node2 from node1
     NodeInputDeployInfo c2n1n2 = getInputDeployInfo(node2DI, "n1n2");
     Assert.assertNotNull("stream connection for container2", c2n1n2);
@@ -152,26 +152,26 @@ public class DNodeManagerTest {
   @Test
   public void testStaticPartitioning() {
     TopologyBuilder b = new TopologyBuilder();
-    
+
     NodeConf node1 = b.getOrAddNode("node1");
     NodeConf node2 = b.getOrAddNode("node2");
     NodeConf mergeNode = b.getOrAddNode("mergeNode");
     for (NodeConf nodeConf : b.getAllNodes().values()) {
       nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
     }
-    
+
     StreamConf n1n2 = b.getOrAddStream("n1n2")
       .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName())
       .setSource(EchoNode.OUTPUT1, node1)
       .addSink(EchoNode.INPUT1, node2);
-    
+
     StreamConf mergeStream = b.getOrAddStream("mergeStream")
         .setSource(EchoNode.OUTPUT1, node2)
         .addSink(EchoNode.INPUT1, mergeNode);
-    
+
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(5);
-    
+
     DNodeManager dnm = new DNodeManager(tplg);
     Assert.assertEquals("number required containers", 5, dnm.getNumRequiredContainers());
 
@@ -185,19 +185,19 @@ public class DNodeManagerTest {
       StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
       Assert.assertEquals("number nodes assigned to container", 1, cc.nodeList.size());
       Assert.assertTrue(node2.getId() + " assigned to " + containerId, containsNodeContext(cc, node2));
-  
+
       // n1n2 in, mergeStream out
       NodeDeployInfo ndi = cc.nodeList.get(0);
       Assert.assertEquals("inputs " + ndi, 1, ndi.inputs.size());
       Assert.assertEquals("outputs " + ndi, 1, ndi.outputs.size());
-      
+
       NodeInputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], nidi.partitionKeys.get(0)));
       Assert.assertEquals("serde " + nidi, TestStaticPartitioningSerDe.class.getName(), nidi.serDeClassName);
     }
-    
-    // mergeNode container 
+
+    // mergeNode container
     String mergeContainerId = "mergeNodeContainer";
     StreamingContainerContext cmerge = dnm.assignContainerForTest(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
     Assert.assertEquals("number nodes assigned to " + mergeContainerId, 1, cmerge.nodeList.size());
@@ -212,19 +212,19 @@ public class DNodeManagerTest {
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       sourceNodeIds.add(nidi.sourceNodeId);
     }
-    
+
     for (PTNode node : dnm.getTopologyDeployer().getNodes(tplg.getNode(node2.getId()))) {
       Assert.assertTrue(sourceNodeIds + " contains " + node.id, sourceNodeIds.contains(node.id));
     }
     Assert.assertEquals("outputs " + mergeNodeDI, 0, mergeNodeDI.outputs.size());
-  }  
+  }
 
   public static class TestStaticPartitioningSerDe extends DefaultSerDe {
 
     public final static byte[][] partitions = new byte[][]{
         {'1'}, {'2'}, {'3'}
     };
-    
+
     @Override
     public byte[][] getPartitions() {
       return partitions;
@@ -240,7 +240,7 @@ public class DNodeManagerTest {
     }    
     
   }
-  
+
   private boolean containsNodeContext(StreamingContainerContext scc, NodeConf nodeConf) {
     return getNodeDeployInfo(scc, nodeConf) != null;
   }
@@ -253,7 +253,7 @@ public class DNodeManagerTest {
     }
     return null;
   }
-  
+
   private static NodeInputDeployInfo getInputDeployInfo(NodeDeployInfo ndi, String streamId) {
     for (NodeInputDeployInfo in : ndi.inputs) {
       if (streamId.equals(in.declaredStreamId)) {

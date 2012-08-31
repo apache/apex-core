@@ -39,10 +39,10 @@ public class InlineStreamTest
     InlineStream stream = new InlineStream();
     stream.setup(new StreamConfiguration());
 
-    Sink sink = stream.connect("node1.output", node1);
-    node1.connect("output", sink);
+    Sink sink = stream.connect(Component.INPUT, node1);
+    node1.connect(Component.OUTPUT, sink);
 
-    sink = node2.connect("input", stream);
+    sink = node2.connect(Component.INPUT, stream);
     stream.connect("node2.input", sink);
 
     sink = new Sink()
@@ -82,9 +82,9 @@ public class InlineStreamTest
         }
       }
     };
-    node2.connect("output", sink);
+    node2.connect(Component.OUTPUT, sink);
 
-    sink = node1.connect("input", new Sink()
+    sink = node1.connect(Component.INPUT, new Sink()
     {
       // we just needed some random sink
       @Override
@@ -106,7 +106,7 @@ public class InlineStreamTest
     }
 
     synchronized (this) {
-      this.wait(1500 + totalTupleCount / 500);
+      this.wait(100);
     }
 
     Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
@@ -115,6 +115,8 @@ public class InlineStreamTest
     node2.deactivate();
     node1.deactivate();
     stream.deactivate();
+
+    Thread.sleep(200);
 
     node2.teardown();
     node1.teardown();
@@ -149,8 +151,8 @@ public class InlineStreamTest
    * Node implementation that simply passes on any tuple received
    */
   @NodeAnnotation(ports = {
-    @PortAnnotation(name = "input", type = PortType.INPUT),
-    @PortAnnotation(name = "output", type = PortType.OUTPUT)
+    @PortAnnotation(name = Component.INPUT, type = PortType.INPUT),
+    @PortAnnotation(name = Component.OUTPUT, type = PortType.OUTPUT)
   })
   public static class PassThroughNode extends AbstractNode
   {
@@ -183,10 +185,10 @@ public class InlineStreamTest
     public void process(Object o)
     {
       if (nodeId == null) {
-        emit("output", o);
+        emit(Component.OUTPUT, o);
       }
       else {
-        emit("output", nodeId.concat(" > ").concat(o.toString()));
+        emit(Component.OUTPUT, nodeId.concat(" > ").concat(o.toString()));
       }
     }
   }

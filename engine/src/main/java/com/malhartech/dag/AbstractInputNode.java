@@ -81,7 +81,7 @@ public abstract class AbstractInputNode implements Node
   public final Sink connect(String port, Sink component)
   {
     Sink retvalue;
-    if ("input".equals(port)) {
+    if (Component.INPUT.equals(port)) {
       retvalue = this;
     }
     else {
