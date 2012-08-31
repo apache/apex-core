@@ -27,7 +27,6 @@ import com.malhartech.stram.DNodeManager;
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.NumberGeneratorInputAdapter;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StramUtils;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyBuilderTest;
 import com.malhartech.stram.TopologyBuilderTest.EchoNode;
@@ -41,157 +40,156 @@ import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
  */
 public class SocketStreamTest
 {
-    private static Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
-    private static int bufferServerPort = 0;
-    private static Server bufferServer = null;
+  private static Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
+  private static int bufferServerPort = 0;
+  private static Server bufferServer = null;
 
-    @BeforeClass
-    public static void setup() throws InterruptedException, IOException, Exception
-    {
-        bufferServer = new Server(0); // find random port
-        InetSocketAddress bindAddr = (InetSocketAddress)bufferServer.run();
-        bufferServerPort = bindAddr.getPort();
+  @BeforeClass
+  public static void setup() throws InterruptedException, IOException, Exception
+  {
+    bufferServer = new Server(0); // find random port
+    InetSocketAddress bindAddr = (InetSocketAddress)bufferServer.run();
+    bufferServerPort = bindAddr.getPort();
+  }
+
+  @AfterClass
+  public static void tearDown() throws IOException
+  {
+    if (bufferServer != null) {
+      bufferServer.shutdown();
     }
+  }
 
-    @AfterClass
-    public static void tearDown() throws IOException
+  /**
+   * Test buffer server stream by sending
+   * tuple on outputstream and receive same tuple from inputstream
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testBufferServerStream() throws Exception
+  {
+
+    final AtomicInteger messageCount = new AtomicInteger();
+    Sink sink = new Sink()
     {
-        if (bufferServer != null) {
-            bufferServer.shutdown();
-        }
-    }
+      @Override
+      public void process(Object payload)
+      {
+        if (payload instanceof Tuple) {
+          Tuple t = (Tuple)payload;
+          switch (t.getType()) {
+            case BEGIN_WINDOW:
+              break;
 
-    /**
-     * Test buffer server stream by sending
-     * tuple on outputstream and receive same tuple from inputstream
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testBufferServerStream() throws Exception
-    {
-
-        final AtomicInteger messageCount = new AtomicInteger();
-        Sink sink = new Sink()
-        {
-        @Override
-            public void process(Object payload)
-            {
-              if (payload instanceof Tuple) {
-                Tuple t = (Tuple)payload;
-                switch (t.getType()) {
-                    case BEGIN_WINDOW:
-                        break;
-
-                    case END_WINDOW:
-                        synchronized (SocketStreamTest.this) {
-                            SocketStreamTest.this.notifyAll();
-                        }
-                        break;
-                }
-              } else {
-                  System.out.println("received: " + payload);
-                  messageCount.incrementAndGet();
+            case END_WINDOW:
+              synchronized (SocketStreamTest.this) {
+                SocketStreamTest.this.notifyAll();
               }
-            }
-        };
-
-        SerDe serde = new DefaultSerDe();
-
-        String streamName = "streamName"; // AKA "type"
-        String upstreamNodeId = "upstreamNodeId";
-        String downstreamNodeId = "downStreamNodeId";
-
-
-        BufferServerStreamContext issContext = new BufferServerStreamContext(streamName);
-        issContext.setSourceId(upstreamNodeId);
-        issContext.setSinkId(downstreamNodeId);
-
-        StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
-        sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-
-        BufferServerInputStream iss = new BufferServerInputStream(serde);
-        iss.setup(sconf);
-        iss.connect("testSink", sink);
-
-        BufferServerStreamContext ossContext = new BufferServerStreamContext(streamName);
-        ossContext.setSourceId(upstreamNodeId);
-        ossContext.setSinkId(downstreamNodeId);
-
-        BufferServerOutputStream oss = new BufferServerOutputStream(serde);
-        oss.setup(sconf);
-
-        oss.activate(ossContext);
-        LOG.debug("output stream activated");
-        iss.activate(issContext);
-        LOG.debug("input stream activated");
-
-
-        LOG.debug("Sending hello message");
-        oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
-        oss.process(StramTestSupport.generateTuple("hello", 0));
-        oss.process(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1));
-        oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1));
-        synchronized (SocketStreamTest.this) {
-            if (messageCount.get() == 0) { // don't wait if already notified
-                SocketStreamTest.this.wait(2000);
-            }
+              break;
+          }
         }
+        else {
+          System.out.println("received: " + payload);
+          messageCount.incrementAndGet();
+        }
+      }
+    };
 
-        Assert.assertEquals("Received messages", 1, messageCount.get());
-        System.out.println("exiting...");
+    SerDe serde = new DefaultSerDe();
 
+    String streamName = "streamName"; // AKA "type"
+    String upstreamNodeId = "upstreamNodeId";
+    String downstreamNodeId = "downStreamNodeId";
+
+
+    BufferServerStreamContext issContext = new BufferServerStreamContext(streamName);
+    issContext.setSourceId(upstreamNodeId);
+    issContext.setSinkId(downstreamNodeId);
+
+    StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
+    sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+
+    BufferServerInputStream iss = new BufferServerInputStream(serde);
+    iss.setup(sconf);
+    iss.connect("testSink", sink);
+
+    BufferServerStreamContext ossContext = new BufferServerStreamContext(streamName);
+    ossContext.setSourceId(upstreamNodeId);
+    ossContext.setSinkId(downstreamNodeId);
+
+    BufferServerOutputStream oss = new BufferServerOutputStream(serde);
+    oss.setup(sconf);
+
+    iss.activate(issContext);
+    LOG.debug("input stream activated");
+
+    oss.activate(ossContext);
+    LOG.debug("output stream activated");
+
+    LOG.debug("Sending hello message");
+    oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
+    oss.process(StramTestSupport.generateTuple("hello", 0));
+    oss.process(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1));
+    oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
+    if (messageCount.get() == 0) {
+      synchronized (SocketStreamTest.this) {
+        SocketStreamTest.this.wait(2000);
+      }
     }
 
-    /**
-     * Instantiate physical model with adapters and partitioning in mock container.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testStramChildInit() throws Exception
-    {
-        TopologyBuilder b = new TopologyBuilder();
+    Assert.assertEquals("Received messages", 1, messageCount.get());
+  }
 
-        NodeConf generatorNode = b.getOrAddNode("generatorNode");
-        generatorNode.setClassName(NumberGeneratorInputAdapter.class.getName());
+  /**
+   * Instantiate physical model with adapters and partitioning in mock container.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testStramChildInit() throws Exception
+  {
+    TopologyBuilder b = new TopologyBuilder();
 
-        NodeConf node1 = b.getOrAddNode("node1");
-        node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+    NodeConf generatorNode = b.getOrAddNode("generatorNode");
+    generatorNode.setClassName(NumberGeneratorInputAdapter.class.getName());
 
-        StreamConf generatorOutput = b.getOrAddStream("generatorOutput");
-        generatorOutput.setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, generatorNode)
-          .addSink(EchoNode.INPUT1, node1)
-          .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
+    NodeConf node1 = b.getOrAddNode("node1");
+    node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
 
-        //StreamConf output1 = b.getOrAddStream("output1");
-        //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
-        //                    ConsoleOutputStream.class.getName());
-        Topology tplg = b.getTopology();
+    StreamConf generatorOutput = b.getOrAddStream("generatorOutput");
+    generatorOutput.setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, generatorNode)
+            .addSink(EchoNode.INPUT1, node1)
+            .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
 
-        DNodeManager dnm = new DNodeManager(tplg);
-        int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
-        Assert.assertEquals("number required containers",
-                            expectedContainerCount,
-                            dnm.getNumRequiredContainers());
+    //StreamConf output1 = b.getOrAddStream("output1");
+    //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
+    //                    ConsoleOutputStream.class.getName());
+    Topology tplg = b.getTopology();
 
-        List<LocalStramChild> containers = new ArrayList<LocalStramChild>();
+    DNodeManager dnm = new DNodeManager(tplg);
+    int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
+    Assert.assertEquals("number required containers",
+                        expectedContainerCount,
+                        dnm.getNumRequiredContainers());
 
-        for (int i = 0; i < expectedContainerCount; i++) {
-            String containerId = "container" + (i + 1);
-            StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-            LocalStramChild container = new LocalStramChild(containerId, null, null);
-            container.init(cc);
-            containers.add(container);
-        }
+    List<LocalStramChild> containers = new ArrayList<LocalStramChild>();
 
-        // TODO: validate data flow
-
-        for (LocalStramChild cc: containers) {
-            LOG.info("shutting down " + cc.getContainerId());
-            cc.shutdown();
-        }
-
-        containers = null;
+    for (int i = 0; i < expectedContainerCount; i++) {
+      String containerId = "container" + (i + 1);
+      StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+      LocalStramChild container = new LocalStramChild(containerId, null, null);
+      container.init(cc);
+      containers.add(container);
     }
+
+    // TODO: validate data flow
+
+    for (LocalStramChild cc: containers) {
+      LOG.info("shutting down " + cc.getContainerId());
+      cc.shutdown();
+    }
+
+    containers = null;
+  }
 }
