@@ -20,7 +20,7 @@ import com.malhartech.stram.TopologyDeployer.PTContainer;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 
 /**
- * 
+ *
  * Representation of a child container in the master<p>
  * <br>
  */
@@ -30,10 +30,10 @@ public class StramChildAgent {
   public static class DeployRequest {
     final AtomicInteger ackCountdown;
     final PTContainer container;
-    final AtomicInteger executeWhenZero; 
+    final AtomicInteger executeWhenZero;
     private List<NodeDeployInfo> nodes;
     Map<PTNode, Long> checkpoints;
-    
+
     public DeployRequest(PTContainer container, AtomicInteger ackCountdown) {
       this.container = container;
       this.ackCountdown = ackCountdown;
@@ -44,17 +44,17 @@ public class StramChildAgent {
       this.ackCountdown = ackCountdown;
       this.executeWhenZero = executeWhenZero;
     }
-    
+
     void cancel() {
       if (ackCountdown != null) {
         ackCountdown.set(-1);
       }
     }
-    
+
     void ack() {
       ackCountdown.decrementAndGet();
     }
-    
+
     void setNodes(List<NodeDeployInfo> nodes) {
       this.nodes = nodes;
     }
@@ -76,12 +76,12 @@ public class StramChildAgent {
       super(container, ackCountdown, executeWhenZero);
     }
   }
-  
+
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx) {
     this.container = container;
     this.initCtx = initCtx;
   }
-  
+
   boolean shutdownRequested = false;
   boolean isComplete = false;
  // StreamingContainerContext containerContext;
@@ -91,13 +91,13 @@ public class StramChildAgent {
   final PTContainer container;
   final StreamingContainerContext initCtx;
   DeployRequest pendingRequest = null;
-  
+
   private ConcurrentLinkedQueue<DeployRequest> requests = new ConcurrentLinkedQueue<DeployRequest>();
 
   public StreamingContainerContext getInitContext() {
     ContainerHeartbeatResponse rsp = pollRequest();
-    if (rsp != null && rsp.getDeployRequest() != null) {
-      initCtx.nodeList = rsp.getDeployRequest().nodeList;
+    if (rsp != null && rsp.deployRequest != null) {
+      initCtx.nodeList = rsp.deployRequest;
     }
     return initCtx;
   }
@@ -105,7 +105,7 @@ public class StramChildAgent {
   public boolean hasPendingWork() {
     return !this.requests.isEmpty() || this.pendingRequest != null;
   }
-  
+
   private void ackPendingRequest() {
     if (pendingRequest != null) {
       if (pendingRequest.ackCountdown != null) {
@@ -114,15 +114,15 @@ public class StramChildAgent {
       }
     }
   }
-  
+
   public void addRequest(DeployRequest r) {
     this.requests.add(r);
     LOG.info("Adding request {} {}", container.containerId, r);
   }
-  
+
   public ContainerHeartbeatResponse pollRequest() {
     ackPendingRequest();
-    //LOG.debug("Number of pending requests for container {}: {}", this.container.containerId, requests.size());    
+    //LOG.debug("Number of pending requests for container {}: {}", this.container.containerId, requests.size());
     DeployRequest r = requests.peek();
     if (r == null) {
       return null;
@@ -135,7 +135,7 @@ public class StramChildAgent {
       } else if (r.executeWhenZero.get() > 0) {
         ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
         LOG.debug("Request for {} blocked: {}", this.container.containerId, r);
-        rsp.setPendingRequests(true);
+        rsp.hasPendingRequests = true;
         // keep polling
         return rsp;
       }
@@ -145,20 +145,20 @@ public class StramChildAgent {
     if (!requests.remove(r)) {
         return null;
     }
-    
+
     this.pendingRequest = r;
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (r.nodes != null) {
       StreamingContainerContext scc = new StreamingContainerContext();
       scc.nodeList = r.nodes;
       if (r instanceof UndeployRequest) {
-        rsp.setUndeployRequest(scc);
+        rsp.undeployRequest = scc.nodeList;
       } else {
-        rsp.setDeployRequest(scc);
+        rsp.deployRequest = scc.nodeList;
       }
     }
-    
-    rsp.setPendingRequests(!this.requests.isEmpty());
+
+    rsp.hasPendingRequests = (!this.requests.isEmpty());
     return rsp;
   }
 }

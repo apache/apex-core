@@ -219,7 +219,7 @@ public class StramLocalClusterTest
     backupRequest.setNodeId(nodeCtx.getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
-    rsp.setNodeRequests(Collections.singletonList(backupRequest));
+    rsp.nodeRequests = Collections.singletonList(backupRequest);
     LOG.debug("Requesting backup {} {}", c.getContainerId(), nodeCtx);
     c.processHeartbeatResponse(rsp);
   }
@@ -243,8 +243,8 @@ public class StramLocalClusterTest
     public void activate() {
       wingen.activate(new Context() {});
     }
-    
-    
+
+
   }
 
 }

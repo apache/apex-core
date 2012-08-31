@@ -29,491 +29,426 @@ import org.apache.hadoop.ipc.VersionedProtocol;
 import com.malhartech.dag.HeartbeatCounters;
 
 /**
- * Protocol that streaming node child process uses to contact its parent (application master) process<p>
+ * Protocol that streaming node child process uses to contact its parent
+ * (application master) process
+ * <p>
  * <br>
  * All communication between child and parent is via this protocol.
  *
  * <br>
  */
-//@TokenInfo(JobTokenSelector.class)
+// @TokenInfo(JobTokenSelector.class)
 @InterfaceAudience.Private
 @InterfaceStability.Stable
-public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol
-{
-    public static final long versionID = 201208081755L;
+public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
+  public static final long versionID = 201208081755L;
 
-    void log(String containerId, String msg) throws IOException;
+  void log(String containerId, String msg) throws IOException;
+
+  /**
+   * TODO: quick hack to focus on protocol instead of serialization code -
+   * replace with PB
+   */
+  public static abstract class WritableAdapter implements Writable, Serializable {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public void readFields(DataInput arg0) throws IOException {
+      int len = arg0.readInt();
+      byte[] bytes = new byte[len];
+      arg0.readFully(bytes);
+      try {
+        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> properties = (Map<String, Object>) ois.readObject();
+        Field[] fields = this.getClass().getDeclaredFields();
+        AccessibleObject.setAccessible(fields, true);
+        for (int i = 0; i < fields.length; i++) {
+          Field field = fields[i];
+          String fieldName = field.getName();
+          if (properties.containsKey(fieldName)) {
+            field.set(this, properties.get(fieldName));
+          }
+        }
+        ois.close();
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    }
+
+    @Override
+    public void write(DataOutput arg0) throws IOException {
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      ObjectOutputStream oos = new ObjectOutputStream(bos);
+      try {
+        Map<String, Object> properties = new java.util.HashMap<String, Object>();
+        Field[] fields = this.getClass().getDeclaredFields();
+        AccessibleObject.setAccessible(fields, true);
+        for (int i = 0; i < fields.length; i++) {
+          Field field = fields[i];
+          if (!Modifier.isStatic(field.getModifiers())) {
+            String fieldName = field.getName();
+            Object fieldValue = field.get(this);
+            properties.put(fieldName, fieldValue);
+          }
+        }
+        oos.writeObject(properties);
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+      oos.flush();
+      byte[] bytes = bos.toByteArray();
+      arg0.writeInt(bytes.length);
+      arg0.write(bytes);
+      oos.close();
+    }
+  }
+
+  /**
+   *
+   * A container class for all the nodes, streams in the hadoop container
+   * <p>
+   * <br>
+   *
+   *
+   */
+  public static class StreamingContainerContext extends WritableAdapter {
+    private static final long serialVersionUID = 1L;
 
     /**
-     * TODO: quick hack to focus on protocol instead of serialization code - replace with PB
+     * The list of nodes to deploy in the container
      */
-    public static abstract class WritableAdapter implements Writable, Serializable
-    {
-        private static final long serialVersionUID = 1L;
+    public List<NodeDeployInfo> nodeList;
 
-        @Override
-        public void readFields(DataInput arg0) throws IOException
-        {
-            int len = arg0.readInt();
-            byte[] bytes = new byte[len];
-            arg0.readFully(bytes);
-            try {
-                ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                @SuppressWarnings("unchecked")
-                Map<String, Object> properties = (Map<String, Object>)ois.readObject();
-                Field[] fields = this.getClass().getDeclaredFields();
-                AccessibleObject.setAccessible(fields, true);
-                for (int i = 0; i < fields.length; i++) {
-                    Field field = fields[i];
-                    String fieldName = field.getName();
-                    if (properties.containsKey(fieldName)) {
-                        field.set(this, properties.get(fieldName));
-                    }
-                }
-                ois.close();
-            }
-            catch (Exception e) {
-                throw new IOException(e);
-            }
-        }
+    /**
+     * How frequently should nodes heartbeat to stram. Recommended setting is
+     * 1000ms. Can be set to 0 for unit testing.
+     */
+    private long heartbeatIntervalMillis;
 
-        @Override
-        public void write(DataOutput arg0) throws IOException
-        {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            try {
-                Map<String, Object> properties = new java.util.HashMap<String, Object>();
-                Field[] fields = this.getClass().getDeclaredFields();
-                AccessibleObject.setAccessible(fields, true);
-                for (int i = 0; i < fields.length; i++) {
-                    Field field = fields[i];
-                    if (!Modifier.isStatic(field.getModifiers())) {
-                        String fieldName = field.getName();
-                        Object fieldValue = field.get(this);
-                        properties.put(fieldName, fieldValue);
-                    }
-                }
-                oos.writeObject(properties);
-            }
-            catch (Exception e) {
-                throw new IOException(e);
-            }
-            oos.flush();
-            byte[] bytes = bos.toByteArray();
-            arg0.writeInt(bytes.length);
-            arg0.write(bytes);
-            oos.close();
-        }
+    public long getHeartbeatIntervalMillis() {
+      return heartbeatIntervalMillis;
+    }
+
+    public void setHeartbeatIntervalMillis(long heartbeatIntervalMillis) {
+      this.heartbeatIntervalMillis = heartbeatIntervalMillis;
     }
 
     /**
-     *
-     * A container class for all the nodes, streams in the hadoop container<p>
-     * <br>
-     *
-     *
+     * Window size. Inputs into the DAG propagate BEGIN_WINDOW at this interval.
      */
-    public static class StreamingContainerContext extends WritableAdapter
-    {
-        private static final long serialVersionUID = 1L;
+    private int windowSizeMillis;
+    /**
+     * Node should start processing the initial window at this time.
+     */
+    private long startWindowMillis;
 
-        /**
-         * The list of nodes to deploy in the container
-         */
-        public List<NodeDeployInfo> nodeList;
+    public int getWindowSizeMillis() {
+      return windowSizeMillis;
+    }
 
-        /**
-         * How frequently should nodes heartbeat to stram. Recommended setting is 1000ms. Can be set to 0 for unit testing.
-         */
-        private long heartbeatIntervalMillis;
+    public void setWindowSizeMillis(int windowSizeMillis) {
+      this.windowSizeMillis = windowSizeMillis;
+    }
 
-        public long getHeartbeatIntervalMillis()
-        {
-            return heartbeatIntervalMillis;
-        }
+    public long getStartWindowMillis() {
+      return startWindowMillis;
+    }
 
-        public void setHeartbeatIntervalMillis(long heartbeatIntervalMillis)
-        {
-            this.heartbeatIntervalMillis = heartbeatIntervalMillis;
-        }
-        /**
-         * Window size. Inputs into the DAG propagate BEGIN_WINDOW at this interval.
-         */
-        private int windowSizeMillis;
-        /**
-         * Node should start processing the initial window at this time.
-         */
-        private long startWindowMillis;
+    public void setStartWindowMillis(long startWindowBeginMillis) {
+      this.startWindowMillis = startWindowBeginMillis;
+    }
 
-        public int getWindowSizeMillis()
-        {
-            return windowSizeMillis;
-        }
+    private String checkpointDfsPath;
 
-        public void setWindowSizeMillis(int windowSizeMillis)
-        {
-            this.windowSizeMillis = windowSizeMillis;
-        }
+    public String getCheckpointDfsPath() {
+      return checkpointDfsPath;
+    }
 
-        public long getStartWindowMillis()
-        {
-            return startWindowMillis;
-        }
+    public void setCheckpointDfsPath(String dfsPath) {
+      this.checkpointDfsPath = dfsPath;
+    }
 
-        public void setStartWindowMillis(long startWindowBeginMillis)
-        {
-            this.startWindowMillis = startWindowBeginMillis;
-        }
-        private String checkpointDfsPath;
+    @Override
+    public String toString() {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+          .append("nodes", this.nodeList).toString();
+    }
+  }
 
-        public String getCheckpointDfsPath()
-        {
-            return checkpointDfsPath;
-        }
+  /**
+   *
+   * The child obtains its configuration context after container launch.
+   * <p>
+   * <br>
+   * Context will provide all information to initialize or reconfigure the
+   * node(s)<br>
+   *
+   * @param containerId
+   * @throws IOException
+   * <br>
+   */
+  StreamingContainerContext getInitContext(String containerId) throws IOException;
 
-        public void setCheckpointDfsPath(String dfsPath)
-        {
-            this.checkpointDfsPath = dfsPath;
-        }
+  /**
+   *
+   * Stats of the node that is sent to the hadoop container
+   * <p>
+   * <br>
+   * Hadoop container wraps this together with stats from other nodes and sends
+   * it to stram <br>
+   */
+  public static class StreamingNodeHeartbeat extends WritableAdapter {
+    private static final long serialVersionUID = 201208171625L;
+    private ArrayList<HeartbeatCounters> heartbeatsContainer = new ArrayList<HeartbeatCounters>();
 
-        @Override
-        public String toString()
-        {
-            return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-                    .append("nodes", this.nodeList)
-                    .toString();
-        }
+    /**
+     * @return the heartbeatsCointainer
+     */
+    public ArrayList<HeartbeatCounters> getHeartbeatsContainer() {
+      return heartbeatsContainer;
     }
 
     /**
-     *
-     * The child obtains its configuration context after container launch.<p>
-     * <br>
-     * Context will provide all information to initialize or reconfigure the node(s)<br>
-     *
-     * @param containerId
-     * @throws IOException
-     * <br>
+     * @param heartbeatsCointainer
+     *          the heartbeatsCointainer to set
      */
-    StreamingContainerContext getInitContext(String containerId) throws IOException;
+    public void setHeartbeatsContainer(ArrayList<HeartbeatCounters> heartbeatsCointainer) {
+      this.heartbeatsContainer = heartbeatsCointainer;
+    }
 
-    /**
-     *
-     * Stats of the node that is sent to the hadoop container<p>
-     * <br>
-     * Hadoop container wraps this together with stats from other nodes and sends it to stram
-     * <br>
-     */
-    public static class StreamingNodeHeartbeat extends WritableAdapter
-    {
-        private static final long serialVersionUID = 201208171625L;
-        private ArrayList<HeartbeatCounters> heartbeatsContainer = new ArrayList<HeartbeatCounters>();
-
-        /**
-         * @return the heartbeatsCointainer
-         */
-        public ArrayList<HeartbeatCounters> getHeartbeatsContainer()
-        {
-            return heartbeatsContainer;
-        }
-
-        /**
-         * @param heartbeatsCointainer the heartbeatsCointainer to set
-         */
-        public void setHeartbeatsContainer(ArrayList<HeartbeatCounters> heartbeatsCointainer)
-        {
-            this.heartbeatsContainer = heartbeatsCointainer;
-        }
-
-        public static enum DNodeState
-        {
-            NEW, // node instantiated but not processing yet
-            PROCESSING,
-            IDLE  // the node stopped processing (no more input etc.)
-        }
-        /**
-         * The originating node. There can be multiple nodes in a container.
-         */
-        private String nodeId;
-
-        public String getNodeId()
-        {
-            return nodeId;
-        }
-
-        public void setNodeId(String nodeId)
-        {
-            this.nodeId = nodeId;
-        }
-        /**
-         * Time when the heartbeat was generated by the node.
-         */
-        private long generatedTms;
-
-        public long getGeneratedTms()
-        {
-            return generatedTms;
-        }
-
-        public void setGeneratedTms(long generatedTms)
-        {
-            this.generatedTms = generatedTms;
-        }
-        /**
-         * Number of milliseconds elapsed since last heartbeat. Other statistics relative to this interval.
-         */
-        private long intervalMs;
-
-        public long getIntervalMs()
-        {
-            return intervalMs;
-        }
-
-        public void setIntervalMs(long intervalMs)
-        {
-            this.intervalMs = intervalMs;
-        }
-        /**
-         * State of the dnode (processing, idle etc).
-         */
-        private String state;
-
-        public String getState()
-        {
-            return state;
-        }
-
-        public void setState(String state)
-        {
-            this.state = state;
-        }
-
-        /**
-         * Number of tuples processed within the heartbeat interval. Stram can use this as bottleneck indicator and ask the node for partitioning information/option
-         * to load balance.
-         */
-        public int getNumberTuplesProcessed()
-        {
-            int numberTuplesProcessed = 0;
-
-            for (HeartbeatCounters hc: heartbeatsContainer) {
-                numberTuplesProcessed += hc.tuplesProcessed;
-            }
-
-            return numberTuplesProcessed;
-        }
-
-        /**
-         * Number of bytes processed during the heartbeat interval.
-         */
-        public int getNumberBytesProcessed()
-        {
-            int numberBytesProcessed = 0;
-
-            for (HeartbeatCounters hc: heartbeatsContainer) {
-                numberBytesProcessed += hc.bytesProcessed;
-            }
-
-            return numberBytesProcessed;
-        }
-
-        private long lastBackupWindowId;
-
-        public long getLastBackupWindowId()
-        {
-            return lastBackupWindowId;
-        }
-
-        public void setLastBackupWindowId(long lastBackupWindowId)
-        {
-            this.lastBackupWindowId = lastBackupWindowId;
-        }
+    public static enum DNodeState {
+      NEW, // node instantiated but not processing yet
+      PROCESSING, IDLE // the node stopped processing (no more input etc.)
     }
 
     /**
-     *
-     * Sends stats aggregated by all nodes in the this container to the stram<p>
-     * <br>
-     *
+     * The originating node. There can be multiple nodes in a container.
      */
-    public static class ContainerHeartbeat extends WritableAdapter
-    {
-        private static final long serialVersionUID = 1L;
-        private String containerId;
+    private String nodeId;
 
-        public String getContainerId()
-        {
-            return containerId;
-        }
+    public String getNodeId() {
+      return nodeId;
+    }
 
-        public void setContainerId(String containerId)
-        {
-            this.containerId = containerId;
-        }
-        /**
-         * List with all nodes in the container.
-         */
-        private List<StreamingNodeHeartbeat> dnodeEntries;
-
-        public List<StreamingNodeHeartbeat> getDnodeEntries()
-        {
-            return dnodeEntries;
-        }
-
-        public void setDnodeEntries(List<StreamingNodeHeartbeat> dnodeEntries)
-        {
-            this.dnodeEntries = dnodeEntries;
-        }
+    public void setNodeId(String nodeId) {
+      this.nodeId = nodeId;
     }
 
     /**
-     *
-     * Request by stram as response to heartbeat for further communication<p>
-     * <br>
-     * The child container will continue RPC communication depending on the type of request.<br>
-     * <br>
-     *
+     * Time when the heartbeat was generated by the node.
      */
-    public static class StramToNodeRequest extends WritableAdapter
-    {
-        private static final long serialVersionUID = 1L;
+    private long generatedTms;
 
-        enum RequestType
-        {
-            REPORT_PARTION_STATS,
-            CHECKPOINT
-        }
-        private String nodeId;
-        private RequestType requestType;
+    public long getGeneratedTms() {
+      return generatedTms;
+    }
 
-        public String getNodeId()
-        {
-            return nodeId;
-        }
-
-        public void setNodeId(String nodeId)
-        {
-            this.nodeId = nodeId;
-        }
-
-        public RequestType getRequestType()
-        {
-            return requestType;
-        }
-
-        public void setRequestType(RequestType requestType)
-        {
-            this.requestType = requestType;
-        }
-
-        @Override
-        public String toString()
-        {
-            return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("nodeId", this.nodeId).
-                    append("requestType", this.requestType).
-                    toString();
-        }
+    public void setGeneratedTms(long generatedTms) {
+      this.generatedTms = generatedTms;
     }
 
     /**
-     *
-     * Response from the stram to the container heartbeat<p>
-     * <br>
-     *
+     * Number of milliseconds elapsed since last heartbeat. Other statistics
+     * relative to this interval.
      */
-    public static class ContainerHeartbeatResponse extends WritableAdapter
-    {
-        private static final long serialVersionUID = 1L;
-        /**
-         * Indicate container to exit heartbeat loop and shutdown.
-         */
-        private boolean shutdown;
+    private long intervalMs;
 
-        public boolean isShutdown()
-        {
-            return shutdown;
-        }
+    public long getIntervalMs() {
+      return intervalMs;
+    }
 
-        public void setShutdown(boolean shutdown)
-        {
-            this.shutdown = shutdown;
-        }
-        /**
-         * Optional list of responses for nodes in the container.
-         */
-        private List<StramToNodeRequest> nodeRequests;
-
-        public List<StramToNodeRequest> getNodeRequests()
-        {
-            return nodeRequests;
-        }
-
-        public void setNodeRequests(List<StramToNodeRequest> nodeRequests)
-        {
-            this.nodeRequests = nodeRequests;
-        }
-        /**
-         * Set when there are pending requests that wait for dependencies to complete
-         */
-        private boolean pendingRequests = false;
-
-        public boolean isPendingRequests()
-        {
-            return pendingRequests;
-        }
-
-        public void setPendingRequests(boolean pendingRequests)
-        {
-            this.pendingRequests = pendingRequests;
-        }
-        /**
-         * Set when nodes need to be removed
-         */
-        private StreamingContainerContext undeployRequest;
-
-        public StreamingContainerContext getUndeployRequest()
-        {
-            return undeployRequest;
-        }
-
-        public void setUndeployRequest(StreamingContainerContext undeployRequest)
-        {
-            this.undeployRequest = undeployRequest;
-        }
-        /**
-         * Set when new nodes need to be deployed
-         */
-        private StreamingContainerContext deployRequest;
-
-        public StreamingContainerContext getDeployRequest()
-        {
-            return deployRequest;
-        }
-
-        public void setDeployRequest(StreamingContainerContext deployRequest)
-        {
-            this.deployRequest = deployRequest;
-        }
+    public void setIntervalMs(long intervalMs) {
+      this.intervalMs = intervalMs;
     }
 
     /**
-     * To be called periodically by child for heartbeat protocol. Container may return response for node to shutdown etc.
+     * State of the dnode (processing, idle etc).
      */
-    ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
+    private String state;
+
+    public String getState() {
+      return state;
+    }
+
+    public void setState(String state) {
+      this.state = state;
+    }
 
     /**
-     * Called to fetch pending request.
-     * @param containerId
-     * @return {com.malhartech.stram.ContainerHeartbeatResponse}
+     * Number of tuples processed within the heartbeat interval. Stram can use
+     * this as bottleneck indicator and ask the node for partitioning
+     * information/option to load balance.
      */
-    ContainerHeartbeatResponse pollRequest(String containerId);
+    public int getNumberTuplesProcessed() {
+      int numberTuplesProcessed = 0;
+
+      for (HeartbeatCounters hc : heartbeatsContainer) {
+        numberTuplesProcessed += hc.tuplesProcessed;
+      }
+
+      return numberTuplesProcessed;
+    }
 
     /**
-     * Reporting of partitioning stats - requested by stram for nodes that participate in partitioning when the basic heartbeat indicates a bottleneck. The
-     * details would then be used by stram to split or merge nodes to re-balance load.
-     *
-     * @return {com.malhartech.stram.StramToNodeRequest}
+     * Number of bytes processed during the heartbeat interval.
      */
-    StramToNodeRequest processPartioningDetails();
+    public int getNumberBytesProcessed() {
+      int numberBytesProcessed = 0;
+
+      for (HeartbeatCounters hc : heartbeatsContainer) {
+        numberBytesProcessed += hc.bytesProcessed;
+      }
+
+      return numberBytesProcessed;
+    }
+
+    private long lastBackupWindowId;
+
+    public long getLastBackupWindowId() {
+      return lastBackupWindowId;
+    }
+
+    public void setLastBackupWindowId(long lastBackupWindowId) {
+      this.lastBackupWindowId = lastBackupWindowId;
+    }
+  }
+
+  /**
+   *
+   * Sends stats aggregated by all nodes in the this container to the stram
+   * <p>
+   * <br>
+   *
+   */
+  public static class ContainerHeartbeat extends WritableAdapter {
+    private static final long serialVersionUID = 1L;
+    private String containerId;
+
+    public String getContainerId() {
+      return containerId;
+    }
+
+    public void setContainerId(String containerId) {
+      this.containerId = containerId;
+    }
+
+    /**
+     * List with all nodes in the container.
+     */
+    private List<StreamingNodeHeartbeat> dnodeEntries;
+
+    public List<StreamingNodeHeartbeat> getDnodeEntries() {
+      return dnodeEntries;
+    }
+
+    public void setDnodeEntries(List<StreamingNodeHeartbeat> dnodeEntries) {
+      this.dnodeEntries = dnodeEntries;
+    }
+  }
+
+  /**
+   *
+   * Request by stram as response to heartbeat for further communication
+   * <p>
+   * <br>
+   * The child container will continue RPC communication depending on the type
+   * of request.<br>
+   * <br>
+   *
+   */
+  public static class StramToNodeRequest extends WritableAdapter {
+    private static final long serialVersionUID = 1L;
+
+    enum RequestType {
+      REPORT_PARTION_STATS, CHECKPOINT
+    }
+
+    private String nodeId;
+    private RequestType requestType;
+
+    public String getNodeId() {
+      return nodeId;
+    }
+
+    public void setNodeId(String nodeId) {
+      this.nodeId = nodeId;
+    }
+
+    public RequestType getRequestType() {
+      return requestType;
+    }
+
+    public void setRequestType(RequestType requestType) {
+      this.requestType = requestType;
+    }
+
+    @Override
+    public String toString() {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+          .append("nodeId", this.nodeId)
+          .append("requestType", this.requestType).toString();
+    }
+  }
+
+  /**
+   *
+   * Response from the stram to the container heartbeat
+   * <p>
+   * <br>
+   *
+   */
+  public static class ContainerHeartbeatResponse extends WritableAdapter {
+    private static final long serialVersionUID = 1L;
+    /**
+     * Indicate container to exit heartbeat loop and shutdown.
+     */
+    public boolean shutdown;
+
+    /**
+     * Optional list of responses for nodes in the container.
+     */
+    public List<StramToNodeRequest> nodeRequests;
+
+    /**
+     * Set when there are pending requests that wait for dependencies to
+     * complete
+     */
+    public boolean hasPendingRequests = false;
+
+    /**
+     * Set when nodes need to be removed
+     */
+    public List<NodeDeployInfo> undeployRequest;
+
+    /**
+     * Set when new nodes need to be deployed
+     */
+    public List<NodeDeployInfo> deployRequest;
+
+  }
+
+  /**
+   * To be called periodically by child for heartbeat protocol. Container may
+   * return response for node to shutdown etc.
+   */
+  ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg);
+
+  /**
+   * Called to fetch pending request.
+   *
+   * @param containerId
+   * @return {com.malhartech.stram.ContainerHeartbeatResponse}
+   */
+  ContainerHeartbeatResponse pollRequest(String containerId);
+
+  /**
+   * Reporting of partitioning stats - requested by stram for nodes that
+   * participate in partitioning when the basic heartbeat indicates a
+   * bottleneck. The details would then be used by stram to split or merge nodes
+   * to re-balance load.
+   *
+   * @return {com.malhartech.stram.StramToNodeRequest}
+   */
+  StramToNodeRequest processPartioningDetails();
 }

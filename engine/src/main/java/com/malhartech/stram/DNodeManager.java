@@ -94,7 +94,7 @@ public class DNodeManager
   final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   final private TopologyDeployer deployer;
   final private String checkpointDir;
-  
+
   public DNodeManager(Topology topology) {
     this.deployer = new TopologyDeployer(topology);
 
@@ -103,7 +103,7 @@ public class DNodeManager
     windowStartMillis -= (windowStartMillis % 1000);
     checkpointDir = topology.getConf().get(Topology.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
     this.checkpointIntervalMillis = topology.getConf().getInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
-    
+
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
       this.containerStartRequests.add(new DeployRequest(container, null));
@@ -226,7 +226,7 @@ public class DNodeManager
   private static NodeDeployInfo createNodeContext(String dnodeId, NodeDecl nodeDecl)
   {
     NodeDeployInfo ndi = new NodeDeployInfo();
-    
+
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
@@ -303,11 +303,11 @@ public class DNodeManager
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setCheckpointDfsPath(this.checkpointDir);
-    
+
 //    List<StreamPConf> streams = new ArrayList<StreamPConf>();
     Map<NodeDeployInfo, PTNode> nodes = new LinkedHashMap<NodeDeployInfo, PTNode>();
     Map<String, NodeOutputDeployInfo> publishers = new LinkedHashMap<String, NodeOutputDeployInfo>();
-    
+
     for (PTNode node : deployNodes) {
       NodeDeployInfo ndi = createNodeContext(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
@@ -318,7 +318,7 @@ public class DNodeManager
       nodes.put(ndi, node);
       ndi.inputs = new ArrayList<NodeInputDeployInfo>(node.inputs.size());
       ndi.outputs = new ArrayList<NodeOutputDeployInfo>(node.outputs.size());
-      
+
       for (PTOutput out : node.outputs) {
         final StreamDecl streamDecl = out.logicalStream;
         // buffer server or inline publisher
@@ -333,7 +333,7 @@ public class DNodeManager
             portInfo.serDeClassName = streamDecl.getSerDeClass().getName();
           }
         } else {
-          // target set below 
+          // target set below
           //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
         }
         //portInfo.setBufferServerChannelType(streamDecl.getSource().getNode().getId());
@@ -344,7 +344,7 @@ public class DNodeManager
     }
 
     // after we know all publishers within container, determine subscribers
-    
+
     for (Map.Entry<NodeDeployInfo, PTNode> nodeEntry : nodes.entrySet()) {
       NodeDeployInfo ndi = nodeEntry.getKey();
       PTNode node = nodeEntry.getValue();
@@ -385,13 +385,13 @@ public class DNodeManager
           // buffer server wide unique subscriber grouping:
           // publisher id + stream name + partition identifier (if any)
           inputInfo.bufferServerSubscriberType = sourceNode.id + "/" + streamDecl.getId() + partSuffix;
-        } 
+        }
         ndi.inputs.add(inputInfo);
       }
     }
 
     scc.nodeList = new ArrayList<NodeDeployInfo>(nodes.keySet());
-    
+
     for (Map.Entry<NodeDeployInfo, PTNode> e : nodes.entrySet()) {
       this.nodeStatusMap.put(e.getKey().id, new NodeStatus(container, e.getValue()));
     }
@@ -446,11 +446,11 @@ public class DNodeManager
     // below should be merged into pollRequest
     if (containerIdle && isApplicationIdle()) {
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
-      rsp.setShutdown(true);
+      rsp.shutdown = true;
     } else {
       if (cs != null && cs.shutdownRequested) {
         LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
-        rsp.setShutdown(true);
+        rsp.shutdown = true;
       }
     }
 
@@ -466,7 +466,7 @@ public class DNodeManager
         cs.lastCheckpointRequestMillis = currentTimeMillis;
       }
     }
-    rsp.setNodeRequests(requests);
+    rsp.nodeRequests = requests;
     return rsp;
   }
 
@@ -486,7 +486,7 @@ public class DNodeManager
       LOG.warn("Cannot find the configuration for node {}", shb.getNodeId());
       return;
     }
-    
+
     NodeDecl nodeConf = ((PTNode)status.node).getLogicalNode();
     // check load constraints
     int tuplesProcessed = shb.getNumberTuplesProcessed();
@@ -538,7 +538,7 @@ public class DNodeManager
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : node.outputs) {
       for (InputPort targetPort : out.logicalStream.getSinks()) {
-        NodeDecl lDownNode = targetPort.getNode(); 
+        NodeDecl lDownNode = targetPort.getNode();
         if (lDownNode != null) {
           List<PTNode> downNodes = deployer.getNodes(lDownNode);
           for (PTNode downNode : downNodes) {

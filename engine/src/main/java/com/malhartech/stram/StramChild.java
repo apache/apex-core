@@ -193,7 +193,7 @@ public class StramChild
         if (rsp != null) {
           processHeartbeatResponse(rsp);
           // keep polling at smaller interval if work is pending
-          while (rsp != null && rsp.isPendingRequests()) {
+          while (rsp != null && rsp.hasPendingRequests) {
             LOG.info("Waiting for pending request.");
             synchronized (this.heartbeatTrigger) {
               try {
@@ -221,25 +221,25 @@ public class StramChild
 
   protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
-    if (rsp.isShutdown()) {
+    if (rsp.shutdown) {
       LOG.info("Received shutdown request");
       this.exitHeartbeatLoop = true;
       return;
     }
 
-    if (rsp.getUndeployRequest() != null) {
-      LOG.info("Undeploy request: {}", rsp.getUndeployRequest());
-      undeployNodes(rsp.getUndeployRequest().nodeList);
+    if (rsp.undeployRequest != null) {
+      LOG.info("Undeploy request: {}", rsp.undeployRequest);
+      undeployNodes(rsp.undeployRequest);
     }
 
-    if (rsp.getDeployRequest() != null) {
-      LOG.info("Deploy request: {}", rsp.getDeployRequest());
-      deployNodes(rsp.getDeployRequest().nodeList);
+    if (rsp.deployRequest != null) {
+      LOG.info("Deploy request: {}", rsp.deployRequest);
+      deployNodes(rsp.deployRequest);
     }
 
-    if (rsp.getNodeRequests() != null) {
+    if (rsp.nodeRequests != null) {
       // extended processing per node
-      for (StramToNodeRequest req: rsp.getNodeRequests()) {
+      for (StramToNodeRequest req : rsp.nodeRequests) {
         ComponentContextPair<Node, NodeContext> pair = nodes.get(req.getNodeId());
         if (pair == null) {
           LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
