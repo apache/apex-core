@@ -125,6 +125,10 @@ public class StramChild
       this.heartbeatIntervalMillis = 1000;
     }
 
+    if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
+      this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
+    }    
+    
     dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, ctx.getStartWindowMillis());
     dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis()); // no need to set if done right
 

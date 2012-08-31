@@ -17,6 +17,7 @@ import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
 import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.Tuple;
 import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
@@ -228,12 +229,16 @@ public class DNodeManagerTest {
     public byte[][] getPartitions() {
       return partitions;
     }
-
+    
     @Override
-    public byte[] getPartition(Object payload)
+    public byte[] getPartition(Object o)
     {
-      return partitions[1];
-    }
+      if (o instanceof Tuple) {
+        throw new UnsupportedOperationException("should not be called with control tuple");
+      }
+      return partitions[0];
+    }    
+    
   }
 
   private boolean containsNodeContext(StreamingContainerContext scc, NodeConf nodeConf) {
