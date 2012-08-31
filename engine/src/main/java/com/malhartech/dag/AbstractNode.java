@@ -8,9 +8,12 @@ import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.util.CircularBuffer;
+import java.nio.BufferOverflowException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.lang.UnhandledException;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -98,9 +101,23 @@ public abstract class AbstractNode implements Node
     }
 
     @Override
+    @SuppressWarnings("SleepWhileInLoop")
     public final void process(Object payload)
     {
-      add(payload);
+      while (true) {
+        try {
+          add(payload);
+          break;
+        }
+        catch (BufferOverflowException boe) {
+          try {
+            Thread.sleep(100);
+          }
+          catch (InterruptedException ex) {
+            break;
+          }
+        }
+      }
     }
 
     @Override
@@ -247,7 +264,7 @@ public abstract class AbstractNode implements Node
       while (buffers.hasNext()) {
         CompoundSink cb = buffers.next();
         Object payload;
-        while ((payload = cb.poll()) != null) {
+        while ((payload = cb.peek()) != null) {
           if (payload instanceof Tuple) {
             final Tuple t = (Tuple)payload;
             switch (t.getType()) {

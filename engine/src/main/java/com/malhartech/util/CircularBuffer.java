@@ -17,7 +17,6 @@ import java.util.Collection;
  * <br>
  *
  */
-
 public class CircularBuffer<T>
 {
   private static final BufferUnderflowException underflow = new BufferUnderflowException();
@@ -27,17 +26,17 @@ public class CircularBuffer<T>
   private volatile int head;
 
   @SuppressWarnings("unchecked")
-
   /**
    *
    * Constructing a circular buffer of 'n' integers<p>
    * <br>
+   *
    * @param n size of the buffer to be constructed
    * <br>
    */
   public CircularBuffer(int n)
   {
-    buffer = (T[]) new Object[n];
+    buffer = (T[])new Object[n];
     tail = 0;
     head = 0;
   }
@@ -46,6 +45,7 @@ public class CircularBuffer<T>
    *
    * Add object at the head<p>
    * <br>
+   *
    * @param toAdd object to be added
    *
    */
@@ -63,6 +63,7 @@ public class CircularBuffer<T>
    *
    * Get object from the tail<p>
    * <br>
+   *
    * @return object removed from the buffer returned
    * <br>
    */
@@ -75,19 +76,20 @@ public class CircularBuffer<T>
     throw underflow;
   }
 
-  public T poll()
+  public T peek()
   {
     if (head > tail) {
-      return null;
+      return buffer[tail % buffer.length];
     }
 
-    return buffer[tail % buffer.length];
+    return null;
   }
 
-   /**
+  /**
    *
    * Number of objects in the buffer<p>
    * <br>
+   *
    * @return Number of objects in the buffer
    * <br>
    */
@@ -100,6 +102,7 @@ public class CircularBuffer<T>
    *
    * Total design capacity of the buffer<p>
    * <br>
+   *
    * @return Total return capacity of the buffer
    * <br>
    */
@@ -112,6 +115,7 @@ public class CircularBuffer<T>
    *
    * Drain the buffer<p>
    * <br>
+   *
    * @param container {@link java.util.Collection} class to which the buffer objects are added
    * @return Number of objects removed from the buffer
    * <br>
@@ -131,6 +135,7 @@ public class CircularBuffer<T>
    *
    * Printing status for debugging<p>
    * <br>
+   *
    * @return String containing capacity, head, and tail
    * <br>
    */

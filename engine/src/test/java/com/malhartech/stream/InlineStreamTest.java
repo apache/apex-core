@@ -39,7 +39,7 @@ public class InlineStreamTest
     InlineStream stream = new InlineStream();
     stream.setup(new StreamConfiguration());
 
-    Sink sink = stream.connect("node1.output", node1);
+    Sink sink = stream.connect(Component.INPUT, node1);
     node1.connect("output", sink);
 
     sink = node2.connect("input", stream);
@@ -106,7 +106,7 @@ public class InlineStreamTest
     }
 
     synchronized (this) {
-      this.wait(1500 + totalTupleCount / 500);
+      this.wait(50);
     }
 
     Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
@@ -115,6 +115,8 @@ public class InlineStreamTest
     node2.deactivate();
     node1.deactivate();
     stream.deactivate();
+
+    Thread.sleep(100);
 
     node2.teardown();
     node1.teardown();
@@ -149,8 +151,8 @@ public class InlineStreamTest
    * Node implementation that simply passes on any tuple received
    */
   @NodeAnnotation(ports = {
-    @PortAnnotation(name = "input", type = PortType.INPUT),
-    @PortAnnotation(name = "output", type = PortType.OUTPUT)
+    @PortAnnotation(name = Component.INPUT, type = PortType.INPUT),
+    @PortAnnotation(name = Component.OUTPUT, type = PortType.OUTPUT)
   })
   public static class PassThroughNode extends AbstractNode
   {
