@@ -4,12 +4,11 @@
  */
 package com.malhartech.stram;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
 import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Node;
+import com.malhartech.dag.NodeSerDe;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.Sink;
@@ -32,8 +31,6 @@ import com.malhartech.stream.SocketInputStream;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
@@ -58,6 +55,7 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.log4j.LogManager;
+import org.fusesource.hawtbuf.ByteArrayInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -266,7 +264,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        pair.context.requestBackup(new HdfsBackupAgent());
+        pair.context.requestBackup(new HdfsBackupAgent(StramUtils.getNodeSerDe(null)));
         break;
 
       default:
@@ -398,12 +396,12 @@ public class StramChild
      */
     deactivate();
 
-    Kryo kryo = new Kryo();
+    NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
     HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
     for (NodeDeployInfo ndi: nodeList) {
       NodeContext nc = new NodeContext(ndi.id);
-      Object foreignObject = kryo.readClassAndObject(new Input(ndi.serializedNode));
       try {
+        Object foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         Node node = (Node)foreignObject;
         node.setup(new NodeConfiguration(ndi.properties));
         nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
@@ -412,6 +410,8 @@ public class StramChild
       }
       catch (ClassCastException cce) {
         LOG.error(cce.getLocalizedMessage());
+      } catch (IOException e) {
+        throw new IllegalArgumentException("Failed to read object " + ndi, e);
       }
     }
 
@@ -729,36 +729,39 @@ public class StramChild
 
   private class HdfsBackupAgent implements BackupAgent
   {
-    private FSDataOutputStream output;
-    private String outputNodeId;
-    private long outputWindowId;
+    final private NodeSerDe serDe;
+
+    private HdfsBackupAgent(NodeSerDe serde) {
+      serDe = serde;
+    }
 
     @Override
-    public OutputStream borrowOutputStream(String id, long windowId) throws IOException
+    public void backup(String nodeId, long windowId, Object o) throws IOException
     {
       FileSystem fs = FileSystem.get(conf);
-      Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId);
+      Path path = new Path(StramChild.this.checkpointDfsPath + "/" + nodeId + "/" + windowId);
       LOG.debug("Backup path: {}", path);
-      outputNodeId = id;
-      outputWindowId = windowId;
-      return (output = fs.create(path));
+      FSDataOutputStream output = fs.create(path);
+      try {
+        serDe.write(o, output);
+        // record last backup window id for heartbeat
+        StramChild.this.backupInfo.put(nodeId, windowId);
+      } finally {
+        output.close();
+      }
+
     }
 
     @Override
-    public void returnOutputStream(OutputStream os) throws IOException
-    {
-      assert (output == os);
-      output.close();
-      // record last backup window id for heartbeat
-      StramChild.this.backupInfo.put(outputNodeId, outputWindowId);
-    }
-
-    @Override
-    public InputStream getInputStream(String id, long windowId) throws IOException
+    public Object restore(String id, long windowId) throws IOException
     {
       FileSystem fs = FileSystem.get(conf);
       FSDataInputStream input = fs.open(new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId));
-      return input;
+      try {
+        return serDe.read(input);
+      } finally {
+        input.close();
+      }
     }
   }
 }

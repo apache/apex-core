@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+
 /**
  *
  * TBD<p>
@@ -24,4 +25,5 @@ public interface Node extends Component<NodeConfiguration, NodeContext>
    *
    */
   public void endWindow();
+
 }

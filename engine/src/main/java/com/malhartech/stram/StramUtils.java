@@ -10,10 +10,11 @@ import java.util.Map;
 
 import org.apache.commons.beanutils.BeanUtils;
 
+import com.malhartech.dag.DefaultNodeSerDe;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
+import com.malhartech.dag.NodeSerDe;
 import com.malhartech.dag.SerDe;
-import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
  *
@@ -35,9 +36,9 @@ public abstract class StramUtils {
       return Class.forName(className).asSubclass(superClass);
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("Class not found: " + className, e);
-    }      
+    }
   }
-  
+
   public static final <T> T newInstance(Class<T> clazz) {
     try {
       return clazz.newInstance();
@@ -45,9 +46,9 @@ public abstract class StramUtils {
       throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
     } catch (InstantiationException e) {
       throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
-    }      
+    }
   }
-  
+
   /**
    * Instantiate node from configuration. (happens in the child container, not the stram master process.)
    *
@@ -55,7 +56,7 @@ public abstract class StramUtils {
    * @param conf
    */
   public static Node initNode(String className, Map<String, String> properties)
-  {      
+  {
     try {
       Class<? extends Node> nodeClass = classForName(className, Node.class);
       Constructor<? extends Node> c = nodeClass.getConstructor();
@@ -79,6 +80,13 @@ public abstract class StramUtils {
     catch (InstantiationException e) {
       throw new IllegalArgumentException("Failed to instantiate: " + className, e);
     }
+  }
+
+  public static NodeSerDe getNodeSerDe(String className) {
+    if (className != null) {
+      return newInstance(classForName(className, NodeSerDe.class));
+    }
+    return new DefaultNodeSerDe();
   }
 
 }
