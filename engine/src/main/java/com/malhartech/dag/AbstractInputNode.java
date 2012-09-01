@@ -22,18 +22,20 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractInputNode implements Node
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractInputNode.class);
-  int spinMillis;
-  int bufferCapacity;
-  HashMap<String, CircularBuffer<Object>> afterBeginWindows;
-  HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
-  HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  private volatile Collection<Sink> sinks;
-  private NodeContext ctx;
-  private int producedTupleCount;
+  private transient String id;
+  private transient HashMap<String, CircularBuffer<Object>> afterBeginWindows;
+  private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
+  private transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  private transient volatile Collection<Sink> sinks;
+  private transient NodeContext ctx;
+  private transient int producedTupleCount;
+  private transient int spinMillis;
+  private transient int bufferCapacity;
 
   @Override
   public void setup(NodeConfiguration config)
   {
+    id = config.get("id");
     spinMillis = config.getInt("SpinMillis", 100);
     bufferCapacity = config.getInt("BufferCapacity", 1024);
 
@@ -205,5 +207,33 @@ public abstract class AbstractInputNode implements Node
     }
 
     producedTupleCount++;
+  }
+
+  @Override
+  public int hashCode()
+  {
+    return id == null ? super.hashCode() : id.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj)
+  {
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    final AbstractInputNode other = (AbstractInputNode)obj;
+    if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public String toString()
+  {
+    return getClass().getSimpleName() + "{" + "id=" + id + ", outputs=" + outputs.keySet() + '}';
   }
 }

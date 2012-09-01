@@ -12,20 +12,16 @@ import java.nio.BufferOverflowException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.commons.lang.UnhandledException;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.LoggerFactory;
 
 /**
  *
  * The base class for node implementation<p>
  * <br>
- * Extends the base interface {@link com.malhartech.dag.InternalNode}<br>
+ * Implements the base interface {@link com.malhartech.dag.Node}<br>
  * <br>
- * This is the basic functional blog of the dag. It is responsible for the following<br>
+ * This is the basic functional block of the DAG. It is responsible for the following<br>
  * It emits and consumes tuples<br>
  * Upon window boundary it does house cleaning, state sync up etc<br>
  * Interacts with Stram with a heartbeat protocol<br>
@@ -35,10 +31,8 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractNode implements Node
 {
-  private String port;
-  @SuppressWarnings("ProtectedField")
-  protected transient NodeContext ctx;
   private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
+  private transient String id;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
   private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   private transient int consumedTupleCount;
@@ -64,6 +58,7 @@ public abstract class AbstractNode implements Node
   @Override
   public void setup(NodeConfiguration config)
   {
+    id = config.get("id");
   }
 
   @Override
@@ -222,16 +217,6 @@ public abstract class AbstractNode implements Node
     alive = false;
   }
 
-  protected final String getActivePort()
-  {
-    return port;
-  }
-
-  protected final void setActivePort(String port)
-  {
-    this.port = port;
-  }
-
   /**
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
@@ -244,7 +229,6 @@ public abstract class AbstractNode implements Node
   final public void activate(NodeContext ctx)
   {
     int totalQueues = inputs.size();
-    this.ctx = ctx;
 
     ArrayList<CompoundSink> activeQueues = new ArrayList<CompoundSink>();
     activeQueues.addAll(inputs.values());
@@ -353,7 +337,6 @@ public abstract class AbstractNode implements Node
 
               case END_STREAM:
                 totalQueues--;
-                inputs.remove(getActivePort());
                 activeQueues.remove(cb);
                 if (totalQueues == 0) {
                   alive = false;
@@ -416,8 +399,30 @@ public abstract class AbstractNode implements Node
   }
 
   @Override
+  public int hashCode()
+  {
+    return id == null? super.hashCode(): id.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj)
+  {
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    final AbstractNode other = (AbstractNode)obj;
+    if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
   public String toString()
   {
-    return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).append("id", ctx == null ? "unassigned" : ctx.getId()).toString();
+    return this.getClass().getSimpleName() +"{id=" + id + ", inputs=" + inputs.keySet() + ", outputs=" + outputs.keySet() + '}';
   }
 }

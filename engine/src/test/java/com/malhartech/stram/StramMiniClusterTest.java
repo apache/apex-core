@@ -148,7 +148,7 @@ public class StramMiniClusterTest
     NodeConf genNode = tb.getOrAddNode("numGen");
     genNode.setClassName(NumberGeneratorInputAdapter.class.getName());
     genNode.setProperty("maxTuples", "1");
-    
+
     // fake output adapter - to be ignored when determine shutdown
     //props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
     //props.put("stram.stream.output.inputNode", "node2");
@@ -156,18 +156,18 @@ public class StramMiniClusterTest
 
     NodeConf node1 = tb.getOrAddNode("node1");
     node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-    
+
     NodeConf node2 = tb.getOrAddNode("node2");
     node2.setClassName(TopologyBuilderTest.EchoNode.class.getName());
 
     tb.getOrAddStream("fromNumGen")
       .setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, genNode)
       .addSink(EchoNode.INPUT1, node1);
-    
+
     tb.getOrAddStream("n1n2")
       .setSource(EchoNode.OUTPUT1, node1)
       .addSink(EchoNode.INPUT1, node2);
-    
+
     tb.getConf().set(Topology.STRAM_CONTAINER_MEMORY_MB, "256");
     tb.getConf().set(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
     tb.getConf().set(Topology.STRAM_DEBUG, "true");
@@ -373,11 +373,6 @@ public class StramMiniClusterTest
     public void handleIdleTimeout()
     {
       deactivate();
-    }
-
-    void setNodeContext(NodeContext nodeContext)
-    {
-      ctx = nodeContext;
     }
   }
 
