@@ -90,7 +90,12 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   @Override
   public Sink connect(String id, Sink sink)
   {
-    outputs.put(id, sink);
+    if (sink == null) {
+      outputs.remove(id);
+    }
+    else {
+      outputs.put(id, sink);
+    }
     return null;
   }
 

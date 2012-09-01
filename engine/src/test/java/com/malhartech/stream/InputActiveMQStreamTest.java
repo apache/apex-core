@@ -80,7 +80,7 @@ public class InputActiveMQStreamTest
   @BeforeClass
   public static void setUpClass() throws Exception
   {
-    config = new NodeConfiguration(null);
+    config = new NodeConfiguration("instance", null);
     config.set("user", "");
     config.set("password", "");
     config.set("url", "tcp://localhost:61616");

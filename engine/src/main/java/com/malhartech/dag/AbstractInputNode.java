@@ -86,6 +86,10 @@ public abstract class AbstractInputNode implements Node
     if (Component.INPUT.equals(port)) {
       retvalue = this;
     }
+    else if (component == null) {
+      outputs.remove(port);
+      retvalue = null;
+    }
     else {
       outputs.put(port, component);
       retvalue = null;

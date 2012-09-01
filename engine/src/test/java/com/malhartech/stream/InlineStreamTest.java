@@ -31,10 +31,10 @@ public class InlineStreamTest
     prev = null;
 
     final AbstractNode node1 = new PassThroughNode();
-    node1.setup(new NodeConfiguration(null));
+    node1.setup(new NodeConfiguration("node1", null));
 
     final AbstractNode node2 = new PassThroughNode();
-    node2.setup(new NodeConfiguration(null));
+    node2.setup(new NodeConfiguration("node2", null));
 
     InlineStream stream = new InlineStream();
     stream.setup(new StreamConfiguration());

@@ -18,8 +18,9 @@ public class NodeConfiguration extends Configuration
 {
   private final Map<String, String> properties;
 
-  public NodeConfiguration(Map<String, String> properties)
+  public NodeConfiguration(String id, Map<String, String> properties)
   {
+    set("id", id);
     this.properties = properties;
     addAll(this, properties);
   }

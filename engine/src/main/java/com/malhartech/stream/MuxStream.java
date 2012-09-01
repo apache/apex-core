@@ -61,6 +61,9 @@ public class MuxStream implements Stream
     if (INPUT.equals(id)) {
       return this;
     }
+    else if (sink == null) {
+      outputs.remove(id);
+    }
     else {
       outputs.put(id, sink);
     }

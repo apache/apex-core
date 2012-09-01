@@ -143,15 +143,31 @@ public abstract class AbstractNode implements Node
     switch (getPortType(id)) {
       case BIDI:
         logger.info("stream is connected to a bidi port, can we have a bidi stream?");
-        outputs.put(id, dagpart);
+        if (dagpart == null) {
+          outputs.remove(id);
+        }
+        else {
+          outputs.put(id, dagpart);
+        }
 
       case INPUT:
-        s = new CompoundSink(id, dagpart);
-        inputs.put(id, ((CompoundSink)s));
+        if (dagpart == null) {
+          inputs.remove(id);
+          s = null;
+        }
+        else {
+          s = new CompoundSink(id, dagpart);
+          inputs.put(id, ((CompoundSink)s));
+        }
         break;
 
       case OUTPUT:
-        outputs.put(id, dagpart);
+        if (dagpart == null) {
+          outputs.remove(id);
+        }
+        else {
+          outputs.put(id, dagpart);
+        }
         s = null;
         break;
 
@@ -401,7 +417,7 @@ public abstract class AbstractNode implements Node
   @Override
   public int hashCode()
   {
-    return id == null? super.hashCode(): id.hashCode();
+    return id == null ? super.hashCode() : id.hashCode();
   }
 
   @Override
@@ -423,6 +439,6 @@ public abstract class AbstractNode implements Node
   @Override
   public String toString()
   {
-    return this.getClass().getSimpleName() +"{id=" + id + ", inputs=" + inputs.keySet() + ", outputs=" + outputs.keySet() + '}';
+    return this.getClass().getSimpleName() + "{id=" + id + ", inputs=" + inputs.keySet() + ", outputs=" + outputs.keySet() + '}';
   }
 }

@@ -15,6 +15,7 @@ import com.malhartech.util.ScheduledExecutorService;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
@@ -51,7 +52,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   {
     ses = service;
   }
-  
+
   /**
    * Increments window by 1
    */
@@ -170,7 +171,12 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public Sink connect(String id, Sink component)
   {
-    outputs.put(id, component);
+    if (component == null) {
+      outputs.remove(id);
+    }
+    else {
+      outputs.put(id, component);
+    }
     return null;
   }
 
@@ -178,5 +184,10 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   public void process(Object payload)
   {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  public Set<String> getOutputIds()
+  {
+    return outputs.keySet();
   }
 }
