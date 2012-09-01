@@ -21,7 +21,7 @@ import org.fusesource.hawtbuf.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeSerDe;
 import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
@@ -64,6 +64,7 @@ public class DNodeManager
   private int windowSizeMillis = 500;
   private int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
+  private NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
 
   private class NodeStatus
   {
@@ -223,7 +224,7 @@ public class DNodeManager
    * @return {@link com.malhartech.stram.NodePConf}
    *
    */
-  private static NodeDeployInfo createNodeContext(String dnodeId, NodeDecl nodeDecl)
+  private NodeDeployInfo createNodeContext(String dnodeId, NodeDecl nodeDecl)
   {
     NodeDeployInfo ndi = new NodeDeployInfo();
 
@@ -231,7 +232,7 @@ public class DNodeManager
     try {
       // populate custom properties
       BeanUtils.populate(nodeDecl.getNode(), nodeDecl.getProperties());
-      NodeContext.serializeNode(nodeDecl.getNode(), os);
+      this.nodeSerDe.write(nodeDecl.getNode(), os);
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {

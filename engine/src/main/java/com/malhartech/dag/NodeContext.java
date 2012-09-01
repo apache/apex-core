@@ -4,16 +4,14 @@
  */
 package com.malhartech.dag;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
-import com.malhartech.util.CircularBuffer;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.BufferOverflowException;
 import java.util.Collection;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.util.CircularBuffer;
 
 /**
  * The for context for all of the nodes<p>
@@ -98,7 +96,7 @@ public class NodeContext implements Context
   synchronized void report(int consumedTupleCount, long processedBytes, long windowId)
   {
     lastProcessedWidnowId = windowId;
-    
+
     HeartbeatCounters newWindow = new HeartbeatCounters();
     newWindow.windowId = windowId;
     newWindow.tuplesProcessed = consumedTupleCount;
@@ -112,32 +110,11 @@ public class NodeContext implements Context
     }
   }
 
-  /**
-   * TODO: should not be here but in a configurable serializer
-   * @param aThis
-   */
-  public static void serializeNode(Node aThis, OutputStream os) {
-    Kryo kryo = new Kryo();
-    Output output = new Output(os);
-    kryo.writeClassAndObject(output, aThis);
-    output.flush();
-  }
-
   void backup(Node aThis, long windowId) throws IOException
   {
     LOG.debug("Backup node={}, window={}", id, windowId);
-    OutputStream os = backupAgent.borrowOutputStream(id, windowId);
-    try {
-      serializeNode(aThis, os);
-      /*
-       * we purposely do not close the stream here since it may close the underlying stream which we did not open. We do not want the foreign logic to have to
-       * reopen the stream which may be inconvenient where as closing it is possible and easy when we return the stream back to the agent.
-       */
-      request = RequestType.UNDEFINED;
-    }
-    finally {
-      backupAgent.returnOutputStream(os);
-    }
+    this.backupAgent.backup(id, windowId, aThis);
+    request = RequestType.UNDEFINED;
   }
 
   public void requestBackup(BackupAgent agent)
@@ -147,8 +124,4 @@ public class NodeContext implements Context
     LOG.debug("Received backup request (node={})", id);
   }
 
-  public Object restore(BackupAgent agent, long windowId) throws IOException
-  {
-    return new Kryo().readClassAndObject(new Input(agent.getInputStream(id, windowId)));
-  }
 }

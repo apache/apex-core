@@ -5,21 +5,17 @@
 package com.malhartech.dag;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 /**
  *
  * Interface that defines how to write checkpoint state<p>
  * <br>
- * 
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface BackupAgent
 {
-  public OutputStream borrowOutputStream(String nodeId, long windowId) throws IOException;
-
-  public void returnOutputStream(OutputStream os) throws IOException;
+  public void backup(String nodeId, long windowId, Object o) throws IOException;
 
   /**
    * Return the input stream for restoring the node.
@@ -29,5 +25,5 @@ public interface BackupAgent
    * @return {@link java.io.InputStream}
    * @throws IOException
    */
-  public InputStream getInputStream(String nodeId, long windowId) throws IOException;
+  public Object restore(String nodeId, long windowId) throws IOException;
 }

@@ -105,18 +105,18 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
   }
 
   /**
-   *
-   * A container class for all the nodes, streams in the hadoop container
+   * Initialization parameters for StramChild container container. Container
+   * wide settings remain effective as long as the process is running. Nodes can
+   * be deployed and removed dynamically.
    * <p>
    * <br>
-   *
-   *
+   * 
    */
   public static class StreamingContainerContext extends WritableAdapter {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The list of nodes to deploy in the container
+     * The list of nodes to initially deploy in the container.
      */
     public List<NodeDeployInfo> nodeList;
 
