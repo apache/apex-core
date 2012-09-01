@@ -11,8 +11,8 @@ package com.malhartech.dag;
  */
 public class ComponentContextPair<COMPONENT extends Component, CONTEXT extends Context>
 {
-  public COMPONENT component;
-  public CONTEXT context;
+  public final COMPONENT component;
+  public final CONTEXT context;
 
   public ComponentContextPair(COMPONENT component, CONTEXT context)
   {
@@ -20,17 +20,13 @@ public class ComponentContextPair<COMPONENT extends Component, CONTEXT extends C
     this.context = context;
   }
 
-  // check if there are compelling argument for another composite hash code routine.
-  /**
-   *
-   * @return
-   */
   @Override
   public int hashCode()
   {
-    int hashCode = this.component == null? 0: (this.component.hashCode() >> 1);
-    hashCode += this.context == null? 0: (this.context.hashCode() >> 1);
-    return hashCode;
+    int hash = 7;
+    hash = 73 * hash + (this.component != null ? this.component.hashCode() : 0);
+    hash = 73 * hash + (this.context != null ? this.context.hashCode() : 0);
+    return hash;
   }
 
   @Override
@@ -42,7 +38,7 @@ public class ComponentContextPair<COMPONENT extends Component, CONTEXT extends C
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final ComponentContextPair other = (ComponentContextPair)obj;
+    final ComponentContextPair<COMPONENT, CONTEXT> other = (ComponentContextPair<COMPONENT, CONTEXT>)obj;
     if (this.component != other.component && (this.component == null || !this.component.equals(other.component))) {
       return false;
     }

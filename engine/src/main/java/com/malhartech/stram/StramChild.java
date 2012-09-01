@@ -237,7 +237,7 @@ public class StramChild
 
     if (rsp.nodeRequests != null) {
       // extended processing per node
-      for (StramToNodeRequest req : rsp.nodeRequests) {
+      for (StramToNodeRequest req: rsp.nodeRequests) {
         ComponentContextPair<Node, NodeContext> pair = nodes.get(req.getNodeId());
         if (pair == null) {
           LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
@@ -413,7 +413,8 @@ public class StramChild
       }
       catch (ClassCastException cce) {
         LOG.error(cce.getLocalizedMessage());
-      } catch (IOException e) {
+      }
+      catch (IOException e) {
         throw new IllegalArgumentException("Failed to read object " + ndi, e);
       }
     }
@@ -564,7 +565,8 @@ public class StramChild
           if (pair == null) {
             // it's buffer server stream
             assert (nidi.isInline() == false);
-            sourceIdentifier = nidi.bufferServerHost.concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier);
+            // messes up the logic
+            // sourceIdentifier = nidi.bufferServerHost.concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
             StreamConfiguration config = new StreamConfiguration();
             config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
@@ -735,7 +737,8 @@ public class StramChild
   {
     final private NodeSerDe serDe;
 
-    private HdfsBackupAgent(NodeSerDe serde) {
+    private HdfsBackupAgent(NodeSerDe serde)
+    {
       serDe = serde;
     }
 
@@ -750,7 +753,8 @@ public class StramChild
         serDe.write(o, output);
         // record last backup window id for heartbeat
         StramChild.this.backupInfo.put(nodeId, windowId);
-      } finally {
+      }
+      finally {
         output.close();
       }
 
@@ -763,7 +767,8 @@ public class StramChild
       FSDataInputStream input = fs.open(new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId));
       try {
         return serDe.read(input);
-      } finally {
+      }
+      finally {
         input.close();
       }
     }
