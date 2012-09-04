@@ -44,6 +44,7 @@
  * <b>{@link com.malhartech.stream.BufferServerOutputStream}</b>: extends {@link com.malhartech.stream.SocketOutputStream}
  * and in conjunction with {@link com.malhartech.stream.BufferServerInputStream} forms a complete stream
  * in a node->buffer server->node path<br>
+ * <b>{@link com.malhartech.stream.BufferServerStreamContext}</b>: Implements stream context for buffer server<br>
  * 
  * <br><b>Console Streams</b><br>
  * <b>{@link com.malhartech.stream.ConsoleOutputStream}</b>: Extends {@link com.malhartech.dag.Stream} class.
@@ -55,6 +56,9 @@
  * <b>{@link com.malhartech.stream.InlineStream}</b>: Streams data between two nodes in inline mode. This implementation of
  * {@link com.malhartech.dag.Stream} and {{@link com.malhartech.dag.Sink}
  * interface does not have connection to BufferServer and cannot be persisted.<br>
+ * 
+ * <b>{@link com.malhartech.stream.MuxStream}</b>: <br>
+ * <b>{@link com.malhartech.stream.PartitionAwareSink}</b>: <br>
  * 
  * <br><b>Socket Interface Streams</b><br>
  * <b>{@link com.malhartech.stream.SocketInputStream}</b>: Implements {@link com.malhartech.dag.Stream} interface and provides

@@ -10,5 +10,9 @@ package com.malhartech.util;
  */
 public interface ScheduledExecutorService extends java.util.concurrent.ScheduledExecutorService
 {
+    /**
+     * 
+     * @return long
+     */
   public long getCurrentTimeMillis();
 }

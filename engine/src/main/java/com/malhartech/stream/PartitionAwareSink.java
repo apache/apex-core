@@ -21,6 +21,12 @@ public class PartitionAwareSink implements Sink
   final HashSet<ByteBuffer> partitions;
   final Sink output;
 
+  /**
+   * 
+   * @param serde
+   * @param partitions
+   * @param output 
+   */
   public PartitionAwareSink(SerDe serde, List<byte[]> partitions, Sink output)
   {
     this.serde = serde;
@@ -33,6 +39,10 @@ public class PartitionAwareSink implements Sink
     this.output = output;
   }
 
+  /**
+   * 
+   * @param payload 
+   */
   @Override
   public void process(Object payload)
   {
