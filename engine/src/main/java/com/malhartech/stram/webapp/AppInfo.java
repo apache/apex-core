@@ -41,9 +41,16 @@ public class AppInfo {
   protected long startedOn;
   protected long elapsedTime;
 
+  /**
+   * 
+   */
   public AppInfo() {
   }
 
+  /**
+   * 
+   * @param context 
+   */
   public AppInfo(StramAppContext context) {
     LOG.info("AppInfo called");
     this.appId = context.getApplicationID().toString();
@@ -53,22 +60,42 @@ public class AppInfo {
     this.elapsedTime = Times.elapsed(this.startedOn, 0);
   }
 
+  /**
+   * 
+   * @return String
+   */
   public String getId() {
     return this.appId;
   }
 
+  /**
+   * 
+   * @return String
+   */
   public String getName() {
     return this.name;
   }
 
+  /**
+   * 
+   * @return String
+   */
   public String getUser() {
     return this.user;
   }
 
+  /**
+   * 
+   * @return long
+   */
   public long getStartTime() {
     return this.startedOn;
   }
 
+  /**
+   * 
+   * @return long
+   */
   public long getElapsedTime() {
     return this.elapsedTime;
   }

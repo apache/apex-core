@@ -24,10 +24,19 @@ public class NodesInfo {
 
   protected ArrayList<NodeInfo> nodes = new ArrayList<NodeInfo>();
 
+  /**
+   * 
+   * @param nodeInfo 
+   */
   public void add(NodeInfo nodeInfo) {
     nodes.add(nodeInfo);
   }
 
+  /**
+   * 
+   * @return ArrayList<NodeInfo>
+   * 
+   */
   public ArrayList<NodeInfo> getNodes() {
     return nodes;
   }

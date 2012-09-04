@@ -35,6 +35,10 @@ public class StramWebApp extends WebApp {
 
   final private DNodeManager topologyManager;
 
+  /**
+   * 
+   * @param topolManager 
+   */
   public StramWebApp(DNodeManager topolManager) {
     this.topologyManager = topolManager;
   }
@@ -50,12 +54,21 @@ public class StramWebApp extends WebApp {
     private final Class<?>[] cTypes = {
       AppInfo.class, RemoteExceptionData.class};
 
+    /**
+     * 
+     * @throws Exception 
+     */
     public JAXBContextResolver() throws Exception {
       this.types = new HashSet<Class<?>>(Arrays.asList(cTypes));
       this.context = new JSONJAXBContext(JSONConfiguration.natural().
           rootUnwrapping(false).build(), cTypes);
     }
 
+    /**
+     * 
+     * @param type
+     * @return JAXContext
+     */
     @Override
     public JAXBContext getContext(Class<?> type) {
       return (types.contains(type)) ? context : null;
@@ -63,6 +76,9 @@ public class StramWebApp extends WebApp {
     
   }  
   
+  /**
+   * 
+   */
   @Override
   public void setup() {
     bind(JAXBContextResolver.class);
