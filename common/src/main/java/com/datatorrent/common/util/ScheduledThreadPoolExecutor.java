@@ -15,6 +15,10 @@ public class ScheduledThreadPoolExecutor extends java.util.concurrent.ScheduledT
     super(corePoolSize);
   }
 
+  /**
+   * 
+   * @return long
+   */
   @Override
   public final long getCurrentTimeMillis()
   {
