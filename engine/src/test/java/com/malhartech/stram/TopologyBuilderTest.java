@@ -13,6 +13,8 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -34,15 +36,15 @@ import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
 import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.InputPort;
 import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.conf.Topology.StreamDecl;
 import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
 
 public class TopologyBuilderTest {
 
-  public static NodeConf assertNode(Map<String, NodeConf> nodeConfs, String id) {
-      NodeConf n = nodeConfs.get(id);
+  public static NodeDecl assertNode(Topology tplg, String id) {
+      NodeDecl n = tplg.getNode(id);
       assertNotNull("node exists id=" + id, n);
       return n;
   }
@@ -55,14 +57,17 @@ public class TopologyBuilderTest {
     Configuration conf = TopologyBuilder.addStramResources(new Configuration());
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
-    TopologyBuilder topConf = new TopologyBuilder(conf);
-    Map<String, NodeConf> nodeConfs = topConf.getAllNodes();
-    assertEquals("number of node confs", 6, nodeConfs.size());
+    TopologyBuilder tb = new TopologyBuilder(conf);
+    Topology tplg = tb.getTopology();
+    tplg.validate();
 
-    NodeConf node1 = assertNode(nodeConfs, "node1");
-    NodeConf node2 = assertNode(nodeConfs, "node2");
-    NodeConf node3 = assertNode(nodeConfs, "node3");
-    NodeConf node4 = assertNode(nodeConfs, "node4");
+//    Map<String, NodeConf> nodeConfs = tb.getAllNodes();
+    assertEquals("number of node confs", 6, tplg.getAllNodes().size());
+
+    NodeDecl node1 = assertNode(tplg, "node1");
+    NodeDecl node2 = assertNode(tplg, "node2");
+    NodeDecl node3 = assertNode(tplg, "node3");
+    NodeDecl node4 = assertNode(tplg, "node4");
 
     assertNotNull("nodeConf for root", node1);
     assertEquals("nodeId set", "node1", node1.getId());
@@ -77,52 +82,56 @@ public class TopologyBuilderTest {
     // check links
     assertEquals("node1 inputs", 0, node1.getInputStreams().size());
     assertEquals("node1 outputs", 1, node1.getOutputStreams().size());
-    StreamConf n1n2 = node2.getInput(EchoNode.INPUT1);
+    StreamDecl n1n2 = node2.getInputStreams().get(EchoNode.INPUT1);
     assertNotNull("n1n2", n1n2);
 
     // output/input stream object same
-    assertEquals("rootNode out is node2 in", n1n2, node1.getOutput(EchoNode.OUTPUT1));
-    assertEquals("n1n2 source", node1, n1n2.getSourceNode());
-    Assert.assertArrayEquals("n1n2 target", new Object[]{node2}, n1n2.getTargetNodes().toArray());
-    assertEquals("partitionPolicy", n1n2.getProperty("partitionPolicy"), "someTargetPolicy");
+    assertEquals("rootNode out is node2 in", n1n2, node1.getOutputStreams().get(EchoNode.OUTPUT1));
+    assertEquals("n1n2 source", node1, n1n2.getSource().getNode());
+    Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
+    Assert.assertEquals("n1n2 target", node2, n1n2.getSinks().get(0).getNode());
+
     assertEquals("stream name", "n1n2", n1n2.getId());
     Assert.assertFalse("n1n2 not inline (default)", n1n2.isInline());
 
     // node 2 streams to node 3 and node 4
     assertEquals("node 2 number of outputs", 1, node2.getOutputStreams().size());
-    StreamConf fromNode2 = node2.getOutputStreams().iterator().next();
-    Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(node3, node4), fromNode2.getTargetNodes());
+    StreamDecl fromNode2 = node2.getOutputStreams().values().iterator().next();
 
-    topConf.getTopology().validate();
+    Set<NodeDecl> targetNodes = new HashSet<NodeDecl>();
+    for (InputPort ip : fromNode2.getSinks()) {
+      targetNodes.add(ip.getNode());
+    }
+    Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(node3, node4), targetNodes);
 
-    NodeConf node6 = assertNode(nodeConfs, "node6");
+    NodeDecl node6 = assertNode(tplg, "node6");
 
-    Set<NodeConf> rootNodes = topConf.getRootNodes();
+    List<NodeDecl> rootNodes = tplg.getRootNodes();
     assertEquals("number root nodes", 2, rootNodes.size());
     assertTrue("root node2", rootNodes.contains(node1));
     assertTrue("root node6", rootNodes.contains(node6));
 
-    for (NodeConf n : rootNodes) {
-      printTopology(n, nodeConfs, 0);
+    for (NodeDecl n : rootNodes) {
+      printTopology(n, tplg, 0);
     }
 
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends AbstractNode> T initNode(NodeConf nodeConf) {
-    return (T)StramUtils.initNode(nodeConf.getNodeClassNameReqd(), nodeConf.getProperties());
+  private <T extends AbstractNode> T initNode(NodeDecl nodeConf) {
+    return (T)StramUtils.initNode(nodeConf.getNode().getClass().getName(), nodeConf.getProperties());
   }
 
-  public void printTopology(NodeConf node, Map<String, NodeConf> allNodes, int level) {
+  public void printTopology(NodeDecl node, Topology tplg, int level) {
       String prefix = "";
       if (level > 0) {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17);
       }
       System.out.println(prefix + node.getId());
-      for (StreamConf downStream : node.getOutputStreams()) {
-          if (!downStream.getTargetNodes().isEmpty()) {
-            for (NodeConf targetNode : downStream.getTargetNodes()) {
-              printTopology(targetNode, allNodes, level+1);
+      for (StreamDecl downStream : node.getOutputStreams().values()) {
+          if (!downStream.getSinks().isEmpty()) {
+            for (InputPort targetNode : downStream.getSinks()) {
+              printTopology(targetNode.getNode(), tplg, level+1);
             }
           }
       }
@@ -137,17 +146,20 @@ public class TopologyBuilderTest {
         fail("Could not load " + resourcePath);
       }
       props.load(is);
-      TopologyBuilder b = new TopologyBuilder()
+      TopologyBuilder pb = new TopologyBuilder()
         .addFromProperties(props);
-      assertEquals("number of node confs", 4, b.getAllNodes().size());
-      assertEquals("number of root nodes", 3, b.getRootNodes().size());
 
-      StreamConf s1 = b.getOrAddStream("n1n2");
+      Topology tplg = pb.getTopology();
+      tplg.validate();
+
+      assertEquals("number of node confs", 5, tplg.getAllNodes().size());
+      assertEquals("number of root nodes", 3, tplg.getRootNodes().size());
+
+      StreamDecl s1 = tplg.getStream("n1n2");
       assertNotNull(s1);
-      assertEquals("n1n2 policy default", "defaultStreamPolicy", s1.getProperty("partitionPolicy"));
       assertTrue("n1n2 inline", s1.isInline());
 
-      NodeConf node3 = b.getOrAddNode("node3");
+      NodeDecl node3 = tplg.getNode("node3");
       Map<String, String> node3Props = node3.getProperties();
 
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", node3Props.get("myStringProperty"));
@@ -157,20 +169,16 @@ public class TopologyBuilderTest {
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", dnode3.myStringProperty);
       assertFalse("node3.booleanProperty", dnode3.booleanProperty);
 
-      NodeConf node4 = b.getOrAddNode("node4");
+      NodeDecl node4 = tplg.getNode("node4");
       assertEquals("node4.myStringProperty", "overrideNode4", node4.getProperties().get("myStringProperty"));
       EchoNode dnode4 = (EchoNode)initNode(node4);
       assertEquals("node4.myStringProperty", "overrideNode4", dnode4.myStringProperty);
       assertTrue("node4.booleanProperty", dnode4.booleanProperty);
 
-      StreamConf input1 = b.getOrAddStream("input1");
+      StreamDecl input1 = tplg.getStream("inputToNode1");
       assertNotNull(input1);
-      assertEquals("n1n2 policy default", "defaultStreamPolicy", s1.getProperty("partitionPolicy"));
-      Assert.assertNull("input1 no source", input1.getSourceNode());
-      Assert.assertEquals("input1 target ", b.getOrAddNode("node1"), input1.getTargetNodes().iterator().next());
-      assertEquals("input1.myConfigProperty", "myConfigPropertyValue", input1.getProperty("myConfigProperty"));
-      assertEquals("input1 properties count", 2, input1.getProperties().size());
-      b.getTopology().validate();
+      Assert.assertEquals("input1 source", tplg.getNode("inputNode"), input1.getSource().getNode());
+      Assert.assertEquals("input1 target ", tplg.getNode("node1"), input1.getSinks().iterator().next().getNode());
 
   }
 

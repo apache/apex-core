@@ -177,6 +177,7 @@ public class Topology implements Serializable, TopologyConstants {
       }
       sinks.add(port);
       port.node.inputStreams.put(port.portAnnotation.name(), this);
+System.out.println("removing " + port.node);
       rootNodes.remove(port.node);
     }
 
@@ -287,6 +288,10 @@ public class Topology implements Serializable, TopologyConstants {
       this.streams.put(id, s);
     }
     return s;
+  }
+
+  public StreamDecl getStream(String id) {
+    return this.streams.get(id);
   }
 
   public List<NodeDecl> getRootNodes() {
