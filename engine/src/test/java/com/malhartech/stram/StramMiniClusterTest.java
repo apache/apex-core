@@ -40,13 +40,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stream.HDFSOutputStream;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -168,12 +166,14 @@ public class StramMiniClusterTest
       .setSource(EchoNode.OUTPUT1, node1)
       .addSink(EchoNode.INPUT1, node2);
 
-    tb.getConf().set(Topology.STRAM_CONTAINER_MEMORY_MB, "256");
-    tb.getConf().set(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
-    tb.getConf().set(Topology.STRAM_DEBUG, "true");
-    tb.getConf().set(Topology.STRAM_MAX_CONTAINERS, "2");
+    Properties dagProps = new Properties();
+    dagProps.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "256");
+    dagProps.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
+    dagProps.setProperty(Topology.STRAM_DEBUG, "true");
+    dagProps.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
+    tb.addFromProperties(dagProps);
 
-    Properties tplgProperties = TopologyBuilder.toProperties(tb.getConf());
+    Properties tplgProperties = tb.getProperties();
     File tmpFile = createTmpPropFile(tplgProperties);
 
     String[] args = {

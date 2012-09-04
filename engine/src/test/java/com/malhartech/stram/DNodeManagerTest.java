@@ -23,10 +23,10 @@ import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
+import com.malhartech.stram.conf.NewTopologyBuilder;
+import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
 import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import com.malhartech.stram.conf.Topology.NodeDecl;
 
 public class DNodeManagerTest {
 
@@ -75,29 +75,27 @@ public class DNodeManagerTest {
   @Test
   public void testAssignContainer() {
 
-    TopologyBuilder b = new TopologyBuilder();
+    NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeConf node1 = b.getOrAddNode("node1");
-    NodeConf node2 = b.getOrAddNode("node2");
-    NodeConf node3 = b.getOrAddNode("node3");
-    for (NodeConf nodeConf : b.getAllNodes().values()) {
-      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-    }
+    NodeDecl node1 = b.addNode("node1", new EchoNode());
+    NodeDecl node2 = b.addNode("node2", new EchoNode());
+    NodeDecl node3 = b.addNode("node3", new EchoNode());
 
-    b.getOrAddStream("n1n2")
-      .setSource(EchoNode.OUTPUT1, node1)
-      .addSink(EchoNode.INPUT1, node2);
+    b.addStream("n1n2")
+      .setSource(node1.getOutput(EchoNode.OUTPUT1))
+      .addSink(node2.getInput(EchoNode.INPUT1));
 
-    b.getOrAddStream("n2n3")
-      .addProperty(TopologyBuilder.STREAM_INLINE, "true")
-      .setSource(EchoNode.OUTPUT1, node2)
-      .addSink(EchoNode.INPUT1, node3);
-
-    Assert.assertEquals("number nodes", 3, b.getAllNodes().values().size());
-    Assert.assertEquals("number root nodes", 1, b.getRootNodes().size());
+    b.addStream("n2n3")
+      .setInline(true)
+      .setSource(node2.getOutput(EchoNode.OUTPUT1))
+      .addSink(node3.getInput(EchoNode.INPUT1));
 
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(2);
+
+    Assert.assertEquals("number nodes", 3, tplg.getAllNodes().size());
+    Assert.assertEquals("number root nodes", 1, tplg.getRootNodes().size());
+
     DNodeManager dnm = new DNodeManager(tplg);
     Assert.assertEquals("number required containers", 2, dnm.getNumRequiredContainers());
 
@@ -151,23 +149,20 @@ public class DNodeManagerTest {
 
   @Test
   public void testStaticPartitioning() {
-    TopologyBuilder b = new TopologyBuilder();
+    NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeConf node1 = b.getOrAddNode("node1");
-    NodeConf node2 = b.getOrAddNode("node2");
-    NodeConf mergeNode = b.getOrAddNode("mergeNode");
-    for (NodeConf nodeConf : b.getAllNodes().values()) {
-      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-    }
+    NodeDecl node1 = b.addNode("node1", new EchoNode());
+    NodeDecl node2 = b.addNode("node2", new EchoNode());
+    NodeDecl mergeNode = b.addNode("mergeNode", new EchoNode());
 
-    StreamConf n1n2 = b.getOrAddStream("n1n2")
-      .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName())
-      .setSource(EchoNode.OUTPUT1, node1)
-      .addSink(EchoNode.INPUT1, node2);
+    StreamBuilder n1n2 = b.addStream("n1n2")
+      .setSerDeClass(TestStaticPartitioningSerDe.class)
+      .setSource(node1.getOutput(EchoNode.OUTPUT1))
+      .addSink(node2.getInput(EchoNode.INPUT1));
 
-    StreamConf mergeStream = b.getOrAddStream("mergeStream")
-        .setSource(EchoNode.OUTPUT1, node2)
-        .addSink(EchoNode.INPUT1, mergeNode);
+    StreamBuilder mergeStream = b.addStream("mergeStream")
+        .setSource(node2.getOutput(EchoNode.OUTPUT1))
+        .addSink(mergeNode.getInput(EchoNode.INPUT1));
 
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(5);
@@ -192,7 +187,7 @@ public class DNodeManagerTest {
       Assert.assertEquals("outputs " + ndi, 1, ndi.outputs.size());
 
       NodeInputDeployInfo nidi = ndi.inputs.get(0);
-      Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
+      Assert.assertEquals("stream " + nidi, n1n2.getDecl().getId(), nidi.declaredStreamId);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], nidi.partitionKeys.get(0)));
       Assert.assertEquals("serde " + nidi, TestStaticPartitioningSerDe.class.getName(), nidi.serDeClassName);
     }
@@ -207,7 +202,7 @@ public class DNodeManagerTest {
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
     List<String> sourceNodeIds = new ArrayList<String>();
     for (NodeInputDeployInfo nidi : mergeNodeDI.inputs) {
-      Assert.assertEquals("streamName " + nidi, mergeStream.getId(), nidi.declaredStreamId);
+      Assert.assertEquals("streamName " + nidi, mergeStream.getDecl().getId(), nidi.declaredStreamId);
       Assert.assertEquals("streamName " + nidi, EchoNode.INPUT1, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       sourceNodeIds.add(nidi.sourceNodeId);
@@ -229,7 +224,7 @@ public class DNodeManagerTest {
     public byte[][] getPartitions() {
       return partitions;
     }
-    
+
     @Override
     public byte[] getPartition(Object o)
     {
@@ -237,15 +232,15 @@ public class DNodeManagerTest {
         throw new UnsupportedOperationException("should not be called with control tuple");
       }
       return partitions[0];
-    }    
-    
+    }
+
   }
 
-  private boolean containsNodeContext(StreamingContainerContext scc, NodeConf nodeConf) {
+  private boolean containsNodeContext(StreamingContainerContext scc, NodeDecl nodeConf) {
     return getNodeDeployInfo(scc, nodeConf) != null;
   }
 
-  private static NodeDeployInfo getNodeDeployInfo(StreamingContainerContext scc, NodeConf nodeConf) {
+  private static NodeDeployInfo getNodeDeployInfo(StreamingContainerContext scc, NodeDecl nodeConf) {
     for (NodeDeployInfo ndi : scc.nodeList) {
       if (nodeConf.getId().equals(ndi.declaredId)) {
         return ndi;

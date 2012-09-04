@@ -497,10 +497,13 @@ public class TopologyBuilder {
     return Collections.unmodifiableSet(this.rootNodes);
   }
 
-
-  @Deprecated
-  public Configuration getConf() {
-    return this.conf;
+  /**
+   * Return all properties of the topology constructed by the builder.
+   * Can be serialized to property file and used to read back into builder.
+   * @return
+   */
+  public Properties getProperties() {
+    return TopologyBuilder.toProperties(this.conf);
   }
 
   public Topology getTopology() {
@@ -552,8 +555,6 @@ public class TopologyBuilder {
     }
 
     return tplg;
-
   }
-
 
 }
