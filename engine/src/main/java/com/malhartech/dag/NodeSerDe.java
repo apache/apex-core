@@ -17,7 +17,7 @@ public interface NodeSerDe
   /**
    * Read POJO from stream.
    *
-   * @param is stream of serialized representation of the object
+   * @param is stream of serialized object representation
    * @return java object
    */
   public Object read(InputStream is) throws IOException;
@@ -27,7 +27,6 @@ public interface NodeSerDe
    *
    * @param object instance to serialize
    * @param os stream to write to
-   * @return serialized representation of the object
    */
   public void write(Object object, OutputStream os) throws IOException;
 }

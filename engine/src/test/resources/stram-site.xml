@@ -33,13 +33,13 @@
 
   <property>
     <name>stram.stream.n1n2.source</name>
-    <value>node1.outputPort</value>
+    <value>node1.output1</value>
     <description></description>
   </property>
 
   <property>
     <name>stram.stream.n1n2.sinks</name>
-    <value>node2.inputPort</value>
+    <value>node2.input1</value>
     <description></description>
   </property>
 
@@ -67,13 +67,13 @@
 
   <property>
     <name>stram.stream.n2n3.source</name>
-    <value>node2.outputPort</value>
+    <value>node2.output1</value>
     <description>Node 3 receives input from node 2.</description>
   </property>
 
   <property>
     <name>stram.stream.n2n3.sinks</name>
-    <value>node3.inputPort,node4.inputPort</value>
+    <value>node3.input1,node4.input1</value>
     <description>node3 and node4 receives input from node 2.</description>
   </property>
 
@@ -87,13 +87,13 @@
 
   <property>
     <name>stram.stream.n4n5.source</name>
-    <value>node4.outputPort</value>
+    <value>node4.output1</value>
     <description>Node 5 receives input from node 4.</description>
   </property>
 
   <property>
     <name>stram.stream.n4n5.sinks</name>
-    <value>node5.inputPort</value>
+    <value>node5.input1</value>
     <description>Node 5 receives input from node 4.</description>
   </property>
 

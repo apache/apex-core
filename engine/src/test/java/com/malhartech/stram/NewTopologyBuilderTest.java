@@ -60,18 +60,18 @@ public class NewTopologyBuilderTest {
   )
   static class ConsoleOutputNode extends AbstractNode implements Serializable {
     private static final long serialVersionUID = 1L;
-    
+
     @Override
     public void process(Object payload) {
       // print tuples
     }
   }
-  
+
   @Test
-  public void testBuilder() throws Exception {
+  public void testJavaBuilder() throws Exception {
 
     NewTopologyBuilder b = new NewTopologyBuilder();
-    
+
     NodeDecl validationNode = b.addNode("validationNode", new ValidationNode());
     NodeDecl countGoodNode = b.addNode("countGoodNode", new CounterNode());
     NodeDecl countBadNode = b.addNode("countBadNode", new CounterNode());
@@ -92,18 +92,23 @@ public class NewTopologyBuilderTest {
     Topology tplg = b.getTopology();
     Assert.assertEquals("number root nodes", 1, tplg.getRootNodes().size());
     Assert.assertEquals("root node id", "validationNode", tplg.getRootNodes().get(0).getId());
-    
-    System.out.println(b.getTopology().getRootNodes());
+
+    System.out.println(b.getTopology());
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(bos);
     oos.writeObject(tplg);
-  
+
+    System.out.println("serialized size: " + bos.toByteArray().length);
+
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
     Topology tplgClone = (Topology)new ObjectInputStream(bis).readObject();
     Assert.assertNotNull(tplgClone);
-    Assert.assertEquals("number nodes in clode", 1, tplgClone.getRootNodes().size());
-    
+    Assert.assertEquals("number nodes in clone", tplg.getAllNodes().size(), tplgClone.getAllNodes().size());
+    Assert.assertEquals("number root nodes in clone", 1, tplgClone.getRootNodes().size());
+    Assert.assertTrue("root node in nodes", tplgClone.getAllNodes().contains(tplgClone.getRootNodes().get(0)));
+
+
   }
-  
+
 }

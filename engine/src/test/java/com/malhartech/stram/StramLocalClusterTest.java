@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.Context;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;

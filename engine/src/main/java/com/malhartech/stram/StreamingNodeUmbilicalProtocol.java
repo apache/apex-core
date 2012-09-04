@@ -110,7 +110,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
    * be deployed and removed dynamically.
    * <p>
    * <br>
-   * 
+   *
    */
   public static class StreamingContainerContext extends WritableAdapter {
     private static final long serialVersionUID = 1L;

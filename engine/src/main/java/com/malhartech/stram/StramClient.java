@@ -73,11 +73,11 @@ public class StramClient
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramClient.class);
   // Configuration
-  private Configuration conf;
+  private final Configuration conf;
   // Handle to talk to the Resource Manager/Applications Manager
   private ClientRMHelper rmClient;
   // Application master specific info to register a new Application with RM/ASM
-  private String appName = StramConstants.APPNAME;
+  private final String appName = StramConstants.APPNAME;
   // App master priority
   private int amPriority = 0;
   // Queue for App master
@@ -122,9 +122,9 @@ public class StramClient
   }
 
   /**
-   * 
+   *
    * @param conf
-   * @throws Exception 
+   * @throws Exception
    */
   public StramClient(Configuration conf) throws Exception
   {
@@ -134,8 +134,8 @@ public class StramClient
 
 
   /**
-   * 
-   * @throws Exception 
+   *
+   * @throws Exception
    */
   public StramClient() throws Exception
   {
@@ -196,9 +196,9 @@ public class StramClient
     Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
     TopologyBuilder tb = new TopologyBuilder(conf);
     tb.addFromProperties(topologyProperties);
-    tb.validate();
 
     topology = tb.getTopology();
+    topology.validate();
     if (cliParser.hasOption("debug")) {
       topology.getConf().setBoolean(Topology.STRAM_DEBUG, true);
     }

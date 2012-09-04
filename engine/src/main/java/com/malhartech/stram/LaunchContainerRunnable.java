@@ -34,10 +34,9 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.TopologyBuilder;
 
 /**
- * 
+ *
  * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming nodes<p>
  * <br>
  */
@@ -63,10 +62,10 @@ public class LaunchContainerRunnable implements Runnable
 
   private void setClasspath(Map<String, String> env)
   {
-    // add localized application jar files to classpath    
-    // At some point we should not be required to add 
-    // the hadoop specific classpaths to the env. 
-    // It should be provided out of the box. 
+    // add localized application jar files to classpath
+    // At some point we should not be required to add
+    // the hadoop specific classpaths to the env.
+    // It should be provided out of the box.
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
@@ -85,19 +84,19 @@ public class LaunchContainerRunnable implements Runnable
     String[] jarPathList = StringUtils.splitByWholeSeparator(libJars, ",");
     for (String jarPath : jarPathList) {
       Path dst = new Path(jarPath);
-      // Create a local resource to point to the destination jar path 
+      // Create a local resource to point to the destination jar path
       FileStatus destStatus = fs.getFileStatus(dst);
       LocalResource amJarRsrc = Records.newRecord(LocalResource.class);
       // Set the type of resource - file or archive
       amJarRsrc.setType(LocalResourceType.FILE);
-      // Set visibility of the resource 
+      // Set visibility of the resource
       // Setting to most private option
       amJarRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
       // Set the resource to be copied over
       amJarRsrc.setResource(ConverterUtils.getYarnUrlFromPath(dst));
-      // Set timestamp and length of file so that the framework 
-      // can do basic sanity checks for the local resource 
-      // after it has been copied over to ensure it is the same 
+      // Set timestamp and length of file so that the framework
+      // can do basic sanity checks for the local resource
+      // after it has been copied over to ensure it is the same
       // resource the client intended to use with the application
       amJarRsrc.setTimestamp(destStatus.getModificationTime());
       amJarRsrc.setSize(destStatus.getLen());
@@ -111,7 +110,7 @@ public class LaunchContainerRunnable implements Runnable
    */
   public void run()
   {
-    // Connect to ContainerManager 
+    // Connect to ContainerManager
     ContainerManager cm = yarnClient.connectToCM(container);
 
     LOG.info("Setting up container launch container for containerid=" + container.getId());
@@ -129,10 +128,10 @@ public class LaunchContainerRunnable implements Runnable
     }
 
     setClasspath(containerEnv);
-    // Set the environment 
+    // Set the environment
     ctx.setEnvironment(containerEnv);
 
-    // Set the local resources 
+    // Set the local resources
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
 
     // add resources for child VM
@@ -147,7 +146,7 @@ public class LaunchContainerRunnable implements Runnable
       return;
     }
 
-    // Set the necessary command to execute on the allocated container 
+    // Set the necessary command to execute on the allocated container
     List<CharSequence> vargs = getChildVMCommand(container.getId().toString());
 
     // Get final commmand
@@ -170,11 +169,11 @@ public class LaunchContainerRunnable implements Runnable
       LOG.error("Start container failed for :"
                 + ", containerId=" + container.getId());
       e.printStackTrace();
-      // TODO do we need to release this container? 
+      // TODO do we need to release this container?
     }
 
     // Get container status?
-    // Left commented out as the shell scripts are short lived 
+    // Left commented out as the shell scripts are short lived
     // and we are relying on the status for completed containers from RM to detect status
 
     //    GetContainerStatusRequest statusReq = Records.newRecord(GetContainerStatusRequest.class);
@@ -221,7 +220,7 @@ public class LaunchContainerRunnable implements Runnable
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
 
-    // Add main class and its arguments 
+    // Add main class and its arguments
     vargs.add(StramChild.class.getName());  // main of Child
     // pass listener's address
     vargs.add(heartbeatAddress.getAddress().getHostAddress());

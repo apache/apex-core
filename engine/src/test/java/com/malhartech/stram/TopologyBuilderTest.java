@@ -31,6 +31,10 @@ import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.stram.conf.NewTopologyBuilder;
+import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
+import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
@@ -73,11 +77,11 @@ public class TopologyBuilderTest {
     // check links
     assertEquals("node1 inputs", 0, node1.getInputStreams().size());
     assertEquals("node1 outputs", 1, node1.getOutputStreams().size());
-    StreamConf n1n2 = node2.getInput("inputPort");
+    StreamConf n1n2 = node2.getInput(EchoNode.INPUT1);
     assertNotNull("n1n2", n1n2);
 
     // output/input stream object same
-    assertEquals("rootNode out is node2 in", n1n2, node1.getOutput("outputPort"));
+    assertEquals("rootNode out is node2 in", n1n2, node1.getOutput(EchoNode.OUTPUT1));
     assertEquals("n1n2 source", node1, n1n2.getSourceNode());
     Assert.assertArrayEquals("n1n2 target", new Object[]{node2}, n1n2.getTargetNodes().toArray());
     assertEquals("partitionPolicy", n1n2.getProperty("partitionPolicy"), "someTargetPolicy");
@@ -89,7 +93,7 @@ public class TopologyBuilderTest {
     StreamConf fromNode2 = node2.getOutputStreams().iterator().next();
     Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(node3, node4), fromNode2.getTargetNodes());
 
-    topConf.validate();
+    topConf.getTopology().validate();
 
     NodeConf node6 = assertNode(nodeConfs, "node6");
 
@@ -166,55 +170,57 @@ public class TopologyBuilderTest {
       Assert.assertEquals("input1 target ", b.getOrAddNode("node1"), input1.getTargetNodes().iterator().next());
       assertEquals("input1.myConfigProperty", "myConfigPropertyValue", input1.getProperty("myConfigProperty"));
       assertEquals("input1 properties count", 2, input1.getProperties().size());
-      b.validate();
-      
+      b.getTopology().validate();
+
   }
 
   @Test
   public void testCycleDetection() {
-     TopologyBuilder b = new TopologyBuilder();
-     
+     NewTopologyBuilder b = new NewTopologyBuilder();
+
      //NodeConf node1 = b.getOrAddNode("node1");
-     NodeConf node2 = b.getOrAddNode("node2");
-     NodeConf node3 = b.getOrAddNode("node3");
-     NodeConf node4 = b.getOrAddNode("node4");
+     NodeDecl node2 = b.addNode("node2", new EchoNode());
+     NodeDecl node3 = b.addNode("node3", new EchoNode());
+     NodeDecl node4 = b.addNode("node4", new EchoNode());
      //NodeConf node5 = b.getOrAddNode("node5");
      //NodeConf node6 = b.getOrAddNode("node6");
-     NodeConf node7 = b.getOrAddNode("node7");
+     NodeDecl node7 = b.addNode("node7", new EchoNode());
 
      // strongly connect n2-n3-n4-n2
-     b.getOrAddStream("n2n3")
-       .setSource("out1", node2)
-       .addSink("in1", node3);
+     b.addStream("n2n3")
+       .setSource(node2.getOutput(EchoNode.OUTPUT1))
+       .addSink(node3.getInput(EchoNode.INPUT1));
 
-     b.getOrAddStream("n3n4")
-       .setSource("out1", node3)
-       .addSink("in1", node4);
-       
-     b.getOrAddStream("n4n2")
-       .setSource("out1", node4)
-       .addSink("in2", node2);
+     b.addStream("n3n4")
+       .setSource(node3.getOutput(EchoNode.OUTPUT1))
+       .addSink(node4.getInput(EchoNode.INPUT1));
+
+     b.addStream("n4n2")
+       .setSource(node4.getOutput(EchoNode.OUTPUT1))
+       .addSink(node2.getInput(EchoNode.INPUT1));
 
      // self referencing node cycle
-     StreamConf n7n7 = b.getOrAddStream("n7n7")
-         .setSource("out1", node7)
-         .addSink("in1", node7);
+     StreamBuilder n7n7 = b.addStream("n7n7")
+         .setSource(node7.getOutput(EchoNode.OUTPUT1))
+         .addSink(node7.getInput(EchoNode.INPUT1));
      try {
-       n7n7.addSink("in1", node7);
+       n7n7.addSink(node7.getInput(EchoNode.INPUT1));
        fail("cannot add to stream again");
      } catch (Exception e) {
        // expected, stream can have single input/output only
      }
 
+     Topology tplg = b.getTopology();
+
      List<List<String>> cycles = new ArrayList<List<String>>();
-     b.findStronglyConnected(node7, cycles);
+     tplg.findStronglyConnected(node7, cycles);
      assertEquals("node self reference", 1, cycles.size());
      assertEquals("node self reference", 1, cycles.get(0).size());
      assertEquals("node self reference", node7.getId(), cycles.get(0).get(0));
 
      // 3 node cycle
      cycles.clear();
-     b.findStronglyConnected(node4, cycles);
+     tplg.findStronglyConnected(node4, cycles);
      assertEquals("3 node cycle", 1, cycles.size());
      assertEquals("3 node cycle", 3, cycles.get(0).size());
      assertTrue("node2", cycles.get(0).contains(node2.getId()));
@@ -222,7 +228,7 @@ public class TopologyBuilderTest {
      assertTrue("node4", cycles.get(0).contains(node4.getId()));
 
      try {
-       b.validate();
+       tplg.validate();
        fail("validation should fail");
      } catch (IllegalStateException e) {
        // expected
@@ -235,7 +241,7 @@ public class TopologyBuilderTest {
   }
 
   /**
-   * Node for topology testing. 
+   * Node for topology testing.
    * Test should reference the ports defined using the constants.
    */
   @NodeAnnotation(
