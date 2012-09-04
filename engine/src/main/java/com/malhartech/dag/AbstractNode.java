@@ -198,6 +198,19 @@ public abstract class AbstractNode implements Node
   }
 
   /**
+   * 
+   * A hook for user to do specific checking on a given configuration<p>
+   * Basic checking like port connectivity, properties that have to be specified, their ranges etc. would be checked
+   * by basic checker<br>
+   * @param config
+   * @return boolean
+   */
+  public boolean checkConfiguration(NodeConfiguration config)
+  {
+      return true;
+  }
+  
+  /**
    * Emit the payload to all active output ports
    *
    * @param o
