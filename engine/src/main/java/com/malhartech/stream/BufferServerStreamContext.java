@@ -29,8 +29,7 @@ public class BufferServerStreamContext extends StreamContext
 
   /**
    *
-   * @param upstreamNodeId
-   * @param downstreamNodeId
+   * @param id
    */
   public BufferServerStreamContext(String id)
   {

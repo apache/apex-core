@@ -33,6 +33,7 @@ public abstract class AbstractNode implements Node
 {
   private transient static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
   private transient String id;
+  private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
   private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   private transient int consumedTupleCount;
@@ -53,6 +54,11 @@ public abstract class AbstractNode implements Node
     }
 
     throw new IllegalArgumentException("Port " + id + " not found!");
+  }
+
+  public final String getActivePort()
+  {
+    return activePort.id;
   }
 
   @Override
@@ -198,22 +204,23 @@ public abstract class AbstractNode implements Node
   }
 
   /**
-   * 
+   *
    * A hook for user to do specific checking on a given configuration<p>
    * Basic checking like port connectivity, properties that have to be specified, their ranges etc. would be checked
    * by basic checker<br>
+   *
    * @param config
    * @return boolean
    */
   public boolean checkConfiguration(NodeConfiguration config)
   {
-      return true;
+    return true;
   }
-  
+
   /**
    * Emit the payload to all active output ports
    *
-   * @param o
+   * @param payload
    */
   public void emit(final Object payload)
   {
@@ -228,7 +235,7 @@ public abstract class AbstractNode implements Node
    * It's expected that the output port is active, otherwise NullPointerException is thrown.
    *
    * @param id
-   * @param o
+   * @param payload
    */
   public final void emit(String id, Object payload)
   {
@@ -275,15 +282,16 @@ public abstract class AbstractNode implements Node
 
       Iterator<CompoundSink> buffers = activeQueues.iterator();
       while (buffers.hasNext()) {
-        CompoundSink cb = buffers.next();
+        activePort = buffers.next();
+
         Object payload;
-        while ((payload = cb.peek()) != null) {
+        while ((payload = activePort.peek()) != null) {
           if (payload instanceof Tuple) {
             final Tuple t = (Tuple)payload;
             switch (t.getType()) {
               case BEGIN_WINDOW:
                 if (expectingBeginWindow == totalQueues) {
-                  cb.get();
+                  activePort.get();
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
                   beginWindow();
@@ -293,7 +301,7 @@ public abstract class AbstractNode implements Node
                   receivedEndWindow = 0;
                 }
                 else if (t.getWindowId() == currentWindowId) {
-                  cb.get();
+                  activePort.get();
                   expectingBeginWindow--;
                 }
                 else {
@@ -303,7 +311,7 @@ public abstract class AbstractNode implements Node
 
               case END_WINDOW:
                 if (t.getWindowId() == currentWindowId) {
-                  cb.get();
+                  activePort.get();
                   if (++receivedEndWindow == totalQueues) {
                     endWindow();
                     for (final Sink output: outputs.values()) {
@@ -355,7 +363,7 @@ public abstract class AbstractNode implements Node
                 /**
                  * we will receive tuples which are equal to the number of input streams.
                  */
-                cb.get();
+                activePort.get();
                 if (--resetTuples == 0) {
                   for (final Sink output: outputs.values()) {
                     output.process(t);
@@ -366,7 +374,7 @@ public abstract class AbstractNode implements Node
 
               case END_STREAM:
                 totalQueues--;
-                activeQueues.remove(cb);
+                activeQueues.remove(activePort);
                 if (totalQueues == 0) {
                   alive = false;
                 }
@@ -377,7 +385,7 @@ public abstract class AbstractNode implements Node
             }
           }
           else {
-            process(cb.get());
+            process(activePort.get());
             consumedTupleCount++;
             shouldWait = false;
           }
