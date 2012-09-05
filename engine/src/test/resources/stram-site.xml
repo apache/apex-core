@@ -10,7 +10,7 @@
   
   <property>
     <name>stram.node.node1.classname</name>
-    <value>com.malhartech.stram.TopologyBuilderTest$EchoNode</value>
+    <value>com.malhartech.stram.GenericTestNode</value>
     <description>The root node</description>
   </property>
 
@@ -25,7 +25,7 @@
 
   <property>
     <name>stram.node.node2.classname</name>
-    <value>com.malhartech.stram.TopologyBuilderTest$EchoNode</value>
+    <value>com.malhartech.stram.GenericTestNode</value>
     <description>Another node, which gets input from root</description>
   </property>
 
@@ -53,7 +53,7 @@
 
   <property>
     <name>stram.node.node3.classname</name>
-    <value>com.malhartech.stram.TopologyBuilderTest$EchoNode</value>
+    <value>com.malhartech.stram.GenericTestNode</value>
     <description>Another node, which gets input from root</description>
   </property>
 
@@ -61,7 +61,7 @@
 
   <property>
     <name>stram.node.node4.classname</name>
-    <value>com.malhartech.stram.TopologyBuilderTest$EchoNode</value>
+    <value>com.malhartech.stram.GenericTestNode</value>
     <description>Another node, which gets input from root</description>
   </property>
 
@@ -81,7 +81,7 @@
 
   <property>
     <name>stram.node.node5.classname</name>
-    <value>com.malhartech.stram.TopologyBuilderTest$EchoNode</value>
+    <value>com.malhartech.stram.GenericTestNode</value>
     <description>Another node, which gets input from root</description>
   </property>
 
@@ -102,7 +102,7 @@
 
   <property>
     <name>stram.node.node6.classname</name>
-    <value>com.malhartech.stram.TopologyBuilderTest$EchoNode</value>
+    <value>com.malhartech.stram.GenericTestNode</value>
     <description>Another node, which gets input from root</description>
   </property>
 

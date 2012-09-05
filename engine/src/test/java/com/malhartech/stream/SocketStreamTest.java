@@ -25,10 +25,10 @@ import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.DNodeManager;
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
+import com.malhartech.stram.GenericTestNode;
 import com.malhartech.stram.NumberGeneratorInputAdapter;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
 import com.malhartech.stram.conf.Topology;
@@ -151,11 +151,11 @@ public class SocketStreamTest
     NewTopologyBuilder b = new NewTopologyBuilder();
 
     NodeDecl generatorNode = b.addNode("generatorNode", NumberGeneratorInputAdapter.class);
-    NodeDecl node1 = b.addNode("node1", EchoNode.class);
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
 
     StreamBuilder generatorOutput = b.addStream("generatorOutput");
     generatorOutput.setSource(generatorNode.getOutput(NumberGeneratorInputAdapter.OUTPUT_PORT))
-            .addSink(node1.getInput(EchoNode.INPUT1))
+            .addSink(node1.getInput(GenericTestNode.INPUT1))
             .setSerDeClass(TestStaticPartitioningSerDe.class);
 
     //StreamConf output1 = b.getOrAddStream("output1");

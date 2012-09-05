@@ -30,7 +30,7 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatRes
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.TopologyBuilderTest.EchoNode;
+import com.malhartech.stram.GenericTestNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology.NodeDecl;
@@ -115,12 +115,12 @@ public class CheckpointTest {
   {
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", EchoNode.class);
-    NodeDecl node2 = b.addNode("node2", EchoNode.class);
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
 
     b.addStream("n1n2")
-      .setSource(node1.getOutput(EchoNode.OUTPUT1))
-      .addSink(node2.getInput(EchoNode.INPUT1));
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node2.getInput(GenericTestNode.INPUT1));
 
     DNodeManager dnm = new DNodeManager(b.getTopology());
     TopologyDeployer deployer = dnm.getTopologyDeployer();

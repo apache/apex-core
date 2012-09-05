@@ -21,7 +21,6 @@ import com.malhartech.dag.Tuple;
 import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
@@ -77,18 +76,18 @@ public class DNodeManagerTest {
 
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", EchoNode.class);
-    NodeDecl node2 = b.addNode("node2", EchoNode.class);
-    NodeDecl node3 = b.addNode("node3", EchoNode.class);
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
+    NodeDecl node3 = b.addNode("node3", GenericTestNode.class);
 
     b.addStream("n1n2")
-      .setSource(node1.getOutput(EchoNode.OUTPUT1))
-      .addSink(node2.getInput(EchoNode.INPUT1));
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node2.getInput(GenericTestNode.INPUT1));
 
     b.addStream("n2n3")
       .setInline(true)
-      .setSource(node2.getOutput(EchoNode.OUTPUT1))
-      .addSink(node3.getInput(EchoNode.INPUT1));
+      .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node3.getInput(GenericTestNode.INPUT1));
 
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(2);
@@ -130,39 +129,39 @@ public class DNodeManagerTest {
     Assert.assertNotNull("stream connection for container2", c2n1n2);
     Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c2n1n2.bufferServerHost);
     Assert.assertEquals("stream connects to upstream port", 9001, c2n1n2.bufferServerPort);
-    Assert.assertEquals("portName " + c2n1n2, EchoNode.INPUT1, c2n1n2.portName);
+    Assert.assertEquals("portName " + c2n1n2, GenericTestNode.INPUT1, c2n1n2.portName);
     Assert.assertNull("partitionKeys " + c2n1n2, c2n1n2.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n1n2, node1DI.id, c2n1n2.sourceNodeId);
-    Assert.assertEquals("sourcePortName " + c2n1n2, EchoNode.OUTPUT1, c2n1n2.sourcePortName);
+    Assert.assertEquals("sourcePortName " + c2n1n2, GenericTestNode.OUTPUT1, c2n1n2.sourcePortName);
 
     // inline input node3 from node2
     NodeInputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");
     Assert.assertNotNull("input " + c2n3In, node2DI);
-    Assert.assertEquals("portName " + c2n3In, EchoNode.INPUT1, c2n3In.portName);
+    Assert.assertEquals("portName " + c2n3In, GenericTestNode.INPUT1, c2n3In.portName);
     Assert.assertNotNull("stream connection for container2", c2n3In);
     Assert.assertNull("bufferServerHost " + c2n3In, c2n3In.bufferServerHost);
     Assert.assertEquals("bufferServerPort " + c2n3In, 0, c2n3In.bufferServerPort);
     Assert.assertNull("partitionKeys " + c2n3In, c2n3In.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n3In, node2DI.id, c2n3In.sourceNodeId);
-    Assert.assertEquals("sourcePortName " + c2n3In, EchoNode.OUTPUT1, c2n3In.sourcePortName);
+    Assert.assertEquals("sourcePortName " + c2n3In, GenericTestNode.OUTPUT1, c2n3In.sourcePortName);
   }
 
   @Test
   public void testStaticPartitioning() {
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", EchoNode.class);
-    NodeDecl node2 = b.addNode("node2", EchoNode.class);
-    NodeDecl mergeNode = b.addNode("mergeNode", EchoNode.class);
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
+    NodeDecl mergeNode = b.addNode("mergeNode", GenericTestNode.class);
 
     StreamBuilder n1n2 = b.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
-      .setSource(node1.getOutput(EchoNode.OUTPUT1))
-      .addSink(node2.getInput(EchoNode.INPUT1));
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node2.getInput(GenericTestNode.INPUT1));
 
     StreamBuilder mergeStream = b.addStream("mergeStream")
-        .setSource(node2.getOutput(EchoNode.OUTPUT1))
-        .addSink(mergeNode.getInput(EchoNode.INPUT1));
+        .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+        .addSink(mergeNode.getInput(GenericTestNode.INPUT1));
 
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(5);
@@ -203,7 +202,7 @@ public class DNodeManagerTest {
     List<String> sourceNodeIds = new ArrayList<String>();
     for (NodeInputDeployInfo nidi : mergeNodeDI.inputs) {
       Assert.assertEquals("streamName " + nidi, mergeStream.getDecl().getId(), nidi.declaredStreamId);
-      Assert.assertEquals("streamName " + nidi, EchoNode.INPUT1, nidi.portName);
+      Assert.assertEquals("streamName " + nidi, GenericTestNode.INPUT1, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       sourceNodeIds.add(nidi.sourceNodeId);
     }
@@ -221,18 +220,18 @@ public class DNodeManagerTest {
   public void testBufferServerAssignment() {
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", EchoNode.class);
-    NodeDecl node2 = b.addNode("node2", EchoNode.class);
-    NodeDecl node3 = b.addNode("node3", EchoNode.class);
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
+    NodeDecl node3 = b.addNode("node3", GenericTestNode.class);
 
     b.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
-      .setSource(node1.getOutput(EchoNode.OUTPUT1))
-      .addSink(node2.getInput(EchoNode.INPUT1));
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node2.getInput(GenericTestNode.INPUT1));
 
     b.addStream("n2n3")
-        .setSource(node2.getOutput(EchoNode.OUTPUT1))
-        .addSink(node3.getInput(EchoNode.INPUT1));
+        .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+        .addSink(node3.getInput(GenericTestNode.INPUT1));
 
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(2);

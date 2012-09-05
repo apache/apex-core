@@ -13,7 +13,6 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
-import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology;
@@ -25,19 +24,19 @@ public class TopologyDeployerTest {
   public void testStaticPartitioning() {
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", EchoNode.class);
-    NodeDecl node2 = b.addNode("node2", EchoNode.class);
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
 
-    NodeDecl mergeNode = b.addNode("mergeNode", EchoNode.class);
+    NodeDecl mergeNode = b.addNode("mergeNode", GenericTestNode.class);
 
     b.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
-      .setSource(node1.getOutput(EchoNode.OUTPUT1))
-      .addSink(node2.getInput(EchoNode.INPUT1));
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node2.getInput(GenericTestNode.INPUT1));
 
     b.addStream("mergeStream")
-      .setSource(node2.getOutput(EchoNode.OUTPUT1))
-      .addSink(mergeNode.getInput(EchoNode.INPUT1));
+      .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(mergeNode.getInput(GenericTestNode.INPUT1));
 
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(2);
@@ -54,31 +53,31 @@ public class TopologyDeployerTest {
 
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", EchoNode.class);
-    NodeDecl node2 = b.addNode("node2", EchoNode.class);
-    NodeDecl node3 = b.addNode("node3", EchoNode.class);
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
+    NodeDecl node3 = b.addNode("node3", GenericTestNode.class);
 
-    NodeDecl notInlineNode = b.addNode("notInlineNode", EchoNode.class);
+    NodeDecl notInlineNode = b.addNode("notInlineNode", GenericTestNode.class);
     // partNode has 2 inputs, inline must be ignored with partitioned input
-    NodeDecl partNode = b.addNode("partNode", EchoNode.class);
+    NodeDecl partNode = b.addNode("partNode", GenericTestNode.class);
 
     b.addStream("n1Output1")
       .setInline(true)
-      .setSource(node1.getOutput(EchoNode.OUTPUT1))
-      .addSink(node2.getInput(EchoNode.INPUT1))
-      .addSink(node3.getInput(EchoNode.INPUT1))
-      .addSink(partNode.getInput(EchoNode.INPUT1));
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node2.getInput(GenericTestNode.INPUT1))
+      .addSink(node3.getInput(GenericTestNode.INPUT1))
+      .addSink(partNode.getInput(GenericTestNode.INPUT1));
 
     b.addStream("n2Output1")
       .setInline(false)
-      .setSource(node2.getOutput(EchoNode.OUTPUT1))
-      .addSink(node3.getInput(EchoNode.INPUT2))
-      .addSink(notInlineNode.getInput(EchoNode.INPUT1));
+      .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node3.getInput(GenericTestNode.INPUT2))
+      .addSink(notInlineNode.getInput(GenericTestNode.INPUT1));
 
     b.addStream("n3Output1")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
-      .setSource(node3.getOutput(EchoNode.OUTPUT1))
-      .addSink(partNode.getInput(EchoNode.INPUT2));
+      .setSource(node3.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(partNode.getInput(GenericTestNode.INPUT2));
 
     int maxContainers = 5;
     Topology tplg = b.getTopology();

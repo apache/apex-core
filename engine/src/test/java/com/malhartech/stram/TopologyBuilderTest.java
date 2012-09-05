@@ -25,8 +25,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.NodeAnnotation;
@@ -76,18 +74,18 @@ public class TopologyBuilderTest {
     // verify node instantiation
     AbstractNode dNode = initNode(node1);
     assertNotNull(dNode);
-    assertEquals(dNode.getClass(), EchoNode.class);
-    EchoNode echoNode = (EchoNode)dNode;
-    assertEquals("myStringPropertyValue", echoNode.getMyStringProperty());
+    assertEquals(dNode.getClass(), GenericTestNode.class);
+    GenericTestNode GenericTestNode = (GenericTestNode)dNode;
+    assertEquals("myStringPropertyValue", GenericTestNode.getMyStringProperty());
 
     // check links
     assertEquals("node1 inputs", 0, node1.getInputStreams().size());
     assertEquals("node1 outputs", 1, node1.getOutputStreams().size());
-    StreamDecl n1n2 = node2.getInputStreams().get(EchoNode.INPUT1);
+    StreamDecl n1n2 = node2.getInputStreams().get(GenericTestNode.INPUT1);
     assertNotNull("n1n2", n1n2);
 
     // output/input stream object same
-    assertEquals("rootNode out is node2 in", n1n2, node1.getOutputStreams().get(EchoNode.OUTPUT1));
+    assertEquals("rootNode out is node2 in", n1n2, node1.getOutputStreams().get(GenericTestNode.OUTPUT1));
     assertEquals("n1n2 source", node1, n1n2.getSource().getNode());
     Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
     Assert.assertEquals("n1n2 target", node2, n1n2.getSinks().get(0).getNode());
@@ -164,16 +162,16 @@ public class TopologyBuilderTest {
       Map<String, String> node3Props = node3.getProperties();
 
       assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", node3Props.get("myStringProperty"));
-      assertEquals("node3.classname", EchoNode.class.getName(), node3Props.get(TopologyBuilder.NODE_CLASSNAME));
+      assertEquals("node3.classname", GenericTestNode.class.getName(), node3Props.get(TopologyBuilder.NODE_CLASSNAME));
 
-      EchoNode dnode3 = initNode(node3);
-      assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", dnode3.myStringProperty);
+      GenericTestNode dnode3 = initNode(node3);
+      assertEquals("node3.myStringProperty", "myStringPropertyValueFromTemplate", dnode3.getMyStringProperty());
       assertFalse("node3.booleanProperty", dnode3.booleanProperty);
 
       NodeDecl node4 = tplg.getNode("node4");
       assertEquals("node4.myStringProperty", "overrideNode4", node4.getProperties().get("myStringProperty"));
-      EchoNode dnode4 = (EchoNode)initNode(node4);
-      assertEquals("node4.myStringProperty", "overrideNode4", dnode4.myStringProperty);
+      GenericTestNode dnode4 = (GenericTestNode)initNode(node4);
+      assertEquals("node4.myStringProperty", "overrideNode4", dnode4.getMyStringProperty());
       assertTrue("node4.booleanProperty", dnode4.booleanProperty);
 
       StreamDecl input1 = tplg.getStream("inputToNode1");
@@ -188,32 +186,32 @@ public class TopologyBuilderTest {
      NewTopologyBuilder b = new NewTopologyBuilder();
 
      //NodeConf node1 = b.getOrAddNode("node1");
-     NodeDecl node2 = b.addNode("node2", EchoNode.class);
-     NodeDecl node3 = b.addNode("node3", EchoNode.class);
-     NodeDecl node4 = b.addNode("node4", EchoNode.class);
+     NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
+     NodeDecl node3 = b.addNode("node3", GenericTestNode.class);
+     NodeDecl node4 = b.addNode("node4", GenericTestNode.class);
      //NodeConf node5 = b.getOrAddNode("node5");
      //NodeConf node6 = b.getOrAddNode("node6");
-     NodeDecl node7 = b.addNode("node7", EchoNode.class);
+     NodeDecl node7 = b.addNode("node7", GenericTestNode.class);
 
      // strongly connect n2-n3-n4-n2
      b.addStream("n2n3")
-       .setSource(node2.getOutput(EchoNode.OUTPUT1))
-       .addSink(node3.getInput(EchoNode.INPUT1));
+       .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+       .addSink(node3.getInput(GenericTestNode.INPUT1));
 
      b.addStream("n3n4")
-       .setSource(node3.getOutput(EchoNode.OUTPUT1))
-       .addSink(node4.getInput(EchoNode.INPUT1));
+       .setSource(node3.getOutput(GenericTestNode.OUTPUT1))
+       .addSink(node4.getInput(GenericTestNode.INPUT1));
 
      b.addStream("n4n2")
-       .setSource(node4.getOutput(EchoNode.OUTPUT1))
-       .addSink(node2.getInput(EchoNode.INPUT1));
+       .setSource(node4.getOutput(GenericTestNode.OUTPUT1))
+       .addSink(node2.getInput(GenericTestNode.INPUT1));
 
      // self referencing node cycle
      StreamBuilder n7n7 = b.addStream("n7n7")
-         .setSource(node7.getOutput(EchoNode.OUTPUT1))
-         .addSink(node7.getInput(EchoNode.INPUT1));
+         .setSource(node7.getOutput(GenericTestNode.OUTPUT1))
+         .addSink(node7.getInput(GenericTestNode.INPUT1));
      try {
-       n7n7.addSink(node7.getInput(EchoNode.INPUT1));
+       n7n7.addSink(node7.getInput(GenericTestNode.INPUT1));
        fail("cannot add to stream again");
      } catch (Exception e) {
        // expected, stream can have single input/output only
@@ -247,56 +245,6 @@ public class TopologyBuilderTest {
 
   public static class TestSerDe extends DefaultSerDe {
 
-  }
-
-  /**
-   * Node for topology testing.
-   * Test should reference the ports defined using the constants.
-   */
-  @NodeAnnotation(
-      ports = {
-          @PortAnnotation(name = EchoNode.INPUT1,  type = PortType.INPUT),
-          @PortAnnotation(name = EchoNode.INPUT2,  type = PortType.INPUT),
-          @PortAnnotation(name = EchoNode.OUTPUT1, type = PortType.OUTPUT)
-      }
-  )
-  public static class EchoNode extends AbstractNode {
-    public static final String INPUT1 = "input1";
-    public static final String INPUT2 = "input2";
-    public static final String OUTPUT1 = "output1";
-
-    private static final Logger logger = LoggerFactory.getLogger(EchoNode.class);
-
-    boolean booleanProperty;
-
-    private String myStringProperty;
-
-    public String getMyStringProperty() {
-      return myStringProperty;
-    }
-
-    public void setMyStringProperty(String myStringProperty) {
-      this.myStringProperty = myStringProperty;
-    }
-
-    public boolean isBooleanProperty() {
-      return booleanProperty;
-    }
-
-    public void setBooleanProperty(boolean booleanProperty) {
-      this.booleanProperty = booleanProperty;
-    }
-
-    @Override
-    public void process(Object o) {
-      logger.info("Got some work: " + o);
-    }
-
-    @Override
-    public void handleIdleTimeout()
-    {
-      deactivate();
-    }
   }
 
   @NodeAnnotation(

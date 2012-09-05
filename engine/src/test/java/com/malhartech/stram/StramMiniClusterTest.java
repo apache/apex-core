@@ -150,9 +150,9 @@ public class StramMiniClusterTest
     //props.put("stram.stream.output.inputNode", "node2");
     //props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    dagProps.put("stram.node.node1.classname", TopologyBuilderTest.EchoNode.class.getName());
+    dagProps.put("stram.node.node1.classname", GenericTestNode.class.getName());
 
-    dagProps.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
+    dagProps.put("stram.node.node2.classname", GenericTestNode.class.getName());
 
     dagProps.put("stram.stream.fromNumGen.source", "numGen.outputPort");
     dagProps.put("stram.stream.fromNumGen.sinks", "node1.input1");
