@@ -110,7 +110,6 @@ public class HDFSOutputStream implements Stream
 
   /**
    *
-   * @param context
    */
   @Override
   public void deactivate()
@@ -128,7 +127,9 @@ public class HDFSOutputStream implements Stream
 
   /**
    *
-   * @param t
+   * @param id
+   * @param sink
+   * @return Sink
    */
   @Override
   public Sink connect(String id, Sink sink)

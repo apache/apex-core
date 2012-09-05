@@ -15,7 +15,7 @@ public interface Sink
 {
   /**
    *
-   * @param t the value of t
+   * @param payload
    */
   public void process(Object payload);
 }

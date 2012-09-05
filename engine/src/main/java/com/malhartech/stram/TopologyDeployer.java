@@ -191,7 +191,7 @@ public class TopologyDeployer {
     
     /**
      * 
-     * @return {@link com.malhartech.stram.conf.NodeConf}
+     * @return NodeDecl
      */
     public NodeDecl getLogicalNode() {
       return this.logicalNode;
@@ -262,7 +262,6 @@ public class TopologyDeployer {
   
   /**
    * 
-   * @param maxContainers
    * @param tplg
    */
   public TopologyDeployer(Topology tplg) {

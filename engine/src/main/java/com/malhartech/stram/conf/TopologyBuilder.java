@@ -179,7 +179,7 @@ public class TopologyBuilder {
     /**
      * Set source on stream to the node output port.
      * @param portName
-     * @param sourceNode
+     * @param node
      */
     public StreamConf setSource(String portName, NodeConf node) {
       if (this.sourceNode != null) {
@@ -500,12 +500,16 @@ public class TopologyBuilder {
   /**
    * Return all properties of the topology constructed by the builder.
    * Can be serialized to property file and used to read back into builder.
-   * @return
+   * @return Properties
    */
   public Properties getProperties() {
     return TopologyBuilder.toProperties(this.conf);
   }
 
+  /**
+   * 
+   * @return Topology
+   */
   public Topology getTopology() {
 
     Topology tplg = new Topology(conf);
