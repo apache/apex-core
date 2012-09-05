@@ -54,8 +54,9 @@ public class ArithmeticQuotient extends AbstractNode {
     HashMap<String, Number> denominators = new HashMap<String, Number>();
     HashMap<String, Number> in_tuple = new HashMap<String, Number>();
     /**
-     * Multiplies the quotient by this number. Ease of use for percentage (*
-     * 100) or CPM (* 1000)
+     * Multiplies the quotient by this number. Ease of use for percentage
+     * (* 100) or CPM (* 1000)
+     * 
      */
     public static final String KEY_MULTIPLY_BY = "multiply_by";
     /**
