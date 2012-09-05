@@ -40,7 +40,7 @@ public abstract class AbstractNode implements Node
   private transient volatile boolean alive;
 
   // optimize the performance of this method.
-  private PortType getPortType(String id)
+  private PortAnnotation getPort(String id)
   {
     Class<? extends Node> clazz = this.getClass();
     NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
@@ -48,7 +48,7 @@ public abstract class AbstractNode implements Node
       PortAnnotation[] ports = na.ports();
       for (PortAnnotation pa: ports) {
         if (id.equals(pa.name())) {
-          return pa.type();
+          return pa;
         }
       }
     }
@@ -145,48 +145,51 @@ public abstract class AbstractNode implements Node
   @Override
   public Sink connect(String id, Sink dagpart)
   {
+    PortAnnotation pa = getPort(id);
+    if (pa == null) {
+      throw new IllegalArgumentException("Unrecognized Port");
+    }
+
     Sink s;
-    switch (getPortType(id)) {
+    switch (pa.type()) {
       case BIDI:
         logger.info("stream is connected to a bidi port, can we have a bidi stream?");
         if (dagpart == null) {
-          outputs.remove(id);
+          outputs.remove(pa.name());
         }
         else {
-          outputs.put(id, dagpart);
+          outputs.put(pa.name(), dagpart);
         }
 
       case INPUT:
         if (dagpart == null) {
-          inputs.remove(id);
+          inputs.remove(pa.name());
           s = null;
         }
         else {
-          s = new CompoundSink(id, dagpart);
-          inputs.put(id, ((CompoundSink)s));
+          s = new CompoundSink(pa.name(), dagpart);
+          inputs.put(pa.name(), ((CompoundSink)s));
         }
         break;
 
       case OUTPUT:
         if (dagpart == null) {
-          outputs.remove(id);
+          outputs.remove(pa.name());
         }
         else {
-          outputs.put(id, dagpart);
+          outputs.put(pa.name(), dagpart);
         }
         s = null;
         break;
 
       case DEAD:
+      default:
         logger.warn("stream is connected to a dead port!");
         s = null;
         break;
-
-      default:
-        throw new IllegalArgumentException("Unrecognized Port");
     }
 
-    connected(id, dagpart);
+    connected(pa.name(), dagpart);
     return s;
   }
 
