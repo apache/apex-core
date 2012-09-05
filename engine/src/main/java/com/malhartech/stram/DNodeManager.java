@@ -43,7 +43,6 @@ import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.InputPort;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.Topology.StreamDecl;
-import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.webapp.NodeInfo;
 /**
  *
@@ -431,7 +430,24 @@ public class DNodeManager
         containerIdle = false;
         status.bytesTotal += shb.getNumberBytesProcessed();
         status.tuplesTotal += shb.getNumberTuplesProcessed();
-        checkNodeLoad(status, shb);
+
+        // checkpoint tracking
+        PTNode node = (PTNode)status.node;
+        if (shb.getLastBackupWindowId() != 0) {
+          synchronized (node.checkpointWindows) {
+            if (!node.checkpointWindows.isEmpty()) {
+              Long lastCheckpoint = node.checkpointWindows.get(node.checkpointWindows.size()-1);
+              // no need to do any work unless checkpoint moves
+              if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
+                // keep track of current
+                node.checkpointWindows.add(shb.getLastBackupWindowId());
+                // TODO: purge older checkpoints, if no longer needed downstream
+              }
+            } else {
+              node.checkpointWindows.add(shb.getLastBackupWindowId());
+            }
+          }
+        }
       }
     }
 
@@ -479,51 +495,6 @@ public class DNodeManager
       }
     }
     return true;
-  }
-
-  private void checkNodeLoad(NodeStatus status, StreamingNodeHeartbeat shb)
-  {
-    if (!(status.node instanceof PTNode)) {
-      LOG.warn("Cannot find the configuration for node {}", shb.getNodeId());
-      return;
-    }
-
-    NodeDecl nodeConf = ((PTNode)status.node).getLogicalNode();
-    // check load constraints
-    int tuplesProcessed = shb.getNumberTuplesProcessed();
-    // TODO: populate into bean at initialization time
-    Map<String, String> properties = nodeConf.getProperties();
-    if (properties.containsKey(TopologyBuilder.NODE_LB_TUPLECOUNT_MIN)) {
-      int minTuples = new Integer(properties.get(TopologyBuilder.NODE_LB_TUPLECOUNT_MIN));
-      if (tuplesProcessed < minTuples) {
-        LOG.warn("Node {} processed {} messages below configured min {}", new Object[]{shb.getNodeId(), tuplesProcessed, minTuples});
-      }
-    }
-    if (properties.containsKey(TopologyBuilder.NODE_LB_TUPLECOUNT_MAX)) {
-      int maxTuples = new Integer(properties.get(TopologyBuilder.NODE_LB_TUPLECOUNT_MAX));
-      if (tuplesProcessed > maxTuples) {
-        LOG.warn("Node {} processed {} messages and exceeds configured max {}", new Object[]{shb.getNodeId(), tuplesProcessed, maxTuples});
-      }
-    }
-
-    // checkpoint tracking
-    PTNode node = (PTNode)status.node;
-    if (shb.getLastBackupWindowId() != 0) {
-      synchronized (node.checkpointWindows) {
-        if (!node.checkpointWindows.isEmpty()) {
-          Long lastCheckpoint = node.checkpointWindows.get(node.checkpointWindows.size()-1);
-          // no need to do any work unless checkpoint moves
-          if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
-            // keep track of current
-            node.checkpointWindows.add(shb.getLastBackupWindowId());
-            // TODO: purge older checkpoints, if no longer needed downstream
-          }
-        } else {
-          node.checkpointWindows.add(shb.getLastBackupWindowId());
-        }
-      }
-    }
-
   }
 
   /**

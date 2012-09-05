@@ -71,7 +71,7 @@ public class TopologyBuilder {
    * Named set of properties that can be used to instantiate streams or nodes
    * with common settings.
    */
-  public class TemplateConf {
+  private class TemplateConf {
     private String id;
     private Properties properties = new Properties();
 
@@ -217,7 +217,7 @@ public class TopologyBuilder {
   /**
    *
    */
-  class PropertiesWithModifiableDefaults extends Properties {
+  private class PropertiesWithModifiableDefaults extends Properties {
     private static final long serialVersionUID = -4675421720308249982L;
 
     /**
