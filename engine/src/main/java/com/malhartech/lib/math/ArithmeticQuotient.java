@@ -16,23 +16,24 @@ import java.util.Map;
  *
  * Takes in two streams via input ports "numerator" and "denominator". At the
  * end of window computes the quotient for each key and emits the result on port
- * "quotient".<p> <br> Each stream is added to a hash. The values are added for
- * each key within the window and for each stream.<br> If integermath parameter
- * is true then the values are expected to be integers and the result is
- * quotient,reminder (both integers).<br> If compute_margin is true then the
- * result is 1 - numerator/denominator expressed as a percentage. Ideally
- * multiply_by should be 1 in this case.<br> This node only functions in a
- * windowed stram application <br> Compile time error processing is done on
- * configuration parameters<br> property "integermath" has to be a boolean
- * ("true" or "false").<br> property "compute_margin" has to be boolean ("true"
- * or "false").<br> property "multiply_by" has to be an integer.<br> input ports
- * "numerator", "denominator" must be connected.<br> one of the out bound ports
- * "quotient" or "_error" must be connected.<br> "windowed" has to be true<br>
+ * "quotient".<p>
+ * <br>
+ * Each stream is added to a hash. The values are added for each key within the window and for each stream.<br>
+ * If integermath parameter is true then the values are expected to be integers and the result is quotient,reminder (both integers).<br>
+ * If compute_margin is true then the result is 1 - numerator/denominator expressed as a percentage. Ideally
+ * multiply_by should be 1 in this case.<br>
+ * This node only functions in a windowed stram application<br>
+ * Compile time error processing is done on configuration parameters<br>
+ * property "compute_margin" has to be boolean ("true" or "false").<br>
+ * property "multiply_by" has to be an integer.<br>
+ * input ports "numerator", "denominator" must be connected.<br>
+ * one of the out bound ports "quotient" or "_error" must be connected.<br>
+ * "windowed" has to be true<br>
  * Run time error processing are emitted on _error port. The errors are:<br>
- * Divide by zero (Error): no result is emitted on "outport".<br> Input tuple
- * not an integer on denominator stream: This tuple would not be counted towards
- * the result.<br> Input tuple not an integer on numerator stream: This tuple
- * would not be counted towards the result.<br> <br>
+ * Divide by zero (Error): no result is emitted on "outport".<br>
+ * Input tuple not an integer on denominator stream: This tuple would not be counted towards the result.<br> 
+ * Input tuple not an integer on numerator stream: This tuple would not be counted towards the result.<br>
+ * <br>
  *
  * @author amol<br>
  *
