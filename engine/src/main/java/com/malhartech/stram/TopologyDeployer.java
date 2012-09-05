@@ -108,18 +108,6 @@ public class TopologyDeployer {
       return logicalStream.getId();
     }
 
-    /**
-     *
-     * @return InetSocketAddress
-     */
-    public InetSocketAddress getBufferServerAddress() {
-      if (source instanceof PTNode) {
-        return ((PTNode)source).container.bufferServerAddress;
-      } else {
-        return ((PTNode)target).container.bufferServerAddress;
-      }
-    }
-
   }
 
   /**

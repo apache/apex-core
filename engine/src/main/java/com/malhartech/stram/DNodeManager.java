@@ -373,12 +373,16 @@ public class DNodeManager
           if (outputInfo == null) {
             throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
           }
-          // set the id required to inline link both nodes
-          //outputInfo.inlineTargetNodeId = node.id;
         } else {
           // buffer server input
-          inputInfo.bufferServerHost = in.getBufferServerAddress().getHostName();
-          inputInfo.bufferServerPort = in.getBufferServerAddress().getPort();
+          // FIXME: address to come from upstream node, should be guaranteed assigned first
+          InetSocketAddress addr = ((PTNode)in.source).container.bufferServerAddress;
+          if (addr == null) {
+            LOG.warn("upstream address not assigned: " + in.source);
+            addr = container.bufferServerAddress;
+          }
+          inputInfo.bufferServerHost = addr.getHostName();
+          inputInfo.bufferServerPort = addr.getPort();
           if (streamDecl.getSerDeClass() != null) {
             inputInfo.serDeClassName = streamDecl.getSerDeClass().getName();
           }

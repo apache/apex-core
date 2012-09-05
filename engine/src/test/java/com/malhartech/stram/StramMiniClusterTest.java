@@ -143,7 +143,7 @@ public class StramMiniClusterTest
 
     // input node (ensure shutdown works while windows are generated)
     dagProps.put("stram.node.numGen.classname", NumberGeneratorInputAdapter.class.getName());
-    dagProps.put("stram.node.maxTuples", "1");
+    dagProps.put("stram.node.numGen.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
     //props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
@@ -166,9 +166,9 @@ public class StramMiniClusterTest
     dagProps.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
     tb.addFromProperties(dagProps);
 
-StramLocalCluster lc = new StramLocalCluster(tb.getTopology());
-lc.run();
-assert(false);
+    //StramLocalCluster lc = new StramLocalCluster(tb.getTopology());
+    //lc.run();
+    //assert(false);
 
     Properties tplgProperties = tb.getProperties();
     File tmpFile = createTmpPropFile(tplgProperties);

@@ -214,6 +214,35 @@ public class DNodeManagerTest {
     Assert.assertEquals("outputs " + mergeNodeDI, 0, mergeNodeDI.outputs.size());
   }
 
+  /**
+   * Verify buffer server address when downstream node is assigned before upstream.
+   */
+  @Test
+  public void testBufferServerAssignment() {
+    NewTopologyBuilder b = new NewTopologyBuilder();
+
+    NodeDecl node1 = b.addNode("node1", EchoNode.class);
+    NodeDecl node2 = b.addNode("node2", EchoNode.class);
+    NodeDecl node3 = b.addNode("node3", EchoNode.class);
+
+    b.addStream("n1n2")
+      .setSerDeClass(TestStaticPartitioningSerDe.class)
+      .setSource(node1.getOutput(EchoNode.OUTPUT1))
+      .addSink(node2.getInput(EchoNode.INPUT1));
+
+    b.addStream("n2n3")
+        .setSource(node2.getOutput(EchoNode.OUTPUT1))
+        .addSink(node3.getInput(EchoNode.INPUT1));
+
+    Topology tplg = b.getTopology();
+    tplg.setMaxContainerCount(2);
+
+    // node1 and node3 are assigned, node2 unassigned
+    DNodeManager dnmgr = new DNodeManager(tplg);
+    dnmgr.assignContainerForTest("container1", InetSocketAddress.createUnresolved("localhost", 9001));
+
+  }
+
   public static class TestStaticPartitioningSerDe extends DefaultSerDe {
 
     public final static byte[][] partitions = new byte[][]{
