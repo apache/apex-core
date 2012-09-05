@@ -72,7 +72,6 @@ public class TopologyBuilder {
    * with common settings.
    */
   private class TemplateConf {
-    private String id;
     private Properties properties = new Properties();
 
     /**
@@ -80,24 +79,6 @@ public class TopologyBuilder {
      * @param id
      */
     private TemplateConf(String id) {
-      this.id = id;
-    }
-
-    /**
-     *
-     * @return String
-     */
-    public String getId() {
-      return id;
-    }
-
-    /**
-     *
-     * @param key
-     * @param value
-     */
-    public void addProperty(String key, String value) {
-      properties.setProperty(key, value);
     }
   }
 
@@ -347,7 +328,7 @@ public class TopologyBuilder {
   }
 
 
-  public NodeConf getOrAddNode(String nodeId) {
+  private NodeConf getOrAddNode(String nodeId) {
     NodeConf nc = nodes.get(nodeId);
     if (nc == null) {
       nc = new NodeConf(nodeId);
@@ -357,7 +338,7 @@ public class TopologyBuilder {
     return nc;
   }
 
-  public StreamConf getOrAddStream(String id) {
+  private StreamConf getOrAddStream(String id) {
     StreamConf sc = streams.get(id);
     if (sc == null) {
       sc = new StreamConf(id);
@@ -366,7 +347,7 @@ public class TopologyBuilder {
     return sc;
   }
 
-  public TemplateConf getOrAddTemplate(String id) {
+  private TemplateConf getOrAddTemplate(String id) {
     TemplateConf sc = templates.get(id);
     if (sc == null) {
       sc = new TemplateConf(id);

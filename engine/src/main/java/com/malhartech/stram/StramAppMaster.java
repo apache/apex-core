@@ -7,7 +7,6 @@ package com.malhartech.stram;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -17,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.cli.CommandLine;
@@ -65,11 +63,10 @@ import com.malhartech.bufferserver.Server;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.webapp.StramWebApp;
 
 /**
- * 
+ *
  * Streaming Application Master<p>
  * The engine of the streaming platform. Runs as a YARN application master<br>
  * As part of initialization the following tasks are done<br>
@@ -264,13 +261,14 @@ public class StramAppMaster
       LOG.error("Error dumping configuration.", e);
     };
 
-    try {
-      LOG.info("Topology: {}", topology.toString());
+    if (topology != null) {
+      try {
+        LOG.info("Topology: {}", topology.toString());
+      }
+      catch (Exception e) {
+        LOG.error("Error dumping topology.", e);
+      };
     }
-    catch (Exception e) {
-      LOG.error("Error dumping topology.", e);
-    };
-
   }
 
   public StramAppMaster() throws Exception
@@ -329,11 +327,14 @@ public class StramAppMaster
     requestPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
 
     // set topology - read from localized dfs location populated by submit client
-    TopologyBuilder b = new TopologyBuilder(conf);
-    Properties tplgProperties = readProperties("./stram.properties");
-    b.addFromProperties(tplgProperties);
+    //TopologyBuilder b = new TopologyBuilder(conf);
+    //Properties tplgProperties = readProperties("./stram.properties");
+    //b.addFromProperties(tplgProperties);
+    //this.topology = b.getTopology();
 
-    this.topology = b.getTopology();
+    FileInputStream fis = new FileInputStream("./" + Topology.SER_FILE_NAME);
+    this.topology = Topology.read(fis);
+    fis.close();
     // "debug" simply dumps all data using LOG.info
     if (topology.isDebug()) {
       dumpOutDebugInfo();
@@ -369,15 +370,6 @@ public class StramAppMaster
     }
 
     return true;
-  }
-
-  public static Properties readProperties(String filePath) throws IOException
-  {
-    InputStream is = new FileInputStream(filePath);
-    Properties props = new Properties(System.getProperties());
-    props.load(is);
-    is.close();
-    return props;
   }
 
   /**

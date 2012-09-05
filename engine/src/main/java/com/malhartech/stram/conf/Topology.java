@@ -6,8 +6,12 @@ package com.malhartech.stram.conf;
 
 import java.io.Externalizable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -263,6 +267,7 @@ public class Topology implements Serializable, TopologyConstants {
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
           append("id", this.id).
+          append("class", this.nodeClass.getName()).
           toString();
     }
 
@@ -433,6 +438,15 @@ public class Topology implements Serializable, TopologyConstants {
         cycles.add(connectedIds);
       }
     }
+  }
+
+  public static void write(Topology tplg, OutputStream os) throws IOException {
+    ObjectOutputStream oos = new ObjectOutputStream(os);
+    oos.writeObject(tplg);
+  }
+
+  public static Topology read(InputStream is) throws IOException, ClassNotFoundException {
+    return (Topology)new ObjectInputStream(is).readObject();
   }
 
   @Override

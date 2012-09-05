@@ -9,6 +9,8 @@ package com.malhartech.stram.conf;
  */
 public interface TopologyConstants {
 
+  public static final String SER_FILE_NAME = "stram-conf.ser";
+
   /**
    * Comma separated list of jar files that will be made available to stram app master and child containers
    */
@@ -19,7 +21,7 @@ public interface TopologyConstants {
   public static final String STRAM_MASTER_MEMORY_MB = "stram.masterMemoryMB";
   public static final String STRAM_WINDOW_SIZE_MILLIS = "stram.windowSizeMillis";
   public static final String STRAM_CHECKPOINT_DIR = "stram.checkpointDir";
-  public static final String STRAM_CHECKPOINT_INTERVAL_MILLIS = "stram.checkpointIntervalMillis"; 
-  
-  
+  public static final String STRAM_CHECKPOINT_INTERVAL_MILLIS = "stram.checkpointIntervalMillis";
+
+
 }

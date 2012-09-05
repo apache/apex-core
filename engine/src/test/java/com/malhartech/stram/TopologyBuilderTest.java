@@ -10,6 +10,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -295,6 +297,84 @@ public class TopologyBuilderTest {
     {
       deactivate();
     }
+  }
+
+  @NodeAnnotation(
+      ports = {
+          @PortAnnotation(name = "goodOutputPort",  type = PortType.OUTPUT),
+          @PortAnnotation(name = "badOutputPort",  type = PortType.OUTPUT)
+      }
+  )
+  static class ValidationNode extends AbstractNode {
+    @Override
+    public void process(Object payload) {
+      // classify tuples
+    }
+  }
+
+  @NodeAnnotation(
+      ports = {
+          @PortAnnotation(name = "countInputPort",  type = PortType.INPUT)
+      }
+  )
+  static class CounterNode extends AbstractNode {
+    @Override
+    public void process(Object payload) {
+      // count tuples
+    }
+  }
+
+  @NodeAnnotation(
+      ports = {
+          @PortAnnotation(name = "echoInputPort",  type = PortType.INPUT)
+      }
+  )
+  static class ConsoleOutputNode extends AbstractNode {
+    @Override
+    public void process(Object payload) {
+      // print tuples
+    }
+  }
+
+  @Test
+  public void testJavaBuilder() throws Exception {
+
+    NewTopologyBuilder b = new NewTopologyBuilder();
+
+    NodeDecl validationNode = b.addNode("validationNode", ValidationNode.class);
+    NodeDecl countGoodNode = b.addNode("countGoodNode", CounterNode.class);
+    NodeDecl countBadNode = b.addNode("countBadNode", CounterNode.class);
+    NodeDecl echoBadNode = b.addNode("echoBadNode", ConsoleOutputNode.class);
+
+    // good tuples to counter node
+    b.addStream("goodTuplesStream")
+      .setSource(validationNode.getOutput("goodOutputPort"))
+      .addSink(countGoodNode.getInput("countInputPort"));
+
+    // bad tuples to separate stream and echo node
+    // (stream with 2 outputs)
+    b.addStream("badTuplesStream")
+      .setSource(validationNode.getOutput("badOutputPort"))
+      .addSink(countBadNode.getInput("countInputPort"))
+      .addSink(echoBadNode.getInput("echoInputPort"));
+
+    Topology tplg = b.getTopology();
+    Assert.assertEquals("number root nodes", 1, tplg.getRootNodes().size());
+    Assert.assertEquals("root node id", "validationNode", tplg.getRootNodes().get(0).getId());
+
+    System.out.println(b.getTopology());
+
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    Topology.write(tplg, bos);
+
+    System.out.println("serialized size: " + bos.toByteArray().length);
+
+    ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+    Topology tplgClone = Topology.read(bis);
+    Assert.assertNotNull(tplgClone);
+    Assert.assertEquals("number nodes in clone", tplg.getAllNodes().size(), tplgClone.getAllNodes().size());
+    Assert.assertEquals("number root nodes in clone", 1, tplgClone.getRootNodes().size());
+    Assert.assertTrue("root node in nodes", tplgClone.getAllNodes().contains(tplgClone.getRootNodes().get(0)));
   }
 
 }

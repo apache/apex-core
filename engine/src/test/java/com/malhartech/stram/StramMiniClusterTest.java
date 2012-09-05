@@ -41,10 +41,8 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.HeartbeatCounters;
-import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -141,37 +139,36 @@ public class StramMiniClusterTest
 
     // create test topology
     TopologyBuilder tb = new TopologyBuilder();
+    Properties dagProps = new Properties();
 
     // input node (ensure shutdown works while windows are generated)
-    NodeConf genNode = tb.getOrAddNode("numGen");
-    genNode.setClassName(NumberGeneratorInputAdapter.class.getName());
-    genNode.setProperty("maxTuples", "1");
+    dagProps.put("stram.node.numGen.classname", NumberGeneratorInputAdapter.class.getName());
+    dagProps.put("stram.node.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
     //props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
     //props.put("stram.stream.output.inputNode", "node2");
     //props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    NodeConf node1 = tb.getOrAddNode("node1");
-    node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+    dagProps.put("stram.node.node1.classname", TopologyBuilderTest.EchoNode.class.getName());
 
-    NodeConf node2 = tb.getOrAddNode("node2");
-    node2.setClassName(TopologyBuilderTest.EchoNode.class.getName());
+    dagProps.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
 
-    tb.getOrAddStream("fromNumGen")
-      .setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, genNode)
-      .addSink(EchoNode.INPUT1, node1);
+    dagProps.put("stram.stream.fromNumGen.source", "numGen.outputPort");
+    dagProps.put("stram.stream.fromNumGen.sinks", "node1.input1");
 
-    tb.getOrAddStream("n1n2")
-      .setSource(EchoNode.OUTPUT1, node1)
-      .addSink(EchoNode.INPUT1, node2);
+    dagProps.put("stram.stream.n1n2.source", "node1.output1");
+    dagProps.put("stram.stream.n1n2.sinks", "node2.input1");
 
-    Properties dagProps = new Properties();
     dagProps.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "256");
     dagProps.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
     dagProps.setProperty(Topology.STRAM_DEBUG, "true");
     dagProps.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
     tb.addFromProperties(dagProps);
+
+StramLocalCluster lc = new StramLocalCluster(tb.getTopology());
+lc.run();
+assert(false);
 
     Properties tplgProperties = tb.getProperties();
     File tmpFile = createTmpPropFile(tplgProperties);
