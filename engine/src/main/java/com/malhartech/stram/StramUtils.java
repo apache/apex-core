@@ -50,15 +50,14 @@ public abstract class StramUtils {
   }
 
   /**
-   * Instantiate node from configuration. (happens in the child container, not the stram master process.)
+   * Instantiate node from configuration.
    *
    * @param nodeConf
    * @param conf
    */
-  public static Node initNode(String className, Map<String, String> properties)
+  public static Node initNode(Class<? extends Node> nodeClass, Map<String, String> properties)
   {
     try {
-      Class<? extends Node> nodeClass = classForName(className, Node.class);
       Constructor<? extends Node> c = nodeClass.getConstructor();
       Node node = c.newInstance();
       // populate custom properties
@@ -72,13 +71,13 @@ public abstract class StramUtils {
       throw new IllegalArgumentException("Error setting node properties", e);
     }
     catch (SecurityException e) {
-      throw new IllegalArgumentException("Error creating instance of class: " + className, e);
+      throw new IllegalArgumentException("Error creating instance of class: " + nodeClass, e);
     }
     catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException("Constructor with NodeContext not found: " + className, e);
+      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeClass, e);
     }
     catch (InstantiationException e) {
-      throw new IllegalArgumentException("Failed to instantiate: " + className, e);
+      throw new IllegalArgumentException("Failed to instantiate: " + nodeClass, e);
     }
   }
 

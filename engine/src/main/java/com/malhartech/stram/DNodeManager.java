@@ -16,11 +16,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.fusesource.hawtbuf.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeSerDe;
 import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
@@ -231,12 +231,12 @@ public class DNodeManager
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
-      BeanUtils.populate(nodeDecl.getNode(), nodeDecl.getProperties());
-      this.nodeSerDe.write(nodeDecl.getNode(), os);
+      Node node = StramUtils.initNode(nodeDecl.getNodeClass(), nodeDecl.getProperties());
+      this.nodeSerDe.write(node, os);
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {
-      throw new RuntimeException("Failed to serialize " + nodeDecl + "(" + nodeDecl.getNode() + ")");
+      throw new RuntimeException("Failed to initialize " + nodeDecl + "(" + nodeDecl.getNodeClass() + ")");
     }
     //snc.setDnodeClassName(nodeDecl.getProperties().get(TopologyBuilder.NODE_CLASSNAME));
     //if (snc.getDnodeClassName() == null) {

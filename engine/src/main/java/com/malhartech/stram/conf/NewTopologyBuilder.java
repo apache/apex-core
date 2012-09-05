@@ -49,8 +49,8 @@ public class NewTopologyBuilder {
 
   }
 
-  public NodeDecl addNode(String id, Node node) {
-    return topology.addNode(id, node);
+  public NodeDecl addNode(String id, Class<? extends Node> nodeClass) {
+    return topology.addNode(id, nodeClass);
   }
 
   public StreamBuilder addStream(String id) {

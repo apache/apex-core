@@ -63,7 +63,7 @@ public class CheckpointTest {
   {
     NewTopologyBuilder tb = new NewTopologyBuilder();
     // node with no inputs will be connected to window generator
-    tb.addNode("node1", new NumberGeneratorInputAdapter())
+    tb.addNode("node1", NumberGeneratorInputAdapter.class)
         .setProperty("maxTuples", "1");
     DNodeManager dnm = new DNodeManager(tb.getTopology());
 
@@ -115,8 +115,8 @@ public class CheckpointTest {
   {
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", new EchoNode());
-    NodeDecl node2 = b.addNode("node2", new EchoNode());
+    NodeDecl node1 = b.addNode("node1", EchoNode.class);
+    NodeDecl node2 = b.addNode("node2", EchoNode.class);
 
     b.addStream("n1n2")
       .setSource(node1.getOutput(EchoNode.OUTPUT1))

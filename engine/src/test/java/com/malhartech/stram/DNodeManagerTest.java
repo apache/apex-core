@@ -77,9 +77,9 @@ public class DNodeManagerTest {
 
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", new EchoNode());
-    NodeDecl node2 = b.addNode("node2", new EchoNode());
-    NodeDecl node3 = b.addNode("node3", new EchoNode());
+    NodeDecl node1 = b.addNode("node1", EchoNode.class);
+    NodeDecl node2 = b.addNode("node2", EchoNode.class);
+    NodeDecl node3 = b.addNode("node3", EchoNode.class);
 
     b.addStream("n1n2")
       .setSource(node1.getOutput(EchoNode.OUTPUT1))
@@ -151,9 +151,9 @@ public class DNodeManagerTest {
   public void testStaticPartitioning() {
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl node1 = b.addNode("node1", new EchoNode());
-    NodeDecl node2 = b.addNode("node2", new EchoNode());
-    NodeDecl mergeNode = b.addNode("mergeNode", new EchoNode());
+    NodeDecl node1 = b.addNode("node1", EchoNode.class);
+    NodeDecl node2 = b.addNode("node2", EchoNode.class);
+    NodeDecl mergeNode = b.addNode("mergeNode", EchoNode.class);
 
     StreamBuilder n1n2 = b.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)

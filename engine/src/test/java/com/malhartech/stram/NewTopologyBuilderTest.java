@@ -8,7 +8,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 
 import junit.framework.Assert;
 
@@ -30,9 +29,7 @@ public class NewTopologyBuilderTest {
           @PortAnnotation(name = "badOutputPort",  type = PortType.OUTPUT)
       }
   )
-  static class ValidationNode extends AbstractNode implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+  static class ValidationNode extends AbstractNode {
     @Override
     public void process(Object payload) {
       // classify tuples
@@ -44,9 +41,7 @@ public class NewTopologyBuilderTest {
           @PortAnnotation(name = "countInputPort",  type = PortType.INPUT)
       }
   )
-  static class CounterNode extends AbstractNode implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+  static class CounterNode extends AbstractNode {
     @Override
     public void process(Object payload) {
       // count tuples
@@ -58,9 +53,7 @@ public class NewTopologyBuilderTest {
           @PortAnnotation(name = "echoInputPort",  type = PortType.INPUT)
       }
   )
-  static class ConsoleOutputNode extends AbstractNode implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+  static class ConsoleOutputNode extends AbstractNode {
     @Override
     public void process(Object payload) {
       // print tuples
@@ -72,10 +65,10 @@ public class NewTopologyBuilderTest {
 
     NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeDecl validationNode = b.addNode("validationNode", new ValidationNode());
-    NodeDecl countGoodNode = b.addNode("countGoodNode", new CounterNode());
-    NodeDecl countBadNode = b.addNode("countBadNode", new CounterNode());
-    NodeDecl echoBadNode = b.addNode("echoBadNode", new ConsoleOutputNode());
+    NodeDecl validationNode = b.addNode("validationNode", ValidationNode.class);
+    NodeDecl countGoodNode = b.addNode("countGoodNode", CounterNode.class);
+    NodeDecl countBadNode = b.addNode("countBadNode", CounterNode.class);
+    NodeDecl echoBadNode = b.addNode("echoBadNode", ConsoleOutputNode.class);
 
     // good tuples to counter node
     b.addStream("goodTuplesStream")

@@ -28,12 +28,11 @@ import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.NumberGeneratorInputAdapter;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.TopologyBuilderTest;
 import com.malhartech.stram.TopologyBuilderTest.EchoNode;
+import com.malhartech.stram.conf.NewTopologyBuilder;
+import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
 import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
-import com.malhartech.stram.conf.TopologyBuilder.StreamConf;
+import com.malhartech.stram.conf.Topology.NodeDecl;
 
 /**
  *
@@ -149,18 +148,15 @@ public class SocketStreamTest
   @Test
   public void testStramChildInit() throws Exception
   {
-    TopologyBuilder b = new TopologyBuilder();
+    NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeConf generatorNode = b.getOrAddNode("generatorNode");
-    generatorNode.setClassName(NumberGeneratorInputAdapter.class.getName());
+    NodeDecl generatorNode = b.addNode("generatorNode", NumberGeneratorInputAdapter.class);
+    NodeDecl node1 = b.addNode("node1", EchoNode.class);
 
-    NodeConf node1 = b.getOrAddNode("node1");
-    node1.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-
-    StreamConf generatorOutput = b.getOrAddStream("generatorOutput");
-    generatorOutput.setSource(NumberGeneratorInputAdapter.OUTPUT_PORT, generatorNode)
-            .addSink(EchoNode.INPUT1, node1)
-            .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName());
+    StreamBuilder generatorOutput = b.addStream("generatorOutput");
+    generatorOutput.setSource(generatorNode.getOutput(NumberGeneratorInputAdapter.OUTPUT_PORT))
+            .addSink(node1.getInput(EchoNode.INPUT1))
+            .setSerDeClass(TestStaticPartitioningSerDe.class);
 
     //StreamConf output1 = b.getOrAddStream("output1");
     //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,

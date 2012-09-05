@@ -514,8 +514,8 @@ public class TopologyBuilder {
     // add all nodes first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
-      Node node = StramUtils.initNode(nodeConf.getNodeClassNameReqd(), nodeConf.getProperties());
-      NodeDecl nd = tplg.addNode(nodeConfEntry.getKey(), node);
+      Class<? extends Node> nodeClass = StramUtils.classForName(nodeConf.getNodeClassNameReqd(), Node.class);
+      NodeDecl nd = tplg.addNode(nodeConfEntry.getKey(), nodeClass);
       nd.getProperties().putAll(nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
     }

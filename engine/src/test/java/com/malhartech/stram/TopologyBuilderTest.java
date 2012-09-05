@@ -13,7 +13,6 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -119,7 +118,7 @@ public class TopologyBuilderTest {
 
   @SuppressWarnings("unchecked")
   private <T extends AbstractNode> T initNode(NodeDecl nodeConf) {
-    return (T)StramUtils.initNode(nodeConf.getNode().getClass().getName(), nodeConf.getProperties());
+    return (T)StramUtils.initNode(nodeConf.getNodeClass(), nodeConf.getProperties());
   }
 
   public void printTopology(NodeDecl node, Topology tplg, int level) {
@@ -187,12 +186,12 @@ public class TopologyBuilderTest {
      NewTopologyBuilder b = new NewTopologyBuilder();
 
      //NodeConf node1 = b.getOrAddNode("node1");
-     NodeDecl node2 = b.addNode("node2", new EchoNode());
-     NodeDecl node3 = b.addNode("node3", new EchoNode());
-     NodeDecl node4 = b.addNode("node4", new EchoNode());
+     NodeDecl node2 = b.addNode("node2", EchoNode.class);
+     NodeDecl node3 = b.addNode("node3", EchoNode.class);
+     NodeDecl node4 = b.addNode("node4", EchoNode.class);
      //NodeConf node5 = b.getOrAddNode("node5");
      //NodeConf node6 = b.getOrAddNode("node6");
-     NodeDecl node7 = b.addNode("node7", new EchoNode());
+     NodeDecl node7 = b.addNode("node7", EchoNode.class);
 
      // strongly connect n2-n3-n4-n2
      b.addStream("n2n3")

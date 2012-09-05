@@ -177,7 +177,6 @@ public class Topology implements Serializable, TopologyConstants {
       }
       sinks.add(port);
       port.node.inputStreams.put(port.portAnnotation.name(), this);
-System.out.println("removing " + port.node);
       rootNodes.remove(port.node);
     }
 
@@ -186,17 +185,17 @@ System.out.println("removing " + port.node);
   final public class NodeDecl implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    final Map<String, StreamDecl> inputStreams = new HashMap<String, StreamDecl>();
-    final Map<String, StreamDecl> outputStreams = new HashMap<String, StreamDecl>();
-    final Map<String, String> properties = new HashMap<String, String>();
-    final Node node;
-    final String id;
+    private final Map<String, StreamDecl> inputStreams = new HashMap<String, StreamDecl>();
+    private final Map<String, StreamDecl> outputStreams = new HashMap<String, StreamDecl>();
+    private final Map<String, String> properties = new HashMap<String, String>();
+    private final Class<? extends Node> nodeClass;
+    private final String id;
 
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
-    private NodeDecl(String id, Node node) {
-      this.node = node;
+    private NodeDecl(String id, Class<? extends Node> nodeClass) {
+      this.nodeClass = nodeClass;
       this.id = id;
     }
 
@@ -228,8 +227,8 @@ System.out.println("removing " + port.node);
       return this.outputStreams;
     }
 
-    public Node getNode() {
-      return this.node;
+    public Class<? extends Node> getNodeClass() {
+      return this.nodeClass;
     }
 
     /**
@@ -246,7 +245,7 @@ System.out.println("removing " + port.node);
     }
 
     private PortAnnotation findPortAnnotationByName(String portName, PortType type) {
-      Class<?> clazz = this.node.getClass();
+      Class<?> clazz = this.nodeClass;
       NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
       if (na != null) {
         PortAnnotation[] ports = na.ports();
@@ -256,7 +255,7 @@ System.out.println("removing " + port.node);
           }
         }
       }
-      String msg = String.format("No port with name %s and type %s found on %s", portName, type, node);
+      String msg = String.format("No port with name %s and type %s found for %s (%s)", portName, type, id, nodeClass);
       throw new IllegalArgumentException(msg);
     }
 
@@ -269,12 +268,12 @@ System.out.println("removing " + port.node);
 
   }
 
-  NodeDecl addNode(String id, Node node) {
+  NodeDecl addNode(String id, Class<? extends Node> nodeClass) {
     if (nodes.containsKey(id)) {
       throw new IllegalArgumentException("duplicate node id: " + nodes.get(id));
     }
 
-    NodeDecl decl = new NodeDecl(id, node);
+    NodeDecl decl = new NodeDecl(id, nodeClass);
     rootNodes.add(decl);
     nodes.put(id, decl);
 
@@ -341,7 +340,7 @@ System.out.println("removing " + port.node);
   public Set<String> getClassNames() {
     Set<String> classNames = new HashSet<String>();
     for (NodeDecl n : this.nodes.values()) {
-      String className = n.node.getClass().getName();
+      String className = n.nodeClass.getName();
       if (className != null) {
         classNames.add(className);
       }

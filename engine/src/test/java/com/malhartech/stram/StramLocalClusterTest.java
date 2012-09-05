@@ -75,8 +75,8 @@ public class StramLocalClusterTest
   {
     NewTopologyBuilder tb = new NewTopologyBuilder();
 
-    NodeDecl node1 = tb.addNode("node1", new EchoNode());
-    NodeDecl node2 = tb.addNode("node2", new EchoNode());
+    NodeDecl node1 = tb.addNode("node1", EchoNode.class);
+    NodeDecl node2 = tb.addNode("node2", EchoNode.class);
 
     tb.addStream("n1n2").
       setSource(node1.getOutput(EchoNode.OUTPUT1)).
