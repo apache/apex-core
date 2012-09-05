@@ -16,7 +16,7 @@
  * <b>{@link com.malhartech.stram.webapp.NodeInfo}</b>: Provides data on the data node. This includes throughput, container id etc.<br>
  * <b>{@link com.malhartech.stram.webapp.NodesInfo}</b>: Provides data on all the nodes of the data.<br>
  * <b>{@link com.malhartech.stram.webapp.StramWebApp}</b>: TBD<br>
- * <b>{@link com.malhartech.stram.weball.StramWebServices}</b>: TBD<br>
+ * <b>{@link com.malhartech.stram.webapp.StramWebServices}</b>: TBD<br>
  * <b>Access and Authoriation</b>: TBD<br>
  * <br>
  * 

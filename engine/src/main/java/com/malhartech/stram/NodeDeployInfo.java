@@ -162,7 +162,6 @@ public class NodeDeployInfo implements Serializable
    * The checkpoint window identifier.
    * Used to restore node and incoming streams as part of recovery.
    * Value 0 indicates fresh initialization, no restart.
-   * @return long
    */
   public long checkpointWindowId = 0;
 

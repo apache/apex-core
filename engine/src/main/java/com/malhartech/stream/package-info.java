@@ -23,8 +23,8 @@
  * The streams included in com.malhartech.stream include<br>
  * <br>
  * <br><b>ActiveMQ Interface Streams</b><br>
- * <b>{@link com.malhartech.stream.AbstractActiveMQInputStream}</b>: Provides implementation to read from ActiveMQ by
- * extending {@link com.malhartech.stream.AbstractInputAdapter}. Users need to provide getObject implementation.
+ * <b>{@link com.malhartech.stream.AbstractActiveMQInputStream}</b>: Provides implementation to read from ActiveMQ.
+ * Users need to provide getObject implementation.
  * (See example in InputActiveMQStreamTest)<br>
  * <b>ActiveMQOutputStream</b>: TBD<br>
  * <br>

@@ -32,14 +32,11 @@
  * <b>{@link com.malhartech.dag.Component}</b>: <b>TBD</b><br>
  * <b>{@link com.malhartech.dag.ComponentContextPair}</b>: <b>TBD</b><br>
  * <b>{@link com.malhartech.dag.Context}</b>: The base interface for context for all of the streaming platform objects<br>
- * <s><b>{@link com.malhartech.dag.DAGPart}</b>: The base interface for runtime objects of streams and nodes</s><br>
  * <b>{@link com.malhartech.dag.DefaultNodeSerDe}</b>: <b>TBD</b><br>
  * <b>{@link com.malhartech.dag.DefaultSerDe}</b>: Default SerDe for streams if nothing is configured<br>
  * <b>{@link com.malhartech.dag.EndStreamTuple}</b>: Defines end of streaming tuple<br>
  * <b>{@link com.malhartech.dag.EndWindowTuple}</b>: End of window tuple<br>
  * <b>{@link com.malhartech.dag.HeartbeatCounters}</b>: Data for heartbeat from node to stram<br>
- * <s><b>{@link com.malhartech.dag.InputAdapter}</b>: Interface for streams that are inbound from outside (to be changed)</s><br>
- * <s><b>{@link com.malhartech.dag.InternalNode}</b>: Base interface for a node</s><br>
  * <b>{@link com.malhartech.dag.Node}</b>: TBD<br>
  * <b>{@link com.malhartech.dag.NodeConfiguration}</b>: Extends {@link org.apache.hadoop.conf.Configuration} for nodes of the dag<br>
  * <b>{@link com.malhartech.dag.NodeContext}</b>: The for context for all of the nodes<br>

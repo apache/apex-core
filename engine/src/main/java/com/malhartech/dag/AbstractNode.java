@@ -213,7 +213,7 @@ public abstract class AbstractNode implements Node
   /**
    * Emit the payload to all active output ports
    *
-   * @param o
+   * @param payload
    */
   public void emit(final Object payload)
   {
@@ -228,7 +228,7 @@ public abstract class AbstractNode implements Node
    * It's expected that the output port is active, otherwise NullPointerException is thrown.
    *
    * @param id
-   * @param o
+   * @param payload
    */
   public final void emit(String id, Object payload)
   {

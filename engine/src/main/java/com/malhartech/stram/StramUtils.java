@@ -52,8 +52,8 @@ public abstract class StramUtils {
   /**
    * Instantiate node from configuration. (happens in the child container, not the stram master process.)
    *
-   * @param nodeConf
-   * @param conf
+   * @param className
+   * @param properties
    */
   public static Node initNode(String className, Map<String, String> properties)
   {
