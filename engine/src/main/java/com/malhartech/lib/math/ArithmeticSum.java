@@ -13,9 +13,8 @@ import com.malhartech.dag.AbstractNode;
 public class ArithmeticSum extends AbstractNode {
 
   @Override
-  public void process(Object payload)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
+  public void process(Object payload) {
+      // tbd
   }
 
 }
