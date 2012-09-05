@@ -96,7 +96,7 @@ public class ArithmeticQuotient extends AbstractNode {
                 }
                 if (IPORT_NUMERATOR == iport) {
                     numerators.put(e.getKey(), val);
-                } else {
+                } else if (IPORT_DENOMINATOR == iport) { // just else would do
                     denominators.put(e.getKey(), val);
                 }
             } else {
