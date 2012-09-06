@@ -11,28 +11,27 @@ import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeConfiguration;
 import java.util.HashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * Takes in two streams via input ports "numerator" and "denominator". At the
  * end of window computes the quotient for each key and emits the result on port
- * "quotient".<p>
- * <br>
- * Each stream is added to a hash. The values are added for each key within the window and for each stream.<br>
- * If compute_margin is true then the result is 1 - numerator/denominator expressed as a percentage. Ideally
- * multiply_by should be 1 in this case.<br>
- * This node only functions in a windowed stram application<br>
- * <br>
- * Compile time error processing is done on configuration parameters<br>
- * property <b>compute_margin</b> has to be boolean ("true" or "false").<br>
- * property <b>multiply_by</b> has to be an integer.<br>
- * input ports <b>numerator</b>, <b>denominator</b> must be connected.<br>
- * one of the out bound ports <b>quotient</b> or <b>_error</b> must be connected.<br>
- * <br>
- * Run time error processing are emitted on _error port. The errors are:<br>
- * Divide by zero (Error): no result is emitted on "outport".<br>
- * Input tuple not an integer on denominator stream: This tuple would not be counted towards the result.<br>
- * Input tuple not an integer on numerator stream: This tuple would not be counted towards the result.<br>
+ * "quotient".<p> <br> Each stream is added to a hash. The values are added for
+ * each key within the window and for each stream.<br> If compute_margin is true
+ * then the result is 1 - numerator/denominator expressed as a percentage.
+ * Ideally multiply_by should be 1 in this case.<br> This node only functions in
+ * a windowed stram application<br> <br> Compile time error processing is done
+ * on configuration parameters<br> property <b>compute_margin</b> has to be
+ * boolean ("true" or "false").<br> property <b>multiply_by</b> has to be an
+ * integer.<br> input ports <b>numerator</b>, <b>denominator</b> must be
+ * connected.<br> one of the out bound ports <b>quotient</b> or <b>_error</b>
+ * must be connected.<br> <br> Run time error processing are emitted on _error
+ * port. The errors are:<br> Divide by zero (Error): no result is emitted on
+ * "outport".<br> Input tuple not an integer on denominator stream: This tuple
+ * would not be counted towards the result.<br> Input tuple not an integer on
+ * numerator stream: This tuple would not be counted towards the result.<br>
  * <br>
  *
  * @author amol<br>
@@ -49,16 +48,16 @@ public class ArithmeticQuotient extends AbstractNode {
     public static final String IPORT_NUMERATOR = "numerator";
     public static final String IPORT_DENOMINATOR = "denominator";
     public static final String OPORT_QUOTIENT = "quotient";
-
+    private static Logger LOG = LoggerFactory.getLogger(ArithmeticSum.class);
+    
+    
     int mult_by = 1;
     boolean comp_margin = false;
-
     HashMap<String, Number> numerators = new HashMap<String, Number>();
     HashMap<String, Number> denominators = new HashMap<String, Number>();
-    HashMap<String, Number> in_tuple = new HashMap<String, Number>();
     /**
-     * Multiplies the quotient by this number. Ease of use for percentage
-     * (* 100) or CPM (* 1000)
+     * Multiplies the quotient by this number. Ease of use for percentage (*
+     * 100) or CPM (* 1000)
      *
      */
     public static final String KEY_MULTIPLY_BY = "multiply_by";
@@ -77,77 +76,67 @@ public class ArithmeticQuotient extends AbstractNode {
         mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
         comp_margin = config.getBoolean(KEY_COMPUTE_MARGIN, false);
     }
+    
+    public boolean myValidation(NodeConfiguration config) {
+        boolean ret = true;
+        
+        try {
+            mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
+        } catch (Exception e) {
+            ret = false;
+            throw new IllegalArgumentException(String.format("key %s (%s) has to be an an integer",
+                    KEY_MULTIPLY_BY, config.get(KEY_MULTIPLY_BY)));
+        }
+        return ret;
+    }
 
     @Override
     public void process(Object payload) {
-        in_tuple = (HashMap<String, Number>) payload;
         Number val = null;
-        Boolean edata = false;
-        for (Map.Entry<String, Number> e : in_tuple.entrySet()) {
+        for (Map.Entry<String, Number> e : ((HashMap<String, Number>) payload).entrySet()) {
             String iport = getActivePort();
             if (IPORT_NUMERATOR == iport) {
                 val = numerators.get(e.getKey());
-            } else if (IPORT_DENOMINATOR == iport) {
+            } else { // if (IPORT_DENOMINATOR == iport)
                 val = denominators.get(e.getKey());
-            } else {
-                edata = true;
             }
-            if (!edata) {
-                if (val == null) {
-                    val = e.getValue();
-                } else {
-                    val = new Double(val.doubleValue() + e.getValue().doubleValue());
-                }
-                if (IPORT_NUMERATOR == iport) {
-                    numerators.put(e.getKey(), val);
-                } else if (IPORT_DENOMINATOR == iport) { // just else would do
-                    denominators.put(e.getKey(), val);
-                }
+            if (val != null) {
+                val = new Double(val.doubleValue() + e.getValue().doubleValue());
             } else {
-                // emit error data on port _error
+                val = e.getValue().doubleValue();
             }
+            if (IPORT_NUMERATOR == iport) {
+                numerators.put(e.getKey(), val);
+            } else { // if (IPORT_DENOMINATOR == iport)
+                denominators.put(e.getKey(), val);
+            }
+            LOG.debug(String.format("Key was %s, val was %f", e.getKey(), val));
         }
     }
 
     @Override
     public void endWindow() {
-// FIXME: this is here just to test the test...
-emit("testtest");
-
-        Number dval = null;
-        Number nval = null;
+        int i = 0;
+        HashMap<String, Number> tuples = new HashMap<String, Number>();
         for (Map.Entry<String, Number> e : denominators.entrySet()) {
-            dval = e.getValue ();
-            nval = numerators.get(e.getKey());
+            Number nval = numerators.get(e.getKey());
+            i++;
             if (nval == null) {
-                // emit, key, 0.0
-            }
-            else {
-                numerators.remove(e.getKey());
-                // email key, nval/dval * multiply_by; if compute margin, emit data in margin
+                tuples.put(e.getKey(), new Double(0.0 * mult_by));
+            } else {
+                tuples.put(e.getKey(), new Double((nval.doubleValue()/e.getValue().doubleValue()) * mult_by));
+                numerators.remove(e.getKey()); // so that all left over keys can be reported 
             }
         }
-        // Now if numerators has any keys issue divide by zero error
+        LOG.debug(String.format("%d tuples were emitted", i));
+        emit(tuples);
+        /* Now if numerators has any keys issue divide by zero error
         for (Map.Entry<String, Number> e : numerators.entrySet()) {
             // emit error
         }
-
+        */
         numerators.clear();
         denominators.clear();
         super.endWindow();
-    }
-
-
-    @Override
-    public boolean checkConfiguration(NodeConfiguration config) {
-        boolean ret = true;
-        // Check each value for its range
-        // compute_margin has to be true or false
-        // multiply_by has to be an integer
-        // windowed has to be true
-        //
-        // In v0.2 most of common checks should be done via annotations
-
-        return ret && super.checkConfiguration(config);
     }
 }
