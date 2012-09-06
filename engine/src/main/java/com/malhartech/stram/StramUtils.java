@@ -52,7 +52,7 @@ public abstract class StramUtils {
   /**
    * Instantiate node from configuration.
    *
-   * @param className
+   * @param nodeClass
    * @param properties
    */
   public static Node initNode(Class<? extends Node> nodeClass, Map<String, String> properties)

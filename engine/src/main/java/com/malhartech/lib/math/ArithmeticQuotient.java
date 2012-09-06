@@ -22,15 +22,16 @@ import java.util.Map;
  * If compute_margin is true then the result is 1 - numerator/denominator expressed as a percentage. Ideally
  * multiply_by should be 1 in this case.<br>
  * This node only functions in a windowed stram application<br>
+ * <br>
  * Compile time error processing is done on configuration parameters<br>
- * property "compute_margin" has to be boolean ("true" or "false").<br>
- * property "multiply_by" has to be an integer.<br>
- * input ports "numerator", "denominator" must be connected.<br>
- * one of the out bound ports "quotient" or "_error" must be connected.<br>
- * "windowed" has to be true<br>
+ * property <b>compute_margin</b> has to be boolean ("true" or "false").<br>
+ * property <b>multiply_by</b> has to be an integer.<br>
+ * input ports <b>numerator</b>, <b>denominator</b> must be connected.<br>
+ * one of the out bound ports <b>quotient</b> or <b>_error</b> must be connected.<br>
+ * <br>
  * Run time error processing are emitted on _error port. The errors are:<br>
  * Divide by zero (Error): no result is emitted on "outport".<br>
- * Input tuple not an integer on denominator stream: This tuple would not be counted towards the result.<br> 
+ * Input tuple not an integer on denominator stream: This tuple would not be counted towards the result.<br>
  * Input tuple not an integer on numerator stream: This tuple would not be counted towards the result.<br>
  * <br>
  *
@@ -45,18 +46,20 @@ import java.util.Map;
 })
 public class ArithmeticQuotient extends AbstractNode {
 
-    long mult_by = 1;
-    boolean comp_margin = false;
     public static final String IPORT_NUMERATOR = "numerator";
     public static final String IPORT_DENOMINATOR = "denominator";
     public static final String OPORT_QUOTIENT = "quotient";
+
+    int mult_by = 1;
+    boolean comp_margin = false;
+
     HashMap<String, Number> numerators = new HashMap<String, Number>();
     HashMap<String, Number> denominators = new HashMap<String, Number>();
     HashMap<String, Number> in_tuple = new HashMap<String, Number>();
     /**
      * Multiplies the quotient by this number. Ease of use for percentage
      * (* 100) or CPM (* 1000)
-     * 
+     *
      */
     public static final String KEY_MULTIPLY_BY = "multiply_by";
     /**
@@ -71,7 +74,7 @@ public class ArithmeticQuotient extends AbstractNode {
     @Override
     public void setup(NodeConfiguration config) {
         super.setup(config);
-        mult_by = config.getLong(KEY_MULTIPLY_BY, 1);
+        mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
         comp_margin = config.getBoolean(KEY_COMPUTE_MARGIN, false);
     }
 
@@ -108,6 +111,9 @@ public class ArithmeticQuotient extends AbstractNode {
 
     @Override
     public void endWindow() {
+// FIXME: this is here just to test the test...
+emit("testtest");
+
         Number dval = null;
         Number nval = null;
         for (Map.Entry<String, Number> e : denominators.entrySet()) {
@@ -119,13 +125,13 @@ public class ArithmeticQuotient extends AbstractNode {
             else {
                 numerators.remove(e.getKey());
                 // email key, nval/dval * multiply_by; if compute margin, emit data in margin
-            }         
-        }  
+            }
+        }
         // Now if numerators has any keys issue divide by zero error
         for (Map.Entry<String, Number> e : numerators.entrySet()) {
             // emit error
         }
-        
+
         numerators.clear();
         denominators.clear();
         super.endWindow();
@@ -139,7 +145,7 @@ public class ArithmeticQuotient extends AbstractNode {
         // compute_margin has to be true or false
         // multiply_by has to be an integer
         // windowed has to be true
-        // 
+        //
         // In v0.2 most of common checks should be done via annotations
 
         return ret && super.checkConfiguration(config);
