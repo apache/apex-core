@@ -77,6 +77,8 @@ public abstract class AbstractInputNode implements Node
     afterEndWindows = null;
     afterBeginWindows.clear();
     afterBeginWindows = null;
+    // Should make variable "shutdown" part of AbstrastInputNode, users should not have to override teardown()
+    // as they may forget to call super.teardown()
   }
 
   @Override
