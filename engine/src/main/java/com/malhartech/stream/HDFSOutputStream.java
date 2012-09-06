@@ -136,4 +136,10 @@ public class HDFSOutputStream implements Stream
   {
     return this;
   }
+
+  @Override
+  public boolean isMultiSinkCapable()
+  {
+    return false;
+  }
 }

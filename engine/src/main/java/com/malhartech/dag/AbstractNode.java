@@ -53,7 +53,7 @@ public abstract class AbstractNode implements Node
       }
     }
 
-    throw new IllegalArgumentException("Port " + id + " not found!");
+    return null;
   }
 
   public final String getActivePort()
@@ -92,7 +92,7 @@ public abstract class AbstractNode implements Node
   class CompoundSink extends CircularBuffer<Object> implements Sink
   {
     final String id;
-    final Sink dagpart;
+    Sink dagpart;
 
     public CompoundSink(String id, Sink dagpart)
     {
@@ -105,19 +105,21 @@ public abstract class AbstractNode implements Node
     @SuppressWarnings("SleepWhileInLoop")
     public final void process(Object payload)
     {
-      while (true) {
-        try {
-          add(payload);
-          break;
-        }
-        catch (BufferOverflowException boe) {
+      try {
+        while (true) {
           try {
-            Thread.sleep(100);
-          }
-          catch (InterruptedException ex) {
+            add(payload);
             break;
           }
+          catch (BufferOverflowException boe) {
+            Thread.sleep(100);
+          }
         }
+      }
+      catch (InterruptedException ex) {
+        /**
+         * if we got interrupted while we were sleeping, then there must be emergency. so exit.
+         */
       }
     }
 
@@ -167,8 +169,15 @@ public abstract class AbstractNode implements Node
           s = null;
         }
         else {
-          s = new CompoundSink(pa.name(), dagpart);
-          inputs.put(pa.name(), ((CompoundSink)s));
+          CompoundSink cs = inputs.get(pa.name());
+          if (cs == null) {
+            cs = new CompoundSink(pa.name(), dagpart);
+            inputs.put(pa.name(), cs);
+          }
+          else {
+            cs.dagpart = dagpart;
+          }
+          s = cs;
         }
         break;
 
@@ -188,6 +197,8 @@ public abstract class AbstractNode implements Node
         s = null;
         break;
     }
+
+    // irrelevant place : think about window generator logic as well
 
     connected(pa.name(), dagpart);
     return s;
@@ -376,6 +387,11 @@ public abstract class AbstractNode implements Node
                 break;
 
               case END_STREAM:
+                activePort.get();
+                /**
+                 * Since one of the nodes we care about it gone, we should relook at our nodes.
+                 * We need to make sure that the END_STREAM comes outside of the window.
+                 */
                 totalQueues--;
                 activeQueues.remove(activePort);
                 if (totalQueues == 0) {
@@ -418,7 +434,7 @@ public abstract class AbstractNode implements Node
         catch (InterruptedException ex) {
           /*
            * we got interrupted while we were checking if we need to call handleTimeout.
-           * This is excepitional condition since someone is in too much hurry, so we
+           * This is exceptional condition since someone is in too much hurry, so we
            * proceed further without actually giving node a chance to handle idle time.
            */
         }

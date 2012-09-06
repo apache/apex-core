@@ -104,4 +104,10 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   {
     throw new IllegalAccessError("Attempt to pass payload from source other than buffer server!");
   }
+
+  @Override
+  public boolean isMultiSinkCapable()
+  {
+    return true;
+  }
 }

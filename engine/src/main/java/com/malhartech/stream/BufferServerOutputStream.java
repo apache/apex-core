@@ -117,4 +117,10 @@ public class BufferServerOutputStream extends SocketOutputStream
   {
     return this;
   }
+
+  @Override
+  public boolean isMultiSinkCapable()
+  {
+    return false;
+  }
 }

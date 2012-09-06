@@ -20,8 +20,8 @@ public class MuxStream implements Stream
   Collection<Sink> sinks = Collections.EMPTY_LIST;
 
   /**
-   * 
-   * @param config 
+   *
+   * @param config
    */
   @Override
   public void setup(StreamConfiguration config)
@@ -30,7 +30,7 @@ public class MuxStream implements Stream
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void teardown()
@@ -40,8 +40,8 @@ public class MuxStream implements Stream
   }
 
   /**
-   * 
-   * @param context 
+   *
+   * @param context
    */
   @Override
   public void activate(StreamContext context)
@@ -50,7 +50,7 @@ public class MuxStream implements Stream
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void deactivate()
@@ -59,7 +59,7 @@ public class MuxStream implements Stream
   }
 
   /**
-   * 
+   *
    * @param id
    * @param sink
    * @return Sink
@@ -81,8 +81,8 @@ public class MuxStream implements Stream
   }
 
   /**
-   * 
-   * @param payload 
+   *
+   * @param payload
    */
   @Override
   public void process(Object payload)
@@ -90,5 +90,11 @@ public class MuxStream implements Stream
     for (Sink s: sinks) {
       s.process(payload);
     }
+  }
+
+  @Override
+  public boolean isMultiSinkCapable()
+  {
+    return true;
   }
 }
