@@ -78,7 +78,6 @@ public class LoadGenerator extends AbstractNode {
                 weights.put(s, Integer.parseInt(wstr[i]));
                 total_weight += Integer.parseInt(wstr[i]);
             } else {
-                cur_weights.put(s, 100);
                 total_weight += 100;
             }
             if (hasvalues) {
@@ -95,6 +94,10 @@ public class LoadGenerator extends AbstractNode {
     @Override
     public void process(Object payload) {
         // tbd
+        int loc = random.nextInt(total_weight);
+        // loc would provide the key to access
+        // Need to store keys in a correct indexed fashion
+
     }
 
     @Override
