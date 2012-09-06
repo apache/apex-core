@@ -59,7 +59,7 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   }
 
   @SuppressWarnings("SleepWhileInLoop")
-  public void run()
+  private void run()
   {
     while (!shutdown) {
       if (outputConnected) {
@@ -79,12 +79,6 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
       }
     }
     LOG.info("Finished generating tuples");
-  }
-
-  @Override
-  public void teardown()
-  {
-    shutdown = true;
   }
 
   @Override
