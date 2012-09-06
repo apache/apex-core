@@ -32,6 +32,7 @@ public class LoadGenerator extends AbstractNode {
     HashMap<String, Number> keys = new HashMap<String, Number>();
     HashMap<String, Integer> weights = new HashMap<String, Integer>();
     Integer total_weight = 1;
+    long num_keys = 0;
     
     /**
      * keys are comma seperated list of keys for the load. These keys are send one per tuple as per the other parameters
@@ -66,10 +67,20 @@ public class LoadGenerator extends AbstractNode {
     
     @Override
     public void setup(NodeConfiguration config) {
-        
-        
-        
         super.setup(config);
+        range = config.getInt(KEY_RANGE, 0);
+        tuples_per_ms = config.getInt(KEY_TUPLES_PER_MS, 1);
+
+        String [] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
+        String [] kstr = config.getTrimmedStrings(KEY_KEYS);
+        String [] vstr = config.getTrimmedStrings(KEY_VALUES);
+         
+        boolean hasweights = (wstr != null) && (wstr.length == kstr.length);
+        hasvalues = (vstr != null) && (vstr.length == kstr.length);
+        
+        
+            //HashMap<String, Integer> weights = new HashMap<String, Integer>();
+    //Integer total_weight = 1;
     }
 
     
