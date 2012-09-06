@@ -45,9 +45,8 @@ public class ArithmeticSum extends AbstractNode {
     @Override
     public void process(Object payload) {
         in_tuple = (HashMap<String, Number>) payload;
-        Number val = null;
         for (Map.Entry<String, Number> e : in_tuple.entrySet()) {
-            val = sum.get(e.getKey());
+            Number val = sum.get(e.getKey());
             if (val != null) {
                 val = new Double(val.doubleValue() + e.getValue().doubleValue());
             } else {
