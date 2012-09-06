@@ -49,7 +49,7 @@ public class ArithmeticQuotient extends AbstractNode {
     public static final String IPORT_DENOMINATOR = "denominator";
     public static final String OPORT_QUOTIENT = "quotient";
     
-    long mult_by = 1;
+    int mult_by = 1;
     boolean comp_margin = false;
 
     HashMap<String, Number> numerators = new HashMap<String, Number>();
@@ -73,7 +73,7 @@ public class ArithmeticQuotient extends AbstractNode {
     @Override
     public void setup(NodeConfiguration config) {
         super.setup(config);
-        mult_by = config.getLong(KEY_MULTIPLY_BY, 1);
+        mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
         comp_margin = config.getBoolean(KEY_COMPUTE_MARGIN, false);
     }
 
