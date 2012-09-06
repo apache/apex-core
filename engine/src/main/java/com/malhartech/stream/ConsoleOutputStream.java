@@ -61,4 +61,10 @@ public class ConsoleOutputStream implements Stream
   {
     return this;
   }
+
+  @Override
+  public boolean isMultiSinkCapable()
+  {
+    return false;
+  }
 }

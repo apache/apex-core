@@ -30,7 +30,7 @@ import com.malhartech.dag.StreamContext;
 public class InlineStream implements Stream
 {
     /**
-     * 
+     *
      */
   Sink current, output, shunted = new Sink()
   {
@@ -41,8 +41,8 @@ public class InlineStream implements Stream
   };
 
   /**
-   * 
-   * @param config 
+   *
+   * @param config
    */
   @Override
   public void setup(StreamConfiguration config)
@@ -51,8 +51,8 @@ public class InlineStream implements Stream
   }
 
   /**
-   * 
-   * @param context 
+   *
+   * @param context
    */
   @Override
   public void activate(StreamContext context)
@@ -61,7 +61,7 @@ public class InlineStream implements Stream
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void deactivate()
@@ -70,7 +70,7 @@ public class InlineStream implements Stream
   }
 
   /**
-   * 
+   *
    */
   @Override
   public void teardown()
@@ -79,7 +79,7 @@ public class InlineStream implements Stream
   }
 
   /**
-   * 
+   *
    * @param port
    * @param sink
    * @return Sink
@@ -97,12 +97,23 @@ public class InlineStream implements Stream
   }
 
   /**
-   * 
-   * @param payload 
+   *
+   * @param payload
    */
   @Override
   public final void process(Object payload)
   {
     current.process(payload);
+  }
+
+  public final Sink getOutput()
+  {
+    return output;
+  }
+
+  @Override
+  public boolean isMultiSinkCapable()
+  {
+    return false;
   }
 }

@@ -16,4 +16,5 @@ package com.malhartech.dag;
  */
 public interface Stream extends Component<StreamConfiguration, StreamContext>
 {
+  public boolean isMultiSinkCapable();
 }

@@ -8,9 +8,9 @@ import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeSerDe;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NodeSerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
@@ -96,6 +96,24 @@ public class StramChild
     this.conf = conf;
   }
 
+  protected void init(StreamingContainerContext ctx) throws IOException
+  {
+
+    this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
+    if (this.heartbeatIntervalMillis == 0) {
+      this.heartbeatIntervalMillis = 1000;
+    }
+
+    if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
+      this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
+    }
+
+    dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, ctx.getStartWindowMillis());
+    dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis());
+
+    deploy(ctx.nodeList);
+  }
+
   public String getContainerId()
   {
     return this.containerId;
@@ -118,161 +136,6 @@ public class StramChild
    * @param ctx
    * @throws IOException
    */
-  protected void init(StreamingContainerContext ctx) throws IOException
-  {
-
-    this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
-    if (this.heartbeatIntervalMillis == 0) {
-      this.heartbeatIntervalMillis = 1000;
-    }
-
-    if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
-      this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
-    }
-
-    dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, ctx.getStartWindowMillis());
-    dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis());
-
-    deployNodes(ctx.nodeList);
-  }
-
-  protected void triggerHeartbeat()
-  {
-    synchronized (heartbeatTrigger) {
-      heartbeatTrigger.notifyAll();
-    }
-  }
-
-  protected void heartbeatLoop() throws IOException
-  {
-    umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
-    LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
-    while (!exitHeartbeatLoop) {
-
-      synchronized (this.heartbeatTrigger) {
-        try {
-          this.heartbeatTrigger.wait(heartbeatIntervalMillis);
-        }
-        catch (InterruptedException e1) {
-          LOG.warn("Interrupted in heartbeat loop, exiting..");
-          break;
-        }
-      }
-
-      long currentTime = System.currentTimeMillis();
-      ContainerHeartbeat msg = new ContainerHeartbeat();
-      msg.setContainerId(this.containerId);
-      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
-
-      // gather heartbeat info for all nodes
-      for (Map.Entry<String, ComponentContextPair<Node, NodeContext>> e: nodes.entrySet()) {
-        StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
-        hb.setNodeId(e.getKey());
-        hb.setGeneratedTms(currentTime);
-        hb.setIntervalMs(heartbeatIntervalMillis);
-        e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
-        DNodeState state = DNodeState.PROCESSING;
-        if (!activeNodes.containsKey(e.getValue().component)) {
-          state = DNodeState.IDLE;
-        }
-        hb.setState(state.name());
-        // propagate the backup window, if any
-        Long backupWindowId = backupInfo.get(e.getKey());
-        if (backupWindowId != null) {
-          hb.setLastBackupWindowId(backupWindowId);
-        }
-        heartbeats.add(hb);
-      }
-      msg.setDnodeEntries(heartbeats);
-
-      // heartbeat call and follow-up processing
-      LOG.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
-      try {
-        ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
-        if (rsp != null) {
-          processHeartbeatResponse(rsp);
-          // keep polling at smaller interval if work is pending
-          while (rsp != null && rsp.hasPendingRequests) {
-            LOG.info("Waiting for pending request.");
-            synchronized (this.heartbeatTrigger) {
-              try {
-                this.heartbeatTrigger.wait(500);
-              }
-              catch (InterruptedException e1) {
-                LOG.warn("Interrupted in heartbeat loop, exiting..");
-                break;
-              }
-            }
-            rsp = umbilical.pollRequest(this.containerId);
-            if (rsp != null) {
-              processHeartbeatResponse(rsp);
-            }
-          }
-        }
-      }
-      catch (Exception e) {
-        LOG.warn("Exception received (may be during shutdown?) {}", e.getLocalizedMessage(), e);
-      }
-    }
-    LOG.debug("Exiting hearbeat loop");
-    umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
-  }
-
-  protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
-  {
-    if (rsp.shutdown) {
-      LOG.info("Received shutdown request");
-      this.exitHeartbeatLoop = true;
-      return;
-    }
-
-    if (rsp.undeployRequest != null) {
-      LOG.info("Undeploy request: {}", rsp.undeployRequest);
-      undeployNodes(rsp.undeployRequest);
-    }
-
-    if (rsp.deployRequest != null) {
-      LOG.info("Deploy request: {}", rsp.deployRequest);
-      deployNodes(rsp.deployRequest);
-    }
-
-    if (rsp.nodeRequests != null) {
-      // extended processing per node
-      for (StramToNodeRequest req: rsp.nodeRequests) {
-        ComponentContextPair<Node, NodeContext> pair = nodes.get(req.getNodeId());
-        if (pair == null) {
-          LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
-        }
-        else {
-          LOG.debug("Stram request: {}", req);
-          processStramRequest(pair, req);
-        }
-      }
-    }
-  }
-
-  /**
-   * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
-   *
-   * @param n
-   * @param snr
-   */
-  private void processStramRequest(ComponentContextPair<Node, NodeContext> pair, StramToNodeRequest snr)
-  {
-    switch (snr.getRequestType()) {
-      case REPORT_PARTION_STATS:
-        LOG.warn("Ignoring stram request {}", snr);
-        break;
-
-      case CHECKPOINT:
-        pair.context.requestBackup(new HdfsBackupAgent(StramUtils.getNodeSerDe(null)));
-        break;
-
-      default:
-        LOG.error("Unknown request from stram {}", snr);
-    }
-  }
-
   public static void main(String[] args) throws Throwable
   {
     LOG.debug("Child starting with classpath: {}", System.getProperty("java.class.path"));
@@ -380,13 +243,11 @@ public class StramChild
     activeStreams.clear();
   }
 
-  @SuppressWarnings("SleepWhileInLoop")
-  private void deployNodes(List<NodeDeployInfo> nodeList)
+  private void deploy(List<NodeDeployInfo> nodeList)
   {
     /**
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
      */
-    // how do we change between mux and non mux streams. Sometimes possibly between inline to buffer?
     for (NodeDeployInfo ndi: nodeList) {
       if (nodes.containsKey(ndi.id)) {
         throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
@@ -399,26 +260,333 @@ public class StramChild
      */
     deactivate();
 
-    NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
-    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
-    for (NodeDeployInfo ndi: nodeList) {
-      NodeContext nc = new NodeContext(ndi.id);
-      try {
-        Object foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
-        Node node = (Node)foreignObject;
-        node.setup(new NodeConfiguration(ndi.id, ndi.properties));
-        nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
+    HashMap<String, ArrayList<String>> groupedInputStreams = deployNodes(nodeList);
+    deployOutputStreams(nodeList, groupedInputStreams);
 
-        groupInputStreams(groupedInputStreams, ndi);
+    deployInputStreams(nodeList);
+
+    activate();
+  }
+
+  private void undeploy(List<NodeDeployInfo> nodeList)
+  {
+    /**
+     * make sure that all the nodes which we are asked to undeploy are in this container.
+     */
+    HashMap<String, Node> toUndeploy = new HashMap<String, Node>();
+    for (NodeDeployInfo ndi: nodeList) {
+      ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
+      if (pair == null) {
+        throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
       }
-      catch (ClassCastException cce) {
-        LOG.error(cce.getLocalizedMessage());
+      else if (toUndeploy.containsKey(ndi.id)) {
+        throw new IllegalArgumentException("Node " + ndi.id + " is requested to be undeployed more than once");
       }
-      catch (IOException e) {
-        throw new IllegalArgumentException("Failed to read object " + ndi, e);
+      else {
+        toUndeploy.put(ndi.id, pair.component);
       }
     }
 
+    /**
+     * if any of the nodes to undeploy is getting input from WindowGenerator, we need to cut that connection.
+     */
+    if (windowGenerator != null) {
+      Set<String> sinkIds = windowGenerator.getOutputIds();
+      Iterator<String> iterator = sinkIds.iterator();
+      while (iterator.hasNext()) {
+        String sinkId = iterator.next();
+        String[] nodeport = sinkId.split(".");
+        Node node = toUndeploy.get(nodeport[0]);
+        if (node != null) {
+          windowGenerator.connect(sinkId, null);
+          node.connect(nodeport[1], null);
+          iterator.remove();
+        }
+      }
+
+      if (sinkIds.isEmpty()) {
+        windowGenerator.deactivate();
+        windowGenerator.teardown();
+        windowGenerator = null;
+      }
+    }
+
+    List<String> removableSocketOutputStreams = new ArrayList<String>();
+    Iterator<ComponentContextPair<Stream, StreamContext>> pairs = streams.values().iterator();
+    while (pairs.hasNext()) {
+      ComponentContextPair<Stream, StreamContext> pair = pairs.next();
+      if (toUndeploy.containsKey(pair.context.getSourceId().split(".")[0])) {
+        /**
+         * the stream originates at the output port of one of the nodes that are going to vanish.
+         */
+        if (activeStreams.containsKey(pair.component)) {
+          pair.component.deactivate();
+          activeStreams.remove(pair.component);
+        }
+
+        String sinkIdentifier = pair.context.getSinkId();
+        String[] sinkIds = sinkIdentifier.split(", ");
+        for (String sinkId: sinkIds) {
+          if (sinkId.startsWith("tcp://")) {
+            ComponentContextPair<Stream, StreamContext> spair = streams.get(sinkId);
+            if (activeStreams.containsKey(spair.component)) {
+              spair.component.deactivate();
+              activeStreams.remove(spair.component);
+            }
+
+            spair.component.connect(Component.INPUT, null);
+            removableSocketOutputStreams.add(sinkId);
+          }
+          else {
+            String[] nodeport = sinkId.split(".");
+            ComponentContextPair<Node, NodeContext> npair = nodes.get(nodeport[0]);
+            npair.component.connect(nodeport[1], null);
+          }
+
+          pair.component.connect(sinkId, null);
+        }
+
+        pair.component.teardown();
+        pairs.remove();
+      }
+      else {
+        /**
+         * the stream may or may not feed into one of the nodes which are being undeployed.
+         */
+        String[] sinkIds = pair.context.getSinkId().split(", ");
+        for (int i = sinkIds.length; i-- > 0;) {
+          String[] nodeport = sinkIds[i].split(".");
+          Node node = toUndeploy.get(nodeport[0]);
+          if (node != null) {
+            pair.component.connect(sinkIds[i], null);
+            node.connect(nodeport[1], null);
+            sinkIds[i] = null;
+          }
+        }
+
+        String sinkId = null;
+        for (int i = sinkIds.length; i-- > 0;) {
+          if (sinkIds[i] != null) {
+            if (sinkId == null) {
+              sinkId = sinkIds[i];
+            }
+            else {
+              sinkId = sinkId.concat(", ").concat(sinkIds[i]);
+            }
+          }
+        }
+
+        if (sinkId == null) {
+          if (activeStreams.containsKey(pair.component)) {
+            pair.component.deactivate();
+            activeStreams.remove(pair.component);
+          }
+
+          pair.component.teardown();
+          pairs.remove();
+        }
+        else {
+          pair.context.setSinkId(sinkId);
+        }
+      }
+    }
+
+    for (String streamId: removableSocketOutputStreams) {
+      streams.remove(streamId).component.teardown();
+    }
+
+    for (NodeDeployInfo ndi: nodeList) {
+      ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
+      if (activeNodes.containsKey(pair.component)) {
+        pair.component.deactivate();
+      }
+
+      pair.component.teardown();
+      nodes.remove(ndi.id);
+    }
+  }
+
+  private void groupInputStreams(HashMap<String, ArrayList<String>> plumbing, NodeDeployInfo ndi)
+  {
+    for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
+      String source = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
+
+      /**
+       * if we do not want to combine multiple streams with different partitions from the
+       * same upstream node, we could also use the partition to group the streams together.
+       * This logic comes with the danger that the performance of the group which shares the same
+       * stream is bounded on the higher side by the performance of the lowest performer. May be
+       * combining the streams is not such a good thing but let's see if we allow this as an option
+       * to the user, what they end up choosing the most.
+       */
+      ArrayList<String> collection = plumbing.get(source);
+      if (collection == null) {
+        collection = new ArrayList<String>();
+        plumbing.put(source, collection);
+      }
+      collection.add(ndi.id.concat(".").concat(nidi.portName));
+    }
+  }
+
+  protected void shutdown()
+  {
+    if (windowGenerator != null) {
+      windowGenerator.deactivate();
+      windowGenerator.teardown();
+      windowGenerator = null;
+    }
+
+    for (Node node: activeNodes.keySet()) {
+      node.deactivate();
+      node.teardown();
+    }
+
+    for (Stream stream: activeStreams.keySet()) {
+      stream.deactivate();
+      stream.teardown();
+    }
+    activeStreams.clear();
+  }
+
+  protected void triggerHeartbeat()
+  {
+    synchronized (heartbeatTrigger) {
+      heartbeatTrigger.notifyAll();
+    }
+  }
+
+  protected void heartbeatLoop() throws IOException
+  {
+    umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
+    LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
+    while (!exitHeartbeatLoop) {
+
+      synchronized (this.heartbeatTrigger) {
+        try {
+          this.heartbeatTrigger.wait(heartbeatIntervalMillis);
+        }
+        catch (InterruptedException e1) {
+          LOG.warn("Interrupted in heartbeat loop, exiting..");
+          break;
+        }
+      }
+
+      long currentTime = System.currentTimeMillis();
+      ContainerHeartbeat msg = new ContainerHeartbeat();
+      msg.setContainerId(this.containerId);
+      List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
+
+      // gather heartbeat info for all nodes
+      for (Map.Entry<String, ComponentContextPair<Node, NodeContext>> e: nodes.entrySet()) {
+        StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
+        hb.setNodeId(e.getKey());
+        hb.setGeneratedTms(currentTime);
+        hb.setIntervalMs(heartbeatIntervalMillis);
+        e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
+        DNodeState state = DNodeState.PROCESSING;
+        if (!activeNodes.containsKey(e.getValue().component)) {
+          state = DNodeState.IDLE;
+        }
+        hb.setState(state.name());
+        // propagate the backup window, if any
+        Long backupWindowId = backupInfo.get(e.getKey());
+        if (backupWindowId != null) {
+          hb.setLastBackupWindowId(backupWindowId);
+        }
+        heartbeats.add(hb);
+      }
+      msg.setDnodeEntries(heartbeats);
+
+      // heartbeat call and follow-up processing
+      LOG.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
+      try {
+        ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
+        if (rsp != null) {
+          processHeartbeatResponse(rsp);
+          // keep polling at smaller interval if work is pending
+          while (rsp != null && rsp.hasPendingRequests) {
+            LOG.info("Waiting for pending request.");
+            synchronized (this.heartbeatTrigger) {
+              try {
+                this.heartbeatTrigger.wait(500);
+              }
+              catch (InterruptedException e1) {
+                LOG.warn("Interrupted in heartbeat loop, exiting..");
+                break;
+              }
+            }
+            rsp = umbilical.pollRequest(this.containerId);
+            if (rsp != null) {
+              processHeartbeatResponse(rsp);
+            }
+          }
+        }
+      }
+      catch (Exception e) {
+        LOG.warn("Exception received (may be during shutdown?) {}", e.getLocalizedMessage(), e);
+      }
+    }
+    LOG.debug("Exiting hearbeat loop");
+    umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
+  }
+
+  protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
+  {
+    if (rsp.shutdown) {
+      LOG.info("Received shutdown request");
+      this.exitHeartbeatLoop = true;
+      return;
+    }
+
+    if (rsp.undeployRequest != null) {
+      LOG.info("Undeploy request: {}", rsp.undeployRequest);
+      undeploy(rsp.undeployRequest);
+    }
+
+    if (rsp.deployRequest != null) {
+      LOG.info("Deploy request: {}", rsp.deployRequest);
+      deploy(rsp.deployRequest);
+    }
+
+    if (rsp.nodeRequests != null) {
+      // extended processing per node
+      for (StramToNodeRequest req: rsp.nodeRequests) {
+        ComponentContextPair<Node, NodeContext> pair = nodes.get(req.getNodeId());
+        if (pair == null) {
+          LOG.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
+        }
+        else {
+          LOG.debug("Stram request: {}", req);
+          processStramRequest(pair, req);
+        }
+      }
+    }
+  }
+
+  /**
+   * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
+   *
+   * @param n
+   * @param snr
+   */
+  private void processStramRequest(ComponentContextPair<Node, NodeContext> pair, StramToNodeRequest snr)
+  {
+    switch (snr.getRequestType()) {
+      case REPORT_PARTION_STATS:
+        LOG.warn("Ignoring stram request {}", snr);
+        break;
+
+      case CHECKPOINT:
+        pair.context.requestBackup(new HdfsBackupAgent(StramUtils.getNodeSerDe(null)));
+        break;
+
+      default:
+        LOG.error("Unknown request from stram {}", snr);
+    }
+  }
+
+  private void deployOutputStreams(List<NodeDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams)
+  {
     /**
      * We proceed to deploy all the output streams.
      * At the end of this block, our streams collection will contain all the streams which originate at the
@@ -545,7 +713,10 @@ public class StramChild
         }
       }
     }
+  }
 
+  private void deployInputStreams(List<NodeDeployInfo> nodeList)
+  {
     /**
      * Hook up all the downstream sinks.
      * There are 2 places where we deal with more than sinks. The first one follows immediately for WindowGenerator.
@@ -604,8 +775,41 @@ public class StramChild
             if (streamSinkId == null) {
               pair.context.setSinkId(sinkIdentifier);
             }
-            else {
+            else if (pair.component.isMultiSinkCapable()) {
               pair.context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
+            }
+            else {
+              /**
+               * we are trying to tap into existing InlineStream or BufferServerOutputStream.
+               * Since none of those streams are MultiSinkCapable, we need to replace them with Mux.
+               */
+              StreamContext context = new StreamContext(nidi.declaredStreamId);
+              context.setSourceId(sourceIdentifier);
+              context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
+
+              Stream stream = new MuxStream();
+              stream.setup(new StreamConfiguration());
+              streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
+
+              Sink existingSink;
+              if (pair.component instanceof InlineStream) {
+                String[] nodeport = streamSinkId.split(".");
+                ComponentContextPair<Node, NodeContext> npair = nodes.get(nodeport[0]);
+
+                existingSink = npair.component.connect(nodeport[1], stream);
+              }
+              else {
+                existingSink = pair.component.connect(Component.INPUT, stream);
+              }
+              stream.connect(streamSinkId, existingSink);
+
+              /**
+               * Lets wire the MuxStream to upstream node.
+               */
+              String[] nodeport = sourceIdentifier.split(".");
+              ComponentContextPair<Node, NodeContext> npair = nodes.get(nodeport[0]);
+              Sink muxSink = stream.connect(Component.INPUT, npair.component);
+              npair.component.connect(nodeport[1], muxSink);
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
@@ -623,7 +827,11 @@ public class StramChild
         }
       }
     }
+  }
 
+  @SuppressWarnings("SleepWhileInLoop")
+  private void activate()
+  {
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream)) {
         pair.component.activate(pair.context);
@@ -672,176 +880,30 @@ public class StramChild
     }
   }
 
-  private void groupInputStreams(HashMap<String, ArrayList<String>> plumbing, NodeDeployInfo ndi)
+  private HashMap<String, ArrayList<String>> deployNodes(List<NodeDeployInfo> nodeList) throws IllegalArgumentException
   {
-    for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
-      String source = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
-
-      /**
-       * if we do not want to combine multiple streams with different partitions from the
-       * same upstream node, we could also use the partition to group the streams together.
-       * This logic comes with the danger that the performance of the group which shares the same
-       * stream is bounded on the higher side by the performance of the lowest performer. May be
-       * combining the streams is not such a good thing but let's see if we allow this as an option
-       * to the user, what they end up choosing the most.
-       */
-      ArrayList<String> collection = plumbing.get(source);
-      if (collection == null) {
-        collection = new ArrayList<String>();
-        plumbing.put(source, collection);
-      }
-      collection.add(ndi.id.concat(".").concat(nidi.portName));
-    }
-  }
-
-  protected void shutdown()
-  {
-    if (windowGenerator != null) {
-      windowGenerator.deactivate();
-      windowGenerator.teardown();
-      windowGenerator = null;
-    }
-
-    for (Node node: activeNodes.keySet()) {
-      node.deactivate();
-      node.teardown();
-    }
-
-    for (Stream stream: activeStreams.keySet()) {
-      stream.deactivate();
-      stream.teardown();
-    }
-    activeStreams.clear();
-  }
-
-  private void undeployNodes(List<NodeDeployInfo> nodeList)
-  {
-    // make sure that all the nodes which we are asked to undeploy are in this container.
-    HashMap<String, Node> toUndeploy = new HashMap<String, Node>();
+    NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
+    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
     for (NodeDeployInfo ndi: nodeList) {
-      ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
-      if (pair == null) {
-        throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
-      }
-      else if (toUndeploy.containsKey(ndi.id)) {
-        throw new IllegalArgumentException("Node " + ndi.id + " is requested to be undeployed more than once");
-      }
-      else {
-        toUndeploy.put(ndi.id, pair.component);
-      }
-    }
+      NodeContext nc = new NodeContext(ndi.id);
+      try {
+        Object foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
+        Node node = (Node)foreignObject;
+        node.setup(new NodeConfiguration(ndi.id, ndi.properties));
+        nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
 
-    // if any of the nodes to undeploy is getting input from WindowGenerator, we need to cut that connection.
-    if (windowGenerator != null) {
-      Set<String> sinkIds = windowGenerator.getOutputIds();
-      Iterator<String> iterator = sinkIds.iterator();
-      while (iterator.hasNext()) {
-        String sinkId = iterator.next();
-        String[] nodeport = sinkId.split(".");
-        Node node = toUndeploy.get(nodeport[0]);
-        if (node != null) {
-          windowGenerator.connect(sinkId, null);
-          node.connect(nodeport[1], null);
-          iterator.remove();
-        }
+        groupInputStreams(groupedInputStreams, ndi);
       }
-
-      if (sinkIds.isEmpty()) {
-        windowGenerator.deactivate();
-        windowGenerator.teardown();
-        windowGenerator = null;
+      catch (ClassCastException cce) {
+        LOG.error(cce.getLocalizedMessage());
+      }
+      catch (IOException e) {
+        throw new IllegalArgumentException("Failed to read object " + ndi, e);
       }
     }
+    return groupedInputStreams;
 
-    List<String> removableSocketOutputStreams = new ArrayList<String>();
-    Iterator<ComponentContextPair<Stream, StreamContext>> pairs = streams.values().iterator();
-    while (pairs.hasNext()) {
-      ComponentContextPair<Stream, StreamContext> pair = pairs.next();
-      if (toUndeploy.containsKey(pair.context.getSourceId().split(".")[0])) {
-        // the stream originates at the output port of one of the nodes that are going to vanish.
-        if (activeStreams.containsKey(pair.component)) {
-          pair.component.deactivate();
-          activeStreams.remove(pair.component);
-        }
 
-        String sinkIdentifier = pair.context.getSinkId();
-        String[] sinkIds = sinkIdentifier.split(", ");
-        for (String sinkId: sinkIds) {
-          if (sinkId.startsWith("tcp://")) {
-            ComponentContextPair<Stream, StreamContext> spair = streams.get(sinkId);
-            if (activeStreams.containsKey(spair.component)) {
-              spair.component.deactivate();
-              activeStreams.remove(spair.component);
-            }
-
-            spair.component.connect(Component.INPUT, null);
-            removableSocketOutputStreams.add(sinkId);
-          }
-          else {
-            String[] nodeport = sinkId.split(".");
-            ComponentContextPair<Node, NodeContext> npair = nodes.get(nodeport[0]);
-            npair.component.connect(nodeport[1], null);
-          }
-
-          pair.component.connect(sinkId, null);
-        }
-
-        pair.component.teardown();
-        pairs.remove();
-      }
-      else {
-        // the stream may or may not feed into one of the nodes which are being undeployed.
-        String[] sinkIds = pair.context.getSinkId().split(", ");
-        for (int i = sinkIds.length; i-- > 0;) {
-          String[] nodeport = sinkIds[i].split(".");
-          Node node = toUndeploy.get(nodeport[0]);
-          if (node != null) {
-            pair.component.connect(sinkIds[i], null);
-            node.connect(nodeport[1], null);
-            sinkIds[i] = null;
-          }
-        }
-
-        String sinkId = null;
-        for (int i = sinkIds.length; i-- > 0;) {
-          if (sinkIds[i] != null) {
-            if (sinkId == null) {
-              sinkId = sinkIds[i];
-            }
-            else {
-              sinkId = sinkId.concat(", ").concat(sinkIds[i]);
-            }
-          }
-        }
-
-        if (sinkId == null) {
-          if (activeStreams.containsKey(pair.component)) {
-            pair.component.deactivate();
-            activeStreams.remove(pair.component);
-          }
-
-          pair.component.teardown();
-          pairs.remove();
-        }
-        else {
-          pair.context.setSinkId(sinkId);
-        }
-      }
-    }
-
-    for (String streamId: removableSocketOutputStreams) {
-      streams.remove(streamId).component.teardown();
-    }
-
-    for (NodeDeployInfo ndi: nodeList) {
-      ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
-      if (activeNodes.containsKey(pair.component)) {
-        pair.component.deactivate();
-      }
-
-      pair.component.teardown();
-      nodes.remove(ndi.id);
-    }
   }
 
   private class HdfsBackupAgent implements BackupAgent
