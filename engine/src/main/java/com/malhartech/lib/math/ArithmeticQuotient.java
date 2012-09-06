@@ -22,12 +22,13 @@ import java.util.Map;
  * If compute_margin is true then the result is 1 - numerator/denominator expressed as a percentage. Ideally
  * multiply_by should be 1 in this case.<br>
  * This node only functions in a windowed stram application<br>
+ * <br>
  * Compile time error processing is done on configuration parameters<br>
- * property "compute_margin" has to be boolean ("true" or "false").<br>
- * property "multiply_by" has to be an integer.<br>
- * input ports "numerator", "denominator" must be connected.<br>
- * one of the out bound ports "quotient" or "_error" must be connected.<br>
- * "windowed" has to be true<br>
+ * property <b>compute_margin</b> has to be boolean ("true" or "false").<br>
+ * property <b>multiply_by</b> has to be an integer.<br>
+ * input ports <b>numerator</b>, <b>denominator</b> must be connected.<br>
+ * one of the out bound ports <b>quotient</b> or <b>_error</b> must be connected.<br>
+ * <br>
  * Run time error processing are emitted on _error port. The errors are:<br>
  * Divide by zero (Error): no result is emitted on "outport".<br>
  * Input tuple not an integer on denominator stream: This tuple would not be counted towards the result.<br> 
