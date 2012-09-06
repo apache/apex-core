@@ -22,7 +22,7 @@ import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.TopologyBuilderTest.EchoNode;
+import com.malhartech.stram.GenericTestNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology;
@@ -55,10 +55,10 @@ public class StramLocalClusterTest
     props.put("stram.stream.n1n2.outputNode", "node2");
     props.put("stram.stream.n1n2.template", "defaultstream");
 
-    props.put("stram.node.node1.classname", TopologyBuilderTest.EchoNode.class.getName());
+    props.put("stram.node.node1.classname", GenericTestNode.class.getName());
     props.put("stram.node.node1.myStringProperty", "myStringPropertyValue");
 
-    props.put("stram.node.node2.classname", TopologyBuilderTest.EchoNode.class.getName());
+    props.put("stram.node.node2.classname", GenericTestNode.class.getName());
 
     props.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
 
@@ -75,12 +75,12 @@ public class StramLocalClusterTest
   {
     NewTopologyBuilder tb = new NewTopologyBuilder();
 
-    NodeDecl node1 = tb.addNode("node1", new EchoNode());
-    NodeDecl node2 = tb.addNode("node2", new EchoNode());
+    NodeDecl node1 = tb.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = tb.addNode("node2", GenericTestNode.class);
 
     tb.addStream("n1n2").
-      setSource(node1.getOutput(EchoNode.OUTPUT1)).
-      addSink(node2.getInput(EchoNode.INPUT1));
+      setSource(node1.getOutput(GenericTestNode.OUTPUT1)).
+      addSink(node2.getInput(GenericTestNode.INPUT1));
 
     //tb.validate();
 

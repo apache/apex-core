@@ -71,8 +71,7 @@ public class TopologyBuilder {
    * Named set of properties that can be used to instantiate streams or nodes
    * with common settings.
    */
-  public class TemplateConf {
-    private String id;
+  private class TemplateConf {
     private Properties properties = new Properties();
 
     /**
@@ -80,24 +79,6 @@ public class TopologyBuilder {
      * @param id
      */
     private TemplateConf(String id) {
-      this.id = id;
-    }
-
-    /**
-     *
-     * @return String
-     */
-    public String getId() {
-      return id;
-    }
-
-    /**
-     *
-     * @param key
-     * @param value
-     */
-    public void addProperty(String key, String value) {
-      properties.setProperty(key, value);
     }
   }
 
@@ -217,7 +198,7 @@ public class TopologyBuilder {
   /**
    *
    */
-  class PropertiesWithModifiableDefaults extends Properties {
+  private class PropertiesWithModifiableDefaults extends Properties {
     private static final long serialVersionUID = -4675421720308249982L;
 
     /**
@@ -347,7 +328,7 @@ public class TopologyBuilder {
   }
 
 
-  public NodeConf getOrAddNode(String nodeId) {
+  private NodeConf getOrAddNode(String nodeId) {
     NodeConf nc = nodes.get(nodeId);
     if (nc == null) {
       nc = new NodeConf(nodeId);
@@ -357,7 +338,7 @@ public class TopologyBuilder {
     return nc;
   }
 
-  public StreamConf getOrAddStream(String id) {
+  private StreamConf getOrAddStream(String id) {
     StreamConf sc = streams.get(id);
     if (sc == null) {
       sc = new StreamConf(id);
@@ -366,7 +347,7 @@ public class TopologyBuilder {
     return sc;
   }
 
-  public TemplateConf getOrAddTemplate(String id) {
+  private TemplateConf getOrAddTemplate(String id) {
     TemplateConf sc = templates.get(id);
     if (sc == null) {
       sc = new TemplateConf(id);
@@ -518,8 +499,8 @@ public class TopologyBuilder {
     // add all nodes first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
-      Node node = StramUtils.initNode(nodeConf.getNodeClassNameReqd(), nodeConf.getProperties());
-      NodeDecl nd = tplg.addNode(nodeConfEntry.getKey(), node);
+      Class<? extends Node> nodeClass = StramUtils.classForName(nodeConf.getNodeClassNameReqd(), Node.class);
+      NodeDecl nd = tplg.addNode(nodeConfEntry.getKey(), nodeClass);
       nd.getProperties().putAll(nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
     }

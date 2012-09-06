@@ -10,85 +10,74 @@ import java.util.List;
 
 import junit.framework.Assert;
 
-import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
-import com.malhartech.stram.TopologyBuilderTest.EchoNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
+import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.NodeDecl;
-import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stram.conf.TopologyBuilder.NodeConf;
 
 public class TopologyDeployerTest {
 
   @Test
   public void testStaticPartitioning() {
-    TopologyBuilder b = new TopologyBuilder(new Configuration());
-    
-    NodeConf node1 = b.getOrAddNode("node1");
-    NodeConf node2 = b.getOrAddNode("node2");
+    NewTopologyBuilder b = new NewTopologyBuilder();
 
-    NodeConf mergeNode = b.getOrAddNode("mergeNode");
-    
-    b.getOrAddStream("n1n2")
-      .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName())
-      .setSource(EchoNode.OUTPUT1, node1)
-      .addSink(EchoNode.INPUT1, node2);
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
 
-    b.getOrAddStream("mergeStream")
-      .setSource(EchoNode.OUTPUT1, node2)
-      .addSink(EchoNode.INPUT1, mergeNode);
-    
-    for (NodeConf nodeConf : b.getAllNodes().values()) {
-      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-    }
+    NodeDecl mergeNode = b.addNode("mergeNode", GenericTestNode.class);
+
+    b.addStream("n1n2")
+      .setSerDeClass(TestStaticPartitioningSerDe.class)
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node2.getInput(GenericTestNode.INPUT1));
+
+    b.addStream("mergeStream")
+      .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(mergeNode.getInput(GenericTestNode.INPUT1));
 
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(2);
-    
+
     TopologyDeployer td = new TopologyDeployer(tplg);
-    
+
     Assert.assertEquals("number of containers", 2, td.getContainers().size());
     NodeDecl node2Decl = tplg.getNode(node2.getId());
     Assert.assertEquals("number partition instances", TestStaticPartitioningSerDe.partitions.length, td.getNodes(node2Decl).size());
-  }  
+  }
 
   @Test
   public void testInline() {
-    
-    TopologyBuilder b = new TopologyBuilder(new Configuration());
-    
-    NodeConf node1 = b.getOrAddNode("node1");
-    NodeConf node2 = b.getOrAddNode("node2");
-    NodeConf node3 = b.getOrAddNode("node3");
-    
-    NodeConf notInlineNode = b.getOrAddNode("notInlineNode");
+
+    NewTopologyBuilder b = new NewTopologyBuilder();
+
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
+    NodeDecl node3 = b.addNode("node3", GenericTestNode.class);
+
+    NodeDecl notInlineNode = b.addNode("notInlineNode", GenericTestNode.class);
     // partNode has 2 inputs, inline must be ignored with partitioned input
-    NodeConf partNode = b.getOrAddNode("partNode");
+    NodeDecl partNode = b.addNode("partNode", GenericTestNode.class);
 
-    for (NodeConf nodeConf : b.getAllNodes().values()) {
-      nodeConf.setClassName(TopologyBuilderTest.EchoNode.class.getName());
-    }
-    
-    b.getOrAddStream("n1Output1")
-      .addProperty(TopologyBuilder.STREAM_INLINE, String.valueOf(true))
-      .setSource(EchoNode.OUTPUT1, node1)
-      .addSink(EchoNode.INPUT1, node2)
-      .addSink(EchoNode.INPUT1, node3)
-      .addSink(EchoNode.INPUT1, partNode);
+    b.addStream("n1Output1")
+      .setInline(true)
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node2.getInput(GenericTestNode.INPUT1))
+      .addSink(node3.getInput(GenericTestNode.INPUT1))
+      .addSink(partNode.getInput(GenericTestNode.INPUT1));
 
-    b.getOrAddStream("n2Output1")
-      .addProperty(TopologyBuilder.STREAM_INLINE, String.valueOf(false))
-      .setSource(EchoNode.OUTPUT1, node2)
-      .addSink(EchoNode.INPUT2, node3)
-      .addSink(EchoNode.INPUT1, notInlineNode);
-    
-    b.getOrAddStream("n3Output1")
-      .addProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME, TestStaticPartitioningSerDe.class.getName())
-      .setSource(EchoNode.OUTPUT1, node3)
-      .addSink(EchoNode.INPUT2, partNode);
+    b.addStream("n2Output1")
+      .setInline(false)
+      .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node3.getInput(GenericTestNode.INPUT2))
+      .addSink(notInlineNode.getInput(GenericTestNode.INPUT1));
+
+    b.addStream("n3Output1")
+      .setSerDeClass(TestStaticPartitioningSerDe.class)
+      .setSource(node3.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(partNode.getInput(GenericTestNode.INPUT2));
 
     int maxContainers = 5;
     Topology tplg = b.getTopology();
@@ -103,7 +92,7 @@ public class TopologyDeployerTest {
       c1ActNodes.add(pNode.getLogicalNode());
     }
     Assert.assertEquals("nodes container 0", c1ExpNodes, c1ActNodes);
-    
+
     Assert.assertEquals("nodes container 1", 1, deployer1.getContainers().get(1).nodes.size());
     Assert.assertEquals("nodes container 1", tplg.getNode(notInlineNode.getId()), deployer1.getContainers().get(1).nodes.get(0).getLogicalNode());
 
@@ -112,7 +101,7 @@ public class TopologyDeployerTest {
       Assert.assertEquals("nodes container" + cindex, 1, deployer1.getContainers().get(cindex).nodes.size());
       Assert.assertEquals("nodes container" + cindex, tplg.getNode(partNode.getId()), deployer1.getContainers().get(cindex).nodes.get(0).getLogicalNode());
     }
-    
-  }  
-  
+
+  }
+
 }

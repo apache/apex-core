@@ -47,16 +47,16 @@ public class TopologyDeployer {
    */
   public abstract static class PTComponent {
     String id;
-    
+
     /**
-     * 
+     *
      * @return String
      */
     abstract public String getLogicalId();
     // stats
 
     /**
-     * 
+     *
      * @return String
      */
     @Override
@@ -83,13 +83,13 @@ public class TopologyDeployer {
     final byte[] partition;
     final PTComponent source;
     final String portName;
-    
+
     /**
-     * 
+     *
      * @param logicalStream
      * @param target
      * @param partition
-     * @param source 
+     * @param source
      */
     protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, byte[] partition, PTComponent source) {
       this.logicalStream = logicalStream;
@@ -100,24 +100,12 @@ public class TopologyDeployer {
     }
 
     /**
-     * 
+     *
      * @return String
      */
     @Override
     public String getLogicalId() {
       return logicalStream.getId();
-    }
-    
-    /**
-     * 
-     * @return InetSocketAddress
-     */
-    public InetSocketAddress getBufferServerAddress() {
-      if (source instanceof PTNode) {
-        return ((PTNode)source).container.bufferServerAddress;
-      } else {
-        return ((PTNode)target).container.bufferServerAddress;
-      }
     }
 
   }
@@ -134,11 +122,11 @@ public class TopologyDeployer {
     final Topology.StreamDecl logicalStream;
     final PTComponent source;
     final String portName;
-    
+
     /**
      * Constructor
      * @param logicalStream
-     * @param source 
+     * @param source
      */
     protected PTOutput(String portName, StreamDecl logicalStream, PTComponent source) {
       this.logicalStream = logicalStream;
@@ -147,7 +135,7 @@ public class TopologyDeployer {
     }
 
     /**
-     * 
+     *
      * @return String
      */
     @Override
@@ -165,9 +153,9 @@ public class TopologyDeployer {
    */
   public static class PTOutputAdapter extends PTOutput {
       /**
-       * 
+       *
        * @param logicalStream
-       * @param source 
+       * @param source
        */
     protected PTOutputAdapter(String portName, StreamDecl logicalStream, PTComponent source) {
       super(portName, logicalStream, source);
@@ -188,9 +176,9 @@ public class TopologyDeployer {
     List<PTOutput> outputs;
     PTContainer container;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
-    
+
     /**
-     * 
+     *
      * @return NodeDecl
      */
     public NodeDecl getLogicalNode() {
@@ -198,7 +186,7 @@ public class TopologyDeployer {
     }
 
     /**
-     * 
+     *
      * @return long
      */
     public long getRecentCheckpoint() {
@@ -206,9 +194,9 @@ public class TopologyDeployer {
         return checkpointWindows.getLast();
       return 0;
     }
-    
+
     /**
-     * 
+     *
      * @return String
      */
     @Override
@@ -233,7 +221,7 @@ public class TopologyDeployer {
     InetSocketAddress bufferServerAddress;
 
     /**
-     * 
+     *
      * @return String
      */
     @Override
@@ -259,16 +247,16 @@ public class TopologyDeployer {
     }
     return containers.get(index);
   }
-  
+
   /**
-   * 
+   *
    * @param tplg
    */
   public TopologyDeployer(Topology tplg) {
 
     this.maxContainers = Math.max(tplg.getMaxContainerCount(),1);
     LOG.debug("Initializing topology for {} containers.", this.maxContainers);
-    
+
     Stack<NodeDecl> pendingNodes = new Stack<NodeDecl>();
     for (NodeDecl n : tplg.getAllNodes()) {
       pendingNodes.push(n);
@@ -289,7 +277,7 @@ public class TopologyDeployer {
       byte[][] partitions = null;
       boolean upstreamDeployed = true;
       PTNode inlineUpstreamNode = null;
-      
+
       for (StreamDecl s : n.getInputStreams().values()) {
         if (s.getSource() != null && !deployedNodes.containsKey(s.getSource().getNode())) {
           pendingNodes.push(n);
@@ -351,7 +339,7 @@ public class TopologyDeployer {
   }
 
   private AtomicInteger nodeSequence = new AtomicInteger();
-  
+
   private PTNode createPTNode(NodeDecl nodeDecl, byte[] partition, int instanceCount) {
 
     PTNode pNode = new PTNode();
@@ -359,9 +347,9 @@ public class TopologyDeployer {
     pNode.inputs = new ArrayList<PTInput>();
     pNode.outputs = new ArrayList<PTOutput>();
     pNode.id = ""+nodeSequence.incrementAndGet();
-    
+
     for (Map.Entry<String, StreamDecl> inputEntry : nodeDecl.getInputStreams().entrySet()) {
-      // find upstream node(s), 
+      // find upstream node(s),
       // (can be multiple with partitioning or load balancing)
       StreamDecl streamDecl = inputEntry.getValue();
       if (streamDecl.getSource() != null) {
@@ -377,14 +365,14 @@ public class TopologyDeployer {
         }
       }
     }
-    
+
     for (Map.Entry<String, StreamDecl> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
       pNode.outputs.add(new PTOutput(outputEntry.getKey(), outputEntry.getValue(), pNode));
     }
 
     return pNode;
   }
-  
+
   private byte[][] getStreamPartitions(StreamDecl streamConf)
   {
     if (streamConf.getSerDeClass() != null) {
@@ -406,9 +394,9 @@ public class TopologyDeployer {
   protected List<PTContainer> getContainers() {
     return this.containers;
   }
- 
+
   protected List<PTNode> getNodes(NodeDecl nodeDecl) {
     return this.deployedNodes.get(nodeDecl);
   }
-  
+
 }

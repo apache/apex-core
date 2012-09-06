@@ -4,7 +4,9 @@
  */
 package com.malhartech.stram;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -193,7 +195,7 @@ public class StramClient
     }
     LOG.info("Topology: " + topologyPropertyFile);
 
-    Properties topologyProperties = StramAppMaster.readProperties(topologyPropertyFile);
+    Properties topologyProperties = readProperties(topologyPropertyFile);
     TopologyBuilder tb = new TopologyBuilder(conf);
     tb.addFromProperties(topologyProperties);
 
@@ -418,10 +420,11 @@ public class StramClient
     }
 
     // push topology properties to run specific dfs location
-    Path topologyDst = new Path(fs.getHomeDirectory(), appName + "/" + appId.getId() + "/stram.properties");
+    Path topologyDst = new Path(fs.getHomeDirectory(), appName + "/" + appId.getId() + "/" + Topology.SER_FILE_NAME);
     FSDataOutputStream outStream = fs.create(topologyDst, true);
-    Properties tplgProperties = TopologyBuilder.toProperties(topology.getConf());
-    tplgProperties.store(outStream, "topology for " + appId.getId());
+ //   Properties tplgProperties = TopologyBuilder.toProperties(topology.getConf());
+ //   tplgProperties.store(outStream, "topology for " + appId.getId());
+    Topology.write(this.topology, outStream);
     outStream.close();
 
     FileStatus topologyFileStatus = fs.getFileStatus(topologyDst);
@@ -431,7 +434,7 @@ public class StramClient
     topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(topologyDst.toUri()));
     topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
     topologyRsrc.setSize(topologyFileStatus.getLen());
-    localResources.put("stram.properties", topologyRsrc);
+    localResources.put(Topology.SER_FILE_NAME, topologyRsrc);
 
     // Set local resource info into app master container launch context
     amContainer.setLocalResources(localResources);
@@ -586,4 +589,14 @@ public class StramClient
     LOG.info("Got new application id=" + response.getApplicationId());
     return response;
   }
+
+  private static Properties readProperties(String filePath) throws IOException
+  {
+    InputStream is = new FileInputStream(filePath);
+    Properties props = new Properties(System.getProperties());
+    props.load(is);
+    is.close();
+    return props;
+  }
+
 }

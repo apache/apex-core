@@ -16,11 +16,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.fusesource.hawtbuf.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeSerDe;
 import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
@@ -43,7 +43,6 @@ import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.InputPort;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.Topology.StreamDecl;
-import com.malhartech.stram.conf.TopologyBuilder;
 import com.malhartech.stram.webapp.NodeInfo;
 /**
  *
@@ -231,12 +230,12 @@ public class DNodeManager
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
-      BeanUtils.populate(nodeDecl.getNode(), nodeDecl.getProperties());
-      this.nodeSerDe.write(nodeDecl.getNode(), os);
+      Node node = StramUtils.initNode(nodeDecl.getNodeClass(), nodeDecl.getProperties());
+      this.nodeSerDe.write(node, os);
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {
-      throw new RuntimeException("Failed to serialize " + nodeDecl + "(" + nodeDecl.getNode() + ")");
+      throw new RuntimeException("Failed to initialize " + nodeDecl + "(" + nodeDecl.getNodeClass() + ")");
     }
     //snc.setDnodeClassName(nodeDecl.getProperties().get(TopologyBuilder.NODE_CLASSNAME));
     //if (snc.getDnodeClassName() == null) {
@@ -374,12 +373,16 @@ public class DNodeManager
           if (outputInfo == null) {
             throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
           }
-          // set the id required to inline link both nodes
-          //outputInfo.inlineTargetNodeId = node.id;
         } else {
           // buffer server input
-          inputInfo.bufferServerHost = in.getBufferServerAddress().getHostName();
-          inputInfo.bufferServerPort = in.getBufferServerAddress().getPort();
+          // FIXME: address to come from upstream node, should be guaranteed assigned first
+          InetSocketAddress addr = ((PTNode)in.source).container.bufferServerAddress;
+          if (addr == null) {
+            LOG.warn("upstream address not assigned: " + in.source);
+            addr = container.bufferServerAddress;
+          }
+          inputInfo.bufferServerHost = addr.getHostName();
+          inputInfo.bufferServerPort = addr.getPort();
           if (streamDecl.getSerDeClass() != null) {
             inputInfo.serDeClassName = streamDecl.getSerDeClass().getName();
           }
@@ -431,7 +434,24 @@ public class DNodeManager
         containerIdle = false;
         status.bytesTotal += shb.getNumberBytesProcessed();
         status.tuplesTotal += shb.getNumberTuplesProcessed();
-        checkNodeLoad(status, shb);
+
+        // checkpoint tracking
+        PTNode node = (PTNode)status.node;
+        if (shb.getLastBackupWindowId() != 0) {
+          synchronized (node.checkpointWindows) {
+            if (!node.checkpointWindows.isEmpty()) {
+              Long lastCheckpoint = node.checkpointWindows.get(node.checkpointWindows.size()-1);
+              // no need to do any work unless checkpoint moves
+              if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
+                // keep track of current
+                node.checkpointWindows.add(shb.getLastBackupWindowId());
+                // TODO: purge older checkpoints, if no longer needed downstream
+              }
+            } else {
+              node.checkpointWindows.add(shb.getLastBackupWindowId());
+            }
+          }
+        }
       }
     }
 
@@ -479,51 +499,6 @@ public class DNodeManager
       }
     }
     return true;
-  }
-
-  private void checkNodeLoad(NodeStatus status, StreamingNodeHeartbeat shb)
-  {
-    if (!(status.node instanceof PTNode)) {
-      LOG.warn("Cannot find the configuration for node {}", shb.getNodeId());
-      return;
-    }
-
-    NodeDecl nodeConf = ((PTNode)status.node).getLogicalNode();
-    // check load constraints
-    int tuplesProcessed = shb.getNumberTuplesProcessed();
-    // TODO: populate into bean at initialization time
-    Map<String, String> properties = nodeConf.getProperties();
-    if (properties.containsKey(TopologyBuilder.NODE_LB_TUPLECOUNT_MIN)) {
-      int minTuples = new Integer(properties.get(TopologyBuilder.NODE_LB_TUPLECOUNT_MIN));
-      if (tuplesProcessed < minTuples) {
-        LOG.warn("Node {} processed {} messages below configured min {}", new Object[]{shb.getNodeId(), tuplesProcessed, minTuples});
-      }
-    }
-    if (properties.containsKey(TopologyBuilder.NODE_LB_TUPLECOUNT_MAX)) {
-      int maxTuples = new Integer(properties.get(TopologyBuilder.NODE_LB_TUPLECOUNT_MAX));
-      if (tuplesProcessed > maxTuples) {
-        LOG.warn("Node {} processed {} messages and exceeds configured max {}", new Object[]{shb.getNodeId(), tuplesProcessed, maxTuples});
-      }
-    }
-
-    // checkpoint tracking
-    PTNode node = (PTNode)status.node;
-    if (shb.getLastBackupWindowId() != 0) {
-      synchronized (node.checkpointWindows) {
-        if (!node.checkpointWindows.isEmpty()) {
-          Long lastCheckpoint = node.checkpointWindows.get(node.checkpointWindows.size()-1);
-          // no need to do any work unless checkpoint moves
-          if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
-            // keep track of current
-            node.checkpointWindows.add(shb.getLastBackupWindowId());
-            // TODO: purge older checkpoints, if no longer needed downstream
-          }
-        } else {
-          node.checkpointWindows.add(shb.getLastBackupWindowId());
-        }
-      }
-    }
-
   }
 
   /**
