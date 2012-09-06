@@ -12,6 +12,7 @@ import java.nio.BufferOverflowException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +37,7 @@ public abstract class AbstractNode implements Node
   private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
   private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  private transient Sink[] sinks = new Sink[0];
   private transient int consumedTupleCount;
   private transient volatile boolean alive;
 
@@ -238,8 +240,22 @@ public abstract class AbstractNode implements Node
    */
   public void emit(final Object payload)
   {
-    for (final Sink d: outputs.values()) {
-      d.process(payload);
+    for (int i = sinks.length; i-- > 0;) {
+      try {
+        sinks[i].process(payload);
+      }
+      catch (MutatedSinkException mse) {
+        Sink newSink = mse.getNewSink();
+        newSink.process(payload);
+        sinks[i] = newSink;
+
+        Sink oldSink = mse.getOldSink();
+        for (Entry<String, Sink> e: outputs.entrySet()) {
+          if (e.getValue() == oldSink) {
+            outputs.put(e.getKey(), newSink);
+          }
+        }
+      }
     }
   }
 
@@ -255,6 +271,11 @@ public abstract class AbstractNode implements Node
   {
     try {
       outputs.get(id).process(payload);
+    }
+    catch (MutatedSinkException mse) {
+      Sink newSink = mse.getNewSink();
+      newSink.process(payload);
+      outputs.put(id, newSink);
     }
     catch (Exception e) {
       logger.warn(e.getLocalizedMessage());
@@ -278,6 +299,12 @@ public abstract class AbstractNode implements Node
   @SuppressWarnings("SleepWhileInLoop")
   final public void activate(NodeContext ctx)
   {
+    sinks = new Sink[outputs.size()];
+    int i = 0;
+    for (Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
+
     int totalQueues = inputs.size();
 
     ArrayList<CompoundSink> activeQueues = new ArrayList<CompoundSink>();
@@ -309,8 +336,22 @@ public abstract class AbstractNode implements Node
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
                   beginWindow();
-                  for (final Sink output: outputs.values()) {
-                    output.process(t);
+                  for (int s = sinks.length; s-- > 0;) {
+                    try {
+                      sinks[s].process(t);
+                    }
+                    catch (MutatedSinkException mse) {
+                      Sink newSink = mse.getNewSink();
+                      newSink.process(payload);
+                      sinks[s] = newSink;
+
+                      Sink oldSink = mse.getOldSink();
+                      for (Entry<String, Sink> e: outputs.entrySet()) {
+                        if (e.getValue() == oldSink) {
+                          outputs.put(e.getKey(), newSink);
+                        }
+                      }
+                    }
                   }
                   receivedEndWindow = 0;
                 }

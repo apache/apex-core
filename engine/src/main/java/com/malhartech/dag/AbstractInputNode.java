@@ -11,6 +11,7 @@ import java.nio.BufferOverflowException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,7 @@ public abstract class AbstractInputNode implements Node
   private transient HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
   private transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  private transient volatile Collection<Sink> sinks;
+  private transient volatile Sink[] sinks = new Sink[0];
   private transient NodeContext ctx;
   private transient int producedTupleCount;
   private transient int spinMillis;
@@ -59,13 +60,18 @@ public abstract class AbstractInputNode implements Node
   public void activate(NodeContext context)
   {
     ctx = context;
-    sinks = outputs.values();
+    sinks = new Sink[outputs.size()];
+
+    int i = 0;
+    for (Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
   }
 
   @Override
   public void deactivate()
   {
-    sinks = Collections.emptyList();
+    sinks = new Sink[0];
   }
 
   @Override
@@ -113,11 +119,20 @@ public abstract class AbstractInputNode implements Node
     Tuple t = (Tuple)payload;
     switch (t.getType()) {
       case BEGIN_WINDOW:
-        for (Sink s: sinks) {
-          s.process(payload);
+        for (int i = sinks.length; i-- > 0;) {
+          try {
+            sinks[i].process(payload);
+          }
+          catch (MutatedSinkException mse) {
+            final Sink newSink = mse.getNewSink();
+            newSink.process(payload);
+            sinks[i] = newSink;
+            replaceOutput(mse.getOldSink(), newSink);
+          }
         }
+
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
-          Sink s = outputs.get(e.getKey());
+          final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
           for (int i = cb.size(); i > 0; i--) {
             s.process(cb.get());
@@ -127,13 +142,13 @@ public abstract class AbstractInputNode implements Node
 
       case END_WINDOW:
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
-          Sink s = outputs.get(e.getKey());
+          final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
           for (int i = cb.size(); i > 0; i--) {
             s.process(cb.get());
           }
         }
-        for (Sink s: sinks) {
+        for (final Sink s: sinks) {
           s.process(payload);
         }
 
@@ -159,7 +174,7 @@ public abstract class AbstractInputNode implements Node
 
         // i think there should be just one queue instead of one per port - lets defer till we find an example.
         for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
-          Sink s = outputs.get(e.getKey());
+          final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
           for (int i = cb.size(); i > 0; i--) {
             s.process(cb.get());
@@ -168,7 +183,7 @@ public abstract class AbstractInputNode implements Node
         break;
 
       default:
-        for (Sink s: sinks) {
+        for (final Sink s: sinks) {
           s.process(payload);
         }
     }
@@ -242,5 +257,15 @@ public abstract class AbstractInputNode implements Node
   public String toString()
   {
     return getClass().getSimpleName() + "{" + "id=" + id + ", outputs=" + outputs.keySet() + '}';
+  }
+
+  private void replaceOutput(Sink oldSink, Sink newSink)
+  {
+    for (Entry<String, Sink> e: outputs.entrySet()) {
+      if (e.getValue() == oldSink) {
+        outputs.put(e.getKey(), newSink);
+        break;
+      }
+    }
   }
 }
