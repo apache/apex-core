@@ -4,6 +4,9 @@
  */
 package com.malhartech.stram.conf;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -488,7 +491,7 @@ public class TopologyBuilder {
   }
 
   /**
-   * 
+   *
    * @return Topology
    */
   public Topology getTopology() {
@@ -540,6 +543,23 @@ public class TopologyBuilder {
     }
 
     return tplg;
+  }
+
+
+  public static Topology createTopology(Configuration conf, String tplgPropsFile) throws IOException {
+    Properties topologyProperties = readProperties(tplgPropsFile);
+    TopologyBuilder tb = new TopologyBuilder(conf);
+    tb.addFromProperties(topologyProperties);
+    return tb.getTopology();
+  }
+
+  public static Properties readProperties(String filePath) throws IOException
+  {
+    InputStream is = new FileInputStream(filePath);
+    Properties props = new Properties(System.getProperties());
+    props.load(is);
+    is.close();
+    return props;
   }
 
 }

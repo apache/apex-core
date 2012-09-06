@@ -24,6 +24,8 @@ addhc com/sun/jersey/jersey-client/1.8/jersey-client-1.8.jar
 addhc org/mockito/mockito-all/1.8.5/mockito-all-1.8.5.jar
 addhc io/netty/netty-transport/4.0.0.Alpha2/netty-transport-4.0.0.Alpha2.jar
 addhc io/netty/netty-common/4.0.0.Alpha2/netty-common-4.0.0.Alpha2.jar
+addhc io/netty/netty-buffer/4.0.0.Alpha2/netty-buffer-4.0.0.Alpha2.jar
+addhc io/netty/netty-codec/4.0.0.Alpha2/netty-codec-4.0.0.Alpha2.jar
 
 export HADOOP_CLIENT_OPTS="$HADOOP_OPTS"
 

@@ -210,6 +210,13 @@ public class StramAppLauncher {
         topologyFile.getAbsolutePath()
     };
 
+    // local mode does not work due to class loader issue
+    //StramLocalCluster lc = new StramLocalCluster(TopologyBuilder.createTopology(new Configuration(), topologyFile.getAbsolutePath()));
+    //lc.run();
+    //if (true) {
+    //  throw new UnsupportedOperationException();
+    //}
+
     StramClient client = new StramClient();
     boolean initSuccess = client.init(args);
     if (!initSuccess) {
