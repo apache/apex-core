@@ -32,6 +32,7 @@ public class LoadGenerator extends AbstractInputNode {
 
     public static final String OPORT_DATA = "data";
     private static Logger LOG = LoggerFactory.getLogger(LoadGenerator.class);
+    
     boolean hasvalues = false;
     boolean hasweights = false;
     int tuples_per_ms = 1;
