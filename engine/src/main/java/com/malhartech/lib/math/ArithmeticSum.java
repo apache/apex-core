@@ -39,11 +39,6 @@ public class ArithmeticSum extends AbstractNode {
     public static final String OPORT_SUM = "sum";
     HashMap<String, Number> sum = new HashMap<String, Number>();
     HashMap<String, Number> in_tuple = new HashMap<String, Number>();
-    /**
-     * Instead of sum of the values, simply does a Distinct and sends out all
-     * uniques keys in that window
-     */
-    public static final String KEY_DISTINCT = "distinct";
 
     @Override
     public void process(Object payload) {
@@ -59,7 +54,6 @@ public class ArithmeticSum extends AbstractNode {
             sum.put(e.getKey(), val);
         }
     }
-
     @Override
     public void endWindow() {
         for (Map.Entry<String, Number> e : sum.entrySet()) {
