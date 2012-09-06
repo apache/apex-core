@@ -54,9 +54,9 @@ public class ArithmeticSum extends AbstractNode {
             if (val != null) {
                 val = new Double(val.doubleValue() + e.getValue().doubleValue());
             } else {
-                val = new Double();
+                val = new Double(0.0);
             }
-            hsum.put(e.getKey(), val);
+            sum.put(e.getKey(), val);
         }
     }
 
