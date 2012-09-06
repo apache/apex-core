@@ -25,6 +25,7 @@ public class InlineStreamTest
   private Object prev;
 
   @Test
+  @SuppressWarnings("SleepWhileInLoop")
   public void test() throws Exception
   {
     final int totalTupleCount = 5000;
@@ -98,7 +99,7 @@ public class InlineStreamTest
 
     stream.activate(streamContext);
 
-    Map<String, Thread> activeNodes = new ConcurrentHashMap<String, Thread>();
+    Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
     launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
 
     for (int i = 0; i < totalTupleCount; i++) {
@@ -116,7 +117,12 @@ public class InlineStreamTest
     node1.deactivate();
     stream.deactivate();
 
-    Thread.sleep(200);
+    for (int i = 0; i < 10; i++) {
+      Thread.sleep(20);
+      if (activeNodes.isEmpty()) {
+        break;
+      }
+    }
 
     node2.teardown();
     node1.teardown();
@@ -125,7 +131,7 @@ public class InlineStreamTest
     Assert.assertEquals("active nodes", 0, activeNodes.size());
   }
 
-  private void launchNodeThreads(Collection<? extends AbstractNode> nodes, final Map<String, Thread> activeNodes)
+  private void launchNodeThreads(Collection<? extends AbstractNode> nodes, final Map<String, Node> activeNodes)
   {
     int i = 1;
     for (final AbstractNode node: nodes) {
@@ -136,13 +142,12 @@ public class InlineStreamTest
         @Override
         public void run()
         {
+          activeNodes.put(ctx.getId(), node);
           node.activate(ctx);
-          // processing has ended
           activeNodes.remove(ctx.getId());
         }
       };
       Thread launchThread = new Thread(nodeRunnable);
-      activeNodes.put(ctx.getId(), launchThread);
       launchThread.start();
     }
   }
