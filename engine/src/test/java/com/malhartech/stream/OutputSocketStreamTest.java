@@ -38,6 +38,12 @@ public final class OutputSocketStreamTest
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
+
+    @Override
+    public boolean isMultiSinkCapable()
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
   }
   static SocketOutputStream oss;
   static StreamConfiguration sc;
