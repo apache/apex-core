@@ -23,7 +23,6 @@ import jline.History;
 import jline.MultiCompletor;
 import jline.SimpleCompletor;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
@@ -118,7 +117,7 @@ public class StramCli
     reader.addCompletor(new MultiCompletor(completors));
 
 
-    File historyFile = new File(FileUtils.getUserDirectory(), ".stram/.history");
+    File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
     historyFile.getParentFile().mkdirs();
     try {
       History history = new History(historyFile);

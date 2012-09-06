@@ -4,9 +4,11 @@
  */
 package com.malhartech.stram.cli;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
@@ -28,25 +30,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
+ *
  * Collection of utility classes for command line interface package<p>
  * <br>
  * List includes<br>
  * Yarn Client Helper<br>
- * Resource Mgr Client Helper<br> 
+ * Resource Mgr Client Helper<br>
  * <br>
- * 
+ *
  */
 
 public class StramClientUtils {
-  
+
 /**
- * 
+ *
  * TBD<p>
  * <br>
- * 
+ *
  */
-    
+
   public static class YarnClientHelper {
     private static final Logger LOG = LoggerFactory.getLogger(YarnClientHelper.class);
 
@@ -55,8 +57,8 @@ public class StramClientUtils {
 
     // RPC to communicate to RM
     final private YarnRPC rpc;
-    
-    
+
+
     public YarnClientHelper(Configuration conf)  {
       // Set up the configuration and RPC
       this.conf = conf;
@@ -66,7 +68,7 @@ public class StramClientUtils {
     public Configuration getConf() {
       return this.conf;
     }
-    
+
     public YarnRPC  getYarnRPC() {
       return rpc;
     }
@@ -74,7 +76,7 @@ public class StramClientUtils {
     /**
      * Connect to the Resource Manager/Applications Manager<p>
      * @return Handle to communicate with the ASM
-     * @throws IOException 
+     * @throws IOException
      */
     public ClientRMProtocol connectToASM() throws IOException {
 
@@ -84,7 +86,7 @@ public class StramClientUtils {
         public ClientRMProtocol run() {
           InetSocketAddress rmAddress = NetUtils.createSocketAddr(conf.get(
             YarnConfiguration.RM_SCHEDULER_ADDRESS,
-            YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS));   
+            YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS));
           LOG.info("Connecting to ResourceManager at " + rmAddress);
           Configuration appsManagerServerConf = new Configuration(conf);
           appsManagerServerConf.setClass(YarnConfiguration.YARN_SECURITY_INFO,
@@ -102,9 +104,9 @@ public class StramClientUtils {
       LOG.info("Connecting to ResourceManager at " + rmAddress);
       return  ((ClientRMProtocol) rpc.getProxy(
           ClientRMProtocol.class, rmAddress, conf));
-    }   
+    }
 
-    
+
     /**
      * Connect to the Resource Manager<p>
      *
@@ -132,32 +134,32 @@ public class StramClientUtils {
       LOG.info("Connecting to ContainerManager at " + cmIpPortStr);
       return ((ContainerManager) rpc.getProxy(ContainerManager.class, cmAddress, conf));
     }
-    
+
   }
 
   /**
-   * 
+   *
    * Bunch of utilities that ease repeating interactions with {@link ClientRMProtocol}<p>
-   * 
+   *
    */
   public static class ClientRMHelper {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);
 
     public final ClientRMProtocol clientRM;
-    
+
     public ClientRMHelper(YarnClientHelper yarnClient) throws IOException {
       this.clientRM = yarnClient.connectToASM();
     }
 
     public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnRemoteException {
-      // Get application report for the appId we are interested in 
+      // Get application report for the appId we are interested in
       GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
       reportRequest.setApplicationId(appId);
       GetApplicationReportResponse reportResponse = clientRM.getApplicationReport(reportRequest);
       ApplicationReport report = reportResponse.getApplicationReport();
       return report;
     }
- 
+
     /**
      * Kill a submitted application by sending a call to the ASM
      *
@@ -167,22 +169,22 @@ public class StramClientUtils {
     public void killApplication(ApplicationId appId) throws YarnRemoteException
     {
       KillApplicationRequest request = Records.newRecord(KillApplicationRequest.class);
-      // TODO clarify whether multiple jobs with the same app id can be submitted and be running at 
-      // the same time. 
+      // TODO clarify whether multiple jobs with the same app id can be submitted and be running at
+      // the same time.
       // If yes, can we kill a particular attempt only?
       request.setApplicationId(appId);
-      // KillApplicationResponse response = applicationsManager.forceKillApplication(request);    
-      // Response can be ignored as it is non-null on success or 
+      // KillApplicationResponse response = applicationsManager.forceKillApplication(request);
+      // Response can be ignored as it is non-null on success or
       // throws an exception in case of failures
       clientRM.forceKillApplication(request);
     }
 
-    
+
     public static interface AppStatusCallback {
       boolean exitLoop(ApplicationReport report);
     }
-    
-    
+
+
     /**
      * Monitor the submitted application for completion. Kill application if time expires.
      *
@@ -207,7 +209,7 @@ public class StramClientUtils {
         if (callback.exitLoop(report) == true) {
           return true;
         }
-        
+
         YarnApplicationState state = report.getYarnApplicationState();
         FinalApplicationStatus dsStatus = report.getFinalApplicationStatus();
         if (YarnApplicationState.FINISHED == state) {
@@ -235,8 +237,12 @@ public class StramClientUtils {
           killApplication(appId);
           return false;
         }
-      }    
+      }
     }
   }
-    
+
+  public static File getSettingsRootDir() {
+    return new File(FileUtils.getUserDirectory(), ".stram");
+  }
+
 }
