@@ -16,6 +16,7 @@ import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.Sink;
 import com.malhartech.lib.math.ArithmeticSum;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -32,14 +33,14 @@ public class LoadGenerator extends AbstractInputNode {
 
     public static final String OPORT_DATA = "data";
     private static Logger LOG = LoggerFactory.getLogger(LoadGenerator.class);
-    
     boolean hasvalues = false;
     boolean hasweights = false;
     int tuples_per_ms = 1;
-    HashMap<String, String> keys = new HashMap<String, String>();
-    HashMap<String, Integer> weights = new HashMap<String, Integer>();
+    HashMap<String, Double> keys = new HashMap<String, Double>();
+    HashMap<Integer, String> wtostr_index = new HashMap<Integer, String>();
+
+    ArrayList<Integer> weights = new ArrayList<Integer>();
     int total_weight = 0;
-    int current_index = 0;
     int num_keys = 0;
     private Random random = new Random();
     private volatile boolean shutdown = false;
@@ -90,9 +91,27 @@ public class LoadGenerator extends AbstractInputNode {
         }
         if (wstr == null) {
             LOG.info("weights was not provided, so keys would be equally weighted");
+        } else {
+            for (String s : wstr) {
+                try {
+                    Integer.parseInt(s);
+                } catch (NumberFormatException e) {
+                    ret = false;
+                    throw new IllegalArgumentException(String.format("Weight string should be integer(%s)", s));
+                }   
+            }
         }
         if (vstr == null) {
             LOG.info("values was not provided, so keys would have value of 0");
+        } else {
+            for (String s : vstr) {
+                try {
+                    Double.parseDouble(s);
+                } catch (NumberFormatException e) {
+                    ret = false;
+                    throw new IllegalArgumentException(String.format("Value string should be float(%s)", s));
+                }
+            }
         }
 
         if ((wstr != null) && (wstr.length != kstr.length)) {
@@ -134,23 +153,23 @@ public class LoadGenerator extends AbstractInputNode {
         tuples_per_ms = config.getInt(KEY_TUPLES_PER_MS, 1);
         hasweights = (wstr != null);
         hasvalues = (vstr != null);
-        current_index = 0;
         // Keys and weights would are accessed via same key
         num_keys = kstr.length;
 
         int i = 0;
         for (String s : kstr) {
             if (hasweights) {
-                weights.put(s, Integer.parseInt(wstr[i]));
+                weights.add(Integer.parseInt(wstr[i]));
                 total_weight += Integer.parseInt(wstr[i]);
             } else {
                 total_weight += 100;
             }
             if (hasvalues) {
-                keys.put(s, vstr[i]);
+                keys.put(s, new Double(Double.parseDouble(vstr[i])));
             } else {
-                keys.put(s, "");
+                keys.put(s, new Double(0.0));
             }
+            wtostr_index.put(i, s);
             i += 1;
         }
     }
@@ -171,22 +190,36 @@ public class LoadGenerator extends AbstractInputNode {
     @Override
     public void activate(NodeContext context) {
         super.activate(context);
-        int loc = random.nextInt(total_weight);
+        int i = 0;
+
         while (!shutdown) {
             if (outputConnected) {
                 // send tuples as per weights and then sleep for 1ms
-                int i = 0;
                 while (i < tuples_per_ms) {
-                    emit(OPORT_DATA, String.valueOf(1));
-                    // TBD
+                    int rval = random.nextInt(total_weight);
+                    int j = 0;
+                    int wval = 0;
+                    for (Integer e : weights) {
+                        wval += e.intValue();
+                        if (wval >= rval) break;
+                        j++;
+                    }
+                    // wval is the key index
+                    HashMap<String, Double> tuple = new HashMap<String, Double>();
+                    String key = wtostr_index.get(new Integer(j));
+                    tuple.put(key, keys.get(key)); // the key
+                    
+                    emit(OPORT_DATA, tuple);
+                    i++;
                 }
+                
                 try {
                     Thread.sleep(1);
                 } catch (InterruptedException e) {
                     LOG.error("Unexpected error while sleeping for 1 ms", e);
                 }
             }
-            try {
+            try { // Wait till output port is connected in the deployment of dag
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 LOG.error("Unexpected error while generating tuples", e);
