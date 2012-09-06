@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -39,10 +41,9 @@ import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-import java.util.*;
 
 /**
- * 
+ *
  * Provides command line interface for a streaming application on hadoop (yarn)<p>
  * <br>
  * <table border=1 cellspacing=0>
@@ -116,9 +117,10 @@ public class StramCli
     reader.addCompletor(new MultiCompletor(completors));
 
 
-    String historyFile = System.getProperty("user.home") + File.separator + ".history";
+    File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
+    historyFile.getParentFile().mkdirs();
     try {
-      History history = new History(new File(historyFile));
+      History history = new History(historyFile);
       reader.setHistory(history);
     }
     catch (IOException exp) {

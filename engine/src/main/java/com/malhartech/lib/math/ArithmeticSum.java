@@ -4,6 +4,9 @@
  */
 package com.malhartech.lib.math;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.dag.AbstractNode;
@@ -14,15 +17,12 @@ import java.util.Map;
 /**
  *
  * Takes in one stream via input port "data". At end of window sums all values
- * for each key and emits them on port "sum"<p>
- * <br> Values are stored in a hash<br>
- * This node only functions in a windowed stram application<br>
- * Compile time error processing is done on configuration parameters<br>
- * input port "data" must be connected<br>
- * output port "sum" must be connected<br>
- * "windowed" has to be true<br> 
- * Run time error processing are emitted on _error port. The errors are:<br>
- * Value is not a Number<br>
+ * for each key and emits them on port "sum"<p> <br> Values are stored in a
+ * hash<br> This node only functions in a windowed stram application<br> Compile
+ * time error processing is done on configuration parameters<br> input port
+ * "data" must be connected<br> output port "sum" must be connected<br>
+ * "windowed" has to be true<br> Run time error processing are emitted on _error
+ * port. The errors are:<br> Value is not a Number<br>
  *
  * @author amol
  */
@@ -35,43 +35,48 @@ public class ArithmeticSum extends AbstractNode {
 
     public static final String IPORT_DATA = "data";
     public static final String OPORT_SUM = "sum";
+    private static Logger LOG = LoggerFactory.getLogger(ArithmeticSum.class);
     HashMap<String, Number> sum = new HashMap<String, Number>();
-    HashMap<String, Number> in_tuple = new HashMap<String, Number>();
 
     /**
      * Process each tuple
-     * @param payload 
+     *
+     * @param payload
      */
     @Override
     public void process(Object payload) {
-        in_tuple = (HashMap<String, Number>) payload;
-        Number val = null;
-        for (Map.Entry<String, Number> e : in_tuple.entrySet()) {
-            val = sum.get(e.getKey());
+        for (Map.Entry<String, Number> e : ((HashMap<String, Number>) payload).entrySet()) {
+            Number val = sum.get(e.getKey());
             if (val != null) {
                 val = new Double(val.doubleValue() + e.getValue().doubleValue());
             } else {
-                val = new Double(0.0);
+                val = new Double(e.getValue().doubleValue());
             }
             sum.put(e.getKey(), val);
         }
     }
-    
+
+    public boolean myValidation(NodeConfiguration config) {
+        return true;
+    }
+
     /**
      * Node only works in windowed mode. Emits all data upon end of window tuple
      */
     @Override
     public void endWindow() {
+        HashMap<String, Number> tuple = new HashMap<String, Number>();
         for (Map.Entry<String, Number> e : sum.entrySet()) {
-            // emit e.getKey(), and e.getValue() as a tuple            
+            tuple.put(e.getKey(), e.getValue());
         }
+        emit(OPORT_SUM, tuple);
         sum.clear();
-        super.endWindow();
     }
 
     /**
-     * 
+     *
      * Checks for user specific configuration values<p>
+     *
      * @param config
      * @return boolean
      */

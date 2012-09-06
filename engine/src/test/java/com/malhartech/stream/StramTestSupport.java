@@ -15,11 +15,11 @@ import com.malhartech.dag.Tuple;
  */
 abstract public class StramTestSupport {
 
-  static Object generateTuple(Object payload, int windowId) {
+  public static Object generateTuple(Object payload, int windowId) {
     return payload;
   }
 
-  static Tuple generateBeginWindowTuple(String nodeid, int windowId)
+  public static Tuple generateBeginWindowTuple(String nodeid, int windowId)
   {
     Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
     bwt.setWindowId(windowId);    
@@ -27,7 +27,7 @@ abstract public class StramTestSupport {
   }
 
 
-  static Tuple generateEndWindowTuple(String nodeid, int windowId, int tupleCount)
+  public static Tuple generateEndWindowTuple(String nodeid, int windowId, int tupleCount)
   {
     EndWindowTuple t = new EndWindowTuple();
     t.setTupleCount(tupleCount);
