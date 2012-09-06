@@ -45,11 +45,13 @@ import java.util.Map;
 })
 public class ArithmeticQuotient extends AbstractNode {
 
-    long mult_by = 1;
-    boolean comp_margin = false;
     public static final String IPORT_NUMERATOR = "numerator";
     public static final String IPORT_DENOMINATOR = "denominator";
     public static final String OPORT_QUOTIENT = "quotient";
+    
+    long mult_by = 1;
+    boolean comp_margin = false;
+
     HashMap<String, Number> numerators = new HashMap<String, Number>();
     HashMap<String, Number> denominators = new HashMap<String, Number>();
     HashMap<String, Number> in_tuple = new HashMap<String, Number>();
