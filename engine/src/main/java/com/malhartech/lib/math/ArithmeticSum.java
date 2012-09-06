@@ -40,6 +40,10 @@ public class ArithmeticSum extends AbstractNode {
     HashMap<String, Number> sum = new HashMap<String, Number>();
     HashMap<String, Number> in_tuple = new HashMap<String, Number>();
 
+    /**
+     * Process each tuple
+     * @param payload 
+     */
     @Override
     public void process(Object payload) {
         in_tuple = (HashMap<String, Number>) payload;
@@ -54,14 +58,25 @@ public class ArithmeticSum extends AbstractNode {
             sum.put(e.getKey(), val);
         }
     }
+    
+    /**
+     * Node only works in windowed mode. Emits all data upon end of window tuple
+     */
     @Override
     public void endWindow() {
         for (Map.Entry<String, Number> e : sum.entrySet()) {
             // emit e.getKey(), and e.getValue() as a tuple            
         }
+        sum.clear();
         super.endWindow();
     }
 
+    /**
+     * 
+     * Checks for user specific configuration values<p>
+     * @param config
+     * @return boolean
+     */
     @Override
     public boolean checkConfiguration(NodeConfiguration config) {
         boolean ret = true;
