@@ -10,88 +10,111 @@ import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.lib.math.ArithmeticSum;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  *
  * @author amol
  */
-
 @NodeAnnotation(
         ports = {
     @PortAnnotation(name = LoadGenerator.OPORT_DATA, type = PortAnnotation.PortType.OUTPUT)
 })
 public class LoadGenerator extends AbstractNode {
-    
+
     public static final String OPORT_DATA = "data";
-    
     int range = 0;
     boolean hasvalues = false;
+    boolean hasweights = false;
     int tuples_per_ms = 1;
-
-
-    HashMap<String, Number> keys = new HashMap<String, Number>();
+    HashMap<String, String> keys = new HashMap<String, String>();
     HashMap<String, Integer> weights = new HashMap<String, Integer>();
-    Integer total_weight = 1;
-    long num_keys = 0;
-    
+    HashMap<String, Integer> cur_weights = new HashMap<String, Integer>();
+    Integer total_weight = 0;
+    int num_keys = 0;
     /**
-     * keys are comma seperated list of keys for the load. These keys are send one per tuple as per the other parameters
-     * 
+     * keys are comma seperated list of keys for the load. These keys are send
+     * one per tuple as per the other parameters
+     *
      */
     public static final String KEY_KEYS = "keys";
-
     /**
-     * values are to be assigned to each key. The tuple thus is a key,value pair. The value field can either be empty (no value to 
-     * any key), or a comma separated list of values. If values list is provided, the number must match the number of keys
+     * values are to be assigned to each key. The tuple thus is a key,value
+     * pair. The value field can either be empty (no value to any key), or a
+     * comma separated list of values. If values list is provided, the number
+     * must match the number of keys
      */
     public static final String KEY_VALUES = "values";
-    
     /**
-     * The weights define the probability of each key being assigned to current tuple. The total of all weights is equal to 100%.
-     * If weights are not specified then the probability is equal.
+     * The weights define the probability of each key being assigned to current
+     * tuple. The total of all weights is equal to 100%. If weights are not
+     * specified then the probability is equal.
      */
     public static final String KEY_WEIGHTS = "weights";
-
     /**
-     * For each window the the weights are changed randomly within range (+/- range). This allows some randomization of the load
+     * For each window the the weights are changed randomly within range (+/-
+     * range). This allows some randomization of the load
      */
     public static final String KEY_RANGE = "range";
-    
     /**
      * The number of tuples sent out per milli second
      */
-    
     public static final String KEY_TUPLES_PER_MS = "tuples_per_ms";
-    
 
-    
     @Override
     public void setup(NodeConfiguration config) {
         super.setup(config);
         range = config.getInt(KEY_RANGE, 0);
         tuples_per_ms = config.getInt(KEY_TUPLES_PER_MS, 1);
 
-        String [] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
-        String [] kstr = config.getTrimmedStrings(KEY_KEYS);
-        String [] vstr = config.getTrimmedStrings(KEY_VALUES);
-         
-        boolean hasweights = (wstr != null) && (wstr.length == kstr.length);
-        hasvalues = (vstr != null) && (vstr.length == kstr.length);
-        
-        
-            //HashMap<String, Integer> weights = new HashMap<String, Integer>();
-    //Integer total_weight = 1;
+
+        String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
+        String[] kstr = config.getTrimmedStrings(KEY_KEYS);
+        String[] vstr = config.getTrimmedStrings(KEY_VALUES);
+
+        hasweights = (wstr != null);
+        hasvalues = (vstr != null);
+        int i = 0;
+        // Keys and weights would are accessed via same key
+        num_keys = kstr.length;
+        for (String s : kstr) {
+            if (hasweights) {
+                weights.put(s, Integer.parseInt(wstr[i]));
+                total_weight += Integer.parseInt(wstr[i]);
+            } else {
+                cur_weights.put(s, 100);
+                total_weight += 100;
+            }
+            if (hasvalues) {
+                keys.put(s, vstr[i]);
+            } else {
+                keys.put(s, "");
+            }
+            i += 1;
+        }
+        //HashMap<String, Integer> weights = new HashMap<String, Integer>();
+        //Integer total_weight = 1;
     }
 
-    
-    
     @Override
     public void process(Object payload) {
         // tbd
     }
-    
+
     @Override
     public void beginWindow() {
+        if (hasweights) {
+            for (Map.Entry<String, Integer> e : weights.entrySet()) {
+                if (range == 0) {
+                    cur_weights.put(e.getKey(), e.getValue());
+                } else {
+                }
+            }
+        }
+        else if (range != 0) {
+            // total_weight = 100 * num_keys;
+            // each weight is to be off 100
+        }
         super.beginWindow();
     }
 
@@ -100,12 +123,31 @@ public class LoadGenerator extends AbstractNode {
         super.endWindow();
     }
 
-    
     @Override
     public boolean checkConfiguration(NodeConfiguration config) {
         boolean ret = true;
-        
+
+        String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
+        String[] kstr = config.getTrimmedStrings(KEY_KEYS);
+        String[] vstr = config.getTrimmedStrings(KEY_VALUES);
+
+        if (kstr == null) {
+            ret = false;
+        }
+        if ((wstr != null) && (wstr.length != kstr.length)) {
+            ret = false;
+        }
+        if ((vstr != null) && (vstr.length != kstr.length)) {
+            ret = false;
+        }
+        range = config.getInt(KEY_RANGE, 0);
+        if ((range < 0) || (range > 100)) {
+            ret = false;
+        }
+        tuples_per_ms = config.getInt(KEY_TUPLES_PER_MS, 1);
+        if (tuples_per_ms <= 0) { // should also enforce an upper limit
+            ret = false;
+        }
         return ret && super.checkConfiguration(config);
     }
 }
-
