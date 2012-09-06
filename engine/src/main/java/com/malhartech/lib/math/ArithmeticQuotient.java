@@ -31,7 +31,7 @@ import java.util.Map;
  * <br>
  * Run time error processing are emitted on _error port. The errors are:<br>
  * Divide by zero (Error): no result is emitted on "outport".<br>
- * Input tuple not an integer on denominator stream: This tuple would not be counted towards the result.<br> 
+ * Input tuple not an integer on denominator stream: This tuple would not be counted towards the result.<br>
  * Input tuple not an integer on numerator stream: This tuple would not be counted towards the result.<br>
  * <br>
  *
@@ -49,7 +49,7 @@ public class ArithmeticQuotient extends AbstractNode {
     public static final String IPORT_NUMERATOR = "numerator";
     public static final String IPORT_DENOMINATOR = "denominator";
     public static final String OPORT_QUOTIENT = "quotient";
-    
+
     int mult_by = 1;
     boolean comp_margin = false;
 
@@ -59,7 +59,7 @@ public class ArithmeticQuotient extends AbstractNode {
     /**
      * Multiplies the quotient by this number. Ease of use for percentage
      * (* 100) or CPM (* 1000)
-     * 
+     *
      */
     public static final String KEY_MULTIPLY_BY = "multiply_by";
     /**
@@ -111,6 +111,9 @@ public class ArithmeticQuotient extends AbstractNode {
 
     @Override
     public void endWindow() {
+// FIXME: this is here just to test the test...
+emit("testtest");
+
         Number dval = null;
         Number nval = null;
         for (Map.Entry<String, Number> e : denominators.entrySet()) {
@@ -122,13 +125,13 @@ public class ArithmeticQuotient extends AbstractNode {
             else {
                 numerators.remove(e.getKey());
                 // email key, nval/dval * multiply_by; if compute margin, emit data in margin
-            }         
-        }  
+            }
+        }
         // Now if numerators has any keys issue divide by zero error
         for (Map.Entry<String, Number> e : numerators.entrySet()) {
             // emit error
         }
-        
+
         numerators.clear();
         denominators.clear();
         super.endWindow();
@@ -142,7 +145,7 @@ public class ArithmeticQuotient extends AbstractNode {
         // compute_margin has to be true or false
         // multiply_by has to be an integer
         // windowed has to be true
-        // 
+        //
         // In v0.2 most of common checks should be done via annotations
 
         return ret && super.checkConfiguration(config);
