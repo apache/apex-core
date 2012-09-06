@@ -65,11 +65,11 @@ public class ArithmeticSum extends AbstractNode {
      */
     @Override
     public void endWindow() {
+        HashMap<String, Number> tuple = new HashMap<String, Number>();
         for (Map.Entry<String, Number> e : sum.entrySet()) {
-            HashMap<String, Number> tuple = new HashMap<String, Number>();
             tuple.put(e.getKey(), e.getValue());
-            emit(OPORT_SUM, tuple);
         }
+        emit(OPORT_SUM, tuple);
         sum.clear();
     }
 
