@@ -57,13 +57,19 @@ public class ArithmeticSum extends AbstractNode {
         }
     }
     
+    public boolean myValidation(NodeConfiguration config) {
+        return true;    
+    }
+
     /**
      * Node only works in windowed mode. Emits all data upon end of window tuple
      */
     @Override
     public void endWindow() {
         for (Map.Entry<String, Number> e : sum.entrySet()) {
-            // emit e.getKey(), and e.getValue() as a tuple            
+            HashMap<String, Number> tuple = new HashMap<String, Number>();
+            tuple.put(e.getKey(), e.getValue());
+            emit(OPORT_SUM, tuple);
         }
         sum.clear();
         super.endWindow();
