@@ -11,6 +11,7 @@ import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.lib.math.ArithmeticSum;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 /**
  *
@@ -23,15 +24,16 @@ import java.util.Map;
 public class LoadGenerator extends AbstractNode {
 
     public static final String OPORT_DATA = "data";
-    int range = 0;
     boolean hasvalues = false;
     boolean hasweights = false;
     int tuples_per_ms = 1;
     HashMap<String, String> keys = new HashMap<String, String>();
     HashMap<String, Integer> weights = new HashMap<String, Integer>();
-    HashMap<String, Integer> cur_weights = new HashMap<String, Integer>();
+
     Integer total_weight = 0;
     int num_keys = 0;
+    private Random random = new Random();
+    
     /**
      * keys are comma seperated list of keys for the load. These keys are send
      * one per tuple as per the other parameters
@@ -51,11 +53,7 @@ public class LoadGenerator extends AbstractNode {
      * specified then the probability is equal.
      */
     public static final String KEY_WEIGHTS = "weights";
-    /**
-     * For each window the the weights are changed randomly within range (+/-
-     * range). This allows some randomization of the load
-     */
-    public static final String KEY_RANGE = "range";
+
     /**
      * The number of tuples sent out per milli second
      */
@@ -64,9 +62,7 @@ public class LoadGenerator extends AbstractNode {
     @Override
     public void setup(NodeConfiguration config) {
         super.setup(config);
-        range = config.getInt(KEY_RANGE, 0);
         tuples_per_ms = config.getInt(KEY_TUPLES_PER_MS, 1);
-
 
         String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
@@ -102,23 +98,6 @@ public class LoadGenerator extends AbstractNode {
     }
 
     @Override
-    public void beginWindow() {
-        if (hasweights) {
-            for (Map.Entry<String, Integer> e : weights.entrySet()) {
-                if (range == 0) {
-                    cur_weights.put(e.getKey(), e.getValue());
-                } else {
-                }
-            }
-        }
-        else if (range != 0) {
-            // total_weight = 100 * num_keys;
-            // each weight is to be off 100
-        }
-        super.beginWindow();
-    }
-
-    @Override
     public void endWindow() {
         super.endWindow();
     }
@@ -140,10 +119,7 @@ public class LoadGenerator extends AbstractNode {
         if ((vstr != null) && (vstr.length != kstr.length)) {
             ret = false;
         }
-        range = config.getInt(KEY_RANGE, 0);
-        if ((range < 0) || (range > 100)) {
-            ret = false;
-        }
+
         tuples_per_ms = config.getInt(KEY_TUPLES_PER_MS, 1);
         if (tuples_per_ms <= 0) { // should also enforce an upper limit
             ret = false;
