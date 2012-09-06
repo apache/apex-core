@@ -19,7 +19,6 @@ import java.util.Map;
  * "quotient".<p>
  * <br>
  * Each stream is added to a hash. The values are added for each key within the window and for each stream.<br>
- * If integermath parameter is true then the values are expected to be integers and the result is quotient,reminder (both integers).<br>
  * If compute_margin is true then the result is 1 - numerator/denominator expressed as a percentage. Ideally
  * multiply_by should be 1 in this case.<br>
  * This node only functions in a windowed stram application<br>
@@ -132,11 +131,6 @@ public class ArithmeticQuotient extends AbstractNode {
         super.endWindow();
     }
 
-    @Override
-    public void beginWindow() {
-        // clean up the hash
-        super.beginWindow();
-    }
 
     @Override
     public boolean checkConfiguration(NodeConfiguration config) {
