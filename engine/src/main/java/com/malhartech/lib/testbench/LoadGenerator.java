@@ -194,7 +194,7 @@ public class LoadGenerator extends AbstractInputNode {
 
         while (!shutdown) {
             if (outputConnected) {
-                // send tuples as per weights and then sleep for 1ms
+                // send tuples upto tuples_per_ms and then wait for 1 ms
                 while (i < tuples_per_ms) {
                     int rval = random.nextInt(total_weight);
                     int j = 0;
@@ -206,8 +206,8 @@ public class LoadGenerator extends AbstractInputNode {
                     }
                     // wval is the key index
                     HashMap<String, Double> tuple = new HashMap<String, Double>();
-                    String key = wtostr_index.get(new Integer(j));
-                    tuple.put(key, keys.get(key)); // the key
+                    String key = wtostr_index.get(new Integer(j)); // the key
+                    tuple.put(key, keys.get(key));
                     
                     emit(OPORT_DATA, tuple);
                     i++;
