@@ -16,10 +16,8 @@ import java.util.Map;
  * Takes in one stream via input port "data". At end of window sums all values
  * for each key and emits them on port "sum"<p>
  * <br> Values are stored in a hash<br>
- * This node only functions in a windowed stram application <br>
+ * This node only functions in a windowed stram application<br>
  * Compile time error processing is done on configuration parameters<br>
- * property "distinct" is false by default. If true the values are ignored and
- * it performs like a Set<br> 
  * input port "data" must be connected<br>
  * output port "sum" must be connected<br>
  * "windowed" has to be true<br> 
