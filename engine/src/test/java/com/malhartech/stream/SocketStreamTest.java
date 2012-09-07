@@ -160,7 +160,7 @@ public class SocketStreamTest
 
     //StreamConf output1 = b.getOrAddStream("output1");
     //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
-    //                    ConsoleOutputStream.class.getName());
+    //                    ConsoleOutputNode.class.getName());
     Topology tplg = b.getTopology();
 
     DNodeManager dnm = new DNodeManager(tplg);

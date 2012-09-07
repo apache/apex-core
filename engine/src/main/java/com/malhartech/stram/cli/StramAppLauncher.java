@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.jar.JarEntry;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.log4j.lf5.util.StreamUtils;
@@ -27,7 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.stram.StramClient;
+import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.conf.ShipContainingJars;
+import com.malhartech.stram.conf.TopologyBuilder;
 
 
 /**
@@ -188,12 +191,32 @@ public class StramAppLauncher {
 
   }
 
-  public ApplicationId launchTopology(File topologyFile) throws Exception {
+  /**
+   * Run application in-process. Returns only once application completes.
+   * @param topologyFile
+   * @throws Exception
+   */
+  public void runLocal(File topologyFile) throws Exception {
+    // local mode requires custom classes to be resolved through the context class loader
+    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
+    Thread.currentThread().setContextClassLoader(cl);
+    StramLocalCluster lc = new StramLocalCluster(TopologyBuilder.createTopology(new Configuration(), topologyFile.getAbsolutePath()));
+    lc.run();
+  }
+
+  /**
+   * Submit application to the cluster and return the app id.
+   * @param topologyFile
+   * @return
+   * @throws Exception
+   */
+  public ApplicationId launchApp(File topologyFile) throws Exception {
 
     URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
     //Class<?> loadedClass = cl.loadClass("com.malhartech.example.wordcount.WordCountSerDe");
     //LOG.info("loaded " + loadedClass);
     Thread.currentThread().setContextClassLoader(cl);
+
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath
     Class<?> childClass = cl.loadClass(StramAppLauncher.class.getName());
@@ -209,13 +232,6 @@ public class StramAppLauncher {
         "--topologyProperties",
         topologyFile.getAbsolutePath()
     };
-
-    // local mode does not work due to class loader issue
-    //StramLocalCluster lc = new StramLocalCluster(TopologyBuilder.createTopology(new Configuration(), topologyFile.getAbsolutePath()));
-    //lc.run();
-    //if (true) {
-    //  throw new UnsupportedOperationException();
-    //}
 
     StramClient client = new StramClient();
     boolean initSuccess = client.init(args);
@@ -240,7 +256,7 @@ public class StramAppLauncher {
       throw new IllegalArgumentException("jar file does not contain any topology definitions.");
     }
     File topology = appLauncher.topologyList.get(0);
-    appLauncher.launchTopology(topology);
+    appLauncher.launchApp(topology);
   }
 
 }

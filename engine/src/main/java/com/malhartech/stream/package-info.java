@@ -47,9 +47,9 @@
  * <b>{@link com.malhartech.stream.BufferServerStreamContext}</b>: Implements stream context for buffer server<br>
  * 
  * <br><b>Console Streams</b><br>
- * <b>{@link com.malhartech.stream.ConsoleOutputStream}</b>: Extends {@link com.malhartech.dag.Stream} class.
+ * <b>{@link com.malhartech.lib.io.ConsoleOutputNode}</b>: Extends {@link com.malhartech.dag.Stream} class.
  * Writes directly to stdout. The data would show up in the stdout of Hadoop container in which the node runs. This
- * is a very good way to debug. Care must be taken to avoid connecting {@link com.malhartech.stream.ConsoleOutputStream} to an output of a
+ * is a very good way to debug. Care must be taken to avoid connecting {@link com.malhartech.lib.io.ConsoleOutputNode} to an output of a
  * node with high throughput<br>
  * 
  * <br><b>Inline Stream (Within a Hadoop Container)</b><br>

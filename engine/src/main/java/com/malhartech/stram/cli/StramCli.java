@@ -109,7 +109,7 @@ public class StramCli
     completors.add(new SimpleCompletor(commandsList));
 
     List<Completor> launchCompletors = new LinkedList<Completor>();
-    launchCompletors.add(new SimpleCompletor("launch"));
+    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local"}));
     launchCompletors.add(new FileNameCompletor()); // jarFile
     launchCompletors.add(new FileNameCompletor()); // topology
     completors.add(new ArgumentCompletor(launchCompletors));
@@ -382,6 +382,7 @@ public class StramCli
   private void launchApp(String line, ConsoleReader reader)
   {
     String[] args = assertArgs(line, 2, "No jar file specified.");
+    boolean localMode = "launch-local".equals(args[0]);
 
     File tplgFile = null;
     if (args.length == 3) {
@@ -430,10 +431,14 @@ public class StramCli
       }
 
       if (tplgFile != null) {
-        ApplicationId appId = submitApp.launchTopology(tplgFile);
-        this.currentApp = rmClient.getApplicationReport(appId);
-        this.currentDir = "" + currentApp.getApplicationId().getId();
-        System.out.println(appId);
+        if (!localMode) {
+          ApplicationId appId = submitApp.launchApp(tplgFile);
+          this.currentApp = rmClient.getApplicationReport(appId);
+          this.currentDir = "" + currentApp.getApplicationId().getId();
+          System.out.println(appId);
+        } else {
+          submitApp.runLocal(tplgFile);
+        }
       }
       else {
         System.err.println("No topology specified.");
