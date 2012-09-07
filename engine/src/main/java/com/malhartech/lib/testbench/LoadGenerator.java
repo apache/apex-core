@@ -18,6 +18,31 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
+ * Generates synthetic load. Creates tuples and keeps emitting them on the output port "data"<p>
+ * <br>
+ * The load is generated as per config parameters. This class is mainly meant for testing
+ * nodes.<br>
+ * It does not need to be windowed. It would just create tuple stream upto the limit set
+ * by the config parameters. It has been benchmarked at over 25 million/second throughput<br>
+ * <br>
+ * <b>Tuple Schema</b>: Each tuple is HashMap<String, Double><br>
+ * <b>Port Interface</b>:It has only one output port "data" and has no input ports<br><br>
+ * <b>Properties</b>:
+ * <b>keys</b> is a comma separated list of keys. This key are the <key> field in the tuple<br>
+ * <b>values</b> are comma separated list of values. This value is the <value> field in the tuple. If not specified the values for all keys are 0.0<br>
+ * <b>weights</b> are comma separated list of probability weights for each key. If not specified the weights are even for all keys<br>
+ * <b>tuples_per_sec</b> is the upper limit of number of tuples per sec. The default value is 10000. This library node has been benchmarked at over 25 million tuples/sec<br>
+ * <br>
+ * Compile time checks are:<br>
+ * <b>keys</b> cannot be empty<br>
+ * <b>values</b> if specified has to be comma separated doubles and their number must match the number of keys<br>
+ * <b>weights</b> if specified has to be comma separated integers and number of their number must match the number of keys<br>
+ * <b>tuples_per_sec</b>If specified must be an integer<br>
+ * <br>
+ *
+ * Compile time error checking includes<br>
+ * 
+ * 
  * @author amol
  */
 @NodeAnnotation(
@@ -64,14 +89,26 @@ public class LoadGenerator extends AbstractInputNode {
      */
     public static final String KEY_TUPLES_PER_SEC = "tuples_per_ms";
 
+    /**
+     * Not used, but overridden as it is abstract
+     */
     @Override
     public void endWindow() {;
     }
 
+    /**
+     * Not used, but overridden as it is abstract
+     */
     @Override
     public void beginWindow() {;
     }
 
+    /**
+     * 
+     * Code to be moved to a proper base method name
+     * @param config
+     * @return boolean
+     */
     public boolean myValidation(NodeConfiguration config) {
         String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
@@ -135,6 +172,10 @@ public class LoadGenerator extends AbstractInputNode {
         return ret;
     }
 
+    /**
+     * Sets up all the config parameters. Assumes checking is done and has passed
+     * @param config 
+     */
     @Override
     public void setup(NodeConfiguration config) {
         super.setup(config);
@@ -146,7 +187,7 @@ public class LoadGenerator extends AbstractInputNode {
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
 
-        tuples_per_sec = config.getInt(KEY_TUPLES_PER_SEC, 1);
+        tuples_per_sec = config.getInt(KEY_TUPLES_PER_SEC, 10000);
         hasweights = (wstr != null);
         hasvalues = (vstr != null);
         // Keys and weights would are accessed via same key
@@ -170,6 +211,12 @@ public class LoadGenerator extends AbstractInputNode {
         }
     }
 
+    /**
+     * 
+     * To allow emit to wait till output port is connected in a deployment on Hadoop
+     * @param id
+     * @param dagpart 
+     */
     @Override
     public void connected(String id, Sink dagpart) {
         if (id.equals(OPORT_DATA)) {
@@ -177,12 +224,19 @@ public class LoadGenerator extends AbstractInputNode {
         }
     }
 
+    /**
+     * The only way to shut down a loadGenerator. We are looking into a property based shutdown
+     */
     @Override
     public void deactivate() {
         shutdown = true;
         super.deactivate();
     }
 
+    /**
+     * Generates all the tuples till shutdown (deactivate) is issued
+     * @param context 
+     */
     @Override
     public void activate(NodeContext context) {
         super.activate(context);
