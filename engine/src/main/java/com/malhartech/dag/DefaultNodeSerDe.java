@@ -19,7 +19,9 @@ public class DefaultNodeSerDe implements NodeSerDe {
   @Override
   public Object read(InputStream is)
   {
-    return new Kryo().readClassAndObject(new Input(is));
+    Kryo kryo = new Kryo();
+    kryo.setClassLoader(Thread.currentThread().getContextClassLoader());
+    return kryo.readClassAndObject(new Input(is));
   }
 
   @Override
