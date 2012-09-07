@@ -46,6 +46,7 @@ import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.WindowIdActivatedSink;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
@@ -75,21 +76,23 @@ public class StramChild
   final private StreamingNodeUmbilicalProtocol umbilical;
   final private Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
   final private Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
+  final private Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
    * for the following 2 fields, my preferred type is HashSet but synchronizing them was resulting in very verbose code.
    */
   final private Map<Node, NodeContext> activeNodes = new ConcurrentHashMap<Node, NodeContext>();
   final private Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
+  final private Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
-  private WindowGenerator windowGenerator;
   private String checkpointDfsPath;
-  private Configuration dagConfig = new Configuration(); // STRAM should provide this object, we are mimicking here.
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
   private Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
+  private long firstWindowMillis;
+  private int windowWidthMillis;
 
   protected StramChild(String containerId, Configuration conf, StreamingNodeUmbilicalProtocol umbilical)
   {
@@ -101,17 +104,20 @@ public class StramChild
   protected void init(StreamingContainerContext ctx) throws IOException
   {
 
-    this.heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
-    if (this.heartbeatIntervalMillis == 0) {
-      this.heartbeatIntervalMillis = 1000;
+    heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
+    if (heartbeatIntervalMillis == 0) {
+      heartbeatIntervalMillis = 1000;
+    }
+
+    firstWindowMillis = ctx.getStartWindowMillis();
+    windowWidthMillis = ctx.getWindowSizeMillis();
+    if (windowWidthMillis == 0) {
+      windowWidthMillis = 500;
     }
 
     if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
       this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
     }
-
-    dagConfig.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, ctx.getStartWindowMillis());
-    dagConfig.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, ctx.getWindowSizeMillis());
 
     deploy(ctx.nodeList);
   }
@@ -126,9 +132,9 @@ public class StramChild
     return this.nodes;
   }
 
-  protected void setWindowGenerator(WindowGenerator wgen)
+  protected void addWindowGenerator(String nodeid, WindowGenerator wgen)
   {
-    this.windowGenerator = wgen;
+    generators.put(nodeid, wgen);
   }
 
   /**
@@ -231,9 +237,10 @@ public class StramChild
 
   private void deactivate()
   {
-    if (windowGenerator != null) {
-      windowGenerator.deactivate();
+    for (WindowGenerator wg: activeGenerators.keySet()) {
+      wg.deactivate();
     }
+    activeGenerators.clear();
 
     for (Node node: activeNodes.keySet()) {
       node.deactivate();
@@ -292,25 +299,32 @@ public class StramChild
     /**
      * if any of the nodes to undeploy is getting input from WindowGenerator, we need to cut that connection.
      */
-    if (windowGenerator != null) {
-      Set<String> sinkIds = windowGenerator.getOutputIds();
+    for (WindowGenerator wg: generators.values()) {
+      Set<String> sinkIds = wg.getOutputIds();
       Iterator<String> iterator = sinkIds.iterator();
       while (iterator.hasNext()) {
         String sinkId = iterator.next();
         String[] nodeport = sinkId.split(".");
         Node node = toUndeploy.get(nodeport[0]);
         if (node != null) {
-          windowGenerator.connect(sinkId, null);
+          wg.connect(sinkId, null);
           node.connect(nodeport[1], null);
           iterator.remove();
         }
       }
 
       if (sinkIds.isEmpty()) {
-        windowGenerator.deactivate();
-        windowGenerator.teardown();
-        windowGenerator = null;
+        activeGenerators.remove(wg);
+        wg.deactivate();
+        wg.teardown();
       }
+    }
+
+    /**
+     * Clean up our generators mapping by removing generators for the nodes which are being undeployed.
+     */
+    for (String id: toUndeploy.keySet()) {
+      generators.remove(id);
     }
 
     List<String> removableSocketOutputStreams = new ArrayList<String>();
@@ -432,11 +446,14 @@ public class StramChild
 
   protected void shutdown()
   {
-    if (windowGenerator != null) {
-      windowGenerator.deactivate();
-      windowGenerator.teardown();
-      windowGenerator = null;
+    for (WindowGenerator wg: generators.values()) {
+      if (activeGenerators.containsKey(wg)) {
+        activeGenerators.remove(wg);
+        wg.deactivate();
+        wg.teardown();
+      }
     }
+    generators.clear();
 
     for (Node node: activeNodes.keySet()) {
       node.deactivate();
@@ -719,6 +736,8 @@ public class StramChild
 
   private void deployInputStreams(List<NodeDeployInfo> nodeList)
   {
+    WindowGenerator windowGenerator = null;
+
     /**
      * Hook up all the downstream sinks.
      * There are 2 places where we deal with more than sinks. The first one follows immediately for WindowGenerator.
@@ -726,6 +745,7 @@ public class StramChild
      * to create the stream. We need to track this stream along with other streams, and many such streams may exist,
      * we hash them against buffer server info as we did for outputs but throw in the sinkid in the mix as well.
      */
+    long smallestWindowId = Long.MAX_VALUE;
     for (NodeDeployInfo ndi: nodeList) {
       Node node = nodes.get(ndi.id).component;
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
@@ -736,11 +756,19 @@ public class StramChild
          */
         if (windowGenerator == null) {
           windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
-          windowGenerator.setup(dagConfig);
+//          windowGenerator.setup(dagConfig);
+        }
+        generators.put(ndi.id, windowGenerator);
+
+        /**
+         * When we activate the window Generator, we plan to activate it only from required windowId.
+         */
+        if (ndi.checkpointWindowId < smallestWindowId) {
+          smallestWindowId = ndi.checkpointWindowId;
         }
 
         Sink s = node.connect(Component.INPUT, windowGenerator);
-        windowGenerator.connect(ndi.id.concat(".").concat(Component.INPUT), s);
+        windowGenerator.connect(ndi.id.concat(".").concat(Component.INPUT), ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(s, ndi.checkpointWindowId) : s);
       }
       else {
         for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
@@ -768,7 +796,7 @@ public class StramChild
                         new ComponentContextPair<Stream, StreamContext>(stream, context));
 
             Sink s = node.connect(nidi.portName, stream);
-            stream.connect(sinkIdentifier, s);
+            stream.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(s, ndi.checkpointWindowId) : s);
           }
           else {
             Sink s = node.connect(nidi.portName, pair.component);
@@ -815,7 +843,7 @@ public class StramChild
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              pair.component.connect(sinkIdentifier, s);
+              pair.component.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(s, ndi.checkpointWindowId) : s);
             }
             else {
               /*
@@ -823,11 +851,22 @@ public class StramChild
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
               PartitionAwareSink pas = new PartitionAwareSink(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, s);
-              pair.component.connect(sinkIdentifier, pas);
+              pair.component.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pas, ndi.checkpointWindowId) : pas);
             }
           }
         }
       }
+    }
+
+    if (windowGenerator != null) {
+      // let's see if we want to send the exact same window id even the second time.
+//      int widthmillis = dagConfig.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 500);
+  //    long startmillis = (smallestWindowId >> 32) * 1000 + widthmillis * (smallestWindowId & WindowGenerator.MAX_VALUE_WINDOW);
+      // use the lowest blah blah we calculated above.
+      NodeConfiguration config = new NodeConfiguration("doesn't matter", null);
+      config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, firstWindowMillis);
+      config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, windowWidthMillis);
+      windowGenerator.setup(config);
     }
   }
 
@@ -877,8 +916,11 @@ public class StramChild
       }
     }
 
-    if (windowGenerator != null) {
-      windowGenerator.activate(null);
+    for (WindowGenerator wg: generators.values()) {
+      if (!activeGenerators.containsKey(wg)) {
+        activeGenerators.put(wg, generators);
+        wg.activate(null);
+      }
     }
   }
 
