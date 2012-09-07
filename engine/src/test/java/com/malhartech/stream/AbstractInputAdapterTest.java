@@ -4,7 +4,6 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.*;
 import com.malhartech.stram.ManualScheduledExecutorService;
 import com.malhartech.stram.WindowGenerator;

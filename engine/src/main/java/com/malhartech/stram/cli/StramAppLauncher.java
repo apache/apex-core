@@ -31,7 +31,7 @@ import com.malhartech.stram.conf.ShipContainingJars;
 
 
 /**
- * 
+ *
  * Launch a streaming application packaged as jar file<p>
  * <br>
  * Parses the jar file for
@@ -45,25 +45,25 @@ import com.malhartech.stram.conf.ShipContainingJars;
  */
 
 public class StramAppLauncher {
-  
+
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
 
   final File jarFile;
   private List<File> topologyList = new ArrayList<File>();
   private LinkedHashSet<URL> launchDependencies;
-  
+
   /**
-   * 
+   *
    * Starts a command and waits for it to complete<p>
    * <br>
-   * 
+   *
    */
   public static class ProcessWatcher implements Runnable {
 
     private Process p;
     private volatile boolean finished = false;
     private volatile int rc;
-    
+
     public ProcessWatcher(Process p) {
         this.p = p;
         new Thread(this).start();
@@ -79,23 +79,23 @@ public class StramAppLauncher {
         } catch (Exception e) {}
         finished = true;
     }
-  }  
+  }
 
   public StramAppLauncher(File appJarFile) throws Exception {
     this.jarFile = appJarFile;
     init();
   }
-  
+
   private void init() throws Exception {
 
-    File baseDir =  new File(FileUtils.getUserDirectory(), ".stram");
+    File baseDir =  StramClientUtils.getSettingsRootDir();
     baseDir = new File(baseDir, jarFile.getName());
     baseDir.mkdirs();
 
     File pomCrcFile = new File(baseDir, "pom.xml.crc");
     File cpFile = new File(baseDir, "mvn-classpath");
     long pomCrc = 0;
-    String cp = null; 
+    String cp = null;
 
     // read crc and classpath file, if it exists
     // (we won't run mvn if pom didn't change)
@@ -109,12 +109,12 @@ public class StramAppLauncher {
         LOG.error("Cannot read CRC from {}", pomCrcFile);
       }
     }
-    
+
  // TODO: cache based on application jar checksum
     FileUtils.deleteDirectory(baseDir);
-    
+
     java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile);
-    
+
     java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
     while (entriesEnum.hasMoreElements()) {
         java.util.jar.JarEntry file = (java.util.jar.JarEntry) entriesEnum.nextElement();
@@ -134,9 +134,9 @@ public class StramAppLauncher {
             topologyList.add(targetFile);
           }
         }
-    }    
+    }
     jar.close();
-    
+
     File pomFile = new File(baseDir, "pom.xml");
     if (pomFile.exists()) {
       if (cp == null) {
@@ -167,10 +167,10 @@ public class StramAppLauncher {
 //    ClassLoader baseCl = StramAppLauncher.class.getClassLoader();
 //    if (baseCl instanceof URLClassLoader) {
 //      URL[] baseUrls = ((URLClassLoader)baseCl).getURLs();
-//      // launch class path takes precedence - add first  
+//      // launch class path takes precedence - add first
 //      clUrls.addAll(Arrays.asList(baseUrls));
 //    }
-    
+
     clUrls.add(new URL("jar", "","file:" + jarFile.getAbsolutePath()+"!/"));
     // add the jar dependencies
     if (cp != null) {
@@ -183,15 +183,15 @@ public class StramAppLauncher {
     for (URL baseURL : clUrls) {
       LOG.debug("Dependency: {}", baseURL);
     }
-    
+
     this.launchDependencies = clUrls;
-    
+
   }
 
   public ApplicationId launchTopology(File topologyFile) throws Exception {
 
-    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));   
-    //Class<?> loadedClass = cl.loadClass("com.malhartech.example.wordcount.WordCountSerDe");    
+    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
+    //Class<?> loadedClass = cl.loadClass("com.malhartech.example.wordcount.WordCountSerDe");
     //LOG.info("loaded " + loadedClass);
     Thread.currentThread().setContextClassLoader(cl);
     // below would be needed w/o parent delegation only
@@ -201,7 +201,7 @@ public class StramAppLauncher {
     Object appIdStr = runApp.invoke(null, topologyFile);
     return ConverterUtils.toApplicationId(""+appIdStr);
   }
-  
+
   public static String runApp(File topologyFile) throws Exception {
     LOG.info("Launching topology: {}", topologyFile);
 
@@ -209,7 +209,14 @@ public class StramAppLauncher {
         "--topologyProperties",
         topologyFile.getAbsolutePath()
     };
-    
+
+    // local mode does not work due to class loader issue
+    //StramLocalCluster lc = new StramLocalCluster(TopologyBuilder.createTopology(new Configuration(), topologyFile.getAbsolutePath()));
+    //lc.run();
+    //if (true) {
+    //  throw new UnsupportedOperationException();
+    //}
+
     StramClient client = new StramClient();
     boolean initSuccess = client.init(args);
     if (!initSuccess) {
@@ -222,7 +229,7 @@ public class StramAppLauncher {
   public List<File> getBundledTopologies() {
     return Collections.unmodifiableList(this.topologyList);
   }
-  
+
   /**
    * @param args
    */
@@ -235,5 +242,5 @@ public class StramAppLauncher {
     File topology = appLauncher.topologyList.get(0);
     appLauncher.launchTopology(topology);
   }
-  
+
 }

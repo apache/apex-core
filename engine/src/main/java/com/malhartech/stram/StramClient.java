@@ -4,16 +4,13 @@
  */
 package com.malhartech.stram;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Vector;
 
 import org.apache.commons.cli.CommandLine;
@@ -195,11 +192,7 @@ public class StramClient
     }
     LOG.info("Topology: " + topologyPropertyFile);
 
-    Properties topologyProperties = readProperties(topologyPropertyFile);
-    TopologyBuilder tb = new TopologyBuilder(conf);
-    tb.addFromProperties(topologyProperties);
-
-    topology = tb.getTopology();
+    topology = TopologyBuilder.createTopology(conf, topologyPropertyFile);
     topology.validate();
     if (cliParser.hasOption("debug")) {
       topology.getConf().setBoolean(Topology.STRAM_DEBUG, true);
@@ -238,26 +231,21 @@ public class StramClient
     return true;
   }
 
-  /**
-   * Launch application for the topology represented by this client.
-   *
-   * @throws IOException
-   */
-  public void startApplication() throws IOException
-  {
-    // process dependencies
-
+  public static LinkedHashSet<String> findJars(Topology tplg) {
     // platform jar files - always required
     Class<?>[] defaultClasses = new Class<?>[]{
       com.malhartech.bufferserver.Server.class,
       com.malhartech.stram.StramAppMaster.class,
       com.malhartech.dag.DefaultSerDe.class,
-      io.netty.channel.socket.nio.NioEventLoopGroup.class // there should be another way of handling this!
+      io.netty.channel.socket.nio.NioEventLoopGroup.class, // there should be another way of handling this!
+      io.netty.util.AttributeMap.class,
+      io.netty.buffer.ChannelBufType.class,
+      io.netty.handler.codec.MessageToMessageEncoder.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
 
-    for (String className : topology.getClassNames()) {
+    for (String className : tplg.getClassNames()) {
       try {
         Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
         jarClasses.add(clazz);
@@ -285,13 +273,26 @@ public class StramClient
         LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
       }
     }
-
-    String libJarsPath = topology.getLibJars();
+    String libJarsPath = tplg.getLibJars();
     if (!StringUtils.isEmpty(libJarsPath)) {
       String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, ",");
       localJarFiles.addAll(Arrays.asList(libJars));
     }
     LOG.info("Local jar file dependencies: " + localJarFiles);
+
+    return localJarFiles;
+  }
+
+
+  /**
+   * Launch application for the topology represented by this client.
+   *
+   * @throws IOException
+   */
+  public void startApplication() throws IOException
+  {
+    // process dependencies
+    LinkedHashSet<String> localJarFiles = findJars(topology);
 
     // Connect to ResourceManager
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
@@ -588,15 +589,6 @@ public class StramClient
     GetNewApplicationResponse response = rmClient.clientRM.getNewApplication(request);
     LOG.info("Got new application id=" + response.getApplicationId());
     return response;
-  }
-
-  private static Properties readProperties(String filePath) throws IOException
-  {
-    InputStream is = new FileInputStream(filePath);
-    Properties props = new Properties(System.getProperties());
-    props.load(is);
-    is.close();
-    return props;
   }
 
 }

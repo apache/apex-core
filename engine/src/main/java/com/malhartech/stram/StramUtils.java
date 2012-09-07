@@ -33,7 +33,8 @@ public abstract class StramUtils {
 
   public static final <T> Class<? extends T> classForName(String className, Class<T> superClass) {
     try {
-      return Class.forName(className).asSubclass(superClass);
+      //return Class.forName(className).asSubclass(superClass);
+      return Thread.currentThread().getContextClassLoader().loadClass(className).asSubclass(superClass);
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("Class not found: " + className, e);
     }

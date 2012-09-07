@@ -4,6 +4,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.dag.MutatedSinkException;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
@@ -103,7 +104,14 @@ public class InlineStream implements Stream
   @Override
   public final void process(Object payload)
   {
-    current.process(payload);
+    try {
+      current.process(payload);
+    }
+    catch (MutatedSinkException mse) {
+      current = mse.getNewSink();
+      current.process(payload);
+      output = current;
+    }
   }
 
   public final Sink getOutput()

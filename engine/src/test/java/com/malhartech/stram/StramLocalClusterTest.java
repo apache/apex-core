@@ -82,9 +82,9 @@ public class StramLocalClusterTest
       setSource(node1.getOutput(GenericTestNode.OUTPUT1)).
       addSink(node2.getInput(GenericTestNode.INPUT1));
 
-    //tb.validate();
-
     Topology tplg = tb.getTopology();
+    tplg.validate();
+
     tplg.getConf().setInt(Topology.STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
     tplg.getConf().setInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
 
