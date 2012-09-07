@@ -177,11 +177,11 @@ public class LoadGenerator extends AbstractInputNode {
         if (isstringschema) {
             if (vstr.length != 0) {
                 LOG.info(String.format("Value %s and stringschema is %s",
-                        config.get(KEY_VALUES), config.get(KEY_STRING_SCHEMA)));
+                        config.get(KEY_VALUES, ""), config.get(KEY_STRING_SCHEMA, "")));
                 ret = false;
                 throw new IllegalArgumentException(
                         String.format("Value (\"%s\") cannot be specified if string_schema (\"%s\") is true",
-                        config.get(KEY_VALUES), config.get(KEY_STRING_SCHEMA)));
+                        config.get(KEY_VALUES, ""), config.get(KEY_STRING_SCHEMA, "")));
             }
         }
         // Should enforce an upper limit
@@ -218,7 +218,7 @@ public class LoadGenerator extends AbstractInputNode {
             if (vstr.length != 0) {
                 keys.put(s, new Double(Double.parseDouble(vstr[i])));
             } else {
-                keys.put(s, new Double(0.0));
+                keys.put(s, 0.0);
             }
             wtostr_index.put(i, s);
             i += 1;
@@ -271,12 +271,12 @@ public class LoadGenerator extends AbstractInputNode {
                     // wval is the key index
                     if (!isstringschema) {
                         HashMap<String, Double> tuple = new HashMap<String, Double>();
-                        String key = wtostr_index.get(new Integer(j)); // the key
+                        String key = wtostr_index.get(j); // the key
                         tuple.put(key, keys.get(key));
                         emit(OPORT_DATA, tuple);
                     }
                     else {
-                        emit(OPORT_DATA, wtostr_index.get(new Integer(j)));
+                        emit(OPORT_DATA, wtostr_index.get(j));
                     }
                     i++;
                 }
