@@ -53,15 +53,13 @@ public class LoadGenerator extends AbstractInputNode {
 
     public static final String OPORT_DATA = "data";
     private static Logger LOG = LoggerFactory.getLogger(LoadGenerator.class);
-    boolean hasvalues = false;
-    boolean hasweights = false;
     int tuples_per_sec = 1;
     HashMap<String, Double> keys = new HashMap<String, Double>();
     HashMap<Integer, String> wtostr_index = new HashMap<Integer, String>();
-
     ArrayList<Integer> weights = new ArrayList<Integer>();
+    
+    boolean isstringschema = false;
     int total_weight = 0;
-    int num_keys = 0;
     private Random random = new Random();
     private volatile boolean shutdown = false;
     private boolean outputConnected = false;
@@ -90,6 +88,12 @@ public class LoadGenerator extends AbstractInputNode {
     public static final String KEY_TUPLES_PER_SEC = "tuples_per_ms";
 
     /**
+     * If specified as "true" a String class is sent, else HashMap is sent
+     */
+    public static final String KEY_STRING_SCHEMA = "string_schema";
+    
+    
+    /**
      * Not used, but overridden as it is abstract
      */
     @Override
@@ -113,6 +117,8 @@ public class LoadGenerator extends AbstractInputNode {
         String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
+        boolean isstringschema = config.getBoolean(KEY_STRING_SCHEMA, false);
+        
         boolean ret = true;
 
         if (kstr.length == 0) {
@@ -168,6 +174,16 @@ public class LoadGenerator extends AbstractInputNode {
         } else {
             LOG.info(String.format("Using %d tuples per second", tuples_per_sec));
         }
+        if (isstringschema) {
+            if (vstr.length != 0) {
+                LOG.info(String.format("Value %s and stringschema is %s",
+                        config.get(KEY_VALUES), config.get(KEY_STRING_SCHEMA)));
+                ret = false;
+                throw new IllegalArgumentException(
+                        String.format("Value (\"%s\") cannot be specified if string_schema (\"%s\") is true",
+                        config.get(KEY_VALUES), config.get(KEY_STRING_SCHEMA)));
+            }
+        }
         // Should enforce an upper limit
         return ret;
     }
@@ -186,22 +202,20 @@ public class LoadGenerator extends AbstractInputNode {
         String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
-
+        
+        isstringschema = config.getBoolean(KEY_STRING_SCHEMA, false);
         tuples_per_sec = config.getInt(KEY_TUPLES_PER_SEC, 10000);
-        hasweights = (wstr != null);
-        hasvalues = (vstr != null);
+        
         // Keys and weights would are accessed via same key
-        num_keys = kstr.length;
-
         int i = 0;
         for (String s : kstr) {
-            if (hasweights) {
+            if (wstr.length != 0) {
                 weights.add(Integer.parseInt(wstr[i]));
                 total_weight += Integer.parseInt(wstr[i]);
             } else {
                 total_weight += 100;
             }
-            if (hasvalues) {
+            if (vstr.length != 0) {
                 keys.put(s, new Double(Double.parseDouble(vstr[i])));
             } else {
                 keys.put(s, new Double(0.0));
@@ -255,14 +269,20 @@ public class LoadGenerator extends AbstractInputNode {
                         j++;
                     }
                     // wval is the key index
-                    HashMap<String, Double> tuple = new HashMap<String, Double>();
-                    String key = wtostr_index.get(new Integer(j)); // the key
-                    tuple.put(key, keys.get(key));     
-                    emit(OPORT_DATA, tuple);
+                    if (!isstringschema) {
+                        HashMap<String, Double> tuple = new HashMap<String, Double>();
+                        String key = wtostr_index.get(new Integer(j)); // the key
+                        tuple.put(key, keys.get(key));
+                        emit(OPORT_DATA, tuple);
+                    }
+                    else {
+                        emit(OPORT_DATA, wtostr_index.get(new Integer(j)));
+                    }
                     i++;
                 }
                 try {
-                    Thread.sleep(1000);
+                    //Thread.sleep(1000);
+                    Thread.sleep(10); // Remove sleep if you want to blast data at huge rate
                 } catch (InterruptedException e) {
                     LOG.error("Unexpected error while sleeping for 1 s", e);
                 }
