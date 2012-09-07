@@ -39,6 +39,7 @@ public class StramLocalClusterTest
   public void testTplg() throws IOException, Exception {
     String tplgFile = "src/test/resources/clusterTest.tplg.properties";
     StramLocalCluster lc = new StramLocalCluster(TopologyBuilder.createTopology(new Configuration(), tplgFile));
+    lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
   }
 
