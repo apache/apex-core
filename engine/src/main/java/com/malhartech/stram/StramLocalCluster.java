@@ -33,7 +33,6 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerCon
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.NodeDecl;
-import com.sun.jersey.core.impl.provider.entity.XMLJAXBElementProvider;
 
 /**
  * Launcher for topologies in local mode within a single process.
@@ -53,7 +52,9 @@ public class StramLocalCluster implements Runnable {
   private int containerSeq = 0;
   private boolean appDone = false;
 
+
   final private Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>();
+  private boolean heartbeatMonitoringEnabled = true;
 
   private class UmbilicalProtocolLocalImpl implements StreamingNodeUmbilicalProtocol {
 
@@ -251,6 +252,10 @@ public class StramLocalCluster implements Runnable {
     appDone = true;
   }
 
+  public void setHeartbeatMonitoringEnabled(boolean enabled) {
+    this.heartbeatMonitoringEnabled = enabled;
+  }
+
   @Override
   @SuppressWarnings("SleepWhileInLoop")
   public void run() {
@@ -275,8 +280,10 @@ public class StramLocalCluster implements Runnable {
         }
       }
 
-      // monitor child containers
-      dnmgr.monitorHeartbeat();
+      if (heartbeatMonitoringEnabled) {
+        // monitor child containers
+        dnmgr.monitorHeartbeat();
+      }
 
       if (childContainers.isEmpty() && dnmgr.containerStartRequests.isEmpty()) {
         appDone = true;
