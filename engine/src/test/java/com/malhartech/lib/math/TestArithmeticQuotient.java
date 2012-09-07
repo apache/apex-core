@@ -74,6 +74,10 @@ public class TestArithmeticQuotient
     Sink denSink = node.connect(ArithmeticQuotient.IPORT_DENOMINATOR, node);
     node.connect(ArithmeticQuotient.OPORT_QUOTIENT, quotientSink);
 
+    NodeConfiguration conf = new NodeConfiguration("mynode", new HashMap<String, String>());
+    conf.setInt(ArithmeticQuotient.KEY_MULTIPLY_BY, 2);
+    node.setup(conf);
+    
     final AtomicBoolean inactive = new AtomicBoolean(true);
     new Thread()
     {
@@ -143,13 +147,13 @@ public class TestArithmeticQuotient
         for (Map.Entry<String, Number> e: output.entrySet()) {
           LOG.debug(String.format("Key, value is %s,%f", e.getKey(), e.getValue().doubleValue()));
           if (e.getKey().equals("a")) {
-            Assert.assertEquals("emitted value for 'a' was ", new Double(1), e.getValue());
+            Assert.assertEquals("emitted value for 'a' was ", new Double(2), e.getValue());
           }
           else if (e.getKey().equals("b")) {
-            Assert.assertEquals("emitted tuple for 'b' was ", new Double(0.5), e.getValue());
+            Assert.assertEquals("emitted tuple for 'b' was ", new Double(1), e.getValue());
           }
           else if (e.getKey().equals("c")) {
-            Assert.assertEquals("emitted tuple for 'c' was ", new Double(2), e.getValue());
+            Assert.assertEquals("emitted tuple for 'c' was ", new Double(4), e.getValue());
           }
           else if (e.getKey().equals("d")) {
             Assert.assertEquals("emitted tuple for 'd' was ", new Double(1), e.getValue());
