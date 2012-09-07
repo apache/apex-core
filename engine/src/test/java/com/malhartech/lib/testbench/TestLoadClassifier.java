@@ -43,9 +43,13 @@ public class TestLoadClassifier {
                         ival = ival + 1;
                     }
                     collectedTuples.put(e.getKey(), ival);
-                    collectedTupleValues.put(e.getKey(), e.getValue());                 
+                    collectedTupleValues.put(e.getKey(), e.getValue());
                 }
             }
+        }
+        public void clear() {
+            collectedTuples.clear();
+            collectedTupleValues.clear();
         }
     }
 
@@ -156,11 +160,11 @@ public class TestLoadClassifier {
         conf.set(LoadClassifier.KEY_VALUES, "1,4,5");
         conf.set(LoadGenerator.KEY_WEIGHTS, "ia:60,10,35;ib:10,75,15;ic:20,10,70;id:50,15,35");
         conf.set(LoadClassifier.KEY_VALUEOPERATION, "replace");
-        
+
         conf.setInt("SpinMillis", 10);
         conf.setInt("BufferCapacity", 1024 * 1024);
         node.setup(conf);
-        
+
         for (int i = 0; i < 1000000; i++) {
             input.clear();
             input.put("ia", 2.0);
@@ -173,7 +177,7 @@ public class TestLoadClassifier {
         int ival = 0;
         for (Map.Entry<String, Integer> e : classifySink.collectedTuples.entrySet()) {
             ival += e.getValue().intValue();
-        }        
+        }
         LOG.info(String.format("\nThe number of keys in %d tuples are %d and %d",
                 ival,
                 classifySink.collectedTuples.size(),
@@ -181,6 +185,69 @@ public class TestLoadClassifier {
         for (Map.Entry<String, Double> ve : classifySink.collectedTupleValues.entrySet()) {
             Integer ieval = classifySink.collectedTuples.get(ve.getKey()); // ieval should not be null?
             Log.info(String.format("%d tuples of key \"%s\" has value %f", ieval.intValue(), ve.getKey(), ve.getValue()));
+        }
+
+        // Now test a node with no weights
+        LoadClassifier nwnode = new LoadClassifier();
+        classifySink.clear();
+        nwnode.connect(LoadClassifier.OPORT_OUT_DATA, classifySink);
+        conf.set(LoadGenerator.KEY_WEIGHTS, "");
+        nwnode.setup(conf);
+
+        for (int i = 0; i < 1000000; i++) {
+            input.clear();
+            input.put("ia", 2.0);
+            input.put("ib", 20.0);
+            input.put("ic", 1000.0);
+            input.put("id", 1000.0);
+            nwnode.process(input);
+        }
+        nwnode.endWindow();
+        ival = 0;
+        for (Map.Entry<String, Integer> e : classifySink.collectedTuples.entrySet()) {
+            ival += e.getValue().intValue();
+        }
+        LOG.info(String.format("\nThe number of keys in %d tuples are %d and %d",
+                ival,
+                classifySink.collectedTuples.size(),
+                classifySink.collectedTupleValues.size()));
+        for (Map.Entry<String, Double> ve : classifySink.collectedTupleValues.entrySet()) {
+            Integer ieval = classifySink.collectedTuples.get(ve.getKey()); // ieval should not be null?
+            Log.info(String.format("%d tuples of key \"%s\" has value %f", ieval.intValue(), ve.getKey(), ve.getValue()));
+        }
+
+        
+        // Now test a node with no weights and no values
+        LoadClassifier nvnode = new LoadClassifier();
+        classifySink.clear();
+        nvnode.connect(LoadClassifier.OPORT_OUT_DATA, classifySink);
+        conf.set(LoadGenerator.KEY_WEIGHTS, "");
+        conf.set(LoadClassifier.KEY_VALUES, "");
+        nvnode.setup(conf);    
+        
+        for (int i = 0; i < 1000000; i++) {
+            input.clear();
+            input.put("ia", 2.0);
+            input.put("ib", 20.0);
+            input.put("ic", 500.0);
+            input.put("id", 1000.0);
+            nvnode.process(input);
+        }
+        nvnode.endWindow();
+        ival = 0;
+        for (Map.Entry<String, Integer> e : classifySink.collectedTuples.entrySet()) {
+            ival += e.getValue().intValue();
+        }
+        LOG.info(String.format("\nThe number of keys in %d tuples are %d and %d",
+                ival,
+                classifySink.collectedTuples.size(),
+                classifySink.collectedTupleValues.size()));
+        for (Map.Entry<String, Double> ve : classifySink.collectedTupleValues.entrySet()) {
+            Integer ieval = classifySink.collectedTuples.get(ve.getKey()); // ieval should not be null?
+            Log.info(String.format("%d tuples of key \"%s\" has value %f",
+                    ieval.intValue(),
+                    ve.getKey(),
+                    ve.getValue()));
         }
     }
 }
