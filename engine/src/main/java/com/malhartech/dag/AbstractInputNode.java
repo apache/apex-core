@@ -24,6 +24,7 @@ public abstract class AbstractInputNode implements Node
   private transient HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
   private transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  @SuppressWarnings("VolatileArrayField")
   private transient volatile Sink[] sinks = new Sink[0];
   private transient NodeContext ctx;
   private transient int producedTupleCount;
@@ -54,6 +55,7 @@ public abstract class AbstractInputNode implements Node
   }
 
   @Override
+  @SuppressWarnings("SillyAssignment")
   public void activate(NodeContext context)
   {
     ctx = context;
@@ -63,6 +65,7 @@ public abstract class AbstractInputNode implements Node
     for (Sink s: outputs.values()) {
       sinks[i++] = s;
     }
+    sinks = sinks;
   }
 
   @Override
@@ -111,6 +114,7 @@ public abstract class AbstractInputNode implements Node
   }
 
   @Override
+  @SuppressWarnings("SillyAssignment")
   public final void process(Object payload)
   {
     int i;
@@ -128,6 +132,7 @@ public abstract class AbstractInputNode implements Node
             final Sink newSink = mse.getNewSink();
             newSink.process(payload);
             sinks[i] = newSink;
+            sinks = sinks;
             replaceOutput(mse.getOldSink(), newSink);
           }
         }
