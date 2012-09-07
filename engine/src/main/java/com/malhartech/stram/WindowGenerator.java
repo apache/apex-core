@@ -85,11 +85,10 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     }
     else {
 //      logger.debug("generating end -> begin {}", Integer.toHexString(windowId));
-      int previousWindowId = windowId;
-      advanceWindow();
-
       EndWindowTuple ewt = new EndWindowTuple();
-      ewt.setWindowId(previousWindowId);
+      ewt.setWindowId(windowId);
+
+      advanceWindow();
 
       Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
       bwt.setWindowId(baseSeconds | windowId);

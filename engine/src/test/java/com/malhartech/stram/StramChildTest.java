@@ -83,7 +83,7 @@ public class StramChildTest
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
       StreamingNodeUmbilicalProtocol.StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-      StramLocalCluster.LocalStramChild container = new StramLocalCluster.LocalStramChild(containerId, null, null);
+      StramLocalCluster.LocalStramChild container = new StramLocalCluster.LocalStramChild(containerId, null);
       container.init(cc);
       containers.add(container);
     }

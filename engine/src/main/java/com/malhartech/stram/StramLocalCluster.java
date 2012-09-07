@@ -22,12 +22,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.Component;
+import com.malhartech.dag.ComponentContextPair;
+import com.malhartech.dag.Node;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.Sink;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.sun.jersey.core.impl.provider.entity.XMLJAXBElementProvider;
 
 /**
  * Launcher for topologies in local mode within a single process.
@@ -113,31 +119,16 @@ public class StramLocalCluster implements Runnable {
      */
     private AtomicInteger heartbeatCount = new AtomicInteger();
 
-    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical, WindowGenerator wgen)
+    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical)
     {
       super(containerId, new Configuration(), umbilical);
-      if (wgen != null) {
-        super.addWindowGenerator(containerId, wgen);
-      }
-    }
-
-    @Override
-    public void init(StreamingContainerContext ctx) throws IOException
-    {
-      super.init(ctx);
-    }
-
-    @Override
-    public void shutdown()
-    {
-      super.shutdown();
     }
 
     public static void run(StramChild stramChild, StreamingContainerContext ctx) throws Exception {
       LOG.debug("Got context: " + ctx);
       stramChild.init(ctx);
       // main thread enters heartbeat loop
-      stramChild.heartbeatLoop();
+      stramChild.monitorHeartbeat();
       // shutdown
       stramChild.shutdown();
     }
@@ -146,6 +137,14 @@ public class StramLocalCluster implements Runnable {
       synchronized (heartbeatCount) {
         heartbeatCount.wait(waitMillis);
       }
+    }
+
+    void hookTestWindowGenerator(String node1, WindowGenerator wingen)
+    {
+      generators.put(node1, wingen);
+      ComponentContextPair<Node, NodeContext> pair = nodes.get(node1);
+      Sink s = pair.component.connect(Component.INPUT, wingen);
+      wingen.connect(node1, s);
     }
 
   }
@@ -159,7 +158,7 @@ public class StramLocalCluster implements Runnable {
 
     private LocalStramChildLauncher(DeployRequest cdr) {
       this.containerId = "container-" + containerSeq++;
-      this.child = new LocalStramChild(containerId, umbilical, null);
+      this.child = new LocalStramChild(containerId, umbilical);
       dnmgr.assignContainer(cdr, containerId, NetUtils.getConnectAddress(bufferServerAddress));
       Thread launchThread = new Thread(this, containerId);
       launchThread.start();

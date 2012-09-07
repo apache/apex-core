@@ -4,23 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.File;
-import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import scala.actors.threadpool.Arrays;
-
 import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;
@@ -30,10 +13,23 @@ import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatRes
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.GenericTestNode;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology.NodeDecl;
+import java.io.File;
+import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import scala.actors.threadpool.Arrays;
 
 /**
  *
@@ -71,10 +67,16 @@ public class CheckpointTest {
 
     String containerId = "container1";
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
-    TestWindowGenerator wingen = new TestWindowGenerator();
-    LocalStramChild container = new LocalStramChild(containerId, null, wingen.wingen);
+    LocalStramChild container = new LocalStramChild(containerId, null);
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.init(cc);
+
+    /**
+     * since there is only node1 in the container, it's id must be "1".
+     */
+    TestWindowGenerator wingen = new TestWindowGenerator();
+    container.hookTestWindowGenerator("1", wingen.wingen);
+    wingen.wingen.activate(null);
 
     wingen.tick(1); // begin window 1
 
