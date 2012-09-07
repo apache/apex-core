@@ -116,7 +116,9 @@ public class StramLocalCluster implements Runnable {
     public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical, WindowGenerator wgen)
     {
       super(containerId, new Configuration(), umbilical);
-      super.addWindowGenerator(containerId, wgen);
+      if (wgen != null) {
+        super.addWindowGenerator(containerId, wgen);
+      }
     }
 
     @Override

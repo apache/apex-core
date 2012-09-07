@@ -60,8 +60,10 @@ public class HttpOutputNode extends AbstractNode
 
   @Override
   public void teardown() {
+    if (wsClient != null) {
+      wsClient.destroy();
+    }
     super.teardown();
-    wsClient.destroy();
   }
 
   @Override
