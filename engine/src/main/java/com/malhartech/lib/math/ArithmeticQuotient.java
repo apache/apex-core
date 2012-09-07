@@ -111,7 +111,7 @@ public class ArithmeticQuotient extends AbstractNode
         val = new Double(val.doubleValue() + e.getValue().doubleValue());
       }
       active.put(e.getKey(), val);
-      LOG.debug("Key was {}, val was {}", e.getKey(), val);
+      //LOG.debug("Key was {}, val was {}", e.getKey(), val);
     }
   }
 
@@ -130,7 +130,7 @@ public class ArithmeticQuotient extends AbstractNode
       }
     }
 
-    LOG.debug("emitted {} tuples", denominators.size());
+    //LOG.debug("emitted {} tuples", denominators.size());
 
     emit(tuples);
     /* Now if numerators has any keys issue divide by zero error
