@@ -139,6 +139,18 @@ public class StramLocalCluster implements Runnable {
       }
     }
 
+    @Override
+    public void init(StreamingContainerContext ctx) throws IOException
+    {
+      super.init(ctx);
+    }
+
+    @Override
+    public void shutdown()
+    {
+      super.shutdown();
+    }
+
     void hookTestWindowGenerator(String node1, WindowGenerator wingen)
     {
       generators.put(node1, wingen);
