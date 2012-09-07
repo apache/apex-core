@@ -116,12 +116,16 @@ public abstract class AbstractInputNode implements Node
   @Override
   public final void process(Object payload)
   {
+    int i;
     Tuple t = (Tuple)payload;
     switch (t.getType()) {
       case BEGIN_WINDOW:
-        for (int i = sinks.length; i-- > 0;) {
+        i = sinks.length;
+        do {
           try {
-            sinks[i].process(payload);
+            while (i-- > 0) {
+              sinks[i].process(payload);
+            }
           }
           catch (MutatedSinkException mse) {
             final Sink newSink = mse.getNewSink();
@@ -130,11 +134,12 @@ public abstract class AbstractInputNode implements Node
             replaceOutput(mse.getOldSink(), newSink);
           }
         }
+        while (i > 0);
 
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
-          for (int i = cb.size(); i > 0; i--) {
+          for (i = cb.size(); i > 0; i--) {
             s.process(cb.get());
           }
         }
@@ -144,7 +149,7 @@ public abstract class AbstractInputNode implements Node
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
-          for (int i = cb.size(); i > 0; i--) {
+          for (i = cb.size(); i > 0; i--) {
             s.process(cb.get());
           }
         }
@@ -176,7 +181,7 @@ public abstract class AbstractInputNode implements Node
         for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
-          for (int i = cb.size(); i > 0; i--) {
+          for (i = cb.size(); i > 0; i--) {
             s.process(cb.get());
           }
         }
