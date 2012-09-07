@@ -6,7 +6,6 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
 import java.util.ArrayList;
@@ -318,6 +317,7 @@ public abstract class AbstractNode implements Node
     long currentWindowId = 0;
     alive = true;
 
+    logger.debug("activating " + this);
     do {
       shouldWait = true;
 
@@ -440,7 +440,7 @@ public abstract class AbstractNode implements Node
                  * We need to make sure that the END_STREAM comes outside of the window.
                  */
                 totalQueues--;
-                activeQueues.remove(activePort);
+                inputs.remove(activePort.id);
                 if (totalQueues == 0) {
                   alive = false;
                 }

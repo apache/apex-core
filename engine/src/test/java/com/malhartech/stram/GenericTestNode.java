@@ -28,7 +28,7 @@ public class GenericTestNode extends AbstractNode {
   public static final String INPUT2 = "input2";
   public static final String OUTPUT1 = "output1";
 
-  private static final Logger logger = LoggerFactory.getLogger(GenericTestNode.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GenericTestNode.class);
 
   boolean booleanProperty;
 
@@ -52,7 +52,7 @@ public class GenericTestNode extends AbstractNode {
 
   @Override
   public void process(Object o) {
-    logger.info("Got some work: " + o);
+    LOG.info("Got some work: " + o);
   }
 
   @Override
