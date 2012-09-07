@@ -3,7 +3,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
@@ -51,13 +50,13 @@ public class WindowGeneratorTest
             currentWindow.set(windowId);
             beginWindowCount.incrementAndGet();
             windowXor.set(windowXor.get() ^ windowId);
-            System.out.println("begin: " + windowId + " (" + System.currentTimeMillis() + ")");
+            System.out.println("begin: " + Long.toHexString(windowId) + " (" + Long.toHexString(System.currentTimeMillis() / 1000) + ")");
             break;
 
           case END_WINDOW:
             endWindowCount.incrementAndGet();
             windowXor.set(windowXor.get() ^ windowId);
-            System.out.println("end  : " + windowId + " (" + System.currentTimeMillis() + ")");
+            System.out.println("end  : " + Long.toHexString(windowId) + " (" + Long.toHexString(System.currentTimeMillis() / 1000) + ")");
             break;
 
           case RESET_WINDOW:
@@ -73,6 +72,8 @@ public class WindowGeneratorTest
     Configuration config = new Configuration();
     config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, System.currentTimeMillis() - 1000);
     config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 200);
+    // even if you do not set it, it defaults to the value we are trying to set here.
+    // config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, config.getLog(WindowGenerator.FIRST_WINDOW_MILLIS));
 
     WindowGenerator wg = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
     wg.setup(config);

@@ -37,18 +37,20 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   public static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
   public static final String FIRST_WINDOW_MILLIS = "FirstWindowMillis";
   public static final String WINDOW_WIDTH_MILLIS = "WindowWidthMillis";
+  public static final String RESET_WINDOW_MILLIS = "ResetWindowMillis";
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
   public static final int MAX_VALUE_WINDOW = 0x3fff - (0x3fff % 1000) - 1;
   private final ScheduledExecutorService ses;
-  private long startMillis; // Window start time
-  private int intervalMillis; // Window size
+  private long firstWindowMillis; // Window start time
+  private int windowWidthMillis; // Window size
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   private Sink[] sinks = new Sink[0];
   private long currentWindowMillis = -1;
   private long baseSeconds;
   private int windowId;
+  private long resetWindowMillis;
 
   public WindowGenerator(ScheduledExecutorService service)
   {
@@ -60,7 +62,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
    */
   public final void advanceWindow()
   {
-    currentWindowMillis += intervalMillis;
+    currentWindowMillis += windowWidthMillis;
     windowId++;
   }
 
@@ -117,12 +119,17 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void run()
   {
-    windowId = 0;
-//    logger.debug("generating reset -> begin {}", Long.toHexString(currentWindowMillis));
-    baseSeconds = (currentWindowMillis / 1000) << 32;
+    long timespanBetween2Resets = MAX_VALUE_WINDOW * windowWidthMillis;
+    while (resetWindowMillis + timespanBetween2Resets <= firstWindowMillis) {
+      resetWindowMillis += timespanBetween2Resets;
+    }
+    windowId = (int)((firstWindowMillis - resetWindowMillis) / windowWidthMillis);
 
+    //    logger.debug("generating reset -> begin {}", Long.toHexString(currentWindowMillis));
+
+    baseSeconds = (resetWindowMillis / 1000) << 32;
     ResetWindowTuple rwt = new ResetWindowTuple();
-    rwt.setWindowId(baseSeconds | intervalMillis);
+    rwt.setWindowId(baseSeconds | windowWidthMillis);
 
     Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
     bwt.setWindowId(baseSeconds | windowId);
@@ -151,8 +158,9 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void setup(Configuration config)
   {
-    startMillis = config.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis());
-    intervalMillis = config.getInt(WINDOW_WIDTH_MILLIS, 500);
+    firstWindowMillis = config.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis());
+    windowWidthMillis = config.getInt(WINDOW_WIDTH_MILLIS, 500);
+    resetWindowMillis = config.getLong(RESET_WINDOW_MILLIS, firstWindowMillis);
   }
 
   @Override
@@ -164,7 +172,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
       sinks[i++] = s;
     }
 
-    currentWindowMillis = startMillis;
+    currentWindowMillis = firstWindowMillis;
 
     Runnable subsequentRun = new Runnable()
     {
@@ -188,7 +196,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
       ses.schedule(this, currentWindowMillis - currentTms, TimeUnit.MILLISECONDS);
     }
 
-    ses.scheduleAtFixedRate(subsequentRun, currentWindowMillis - currentTms + intervalMillis, intervalMillis, TimeUnit.MILLISECONDS);
+    ses.scheduleAtFixedRate(subsequentRun, currentWindowMillis - currentTms + windowWidthMillis, windowWidthMillis, TimeUnit.MILLISECONDS);
   }
 
   @Override
