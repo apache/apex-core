@@ -111,7 +111,7 @@ public class ArithmeticQuotient extends AbstractNode
         val = new Double(val.doubleValue() + e.getValue().doubleValue());
       }
       active.put(e.getKey(), val);
-      LOG.debug("Key was {}, val was {}", e.getKey(), val);
+      //LOG.debug("Key was {}, val was {}", e.getKey(), val);
     }
   }
 
@@ -122,7 +122,7 @@ public class ArithmeticQuotient extends AbstractNode
     for (Map.Entry<String, Number> e: denominators.entrySet()) {
       Number nval = numerators.get(e.getKey());
       if (nval == null) {
-        tuples.put(e.getKey(), new Double(0.0 * mult_by));
+        tuples.put(e.getKey(), new Double(0.0));
       }
       else {
         tuples.put(e.getKey(), new Double((nval.doubleValue() / e.getValue().doubleValue()) * mult_by));
@@ -130,7 +130,7 @@ public class ArithmeticQuotient extends AbstractNode
       }
     }
 
-    LOG.debug("emitted {} tuples", denominators.size());
+    //LOG.debug("emitted {} tuples", denominators.size());
 
     emit(tuples);
     /* Now if numerators has any keys issue divide by zero error

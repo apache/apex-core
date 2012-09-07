@@ -41,16 +41,7 @@ public class TestLoadClassifier {
 
     LoadClassifier node = new LoadClassifier();
 
-/* TBD
-    conf.set(LoadClassifier.KEY_MULTIPLY_BY, "junk");
 
-    try {
-      node.checkConfiguration(conf);
-      Assert.fail("validation error  " + ArithmeticQuotient.KEY_MULTIPLY_BY);
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue("validate " + ArithmeticQuotient.KEY_MULTIPLY_BY, e.getMessage().contains("expectedErrorSubString"));
-    }
-*/
   }
 
   /**
@@ -63,13 +54,6 @@ public class TestLoadClassifier {
 
     TestSink classifySink = new TestSink();
     node.connect(LoadClassifier.OPORT_OUT_DATA, classifySink);
-
-    HashMap<String, String> input = new HashMap<String, String>();
-    node.process(input);
-    node.endWindow();
-    Assert.assertEquals("number emitted tuples", 1, classifySink.collectedTuples.size());
-    Assert.assertEquals("emitted tuple", "testtest", classifySink.collectedTuples.get(0));
-
   }
 
 }
