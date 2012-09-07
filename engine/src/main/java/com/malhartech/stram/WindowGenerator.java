@@ -41,7 +41,8 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
-  public static final int MAX_VALUE_WINDOW = 0x3fff - (0x3fff % 1000) - 1;
+  public static final int MAX_WINDOW_ID = 0x3fff - (0x3fff % 1000) - 1;
+  public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID);
   private final ScheduledExecutorService ses;
   private long firstWindowMillis; // Window start time
   private int windowWidthMillis; // Window size
@@ -72,7 +73,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
    */
   protected final void nextWindow()
   {
-    if (windowId == MAX_VALUE_WINDOW) {
+    if (windowId == MAX_WINDOW_ID) {
       EndWindowTuple t = new EndWindowTuple();
       t.setWindowId(windowId);
       for (Sink s: sinks) {
@@ -119,7 +120,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void run()
   {
-    long timespanBetween2Resets = MAX_VALUE_WINDOW * windowWidthMillis;
+    long timespanBetween2Resets = (long)MAX_WINDOW_ID * windowWidthMillis;
     while (resetWindowMillis + timespanBetween2Resets <= firstWindowMillis) {
       resetWindowMillis += timespanBetween2Resets;
     }
@@ -160,6 +161,9 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   {
     firstWindowMillis = config.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis());
     windowWidthMillis = config.getInt(WINDOW_WIDTH_MILLIS, 500);
+    if (windowWidthMillis > MAX_WINDOW_WIDTH || windowWidthMillis < 1) {
+      throw new IllegalArgumentException(String.format("Window width %d is invalid as it's not in the range 1 to %d", windowWidthMillis, MAX_WINDOW_WIDTH));
+    }
     resetWindowMillis = config.getLong(RESET_WINDOW_MILLIS, firstWindowMillis);
   }
 
