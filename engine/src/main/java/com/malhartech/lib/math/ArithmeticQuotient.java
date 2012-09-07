@@ -39,104 +39,107 @@ import org.slf4j.LoggerFactory;
  */
 @NodeAnnotation(
         ports = {
-    @PortAnnotation(name = ArithmeticQuotient.IPORT_NUMERATOR, type = PortType.INPUT),
-    @PortAnnotation(name = ArithmeticQuotient.IPORT_DENOMINATOR, type = PortType.INPUT),
-    @PortAnnotation(name = ArithmeticQuotient.OPORT_QUOTIENT, type = PortType.OUTPUT)
+  @PortAnnotation(name = ArithmeticQuotient.IPORT_NUMERATOR, type = PortType.INPUT),
+  @PortAnnotation(name = ArithmeticQuotient.IPORT_DENOMINATOR, type = PortType.INPUT),
+  @PortAnnotation(name = ArithmeticQuotient.OPORT_QUOTIENT, type = PortType.OUTPUT)
 })
-public class ArithmeticQuotient extends AbstractNode {
+public class ArithmeticQuotient extends AbstractNode
+{
+  public static final String IPORT_NUMERATOR = "numerator";
+  public static final String IPORT_DENOMINATOR = "denominator";
+  public static final String OPORT_QUOTIENT = "quotient";
+  private static Logger LOG = LoggerFactory.getLogger(ArithmeticSum.class);
+  int mult_by = 1;
+  boolean comp_margin = false;
+  HashMap<String, Number> numerators = new HashMap<String, Number>();
+  HashMap<String, Number> denominators = new HashMap<String, Number>();
+  /**
+   * Multiplies the quotient by this number. Ease of use for percentage (*
+   * 100) or CPM (* 1000)
+   *
+   */
+  public static final String KEY_MULTIPLY_BY = "multiply_by";
+  /**
+   * Computes margin instead of quotient.
+   */
+  public static final String KEY_COMPUTE_MARGIN = "compute_margin";
 
-    public static final String IPORT_NUMERATOR = "numerator";
-    public static final String IPORT_DENOMINATOR = "denominator";
-    public static final String OPORT_QUOTIENT = "quotient";
-    private static Logger LOG = LoggerFactory.getLogger(ArithmeticSum.class);
-    
-    
-    int mult_by = 1;
-    boolean comp_margin = false;
-    HashMap<String, Number> numerators = new HashMap<String, Number>();
-    HashMap<String, Number> denominators = new HashMap<String, Number>();
-    /**
-     * Multiplies the quotient by this number. Ease of use for percentage (*
-     * 100) or CPM (* 1000)
-     *
+  /**
+   *
+   * @param config
+   */
+  @Override
+  public void setup(NodeConfiguration config)
+  {
+    super.setup(config);
+    mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
+    comp_margin = config.getBoolean(KEY_COMPUTE_MARGIN, false);
+  }
+
+  public boolean myValidation(NodeConfiguration config)
+  {
+    boolean ret = true;
+
+    try {
+      mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
+    }
+    catch (Exception e) {
+      ret = false;
+      throw new IllegalArgumentException(String.format("key %s (%s) has to be an an integer",
+                                                       KEY_MULTIPLY_BY, config.get(KEY_MULTIPLY_BY)));
+    }
+    return ret;
+  }
+
+  @Override
+  public void process(Object payload)
+  {
+    Map<String, Number> active;
+    if (IPORT_NUMERATOR.equals(getActivePort())) {
+      active = numerators;
+    }
+    else {
+      active = denominators;
+    }
+
+    for (Map.Entry<String, Number> e: ((HashMap<String, Number>)payload).entrySet()) {
+      Number val = active.get(e.getKey());
+      if (val == null) {
+        val = e.getValue();
+      }
+      else {
+        val = new Double(val.doubleValue() + e.getValue().doubleValue());
+      }
+      active.put(e.getKey(), val);
+      LOG.debug("Key was {}, val was {}", e.getKey(), val);
+    }
+  }
+
+  @Override
+  public void endWindow()
+  {
+    HashMap<String, Number> tuples = new HashMap<String, Number>();
+    for (Map.Entry<String, Number> e: denominators.entrySet()) {
+      Number nval = numerators.get(e.getKey());
+      if (nval == null) {
+        tuples.put(e.getKey(), new Double(0.0 * mult_by));
+      }
+      else {
+        tuples.put(e.getKey(), new Double((nval.doubleValue() / e.getValue().doubleValue()) * mult_by));
+        numerators.remove(e.getKey()); // so that all left over keys can be reported
+      }
+    }
+
+    LOG.debug("emitted {} tuples", denominators.size());
+
+    emit(tuples);
+    /* Now if numerators has any keys issue divide by zero error
+     for (Map.Entry<String, Number> e : numerators.entrySet()) {
+     // emit error
+     }
      */
-    public static final String KEY_MULTIPLY_BY = "multiply_by";
-    /**
-     * Computes margin instead of quotient.
-     */
-    public static final String KEY_COMPUTE_MARGIN = "compute_margin";
-
-    /**
-     *
-     * @param config
-     */
-    @Override
-    public void setup(NodeConfiguration config) {
-        super.setup(config);
-        mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
-        comp_margin = config.getBoolean(KEY_COMPUTE_MARGIN, false);
-    }
-    
-    public boolean myValidation(NodeConfiguration config) {
-        boolean ret = true;
-        
-        try {
-            mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
-        } catch (Exception e) {
-            ret = false;
-            throw new IllegalArgumentException(String.format("key %s (%s) has to be an an integer",
-                    KEY_MULTIPLY_BY, config.get(KEY_MULTIPLY_BY)));
-        }
-        return ret;
-    }
-
-    @Override
-    public void process(Object payload) {
-        Number val = null;
-        for (Map.Entry<String, Number> e : ((HashMap<String, Number>) payload).entrySet()) {
-            String iport = getActivePort();
-            if (IPORT_NUMERATOR == iport) {
-                val = numerators.get(e.getKey());
-            } else { // if (IPORT_DENOMINATOR == iport)
-                val = denominators.get(e.getKey());
-            }
-            if (val != null) {
-                val = new Double(val.doubleValue() + e.getValue().doubleValue());
-            } else {
-                val = e.getValue().doubleValue();
-            }
-            if (IPORT_NUMERATOR == iport) {
-                numerators.put(e.getKey(), val);
-            } else { // if (IPORT_DENOMINATOR == iport)
-                denominators.put(e.getKey(), val);
-            }
-            LOG.debug(String.format("Key was %s, val was %f", e.getKey(), val));
-        }
-    }
-
-    @Override
-    public void endWindow() {
-        int i = 0;
-        HashMap<String, Number> tuples = new HashMap<String, Number>();
-        for (Map.Entry<String, Number> e : denominators.entrySet()) {
-            Number nval = numerators.get(e.getKey());
-            i++;
-            if (nval == null) {
-                tuples.put(e.getKey(), new Double(0.0 * mult_by));
-            } else {
-                tuples.put(e.getKey(), new Double((nval.doubleValue()/e.getValue().doubleValue()) * mult_by));
-                numerators.remove(e.getKey()); // so that all left over keys can be reported 
-            }
-        }
-        LOG.debug(String.format("%d tuples were emitted", i));
-        emit(tuples);
-        /* Now if numerators has any keys issue divide by zero error
-        for (Map.Entry<String, Number> e : numerators.entrySet()) {
-            // emit error
-        }
-        */
-        numerators.clear();
-        denominators.clear();
-        super.endWindow();
-    }
+    numerators.clear();
+    denominators.clear();
+    super.endWindow();
+  }
 }
