@@ -47,12 +47,6 @@ public class TestLoadGenerator {
     conf.set(LoadGenerator.KEY_WEIGHTS, "10,40,20,30");
     conf.set(LoadGenerator.KEY_TUPLES_PER_MS, "100");
 
-    try {
-      node.myValidation(conf);
-      Assert.fail("validation error  " + LoadGenerator.KEY_KEYS);
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue("validate " + LoadGenerator.KEY_KEYS, e.getMessage().contains("expectedErrorSubString"));
-    }
   }
 
   /**
@@ -66,11 +60,6 @@ public class TestLoadGenerator {
     TestSink lgenSink = new TestSink();
     node.connect(LoadGenerator.OPORT_DATA, lgenSink);
 
-    HashMap<String, String> input = new HashMap<String, String>();
-    node.process(input);
-    node.endWindow();
-    Assert.assertEquals("number emitted tuples", 1, lgenSink.collectedTuples.size());
-    Assert.assertEquals("emitted tuple", "testtest", lgenSink.collectedTuples.get(0));
 
   }
 
