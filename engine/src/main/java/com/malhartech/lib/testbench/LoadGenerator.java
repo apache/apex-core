@@ -4,24 +4,45 @@
  */
 package com.malhartech.lib.testbench;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.AbstractInputNode;
-import com.malhartech.dag.EndStreamTuple;
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.Sink;
-import com.malhartech.lib.math.ArithmeticSum;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
+ * Generates synthetic load. Creates tuples and keeps emitting them on the output port "data"<p>
+ * <br>
+ * The load is generated as per config parameters. This class is mainly meant for testing
+ * nodes.<br>
+ * It does not need to be windowed. It would just create tuple stream upto the limit set
+ * by the config parameters. It has been benchmarked at over 25 million/second throughput<br>
+ * <br>
+ * <b>Tuple Schema</b>: Each tuple is HashMap<String, Double><br>
+ * <b>Port Interface</b>:It has only one output port "data" and has no input ports<br><br>
+ * <b>Properties</b>:
+ * <b>keys</b> is a comma separated list of keys. This key are the <key> field in the tuple<br>
+ * <b>values</b> are comma separated list of values. This value is the <value> field in the tuple. If not specified the values for all keys are 0.0<br>
+ * <b>weights</b> are comma separated list of probability weights for each key. If not specified the weights are even for all keys<br>
+ * <b>tuples_per_sec</b> is the upper limit of number of tuples per sec. The default value is 10000. This library node has been benchmarked at over 25 million tuples/sec<br>
+ * <br>
+ * Compile time checks are:<br>
+ * <b>keys</b> cannot be empty<br>
+ * <b>values</b> if specified has to be comma separated doubles and their number must match the number of keys<br>
+ * <b>weights</b> if specified has to be comma separated integers and number of their number must match the number of keys<br>
+ * <b>tuples_per_sec</b>If specified must be an integer<br>
+ * <br>
+ *
+ * Compile time error checking includes<br>
+ * 
+ * 
  * @author amol
  */
 @NodeAnnotation(
@@ -32,14 +53,14 @@ public class LoadGenerator extends AbstractInputNode {
 
     public static final String OPORT_DATA = "data";
     private static Logger LOG = LoggerFactory.getLogger(LoadGenerator.class);
-    
     boolean hasvalues = false;
     boolean hasweights = false;
-    int tuples_per_ms = 1;
-    HashMap<String, String> keys = new HashMap<String, String>();
-    HashMap<String, Integer> weights = new HashMap<String, Integer>();
+    int tuples_per_sec = 1;
+    HashMap<String, Double> keys = new HashMap<String, Double>();
+    HashMap<Integer, String> wtostr_index = new HashMap<Integer, String>();
+
+    ArrayList<Integer> weights = new ArrayList<Integer>();
     int total_weight = 0;
-    int current_index = 0;
     int num_keys = 0;
     private Random random = new Random();
     private volatile boolean shutdown = false;
@@ -66,60 +87,95 @@ public class LoadGenerator extends AbstractInputNode {
     /**
      * The number of tuples sent out per milli second
      */
-    public static final String KEY_TUPLES_PER_MS = "tuples_per_ms";
+    public static final String KEY_TUPLES_PER_SEC = "tuples_per_ms";
 
+    /**
+     * Not used, but overridden as it is abstract
+     */
     @Override
     public void endWindow() {;
     }
 
+    /**
+     * Not used, but overridden as it is abstract
+     */
     @Override
     public void beginWindow() {;
     }
 
+    /**
+     * 
+     * Code to be moved to a proper base method name
+     * @param config
+     * @return boolean
+     */
     public boolean myValidation(NodeConfiguration config) {
         String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
         boolean ret = true;
 
-        if (kstr == null) {
+        if (kstr.length == 0) {
             ret = false;
             throw new IllegalArgumentException("Parameter \"key\" is empty");
         } else {
             LOG.info(String.format("Number of keys are %d", kstr.length));
         }
-        if (wstr == null) {
+        
+        if (wstr.length == 0) {
             LOG.info("weights was not provided, so keys would be equally weighted");
+        } else {
+            for (String s : wstr) {
+                try {
+                    Integer.parseInt(s);
+                } catch (NumberFormatException e) {
+                    ret = false;
+                    throw new IllegalArgumentException(String.format("Weight string should be an integer(%s)", s));
+                }   
+            }
         }
-        if (vstr == null) {
+        if (vstr.length == 0) {
             LOG.info("values was not provided, so keys would have value of 0");
+        } else {
+            for (String s : vstr) {
+                try {
+                    Double.parseDouble(s);
+                } catch (NumberFormatException e) {
+                    ret = false;
+                    throw new IllegalArgumentException(String.format("Value string should be float(%s)", s));
+                }
+            }
         }
 
-        if ((wstr != null) && (wstr.length != kstr.length)) {
+        if ((wstr.length != 0) && (wstr.length != kstr.length)) {
             ret = false;
             throw new IllegalArgumentException(
                     String.format("Number of weights (%d) does not match number of keys (%d)",
                     wstr.length, kstr.length));
         }
-        if ((vstr != null) && (vstr.length != kstr.length)) {
+        if ((vstr.length != 0) && (vstr.length != kstr.length)) {
             ret = false;
             throw new IllegalArgumentException(
                     String.format("Number of values (%d) does not match number of keys (%d)",
                     vstr.length, kstr.length));
         }
 
-        tuples_per_ms = config.getInt(KEY_TUPLES_PER_MS, 1);
-        if (tuples_per_ms <= 0) {
+        tuples_per_sec = config.getInt(KEY_TUPLES_PER_SEC, 1);
+        if (tuples_per_sec <= 0) {
             ret = false;
             throw new IllegalArgumentException(
-                    String.format("tuples_per_ms (%d) has to be > 0", tuples_per_ms));
+                    String.format("tuples_per_ms (%d) has to be > 0", tuples_per_sec));
         } else {
-            LOG.info(String.format("Using %d tuples per millisecond", tuples_per_ms));
+            LOG.info(String.format("Using %d tuples per second", tuples_per_sec));
         }
         // Should enforce an upper limit
         return ret;
     }
 
+    /**
+     * Sets up all the config parameters. Assumes checking is done and has passed
+     * @param config 
+     */
     @Override
     public void setup(NodeConfiguration config) {
         super.setup(config);
@@ -131,30 +187,36 @@ public class LoadGenerator extends AbstractInputNode {
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
 
-        tuples_per_ms = config.getInt(KEY_TUPLES_PER_MS, 1);
+        tuples_per_sec = config.getInt(KEY_TUPLES_PER_SEC, 10000);
         hasweights = (wstr != null);
         hasvalues = (vstr != null);
-        current_index = 0;
         // Keys and weights would are accessed via same key
         num_keys = kstr.length;
 
         int i = 0;
         for (String s : kstr) {
             if (hasweights) {
-                weights.put(s, Integer.parseInt(wstr[i]));
+                weights.add(Integer.parseInt(wstr[i]));
                 total_weight += Integer.parseInt(wstr[i]);
             } else {
                 total_weight += 100;
             }
             if (hasvalues) {
-                keys.put(s, vstr[i]);
+                keys.put(s, new Double(Double.parseDouble(vstr[i])));
             } else {
-                keys.put(s, "");
+                keys.put(s, new Double(0.0));
             }
+            wtostr_index.put(i, s);
             i += 1;
         }
     }
 
+    /**
+     * 
+     * To allow emit to wait till output port is connected in a deployment on Hadoop
+     * @param id
+     * @param dagpart 
+     */
     @Override
     public void connected(String id, Sink dagpart) {
         if (id.equals(OPORT_DATA)) {
@@ -162,34 +224,49 @@ public class LoadGenerator extends AbstractInputNode {
         }
     }
 
+    /**
+     * The only way to shut down a loadGenerator. We are looking into a property based shutdown
+     */
     @Override
     public void deactivate() {
         shutdown = true;
         super.deactivate();
     }
 
+    /**
+     * Generates all the tuples till shutdown (deactivate) is issued
+     * @param context 
+     */
     @Override
     public void activate(NodeContext context) {
         super.activate(context);
-        int loc = random.nextInt(total_weight);
+        int i = 0;
+
         while (!shutdown) {
             if (outputConnected) {
-                // send tuples as per weights and then sleep for 1ms
-                int i = 0;
-                while (i < tuples_per_ms) {
-                    emit(OPORT_DATA, String.valueOf(1));
-                    // TBD
+                // send tuples upto tuples_per_sec and then wait for 1 ms
+                while (i < tuples_per_sec) {
+                    int rval = random.nextInt(total_weight);
+                    int j = 0;
+                    int wval = 0;
+                    for (Integer e : weights) {
+                        wval += e.intValue();
+                        if (wval >= rval) break;
+                        j++;
+                    }
+                    // wval is the key index
+                    HashMap<String, Double> tuple = new HashMap<String, Double>();
+                    String key = wtostr_index.get(new Integer(j)); // the key
+                    tuple.put(key, keys.get(key));     
+                    emit(OPORT_DATA, tuple);
+                    i++;
                 }
                 try {
-                    Thread.sleep(1);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
-                    LOG.error("Unexpected error while sleeping for 1 ms", e);
+                    LOG.error("Unexpected error while sleeping for 1 s", e);
                 }
-            }
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                LOG.error("Unexpected error while generating tuples", e);
+                i = 0;
             }
         }
         LOG.info("Finished generating tuples");

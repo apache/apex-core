@@ -8,6 +8,7 @@ import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.dag.*;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +23,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
   private HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   private long baseSeconds = 0;
-  private Iterable<Sink> sinks;
+  private Sink[] sinks = new Sink[0];
   private SerDe serde;
 
   public BufferServerInputStream(SerDe serde)
@@ -35,7 +36,12 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   {
     super.activate(context);
 
-    sinks = outputs.values();
+    sinks = new Sink[outputs.size()];
+    int i = 0;
+    for (final Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
+
     String type = "unused";
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId()});
     ClientHandler.registerPartitions(channel, context.getSinkId(), context.getId() + '/' + context.getSinkId(), context.getSourceId(), type, ((BufferServerStreamContext)context).getPartitions(), context.getStartingWindowId());
@@ -82,8 +88,23 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
         break;
     }
 
-    for (Sink s: sinks) {
-      s.process(t);
+    for (int i = sinks.length; i-- > 0;) {
+      try {
+        sinks[i].process(t);
+      }
+      catch (MutatedSinkException mse) {
+        Sink newSink = mse.getNewSink();
+        newSink.process(t);
+        sinks[i] = newSink;
+
+        Sink oldSink = mse.getOldSink();
+        for (Entry<String, Sink> e: outputs.entrySet()) {
+          if (e.getValue() == oldSink) {
+            outputs.put(e.getKey(), newSink);
+            break;
+          }
+        }
+      }
     }
   }
 

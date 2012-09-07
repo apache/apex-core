@@ -8,6 +8,7 @@ import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.Context;
 import com.malhartech.dag.EndWindowTuple;
+import com.malhartech.dag.MutatedSinkException;
 import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
@@ -15,6 +16,7 @@ import com.malhartech.util.ScheduledExecutorService;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
@@ -43,7 +45,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   private long startMillis; // Window start time
   private int intervalMillis; // Window size
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  volatile Collection<Sink> sinks;
+  private Sink[] sinks = new Sink[0];
   private long currentWindowMillis = -1;
   private long baseSeconds;
   private int windowId;
@@ -88,9 +90,23 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
 
       Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
       bwt.setWindowId(baseSeconds | windowId);
-      for (Sink s: sinks) {
-        s.process(ewt);
-        s.process(bwt);
+      for (int i = sinks.length; i-- > 0;) {
+        sinks[i].process(ewt);
+        try {
+          sinks[i].process(bwt);
+        }
+        catch (MutatedSinkException mse) {
+          Sink newSink = mse.getNewSink();
+          newSink.process(bwt);
+          sinks[i] = newSink;
+
+          Sink oldSink = mse.getOldSink();
+          for (Entry<String, Sink> e: outputs.entrySet()) {
+            if (e.getValue() == oldSink) {
+              outputs.put(e.getKey(), newSink);
+            }
+          }
+        }
       }
     }
   }
@@ -108,12 +124,27 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     ResetWindowTuple rwt = new ResetWindowTuple();
     rwt.setWindowId(baseSeconds | intervalMillis);
 
-    Tuple t = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
-    t.setWindowId(baseSeconds | windowId);
+    Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
+    bwt.setWindowId(baseSeconds | windowId);
 
-    for (Sink s: sinks) {
-      s.process(rwt);
-      s.process(t);
+    for (int i = sinks.length; i-- > 0;) {
+      sinks[i].process(rwt);
+      try {
+        sinks[i].process(bwt);
+      }
+      catch (MutatedSinkException mse) {
+        Sink newSink = mse.getNewSink();
+        newSink.process(bwt);
+        sinks[i] = newSink;
+
+        Sink oldSink = mse.getOldSink();
+        for (Entry<String, Sink> e: outputs.entrySet()) {
+          if (e.getValue() == oldSink) {
+            outputs.put(e.getKey(), newSink);
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -127,7 +158,12 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void activate(Context context)
   {
-    sinks = outputs.values();
+    sinks = new Sink[outputs.size()];
+    int i = 0;
+    for (Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
+
     currentWindowMillis = startMillis;
 
     Runnable subsequentRun = new Runnable()
@@ -158,7 +194,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void deactivate()
   {
-    sinks = Collections.emptyList();
+    sinks = new Sink[0];
     ses.shutdown();
   }
 

@@ -4,6 +4,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.dag.MutatedSinkException;
 import com.malhartech.dag.SerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
@@ -19,13 +20,13 @@ public class PartitionAwareSink implements Sink
 {
   final SerDe serde;
   final HashSet<ByteBuffer> partitions;
-  final Sink output;
+  Sink output;
 
   /**
-   * 
+   *
    * @param serde
    * @param partitions
-   * @param output 
+   * @param output
    */
   public PartitionAwareSink(SerDe serde, List<byte[]> partitions, Sink output)
   {
@@ -40,13 +41,22 @@ public class PartitionAwareSink implements Sink
   }
 
   /**
-   * 
-   * @param payload 
+   *
+   * @param payload
    */
   @Override
   public void process(Object payload)
   {
-    if (payload instanceof Tuple || partitions.contains(ByteBuffer.wrap(serde.getPartition(payload)))) {
+    if (payload instanceof Tuple) {
+      try {
+        output.process(payload);
+      }
+      catch (MutatedSinkException mse) {
+        output = mse.getNewSink();
+        output.process(payload);
+      }
+    }
+    else if (partitions.contains(ByteBuffer.wrap(serde.getPartition(payload)))) {
       output.process(payload);
     }
   }

@@ -12,6 +12,7 @@ import java.nio.BufferOverflowException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +37,7 @@ public abstract class AbstractNode implements Node
   private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
   private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  private transient Sink[] sinks = new Sink[0];
   private transient int consumedTupleCount;
   private transient volatile boolean alive;
 
@@ -238,8 +240,22 @@ public abstract class AbstractNode implements Node
    */
   public void emit(final Object payload)
   {
-    for (final Sink d: outputs.values()) {
-      d.process(payload);
+    for (int i = sinks.length; i-- > 0;) {
+      try {
+        sinks[i].process(payload);
+      }
+      catch (MutatedSinkException mse) {
+        Sink newSink = mse.getNewSink();
+        newSink.process(payload);
+        sinks[i] = newSink;
+
+        Sink oldSink = mse.getOldSink();
+        for (Entry<String, Sink> e: outputs.entrySet()) {
+          if (e.getValue() == oldSink) {
+            outputs.put(e.getKey(), newSink);
+          }
+        }
+      }
     }
   }
 
@@ -255,6 +271,11 @@ public abstract class AbstractNode implements Node
   {
     try {
       outputs.get(id).process(payload);
+    }
+    catch (MutatedSinkException mse) {
+      Sink newSink = mse.getNewSink();
+      newSink.process(payload);
+      outputs.put(id, newSink);
     }
     catch (Exception e) {
       logger.warn(e.getLocalizedMessage());
@@ -278,6 +299,12 @@ public abstract class AbstractNode implements Node
   @SuppressWarnings("SleepWhileInLoop")
   final public void activate(NodeContext ctx)
   {
+    sinks = new Sink[outputs.size()];
+    int i = 0;
+    for (Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
+
     int totalQueues = inputs.size();
 
     ArrayList<CompoundSink> activeQueues = new ArrayList<CompoundSink>();
@@ -295,6 +322,7 @@ public abstract class AbstractNode implements Node
       shouldWait = true;
 
       Iterator<CompoundSink> buffers = activeQueues.iterator();
+      activequeue:
       while (buffers.hasNext()) {
         activePort = buffers.next();
 
@@ -309,8 +337,22 @@ public abstract class AbstractNode implements Node
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
                   beginWindow();
-                  for (final Sink output: outputs.values()) {
-                    output.process(t);
+                  for (int s = sinks.length; s-- > 0;) {
+                    try {
+                      sinks[s].process(t);
+                    }
+                    catch (MutatedSinkException mse) {
+                      Sink newSink = mse.getNewSink();
+                      newSink.process(payload);
+                      sinks[s] = newSink;
+
+                      Sink oldSink = mse.getOldSink();
+                      for (Entry<String, Sink> e: outputs.entrySet()) {
+                        if (e.getValue() == oldSink) {
+                          outputs.put(e.getKey(), newSink);
+                        }
+                      }
+                    }
                   }
                   receivedEndWindow = 0;
                 }
@@ -331,42 +373,47 @@ public abstract class AbstractNode implements Node
                     for (final Sink output: outputs.values()) {
                       output.process(t);
                     }
-                  }
-                  ctx.report(consumedTupleCount, 0L, currentWindowId);
-                  consumedTupleCount = 0;
-                  /*
-                   * we prefer to do quite a few operations at the end of the window boundary.
-                   */
-                  // I wanted to take this opportunity to do multiple tasks at the same time
-                  // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
-                  // over elements but cannot remove them without access to iterator.
 
-                  // the default is UNSPECIFIED which we ignore anyways as we ignore everything
-                  // that we do not understand!
-                  try {
-                    switch (ctx.getRequestType()) {
-                      case BACKUP:
-                        ctx.backup(this, currentWindowId);
-                        break;
+                    ctx.report(consumedTupleCount, 0L, currentWindowId);
+                    consumedTupleCount = 0;
+                    /*
+                     * we prefer to do quite a few operations at the end of the window boundary.
+                     */
+                    // I wanted to take this opportunity to do multiple tasks at the same time
+                    // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
+                    // over elements but cannot remove them without access to iterator.
 
-                      case RESTORE:
-                        logger.info("restore requests are not implemented");
-                        break;
+                    // the default is UNSPECIFIED which we ignore anyways as we ignore everything
+                    // that we do not understand!
+                    try {
+                      switch (ctx.getRequestType()) {
+                        case BACKUP:
+                          ctx.backup(this, currentWindowId);
+                          break;
 
-                      case TERMINATE:
-                        alive = false;
-                        break;
+                        case RESTORE:
+                          logger.info("restore requests are not implemented");
+                          break;
+
+                        case TERMINATE:
+                          alive = false;
+                          break;
+                      }
                     }
-                  }
-                  catch (Exception e) {
-                    logger.warn("Exception while catering to external request", e.getLocalizedMessage());
-                  }
+                    catch (Exception e) {
+                      logger.warn("Exception while catering to external request", e.getLocalizedMessage());
+                    }
 
-                  expectingBeginWindow = activeQueues.size();
+                    expectingBeginWindow = activeQueues.size();
 
-                  buffers.remove();
-                  assert (activeQueues.isEmpty());
-                  activeQueues.addAll(inputs.values());
+                    buffers.remove();
+                    assert (activeQueues.isEmpty());
+                    activeQueues.addAll(inputs.values());
+                    break activequeue;
+                  }
+                  else {
+                    buffers.remove();
+                  }
                 }
                 else {
                   buffers.remove();

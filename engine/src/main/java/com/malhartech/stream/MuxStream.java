@@ -8,6 +8,7 @@ import com.malhartech.dag.*;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map.Entry;
 
 /**
  *
@@ -17,7 +18,7 @@ import java.util.HashMap;
 public class MuxStream implements Stream
 {
   HashMap<String, Sink> outputs;
-  Collection<Sink> sinks = Collections.EMPTY_LIST;
+  Sink[] sinks = new Sink[0];
 
   /**
    *
@@ -46,7 +47,12 @@ public class MuxStream implements Stream
   @Override
   public void activate(StreamContext context)
   {
-    sinks = outputs.values();
+    sinks = new Sink[outputs.size()];
+
+    int i = 0;
+    for (final Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
   }
 
   /**
@@ -55,7 +61,7 @@ public class MuxStream implements Stream
   @Override
   public void deactivate()
   {
-    sinks.clear();
+    sinks = new Sink[0];
   }
 
   /**
@@ -87,8 +93,23 @@ public class MuxStream implements Stream
   @Override
   public void process(Object payload)
   {
-    for (Sink s: sinks) {
-      s.process(payload);
+    for (int i = sinks.length; i-- > 0;) {
+      try {
+        sinks[i].process(payload);
+      }
+      catch (MutatedSinkException mse) {
+        Sink newSink = mse.getNewSink();
+        newSink.process(payload);
+        sinks[i] = newSink;
+
+        Sink oldSink = mse.getOldSink();
+        for (Entry<String, Sink> e: outputs.entrySet()) {
+          if (e.getValue() == oldSink) {
+            outputs.put(e.getKey(), oldSink);
+            break;
+          }
+        }
+      }
     }
   }
 
