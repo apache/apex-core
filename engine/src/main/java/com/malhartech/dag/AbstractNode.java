@@ -237,6 +237,7 @@ public abstract class AbstractNode implements Node
    *
    * @param payload
    */
+  @SuppressWarnings("SillyAssignment")
   public void emit(final Object payload)
   {
     for (int i = sinks.length; i-- > 0;) {
@@ -247,6 +248,7 @@ public abstract class AbstractNode implements Node
         Sink newSink = mse.getNewSink();
         newSink.process(payload);
         sinks[i] = newSink;
+        sinks = sinks;
 
         Sink oldSink = mse.getOldSink();
         for (Entry<String, Sink> e: outputs.entrySet()) {
@@ -295,7 +297,7 @@ public abstract class AbstractNode implements Node
    * long as there is useful workload for the node.
    */
   @Override
-  @SuppressWarnings("SleepWhileInLoop")
+  @SuppressWarnings( {"SleepWhileInLoop", "SillyAssignment"})
   final public void activate(NodeContext ctx)
   {
     sinks = new Sink[outputs.size()];
@@ -303,6 +305,7 @@ public abstract class AbstractNode implements Node
     for (Sink s: outputs.values()) {
       sinks[i++] = s;
     }
+    sinks = sinks;
 
     int totalQueues = inputs.size();
 
@@ -317,7 +320,6 @@ public abstract class AbstractNode implements Node
     long currentWindowId = 0;
     alive = true;
 
-    logger.debug("activating " + this);
     do {
       shouldWait = true;
 
@@ -333,6 +335,7 @@ public abstract class AbstractNode implements Node
             switch (t.getType()) {
               case BEGIN_WINDOW:
                 if (expectingBeginWindow == totalQueues) {
+                  shouldWait = false;
                   activePort.get();
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
@@ -345,6 +348,7 @@ public abstract class AbstractNode implements Node
                       Sink newSink = mse.getNewSink();
                       newSink.process(payload);
                       sinks[s] = newSink;
+                      sinks = sinks;
 
                       Sink oldSink = mse.getOldSink();
                       for (Entry<String, Sink> e: outputs.entrySet()) {
@@ -357,6 +361,7 @@ public abstract class AbstractNode implements Node
                   receivedEndWindow = 0;
                 }
                 else if (t.getWindowId() == currentWindowId) {
+                  shouldWait = false;
                   activePort.get();
                   expectingBeginWindow--;
                 }
@@ -367,6 +372,7 @@ public abstract class AbstractNode implements Node
 
               case END_WINDOW:
                 if (t.getWindowId() == currentWindowId) {
+                  shouldWait = false;
                   activePort.get();
                   if (++receivedEndWindow == totalQueues) {
                     endWindow();
@@ -424,6 +430,7 @@ public abstract class AbstractNode implements Node
                 /**
                  * we will receive tuples which are equal to the number of input streams.
                  */
+                shouldWait = false;
                 activePort.get();
                 if (--resetTuples == 0) {
                   for (final Sink output: outputs.values()) {
@@ -434,14 +441,17 @@ public abstract class AbstractNode implements Node
                 break;
 
               case END_STREAM:
+                shouldWait = false;
                 activePort.get();
                 /**
                  * Since one of the nodes we care about it gone, we should relook at our nodes.
                  * We need to make sure that the END_STREAM comes outside of the window.
                  */
                 totalQueues--;
-                inputs.remove(activePort.id);
+                inputs.remove(activePort.id); // should i do this, since the stream said that there is nothing more to expect on it.
+                buffers.remove();
                 if (totalQueues == 0) {
+                  shouldWait = false;
                   alive = false;
                 }
                 break;

@@ -3,20 +3,6 @@
  */
 package com.malhartech.stream;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.SerDe;
@@ -33,6 +19,18 @@ import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.NodeDecl;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -174,7 +172,7 @@ public class SocketStreamTest
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
       StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-      LocalStramChild container = new LocalStramChild(containerId, null, null);
+      LocalStramChild container = new LocalStramChild(containerId, null);
       container.init(cc);
       containers.add(container);
     }

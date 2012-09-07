@@ -113,7 +113,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
    *
    */
   public static class StreamingContainerContext extends WritableAdapter {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 201209071402L;
 
     /**
      * The list of nodes to initially deploy in the container.

@@ -22,6 +22,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.Component;
+import com.malhartech.dag.ComponentContextPair;
+import com.malhartech.dag.Node;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.Sink;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
@@ -47,7 +52,9 @@ public class StramLocalCluster implements Runnable {
   private int containerSeq = 0;
   private boolean appDone = false;
 
+
   final private Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>();
+  private boolean heartbeatMonitoringEnabled = true;
 
   private class UmbilicalProtocolLocalImpl implements StreamingNodeUmbilicalProtocol {
 
@@ -113,11 +120,23 @@ public class StramLocalCluster implements Runnable {
      */
     private AtomicInteger heartbeatCount = new AtomicInteger();
 
-    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical, WindowGenerator wgen)
+    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical)
     {
       super(containerId, new Configuration(), umbilical);
-      if (wgen != null) {
-        super.addWindowGenerator(containerId, wgen);
+    }
+
+    public static void run(StramChild stramChild, StreamingContainerContext ctx) throws Exception {
+      LOG.debug("Got context: " + ctx);
+      stramChild.init(ctx);
+      // main thread enters heartbeat loop
+      stramChild.monitorHeartbeat();
+      // shutdown
+      stramChild.shutdown();
+    }
+
+    public void waitForHeartbeat(int waitMillis) throws InterruptedException {
+      synchronized (heartbeatCount) {
+        heartbeatCount.wait(waitMillis);
       }
     }
 
@@ -133,19 +152,12 @@ public class StramLocalCluster implements Runnable {
       super.shutdown();
     }
 
-    public static void run(StramChild stramChild, StreamingContainerContext ctx) throws Exception {
-      LOG.debug("Got context: " + ctx);
-      stramChild.init(ctx);
-      // main thread enters heartbeat loop
-      stramChild.heartbeatLoop();
-      // shutdown
-      stramChild.shutdown();
-    }
-
-    public void waitForHeartbeat(int waitMillis) throws InterruptedException {
-      synchronized (heartbeatCount) {
-        heartbeatCount.wait(waitMillis);
-      }
+    void hookTestWindowGenerator(String node1, WindowGenerator wingen)
+    {
+      generators.put(node1, wingen);
+      ComponentContextPair<Node, NodeContext> pair = nodes.get(node1);
+      Sink s = pair.component.connect(Component.INPUT, wingen);
+      wingen.connect(node1, s);
     }
 
   }
@@ -159,7 +171,7 @@ public class StramLocalCluster implements Runnable {
 
     private LocalStramChildLauncher(DeployRequest cdr) {
       this.containerId = "container-" + containerSeq++;
-      this.child = new LocalStramChild(containerId, umbilical, null);
+      this.child = new LocalStramChild(containerId, umbilical);
       dnmgr.assignContainer(cdr, containerId, NetUtils.getConnectAddress(bufferServerAddress));
       Thread launchThread = new Thread(this, containerId);
       launchThread.start();
@@ -240,6 +252,10 @@ public class StramLocalCluster implements Runnable {
     appDone = true;
   }
 
+  public void setHeartbeatMonitoringEnabled(boolean enabled) {
+    this.heartbeatMonitoringEnabled = enabled;
+  }
+
   @Override
   @SuppressWarnings("SleepWhileInLoop")
   public void run() {
@@ -264,8 +280,10 @@ public class StramLocalCluster implements Runnable {
         }
       }
 
-      // monitor child containers
-      dnmgr.monitorHeartbeat();
+      if (heartbeatMonitoringEnabled) {
+        // monitor child containers
+        dnmgr.monitorHeartbeat();
+      }
 
       if (childContainers.isEmpty() && dnmgr.containerStartRequests.isEmpty()) {
         appDone = true;

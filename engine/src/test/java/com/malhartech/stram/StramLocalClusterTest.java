@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
@@ -34,6 +35,15 @@ public class StramLocalClusterTest
 {
   private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
 
+  @Test
+  public void testTplg() throws IOException, Exception {
+    String tplgFile = "src/test/resources/clusterTest.tplg.properties";
+    StramLocalCluster lc = new StramLocalCluster(TopologyBuilder.createTopology(new Configuration(), tplgFile));
+    lc.setHeartbeatMonitoringEnabled(false);
+    lc.run();
+  }
+
+  @Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {

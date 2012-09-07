@@ -4,37 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.net.InetSocketAddress;
-import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FSError;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ComponentContextPair;
@@ -61,6 +30,35 @@ import com.malhartech.stream.MuxStream;
 import com.malhartech.stream.PartitionAwareSink;
 import com.malhartech.stream.SocketInputStream;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.net.InetSocketAddress;
+import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FSError;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.util.StringUtils;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -74,9 +72,9 @@ public class StramChild
   final private String containerId;
   final private Configuration conf;
   final private StreamingNodeUmbilicalProtocol umbilical;
-  final private Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
+  final protected Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
   final private Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
-  final private Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
+  final protected Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
    * for the following 2 fields, my preferred type is HashSet but synchronizing them was resulting in very verbose code.
    */
@@ -130,11 +128,6 @@ public class StramChild
   protected Map<String, ComponentContextPair<Node, NodeContext>> getNodes()
   {
     return this.nodes;
-  }
-
-  protected void addWindowGenerator(String nodeid, WindowGenerator wgen)
-  {
-    generators.put(nodeid, wgen);
   }
 
   /**
@@ -197,7 +190,7 @@ public class StramChild
           LOG.debug("Got context: " + ctx);
           stramChild.init(ctx);
           // main thread enters heartbeat loop
-          stramChild.heartbeatLoop();
+          stramChild.monitorHeartbeat();
           // shutdown
           stramChild.shutdown();
           return null;
@@ -474,7 +467,7 @@ public class StramChild
     }
   }
 
-  protected void heartbeatLoop() throws IOException
+  protected void monitorHeartbeat() throws IOException
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     LOG.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
@@ -861,7 +854,7 @@ public class StramChild
     if (windowGenerator != null) {
       // let's see if we want to send the exact same window id even the second time.
 //      int widthmillis = dagConfig.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 500);
-  //    long startmillis = (smallestWindowId >> 32) * 1000 + widthmillis * (smallestWindowId & WindowGenerator.MAX_VALUE_WINDOW);
+  //    long startmillis = (smallestWindowId >> 32) * 1000 + widthmillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID);
       // use the lowest blah blah we calculated above.
       NodeConfiguration config = new NodeConfiguration("doesn't matter", null);
       config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, firstWindowMillis);

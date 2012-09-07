@@ -111,7 +111,21 @@ public class StramMiniClusterTest
     LOG.info("topology: " + tmpFile);
     return tmpFile;
   }
-  // @Ignore
+
+  @Test
+  public void testMiniClusterTestNode()
+  {
+    StramMiniClusterTest.TestDNode d = new StramMiniClusterTest.TestDNode();
+
+    d.setTupleCounts("100, 100, 1000");
+    Assert.assertEquals("100,100,1000", d.getTupleCounts());
+
+    Assert.assertEquals("heartbeat1", 100, d.resetHeartbeatCounters().tuplesProcessed);
+    Assert.assertEquals("heartbeat2", 100, d.resetHeartbeatCounters().tuplesProcessed);
+    Assert.assertEquals("heartbeat3", 1000, d.resetHeartbeatCounters().tuplesProcessed);
+    Assert.assertEquals("heartbeat4", 100, d.resetHeartbeatCounters().tuplesProcessed);
+
+  }
 
   @Test
   public void testSetupShutdown() throws Exception
@@ -119,13 +133,13 @@ public class StramMiniClusterTest
 
 
     GetClusterNodesRequest request =
-                           Records.newRecord(GetClusterNodesRequest.class);
+            Records.newRecord(GetClusterNodesRequest.class);
     ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
     GetClusterNodesResponse response = clientRMService.getClusterNodes(request);
     List<NodeReport> nodeReports = response.getNodeReports();
     System.out.println(nodeReports);
 
-    for (NodeReport nr : nodeReports) {
+    for (NodeReport nr: nodeReports) {
       System.out.println("Node: " + nr.getNodeId());
       System.out.println("Total memory: " + nr.getCapability());
       System.out.println("Used memory: " + nr.getUsed());
@@ -281,10 +295,10 @@ public class StramMiniClusterTest
       // Check maven ppom.xml for generated classpath info
       // Works if compile time env is same as runtime. Mainly tests.
       ClassLoader thisClassLoader =
-                  Thread.currentThread().getContextClassLoader();
+              Thread.currentThread().getContextClassLoader();
       String generatedClasspathFile = "mrapp-generated-classpath";
       classpathFileStream =
-      thisClassLoader.getResourceAsStream(generatedClasspathFile);
+              thisClassLoader.getResourceAsStream(generatedClasspathFile);
       if (classpathFileStream == null) {
         LOG.info("Could not classpath resource from class loader");
         return envClassPath;
