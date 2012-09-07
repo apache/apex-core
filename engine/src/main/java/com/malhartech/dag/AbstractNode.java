@@ -322,6 +322,7 @@ public abstract class AbstractNode implements Node
       shouldWait = true;
 
       Iterator<CompoundSink> buffers = activeQueues.iterator();
+      activequeue:
       while (buffers.hasNext()) {
         activePort = buffers.next();
 
@@ -372,42 +373,47 @@ public abstract class AbstractNode implements Node
                     for (final Sink output: outputs.values()) {
                       output.process(t);
                     }
-                  }
-                  ctx.report(consumedTupleCount, 0L, currentWindowId);
-                  consumedTupleCount = 0;
-                  /*
-                   * we prefer to do quite a few operations at the end of the window boundary.
-                   */
-                  // I wanted to take this opportunity to do multiple tasks at the same time
-                  // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
-                  // over elements but cannot remove them without access to iterator.
 
-                  // the default is UNSPECIFIED which we ignore anyways as we ignore everything
-                  // that we do not understand!
-                  try {
-                    switch (ctx.getRequestType()) {
-                      case BACKUP:
-                        ctx.backup(this, currentWindowId);
-                        break;
+                    ctx.report(consumedTupleCount, 0L, currentWindowId);
+                    consumedTupleCount = 0;
+                    /*
+                     * we prefer to do quite a few operations at the end of the window boundary.
+                     */
+                    // I wanted to take this opportunity to do multiple tasks at the same time
+                    // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
+                    // over elements but cannot remove them without access to iterator.
 
-                      case RESTORE:
-                        logger.info("restore requests are not implemented");
-                        break;
+                    // the default is UNSPECIFIED which we ignore anyways as we ignore everything
+                    // that we do not understand!
+                    try {
+                      switch (ctx.getRequestType()) {
+                        case BACKUP:
+                          ctx.backup(this, currentWindowId);
+                          break;
 
-                      case TERMINATE:
-                        alive = false;
-                        break;
+                        case RESTORE:
+                          logger.info("restore requests are not implemented");
+                          break;
+
+                        case TERMINATE:
+                          alive = false;
+                          break;
+                      }
                     }
-                  }
-                  catch (Exception e) {
-                    logger.warn("Exception while catering to external request", e.getLocalizedMessage());
-                  }
+                    catch (Exception e) {
+                      logger.warn("Exception while catering to external request", e.getLocalizedMessage());
+                    }
 
-                  expectingBeginWindow = activeQueues.size();
+                    expectingBeginWindow = activeQueues.size();
 
-                  buffers.remove();
-                  assert (activeQueues.isEmpty());
-                  activeQueues.addAll(inputs.values());
+                    buffers.remove();
+                    assert (activeQueues.isEmpty());
+                    activeQueues.addAll(inputs.values());
+                    break activequeue;
+                  }
+                  else {
+                    buffers.remove();
+                  }
                 }
                 else {
                   buffers.remove();
