@@ -234,6 +234,14 @@ public abstract class AbstractInputNode implements Node
   }
 
   @Override
+  public void beginWindow() {
+  }
+
+  @Override
+  public void endWindow() {
+  }
+
+  @Override
   public int hashCode()
   {
     return id == null ? super.hashCode() : id.hashCode();
