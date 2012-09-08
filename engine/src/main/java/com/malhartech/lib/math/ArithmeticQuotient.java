@@ -23,8 +23,9 @@ import org.slf4j.LoggerFactory;
  * a windowed stram application<br> <br> Compile time error processing is done
  * on configuration parameters<br> property <b>multiply_by</b> has to be an
  * integer.<br> input ports <b>numerator</b>, <b>denominator</b> must be
- * connected.<br> one of the out bound ports <b>quotient</b> or <b>_error</b>
- * must be connected.<br> <br> Run time error processing are emitted on _error
+ * connected.<br> outbound port <b>quotient</b> must be connected<br>
+ * <br><b>All Run time errors are TBD</b><br>
+ * Run time error processing are emitted on _error
  * port. The errors are:<br> Divide by zero (Error): no result is emitted on
  * "outport".<br> Input tuple not an integer on denominator stream: This tuple
  * would not be counted towards the result.<br> Input tuple not an integer on
@@ -102,7 +103,6 @@ public class ArithmeticQuotient extends AbstractNode
         val = new Double(val.doubleValue() + e.getValue().doubleValue());
       }
       active.put(e.getKey(), val);
-      //LOG.debug("Key was {}, val was {}", e.getKey(), val);
     }
   }
 

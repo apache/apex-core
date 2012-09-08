@@ -21,9 +21,9 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-public class TestArithmeticQuotient
+public class TestArithmeticMargin
 {
-  private static Logger LOG = LoggerFactory.getLogger(ArithmeticQuotient.class);
+  private static Logger LOG = LoggerFactory.getLogger(ArithmeticMargin.class);
 
   class TestSink implements Sink
   {
@@ -42,19 +42,12 @@ public class TestArithmeticQuotient
   @Test
   public void testNodeValidation()
   {
-    ArithmeticQuotient node = new ArithmeticQuotient();
-
+    ArithmeticMargin node = new ArithmeticMargin();
     NodeConfiguration conf = new NodeConfiguration("mynode", new HashMap<String, String>());
-    conf.set(ArithmeticQuotient.KEY_MULTIPLY_BY, "junk");
+    
+    // no testing as of now as no parameters on this node
+    // connectivity should be part of standard tests
 
-    try {
-      node.myValidation(conf);
-      Assert.fail("validation error  " + ArithmeticQuotient.KEY_MULTIPLY_BY);
-    }
-    catch (IllegalArgumentException e) {
-      Assert.assertTrue("validate " + ArithmeticQuotient.KEY_MULTIPLY_BY,
-                        e.getMessage().contains("has to be an an integer"));
-    }
   }
 
   /**
@@ -64,16 +57,15 @@ public class TestArithmeticQuotient
   @SuppressWarnings("SleepWhileInLoop")
   public void testNodeProcessing()
   {
-    final ArithmeticQuotient node = new ArithmeticQuotient();
+    final ArithmeticMargin node = new ArithmeticMargin();
 
-    TestSink quotientSink = new TestSink();
+    TestSink marginSink = new TestSink();
 
-    Sink numSink = node.connect(ArithmeticQuotient.IPORT_NUMERATOR, node);
-    Sink denSink = node.connect(ArithmeticQuotient.IPORT_DENOMINATOR, node);
-    node.connect(ArithmeticQuotient.OPORT_QUOTIENT, quotientSink);
+    Sink numSink = node.connect(ArithmeticMargin.IPORT_NUMERATOR, node);
+    Sink denSink = node.connect(ArithmeticMargin.IPORT_DENOMINATOR, node);
+    node.connect(ArithmeticMargin.OPORT_MARGIN, marginSink);
 
     NodeConfiguration conf = new NodeConfiguration("mynode", new HashMap<String, String>());
-    conf.setInt(ArithmeticQuotient.KEY_MULTIPLY_BY, 2);
     node.setup(conf);
     
     final AtomicBoolean inactive = new AtomicBoolean(true);
@@ -83,7 +75,7 @@ public class TestArithmeticQuotient
       public void run()
       {
         inactive.set(false);
-        node.activate(new NodeContext("ArithmeticQuotientTestNode"));
+        node.activate(new NodeContext("ArithmeticMarginTestNode"));
       }
     }.start();
 
@@ -124,7 +116,7 @@ public class TestArithmeticQuotient
     try {
       for (int i = 0; i < 10; i++) {
         Thread.sleep(20);
-        if (quotientSink.collectedTuples.size() == 1) {
+        if (marginSink.collectedTuples.size() == 1) {
           break;
         }
       }
@@ -134,9 +126,9 @@ public class TestArithmeticQuotient
     }
 
     // One for each key
-    Assert.assertEquals("number emitted tuples", 3, quotientSink.collectedTuples.size());
+    Assert.assertEquals("number emitted tuples", 3, marginSink.collectedTuples.size());
 
-    for (Object o: quotientSink.collectedTuples) {
+    for (Object o: marginSink.collectedTuples) {
       if (o instanceof Tuple) {
         LOG.debug(o.toString());
       }
@@ -145,13 +137,13 @@ public class TestArithmeticQuotient
         for (Map.Entry<String, Number> e: output.entrySet()) {
           LOG.debug(String.format("Key, value is %s,%f", e.getKey(), e.getValue().doubleValue()));
           if (e.getKey().equals("a")) {
-            Assert.assertEquals("emitted value for 'a' was ", new Double(2), e.getValue());
+            Assert.assertEquals("emitted value for 'a' was ", new Double(0), e.getValue());
           }
           else if (e.getKey().equals("b")) {
-            Assert.assertEquals("emitted tuple for 'b' was ", new Double(1), e.getValue());
+            Assert.assertEquals("emitted tuple for 'b' was ", new Double(0.5), e.getValue());
           }
           else if (e.getKey().equals("c")) {
-            Assert.assertEquals("emitted tuple for 'c' was ", new Double(4), e.getValue());
+            Assert.assertEquals("emitted tuple for 'c' was ", new Double(-1.0), e.getValue());
           }
           else {
             LOG.debug(String.format("key was %s", e.getKey()));
