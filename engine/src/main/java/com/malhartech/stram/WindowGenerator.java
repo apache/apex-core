@@ -20,6 +20,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
+import org.mortbay.servlet.RestFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +76,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   {
     if (windowId == MAX_WINDOW_ID) {
       EndWindowTuple t = new EndWindowTuple();
-      t.setWindowId(windowId);
+      t.setWindowId(baseSeconds | windowId);
       for (Sink s: sinks) {
         s.process(t);
       }
@@ -86,7 +87,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     else {
 //      logger.debug("generating end -> begin {}", Integer.toHexString(windowId));
       EndWindowTuple ewt = new EndWindowTuple();
-      ewt.setWindowId(windowId);
+      ewt.setWindowId(baseSeconds | windowId);
 
       advanceWindow();
 
@@ -119,10 +120,8 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void run()
   {
-    long timespanBetween2Resets = (long)MAX_WINDOW_ID * windowWidthMillis;
-    while (resetWindowMillis + timespanBetween2Resets <= firstWindowMillis) {
-      resetWindowMillis += timespanBetween2Resets;
-    }
+    long timespanBetween2Resets = (long)MAX_WINDOW_ID * windowWidthMillis + windowWidthMillis;
+    resetWindowMillis = firstWindowMillis - ((firstWindowMillis - resetWindowMillis) % timespanBetween2Resets);
     windowId = (int)((firstWindowMillis - resetWindowMillis) / windowWidthMillis);
 
     //    logger.debug("generating reset -> begin {}", Long.toHexString(currentWindowMillis));

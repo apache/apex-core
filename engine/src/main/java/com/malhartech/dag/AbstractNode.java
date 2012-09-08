@@ -106,6 +106,7 @@ public abstract class AbstractNode implements Node
     @SuppressWarnings("SleepWhileInLoop")
     public final void process(Object payload)
     {
+//      logger.debug(AbstractNode.this + "::" + this + " got payload " + payload);
       try {
         while (true) {
           try {
@@ -453,6 +454,7 @@ public abstract class AbstractNode implements Node
                 if (totalQueues == 0) {
                   shouldWait = false;
                   alive = false;
+                  break activequeue;
                 }
                 break;
 
