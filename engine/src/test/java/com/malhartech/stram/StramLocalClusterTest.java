@@ -4,6 +4,23 @@
  */
 package com.malhartech.stram;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.LineNumberReader;
+import java.util.Collections;
+import java.util.Map;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;
@@ -16,22 +33,12 @@ import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.TopologyBuilder;
-import com.malhartech.stream.HDFSOutputStream;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Properties;
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StramLocalClusterTest
 {
   private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
 
+  @Ignore
   @Test
   public void testTplg() throws IOException, Exception {
     String tplgFile = "src/test/resources/clusterTest.tplg.properties";
@@ -40,40 +47,46 @@ public class StramLocalClusterTest
     lc.run();
   }
 
-  @Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
-    // create test topology
-    Properties props = new Properties();
+    NewTopologyBuilder b = new NewTopologyBuilder();
 
-    // input adapter to ensure shutdown works on end of stream
-    props.put("stram.stream.input1.classname", NumberGeneratorInputAdapter.class.getName());
-    props.put("stram.stream.input1.outputNode", "node1");
-    props.put("stram.stream.input1.maxTuples", "1");
+    NodeDecl genNode = b.addNode("genNode", NumberGeneratorInputAdapter.class);
+    genNode.setProperty("maxTuples", "1");
 
-    // fake output adapter - to be ignored when determine shutdown
-    props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
-    props.put("stram.stream.output.inputNode", "node2");
-    props.put("stram.stream.output.filepath", "target/" + StramLocalClusterTest.class.getName() + "-testSetupShutdown.out");
-    props.put("stram.stream.output.append", "false");
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    node1.setProperty("emitFormat", "%s >> node1");
 
-    props.put("stram.stream.n1n2.inputNode", "node1");
-    props.put("stram.stream.n1n2.outputNode", "node2");
-    props.put("stram.stream.n1n2.template", "defaultstream");
+    File outFile = new File("./target/" + StramLocalClusterTest.class.getName() + "-testLocalClusterInitShutdown.out");
+    outFile.delete();
 
-    props.put("stram.node.node1.classname", GenericTestNode.class.getName());
-    props.put("stram.node.node1.myStringProperty", "myStringPropertyValue");
+    NodeDecl outNode = b.addNode("outNode", TestOutputNode.class);
+    outNode.setProperty(TestOutputNode.P_FILEPATH, outFile.toURI().toString());
 
-    props.put("stram.node.node2.classname", GenericTestNode.class.getName());
+    b.addStream("fromGenNode")
+      .setSource(genNode.getOutput(NumberGeneratorInputAdapter.OUTPUT_PORT))
+      .addSink(node1.getInput(GenericTestNode.INPUT1));
 
-    props.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
+    b.addStream("fromNode1")
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(outNode.getInput(TestOutputNode.PORT_INPUT));
 
-    TopologyBuilder tb = new TopologyBuilder(new Configuration());
-    tb.addFromProperties(props);
+    Topology t = b.getTopology();
+    t.setMaxContainerCount(2);
 
-    StramLocalCluster localCluster = new StramLocalCluster(tb.getTopology());
+    StramLocalCluster localCluster = new StramLocalCluster(t);
+    localCluster.setHeartbeatMonitoringEnabled(false);
     localCluster.run();
+
+    Assert.assertTrue(outFile + " exists", outFile.exists());
+    LineNumberReader lnr = new LineNumberReader(new FileReader(outFile));
+    String line;
+    while ((line = lnr.readLine()) != null) {
+      Assert.assertTrue("line match " + line, line.matches("" + lnr.getLineNumber() + " >> node1"));
+    }
+    Assert.assertEquals("number lines", 2, lnr.getLineNumber());
+    lnr.close();
   }
 
   @Ignore // we have a problem with windows randomly getting lost

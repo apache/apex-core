@@ -88,7 +88,7 @@ public class StramChild
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
-  private Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
+  private final Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
   private long firstWindowMillis;
   private int windowWidthMillis;
 
@@ -448,9 +448,9 @@ public class StramChild
     }
     generators.clear();
 
-    for (Node node: activeNodes.keySet()) {
-      node.deactivate();
-      node.teardown();
+    for (ComponentContextPair<Node, NodeContext> nc: this.nodes.values()) {
+      nc.component.deactivate();
+      nc.component.teardown();
     }
 
     for (Stream stream: activeStreams.keySet()) {
