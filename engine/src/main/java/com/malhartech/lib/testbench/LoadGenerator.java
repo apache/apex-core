@@ -23,15 +23,18 @@ import org.slf4j.LoggerFactory;
  * The load is generated as per config parameters. This class is mainly meant for testing
  * nodes.<br>
  * It does not need to be windowed. It would just create tuple stream upto the limit set
- * by the config parameters. It has been benchmarked at over 25 million/second throughput<br>
+ * by the config parameters.<br>
  * <br>
- * <b>Tuple Schema</b>: Each tuple is HashMap<String, Double><br>
+ * This node has been benchmarked at over 25 million tuples/second for String objects in local/inline mode<br>
+ * <br>
+ * <b>Tuple Schema</b>: Has two choices HashMap<String, Double>, or String<br><br>
  * <b>Port Interface</b>:It has only one output port "data" and has no input ports<br><br>
  * <b>Properties</b>:
  * <b>keys</b> is a comma separated list of keys. This key are the <key> field in the tuple<br>
  * <b>values</b> are comma separated list of values. This value is the <value> field in the tuple. If not specified the values for all keys are 0.0<br>
  * <b>weights</b> are comma separated list of probability weights for each key. If not specified the weights are even for all keys<br>
  * <b>tuples_per_sec</b> is the upper limit of number of tuples per sec. The default value is 10000. This library node has been benchmarked at over 25 million tuples/sec<br>
+ * <b>string_schema</b> controls the tuple schema. For string set it to "true". By default it is "false" (i.e. HashMap schema)<br>
  * <br>
  * Compile time checks are:<br>
  * <b>keys</b> cannot be empty<br>
@@ -94,20 +97,6 @@ public class LoadGenerator extends AbstractInputNode {
     
     
     /**
-     * Not used, but overridden as it is abstract
-     */
-    @Override
-    public void endWindow() {;
-    }
-
-    /**
-     * Not used, but overridden as it is abstract
-     */
-    @Override
-    public void beginWindow() {;
-    }
-
-    /**
      * 
      * Code to be moved to a proper base method name
      * @param config
@@ -117,7 +106,7 @@ public class LoadGenerator extends AbstractInputNode {
         String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
-        boolean isstringschema = config.getBoolean(KEY_STRING_SCHEMA, false);
+        isstringschema = config.getBoolean(KEY_STRING_SCHEMA, false);
         
         boolean ret = true;
 
@@ -265,7 +254,9 @@ public class LoadGenerator extends AbstractInputNode {
                     int wval = 0;
                     for (Integer e : weights) {
                         wval += e.intValue();
-                        if (wval >= rval) break;
+                        if (wval >= rval) {
+                            break;
+                        }
                         j++;
                     }
                     // wval is the key index
@@ -281,8 +272,8 @@ public class LoadGenerator extends AbstractInputNode {
                     i++;
                 }
                 try {
-                    //Thread.sleep(1000);
-                    Thread.sleep(10); // Remove sleep if you want to blast data at huge rate
+                    Thread.sleep(1000);
+                    //Thread.sleep(10); // Remove sleep if you want to blast data at huge rate
                 } catch (InterruptedException e) {
                     LOG.error("Unexpected error while sleeping for 1 s", e);
                 }

@@ -8,7 +8,6 @@ import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.NodeConfiguration;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;

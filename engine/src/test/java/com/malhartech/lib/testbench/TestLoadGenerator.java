@@ -4,25 +4,18 @@
 package com.malhartech.lib.testbench;
 
 import com.malhartech.dag.Component;
-import com.malhartech.dag.DefaultSerDe;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
-import junit.framework.Assert;
-
-import org.junit.Test;
-
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.ManualScheduledExecutorService;
 import com.malhartech.stram.WindowGenerator;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
-
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +34,10 @@ public class TestLoadGenerator {
         int count = 0;
         boolean test_hashmap = false;
 
-        
+        /**
+         * 
+         * @param payload 
+         */
         @Override
         public void process(Object payload) {
             if (payload instanceof Tuple) {
@@ -183,7 +179,7 @@ public class TestLoadGenerator {
         conf.set(LoadGenerator.KEY_VALUES, "");
         conf.set(LoadGenerator.KEY_STRING_SCHEMA, "true");
         conf.set(LoadGenerator.KEY_WEIGHTS, "10,40,20,30");
-        conf.setInt(LoadGenerator.KEY_TUPLES_PER_SEC, 10000000);
+        conf.setInt(LoadGenerator.KEY_TUPLES_PER_SEC, 100000000);
         conf.setInt("SpinMillis", 10);
         conf.setInt("BufferCapacity", 1024 * 1024);
         
@@ -209,7 +205,7 @@ public class TestLoadGenerator {
             LOG.debug(ex.getLocalizedMessage());
         }
         wingen.activate(null);
-        for (int i = 0; i < 250; i++) {
+        for (int i = 0; i < 500; i++) {
             mses.tick(1);
             try {
                 Thread.sleep(2);
@@ -217,8 +213,19 @@ public class TestLoadGenerator {
                 LOG.error("Unexpected error while sleeping for 1 s", e);
             }
         }
-        // Verify that the probability worked
         node.deactivate();
+        
+        // Let the reciever get the tuples from the queue
+        for (int i = 0; i < 10; i++) {
+            mses.tick(1);
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                LOG.error("Unexpected error while sleeping for 1 s", e);
+            }
+        }
+
+
         // Assert.assertEquals("number emitted tuples", 5000, lgenSink.collectedTuples.size());
 //        LOG.debug("Processed {} tuples out of {}", lgenSink.collectedTuples.size(), lgenSink.count);
         LOG.debug("Processed {} tuples", lgenSink.count);

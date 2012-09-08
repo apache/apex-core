@@ -8,7 +8,6 @@ import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.Sink;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +16,42 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Takes a in stream <b>in_data</b> and adds to incoming keys to create a new tuple that is emitted
+ * on output port <b>out_data</b>. The aim is to create a load with pair of keys<p>
+ * <br>
+ * Examples of pairs include<br>
+ * publisher,advertizer<br>
+ * automobile,model<br>
+ * <br>
+ * The keys to be inserted are given by the property <b>keys</b>. Users can choose to insert their
+ * own values via property <b>values</b>. Insertion can be done as replacement, addition, multiply,
+ * or append (append is not yet supported)<br>. For each incoming key users can provide an insertion
+ * probability for the insert keys. This allows for randomization of the insert key choice<br><br>
+ * <br>
+ * Benchmarks: This node has been benchmarked at over 25 million tuples/second in local/inline mode<br>
+ * 
+ * <b>Tuple Schema</b>: Each tuple is HashMap<String, Double><br>
+ * <b>Port Interface</b>:It has only one output port "data" and has no input ports<br><br>
+ * <b>Properties</b>:
+ * <b>keys</b> is a comma separated list of keys. This key are the insert keys in the tuple<br>
+ * <b>values</b> are comma separated list of values. This value is for insertion into the <value> field in the tuple. also called "insert value". If not specified the incoming values are not changed<br>
+ * <b>weights</b> are comma separated list of probability weights for each incoming key. For each incoming key the weights have to be provided. If this parameter is empty all the weights are even for all keys<br>
+ * <b>valueoperation</b> defines insert operation. The choices are:
+ * <b>replace</b> - Replace the tuple value with "insert value"<br>
+ * <b>add</b> - Add "insert value" to incoming tuple value<br>
+ * <b>mult</b> - Multiply "insert value" with incoming tuple value<br>
+ * <b>append</b> - Append the "insert value" to the incoming tuple's value. Mainly for string operation. Currently this mode is not supported<br>
+ * <br>
+ * Compile time checks are:<br>
+ * <b>keys</b> cannot be empty<br>
+ * <b>values</b> if specified has to be comma separated doubles and their number must match the number of keys<br>
+ * <b>weights</b> if specified the format has to be "key1:val1,val2,...,valn;key2:val1,val2,...,valn;...", where n has to be 
+ * number of keys in parameter <b>keys</b>. If not specified all weights are equal<br>
+ * <br>
  *
+ * Compile time error checking includes<br>
+ * 
+ * 
  * @author amol
  */
 @NodeAnnotation(
@@ -206,9 +240,9 @@ public class LoadClassifier extends AbstractNode {
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
 
-        String[] wstr = null;
+
         if (!iwstr.isEmpty()) {
-            wstr = iwstr.split(";");
+            String[] wstr = iwstr.split(";");
             inkeys = new HashMap<String, ArrayList<Integer>>();
             for (String ts : wstr) { // ts is top string as <key>:weight1,weight2,...
                 String[] twostr = ts.split(":");
@@ -258,6 +292,7 @@ public class LoadClassifier extends AbstractNode {
         // For now only HashMap is supported
         //
         // tuple should be "inkey,key" and "value" pair
+
         for (Map.Entry<String, Double> e : ((HashMap<String, Double>) payload).entrySet()) {
             String inkey = e.getKey();
             ArrayList<Integer> alist = null;
@@ -301,7 +336,7 @@ public class LoadClassifier extends AbstractNode {
             }
             tuple.put(key + "," + inkey, keyval);            
             emit(OPORT_OUT_DATA, tuple);    
-        }   
+        }
     }
 
     /**
