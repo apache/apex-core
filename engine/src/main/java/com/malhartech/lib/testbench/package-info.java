@@ -5,7 +5,7 @@
  */
 
 /**
- * <b>com.malhartech.lib.testbench</b> is a library of arithmetic modules for reuse<p>
+ * <b>com.malhartech.lib.testbench</b> is a library of test bench modules for reuse<p>
  * <br>
  * <br>The modules are<br>
  * <b>{@link com.malhartech.lib.testbench.LoadClassifier}</b>: For every tuple appends a classifier key to the incoming key. If values are specified adds them to the incoming values<br>
