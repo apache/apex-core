@@ -58,6 +58,6 @@ public class GenericTestNode extends AbstractNode {
   @Override
   public void handleIdleTimeout()
   {
-    deactivate();
+//    deactivate();
   }
 }

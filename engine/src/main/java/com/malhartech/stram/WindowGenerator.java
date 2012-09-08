@@ -76,7 +76,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   {
     if (windowId == MAX_WINDOW_ID) {
       EndWindowTuple t = new EndWindowTuple();
-      t.setWindowId(windowId);
+      t.setWindowId(baseSeconds | windowId);
       for (Sink s: sinks) {
         s.process(t);
       }
@@ -87,7 +87,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     else {
 //      logger.debug("generating end -> begin {}", Integer.toHexString(windowId));
       EndWindowTuple ewt = new EndWindowTuple();
-      ewt.setWindowId(windowId);
+      ewt.setWindowId(baseSeconds | windowId);
 
       advanceWindow();
 
