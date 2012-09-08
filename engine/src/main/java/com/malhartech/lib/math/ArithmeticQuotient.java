@@ -19,15 +19,13 @@ import org.slf4j.LoggerFactory;
  * Takes in two streams via input ports "numerator" and "denominator". At the
  * end of window computes the quotient for each key and emits the result on port
  * "quotient".<p> <br> Each stream is added to a hash. The values are added for
- * each key within the window and for each stream.<br> If compute_margin is true
- * then the result is 1 - numerator/denominator expressed as a percentage.
- * Ideally multiply_by should be 1 in this case.<br> This node only functions in
+ * each key within the window and for each stream.<<br> This node only functions in
  * a windowed stram application<br> <br> Compile time error processing is done
- * on configuration parameters<br> property <b>compute_margin</b> has to be
- * boolean ("true" or "false").<br> property <b>multiply_by</b> has to be an
+ * on configuration parameters<br> property <b>multiply_by</b> has to be an
  * integer.<br> input ports <b>numerator</b>, <b>denominator</b> must be
- * connected.<br> one of the out bound ports <b>quotient</b> or <b>_error</b>
- * must be connected.<br> <br> Run time error processing are emitted on _error
+ * connected.<br> outbound port <b>quotient</b> must be connected<br>
+ * <br><b>All Run time errors are TBD</b><br>
+ * Run time error processing are emitted on _error
  * port. The errors are:<br> Divide by zero (Error): no result is emitted on
  * "outport".<br> Input tuple not an integer on denominator stream: This tuple
  * would not be counted towards the result.<br> Input tuple not an integer on
@@ -50,7 +48,6 @@ public class ArithmeticQuotient extends AbstractNode
   public static final String OPORT_QUOTIENT = "quotient";
   private static Logger LOG = LoggerFactory.getLogger(ArithmeticSum.class);
   int mult_by = 1;
-  boolean comp_margin = false;
   HashMap<String, Number> numerators = new HashMap<String, Number>();
   HashMap<String, Number> denominators = new HashMap<String, Number>();
   /**
@@ -59,10 +56,6 @@ public class ArithmeticQuotient extends AbstractNode
    *
    */
   public static final String KEY_MULTIPLY_BY = "multiply_by";
-  /**
-   * Computes margin instead of quotient.
-   */
-  public static final String KEY_COMPUTE_MARGIN = "compute_margin";
 
   /**
    *
@@ -73,7 +66,6 @@ public class ArithmeticQuotient extends AbstractNode
   {
     super.setup(config);
     mult_by = config.getInt(KEY_MULTIPLY_BY, 1);
-    comp_margin = config.getBoolean(KEY_COMPUTE_MARGIN, false);
   }
 
   public boolean myValidation(NodeConfiguration config)
@@ -111,7 +103,6 @@ public class ArithmeticQuotient extends AbstractNode
         val = new Double(val.doubleValue() + e.getValue().doubleValue());
       }
       active.put(e.getKey(), val);
-      //LOG.debug("Key was {}, val was {}", e.getKey(), val);
     }
   }
 
