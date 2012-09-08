@@ -8,7 +8,6 @@ import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.Sink;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -241,9 +240,9 @@ public class LoadClassifier extends AbstractNode {
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
 
-        String[] wstr = null;
+
         if (!iwstr.isEmpty()) {
-            wstr = iwstr.split(";");
+            String[] wstr = iwstr.split(";");
             inkeys = new HashMap<String, ArrayList<Integer>>();
             for (String ts : wstr) { // ts is top string as <key>:weight1,weight2,...
                 String[] twostr = ts.split(":");
@@ -293,6 +292,7 @@ public class LoadClassifier extends AbstractNode {
         // For now only HashMap is supported
         //
         // tuple should be "inkey,key" and "value" pair
+
         for (Map.Entry<String, Double> e : ((HashMap<String, Double>) payload).entrySet()) {
             String inkey = e.getKey();
             ArrayList<Integer> alist = null;
@@ -336,7 +336,7 @@ public class LoadClassifier extends AbstractNode {
             }
             tuple.put(key + "," + inkey, keyval);            
             emit(OPORT_OUT_DATA, tuple);    
-        }   
+        }
     }
 
     /**

@@ -4,16 +4,13 @@
 package com.malhartech.lib.testbench;
 
 import com.esotericsoftware.minlog.Log;
-import java.util.HashMap;
-import java.util.List;
-import org.junit.Test;
-
 import com.malhartech.dag.NodeConfiguration;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import junit.framework.Assert;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,12 +169,14 @@ public class TestLoadClassifier {
         conf.setInt("BufferCapacity", 1024 * 1024);
         node.setup(conf);
 
+        int sentval = 0;
         for (int i = 0; i < 1000000; i++) {
             input.clear();
             input.put("ia", 2.0);
             input.put("ib", 20.0);
             input.put("ic", 1000.0);
             input.put("id", 1000.0);
+            sentval += 4;
             node.process(input);
         }
         node.endWindow();
@@ -185,6 +184,7 @@ public class TestLoadClassifier {
         for (Map.Entry<String, Integer> e : classifySink.collectedTuples.entrySet()) {
             ival += e.getValue().intValue();
         }
+        
         LOG.info(String.format("\nThe number of keys in %d tuples are %d and %d",
                 ival,
                 classifySink.collectedTuples.size(),
@@ -193,7 +193,7 @@ public class TestLoadClassifier {
             Integer ieval = classifySink.collectedTuples.get(ve.getKey()); // ieval should not be null?
             Log.info(String.format("%d tuples of key \"%s\" has value %f", ieval.intValue(), ve.getKey(), ve.getValue()));
         }
-
+        Assert.assertEquals("number emitted tuples", sentval, ival);
         // Now test a node with no weights
         LoadClassifier nwnode = new LoadClassifier();
         classifySink.clear();
@@ -201,12 +201,14 @@ public class TestLoadClassifier {
         conf.set(LoadGenerator.KEY_WEIGHTS, "");
         nwnode.setup(conf);
 
+        sentval = 0;
         for (int i = 0; i < 1000000; i++) {
             input.clear();
             input.put("ia", 2.0);
             input.put("ib", 20.0);
             input.put("ic", 1000.0);
             input.put("id", 1000.0);
+            sentval += 4;
             nwnode.process(input);
         }
         nwnode.endWindow();
@@ -222,6 +224,7 @@ public class TestLoadClassifier {
             Integer ieval = classifySink.collectedTuples.get(ve.getKey()); // ieval should not be null?
             Log.info(String.format("%d tuples of key \"%s\" has value %f", ieval.intValue(), ve.getKey(), ve.getValue()));
         }
+        Assert.assertEquals("number emitted tuples", sentval, ival);
 
         
         // Now test a node with no weights and no values
@@ -231,13 +234,15 @@ public class TestLoadClassifier {
         conf.set(LoadGenerator.KEY_WEIGHTS, "");
         conf.set(LoadClassifier.KEY_VALUES, "");
         nvnode.setup(conf);    
-        
+
+        sentval = 0;
         for (int i = 0; i < 1000000; i++) {
             input.clear();
             input.put("ia", 2.0);
             input.put("ib", 20.0);
             input.put("ic", 500.0);
             input.put("id", 1000.0);
+            sentval += 4;
             nvnode.process(input);
         }
         nvnode.endWindow();
@@ -256,5 +261,6 @@ public class TestLoadClassifier {
                     ve.getKey(),
                     ve.getValue()));
         }
+        Assert.assertEquals("number emitted tuples", sentval, ival);
     }
 }

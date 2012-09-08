@@ -97,20 +97,6 @@ public class LoadGenerator extends AbstractInputNode {
     
     
     /**
-     * Not used, but overridden as it is abstract
-     */
-    @Override
-    public void endWindow() {;
-    }
-
-    /**
-     * Not used, but overridden as it is abstract
-     */
-    @Override
-    public void beginWindow() {;
-    }
-
-    /**
      * 
      * Code to be moved to a proper base method name
      * @param config
@@ -120,7 +106,7 @@ public class LoadGenerator extends AbstractInputNode {
         String[] wstr = config.getTrimmedStrings(KEY_WEIGHTS);
         String[] kstr = config.getTrimmedStrings(KEY_KEYS);
         String[] vstr = config.getTrimmedStrings(KEY_VALUES);
-        boolean isstringschema = config.getBoolean(KEY_STRING_SCHEMA, false);
+        isstringschema = config.getBoolean(KEY_STRING_SCHEMA, false);
         
         boolean ret = true;
 
@@ -268,7 +254,9 @@ public class LoadGenerator extends AbstractInputNode {
                     int wval = 0;
                     for (Integer e : weights) {
                         wval += e.intValue();
-                        if (wval >= rval) break;
+                        if (wval >= rval) {
+                            break;
+                        }
                         j++;
                     }
                     // wval is the key index
@@ -284,8 +272,8 @@ public class LoadGenerator extends AbstractInputNode {
                     i++;
                 }
                 try {
-                    //Thread.sleep(1000);
-                    Thread.sleep(10); // Remove sleep if you want to blast data at huge rate
+                    Thread.sleep(1000);
+                    //Thread.sleep(10); // Remove sleep if you want to blast data at huge rate
                 } catch (InterruptedException e) {
                     LOG.error("Unexpected error while sleeping for 1 s", e);
                 }
