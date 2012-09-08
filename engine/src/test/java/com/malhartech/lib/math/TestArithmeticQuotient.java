@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +21,6 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-@Ignore
 public class TestArithmeticQuotient
 {
   private static Logger LOG = LoggerFactory.getLogger(ArithmeticQuotient.class);
