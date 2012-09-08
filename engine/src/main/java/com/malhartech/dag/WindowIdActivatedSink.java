@@ -12,22 +12,27 @@ import com.malhartech.bufferserver.Buffer;
  */
 public class WindowIdActivatedSink implements Sink
 {
-  private final Sink ultimateSink;
+  private final Sink sink;
   private final long windowId;
+  private final String port;
+  private final Component source;
 
-  public WindowIdActivatedSink(final Sink sink, final long windowId)
+  public WindowIdActivatedSink(Component source, String port, final Sink sink, final long windowId)
   {
-    this.ultimateSink = sink;
+    this.source = source;
+    this.port = port;
+    this.sink = sink;
     this.windowId = windowId;
   }
 
   @Override
-  public void process(Object payload) throws MutatedSinkException
+  public void process(Object payload)
   {
     if (payload instanceof Tuple
             && ((Tuple)payload).getType() == Buffer.Data.DataType.BEGIN_WINDOW
             && ((Tuple)payload).getWindowId() >= windowId) {
-      throw new MutatedSinkException(this, ultimateSink, "Sink activated at beginning of window " + windowId);
+      sink.process(payload);
+      source.connect(port, sink);
     }
   }
 }

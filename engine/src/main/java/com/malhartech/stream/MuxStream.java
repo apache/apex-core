@@ -5,10 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.dag.*;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map.Entry;
 
 /**
  *
@@ -17,8 +14,9 @@ import java.util.Map.Entry;
 
 public class MuxStream implements Stream
 {
-  HashMap<String, Sink> outputs;
-  Sink[] sinks = new Sink[0];
+  private HashMap<String, Sink> outputs;
+  @SuppressWarnings("VolatileArrayField")
+  private volatile Sink[] sinks = NO_SINKS;
 
   /**
    *
@@ -45,6 +43,7 @@ public class MuxStream implements Stream
    * @param context
    */
   @Override
+  @SuppressWarnings("SillyAssignment")
   public void activate(StreamContext context)
   {
     sinks = new Sink[outputs.size()];
@@ -53,6 +52,7 @@ public class MuxStream implements Stream
     for (final Sink s: outputs.values()) {
       sinks[i++] = s;
     }
+    sinks = sinks;
   }
 
   /**
@@ -61,7 +61,7 @@ public class MuxStream implements Stream
   @Override
   public void deactivate()
   {
-    sinks = new Sink[0];
+    sinks = NO_SINKS;
   }
 
   /**
@@ -81,6 +81,9 @@ public class MuxStream implements Stream
     }
     else {
       outputs.put(id, sink);
+      if (sinks != NO_SINKS) {
+        activate(null);
+      }
     }
 
     return null;
@@ -94,22 +97,7 @@ public class MuxStream implements Stream
   public void process(Object payload)
   {
     for (int i = sinks.length; i-- > 0;) {
-      try {
-        sinks[i].process(payload);
-      }
-      catch (MutatedSinkException mse) {
-        Sink newSink = mse.getNewSink();
-        newSink.process(payload);
-        sinks[i] = newSink;
-
-        Sink oldSink = mse.getOldSink();
-        for (Entry<String, Sink> e: outputs.entrySet()) {
-          if (e.getValue() == oldSink) {
-            outputs.put(e.getKey(), oldSink);
-            break;
-          }
-        }
-      }
+      sinks[i].process(payload);
     }
   }
 

@@ -20,7 +20,7 @@ public class NodeConfiguration extends Configuration
 
   public NodeConfiguration(String id, Map<String, String> properties)
   {
-    set("id", id);
+    set("Id", id);
     this.properties = properties;
     addAll(this, properties);
   }

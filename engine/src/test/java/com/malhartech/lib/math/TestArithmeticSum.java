@@ -3,17 +3,14 @@
  */
 package com.malhartech.lib.math;
 
+import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.Sink;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
-import junit.framework.Assert;
-
-import org.junit.Test;
-
-import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.Sink;
 import java.util.Map;
+import junit.framework.Assert;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +49,7 @@ public class TestArithmeticSum {
      */
     @Test
     public void testNodeProcessing() {
-        
+
         ArithmeticSum node = new ArithmeticSum();
 
         TestSink sumSink = new TestSink();
@@ -68,10 +65,10 @@ public class TestArithmeticSum {
 
         input.put("a", 10.0); input.put("b", 5.0);
         node.process(input); input.clear();
-        
+
         input.put("d", 55.0); input.put("b", 12.0);
         node.process(input); input.clear();
- 
+
         input.put("d", 22.0);
         node.process(input); input.clear();
 
@@ -83,13 +80,13 @@ public class TestArithmeticSum {
 
         inputi.put("d", 46); inputi.put("e", 2);
         node.process(inputi); inputi.clear();
-  
+
         inputi.put("a", 23); inputi.put("d", 4);
         node.process(inputi); inputi.clear();
- 
 
 
-        node.endWindow(); // 
+
+        node.endWindow(); //
         // payload should be 1 bag of tuples with keys "a", "b", "c", "d", "e"
         Assert.assertEquals("number emitted tuples", 1, sumSink.collectedTuples.size());
         for (Object o : sumSink.collectedTuples) {

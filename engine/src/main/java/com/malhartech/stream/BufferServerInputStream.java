@@ -23,7 +23,8 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
   private HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   private long baseSeconds = 0;
-  private Sink[] sinks = new Sink[0];
+  @SuppressWarnings("VolatileArrayField")
+  private volatile Sink[] sinks = NO_SINKS;
   private SerDe serde;
 
   public BufferServerInputStream(SerDe serde)
@@ -35,12 +36,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   public void activate(StreamContext context)
   {
     super.activate(context);
-
-    sinks = new Sink[outputs.size()];
-    int i = 0;
-    for (final Sink s: outputs.values()) {
-      sinks[i++] = s;
-    }
+    activateSinks();
 
     String type = "unused";
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId()});
@@ -89,22 +85,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     }
 
     for (int i = sinks.length; i-- > 0;) {
-      try {
-        sinks[i].process(t);
-      }
-      catch (MutatedSinkException mse) {
-        Sink newSink = mse.getNewSink();
-        newSink.process(t);
-        sinks[i] = newSink;
-
-        Sink oldSink = mse.getOldSink();
-        for (Entry<String, Sink> e: outputs.entrySet()) {
-          if (e.getValue() == oldSink) {
-            outputs.put(e.getKey(), newSink);
-            break;
-          }
-        }
-      }
+      sinks[i].process(t);
     }
   }
 
@@ -116,6 +97,9 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     }
     else {
       outputs.put(id, sink);
+      if (sinks != NO_SINKS) {
+        activateSinks();
+      }
     }
     return null;
   }
@@ -130,5 +114,16 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   public boolean isMultiSinkCapable()
   {
     return true;
+  }
+
+  @SuppressWarnings("SillyAssignment")
+  private void activateSinks()
+  {
+    sinks = new Sink[outputs.size()];
+    int i = 0;
+    for (final Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
+    sinks = sinks;
   }
 }

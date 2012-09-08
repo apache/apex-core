@@ -13,6 +13,8 @@ package com.malhartech.dag;
  */
 public interface Sink
 {
+  public static final Sink[] NO_SINKS = new Sink[0];
+
   /**
    * Process the payload which can either be used defined object or Tuple.
    *

@@ -4,7 +4,6 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.dag.MutatedSinkException;
 import com.malhartech.dag.SerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
@@ -18,9 +17,9 @@ import java.util.List;
  */
 public class PartitionAwareSink implements Sink
 {
-  final SerDe serde;
-  final HashSet<ByteBuffer> partitions;
-  Sink output;
+  private final SerDe serde;
+  private final HashSet<ByteBuffer> partitions;
+  private volatile Sink output;
 
   /**
    *
@@ -48,13 +47,7 @@ public class PartitionAwareSink implements Sink
   public void process(Object payload)
   {
     if (payload instanceof Tuple) {
-      try {
-        output.process(payload);
-      }
-      catch (MutatedSinkException mse) {
-        output = mse.getNewSink();
-        output.process(payload);
-      }
+      output.process(payload);
     }
     else if (partitions.contains(ByteBuffer.wrap(serde.getPartition(payload)))) {
       output.process(payload);

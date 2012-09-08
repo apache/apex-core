@@ -761,7 +761,10 @@ public class StramChild
         }
 
         Sink s = node.connect(Component.INPUT, windowGenerator);
-        windowGenerator.connect(ndi.id.concat(".").concat(Component.INPUT), ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(s, ndi.checkpointWindowId) : s);
+        windowGenerator.connect(ndi.id.concat(".").concat(Component.INPUT),
+                                ndi.checkpointWindowId > 0
+                                ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(".").concat(Component.INPUT), s, ndi.checkpointWindowId)
+                                : s);
       }
       else {
         for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
@@ -789,7 +792,7 @@ public class StramChild
                         new ComponentContextPair<Stream, StreamContext>(stream, context));
 
             Sink s = node.connect(nidi.portName, stream);
-            stream.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(s, ndi.checkpointWindowId) : s);
+            stream.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(stream, sinkIdentifier, s, ndi.checkpointWindowId) : s);
           }
           else {
             Sink s = node.connect(nidi.portName, pair.component);
@@ -836,7 +839,8 @@ public class StramChild
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              pair.component.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(s, ndi.checkpointWindowId) : s);
+              pair.component.connect(sinkIdentifier,
+                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
             }
             else {
               /*
@@ -844,7 +848,8 @@ public class StramChild
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
               PartitionAwareSink pas = new PartitionAwareSink(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, s);
-              pair.component.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pas, ndi.checkpointWindowId) : pas);
+              pair.component.connect(sinkIdentifier,
+                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);
             }
           }
         }

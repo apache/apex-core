@@ -4,7 +4,6 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.dag.MutatedSinkException;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
@@ -14,7 +13,6 @@ import com.malhartech.dag.StreamContext;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-
 /**
  *
  * Inline streams are used for performance enhancement when both the nodes are in the same hadoop container<p>
@@ -27,13 +25,12 @@ import com.malhartech.dag.StreamContext;
  * <br>
  *
  */
-
 public class InlineStream implements Stream
 {
-    /**
-     *
-     */
-  Sink current, output, shunted = new Sink()
+  /**
+   *
+   */
+  private volatile Sink current, output, shunted = new Sink()
   {
     @Override
     public void process(Object payload)
@@ -92,6 +89,9 @@ public class InlineStream implements Stream
       return this;
     }
     else {
+      if (current == output) {
+        current = sink;
+      }
       output = sink;
     }
     return null;
@@ -104,14 +104,7 @@ public class InlineStream implements Stream
   @Override
   public final void process(Object payload)
   {
-    try {
-      current.process(payload);
-    }
-    catch (MutatedSinkException mse) {
-      current = mse.getNewSink();
-      current.process(payload);
-      output = current;
-    }
+    current.process(payload);
   }
 
   public final Sink getOutput()

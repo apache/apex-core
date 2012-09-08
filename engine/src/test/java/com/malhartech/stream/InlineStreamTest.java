@@ -161,19 +161,12 @@ public class InlineStreamTest
   })
   public static class PassThroughNode extends AbstractNode
   {
-    private String nodeId;
     private boolean logMessages = false;
 
     @Override
     public void setup(NodeConfiguration config)
     {
-      nodeId = config.get("NodeId", null);
       super.setup(config);
-    }
-
-    public boolean isAppendNodeId()
-    {
-      return nodeId != null;
     }
 
     public boolean isLogMessages()
@@ -189,12 +182,7 @@ public class InlineStreamTest
     @Override
     public void process(Object o)
     {
-      if (nodeId == null) {
-        emit(Component.OUTPUT, o);
-      }
-      else {
-        emit(Component.OUTPUT, nodeId.concat(" > ").concat(o.toString()));
-      }
+      emit(Component.OUTPUT, o);
     }
   }
 }

@@ -11,7 +11,6 @@ import java.nio.BufferOverflowException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
 import org.slf4j.LoggerFactory;
 
@@ -36,9 +35,12 @@ public abstract class AbstractNode implements Node
   private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
   private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  private transient Sink[] sinks = new Sink[0];
+  @SuppressWarnings("VolatileArrayField")
+  private transient volatile Sink[] sinks = NO_SINKS;
   private transient int consumedTupleCount;
   private transient volatile boolean alive;
+  private transient int spinMillis;
+  private transient int bufferCapacity;
 
   // optimize the performance of this method.
   private PortAnnotation getPort(String id)
@@ -65,7 +67,9 @@ public abstract class AbstractNode implements Node
   @Override
   public void setup(NodeConfiguration config)
   {
-    id = config.get("id");
+    id = config.get("Id");
+    spinMillis = config.getInt("SpinMillis", 10);
+    bufferCapacity = config.getInt("BufferCapacity", 1024 * 1024);
   }
 
   @Override
@@ -90,6 +94,17 @@ public abstract class AbstractNode implements Node
   {
   }
 
+  @SuppressWarnings("SillyAssignment")
+  private void activateSinks()
+  {
+    sinks = new Sink[outputs.size()];
+    int i = 0;
+    for (Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
+    sinks = sinks;
+  }
+
   class CompoundSink extends CircularBuffer<Object> implements Sink
   {
     final String id;
@@ -97,7 +112,7 @@ public abstract class AbstractNode implements Node
 
     public CompoundSink(String id, Sink dagpart)
     {
-      super(1024);
+      super(bufferCapacity);
       this.id = id;
       this.dagpart = dagpart;
     }
@@ -114,7 +129,7 @@ public abstract class AbstractNode implements Node
             break;
           }
           catch (BufferOverflowException boe) {
-            Thread.sleep(100);
+            Thread.sleep(spinMillis);
           }
         }
       }
@@ -163,6 +178,9 @@ public abstract class AbstractNode implements Node
         }
         else {
           outputs.put(pa.name(), dagpart);
+          if (sinks != NO_SINKS) {
+            activateSinks();
+          }
         }
 
       case INPUT:
@@ -189,6 +207,9 @@ public abstract class AbstractNode implements Node
         }
         else {
           outputs.put(pa.name(), dagpart);
+          if (sinks != NO_SINKS) {
+            activateSinks();
+          }
         }
         s = null;
         break;
@@ -238,26 +259,10 @@ public abstract class AbstractNode implements Node
    *
    * @param payload
    */
-  @SuppressWarnings("SillyAssignment")
   public void emit(final Object payload)
   {
     for (int i = sinks.length; i-- > 0;) {
-      try {
-        sinks[i].process(payload);
-      }
-      catch (MutatedSinkException mse) {
-        Sink newSink = mse.getNewSink();
-        newSink.process(payload);
-        sinks[i] = newSink;
-        sinks = sinks;
-
-        Sink oldSink = mse.getOldSink();
-        for (Entry<String, Sink> e: outputs.entrySet()) {
-          if (e.getValue() == oldSink) {
-            outputs.put(e.getKey(), newSink);
-          }
-        }
-      }
+      sinks[i].process(payload);
     }
   }
 
@@ -271,17 +276,7 @@ public abstract class AbstractNode implements Node
    */
   public final void emit(String id, Object payload)
   {
-    try {
-      outputs.get(id).process(payload);
-    }
-    catch (MutatedSinkException mse) {
-      Sink newSink = mse.getNewSink();
-      newSink.process(payload);
-      outputs.put(id, newSink);
-    }
-    catch (Exception e) {
-      logger.warn(e.getLocalizedMessage());
-    }
+    outputs.get(id).process(payload);
   }
 
   @Override
@@ -298,15 +293,10 @@ public abstract class AbstractNode implements Node
    * long as there is useful workload for the node.
    */
   @Override
-  @SuppressWarnings( {"SleepWhileInLoop", "SillyAssignment"})
+  @SuppressWarnings("SleepWhileInLoop")
   final public void activate(NodeContext ctx)
   {
-    sinks = new Sink[outputs.size()];
-    int i = 0;
-    for (Sink s: outputs.values()) {
-      sinks[i++] = s;
-    }
-    sinks = sinks;
+    activateSinks();
 
     int totalQueues = inputs.size();
 
@@ -342,22 +332,7 @@ public abstract class AbstractNode implements Node
                   currentWindowId = t.getWindowId();
                   beginWindow();
                   for (int s = sinks.length; s-- > 0;) {
-                    try {
-                      sinks[s].process(t);
-                    }
-                    catch (MutatedSinkException mse) {
-                      Sink newSink = mse.getNewSink();
-                      newSink.process(payload);
-                      sinks[s] = newSink;
-                      sinks = sinks;
-
-                      Sink oldSink = mse.getOldSink();
-                      for (Entry<String, Sink> e: outputs.entrySet()) {
-                        if (e.getValue() == oldSink) {
-                          outputs.put(e.getKey(), newSink);
-                        }
-                      }
-                    }
+                    sinks[s].process(t);
                   }
                   receivedEndWindow = 0;
                 }
@@ -480,7 +455,7 @@ public abstract class AbstractNode implements Node
           oldCount += cb.size();
         }
         try {
-          Thread.sleep(100);
+          Thread.sleep(spinMillis);
           int newCount = 0;
           for (CircularBuffer<?> cb: activeQueues) {
             newCount += cb.size();

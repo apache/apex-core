@@ -4,14 +4,12 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.util.CircularBuffer;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.util.Collection;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.util.CircularBuffer;
 
 /**
  * The for context for all of the nodes<p>

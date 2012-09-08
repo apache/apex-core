@@ -25,7 +25,7 @@ public abstract class AbstractInputNode implements Node
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
   private transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   @SuppressWarnings("VolatileArrayField")
-  private transient volatile Sink[] sinks = new Sink[0];
+  private transient volatile Sink[] sinks = NO_SINKS;
   private transient NodeContext ctx;
   private transient int producedTupleCount;
   private transient int spinMillis;
@@ -34,9 +34,9 @@ public abstract class AbstractInputNode implements Node
   @Override
   public void setup(NodeConfiguration config)
   {
-    id = config.get("id");
-    spinMillis = config.getInt("SpinMillis", 100);
-    bufferCapacity = config.getInt("BufferCapacity", 1024);
+    id = config.get("Id");
+    spinMillis = config.getInt("SpinMillis", 10);
+    bufferCapacity = config.getInt("BufferCapacity", 1024 * 1024);
 
     afterBeginWindows = new HashMap<String, CircularBuffer<Object>>();
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
@@ -55,23 +55,16 @@ public abstract class AbstractInputNode implements Node
   }
 
   @Override
-  @SuppressWarnings("SillyAssignment")
   public void activate(NodeContext context)
   {
     ctx = context;
-    sinks = new Sink[outputs.size()];
-
-    int i = 0;
-    for (Sink s: outputs.values()) {
-      sinks[i++] = s;
-    }
-    sinks = sinks;
+    activateSinks();
   }
 
   @Override
   public void deactivate()
   {
-    sinks = new Sink[0];
+    sinks = NO_SINKS;
   }
 
   @Override
@@ -97,10 +90,14 @@ public abstract class AbstractInputNode implements Node
     }
     else if (component == null) {
       outputs.remove(port);
+      // refreshing sinks is not supported yet due to complications over iterating.
       retvalue = null;
     }
     else {
       outputs.put(port, component);
+      if (sinks != NO_SINKS) {
+        activateSinks();
+      }
       retvalue = null;
     }
 
@@ -117,31 +114,17 @@ public abstract class AbstractInputNode implements Node
   @SuppressWarnings("SillyAssignment")
   public final void process(Object payload)
   {
-    int i;
     Tuple t = (Tuple)payload;
     switch (t.getType()) {
       case BEGIN_WINDOW:
-        i = sinks.length;
-        do {
-          try {
-            while (i-- > 0) {
+        for (int i = sinks.length; i-- > 0;) {
               sinks[i].process(payload);
-            }
-          }
-          catch (MutatedSinkException mse) {
-            final Sink newSink = mse.getNewSink();
-            newSink.process(payload);
-            sinks[i] = newSink;
-            sinks = sinks;
-            replaceOutput(mse.getOldSink(), newSink);
-          }
         }
-        while (i > 0);
 
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
-          for (i = cb.size(); i > 0; i--) {
+          for (int i = cb.size(); i-- > 0;) {
             s.process(cb.get());
           }
         }
@@ -151,7 +134,7 @@ public abstract class AbstractInputNode implements Node
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
-          for (i = cb.size(); i > 0; i--) {
+          for (int i = cb.size(); i-- > 0;) {
             s.process(cb.get());
           }
         }
@@ -183,7 +166,7 @@ public abstract class AbstractInputNode implements Node
         for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
           CircularBuffer<?> cb = e.getValue();
-          for (i = cb.size(); i > 0; i--) {
+          for (int i = cb.size(); i-- > 0;) {
             s.process(cb.get());
           }
         }
@@ -199,9 +182,6 @@ public abstract class AbstractInputNode implements Node
   @SuppressWarnings("SleepWhileInLoop")
   public void emit(String id, Object payload)
   {
-    // once we have annotation done property, we would like to send the tuples to
-    // a queue corresponding to the port instead of in one. the followig implementation
-    // ignores the id, that means it's good only for the nodes which have one o/p port.
     if (payload instanceof Tuple) {
       while (true) {
         try {
@@ -282,5 +262,17 @@ public abstract class AbstractInputNode implements Node
         break;
       }
     }
+  }
+
+  @SuppressWarnings("SillyAssignment")
+  private void activateSinks()
+  {
+    sinks = new Sink[outputs.size()];
+
+    int i = 0;
+    for (Sink s: outputs.values()) {
+      sinks[i++] = s;
+    }
+    sinks = sinks;
   }
 }
