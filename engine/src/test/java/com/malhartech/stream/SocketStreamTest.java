@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +63,6 @@ public class SocketStreamTest
    *
    * @throws Exception
    */
-  @Ignore
   @Test
   public void testBufferServerStream() throws Exception
   {
