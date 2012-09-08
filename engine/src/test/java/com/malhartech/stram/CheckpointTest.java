@@ -69,7 +69,7 @@ public class CheckpointTest {
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
     LocalStramChild container = new LocalStramChild(containerId, null);
     cc.setCheckpointDfsPath(testWorkDir.getPath());
-    container.init(cc);
+    container.setup(cc);
 
     /**
      * since there is only node1 in the container, it's id must be "1".
@@ -108,8 +108,8 @@ public class CheckpointTest {
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
 
     LOG.debug("Shutdown container {}", container.getContainerId());
-    container.shutdown();
-
+    container.deactivate();
+    container.teardown();
   }
 
   @Test

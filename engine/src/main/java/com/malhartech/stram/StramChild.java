@@ -38,6 +38,7 @@ import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -99,7 +100,7 @@ public class StramChild
     this.conf = conf;
   }
 
-  protected void init(StreamingContainerContext ctx) throws IOException
+  public void setup(StreamingContainerContext ctx) throws IOException
   {
 
     heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
@@ -188,11 +189,12 @@ public class StramChild
           StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
           StreamingContainerContext ctx = umbilical.getInitContext(childId);
           LOG.debug("Got context: " + ctx);
-          stramChild.init(ctx);
+          stramChild.setup(ctx);
           // main thread enters heartbeat loop
           stramChild.monitorHeartbeat();
-          // shutdown
-          stramChild.shutdown();
+          // teardown
+          stramChild.deactivate();
+          stramChild.teardown();
           return null;
         }
       });
@@ -228,7 +230,7 @@ public class StramChild
     }
   }
 
-  private void deactivate()
+  public void deactivate()
   {
     for (WindowGenerator wg: activeGenerators.keySet()) {
       wg.deactivate();
@@ -437,24 +439,21 @@ public class StramChild
     }
   }
 
-  protected void shutdown()
+  public void teardown()
   {
-    for (WindowGenerator wg: generators.values()) {
-      if (activeGenerators.containsKey(wg)) {
-        activeGenerators.remove(wg);
-        wg.deactivate();
-        wg.teardown();
-      }
-    }
+    HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
+    gens.addAll(generators.values());
     generators.clear();
+    for (WindowGenerator wg: gens) {
+      wg.teardown();
+    }
+    gens.clear();
 
     for (ComponentContextPair<Node, NodeContext> nc: this.nodes.values()) {
-      nc.component.deactivate();
       nc.component.teardown();
     }
 
     for (Stream stream: activeStreams.keySet()) {
-      stream.deactivate();
       stream.teardown();
     }
     activeStreams.clear();
@@ -875,7 +874,7 @@ public class StramChild
   }
 
   @SuppressWarnings("SleepWhileInLoop")
-  private void activate()
+  public void activate()
   {
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream)) {

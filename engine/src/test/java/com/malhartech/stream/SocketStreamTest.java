@@ -173,7 +173,7 @@ public class SocketStreamTest
       String containerId = "container" + (i + 1);
       StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
       LocalStramChild container = new LocalStramChild(containerId, null);
-      container.init(cc);
+      container.setup(cc);
       containers.add(container);
     }
 
@@ -181,7 +181,8 @@ public class SocketStreamTest
 
     for (LocalStramChild cc: containers) {
       LOG.info("shutting down " + cc.getContainerId());
-      cc.shutdown();
+      cc.deactivate();
+      cc.teardown();
     }
 
     containers = null;

@@ -127,11 +127,12 @@ public class StramLocalCluster implements Runnable {
 
     public static void run(StramChild stramChild, StreamingContainerContext ctx) throws Exception {
       LOG.debug("Got context: " + ctx);
-      stramChild.init(ctx);
+      stramChild.setup(ctx);
       // main thread enters heartbeat loop
       stramChild.monitorHeartbeat();
-      // shutdown
-      stramChild.shutdown();
+      // teardown
+      stramChild.deactivate();
+      stramChild.teardown();
     }
 
     public void waitForHeartbeat(int waitMillis) throws InterruptedException {
@@ -141,15 +142,15 @@ public class StramLocalCluster implements Runnable {
     }
 
     @Override
-    public void init(StreamingContainerContext ctx) throws IOException
+    public void setup(StreamingContainerContext ctx) throws IOException
     {
-      super.init(ctx);
+      super.setup(ctx);
     }
 
     @Override
-    public void shutdown()
+    public void teardown()
     {
-      super.shutdown();
+      super.teardown();
     }
 
     void hookTestWindowGenerator(String node1, WindowGenerator wingen)
@@ -262,7 +263,7 @@ public class StramLocalCluster implements Runnable {
     while (!appDone) {
 
       for (String containerIdStr : dnmgr.containerStopRequests.values()) {
-        // shutdown child thread
+        // teardown child thread
         StramChild c = childContainers.get(containerIdStr);
         if (c != null) {
           ContainerHeartbeatResponse r = new ContainerHeartbeatResponse();

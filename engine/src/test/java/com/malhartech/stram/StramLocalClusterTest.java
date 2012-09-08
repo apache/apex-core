@@ -163,7 +163,7 @@ public class StramLocalClusterTest
     // nodes will deploy after downstream node was removed
     LocalStramChild c0Replaced = waitForContainer(localCluster, node1);
     c0Replaced.triggerHeartbeat();
-    c0Replaced.waitForHeartbeat(5000); // next heartbeat after init
+    c0Replaced.waitForHeartbeat(5000); // next heartbeat after setup
 
     Assert.assertNotSame("old container", c0, c0Replaced);
     Assert.assertNotSame("old container", c0.getContainerId(), c0Replaced.getContainerId());

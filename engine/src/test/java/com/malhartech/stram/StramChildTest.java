@@ -84,7 +84,7 @@ public class StramChildTest
       String containerId = "container" + (i + 1);
       StreamingNodeUmbilicalProtocol.StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
       StramLocalCluster.LocalStramChild container = new StramLocalCluster.LocalStramChild(containerId, null);
-      container.init(cc);
+      container.setup(cc);
       containers.add(container);
     }
 
@@ -92,7 +92,8 @@ public class StramChildTest
 
     for (StramLocalCluster.LocalStramChild cc: containers) {
       logger.info("shutting down " + cc.getContainerId());
-      cc.shutdown();
+      cc.deactivate();
+      cc.teardown();
     }
 
     containers = null;

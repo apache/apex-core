@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
+@Ignore
 public class TestArithmeticQuotient
 {
   private static Logger LOG = LoggerFactory.getLogger(ArithmeticQuotient.class);
@@ -75,7 +77,7 @@ public class TestArithmeticQuotient
     NodeConfiguration conf = new NodeConfiguration("mynode", new HashMap<String, String>());
     conf.setInt(ArithmeticQuotient.KEY_MULTIPLY_BY, 2);
     node.setup(conf);
-    
+
     final AtomicBoolean inactive = new AtomicBoolean(true);
     new Thread()
     {
