@@ -75,7 +75,7 @@ public class TestArithmeticQuotient
     NodeConfiguration conf = new NodeConfiguration("mynode", new HashMap<String, String>());
     conf.setInt(ArithmeticQuotient.KEY_MULTIPLY_BY, 2);
     node.setup(conf);
-    
+
     final AtomicBoolean inactive = new AtomicBoolean(true);
     new Thread()
     {
@@ -90,9 +90,15 @@ public class TestArithmeticQuotient
     /**
      * spin while the node gets activated.
      */
+    int sleeptimes = 0;
     try {
       do {
         Thread.sleep(20);
+        sleeptimes++;
+        if (sleeptimes > 20) {
+          break;
+        }
+
       }
       while (inactive.get());
     }
@@ -124,7 +130,7 @@ public class TestArithmeticQuotient
     try {
       for (int i = 0; i < 10; i++) {
         Thread.sleep(20);
-        if (quotientSink.collectedTuples.size() == 1) {
+        if (quotientSink.collectedTuples.size() >= 1) {
           break;
         }
       }

@@ -86,9 +86,14 @@ public class TestArithmeticMargin
     /**
      * spin while the node gets activated.
      */
+    int sleeptimes = 0;
     try {
       do {
         Thread.sleep(20);
+        sleeptimes++;
+        if (sleeptimes > 20) {
+          break;
+        }
       }
       while (inactive.get());
     }
@@ -120,7 +125,7 @@ public class TestArithmeticMargin
     try {
       for (int i = 0; i < 10; i++) {
         Thread.sleep(20);
-        if (marginSink.collectedTuples.size() == 1) {
+        if (marginSink.collectedTuples.size() >= 1) {
           break;
         }
       }
