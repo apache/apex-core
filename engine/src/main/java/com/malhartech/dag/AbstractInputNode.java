@@ -88,13 +88,13 @@ public abstract class AbstractInputNode implements Node
     if (Component.INPUT.equals(port)) {
       retvalue = this;
     }
-    else if (component == null) {
-      outputs.remove(port);
-      // refreshing sinks is not supported yet due to complications over iterating.
-      retvalue = null;
-    }
     else {
-      outputs.put(port, component);
+      if (component == null) {
+        outputs.remove(port);
+      }
+      else {
+        outputs.put(port, component);
+      }
       if (sinks != NO_SINKS) {
         activateSinks();
       }
@@ -118,7 +118,7 @@ public abstract class AbstractInputNode implements Node
     switch (t.getType()) {
       case BEGIN_WINDOW:
         for (int i = sinks.length; i-- > 0;) {
-              sinks[i].process(payload);
+          sinks[i].process(payload);
         }
 
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
@@ -219,11 +219,13 @@ public abstract class AbstractInputNode implements Node
   }
 
   @Override
-  public void beginWindow() {
+  public void beginWindow()
+  {
   }
 
   @Override
-  public void endWindow() {
+  public void endWindow()
+  {
   }
 
   @Override

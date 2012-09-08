@@ -178,9 +178,9 @@ public abstract class AbstractNode implements Node
         }
         else {
           outputs.put(pa.name(), dagpart);
-          if (sinks != NO_SINKS) {
-            activateSinks();
-          }
+        }
+        if (sinks != NO_SINKS) {
+          activateSinks();
         }
 
       case INPUT:
@@ -207,9 +207,9 @@ public abstract class AbstractNode implements Node
         }
         else {
           outputs.put(pa.name(), dagpart);
-          if (sinks != NO_SINKS) {
-            activateSinks();
-          }
+        }
+        if (sinks != NO_SINKS) {
+          activateSinks();
         }
         s = null;
         break;

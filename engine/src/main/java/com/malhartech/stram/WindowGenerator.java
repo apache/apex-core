@@ -84,13 +84,15 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
 //      logger.debug("generating end -> begin {}", Integer.toHexString(windowId));
       EndWindowTuple ewt = new EndWindowTuple();
       ewt.setWindowId(baseSeconds | windowId);
+      for (int i = sinks.length; i-- > 0;) {
+        sinks[i].process(ewt);
+      }
 
       advanceWindow();
 
       Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
       bwt.setWindowId(baseSeconds | windowId);
       for (int i = sinks.length; i-- > 0;) {
-        sinks[i].process(ewt);
         sinks[i].process(bwt);
       }
     }
@@ -115,8 +117,13 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
     bwt.setWindowId(baseSeconds | windowId);
 
+    /**
+     * we do two separate loops to ensure that we do not end up sending the same tuple twice to a single sink.
+     */
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(rwt);
+    }
+    for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(bwt);
     }
   }
@@ -185,6 +192,9 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     }
     else {
       outputs.put(id, component);
+    }
+    if (sinks != NO_SINKS) {
+      activateSinks();
     }
     return null;
   }

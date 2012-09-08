@@ -11,7 +11,6 @@ import java.util.HashMap;
  *
  * @author chetan
  */
-
 public class MuxStream implements Stream
 {
   private HashMap<String, Sink> outputs;
@@ -76,11 +75,13 @@ public class MuxStream implements Stream
     if (INPUT.equals(id)) {
       return this;
     }
-    else if (sink == null) {
-      outputs.remove(id);
-    }
     else {
-      outputs.put(id, sink);
+      if (sink == null) {
+        outputs.remove(id);
+      }
+      else {
+        outputs.put(id, sink);
+      }
       if (sinks != NO_SINKS) {
         activate(null);
       }

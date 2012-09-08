@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -230,7 +231,7 @@ public class StramChild
     }
   }
 
-  public void deactivate()
+  public synchronized void deactivate()
   {
     for (WindowGenerator wg: activeGenerators.keySet()) {
       wg.deactivate();
@@ -247,7 +248,7 @@ public class StramChild
     activeStreams.clear();
   }
 
-  private void deploy(List<NodeDeployInfo> nodeList)
+  private synchronized void deploy(List<NodeDeployInfo> nodeList)
   {
     /**
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
@@ -258,12 +259,6 @@ public class StramChild
       }
     }
 
-    /**
-     * mid flight changes are always dangerous and will result in disaster if not done correctly.
-     * So we temporarily halt the engine. We will need to discuss the mid flight changes for good handling.
-     */
-    deactivate();
-
     HashMap<String, ArrayList<String>> groupedInputStreams = deployNodes(nodeList);
     deployOutputStreams(nodeList, groupedInputStreams);
 
@@ -272,7 +267,7 @@ public class StramChild
     activate();
   }
 
-  private void undeploy(List<NodeDeployInfo> nodeList)
+  private synchronized void undeploy(List<NodeDeployInfo> nodeList)
   {
     /**
      * make sure that all the nodes which we are asked to undeploy are in this container.
@@ -873,47 +868,49 @@ public class StramChild
     }
   }
 
-  @SuppressWarnings("SleepWhileInLoop")
-  public void activate()
+  @SuppressWarnings( {"SleepWhileInLoop", "SleepWhileHoldingLock"})
+  public synchronized void activate()
   {
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
-      if (!(pair.component instanceof SocketInputStream)) {
+      if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
         pair.component.activate(pair.context);
         activeStreams.put(pair.component, pair.context);
       }
     }
 
+    final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
     for (final ComponentContextPair<Node, NodeContext> pair: nodes.values()) {
-      Thread t = new Thread(pair.component.toString())
-      {
-        @Override
-        public void run()
+      if (!activeNodes.containsKey(pair.component)) {
+        Thread t = new Thread(pair.component.toString())
         {
-          activeNodes.put(pair.component, pair.context);
-          pair.component.activate(pair.context);
-          activeNodes.remove(pair.component);
-        }
-      };
-      t.start();
+          @Override
+          public void run()
+          {
+            activeNodes.put(pair.component, pair.context);
+            activatedNodeCount.incrementAndGet();
+            pair.component.activate(pair.context);
+            activeNodes.remove(pair.component);
+          }
+        };
+        t.start();
+      }
     }
 
     /**
      * we need to make sure that before any of the nodes gets the first message, it's activated.
      */
-    // will this be screwed if in the current dag some nodes were already inactive as they finished their work? look into deactivate as well,
-    // it may be a good idea to clean up the inactive nodes before we start deploying the new topology. Or may be that happens through undeploy.
     try {
       do {
         Thread.sleep(20);
       }
-      while (activeNodes.size() < nodes.size());
+      while (activatedNodeCount.get() < nodes.size());
     }
     catch (InterruptedException ex) {
       LOG.debug(ex.getLocalizedMessage());
     }
 
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
-      if (pair.component instanceof SocketInputStream) {
+      if (pair.component instanceof SocketInputStream && !activeStreams.containsKey(pair.component)) {
         pair.component.activate(pair.context);
         activeStreams.put(pair.component, pair.context);
       }

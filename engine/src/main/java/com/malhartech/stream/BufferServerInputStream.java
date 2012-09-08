@@ -97,9 +97,9 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     }
     else {
       outputs.put(id, sink);
-      if (sinks != NO_SINKS) {
-        activateSinks();
-      }
+    }
+    if (sinks != NO_SINKS) {
+      activateSinks();
     }
     return null;
   }
