@@ -30,8 +30,8 @@ public class TestArithmeticMargin
     List<Object> collectedTuples = new ArrayList<Object>();
 
     /**
-     * 
-     * @param payload 
+     *
+     * @param payload
      */
     @Override
     public void process(Object payload)
@@ -48,7 +48,7 @@ public class TestArithmeticMargin
   {
     ArithmeticMargin node = new ArithmeticMargin();
     NodeConfiguration conf = new NodeConfiguration("mynode", new HashMap<String, String>());
-    
+
     // no testing as of now as no parameters on this node
     // connectivity should be part of standard tests
 
@@ -71,7 +71,7 @@ public class TestArithmeticMargin
 
     NodeConfiguration conf = new NodeConfiguration("mynode", new HashMap<String, String>());
     node.setup(conf);
-    
+
     final AtomicBoolean inactive = new AtomicBoolean(true);
     new Thread()
     {
