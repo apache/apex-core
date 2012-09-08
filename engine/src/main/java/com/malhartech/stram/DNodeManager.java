@@ -61,9 +61,9 @@ public class DNodeManager
   private final static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private int windowSizeMillis = 500;
-  private int heartbeatTimeoutMillis = 30000;
+  private final int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
-  private NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
+  private final NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
 
   private class NodeStatus
   {
@@ -235,7 +235,7 @@ public class DNodeManager
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize " + nodeDecl + "(" + nodeDecl.getNodeClass() + ")");
+      throw new RuntimeException("Failed to initialize " + nodeDecl + "(" + nodeDecl.getNodeClass() + ")", e);
     }
     //snc.setDnodeClassName(nodeDecl.getProperties().get(TopologyBuilder.NODE_CLASSNAME));
     //if (snc.getDnodeClassName() == null) {

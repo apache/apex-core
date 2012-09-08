@@ -80,7 +80,6 @@ public class TestArithmeticMargin
       {
         inactive.set(false);
         node.activate(new NodeContext("ArithmeticMarginTestNode"));
-        inactive.set(true);
       }
     }.start();
 

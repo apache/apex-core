@@ -19,6 +19,7 @@ import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.stram.conf.ShipContainingJars;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 
@@ -30,6 +31,7 @@ import com.sun.jersey.api.client.WebResource;
  * <br>
  *
  */
+@ShipContainingJars(classes={com.sun.jersey.api.client.ClientHandler.class})
 @NodeAnnotation(
     ports = {
         @PortAnnotation(name = "input", type = PortType.INPUT)
