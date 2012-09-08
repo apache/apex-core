@@ -30,6 +30,8 @@ public class GenericTestNode extends AbstractNode {
 
   private static final Logger LOG = LoggerFactory.getLogger(GenericTestNode.class);
 
+  private String emitFormat;
+
   boolean booleanProperty;
 
   private String myStringProperty;
@@ -50,9 +52,21 @@ public class GenericTestNode extends AbstractNode {
     this.booleanProperty = booleanProperty;
   }
 
+  public String getEmitFormat() {
+    return emitFormat;
+  }
+
+  public void setEmitFormat(String emitFormat) {
+    this.emitFormat = emitFormat;
+  }
+
   @Override
   public void process(Object o) {
     LOG.info("Got some work: " + o);
+    if (emitFormat != null) {
+      o = String.format(emitFormat, o);
+    }
+    emit(o);
   }
 
   @Override
