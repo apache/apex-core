@@ -41,7 +41,10 @@ public class TestLoadGenerator {
         int count = 0;
         boolean test_hashmap = false;
 
-        
+        /**
+         * 
+         * @param payload 
+         */
         @Override
         public void process(Object payload) {
             if (payload instanceof Tuple) {

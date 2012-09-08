@@ -29,6 +29,10 @@ public class TestLoadClassifier {
         HashMap<String, Integer> collectedTuples = new HashMap<String, Integer>();
         HashMap<String, Double> collectedTupleValues = new HashMap<String, Double>();
 
+        /**
+         * 
+         * @param payload 
+         */
         @Override
         public void process(Object payload) {
             if (payload instanceof Tuple) {
@@ -47,6 +51,9 @@ public class TestLoadClassifier {
                 }
             }
         }
+        /**
+         * 
+         */
         public void clear() {
             collectedTuples.clear();
             collectedTupleValues.clear();

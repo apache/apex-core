@@ -29,6 +29,10 @@ public class TestArithmeticMargin
   {
     List<Object> collectedTuples = new ArrayList<Object>();
 
+    /**
+     * 
+     * @param payload 
+     */
     @Override
     public void process(Object payload)
     {
