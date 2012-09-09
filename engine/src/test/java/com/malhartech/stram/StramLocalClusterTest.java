@@ -4,8 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -13,7 +11,6 @@ import java.io.LineNumberReader;
 import java.util.Collections;
 import java.util.Map;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Ignore;
