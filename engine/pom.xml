@@ -3,8 +3,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.malhar.app</groupId>
-  <artifactId>stram</artifactId>
+  <groupId>com.malhartech</groupId>
+  <artifactId>malhar-stram</artifactId>
   <version>0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
@@ -38,7 +38,7 @@
     </dependency>
     <dependency>
       <groupId>com.malhartech</groupId>
-      <artifactId>bufferserver</artifactId>
+      <artifactId>malhar-bufferserver</artifactId>
       <version>0.1-SNAPSHOT</version>
       <exclusions>
         <exclusion>
@@ -111,7 +111,7 @@
       profile for building against Hadoop 2.0.
     -->
     <profile>
-      <id>hadoop-0.23</id>
+      <id>hadoop-2.0</id>
       <activation>
         <property>
           <name>!hadoop.profile</name>
@@ -133,7 +133,7 @@
           <artifactId>hadoop-annotations</artifactId>
           <version>${hadoop.version}</version>
         </dependency>
-        <!-- test deps for hadoop-0.23 profile -->
+        <!-- test deps for hadoop-2.0 profile -->
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-minicluster</artifactId>
@@ -203,17 +203,17 @@
             <artifactId>maven-dependency-plugin</artifactId>
             <executions>
               <execution>
-                <id>create-mrapp-generated-classpath</id>
+                <id>create-mvn-generated-classpath</id>
                 <phase>generate-test-resources</phase>
                 <goals>
                   <goal>build-classpath</goal>
                 </goals>
                 <configuration>
-                  <!-- needed to run the unit test for DS to generate
+                  <!-- needed to run the unit test to generate
                   the required classpath that is required in the env
                   of the launch container in the mini mr/yarn cluster
                   -->
-                  <outputFile>${project.build.directory}/test-classes/mrapp-generated-classpath</outputFile>
+                  <outputFile>${project.build.directory}/test-classes/mvn-generated-classpath</outputFile>
                 </configuration>
               </execution>
             </executions>

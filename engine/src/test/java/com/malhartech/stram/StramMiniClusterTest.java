@@ -292,11 +292,11 @@ public class StramMiniClusterTest
     try {
 
       // Create classpath from generated classpath
-      // Check maven ppom.xml for generated classpath info
+      // Check maven pom.xml for generated classpath info
       // Works if compile time env is same as runtime. Mainly tests.
       ClassLoader thisClassLoader =
               Thread.currentThread().getContextClassLoader();
-      String generatedClasspathFile = "mrapp-generated-classpath";
+      String generatedClasspathFile = "mvn-generated-classpath";
       classpathFileStream =
               thisClassLoader.getResourceAsStream(generatedClasspathFile);
       if (classpathFileStream == null) {
