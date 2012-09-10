@@ -27,9 +27,9 @@ import org.apache.log4j.lf5.util.StreamUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.stram.StramClient;
 import com.malhartech.stram.StramLocalCluster;
-import com.malhartech.stram.conf.ShipContainingJars;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 

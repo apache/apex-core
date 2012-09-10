@@ -7,7 +7,8 @@ package com.malhartech.dag;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.malhartech.stram.conf.ShipContainingJars;
+import com.malhartech.annotation.ShipContainingJars;
+
 import java.util.Collection;
 
 /**
