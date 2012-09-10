@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.StringReader;
+import java.util.logging.Level;
 
 import javax.ws.rs.core.MediaType;
 import javax.xml.parsers.DocumentBuilder;
@@ -136,7 +137,7 @@ public class TestStramWebServices extends JerseyTest {
 
   public static class GuiceServletConfig extends GuiceServletContextListener {
     // new instance needs to be created for each test
-    private Injector injector = Guice.createInjector(new ServletModule() {
+    private final Injector injector = Guice.createInjector(new ServletModule() {
       @Override
       protected void configureServlets() {
 
@@ -150,7 +151,7 @@ public class TestStramWebServices extends JerseyTest {
         serve("/*").with(GuiceContainer.class);
       }
     });
-    
+
     @Override
     protected Injector getInjector() {
       return injector;
@@ -294,12 +295,16 @@ public class TestStramWebServices extends JerseyTest {
 
   @Test
   public void testInvalidAccept() throws JSONException, Exception {
+    // suppress logging in jersey to get rid of expected stack traces from test log
+    java.util.logging.Logger.getLogger("org.glassfish.grizzly.servlet.ServletHandler").setLevel(Level.OFF);
+    java.util.logging.Logger.getLogger("com.sun.jersey.spi.container.ContainerResponse").setLevel(Level.OFF);
+
     WebResource r = resource();
     String responseStr = "";
     try {
       responseStr = r.path("ws").path("v1").path("stram")
           .accept(MediaType.TEXT_PLAIN).get(String.class);
-      fail("should have thrown exception on invalid uri");
+      fail("should have thrown exception on invalid accept");
     } catch (UniformInterfaceException ue) {
       ClientResponse response = ue.getResponse();
       assertEquals(Status.INTERNAL_SERVER_ERROR,
@@ -353,7 +358,7 @@ public class TestStramWebServices extends JerseyTest {
     assertTrue("elapsedTime not greater then 0", (elapsedTime > 0));
 
   }
-  
+
   public static String getXmlString(Element element, String name) {
     NodeList id = element.getElementsByTagName(name);
     Element line = (Element) id.item(0);
@@ -370,11 +375,11 @@ public class TestStramWebServices extends JerseyTest {
       return "";
     }
     return val;
-  }  
+  }
 
   public static long getXmlLong(Element element, String name) {
     String val = getXmlString(element, name);
     return Long.parseLong(val);
-  }  
-  
+  }
+
 }
