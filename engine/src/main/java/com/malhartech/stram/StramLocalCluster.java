@@ -35,20 +35,20 @@ import com.malhartech.stram.conf.Topology.NodeDecl;
  */
 public class StramLocalCluster implements Runnable {
 
-  private transient static Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
+  private static final transient Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
 
-  final private DNodeManager dnmgr;
-  final private UmbilicalProtocolLocalImpl umbilical;
-  final private InetSocketAddress bufferServerAddress;
+  private final DNodeManager dnmgr;
+  private final UmbilicalProtocolLocalImpl umbilical;
+  private final InetSocketAddress bufferServerAddress;
   private Server bufferServer = null;
-  final private Map<String, LocalStramChild> childContainers = new ConcurrentHashMap<String, LocalStramChild>();
+  private final Map<String, LocalStramChild> childContainers = new ConcurrentHashMap<String, LocalStramChild>();
   private int containerSeq = 0;
   private boolean appDone = false;
 
 
-  final private Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>();
+  private final Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>();
   private boolean heartbeatMonitoringEnabled = true;
 
   public interface MockComponentFactory {

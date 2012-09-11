@@ -23,7 +23,7 @@ import java.util.Collection;
 @ShipContainingJars (classes={Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultSerDe implements SerDe
 {
-  //private transient static final Logger logger = LoggerFactory.getLogger(DefaultSerDe.class);
+  //private static final transient Logger logger = LoggerFactory.getLogger(DefaultSerDe.class);
 
   private Kryo kryo = new Kryo();
   private Output output = new Output(new byte[4096]);

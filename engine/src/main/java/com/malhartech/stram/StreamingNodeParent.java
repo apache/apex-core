@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public class StreamingNodeParent extends CompositeService implements StreamingNodeUmbilicalProtocol {
 
-  private transient static Logger LOG = LoggerFactory.getLogger(StreamingNodeParent.class);
+  private static final transient Logger LOG = LoggerFactory.getLogger(StreamingNodeParent.class);
   private Server server;
   private SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;

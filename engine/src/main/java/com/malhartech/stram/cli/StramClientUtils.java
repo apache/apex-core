@@ -53,10 +53,10 @@ public class StramClientUtils {
     private static final Logger LOG = LoggerFactory.getLogger(YarnClientHelper.class);
 
     // Configuration
-    final private Configuration conf;
+    private final Configuration conf;
 
     // RPC to communicate to RM
-    final private YarnRPC rpc;
+    private final YarnRPC rpc;
 
 
     public YarnClientHelper(Configuration conf)  {

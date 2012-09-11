@@ -37,7 +37,7 @@ import com.malhartech.stram.StramAppContext;
 
 @Path("/ws/v1/stram")
 public class StramWebServices {
-  private transient static Logger LOG = LoggerFactory.getLogger(StramWebServices.class);
+  private static final transient Logger LOG = LoggerFactory.getLogger(StramWebServices.class);
 
   private final StramAppContext appCtx;
 

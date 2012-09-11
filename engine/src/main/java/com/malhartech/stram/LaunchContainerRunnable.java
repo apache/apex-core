@@ -40,12 +40,12 @@ import org.slf4j.LoggerFactory;
  */
 public class LaunchContainerRunnable implements Runnable
 {
-  final private transient static Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
-  final private YarnClientHelper yarnClient;
-  final private Map<String, String> containerEnv = new HashMap<String, String>();
-  final private InetSocketAddress heartbeatAddress;
-  final private Topology topology;
-  final private Container container;
+  private static final transient Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
+  private final YarnClientHelper yarnClient;
+  private final Map<String, String> containerEnv = new HashMap<String, String>();
+  private final InetSocketAddress heartbeatAddress;
+  private final Topology topology;
+  private final Container container;
 
   /**
    * @param lcontainer Allocated container

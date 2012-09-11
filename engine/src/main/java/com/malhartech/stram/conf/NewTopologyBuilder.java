@@ -17,7 +17,7 @@ public class NewTopologyBuilder {
   private Topology topology = new Topology();;
 
   public class StreamBuilder {
-    final private StreamDecl streamDecl;
+    private final StreamDecl streamDecl;
 
     private StreamBuilder(StreamDecl streamDecl) {
       this.streamDecl = streamDecl;

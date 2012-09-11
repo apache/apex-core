@@ -90,10 +90,10 @@ public class DNodeManager
 
   final protected Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   final protected ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
-  final private Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
-  final private Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
-  final private TopologyDeployer deployer;
-  final private String checkpointDir;
+  private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
+  private final Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
+  private final TopologyDeployer deployer;
+  private final String checkpointDir;
 
   public DNodeManager(Topology topology) {
     this.deployer = new TopologyDeployer(topology);

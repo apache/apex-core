@@ -33,7 +33,7 @@ import com.sun.jersey.api.json.JSONJAXBContext;
  */
 public class StramWebApp extends WebApp {
 
-  final private DNodeManager topologyManager;
+  private final DNodeManager topologyManager;
 
   /**
    * 

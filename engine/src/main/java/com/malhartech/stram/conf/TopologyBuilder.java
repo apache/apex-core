@@ -42,7 +42,7 @@ import com.malhartech.stram.conf.Topology.StreamDecl;
 
 public class TopologyBuilder {
 
-  private transient static Logger LOG = LoggerFactory.getLogger(TopologyBuilder.class);
+  private static final transient Logger LOG = LoggerFactory.getLogger(TopologyBuilder.class);
 
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
   private static final String STRAM_SITE_XML_FILE = "stram-site.xml";
@@ -307,11 +307,11 @@ public class TopologyBuilder {
 
   }
 
-  final private Configuration conf = new Configuration(false);
-  final private Map<String, NodeConf> nodes;
-  final private Map<String, StreamConf> streams;
-  final private Map<String, TemplateConf> templates;
-  final private Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
+  private final Configuration conf = new Configuration(false);
+  private final Map<String, NodeConf> nodes;
+  private final Map<String, StreamConf> streams;
+  private final Map<String, TemplateConf> templates;
+  private final Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
 
   public TopologyBuilder() {
     this.nodes = new HashMap<String, NodeConf>();

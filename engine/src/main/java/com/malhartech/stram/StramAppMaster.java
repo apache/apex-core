@@ -83,7 +83,7 @@ import com.malhartech.stram.webapp.StramWebApp;
  */
 public class StramAppMaster
 {
-  private transient static Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
+  private static final transient Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
   // Configuration
   private Configuration conf;
   private YarnClientHelper yarnClient;
@@ -121,8 +121,8 @@ public class StramAppMaster
   private StreamingNodeParent rpcImpl;
   private DNodeManager dnmgr;
   private InetSocketAddress bufferServerAddress;
-  final private Clock clock = new SystemClock();
-  final private long startTime = clock.getTime();
+  private final Clock clock = new SystemClock();
+  private final long startTime = clock.getTime();
 
   private class ClusterAppContextImpl implements StramAppContext
   {

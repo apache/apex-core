@@ -68,21 +68,21 @@ import org.slf4j.LoggerFactory;
  */
 public class StramChild
 {
-  private transient static Logger logger = LoggerFactory.getLogger(StramChild.class);
+  private static final transient Logger logger = LoggerFactory.getLogger(StramChild.class);
   private static String NODE_PORT_SPLIT_SEPARATOR = "\\.";
   private static String NODE_PORT_CONCAT_SEPARATOR = ".";
-  final private String containerId;
-  final private Configuration conf;
-  final private StreamingNodeUmbilicalProtocol umbilical;
+  private final String containerId;
+  private final Configuration conf;
+  private final StreamingNodeUmbilicalProtocol umbilical;
   final protected Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
-  final private Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
+  private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   final protected Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
    * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
    */
-  final private Map<Node, NodeContext> activeNodes = new ConcurrentHashMap<Node, NodeContext>();
-  final private Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
-  final private Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
+  private final Map<Node, NodeContext> activeNodes = new ConcurrentHashMap<Node, NodeContext>();
+  private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
+  private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
   private boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
@@ -967,7 +967,7 @@ public class StramChild
 
   private class HdfsBackupAgent implements BackupAgent
   {
-    final private NodeSerDe serDe;
+    private final NodeSerDe serDe;
 
     private HdfsBackupAgent(NodeSerDe serde)
     {
