@@ -37,10 +37,10 @@ public abstract class AbstractNode implements Node
   private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   @SuppressWarnings("VolatileArrayField")
   private transient volatile Sink[] sinks = NO_SINKS;
-  private transient int consumedTupleCount;
+  private transient volatile int consumedTupleCount;
   private transient volatile boolean alive;
-  private transient int spinMillis = 10;
-  private transient int bufferCapacity = 1024 * 1024;
+  private transient volatile int spinMillis;
+  private transient volatile int bufferCapacity;
 
   // optimize the performance of this method.
   private PortAnnotation getPort(String id)
@@ -427,7 +427,6 @@ public abstract class AbstractNode implements Node
                 inputs.remove(activePort.id); // should i do this, since the stream said that there is nothing more to expect on it.
                 buffers.remove();
                 if (totalQueues == 0) {
-                  shouldWait = false;
                   alive = false;
                   break activequeue;
                 }
@@ -476,6 +475,7 @@ public abstract class AbstractNode implements Node
     }
     while (alive);
 
+    logger.debug("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream nodes know that.
      */
@@ -513,6 +513,6 @@ public abstract class AbstractNode implements Node
   @Override
   public String toString()
   {
-    return this.getClass().getSimpleName() + "{id=" + id + ", inputs=" + inputs.keySet() + ", outputs=" + outputs.keySet() + '}';
+    return this.getClass().getSimpleName() + "{id=" + id + '}';
   }
 }

@@ -4,7 +4,6 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;

@@ -4,6 +4,8 @@
  */
 package com.malhartech.dag;
 
+import java.util.Collection;
+import java.util.HashSet;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -15,6 +17,31 @@ import org.apache.commons.lang.builder.ToStringStyle;
  */
 public class StreamContext implements Context
 {
+  private HashSet<byte[]> partitions;
+
+  /**
+   *
+   * @param partitionKeys
+   */
+  public void setPartitions(Collection<byte[]> partitionKeys)
+  {
+    if (partitionKeys == null) {
+      partitions = null;
+    }
+    else {
+      partitions = new HashSet<byte[]>(partitionKeys.size());
+      partitions.addAll(partitionKeys);
+    }
+  }
+
+  /**
+   *
+   * @return Collection<byte[]>
+   */
+  public Collection<byte[]> getPartitions()
+  {
+    return partitions;
+  }
   String id;
 
   public StreamContext(String id)
