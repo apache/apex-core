@@ -79,7 +79,7 @@ public class StramChild
   final private Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   final protected Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
-   * for the following 2 fields, my preferred type is HashSet but synchronizing them was resulting in very verbose code.
+   * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
    */
   final private Map<Node, NodeContext> activeNodes = new ConcurrentHashMap<Node, NodeContext>();
   final private Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
@@ -104,7 +104,6 @@ public class StramChild
 
   public void setup(StreamingContainerContext ctx) throws IOException
   {
-
     heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
     if (heartbeatIntervalMillis == 0) {
       heartbeatIntervalMillis = 1000;
@@ -271,35 +270,11 @@ public class StramChild
   private synchronized void disconnectNode(String nodeid)
   {
     Node node = nodes.get(nodeid).component;
-    /**
-     * if any of the nodes to undeploy is getting input from WindowGenerator, we need to cut that connection.
-     */
-    for (WindowGenerator wg: generators.values()) {
-      Set<String> sinkIds = wg.getOutputIds();
-      Iterator<String> iterator = sinkIds.iterator();
-      while (iterator.hasNext()) {
-        String sinkId = iterator.next();
-        String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-        if (nodeid.equals(nodeport[0])) {
-          node.connect(nodeport[1], null);
-          iterator.remove();
-        }
-      }
-
-      if (sinkIds.isEmpty()) {
-        activeGenerators.remove(wg);
-        wg.deactivate();
-        wg.teardown();
-      }
-    }
-
-    /**
-     * Clean up our generators mapping by removing generators for the nodes which are being undeployed.
-     */
-    generators.remove(nodeid);
+    disconnectWindowGenerator(nodeid, node);
 
     List<String> removableSocketOutputStreams = new ArrayList<String>();
     Iterator<ComponentContextPair<Stream, StreamContext>> pairs = streams.values().iterator();
+
     while (pairs.hasNext()) {
       ComponentContextPair<Stream, StreamContext> pair = pairs.next();
       String sourceIdentifier = pair.context.getSourceId();
@@ -373,7 +348,6 @@ public class StramChild
         }
       }
     }
-
     for (String streamId: removableSocketOutputStreams) {
       logger.debug("{} removing stream {}", Thread.currentThread(), streamId);
       ComponentContextPair<Stream, StreamContext> pair = streams.remove(streamId);
@@ -945,24 +919,28 @@ public class StramChild
       }
     }
     return groupedInputStreams;
+  }
 
+  private void disconnectWindowGenerator(String nodeid, Node node)
+  {
+    WindowGenerator chosen1 = generators.remove(nodeid);
+    if (chosen1 != null) {
+      chosen1.connect(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), null);
+      node.connect(Component.INPUT, null);
 
+      int count = 0;
+      for (WindowGenerator wg: generators.values()) {
+        if (chosen1 == wg) {
+          count++;
+        }
+      }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      if (count == 0) {
+        activeGenerators.remove(chosen1);
+        chosen1.deactivate();
+        chosen1.teardown();
+      }
+    }
   }
 
   private class HdfsBackupAgent implements BackupAgent

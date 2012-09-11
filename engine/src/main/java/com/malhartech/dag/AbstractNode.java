@@ -39,8 +39,8 @@ public abstract class AbstractNode implements Node
   private transient volatile Sink[] sinks = NO_SINKS;
   private transient volatile int consumedTupleCount;
   private transient volatile boolean alive;
-  private transient volatile int spinMillis = 10;
-  private transient volatile int bufferCapacity = 1024 * 1024;
+  private transient volatile int spinMillis;
+  private transient volatile int bufferCapacity;
 
   // optimize the performance of this method.
   private PortAnnotation getPort(String id)
