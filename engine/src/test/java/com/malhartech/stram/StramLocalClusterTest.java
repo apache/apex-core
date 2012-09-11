@@ -44,6 +44,7 @@ public class StramLocalClusterTest
     lc.run();
   }
 
+  @Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
@@ -86,17 +87,17 @@ public class StramLocalClusterTest
     lnr.close();
   }
 
-  @Ignore // we have a problem with windows randomly getting lost
+  //@Ignore // we have a problem with windows randomly getting lost
   @Test
   public void testChildRecovery() throws Exception
   {
     NewTopologyBuilder tb = new NewTopologyBuilder();
 
-    NodeDecl node1 = tb.addNode("node1", GenericTestNode.class);
+    NodeDecl node1 = tb.addNode("node1", NumberGeneratorInputAdapter.class);
     NodeDecl node2 = tb.addNode("node2", GenericTestNode.class);
 
     tb.addStream("n1n2").
-      setSource(node1.getOutput(GenericTestNode.OUTPUT1)).
+      setSource(node1.getOutput(NumberGeneratorInputAdapter.OUTPUT_PORT)).
       addSink(node2.getInput(GenericTestNode.INPUT1));
 
     Topology tplg = tb.getTopology();
@@ -110,10 +111,10 @@ public class StramLocalClusterTest
     localCluster.runAsync();
 
     LocalStramChild c0 = waitForContainer(localCluster, node1);
-    Thread.sleep(1000);
+    //Thread.sleep(1000);
 
     Map<String, ComponentContextPair<Node, NodeContext>> nodeMap = c0.getNodes();
-    Assert.assertEquals("number nodes", 2, nodeMap.size());
+    Assert.assertEquals("number nodes", 1, nodeMap.size());
 
     PTNode ptNode1 = localCluster.findByLogicalNode(node1);
     ComponentContextPair<Node, NodeContext> n1 = nodeMap.get(ptNode1.id);

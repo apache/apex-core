@@ -166,7 +166,7 @@ public abstract class AbstractNode implements Node
   {
     PortAnnotation pa = getPort(id);
     if (pa == null) {
-      throw new IllegalArgumentException("Unrecognized Port");
+      throw new IllegalArgumentException("Unrecognized Port " + id);
     }
 
     Sink s;
@@ -293,7 +293,7 @@ public abstract class AbstractNode implements Node
    * long as there is useful workload for the node.
    */
   @Override
-  @SuppressWarnings("SleepWhileInLoop")
+  @SuppressWarnings({ "SleepWhileInLoop", "incomplete-switch" })
   final public void activate(NodeContext ctx)
   {
     activateSinks();

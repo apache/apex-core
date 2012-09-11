@@ -144,7 +144,6 @@ public class StramChild
     LOG.debug("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
-    // TODO: streaming node config
     //defaultConf.addResource(MRJobConfig.JOB_CONF_FILE);
     UserGroupInformation.setConfiguration(defaultConf);
 
@@ -181,7 +180,6 @@ public class StramChild
         childUGI.addToken(token);
       }
 
-      // TODO: activate node in doAs block
       childUGI.doAs(new PrivilegedExceptionAction<Object>()
       {
         @Override
@@ -931,7 +929,14 @@ public class StramChild
     for (NodeDeployInfo ndi: nodeList) {
       NodeContext nc = new NodeContext(ndi.id);
       try {
-        Object foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
+        final Object foreignObject;
+        if (ndi.checkpointWindowId > 0) {
+          LOG.info("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
+          HdfsBackupAgent backupAgent = new HdfsBackupAgent(nodeSerDe);
+          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
+        } else {
+          foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
+        }
         Node node = (Node)foreignObject;
         node.setup(new NodeConfiguration(ndi.id, ndi.properties));
         nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
@@ -940,6 +945,7 @@ public class StramChild
       }
       catch (ClassCastException cce) {
         LOG.error(cce.getLocalizedMessage());
+        throw cce;
       }
       catch (IOException e) {
         throw new IllegalArgumentException("Failed to read object " + ndi, e);

@@ -1,21 +1,7 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright (c) 2012-2012 Malhar, Inc.
+ * All rights reserved.
  */
-
 package com.malhartech.stram.webapp;
 
 import static org.junit.Assert.assertEquals;
@@ -65,13 +51,14 @@ import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
 
 /**
- * Test the MapReduce Application master info web services api's. Also test
- * non-existent urls.
+ * Test the application master web services api's.
+ * Also test non-existent urls.
+ * Adapted from MR.
  *
  *  /ws/v1/stram
  *  /ws/v1/stram/info
  */
-public class TestStramWebServices extends JerseyTest {
+public class StramWebServicesTest extends JerseyTest {
 
   private static Configuration conf = new Configuration();
   private static TestAppContext appContext;
@@ -164,9 +151,9 @@ public class TestStramWebServices extends JerseyTest {
     super.setUp();
   }
 
-  public TestStramWebServices() {
+  public StramWebServicesTest() {
     super(new WebAppDescriptor.Builder(
-        TestStramWebServices.class.getPackage().getName())
+        StramWebServicesTest.class.getPackage().getName())
         .contextListenerClass(GuiceServletConfig.class)
         .filterClass(com.google.inject.servlet.GuiceFilter.class)
         .contextPath("jersey-guice-filter").servletPath("/").build());

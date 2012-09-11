@@ -49,7 +49,7 @@ import com.malhartech.stram.webapp.NodeInfo;
  * Tracks topology provisioning/allocation to containers<p>
  * <br>
  * The tasks include<br>
- * Provisioning nodes one container at a time. Each container gets assinged the nodes, streams and its context<br>
+ * Provisioning nodes one container at a time. Each container gets assigned the nodes, streams and its context<br>
  * Monitors run time operations including heartbeat protocol and node status<br>
  * Node recovery and restart<br>
  * <br>
