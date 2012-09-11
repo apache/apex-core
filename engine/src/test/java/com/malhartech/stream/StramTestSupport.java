@@ -6,9 +6,13 @@ package com.malhartech.stream;
 
 import static org.junit.Assert.assertTrue;
 
+import org.apache.hadoop.conf.Configuration;
+
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.Tuple;
+import com.malhartech.stram.ManualScheduledExecutorService;
+import com.malhartech.stram.WindowGenerator;
 
 /**
  * Bunch of utilities shared between tests.
@@ -22,7 +26,7 @@ abstract public class StramTestSupport {
   public static Tuple generateBeginWindowTuple(String nodeid, int windowId)
   {
     Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
-    bwt.setWindowId(windowId);    
+    bwt.setWindowId(windowId);
     return bwt;
   }
 
@@ -41,5 +45,15 @@ abstract public class StramTestSupport {
         print + " doesn't match, got: " + got + " expected: " + expected,
         got.matches(expected));
   }
+
+  public static WindowGenerator setupWindowGenerator(ManualScheduledExecutorService mses) {
+    WindowGenerator gen = new WindowGenerator(mses);
+    Configuration config = new Configuration();
+    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0);
+    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
+    gen.setup(config);
+    return gen;
+  }
+
 
 }

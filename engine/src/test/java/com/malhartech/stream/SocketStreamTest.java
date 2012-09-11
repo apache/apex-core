@@ -172,7 +172,7 @@ public class SocketStreamTest
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
       StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-      LocalStramChild container = new LocalStramChild(containerId, null);
+      LocalStramChild container = new LocalStramChild(containerId, null, null);
       container.setup(cc);
       containers.add(container);
     }

@@ -721,7 +721,10 @@ public class StramChild
 
   private void deployInputStreams(List<NodeDeployInfo> nodeList)
   {
-    WindowGenerator windowGenerator = null;
+    // collect any input nodes along with their smallest window id,
+    // those are subsequently used to setup the window generator
+    List<NodeDeployInfo> inputNodes = new ArrayList<NodeDeployInfo>();
+    long smallestWindowId = Long.MAX_VALUE;
 
     /**
      * Hook up all the downstream sinks.
@@ -730,35 +733,23 @@ public class StramChild
      * to create the stream. We need to track this stream along with other streams, and many such streams may exist,
      * we hash them against buffer server info as we did for outputs but throw in the sinkid in the mix as well.
      */
-    long smallestWindowId = Long.MAX_VALUE;
     for (NodeDeployInfo ndi: nodeList) {
-      Node node = nodes.get(ndi.id).component;
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         /**
          * This has to be AbstractInputNode, so let's hook the WindowGenerator to it.
          * A node which does not take any input cannot exist in the DAG since it would be completely
          * unaware of the windows. So for that reason, AbstractInputNode allows Component.INPUT port.
          */
-        if (windowGenerator == null) {
-          windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
-//          windowGenerator.setup(dagConfig);
-        }
-        generators.put(ndi.id, windowGenerator);
-
+        inputNodes.add(ndi);
         /**
          * When we activate the window Generator, we plan to activate it only from required windowId.
          */
         if (ndi.checkpointWindowId < smallestWindowId) {
           smallestWindowId = ndi.checkpointWindowId;
         }
-
-        Sink s = node.connect(Component.INPUT, windowGenerator);
-        windowGenerator.connect(ndi.id.concat(".").concat(Component.INPUT),
-                                ndi.checkpointWindowId > 0
-                                ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(".").concat(Component.INPUT), s, ndi.checkpointWindowId)
-                                : s);
       }
       else {
+        Node node = nodes.get(ndi.id).component;
         for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
           String sourceIdentifier = nidi.sourceNodeId.concat(".").concat(nidi.sourcePortName);
           String sinkIdentifier = ndi.id.concat(".").concat(nidi.portName);
@@ -848,23 +839,50 @@ public class StramChild
       }
     }
 
-    if (windowGenerator != null) {
-      /**
-       * let's make sure that we send the same window Ids with the same reset windows.
-       */
-      // let's see if we want to send the exact same window id even the second time.
-      NodeConfiguration config = new NodeConfiguration("doesn't matter", null);
-      config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, firstWindowMillis);
-      if (smallestWindowId > firstWindowMillis) {
-        config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID));
+    if (!inputNodes.isEmpty()) {
+
+      WindowGenerator windowGenerator = setupWindowGenerator(smallestWindowId);
+
+      for (NodeDeployInfo ndi : inputNodes) {
+
+        generators.put(ndi.id, windowGenerator);
+
+        Node node = nodes.get(ndi.id).component;
+        Sink s = node.connect(Component.INPUT, windowGenerator);
+        windowGenerator.connect(ndi.id.concat(".").concat(Component.INPUT),
+                                ndi.checkpointWindowId > 0
+                                ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(".").concat(Component.INPUT), s, ndi.checkpointWindowId)
+                                : s);
       }
-      else {
-        config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, firstWindowMillis);
-      }
-      config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, windowWidthMillis);
-      windowGenerator.setup(config);
+
     }
   }
+
+  /**
+   * Create the window generator for the given start window id.
+   * This is a hook for tests to control the window generation.
+   * @param smallestWindowId
+   * @return
+   */
+  protected WindowGenerator setupWindowGenerator(long smallestWindowId) {
+    WindowGenerator windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
+    /**
+     * let's make sure that we send the same window Ids with the same reset windows.
+     */
+    // let's see if we want to send the exact same window id even the second time.
+    NodeConfiguration config = new NodeConfiguration("doesn't matter", null);
+    config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, firstWindowMillis);
+    if (smallestWindowId > firstWindowMillis) {
+      config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID));
+    }
+    else {
+      config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, firstWindowMillis);
+    }
+    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, windowWidthMillis);
+    windowGenerator.setup(config);
+    return windowGenerator;
+  }
+
 
   @SuppressWarnings( {"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void activate()

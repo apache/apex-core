@@ -4,24 +4,13 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StramLocalClusterTest.TestWindowGenerator;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.TopologyDeployer.PTNode;
-import com.malhartech.stram.conf.NewTopologyBuilder;
-import com.malhartech.stram.conf.Topology.NodeDecl;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
@@ -29,7 +18,21 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import scala.actors.threadpool.Arrays;
+
+import com.malhartech.dag.ComponentContextPair;
+import com.malhartech.dag.Node;
+import com.malhartech.dag.NodeContext;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.TopologyDeployer.PTNode;
+import com.malhartech.stram.conf.NewTopologyBuilder;
+import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stream.StramTestSupport;
 
 /**
  *
@@ -67,18 +70,15 @@ public class CheckpointTest {
 
     String containerId = "container1";
     StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
-    LocalStramChild container = new LocalStramChild(containerId, null);
+    ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
+    WindowGenerator wingen = StramTestSupport.setupWindowGenerator(mses);
+    LocalStramChild container = new LocalStramChild(containerId, null, wingen);
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.setup(cc);
 
-    /**
-     * since there is only node1 in the container, it's id must be "1".
-     */
-    TestWindowGenerator wingen = new TestWindowGenerator();
-    container.hookTestWindowGenerator("1", wingen.wingen);
-    wingen.wingen.activate(null);
+   // wingen.wingen.activate(null);
 
-    wingen.tick(1); // begin window 1
+    mses.tick(1); // begin window 1
 
     Assert.assertEquals("number nodes", 1, container.getNodes().size());
     ComponentContextPair<Node, NodeContext> nodePair = container.getNodes().get(cc.nodeList.get(0).id);
@@ -94,7 +94,7 @@ public class CheckpointTest {
     rsp.nodeRequests = Collections.singletonList(backupRequest);
     container.processHeartbeatResponse(rsp);
 
-    wingen.tick(1); // end window 1, begin window 2
+    mses.tick(1); // end window 1, begin window 2
 
     // node to move to next window before we verify the checkpoint state
     // if (nodePair.context.getLastProcessedWindowId() < 2) {

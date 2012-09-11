@@ -22,11 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.Component;
-import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.Sink;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
@@ -55,6 +50,12 @@ public class StramLocalCluster implements Runnable {
 
   final private Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>();
   private boolean heartbeatMonitoringEnabled = true;
+
+  public interface MockComponentFactory {
+    WindowGenerator setupWindowGenerator();
+  }
+
+  private MockComponentFactory mockComponentFactory;
 
   private class UmbilicalProtocolLocalImpl implements StreamingNodeUmbilicalProtocol {
 
@@ -118,11 +119,13 @@ public class StramLocalCluster implements Runnable {
     /**
      * Count heartbeat from container and allow other threads to wait for it.
      */
-    private AtomicInteger heartbeatCount = new AtomicInteger();
+    private final AtomicInteger heartbeatCount = new AtomicInteger();
+    private final WindowGenerator windowGenerator;
 
-    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical)
+    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical, WindowGenerator winGen)
     {
       super(containerId, new Configuration(), umbilical);
+      this.windowGenerator = winGen;
     }
 
     public static void run(StramChild stramChild, StreamingContainerContext ctx) throws Exception {
@@ -153,12 +156,12 @@ public class StramLocalCluster implements Runnable {
       super.teardown();
     }
 
-    void hookTestWindowGenerator(String node1, WindowGenerator wingen)
-    {
-      generators.put(node1, wingen);
-      ComponentContextPair<Node, NodeContext> pair = nodes.get(node1);
-      Sink s = pair.component.connect(Component.INPUT, wingen);
-      wingen.connect(node1, s);
+    @Override
+    protected WindowGenerator setupWindowGenerator(long smallestWindowId) {
+      if (windowGenerator != null) {
+        return windowGenerator;
+      }
+      return super.setupWindowGenerator(smallestWindowId);
     }
 
   }
@@ -172,7 +175,11 @@ public class StramLocalCluster implements Runnable {
 
     private LocalStramChildLauncher(DeployRequest cdr) {
       this.containerId = "container-" + containerSeq++;
-      this.child = new LocalStramChild(containerId, umbilical);
+      WindowGenerator wingen = null;
+      if (mockComponentFactory != null) {
+        wingen = mockComponentFactory.setupWindowGenerator();
+      }
+      this.child = new LocalStramChild(containerId, umbilical, wingen);
       dnmgr.assignContainer(cdr, containerId, NetUtils.getConnectAddress(bufferServerAddress));
       Thread launchThread = new Thread(this, containerId);
       launchThread.start();
@@ -218,6 +225,11 @@ public class StramLocalCluster implements Runnable {
 
   LocalStramChild getContainer(String id) {
     return this.childContainers.get(id);
+  }
+
+  public StramLocalCluster(Topology topology, MockComponentFactory mcf) throws Exception {
+    this(topology);
+    this.mockComponentFactory = mcf;
   }
 
   /**

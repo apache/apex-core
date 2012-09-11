@@ -14,7 +14,6 @@ import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
-import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +82,7 @@ public class StramChildTest
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
       StreamingNodeUmbilicalProtocol.StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-      StramLocalCluster.LocalStramChild container = new StramLocalCluster.LocalStramChild(containerId, null);
+      StramLocalCluster.LocalStramChild container = new StramLocalCluster.LocalStramChild(containerId, null, null);
       container.setup(cc);
       containers.add(container);
     }

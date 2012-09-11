@@ -22,6 +22,7 @@ import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
@@ -30,6 +31,7 @@ import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stream.StramTestSupport;
 
 public class StramLocalClusterTest
 {
@@ -44,7 +46,7 @@ public class StramLocalClusterTest
     lc.run();
   }
 
-  @Ignore
+  //@Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
@@ -87,7 +89,7 @@ public class StramLocalClusterTest
     lnr.close();
   }
 
-  //@Ignore // we have a problem with windows randomly getting lost
+  @Ignore // we have a problem with windows randomly getting lost
   @Test
   public void testChildRecovery() throws Exception
   {
@@ -103,11 +105,19 @@ public class StramLocalClusterTest
     Topology tplg = tb.getTopology();
     tplg.validate();
 
-    tplg.getConf().setInt(Topology.STRAM_WINDOW_SIZE_MILLIS, 0); // disable window generator
     tplg.getConf().setInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
 
-    TestWindowGenerator wingen = new TestWindowGenerator();
-    StramLocalCluster localCluster = new StramLocalCluster(tplg);
+    final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
+
+    MockComponentFactory mcf = new MockComponentFactory() {
+      @Override
+      public WindowGenerator setupWindowGenerator() {
+        WindowGenerator wingen = StramTestSupport.setupWindowGenerator(wclock);
+        return wingen;
+      }
+    };
+
+    StramLocalCluster localCluster = new StramLocalCluster(tplg, mcf);
     localCluster.runAsync();
 
     LocalStramChild c0 = waitForContainer(localCluster, node1);
@@ -127,21 +137,21 @@ public class StramLocalClusterTest
     Assert.assertNotNull(n2);
 
     Assert.assertEquals("initial window id", 0, n1.context.getLastProcessedWindowId());
-    wingen.tick(1);
+    wclock.tick(1);
 
     waitForWindow(n1.context, 1);
     backupNode(c0, n1.context);
 
-    wingen.tick(1);
+    wclock.tick(1);
 
     waitForWindow(n2.context, 2);
     backupNode(c2, n2.context);
 
-    wingen.tick(1);
+    wclock.tick(1);
 
     // move window forward and wait for nodes to reach,
     // to ensure backup in previous windows was processed
-    wingen.tick(1);
+    wclock.tick(1);
 
     //waitForWindow(n1, 3);
     waitForWindow(n2.context, 3);
@@ -241,20 +251,4 @@ public class StramLocalClusterTest
     c.processHeartbeatResponse(rsp);
   }
 
-  public static class TestWindowGenerator {
-    private final ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
-    public final WindowGenerator wingen = new WindowGenerator(mses);
-    public TestWindowGenerator() {
-
-      Configuration config = new Configuration();
-      config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0);
-      config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
-
-      wingen.setup(config);
-    }
-
-    public void tick(long steps) {
-      mses.tick(steps);
-    }
-  }
 }
