@@ -25,118 +25,120 @@ import org.slf4j.LoggerFactory;
  */
 public class ClientHandler extends ChannelInboundMessageHandlerAdapter
 {
-    private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
-    // Stateful properties
-    private volatile Channel channel;
+  private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
+  // Stateful properties
+  private volatile Channel channel;
 
-    /**
-     * 
-     * @param channel
-     * @param identifier
-     * @param type
-     * @param startingWindowId 
-     */
-    public static void publish(Channel channel, String identifier, String type, long startingWindowId)
+  /**
+   *
+   * @param channel
+   * @param identifier
+   * @param type
+   * @param startingWindowId
+   */
+  public static void publish(Channel channel, String identifier, String type, long startingWindowId)
+  {
+    Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
+    prb.setIdentifier(identifier).setType(type).setBaseSeconds((int)(startingWindowId >> 32));
+
+
+    Data.Builder db = Data.newBuilder();
+    db.setType(Data.DataType.PUBLISHER_REQUEST);
+    db.setPublishRequest(prb);
+    //windowStartTime is ignored for now - shouldn't we?
+    db.setWindowId((int)startingWindowId);
+
+    final ChannelFutureListener cfl = new ChannelFutureListener()
     {
-        Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
-        prb.setIdentifier(identifier).setType(type).setBaseSeconds((int)(startingWindowId >> 32));
+      public void operationComplete(ChannelFuture cf) throws Exception
+      {
+        Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
+        pdb.setData(ByteString.EMPTY);
+
+        byte[] bytes = String.valueOf(new Random().nextInt() % 10).getBytes();
+        pdb.setPartition(ByteString.copyFrom(bytes));
 
 
-        Data.Builder db = Data.newBuilder();
-        db.setType(Data.DataType.PUBLISHER_REQUEST);
-        db.setPublishRequest(prb);
-        //windowStartTime is ignored for now - shouldn't we?
-        db.setWindowId((int)startingWindowId);
+        Buffer.Data.Builder db = Data.newBuilder();
+        db.setType(Data.DataType.PARTITIONED_DATA);
+        db.setWindowId((int)new Date().getTime());
+        db.setPartitionedData(pdb);
 
-        final ChannelFutureListener cfl = new ChannelFutureListener()
-        {
-            public void operationComplete(ChannelFuture cf) throws Exception
-            {
-                Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
-                pdb.setData(ByteString.EMPTY);
+        Thread.sleep(500);
+        cf.channel().write(db).addListener(this);
+      }
+    };
 
-                byte[] bytes = String.valueOf(new Random().nextInt() % 10).getBytes();
-                pdb.setPartition(ByteString.copyFrom(bytes));
+    channel.write(db.build());//.addListener(cfl);
+  }
 
+  /**
+   *
+   * @param channel
+   * @param id
+   * @param down_type
+   * @param node
+   * @param type
+   * @param partitions
+   * @param startingWindowId
+   */
+  public static void registerPartitions(
+          Channel channel,
+          String id,
+          String down_type,
+          String node,
+          String type,
+          Collection<byte[]> partitions,
+          long startingWindowId)
+  {
+    Buffer.SubscriberRequest.Builder srb = Buffer.SubscriberRequest.newBuilder();
+    srb.setIdentifier(id);
+    srb.setType(down_type);
+    srb.setUpstreamIdentifier(node);
+    srb.setUpstreamType(type);
+    srb.setBaseSeconds((int)(startingWindowId >> 32));
 
-                Buffer.Data.Builder db = Data.newBuilder();
-                db.setType(Data.DataType.PARTITIONED_DATA);
-                db.setWindowId((int)new Date().getTime());
-                db.setPartitionedData(pdb);
-
-                Thread.sleep(500);
-                cf.channel().write(db).addListener(this);
-            }
-        };
-
-        channel.write(db.build());//.addListener(cfl);
+    if (partitions != null) {
+      for (byte[] c: partitions) {
+        srb.addPartition(ByteString.copyFrom(c));
+      }
     }
+    srb.setPolicy(Buffer.SubscriberRequest.PolicyType.ROUND_ROBIN);
 
-    /**
-     * 
-     * @param channel
-     * @param id
-     * @param down_type
-     * @param node
-     * @param type
-     * @param partitions
-     * @param startingWindowId 
-     */
-    public static void registerPartitions(Channel channel, String id,
-            String down_type,
-            String node,
-            String type,
-            Collection<byte[]> partitions,
-            long startingWindowId)
-    {
-        Buffer.SubscriberRequest.Builder srb = Buffer.SubscriberRequest.newBuilder();
-        srb.setIdentifier(id);
-        srb.setType(down_type);
-        srb.setUpstreamIdentifier(node);
-        srb.setUpstreamType(type);
-        srb.setBaseSeconds((int)(startingWindowId >> 32));
+    Data.Builder builder = Data.newBuilder();
+    builder.setType(Data.DataType.SUBSCRIBER_REQUEST);
+    builder.setSubscribeRequest(srb);
+    builder.setWindowId((int)startingWindowId); // TODO Message missing required fields: window_id
 
-        if (partitions != null) {
-            for (byte[] c: partitions) {
-                srb.addPartition(ByteString.copyFrom(c));
-            }
-        }
-        srb.setPolicy(Buffer.SubscriberRequest.PolicyType.ROUND_ROBIN);
+    channel.write(builder.build());
+  }
 
-        Data.Builder builder = Data.newBuilder();
-        builder.setType(Data.DataType.SUBSCRIBER_REQUEST);
-        builder.setSubscribeRequest(srb);
-        builder.setWindowId((int)startingWindowId); // TODO Message missing required fields: window_id
+  /**
+   *
+   * @param arg0
+   * @param arg1
+   * @throws Exception
+   */
+  @Override
+  public void messageReceived(ChannelHandlerContext arg0, Object arg1) throws Exception
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 
-        channel.write(builder.build());
+  /**
+   *
+   * @param ctx
+   * @param cause
+   */
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
+  {
+    logger.info("Unexpected exception {}", cause.getCause());
+
+    try {
+      ctx.channel().close();
     }
-
-    /**
-     * 
-     * @param arg0
-     * @param arg1
-     * @throws Exception 
-     */
-    @Override
-    public void messageReceived(ChannelHandlerContext arg0, Object arg1) throws Exception
-    {
-        throw new UnsupportedOperationException("Not supported yet.");
+    catch (Exception e) {
     }
-
-    /**
-     * 
-     * @param ctx
-     * @param cause 
-     */
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
-    {
-        logger.info("Unexpected exception {}", cause.getCause());
-
-        try {
-            ctx.channel().close();
-        }
-        catch (Exception e) {
-        }
-    }
+  }
 }
