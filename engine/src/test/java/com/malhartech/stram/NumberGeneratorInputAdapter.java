@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 )
 public class NumberGeneratorInputAdapter extends AbstractInputNode
 {
-  private static Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
+  private transient static Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
   public static final String OUTPUT_PORT = "outputPort";
 
   private volatile boolean shutdown = false;

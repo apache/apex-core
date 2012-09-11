@@ -4,12 +4,11 @@
  */
 package com.malhartech.dag;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * Default serializer that uses Kryo.

@@ -12,19 +12,19 @@ import com.malhartech.annotation.ShipContainingJars;
 import java.util.Collection;
 
 /**
- * 
+ *
  * Default SerDe for streams if nothing is configured. Has no partitioning<p>
  * <br>
  * No partitioning is done and it uses Kryo serializer for serde<br>
  * <br>
- * 
+ *
  * Requires kryo and its dependencies in deployment
  */
 @ShipContainingJars (classes={Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultSerDe implements SerDe
 {
-  //private static final Logger logger = LoggerFactory.getLogger(DefaultSerDe.class);
-  
+  //private transient static final Logger logger = LoggerFactory.getLogger(DefaultSerDe.class);
+
   private Kryo kryo = new Kryo();
   private Output output = new Output(new byte[4096]);
   private Input input = new Input();
@@ -60,5 +60,5 @@ public class DefaultSerDe implements SerDe
   {
     return false;
   }
-  
+
 }

@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
  */
 public class InlineStreamTest
 {
-  private static Logger LOG = LoggerFactory.getLogger(InlineStreamTest.class);
+  private transient static Logger LOG = LoggerFactory.getLogger(InlineStreamTest.class);
   private Object prev;
 
   @Test

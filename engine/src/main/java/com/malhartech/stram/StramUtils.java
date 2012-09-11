@@ -4,17 +4,15 @@
  */
 package com.malhartech.stram;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-
-import org.apache.commons.beanutils.BeanUtils;
-
 import com.malhartech.dag.DefaultNodeSerDe;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeSerDe;
 import com.malhartech.dag.SerDe;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
+import org.apache.commons.beanutils.BeanUtils;
 
 /**
  *

@@ -4,13 +4,14 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.conf.Topology;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -32,9 +33,6 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.conf.Topology;
-
 /**
  *
  * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming nodes<p>
@@ -42,7 +40,7 @@ import com.malhartech.stram.conf.Topology;
  */
 public class LaunchContainerRunnable implements Runnable
 {
-  final private static Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
+  final private transient static Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
   final private YarnClientHelper yarnClient;
   final private Map<String, String> containerEnv = new HashMap<String, String>();
   final private InetSocketAddress heartbeatAddress;

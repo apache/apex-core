@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerOutputStream extends SocketOutputStream
 {
-  private static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
+  private transient static Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   SerDe serde;
   int windowId;
 

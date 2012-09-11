@@ -42,7 +42,7 @@ import com.malhartech.stram.conf.Topology.StreamDecl;
 
 public class TopologyBuilder {
 
-  private static Logger LOG = LoggerFactory.getLogger(TopologyBuilder.class);
+  private transient static Logger LOG = LoggerFactory.getLogger(TopologyBuilder.class);
 
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
   private static final String STRAM_SITE_XML_FILE = "stram-site.xml";

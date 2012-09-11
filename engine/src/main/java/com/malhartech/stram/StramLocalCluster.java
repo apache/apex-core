@@ -35,7 +35,7 @@ import com.malhartech.stram.conf.Topology.NodeDecl;
  */
 public class StramLocalCluster implements Runnable {
 
-  private static Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
+  private transient static Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
 

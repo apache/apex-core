@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StramChildTest
 {
-  public static final Logger logger = LoggerFactory.getLogger(StramChildTest.class);
+  private transient static final Logger logger = LoggerFactory.getLogger(StramChildTest.class);
   private static int bufferServerPort = 0;
   private static Server bufferServer = null;
 

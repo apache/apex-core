@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractInputNode implements Node
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractInputNode.class);
+  private transient static final Logger logger = LoggerFactory.getLogger(AbstractInputNode.class);
   private transient String id;
   private transient HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;

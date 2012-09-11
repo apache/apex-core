@@ -5,19 +5,17 @@
 
 package com.malhartech.stram.webapp;
 
+import com.malhartech.stram.StramAppContext;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
-
 import org.apache.hadoop.yarn.util.Times;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.stram.StramAppContext;
-
 
 /**
- * 
+ *
  * Provides application level data like user, appId, elapsed time, etc.<p>
  * <br>Current data includes<br>
  * <b>Application Id</b><br>
@@ -26,15 +24,15 @@ import com.malhartech.stram.StramAppContext;
  * <b>Start Time</b><br>
  * <b>Elapsed Time</b><br>
  * <br>
- * 
+ *
  */
 
 
 @XmlRootElement(name = "info")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class AppInfo {
-  private static Logger LOG = LoggerFactory.getLogger(AppInfo.class);
-  
+  private transient static Logger LOG = LoggerFactory.getLogger(AppInfo.class);
+
   protected String appId;
   protected String name;
   protected String user;
@@ -42,14 +40,14 @@ public class AppInfo {
   protected long elapsedTime;
 
   /**
-   * 
+   *
    */
   public AppInfo() {
   }
 
   /**
-   * 
-   * @param context 
+   *
+   * @param context
    */
   public AppInfo(StramAppContext context) {
     LOG.info("AppInfo called");
@@ -61,7 +59,7 @@ public class AppInfo {
   }
 
   /**
-   * 
+   *
    * @return String
    */
   public String getId() {
@@ -69,7 +67,7 @@ public class AppInfo {
   }
 
   /**
-   * 
+   *
    * @return String
    */
   public String getName() {
@@ -77,7 +75,7 @@ public class AppInfo {
   }
 
   /**
-   * 
+   *
    * @return String
    */
   public String getUser() {
@@ -85,7 +83,7 @@ public class AppInfo {
   }
 
   /**
-   * 
+   *
    * @return long
    */
   public long getStartTime() {
@@ -93,7 +91,7 @@ public class AppInfo {
   }
 
   /**
-   * 
+   *
    * @return long
    */
   public long getElapsedTime() {

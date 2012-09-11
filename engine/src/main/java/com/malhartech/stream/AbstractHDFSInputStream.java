@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractHDFSInputStream extends AbstractInputNode implements Runnable
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
+  private transient static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
   protected FSDataInputStream input;
   private boolean skipEndStream = false;
 

@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
 {
-  private static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
+  private transient static Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
   private HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   private long baseSeconds = 0;
   @SuppressWarnings("VolatileArrayField")

@@ -83,7 +83,7 @@ import com.malhartech.stram.webapp.StramWebApp;
  */
 public class StramAppMaster
 {
-  private static Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
+  private transient static Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
   // Configuration
   private Configuration conf;
   private YarnClientHelper yarnClient;

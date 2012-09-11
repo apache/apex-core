@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StramChild
 {
-  private static Logger logger = LoggerFactory.getLogger(StramChild.class);
+  private transient static Logger logger = LoggerFactory.getLogger(StramChild.class);
   private static String NODE_PORT_SPLIT_SEPARATOR = "\\.";
   private static String NODE_PORT_CONCAT_SEPARATOR = ".";
   final private String containerId;
@@ -245,25 +245,6 @@ public class StramChild
     activeStreams.clear();
   }
 
-  private synchronized void deploy(List<NodeDeployInfo> nodeList)
-  {
-    /**
-     * A little bit of up front sanity check would reduce the percentage of deploy failures later.
-     */
-    for (NodeDeployInfo ndi: nodeList) {
-      if (nodes.containsKey(ndi.id)) {
-        throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
-      }
-    }
-
-    HashMap<String, ArrayList<String>> groupedInputStreams = deployNodes(nodeList);
-    deployOutputStreams(nodeList, groupedInputStreams);
-
-    deployInputStreams(nodeList);
-
-    activate(nodeList);
-  }
-
   private synchronized void disconnectNode(String nodeid)
   {
     Node node = nodes.get(nodeid).component;
@@ -352,6 +333,28 @@ public class StramChild
     }
   }
 
+  private void disconnectWindowGenerator(String nodeid, Node node)
+  {
+    WindowGenerator chosen1 = generators.remove(nodeid);
+    if (chosen1 != null) {
+      chosen1.connect(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), null);
+      node.connect(Component.INPUT, null);
+
+      int count = 0;
+      for (WindowGenerator wg: generators.values()) {
+        if (chosen1 == wg) {
+          count++;
+        }
+      }
+
+      if (count == 0) {
+        activeGenerators.remove(chosen1);
+        chosen1.deactivate();
+        chosen1.teardown();
+      }
+    }
+  }
+
   private synchronized void undeploy(List<NodeDeployInfo> nodeList)
   {
     /**
@@ -376,28 +379,6 @@ public class StramChild
       if (activeNodes.containsKey(pair.component)) {
         pair.component.deactivate();
       }
-    }
-  }
-
-  private void groupInputStreams(HashMap<String, ArrayList<String>> plumbing, NodeDeployInfo ndi)
-  {
-    for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
-      String source = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
-
-      /**
-       * if we do not want to combine multiple streams with different partitions from the
-       * same upstream node, we could also use the partition to group the streams together.
-       * This logic comes with the danger that the performance of the group which shares the same
-       * stream is bounded on the higher side by the performance of the lowest performer. May be
-       * combining the streams is not such a good thing but let's see if we allow this as an option
-       * to the user, what they end up choosing the most.
-       */
-      ArrayList<String> collection = plumbing.get(source);
-      if (collection == null) {
-        collection = new ArrayList<String>();
-        plumbing.put(source, collection);
-      }
-      collection.add(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName));
     }
   }
 
@@ -556,6 +537,57 @@ public class StramChild
       default:
         logger.error("Unknown request from stram {}", snr);
     }
+  }
+
+  private synchronized void deploy(List<NodeDeployInfo> nodeList)
+  {
+    /**
+     * A little bit of up front sanity check would reduce the percentage of deploy failures later.
+     */
+    for (NodeDeployInfo ndi: nodeList) {
+      if (nodes.containsKey(ndi.id)) {
+        throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
+      }
+    }
+
+    HashMap<String, ArrayList<String>> groupedInputStreams = deployNodes(nodeList);
+    deployOutputStreams(nodeList, groupedInputStreams);
+
+    deployInputStreams(nodeList);
+
+    activate(nodeList);
+  }
+
+  private HashMap<String, ArrayList<String>> deployNodes(List<NodeDeployInfo> nodeList) throws IllegalArgumentException
+  {
+    NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
+    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
+    for (NodeDeployInfo ndi: nodeList) {
+      NodeContext nc = new NodeContext(ndi.id);
+      try {
+        final Object foreignObject;
+        if (ndi.checkpointWindowId > 0) {
+          logger.info("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
+          HdfsBackupAgent backupAgent = new HdfsBackupAgent(nodeSerDe);
+          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
+        } else {
+          foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
+        }
+        Node node = (Node)foreignObject;
+        node.setup(new NodeConfiguration(ndi.id, ndi.properties));
+        nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
+
+        groupInputStreams(groupedInputStreams, ndi);
+      }
+      catch (ClassCastException cce) {
+        logger.error(cce.getLocalizedMessage());
+        throw cce;
+      }
+      catch (IOException e) {
+        throw new IllegalArgumentException("Failed to read object " + ndi, e);
+      }
+    }
+    return groupedInputStreams;
   }
 
   private void deployOutputStreams(List<NodeDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams)
@@ -911,57 +943,25 @@ public class StramChild
     }
   }
 
-  private HashMap<String, ArrayList<String>> deployNodes(List<NodeDeployInfo> nodeList) throws IllegalArgumentException
+  private void groupInputStreams(HashMap<String, ArrayList<String>> plumbing, NodeDeployInfo ndi)
   {
-    NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
-    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
-    for (NodeDeployInfo ndi: nodeList) {
-      NodeContext nc = new NodeContext(ndi.id);
-      try {
-        final Object foreignObject;
-        if (ndi.checkpointWindowId > 0) {
-          logger.info("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
-          HdfsBackupAgent backupAgent = new HdfsBackupAgent(nodeSerDe);
-          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
-        } else {
-          foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
-        }
-        Node node = (Node)foreignObject;
-        node.setup(new NodeConfiguration(ndi.id, ndi.properties));
-        nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
+    for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
+      String source = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
-        groupInputStreams(groupedInputStreams, ndi);
+      /**
+       * if we do not want to combine multiple streams with different partitions from the
+       * same upstream node, we could also use the partition to group the streams together.
+       * This logic comes with the danger that the performance of the group which shares the same
+       * stream is bounded on the higher side by the performance of the lowest performer. May be
+       * combining the streams is not such a good thing but let's see if we allow this as an option
+       * to the user, what they end up choosing the most.
+       */
+      ArrayList<String> collection = plumbing.get(source);
+      if (collection == null) {
+        collection = new ArrayList<String>();
+        plumbing.put(source, collection);
       }
-      catch (ClassCastException cce) {
-        logger.error(cce.getLocalizedMessage());
-        throw cce;
-      }
-      catch (IOException e) {
-        throw new IllegalArgumentException("Failed to read object " + ndi, e);
-      }
-    }
-    return groupedInputStreams;
-  }
-
-  private void disconnectWindowGenerator(String nodeid, Node node)
-  {
-    WindowGenerator chosen1 = generators.remove(nodeid);
-    if (chosen1 != null) {
-      chosen1.connect(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), null);
-      node.connect(Component.INPUT, null);
-
-      int count = 0;
-      for (WindowGenerator wg: generators.values()) {
-        if (chosen1 == wg) {
-          count++;
-        }
-      }
-
-      if (count == 0) {
-        activeGenerators.remove(chosen1);
-        chosen1.deactivate();
-        chosen1.teardown();
-      }
+      collection.add(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName));
     }
   }
 

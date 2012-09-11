@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractActiveMQInputStream extends AbstractInputNode implements MessageListener, ExceptionListener
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractActiveMQInputStream.class);
+  private transient static final Logger logger = LoggerFactory.getLogger(AbstractActiveMQInputStream.class);
   private boolean transacted;
   private int maxiumMessages;
   private int receiveTimeOut;

@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class StramLocalClusterTest
 {
-  private static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
+  private transient static Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
 
   @Ignore
   @Test
