@@ -27,9 +27,9 @@ public abstract class AbstractInputNode implements Node
   @SuppressWarnings("VolatileArrayField")
   private transient volatile Sink[] sinks = NO_SINKS;
   private transient NodeContext ctx;
-  private transient int producedTupleCount;
-  private transient int spinMillis;
-  private transient int bufferCapacity;
+  private transient volatile int producedTupleCount;
+  private transient volatile int spinMillis;
+  private transient volatile int bufferCapacity;
 
   @Override
   public void setup(NodeConfiguration config)
@@ -254,16 +254,6 @@ public abstract class AbstractInputNode implements Node
   public String toString()
   {
     return getClass().getSimpleName() + "{" + "id=" + id + ", outputs=" + outputs.keySet() + '}';
-  }
-
-  private void replaceOutput(Sink oldSink, Sink newSink)
-  {
-    for (Entry<String, Sink> e: outputs.entrySet()) {
-      if (e.getValue() == oldSink) {
-        outputs.put(e.getKey(), newSink);
-        break;
-      }
-    }
   }
 
   @SuppressWarnings("SillyAssignment")

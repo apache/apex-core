@@ -37,10 +37,10 @@ public abstract class AbstractNode implements Node
   private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   @SuppressWarnings("VolatileArrayField")
   private transient volatile Sink[] sinks = NO_SINKS;
-  private transient int consumedTupleCount;
+  private transient volatile int consumedTupleCount;
   private transient volatile boolean alive;
-  private transient int spinMillis = 10;
-  private transient int bufferCapacity = 1024 * 1024;
+  private transient volatile int spinMillis = 10;
+  private transient volatile int bufferCapacity = 1024 * 1024;
 
   // optimize the performance of this method.
   private PortAnnotation getPort(String id)
