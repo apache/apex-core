@@ -74,9 +74,9 @@ public class StramChild
   private final String containerId;
   private final Configuration conf;
   private final StreamingNodeUmbilicalProtocol umbilical;
-  final protected Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
+  protected final  Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
-  final protected Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
+  protected final  Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
    * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
    */

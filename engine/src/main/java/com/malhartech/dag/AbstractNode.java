@@ -280,7 +280,7 @@ public abstract class AbstractNode implements Node
   }
 
   @Override
-  final public void deactivate()
+  public final void deactivate()
   {
     alive = false;
   }
@@ -294,7 +294,7 @@ public abstract class AbstractNode implements Node
    */
   @Override
   @SuppressWarnings({ "SleepWhileInLoop", "incomplete-switch" })
-  final public void activate(NodeContext ctx)
+  public final void activate(NodeContext ctx)
   {
     activateSinks();
 

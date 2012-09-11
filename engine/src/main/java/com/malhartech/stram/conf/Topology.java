@@ -82,7 +82,7 @@ public class Topology implements Serializable, TopologyConstants {
     this.confHolder = new ExternalizableConf(conf);
   }
 
-  final public class InputPort implements Serializable {
+  public final class InputPort implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private NodeDecl node;
@@ -101,7 +101,7 @@ public class Topology implements Serializable, TopologyConstants {
     }
   }
 
-  final public class OutputPort implements Serializable {
+  public final class OutputPort implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private NodeDecl node;
@@ -124,7 +124,7 @@ public class Topology implements Serializable, TopologyConstants {
     }
   }
 
-  final public class StreamDecl implements Serializable {
+  public final class StreamDecl implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private boolean inline;
@@ -186,7 +186,7 @@ public class Topology implements Serializable, TopologyConstants {
 
   }
 
-  final public class NodeDecl implements Serializable {
+  public final class NodeDecl implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final Map<String, StreamDecl> inputStreams = new HashMap<String, StreamDecl>();
