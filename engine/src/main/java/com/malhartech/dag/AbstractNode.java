@@ -427,7 +427,6 @@ public abstract class AbstractNode implements Node
                 inputs.remove(activePort.id); // should i do this, since the stream said that there is nothing more to expect on it.
                 buffers.remove();
                 if (totalQueues == 0) {
-                  shouldWait = false;
                   alive = false;
                   break activequeue;
                 }
@@ -476,6 +475,7 @@ public abstract class AbstractNode implements Node
     }
     while (alive);
 
+    logger.debug("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream nodes know that.
      */
@@ -513,6 +513,6 @@ public abstract class AbstractNode implements Node
   @Override
   public String toString()
   {
-    return this.getClass().getSimpleName() + "{id=" + id + ", inputs=" + inputs.keySet() + ", outputs=" + outputs.keySet() + '}';
+    return this.getClass().getSimpleName() + "{id=" + id + '}';
   }
 }

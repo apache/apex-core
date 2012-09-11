@@ -8,6 +8,7 @@ import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.SerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.DNodeManager;
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
@@ -100,7 +101,7 @@ public class SocketStreamTest
     String downstreamNodeId = "downStreamNodeId";
 
 
-    BufferServerStreamContext issContext = new BufferServerStreamContext(streamName);
+    StreamContext issContext = new StreamContext(streamName);
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
 
@@ -111,7 +112,7 @@ public class SocketStreamTest
     iss.setup(sconf);
     iss.connect("testSink", sink);
 
-    BufferServerStreamContext ossContext = new BufferServerStreamContext(streamName);
+    StreamContext ossContext = new StreamContext(streamName);
     ossContext.setSourceId(upstreamNodeId);
     ossContext.setSinkId(downstreamNodeId);
 

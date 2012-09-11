@@ -457,7 +457,6 @@ public class DNodeManager
 
     StramChildAgent cs = getContainerAgent(heartbeat.getContainerId());
     cs.lastHeartbeatMillis = currentTimeMillis;
-    LOG.info("Heartbeat container {}", heartbeat.getContainerId());
 
     ContainerHeartbeatResponse rsp = cs.pollRequest();
     if (rsp == null) {
