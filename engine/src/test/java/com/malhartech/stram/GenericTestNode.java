@@ -61,7 +61,7 @@ public class GenericTestNode extends AbstractNode {
 
   @Override
   public void process(Object o) {
-    LOG.info("Got some work: " + o);
+    LOG.debug("Got some work: " + o);
     if (emitFormat != null) {
       o = String.format(emitFormat, o);
     }

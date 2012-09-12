@@ -67,7 +67,7 @@ import com.sun.jersey.api.client.WebResource;
 
 public class StramCli
 {
-  private static final transient Logger LOG = LoggerFactory.getLogger(StramCli.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
   private Configuration conf = new Configuration();
   private final ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;

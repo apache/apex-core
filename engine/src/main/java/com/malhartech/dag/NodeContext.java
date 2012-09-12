@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  */
 public class NodeContext implements Context
 {
-  private static final transient Logger LOG = LoggerFactory.getLogger(NodeContext.class);
+  private static final Logger LOG = LoggerFactory.getLogger(NodeContext.class);
   private BackupAgent backupAgent;
 
   @SuppressWarnings("PublicInnerClass")

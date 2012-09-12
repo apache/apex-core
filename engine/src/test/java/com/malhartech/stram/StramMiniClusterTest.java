@@ -49,7 +49,7 @@ import com.sun.jersey.api.client.WebResource;
 
 public class StramMiniClusterTest
 {
-  private static final transient Logger LOG = LoggerFactory.getLogger(StramMiniClusterTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StramMiniClusterTest.class);
   protected static MiniYARNCluster yarnCluster = null;
   protected static Configuration conf = new Configuration();
 

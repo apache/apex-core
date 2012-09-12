@@ -31,9 +31,9 @@ import org.slf4j.LoggerFactory;
  * Users need to implement getRecord to get HDFS input adapter to work as per their choice<br>
  * <br>
  */
-public abstract class AbstractHDFSInputStream extends AbstractInputNode implements Runnable
+public abstract class AbstractHDFSInputNode extends AbstractInputNode implements Runnable
 {
-  private static final transient Logger logger = LoggerFactory.getLogger(AbstractHDFSInputStream.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputNode.class);
   protected FSDataInputStream input;
   private boolean skipEndStream = false;
 
@@ -73,17 +73,6 @@ public abstract class AbstractHDFSInputStream extends AbstractInputNode implemen
       logger.error(ex.getLocalizedMessage());
     }
 
-  }
-
-  /**
-   *
-   */
-  @Override
-  public void activate(NodeContext context)
-  {
-    super.activate(context);
-    Thread t = new Thread(this);
-    t.start();
   }
 
   /**

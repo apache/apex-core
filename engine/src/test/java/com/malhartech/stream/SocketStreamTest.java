@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SocketStreamTest
 {
-  private static final transient Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
   private static int bufferServerPort = 0;
   private static Server bufferServer = null;
 

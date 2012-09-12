@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter implements Stream
 {
-  private static final transient Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
+  private static final Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
   protected Bootstrap bootstrap;
   protected Channel channel;
 

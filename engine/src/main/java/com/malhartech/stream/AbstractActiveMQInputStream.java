@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractActiveMQInputStream extends AbstractInputNode implements MessageListener, ExceptionListener
 {
-  private static final transient Logger logger = LoggerFactory.getLogger(AbstractActiveMQInputStream.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractActiveMQInputStream.class);
   private boolean transacted;
   private int maxiumMessages;
   private int receiveTimeOut;
@@ -106,9 +106,8 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
   }
 
   @Override
-  public void activate(NodeContext context)
+  public void run()
   {
-    super.activate(context);
     try {
       getConsumer().setMessageListener(this);
     }
@@ -117,22 +116,6 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
     }
 
     // find a way to keep the thread busy - w/o it this implementation is incomplete.
-  }
-
-  @Override
-  public void deactivate()
-  {
-    super.deactivate();
-    try {
-      replyProducer.close();
-      getConsumer().close();
-      getSession().close();
-      getConnection().close();
-
-    }
-    catch (JMSException ex) {
-      logger.error("exception while deactivating", ex);
-    }
   }
 
   @Override
@@ -152,8 +135,6 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
     catch (JMSException ex) {
       logger.error(null, ex);
     }
-
-    super.teardown();
   }
 
   @Override

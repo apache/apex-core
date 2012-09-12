@@ -25,7 +25,7 @@ import com.malhartech.stram.TopologyDeployer.PTNode;
  * <br>
  */
 public class StramChildAgent {
-  private static final transient Logger LOG = LoggerFactory.getLogger(StramChildAgent.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StramChildAgent.class);
 
   public static class DeployRequest {
     final AtomicInteger ackCountdown;
