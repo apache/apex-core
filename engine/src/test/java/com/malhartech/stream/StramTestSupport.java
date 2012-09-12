@@ -4,15 +4,13 @@
  */
 package com.malhartech.stream;
 
-import static org.junit.Assert.assertTrue;
-
-import org.apache.hadoop.conf.Configuration;
-
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.ManualScheduledExecutorService;
 import com.malhartech.stram.WindowGenerator;
+import org.apache.hadoop.conf.Configuration;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Bunch of utilities shared between tests.

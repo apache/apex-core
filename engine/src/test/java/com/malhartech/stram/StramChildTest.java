@@ -94,7 +94,5 @@ public class StramChildTest
       cc.deactivate();
       cc.teardown();
     }
-
-    containers = null;
   }
 }
