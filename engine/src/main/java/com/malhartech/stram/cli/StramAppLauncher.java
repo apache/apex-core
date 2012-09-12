@@ -9,6 +9,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.stram.StramClient;
 import com.malhartech.stram.StramLocalCluster;
+import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 
 
@@ -52,7 +54,7 @@ public class StramAppLauncher {
   private static final Logger LOG = LoggerFactory.getLogger(StramAppLauncher.class);
 
   final File jarFile;
-  private List<File> topologyList = new ArrayList<File>();
+  private final List<AppConfig> configurationList = new ArrayList<AppConfig>();
   private LinkedHashSet<URL> launchDependencies;
 
   /**
@@ -63,7 +65,7 @@ public class StramAppLauncher {
    */
   public static class ProcessWatcher implements Runnable {
 
-    private Process p;
+    private final Process p;
     private volatile boolean finished = false;
     private volatile int rc;
 
@@ -76,6 +78,7 @@ public class StramAppLauncher {
         return finished;
     }
 
+    @Override
     public void run() {
         try {
             rc = p.waitFor();
@@ -83,6 +86,36 @@ public class StramAppLauncher {
         finished = true;
     }
   }
+
+
+  public static interface AppConfig {
+      Topology createApp();
+      String getName();
+  }
+
+  public static class PropertyFileAppConfig implements AppConfig {
+    final File propertyFile;
+
+    public PropertyFileAppConfig(File file) {
+      this.propertyFile = file;
+    }
+
+    @Override
+    public Topology createApp() {
+      try {
+        return TopologyBuilder.createTopology(new Configuration(), propertyFile.getAbsolutePath());
+      } catch (IOException e) {
+        throw new IllegalArgumentException("Failed to load: " + this, e);
+      }
+    }
+
+    @Override
+    public String getName() {
+      return propertyFile.getName();
+    }
+
+  }
+
 
   public StramAppLauncher(File appJarFile) throws Exception {
     this.jarFile = appJarFile;
@@ -120,7 +153,7 @@ public class StramAppLauncher {
 
     java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
     while (entriesEnum.hasMoreElements()) {
-        java.util.jar.JarEntry file = (java.util.jar.JarEntry) entriesEnum.nextElement();
+        java.util.jar.JarEntry file = entriesEnum.nextElement();
         if (!file.isDirectory()) {
           if (file.getName().endsWith("pom.xml")) {
             File pomDst = new File(baseDir, "pom.xml");
@@ -134,7 +167,7 @@ public class StramAppLauncher {
             // TODO: handle topology files in subdirs
             File targetFile = new File(baseDir, file.getName());
             FileUtils.copyInputStreamToFile(jar.getInputStream(file), targetFile);
-            topologyList.add(targetFile);
+            configurationList.add(new PropertyFileAppConfig(targetFile));
           }
         }
     }
@@ -196,11 +229,11 @@ public class StramAppLauncher {
    * @param topologyFile
    * @throws Exception
    */
-  public void runLocal(File topologyFile) throws Exception {
+  public void runLocal(AppConfig appConfig) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
     URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
     Thread.currentThread().setContextClassLoader(cl);
-    StramLocalCluster lc = new StramLocalCluster(TopologyBuilder.createTopology(new Configuration(), topologyFile.getAbsolutePath()));
+    StramLocalCluster lc = new StramLocalCluster(appConfig.createApp());
     lc.run();
   }
 
@@ -210,7 +243,7 @@ public class StramAppLauncher {
    * @return
    * @throws Exception
    */
-  public ApplicationId launchApp(File topologyFile) throws Exception {
+  public ApplicationId launchApp(AppConfig appConfig) throws Exception {
 
     URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
     //Class<?> loadedClass = cl.loadClass("com.malhartech.example.wordcount.WordCountSerDe");
@@ -220,30 +253,22 @@ public class StramAppLauncher {
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath
     Class<?> childClass = cl.loadClass(StramAppLauncher.class.getName());
-    Method runApp = childClass.getMethod("runApp", new Class[] {File.class});
-    Object appIdStr = runApp.invoke(null, topologyFile);
+    Method runApp = childClass.getMethod("runApp", new Class[] {AppConfig.class});
+    // TODO: with class loader isolation, pass serialized appConfig to launch loader
+    Object appIdStr = runApp.invoke(null, appConfig);
     return ConverterUtils.toApplicationId(""+appIdStr);
   }
 
-  public static String runApp(File topologyFile) throws Exception {
-    LOG.info("Launching topology: {}", topologyFile);
+  public static String runApp(AppConfig appConfig) throws Exception {
+    LOG.info("Launching configuration: {}", appConfig.getName());
 
-    String[] args = {
-        "--topologyProperties",
-        topologyFile.getAbsolutePath()
-    };
-
-    StramClient client = new StramClient();
-    boolean initSuccess = client.init(args);
-    if (!initSuccess) {
-      throw new RuntimeException("Failed to initialize client.");
-    }
+    StramClient client = new StramClient(appConfig.createApp());
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
   }
 
-  public List<File> getBundledTopologies() {
-    return Collections.unmodifiableList(this.topologyList);
+  public List<AppConfig> getBundledTopologies() {
+    return Collections.unmodifiableList(this.configurationList);
   }
 
   /**
@@ -252,11 +277,11 @@ public class StramAppLauncher {
   public static void main(String[] args) throws Exception {
     String jarFileName = "/home/hdev/devel/malhar/stramproto/examples/wordcount/target/wordcount-example-1.0-SNAPSHOT.jar";
     StramAppLauncher appLauncher = new StramAppLauncher(new File(jarFileName));
-    if (appLauncher.topologyList.isEmpty()) {
+    if (appLauncher.configurationList.isEmpty()) {
       throw new IllegalArgumentException("jar file does not contain any topology definitions.");
     }
-    File topology = appLauncher.topologyList.get(0);
-    appLauncher.launchApp(topology);
+    AppConfig cfg = appLauncher.configurationList.get(0);
+    appLauncher.launchApp(cfg);
   }
 
 }

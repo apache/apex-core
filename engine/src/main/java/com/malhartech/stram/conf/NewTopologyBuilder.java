@@ -12,9 +12,9 @@ import com.malhartech.stram.conf.Topology.OutputPort;
 import com.malhartech.stram.conf.Topology.StreamDecl;
 
 
-public class NewTopologyBuilder {
+public class NewTopologyBuilder implements StreamingApplicationFactory {
 
-  private Topology topology = new Topology();;
+  private final Topology topology = new Topology();;
 
   public class StreamBuilder {
     private final StreamDecl streamDecl;
@@ -58,6 +58,11 @@ public class NewTopologyBuilder {
   }
 
   public Topology getTopology() {
+    return topology;
+  }
+
+  @Override
+  public Topology getStreamingApplication() {
     return topology;
   }
 

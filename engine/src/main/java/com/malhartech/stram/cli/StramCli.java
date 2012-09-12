@@ -36,6 +36,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.sun.jersey.api.client.Client;
@@ -68,7 +69,7 @@ import com.sun.jersey.api.client.WebResource;
 public class StramCli
 {
   private static final transient Logger LOG = LoggerFactory.getLogger(StramCli.class);
-  private Configuration conf = new Configuration();
+  private final Configuration conf = new Configuration();
   private final ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
   private String currentDir = "/";
@@ -384,25 +385,26 @@ public class StramCli
     String[] args = assertArgs(line, 2, "No jar file specified.");
     boolean localMode = "launch-local".equals(args[0]);
 
-    File tplgFile = null;
+    AppConfig appConfig = null;
     if (args.length == 3) {
-      tplgFile = new File(args[2]);
+      File file = new File(args[2]);
+      appConfig = new StramAppLauncher.PropertyFileAppConfig(file);
     }
 
     try {
       StramAppLauncher submitApp = new StramAppLauncher(new File(args[1]));
 
-      if (tplgFile == null) {
-        List<File> tplgList = submitApp.getBundledTopologies();
-        if (tplgList.isEmpty()) {
-          throw new CliException("No topology files bundled in jar, please specify one");
+      if (appConfig == null) {
+        List<AppConfig> cfgList = submitApp.getBundledTopologies();
+        if (cfgList.isEmpty()) {
+          throw new CliException("No configurations bundled in jar, please specify one");
         }
-        else if (tplgList.size() == 1) {
-          tplgFile = tplgList.get(0);
+        else if (cfgList.size() == 1) {
+          appConfig = cfgList.get(0);
         }
         else {
-          for (int i = 0; i < tplgList.size(); i++) {
-            System.out.printf("%3d. %s\n", i + 1, tplgList.get(i));
+          for (int i = 0; i < cfgList.size(); i++) {
+            System.out.printf("%3d. %s\n", i + 1, cfgList.get(i));
           }
 
           boolean useHistory = reader.getUseHistory();
@@ -412,7 +414,7 @@ public class StramCli
           for (Completor c : completors) {
             reader.removeCompletor(c);
           }
-          String optionLine = reader.readLine("Pick topology? ");
+          String optionLine = reader.readLine("Pick configuration? ");
           reader.setUseHistory(useHistory);
           for (Completor c : completors) {
             reader.addCompletor(c);
@@ -420,8 +422,8 @@ public class StramCli
 
           try {
             int option = Integer.parseInt(optionLine);
-            if (0 < option && option <= tplgList.size()) {
-              tplgFile = tplgList.get(option - 1);
+            if (0 < option && option <= cfgList.size()) {
+              appConfig = cfgList.get(option - 1);
             }
           }
           catch (Exception e) {
@@ -430,14 +432,14 @@ public class StramCli
         }
       }
 
-      if (tplgFile != null) {
+      if (appConfig != null) {
         if (!localMode) {
-          ApplicationId appId = submitApp.launchApp(tplgFile);
+          ApplicationId appId = submitApp.launchApp(appConfig);
           this.currentApp = rmClient.getApplicationReport(appId);
           this.currentDir = "" + currentApp.getApplicationId().getId();
           System.out.println(appId);
         } else {
-          submitApp.runLocal(tplgFile);
+          submitApp.runLocal(appConfig);
         }
       }
       else {

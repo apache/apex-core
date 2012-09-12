@@ -103,6 +103,11 @@
       <artifactId>netty-transport</artifactId>
       <version>4.0.0.Alpha2</version>
     </dependency>
+     <dependency>
+         <groupId>org.reflections</groupId>
+         <artifactId>reflections</artifactId>
+         <version>0.9.8</version>
+     </dependency>
   </dependencies>
 
 

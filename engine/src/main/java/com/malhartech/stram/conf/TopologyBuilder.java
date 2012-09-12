@@ -34,13 +34,12 @@ import com.malhartech.stram.conf.Topology.StreamDecl;
  *
  * Builder for the DAG logical representation of nodes and streams<p>
  * <br>
- * Supports reading as name-value pairs from Hadoop Config
- * or programmatic interface.<br>
+ * Supports reading as name-value pairs from Hadoop Config or properties file.
  * <br>
  *
  */
 
-public class TopologyBuilder {
+public class TopologyBuilder implements StreamingApplicationFactory {
 
   private static final transient Logger LOG = LoggerFactory.getLogger(TopologyBuilder.class);
 
@@ -75,7 +74,7 @@ public class TopologyBuilder {
    * with common settings.
    */
   private class TemplateConf {
-    private Properties properties = new Properties();
+    private final Properties properties = new Properties();
 
     /**
      *
@@ -89,11 +88,11 @@ public class TopologyBuilder {
    *
    */
   public class StreamConf {
-    private String id;
+    private final String id;
     private NodeConf sourceNode;
-    private Set<NodeConf> targetNodes = new HashSet<NodeConf>();
+    private final Set<NodeConf> targetNodes = new HashSet<NodeConf>();
 
-    private PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
+    private final PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
     private TemplateConf template;
 
 
@@ -220,11 +219,11 @@ public class TopologyBuilder {
     public NodeConf(String id) {
       this.id = id;
     }
-    private String id;
+    private final String id;
     /**
      * The properties of the node, can be subclass properties which will be set via reflection.
      */
-    private PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
+    private final PropertiesWithModifiableDefaults properties = new PropertiesWithModifiableDefaults();
     /**
      * The inputs for the node
      */
@@ -545,6 +544,10 @@ public class TopologyBuilder {
     return tplg;
   }
 
+  @Override
+  public Topology getStreamingApplication() {
+    return getTopology();
+  }
 
   public static Topology createTopology(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);

@@ -141,6 +141,13 @@ public class StramClient
     this(new Configuration());
   }
 
+  public StramClient(Topology tplg) throws Exception
+  {
+    this(new Configuration());
+    this.topology = tplg;
+    topology.validate();
+  }
+
   /**
    * Helper function to print out usage
    *
@@ -186,13 +193,13 @@ public class StramClient
     }
 
     // topology properties
-    String topologyPropertyFile = cliParser.getOptionValue("topologyProperties");
-    if (topologyPropertyFile == null) {
+    String propertyFileName = cliParser.getOptionValue("topologyProperties");
+    if (propertyFileName == null) {
       throw new IllegalArgumentException("No topology property file specified, exiting.");
     }
-    LOG.info("Topology: " + topologyPropertyFile);
+    LOG.info("Configuration: " + propertyFileName);
 
-    topology = TopologyBuilder.createTopology(conf, topologyPropertyFile);
+    topology = TopologyBuilder.createTopology(conf, propertyFileName);
     topology.validate();
     if (cliParser.hasOption("debug")) {
       topology.getConf().setBoolean(Topology.STRAM_DEBUG, true);
