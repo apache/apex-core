@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class StramLocalClusterTest
 {
-  private static final transient Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
 
   @Ignore
   @Test
@@ -44,7 +44,6 @@ public class StramLocalClusterTest
     lc.run();
   }
 
-  //@Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
@@ -87,7 +86,7 @@ public class StramLocalClusterTest
     lnr.close();
   }
 
-  @Ignore // we have a problem with windows randomly getting lost
+  @Ignore // windows lost problem?
   @Test
   public void testChildRecovery() throws Exception
   {

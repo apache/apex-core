@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  */
 public class LaunchContainerRunnable implements Runnable
 {
-  private static final transient Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LaunchContainerRunnable.class);
   private final YarnClientHelper yarnClient;
   private final Map<String, String> containerEnv = new HashMap<String, String>();
   private final InetSocketAddress heartbeatAddress;

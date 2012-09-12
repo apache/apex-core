@@ -10,6 +10,8 @@ import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
+import java.util.logging.Level;
+import org.apache.hadoop.test.GenericTestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,9 +19,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputNode implements Node
+public abstract class AbstractInputNode implements Node, Runnable
 {
-  private static final transient Logger logger = LoggerFactory.getLogger(AbstractInputNode.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractInputNode.class);
   private transient String id;
   private transient HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
@@ -55,14 +57,51 @@ public abstract class AbstractInputNode implements Node
   }
 
   @Override
-  public void activate(NodeContext context)
+  @SuppressWarnings("SleepWhileInLoop")
+  public final void activate(NodeContext context)
   {
     ctx = context;
     activateSinks();
+    run();
+
+    try {
+      EndStreamTuple est = new EndStreamTuple();
+      for (CircularBuffer<Tuple> cb: afterEndWindows.values()) {
+        while (true) {
+          try {
+            cb.add(est);
+            break;
+          }
+          catch (BufferOverflowException boe) {
+            Thread.sleep(spinMillis);
+          }
+        }
+      }
+
+      /*
+       * make sure that it's sent.
+       */
+      boolean pendingMessages;
+      do {
+        Thread.sleep(spinMillis);
+
+        pendingMessages = false;
+        for (CircularBuffer<Tuple> cb: afterEndWindows.values()) {
+          if (cb.size() > 0) {
+            pendingMessages = true;
+            break;
+          }
+        }
+      }
+      while (pendingMessages);
+    }
+    catch (InterruptedException ex) {
+      logger.info("Not waiting for the emitted tuples to be flushed as got interrupted by {}", ex.getLocalizedMessage());
+    }
   }
 
   @Override
-  public void deactivate()
+  public final void deactivate()
   {
     sinks = NO_SINKS;
   }

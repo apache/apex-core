@@ -69,10 +69,10 @@ import org.slf4j.LoggerFactory;
  */
 public class StramChild
 {
-  private static final transient Logger logger = LoggerFactory.getLogger(StramChild.class);
-  private static final transient String NODE_PORT_SPLIT_SEPARATOR = "\\.";
-  private static final transient String NODE_PORT_CONCAT_SEPARATOR = ".";
-  private static final transient String SOURCE_SINK_SEPARATOR = "\u279C";
+  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
+  private static final String NODE_PORT_SPLIT_SEPARATOR = "\\.";
+  private static final String NODE_PORT_CONCAT_SEPARATOR = ".";
+  private static final String SOURCE_SINK_SEPARATOR = "\u279C";
   private final String containerId;
   private final Configuration conf;
   private final StreamingNodeUmbilicalProtocol umbilical;
@@ -86,7 +86,7 @@ public class StramChild
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
-  private boolean exitHeartbeatLoop = false;
+  private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
   private String checkpointDfsPath;
   /**
@@ -260,11 +260,13 @@ public class StramChild
       StreamContext context = entry.getValue().context;
       String sourceIdentifier = context.getSourceId();
       String sinkIdentifier = context.getSinkId();
+      logger.debug("considering stream {} against id {}", stream, indexingKey);
       if (nodeid.equals(sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR)[0])) {
         /**
          * the stream originates at the output port of one of the nodes that are going to vanish.
          */
         if (activeStreams.containsKey(stream)) {
+          logger.debug("deactivating {}", stream);
           stream.deactivate();
           activeStreams.remove(stream);
         }
@@ -279,12 +281,14 @@ public class StramChild
           }
           else if (stream.isMultiSinkCapable()) {
             ComponentContextPair<Stream, StreamContext> spair = streams.get(sinkId);
+            logger.debug("found stream {} against {}", spair == null? null: spair.component, sinkId);
             if (spair == null) {
               assert(!sinkId.startsWith("tcp://"));
             }
             else {
               assert(sinkId.startsWith("tcp://"));
               if (activeStreams.containsKey(spair.component)) {
+                logger.debug("deactivating {} for sink {}", spair.component, sinkId);
                 spair.component.deactivate();
                 activeStreams.remove(spair.component);
               }
@@ -325,6 +329,7 @@ public class StramChild
 
         if (sinkId == null) {
           if (activeStreams.containsKey(stream)) {
+            logger.debug("deactivating {}", stream);
             stream.deactivate();
             activeStreams.remove(stream);
           }
@@ -450,11 +455,7 @@ public class StramChild
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
         e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
-        DNodeState state = DNodeState.PROCESSING;
-        if (!activeNodes.containsKey(e.getValue().component)) {
-          state = DNodeState.IDLE;
-        }
-        hb.setState(state.name());
+        hb.setState((activeNodes.containsKey(e.getValue().component)? DNodeState.PROCESSING: DNodeState.IDLE).toString());
         // propagate the backup window, if any
         Long backupWindowId = backupInfo.get(e.getKey());
         if (backupWindowId != null) {
@@ -633,6 +634,7 @@ public class StramChild
 
           stream = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
           stream.setup(config);
+          logger.debug("deployed a buffer stream {}", stream);
 
           sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
         }
@@ -661,6 +663,7 @@ public class StramChild
 
             BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
             bsos.setup(config);
+            logger.debug("deployed a buffer stream {}", bsos);
 
             // the following sinkIdentifier may not gel well with the rest of the logic
             sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
@@ -673,6 +676,7 @@ public class StramChild
             stream.connect(sinkIdentifier, s);
 
             streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
+            logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
           }
         }
         else {
@@ -703,6 +707,7 @@ public class StramChild
 
             BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
             bsos.setup(config);
+            logger.debug("deployed a buffer stream {}", bsos);
 
             sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
@@ -714,6 +719,7 @@ public class StramChild
             stream.connect(sinkIdentifier, s);
 
             streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
+            logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
           }
         }
 
@@ -726,6 +732,7 @@ public class StramChild
           context.setSinkId(sinkIdentifier);
 
           streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
+          logger.debug("stored stream {} against key {}", stream, sourceIdentifier);
         }
       }
     }
@@ -781,6 +788,7 @@ public class StramChild
 
             Stream stream = new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
             stream.setup(config);
+            logger.debug("deployed buffer input stream {}", stream);
 
             StreamContext context = new StreamContext(nidi.declaredStreamId);
             context.setPartitions(nidi.partitionKeys);
@@ -792,6 +800,7 @@ public class StramChild
 
             streams.put(sinkIdentifier,
                         new ComponentContextPair<Stream, StreamContext>(stream, context));
+            logger.debug("put input stream {} against key {}", stream, sinkIdentifier);
           }
           else {
             String streamSinkId = pair.context.getSinkId();
@@ -816,8 +825,10 @@ public class StramChild
 
               Stream stream = new MuxStream();
               stream.setup(new StreamConfiguration());
+              logger.debug("deployed input mux stream {}", stream);
               s = node.connect(nidi.portName, stream);
               streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
+              logger.debug("stored input stream {} against key {}", stream, sourceIdentifier);
 
               /**
                * Lets wire the MuxStream to upstream node.
@@ -847,6 +858,7 @@ public class StramChild
                  * we took that place for MuxStream, we give this a new place of its own.
                  */
                 streams.put(pair.context.getSinkId(), pair);
+                logger.debug("relocated stream {} against key {}", pair.context.getSinkId());
               }
 
               stream.connect(streamSinkId, existingSink);
@@ -935,6 +947,7 @@ public class StramChild
           activatedNodeCount.incrementAndGet();
           activeNodes.put(pair.component, pair.context);
           pair.component.activate(pair.context);
+          activeNodes.remove(pair.component);
           disconnectNode(ndi.id);
         }
       }.start();

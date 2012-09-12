@@ -15,15 +15,13 @@ import org.slf4j.LoggerFactory;
 
 @NodeAnnotation(
     ports = {
-        @PortAnnotation(name = NumberGeneratorInputAdapter.OUTPUT_PORT, type = PortType.OUTPUT)
-    }
-)
+  @PortAnnotation(name = NumberGeneratorInputAdapter.OUTPUT_PORT, type = PortType.OUTPUT)
+})
 public class NumberGeneratorInputAdapter extends AbstractInputNode
 {
-  private static final transient Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
   public static final String OUTPUT_PORT = "outputPort";
-
-  private volatile boolean shutdown = false;
+  private volatile boolean shutdown = false; // how do we handle this now that deactivate is not overridable.
   private String myConfigProperty;
   private int maxTuples = -1;
   private int generatedNumbers = 0;
@@ -51,14 +49,16 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
   }
 
   @Override
-  public void connected(String id, Sink dagpart) {
+  public void connected(String id, Sink dagpart)
+  {
     if (OUTPUT_PORT.equals(id)) {
       this.outputConnected = true;
     }
   }
 
+  @Override
   @SuppressWarnings("SleepWhileInLoop")
-  private void run()
+  public void run()
   {
     while (!shutdown) {
       if (outputConnected) {
@@ -66,7 +66,6 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
         LOG.info("sending tuple " + generatedNumbers);
         emit(OUTPUT_PORT, String.valueOf(generatedNumbers));
         if (maxTuples > 0 && maxTuples < generatedNumbers) {
-          emit(OUTPUT_PORT, new EndStreamTuple());
           break;
         }
       }
@@ -75,21 +74,9 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
       }
       catch (InterruptedException e) {
         LOG.error("Unexpected error in run.", e);
+        break;
       }
     }
     LOG.info("Finished generating tuples");
   }
-
-  @Override
-  public void activate(NodeContext context) {
-    super.activate(context);
-    run();
-  }
-
-  @Override
-  public void deactivate() {
-    this.shutdown = true;
-    super.deactivate();
-  }
-
 }

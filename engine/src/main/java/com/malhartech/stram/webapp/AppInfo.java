@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 @XmlRootElement(name = "info")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class AppInfo {
-  private static final transient Logger LOG = LoggerFactory.getLogger(AppInfo.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AppInfo.class);
 
   protected String appId;
   protected String name;

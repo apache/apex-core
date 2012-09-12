@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractNode implements Node
 {
-  private static final transient org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
   private transient String id;
   private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
@@ -76,9 +76,6 @@ public abstract class AbstractNode implements Node
   public void beginWindow()
   {
   }
-
-  @Override
-  public abstract void process(Object payload);
 
   @Override
   public void endWindow()

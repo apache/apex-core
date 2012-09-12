@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  */
 public class WindowGenerator implements Component<Configuration, Context>, Runnable
 {
-  private static final transient Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
+  private static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
   public static final String FIRST_WINDOW_MILLIS = "FirstWindowMillis";
   public static final String WINDOW_WIDTH_MILLIS = "WindowWidthMillis";
   public static final String RESET_WINDOW_MILLIS = "ResetWindowMillis";
