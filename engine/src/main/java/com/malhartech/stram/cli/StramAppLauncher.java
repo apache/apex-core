@@ -167,7 +167,7 @@ public class StramAppLauncher {
               pomCrc = jarEntry.getCrc();
             }
           } else if (jarEntry.getName().endsWith(".tplg.properties")) {
-            // TODO: handle topology files in subdirs
+            // TODO: handle subdirs
             File targetFile = new File(baseDir, jarEntry.getName());
             FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
             configurationList.add(new PropertyFileAppConfig(targetFile));
@@ -270,7 +270,7 @@ public class StramAppLauncher {
 
   /**
    * Run application in-process. Returns only once application completes.
-   * @param topologyFile
+   * @param appConfig
    * @throws Exception
    */
   public void runLocal(AppConfig appConfig) throws Exception {
@@ -283,7 +283,7 @@ public class StramAppLauncher {
 
   /**
    * Submit application to the cluster and return the app id.
-   * @param topologyFile
+   * @param appConfig
    * @return
    * @throws Exception
    */

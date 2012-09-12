@@ -10,8 +10,6 @@ import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
-import java.util.logging.Level;
-import org.apache.hadoop.test.GenericTestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
