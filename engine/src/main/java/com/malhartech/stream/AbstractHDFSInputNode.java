@@ -60,7 +60,7 @@ public abstract class AbstractHDFSInputNode extends AbstractInputNode implements
    * @param config
    */
   @Override
-  public void setup(NodeConfiguration config)
+  public void setup(NodeConfiguration config) throws Exception
   {
     super.setup(config);
 

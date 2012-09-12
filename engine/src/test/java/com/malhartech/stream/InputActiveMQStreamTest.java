@@ -113,7 +113,7 @@ public class InputActiveMQStreamTest
   }
 
   @Before
-  public void setUp()
+  public void setUp() throws Exception
   {
     instance.setup(config);
   }
@@ -141,7 +141,7 @@ public class InputActiveMQStreamTest
    * Test of teardown method, of class AbstractActiveMQInputStream.
    */
   @Test
-  public void testTeardown()
+  public void testTeardown() throws Exception
   {
     System.out.println("teardown");
 

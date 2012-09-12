@@ -44,7 +44,7 @@ public class TestOutputNode extends AbstractNode
   private boolean append;
 
   @Override
-  public void setup(NodeConfiguration config)  {
+  public void setup(NodeConfiguration config) throws Exception  {
     super.setup(config);
     try {
       fs = FileSystem.get(config);
