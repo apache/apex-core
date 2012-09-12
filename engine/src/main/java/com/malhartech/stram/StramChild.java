@@ -38,7 +38,6 @@ import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -72,7 +71,7 @@ public class StramChild
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
   private static final String NODE_PORT_SPLIT_SEPARATOR = "\\.";
   private static final String NODE_PORT_CONCAT_SEPARATOR = ".";
-  private static final String SOURCE_SINK_SEPARATOR = "\u279C";
+  //private static final String SOURCE_SINK_SEPARATOR = "\u279C";
   private final String containerId;
   private final Configuration conf;
   private final StreamingNodeUmbilicalProtocol umbilical;
@@ -466,7 +465,7 @@ public class StramChild
       msg.setDnodeEntries(heartbeats);
 
       // heartbeat call and follow-up processing
-      logger.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
+      //logger.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
       try {
         ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
         if (rsp != null) {
