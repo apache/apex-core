@@ -4,8 +4,8 @@
 package com.malhartech.stream;
 
 import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.FailedOperationException;
 import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.NodeContext;
 import javax.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.slf4j.Logger;
@@ -34,44 +34,15 @@ public abstract class AbstractActiveMQInputNode extends AbstractInputNode implem
   private MessageProducer replyProducer;
 
   @Override
-  public void setup(NodeConfiguration config) throws Exception
+  public void setup(NodeConfiguration config) throws FailedOperationException
   {
     super.setup(config);
-
-    ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-            config.get("user"),
-            config.get("password"),
-            config.get("url"));
-
-    connection = connectionFactory.createConnection();
-    if (config.getBoolean("durable", false)) {
-      String clientid = config.get("clientId");
-      if (clientid != null && clientid.length() > 0 && !"null".equals(clientid)) {
-        getConnection().setClientID(clientid);
-      }
+    try {
+      setupConnection(config);
     }
-    getConnection().setExceptionListener(this);
-    getConnection().start();
-
-    setAckMode(config.get("ackMode"));
-    session = getConnection().createSession(config.getBoolean("transacted", false), this.ackMode);
-
-    Destination destination;
-    if (config.getBoolean("topic", false)) {
-      destination = getSession().createTopic(config.get("subject"));
-    }
-    else {
-      destination = getSession().createQueue(config.get("subject"));
-    }
-
-    replyProducer = getSession().createProducer(null);
-    replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-
-    if (config.getBoolean("durable", false) && config.getBoolean("topic", false)) {
-      consumer = getSession().createDurableSubscriber((Topic)destination, config.get("consumerName"));
-    }
-    else {
-      consumer = getSession().createConsumer(destination);
+    catch (JMSException ex) {
+      logger.debug(ex.getLocalizedMessage());
+      throw new FailedOperationException(ex.getCause());
     }
 
     maxiumMessages = config.getInt("maximumMessages", 0);
@@ -219,4 +190,43 @@ public abstract class AbstractActiveMQInputNode extends AbstractInputNode implem
   }
 
   protected abstract void emitMessage(Message message);
+
+  private void setupConnection(NodeConfiguration config) throws JMSException
+  {
+    ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
+            config.get("user"),
+            config.get("password"),
+            config.get("url"));
+
+    connection = connectionFactory.createConnection();
+    if (config.getBoolean("durable", false)) {
+      String clientid = config.get("clientId");
+      if (clientid != null && clientid.length() > 0 && !"null".equals(clientid)) {
+        getConnection().setClientID(clientid);
+      }
+    }
+    getConnection().setExceptionListener(this);
+    getConnection().start();
+
+    setAckMode(config.get("ackMode"));
+    session = getConnection().createSession(config.getBoolean("transacted", false), this.ackMode);
+
+    Destination destination;
+    if (config.getBoolean("topic", false)) {
+      destination = getSession().createTopic(config.get("subject"));
+    }
+    else {
+      destination = getSession().createQueue(config.get("subject"));
+    }
+
+    replyProducer = getSession().createProducer(null);
+    replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+
+    if (config.getBoolean("durable", false) && config.getBoolean("topic", false)) {
+      consumer = getSession().createDurableSubscriber((Topic)destination, config.get("consumerName"));
+    }
+    else {
+      consumer = getSession().createConsumer(destination);
+    }
+  }
 }

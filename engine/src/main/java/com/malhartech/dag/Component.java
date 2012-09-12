@@ -19,7 +19,7 @@ public interface Component<T1 extends Configuration, T2 extends Context> extends
   public static final String INPUT = "input";
   public static final String OUTPUT = "output";
 
-  public void setup(T1 config) throws Exception;
+  public void setup(T1 config) throws FailedOperationException;
 
   public void activate(T2 context);
 

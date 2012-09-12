@@ -65,7 +65,7 @@ public abstract class AbstractNode implements Node
   }
 
   @Override
-  public void setup(NodeConfiguration config) throws Exception
+  public void setup(NodeConfiguration config) throws FailedOperationException
   {
   }
 

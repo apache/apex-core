@@ -238,7 +238,7 @@ public abstract class AbstractInputNode implements Node, Runnable
   }
 
   @Override
-  public void setup(NodeConfiguration config) throws Exception
+  public void setup(NodeConfiguration config) throws FailedOperationException
   {
   }
 
@@ -255,7 +255,7 @@ public abstract class AbstractInputNode implements Node, Runnable
   @Override
   public void teardown()
   {
-  }
+    }
 
   @Override
   public int hashCode()

@@ -9,9 +9,9 @@ import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.FailedOperationException;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.Tuple;
 import java.io.IOException;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -60,13 +60,17 @@ public abstract class AbstractHDFSInputNode extends AbstractInputNode implements
    * @param config
    */
   @Override
-  public void setup(NodeConfiguration config) throws Exception
+  public void setup(NodeConfiguration config) throws FailedOperationException
   {
-    super.setup(config);
-
-    FileSystem fs = FileSystem.get(config);
-    Path filepath = new Path(config.get("filepath"));
-    input = fs.open(filepath);
+    try {
+      FileSystem fs = FileSystem.get(config);
+      Path filepath = new Path(config.get("filepath"));
+      input = fs.open(filepath);
+    }
+    catch (IOException ex) {
+      logger.error(ex.getLocalizedMessage());
+      throw new FailedOperationException(ex.getCause());
+    }
   }
 
   /**

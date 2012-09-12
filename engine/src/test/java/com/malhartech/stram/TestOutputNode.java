@@ -4,20 +4,19 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.annotation.PortAnnotation.PortType;
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.FailedOperationException;
+import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.Tuple;
 import java.io.IOException;
-
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.annotation.NodeAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.Tuple;
 
 /**
  * Writes stringified tuple to a file stream.
@@ -29,7 +28,7 @@ import com.malhartech.dag.Tuple;
 })
 public class TestOutputNode extends AbstractNode
 {
-  private static final Logger LOG = LoggerFactory.getLogger(TestOutputNode.class);
+  private static final Logger logger = LoggerFactory.getLogger(TestOutputNode.class);
   /**
    * The path name for the output file.
    */
@@ -41,29 +40,38 @@ public class TestOutputNode extends AbstractNode
   private boolean append;
 
   @Override
-  public void setup(NodeConfiguration config) throws Exception
+  public void setup(NodeConfiguration config) throws FailedOperationException
   {
-    super.setup(config);
-    fs = FileSystem.get(config);
-    String pathSpec = config.get(P_FILEPATH);
-    if (pathSpec == null) {
-      throw new IllegalArgumentException(P_FILEPATH + " not specified.");
-    }
-    filepath = new Path(pathSpec);
-    append = config.getBoolean("append", false);
+    try {
+      fs = FileSystem.get(config);
+      String pathSpec = config.get(P_FILEPATH);
+      if (pathSpec == null) {
+        throw new IllegalArgumentException(P_FILEPATH + " not specified.");
+      }
+      filepath = new Path(pathSpec);
+      append = config.getBoolean("append", false);
 
-    LOG.info("output file: " + filepath);
-    if (fs.exists(filepath)) {
-      if (append) {
-        output = fs.append(filepath);
+      logger.info("output file: " + filepath);
+      if (fs.exists(filepath)) {
+        if (append) {
+          output = fs.append(filepath);
+        }
+        else {
+          fs.delete(filepath, true);
+          output = fs.create(filepath);
+        }
       }
       else {
-        fs.delete(filepath, true);
         output = fs.create(filepath);
       }
     }
-    else {
-      output = fs.create(filepath);
+    catch (IOException iOException) {
+      logger.debug(iOException.getLocalizedMessage());
+      throw new FailedOperationException(iOException.getCause());
+    }
+    catch (IllegalArgumentException illegalArgumentException) {
+      logger.debug(illegalArgumentException.getLocalizedMessage());
+      throw new FailedOperationException(illegalArgumentException.getCause());
     }
   }
 
@@ -75,7 +83,7 @@ public class TestOutputNode extends AbstractNode
       output = null;
     }
     catch (IOException ex) {
-      LOG.info("", ex);
+      logger.info("", ex);
     }
 
     fs = null;
@@ -91,9 +99,9 @@ public class TestOutputNode extends AbstractNode
   @Override
   public void process(Object t)
   {
-    LOG.debug("received: " + t);
+    logger.debug("received: " + t);
     if (t instanceof Tuple) {
-      LOG.debug("ignoring tuple " + t);
+      logger.debug("ignoring tuple " + t);
     }
     else {
       byte[] serialized = ("" + t + "\n").getBytes();
@@ -101,7 +109,7 @@ public class TestOutputNode extends AbstractNode
         output.write(serialized);
       }
       catch (IOException ex) {
-        LOG.info("", ex);
+        logger.info("", ex);
       }
     }
   }

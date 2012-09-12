@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 })
 public class HDFSOutputNode extends AbstractNode
 {
-  private static org.slf4j.Logger LOG = LoggerFactory.getLogger(HDFSOutputNode.class);
+  private static org.slf4j.Logger logger = LoggerFactory.getLogger(HDFSOutputNode.class);
   private FSDataOutputStream output;
   private SerDe serde; // it was taken from context before, but now what, it's not a stream but a node!
   private FileSystem fs;
@@ -43,23 +43,29 @@ public class HDFSOutputNode extends AbstractNode
    * @param config
    */
   @Override
-  public void setup(NodeConfiguration config) throws Exception
+  public void setup(NodeConfiguration config) throws FailedOperationException
   {
-    fs = FileSystem.get(config);
-    filepath = new Path(config.get("filepath"));
-    append = config.getBoolean("append", true);
+    try {
+      fs = FileSystem.get(config);
+      filepath = new Path(config.get("filepath"));
+      append = config.getBoolean("append", true);
 
-    if (fs.exists(filepath)) {
-      if (append) {
-        output = fs.append(filepath);
+      if (fs.exists(filepath)) {
+        if (append) {
+          output = fs.append(filepath);
+        }
+        else {
+          fs.delete(filepath, true);
+          output = fs.create(filepath);
+        }
       }
       else {
-        fs.delete(filepath, true);
         output = fs.create(filepath);
       }
     }
-    else {
-      output = fs.create(filepath);
+    catch (IOException ex) {
+      logger.debug(ex.getLocalizedMessage());
+      throw new FailedOperationException(ex.getCause());
     }
   }
 
@@ -71,7 +77,7 @@ public class HDFSOutputNode extends AbstractNode
       output = null;
     }
     catch (IOException ex) {
-      LOG.info("", ex);
+      logger.info("", ex);
     }
 
     serde = null;
@@ -89,7 +95,7 @@ public class HDFSOutputNode extends AbstractNode
   public void process(Object t)
   {
     if (t instanceof Tuple) {
-      LOG.debug("ignoring tuple " + t);
+      logger.debug("ignoring tuple " + t);
     }
     else {
       byte[] serialized = serde.toByteArray(t);
@@ -97,7 +103,7 @@ public class HDFSOutputNode extends AbstractNode
         output.write(serialized);
       }
       catch (IOException ex) {
-        LOG.info("", ex);
+        logger.info("", ex);
       }
     }
   }
