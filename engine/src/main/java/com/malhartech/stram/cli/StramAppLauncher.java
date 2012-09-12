@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.stram.StramClient;
 import com.malhartech.stram.StramLocalCluster;
+import com.malhartech.stram.StramUtils;
+import com.malhartech.stram.conf.StreamingApplicationFactory;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.TopologyBuilder;
 
@@ -150,24 +152,29 @@ public class StramAppLauncher {
     FileUtils.deleteDirectory(baseDir);
 
     java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile);
+    List<String> classFileNames = new ArrayList<String>();
 
     java.util.Enumeration<JarEntry> entriesEnum = jar.entries();
     while (entriesEnum.hasMoreElements()) {
-        java.util.jar.JarEntry file = entriesEnum.nextElement();
-        if (!file.isDirectory()) {
-          if (file.getName().endsWith("pom.xml")) {
+        java.util.jar.JarEntry jarEntry = entriesEnum.nextElement();
+        if (!jarEntry.isDirectory()) {
+          if (jarEntry.getName().endsWith("pom.xml")) {
             File pomDst = new File(baseDir, "pom.xml");
-            FileUtils.copyInputStreamToFile(jar.getInputStream(file), pomDst);
-            if (pomCrc != file.getCrc()) {
-              LOG.info("CRC of " + file.getName() + " changed, invalidating cached classpath.");
+            FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), pomDst);
+            if (pomCrc != jarEntry.getCrc()) {
+              LOG.info("CRC of " + jarEntry.getName() + " changed, invalidating cached classpath.");
               cp = null;
-              pomCrc = file.getCrc();
+              pomCrc = jarEntry.getCrc();
             }
-          } else if (file.getName().endsWith(".tplg.properties")) {
+          } else if (jarEntry.getName().endsWith(".tplg.properties")) {
             // TODO: handle topology files in subdirs
-            File targetFile = new File(baseDir, file.getName());
-            FileUtils.copyInputStreamToFile(jar.getInputStream(file), targetFile);
+            File targetFile = new File(baseDir, jarEntry.getName());
+            FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
             configurationList.add(new PropertyFileAppConfig(targetFile));
+          } else {
+            if (jarEntry.getName().endsWith(".class")) {
+              classFileNames.add(jarEntry.getName());
+            }
           }
         }
     }
@@ -222,7 +229,44 @@ public class StramAppLauncher {
 
     this.launchDependencies = clUrls;
 
+    // we have the classpath dependencies, scan for java configurations
+    findAppConfigClasses(classFileNames);
+
   }
+
+  /**
+   * Scan the application jar file entries for configuration classes.
+   * This needs to occur in a class loader with access to the application dependencies.
+   */
+  private void findAppConfigClasses(List<String> classFileNames) {
+    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
+    for (final String classFileName : classFileNames) {
+      final String className = classFileName.replace('/', '.').substring(0, classFileName.length() - 6);
+      try {
+        Class<?> clazz = cl.loadClass(className);
+        if (StreamingApplicationFactory.class.isAssignableFrom(clazz)) {
+          configurationList.add(new AppConfig() {
+
+            @Override
+            public String getName() {
+              return classFileName;
+            }
+
+            @Override
+            public Topology createApp() {
+              // load class from current context class loader
+              Class<? extends StreamingApplicationFactory> c = StramUtils.classForName(className, StreamingApplicationFactory.class);
+              StreamingApplicationFactory f = StramUtils.newInstance(c);
+              return f.getStreamingApplication();
+            }
+          });
+        }
+      } catch (Throwable e) { // java.lang.NoClassDefFoundError
+        LOG.error("Unable for load class: " + className);
+      }
+    }
+  }
+
 
   /**
    * Run application in-process. Returns only once application completes.

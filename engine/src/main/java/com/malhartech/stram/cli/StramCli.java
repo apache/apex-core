@@ -68,7 +68,7 @@ import com.sun.jersey.api.client.WebResource;
 
 public class StramCli
 {
-  private static final transient Logger LOG = LoggerFactory.getLogger(StramCli.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
   private final Configuration conf = new Configuration();
   private final ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
@@ -404,7 +404,7 @@ public class StramCli
         }
         else {
           for (int i = 0; i < cfgList.size(); i++) {
-            System.out.printf("%3d. %s\n", i + 1, cfgList.get(i));
+            System.out.printf("%3d. %s\n", i + 1, cfgList.get(i).getName());
           }
 
           boolean useHistory = reader.getUseHistory();
