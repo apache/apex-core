@@ -145,7 +145,7 @@ public class StramLocalCluster implements Runnable {
     }
 
     @Override
-    public void setup(StreamingContainerContext ctx) throws IOException
+    public void setup(StreamingContainerContext ctx) throws Exception
     {
       super.setup(ctx);
     }
@@ -173,6 +173,7 @@ public class StramLocalCluster implements Runnable {
     final String containerId;
     final LocalStramChild child;
 
+    @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
     private LocalStramChildLauncher(DeployRequest cdr) {
       this.containerId = "container-" + containerSeq++;
       WindowGenerator wingen = null;

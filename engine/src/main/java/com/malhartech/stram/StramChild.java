@@ -103,7 +103,7 @@ public class StramChild
     this.conf = conf;
   }
 
-  public void setup(StreamingContainerContext ctx) throws IOException
+  public void setup(StreamingContainerContext ctx) throws Exception
   {
     heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
     if (heartbeatIntervalMillis == 0) {
@@ -512,7 +512,13 @@ public class StramChild
 
     if (rsp.deployRequest != null) {
       logger.info("Deploy request: {}", rsp.deployRequest);
-      deploy(rsp.deployRequest);
+      try {
+        deploy(rsp.deployRequest);
+      }
+      catch (Exception e) {
+        logger.error(e.getLocalizedMessage());
+        // report it to stram
+      }
     }
 
     if (rsp.nodeRequests != null) {
@@ -552,7 +558,7 @@ public class StramChild
     }
   }
 
-  private synchronized void deploy(List<NodeDeployInfo> nodeList)
+  private synchronized void deploy(List<NodeDeployInfo> nodeList) throws Exception
   {
     /**
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
@@ -572,7 +578,7 @@ public class StramChild
     activate(nodeList);
   }
 
-  private void deployNodes(List<NodeDeployInfo> nodeList) throws IllegalArgumentException
+  private void deployNodes(List<NodeDeployInfo> nodeList) throws Exception
   {
     NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
     HdfsBackupAgent backupAgent = new HdfsBackupAgent(nodeSerDe);
@@ -591,17 +597,14 @@ public class StramChild
         node.setup(new NodeConfiguration(ndi.id, ndi.properties));
         nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
       }
-      catch (ClassCastException cce) {
-        logger.error(cce.getLocalizedMessage());
-        throw cce;
-      }
-      catch (IOException e) {
-        throw new IllegalArgumentException("Failed to read object " + ndi, e);
+      catch (Exception e) {
+        logger.error(e.getLocalizedMessage());
+        throw e;
       }
     }
   }
 
-  private void deployOutputStreams(List<NodeDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams)
+  private void deployOutputStreams(List<NodeDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams) throws Exception
   {
     /**
      * We proceed to deploy all the output streams.
@@ -737,7 +740,7 @@ public class StramChild
     }
   }
 
-  private void deployInputStreams(List<NodeDeployInfo> nodeList)
+  private void deployInputStreams(List<NodeDeployInfo> nodeList) throws Exception
   {
     // collect any input nodes along with their smallest window id,
     // those are subsequently used to setup the window generator
