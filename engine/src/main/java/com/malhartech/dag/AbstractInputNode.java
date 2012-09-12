@@ -32,7 +32,7 @@ public abstract class AbstractInputNode implements Node, Runnable
   private transient volatile int bufferCapacity;
 
   @Override
-  public void setup(NodeConfiguration config)
+  public void setup(NodeConfiguration config) throws Exception
   {
     id = config.get("Id");
     spinMillis = config.getInt("SpinMillis", 10);
