@@ -60,19 +60,13 @@ public abstract class AbstractHDFSInputNode extends AbstractInputNode implements
    * @param config
    */
   @Override
-  public void setup(NodeConfiguration config)
+  public void setup(NodeConfiguration config) throws Exception
   {
     super.setup(config);
 
-    try {
-      FileSystem fs = FileSystem.get(config);
-      Path filepath = new Path(config.get("filepath"));
-      input = fs.open(filepath);
-    }
-    catch (IOException ex) {
-      logger.error(ex.getLocalizedMessage());
-    }
-
+    FileSystem fs = FileSystem.get(config);
+    Path filepath = new Path(config.get("filepath"));
+    input = fs.open(filepath);
   }
 
   /**

@@ -24,7 +24,7 @@ import static org.junit.Assert.assertNull;
 public class InputActiveMQStreamTest
 {
   static NodeConfiguration config;
-  static AbstractActiveMQInputStream instance;
+  static AbstractActiveMQInputNode instance;
   static MyStreamContext context;
 
   private static final class MyStreamContext extends NodeContext implements Sink
@@ -47,7 +47,7 @@ public class InputActiveMQStreamTest
   @NodeAnnotation(ports = {
     @PortAnnotation(name = Component.OUTPUT, type = PortAnnotation.PortType.OUTPUT)
   })
-  private static final class InputActiveMQStream extends AbstractActiveMQInputStream
+  private static final class InputActiveMQStream extends AbstractActiveMQInputNode
   {
     @Override
     protected void emitMessage(Message message)
@@ -113,7 +113,7 @@ public class InputActiveMQStreamTest
   }
 
   @Before
-  public void setUp()
+  public void setUp() throws Exception
   {
     instance.setup(config);
   }
@@ -125,7 +125,7 @@ public class InputActiveMQStreamTest
   }
 
   /**
-   * Test of setup method, of class AbstractActiveMQInputStream.
+   * Test of setup method, of class AbstractActiveMQInputNode.
    */
   @Test
   public void testSetup()
@@ -138,10 +138,10 @@ public class InputActiveMQStreamTest
   }
 
   /**
-   * Test of teardown method, of class AbstractActiveMQInputStream.
+   * Test of teardown method, of class AbstractActiveMQInputNode.
    */
   @Test
-  public void testTeardown()
+  public void testTeardown() throws Exception
   {
     System.out.println("teardown");
 

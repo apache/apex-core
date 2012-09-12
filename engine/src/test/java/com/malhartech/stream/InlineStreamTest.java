@@ -163,12 +163,6 @@ public class InlineStreamTest
   {
     private boolean logMessages = false;
 
-    @Override
-    public void setup(NodeConfiguration config)
-    {
-      super.setup(config);
-    }
-
     public boolean isLogMessages()
     {
       return logMessages;

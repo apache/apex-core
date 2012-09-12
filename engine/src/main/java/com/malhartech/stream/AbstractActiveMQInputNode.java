@@ -22,9 +22,9 @@ import org.slf4j.LoggerFactory;
  * Users need to implement getObject. (See example in InputActiveMQStreamTest)<br>
  * <br>
  */
-public abstract class AbstractActiveMQInputStream extends AbstractInputNode implements MessageListener, ExceptionListener
+public abstract class AbstractActiveMQInputNode extends AbstractInputNode implements MessageListener, ExceptionListener
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractActiveMQInputStream.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractActiveMQInputNode.class);
   private boolean transacted;
   private int maxiumMessages;
   private int receiveTimeOut;
@@ -33,8 +33,11 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
   private Session session;
   private MessageProducer replyProducer;
 
-  private void internalSetup(NodeConfiguration config) throws Exception
+  @Override
+  public void setup(NodeConfiguration config) throws Exception
   {
+    super.setup(config);
+
     ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
             config.get("user"),
             config.get("password"),
@@ -76,17 +79,6 @@ public abstract class AbstractActiveMQInputStream extends AbstractInputNode impl
     transacted = config.getBoolean("transacted", false);
   }
 
-  @Override
-  public void setup(NodeConfiguration config)
-  {
-    super.setup(config);
-    try {
-      internalSetup(config);
-    }
-    catch (Exception e) {
-      logger.error("Exception while setting up ActiveMQ consumer.", e.getCause());
-    }
-  }
   private int ackMode = Session.AUTO_ACKNOWLEDGE;
 
   public void setAckMode(String ackMode)

@@ -39,8 +39,8 @@ public abstract class AbstractNode implements Node
   private transient volatile Sink[] sinks = NO_SINKS;
   private transient volatile int consumedTupleCount;
   private transient volatile boolean alive;
-  private transient volatile int spinMillis;
-  private transient volatile int bufferCapacity;
+  private transient volatile int spinMillis = 10;
+  private transient volatile int bufferCapacity = 1024 * 1024;
 
   // optimize the performance of this method.
   private PortAnnotation getPort(String id)
@@ -67,9 +67,6 @@ public abstract class AbstractNode implements Node
   @Override
   public void setup(NodeConfiguration config) throws Exception
   {
-    id = config.get("Id");
-    spinMillis = config.getInt("SpinMillis", 10);
-    bufferCapacity = config.getInt("BufferCapacity", 1024 * 1024);
   }
 
   @Override

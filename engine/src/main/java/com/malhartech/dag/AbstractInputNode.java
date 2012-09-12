@@ -28,16 +28,11 @@ public abstract class AbstractInputNode implements Node, Runnable
   private transient volatile Sink[] sinks = NO_SINKS;
   private transient NodeContext ctx;
   private transient volatile int producedTupleCount;
-  private transient volatile int spinMillis;
-  private transient volatile int bufferCapacity;
+  private transient volatile int spinMillis = 10;
+  private transient volatile int bufferCapacity = 1024 * 1024;
 
-  @Override
-  public void setup(NodeConfiguration config) throws Exception
+  public AbstractInputNode()
   {
-    id = config.get("Id");
-    spinMillis = config.getInt("SpinMillis", 10);
-    bufferCapacity = config.getInt("BufferCapacity", 1024 * 1024);
-
     afterBeginWindows = new HashMap<String, CircularBuffer<Object>>();
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
 
@@ -102,20 +97,7 @@ public abstract class AbstractInputNode implements Node, Runnable
   public final void deactivate()
   {
     sinks = NO_SINKS;
-  }
-
-  @Override
-  public void teardown()
-  {
     outputs.clear();
-
-    afterEndWindows.clear();
-    afterEndWindows = null;
-    afterBeginWindows.clear();
-    afterBeginWindows = null;
-    // Should make variable "shutdown" part of AbstrastInputNode, users should not have to override teardown()
-    // as they may forget to call super.teardown()
-    // Also move "outputconnected" here as that is a very common need
   }
 
   @Override
@@ -256,12 +238,22 @@ public abstract class AbstractInputNode implements Node, Runnable
   }
 
   @Override
+  public void setup(NodeConfiguration config) throws Exception
+  {
+  }
+
+  @Override
   public void beginWindow()
   {
   }
 
   @Override
   public void endWindow()
+  {
+  }
+
+  @Override
+  public void teardown()
   {
   }
 

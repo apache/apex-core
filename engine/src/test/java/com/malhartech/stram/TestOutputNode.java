@@ -25,57 +25,51 @@ import com.malhartech.dag.Tuple;
  */
 @NodeAnnotation(
     ports = {
-        @PortAnnotation(name = TestOutputNode.PORT_INPUT, type = PortType.INPUT)
-    }
-)
+  @PortAnnotation(name = TestOutputNode.PORT_INPUT, type = PortType.INPUT)
+})
 public class TestOutputNode extends AbstractNode
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestOutputNode.class);
-
   /**
    * The path name for the output file.
    */
   public static final String P_FILEPATH = "filepath";
   public static final String PORT_INPUT = "inputPort";
-
   private transient FSDataOutputStream output;
   private transient FileSystem fs;
   private transient Path filepath;
   private boolean append;
 
   @Override
-  public void setup(NodeConfiguration config)  {
+  public void setup(NodeConfiguration config) throws Exception
+  {
     super.setup(config);
-    try {
-      fs = FileSystem.get(config);
-      String pathSpec = config.get(P_FILEPATH);
-      if (pathSpec == null) {
-        throw new IllegalArgumentException(P_FILEPATH + " not specified.");
-      }
-      filepath = new Path(pathSpec);
-      append = config.getBoolean("append", false);
+    fs = FileSystem.get(config);
+    String pathSpec = config.get(P_FILEPATH);
+    if (pathSpec == null) {
+      throw new IllegalArgumentException(P_FILEPATH + " not specified.");
+    }
+    filepath = new Path(pathSpec);
+    append = config.getBoolean("append", false);
 
-      LOG.info("output file: " + filepath);
-      if (fs.exists(filepath)) {
-        if (append) {
-          output = fs.append(filepath);
-        }
-        else {
-          fs.delete(filepath, true);
-          output = fs.create(filepath);
-        }
+    LOG.info("output file: " + filepath);
+    if (fs.exists(filepath)) {
+      if (append) {
+        output = fs.append(filepath);
       }
       else {
+        fs.delete(filepath, true);
         output = fs.create(filepath);
       }
     }
-    catch (IOException ex) {
-      throw new RuntimeException("Setup failed.", ex);
+    else {
+      output = fs.create(filepath);
     }
   }
 
   @Override
-  public void teardown() {
+  public void teardown()
+  {
     try {
       output.close();
       output = null;
