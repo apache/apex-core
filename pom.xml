@@ -3,6 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.malhartech</groupId>
+  <artifactId>malhar-framework</artifactId>
   <version>0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
@@ -36,13 +37,12 @@
   </dependencies>
 
   <modules>
+    <module>bufferserver</module>
     <module>stram</module>
     <module>library</module>
-    <module>bufferserver</module>
     <module>examples/wordcount</module>
     <module>examples/twitter</module>
     <module>examples/ads</module>
     <module>examples/performance</module>
   </modules>
-    <artifactId>framework</artifactId>
 </project>
