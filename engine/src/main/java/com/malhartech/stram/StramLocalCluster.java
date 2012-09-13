@@ -204,6 +204,7 @@ public class StramLocalCluster implements Runnable {
   }
 
   public StramLocalCluster(Topology topology) throws Exception {
+    topology.validate();
     try {
       FileContext.getLocalFSFileContext().delete(
           new Path(CLUSTER_WORK_DIR.getAbsolutePath()), true);

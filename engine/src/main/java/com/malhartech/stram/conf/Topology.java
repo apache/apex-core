@@ -128,7 +128,7 @@ public class Topology implements Serializable, TopologyConstants {
     private static final long serialVersionUID = 1L;
 
     private boolean inline;
-    private List<InputPort> sinks = new ArrayList<InputPort>();
+    private final List<InputPort> sinks = new ArrayList<InputPort>();
     private OutputPort source;
     private Class<? extends SerDe> serDeClass;
     private final String id;
@@ -167,6 +167,10 @@ public class Topology implements Serializable, TopologyConstants {
 
     public void setSource(OutputPort port) {
       this.source = port;
+      if (port.node.outputStreams.containsKey(port.portAnnotation.name())) {
+        String msg = String.format("Node %s already connected to %s", port.node.id, port.node.outputStreams.get(port.portAnnotation.name()).id);
+        throw new IllegalArgumentException(msg);
+      }
       port.node.outputStreams.put(port.portAnnotation.name(), this);
     }
 

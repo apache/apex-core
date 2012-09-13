@@ -152,7 +152,7 @@ public class TopologyBuilderTest {
       tplg.validate();
 
       assertEquals("number of node confs", 5, tplg.getAllNodes().size());
-      assertEquals("number of root nodes", 3, tplg.getRootNodes().size());
+      assertEquals("number of root nodes", 1, tplg.getRootNodes().size());
 
       StreamDecl s1 = tplg.getStream("n1n2");
       assertNotNull(s1);
@@ -174,10 +174,15 @@ public class TopologyBuilderTest {
       assertEquals("node4.myStringProperty", "overrideNode4", dnode4.getMyStringProperty());
       assertTrue("node4.booleanProperty", dnode4.booleanProperty);
 
-      StreamDecl input1 = tplg.getStream("inputToNode1");
+      StreamDecl input1 = tplg.getStream("inputStream");
       assertNotNull(input1);
       Assert.assertEquals("input1 source", tplg.getNode("inputNode"), input1.getSource().getNode());
-      Assert.assertEquals("input1 target ", tplg.getNode("node1"), input1.getSinks().iterator().next().getNode());
+      Set<NodeDecl> targetNodes = new HashSet<NodeDecl>();
+      for (InputPort targetPort : input1.getSinks()) {
+        targetNodes.add(targetPort.getNode());
+      }
+
+      Assert.assertEquals("input1 target ", Sets.newHashSet(tplg.getNode("node1"), node3, node4), targetNodes);
 
   }
 
