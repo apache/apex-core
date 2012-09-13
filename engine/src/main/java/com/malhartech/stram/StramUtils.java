@@ -4,15 +4,18 @@
  */
 package com.malhartech.stram;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
+
+import org.apache.commons.beanutils.BeanUtils;
+
 import com.malhartech.dag.DefaultNodeSerDe;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeSerDe;
 import com.malhartech.dag.SerDe;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import org.apache.commons.beanutils.BeanUtils;
 
 /**
  *
@@ -54,13 +57,14 @@ public abstract class StramUtils {
    * @param nodeClass
    * @param properties
    */
-  public static Node initNode(Class<? extends Node> nodeClass, Map<String, String> properties)
+  public static Node initNode(Class<? extends Node> nodeClass, String id, Map<String, String> properties)
   {
     try {
       Constructor<? extends Node> c = nodeClass.getConstructor();
       Node node = c.newInstance();
       // populate custom properties
       BeanUtils.populate(node, properties);
+      internalSetupNode(node, id);
       return node;
     }
     catch (IllegalAccessException e) {
@@ -77,6 +81,25 @@ public abstract class StramUtils {
     }
     catch (InstantiationException e) {
       throw new IllegalArgumentException("Failed to instantiate: " + nodeClass, e);
+    }
+  }
+
+  /**
+   * Initialize internal field(s) on node base class.
+   * To be called along with {@link Node#setup}
+   * @param node
+   * @param id
+   */
+  public static void internalSetupNode(Node node, String id) {
+    if (node instanceof com.malhartech.dag.AbstractNode) {
+      // TODO: replace this with internal initialization interface on nodes
+      try {
+        Field f = com.malhartech.dag.AbstractNode.class.getDeclaredField("id");
+        f.setAccessible(true);
+        f.set(node, id);
+      } catch (Exception e) {
+        throw new RuntimeException("Set id failed for node " + node + ", id=" + id, e);
+      }
     }
   }
 

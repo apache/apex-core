@@ -79,4 +79,11 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
     }
     LOG.info("Finished generating tuples");
   }
+
+  @Override
+  public void teardown() {
+    shutdown = true;
+    super.teardown();
+  }
+
 }

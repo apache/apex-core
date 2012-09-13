@@ -118,7 +118,7 @@ public class TopologyBuilderTest {
 
   @SuppressWarnings("unchecked")
   private <T extends AbstractNode> T initNode(NodeDecl nodeConf) {
-    return (T)StramUtils.initNode(nodeConf.getNodeClass(), nodeConf.getProperties());
+    return (T)StramUtils.initNode(nodeConf.getNodeClass(), nodeConf.getId(), nodeConf.getProperties());
   }
 
   public void printTopology(NodeDecl node, Topology tplg, int level) {

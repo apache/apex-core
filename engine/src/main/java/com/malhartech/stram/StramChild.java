@@ -594,6 +594,7 @@ public class StramChild
           foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
         Node node = (Node)foreignObject;
+        StramUtils.internalSetupNode(node, ndi.id);
         node.setup(new NodeConfiguration(ndi.id, ndi.properties));
         nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
       }

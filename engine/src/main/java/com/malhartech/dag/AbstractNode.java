@@ -160,7 +160,7 @@ public abstract class AbstractNode implements Node
   {
     PortAnnotation pa = getPort(id);
     if (pa == null) {
-      throw new IllegalArgumentException("Unrecognized Port " + id);
+      throw new IllegalArgumentException("Unrecognized Port " + id + " for " + this);
     }
 
     Sink s;
