@@ -142,9 +142,11 @@ public abstract class AbstractInputNode implements Node, Runnable
 
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
-          CircularBuffer<?> cb = e.getValue();
-          for (int i = cb.size(); i-- > 0;) {
-            s.process(cb.get());
+          if (s != null) {
+            CircularBuffer<?> cb = e.getValue();
+            for (int i = cb.size(); i-- > 0;) {
+              s.process(cb.get());
+            }
           }
         }
         break;
@@ -152,9 +154,11 @@ public abstract class AbstractInputNode implements Node, Runnable
       case END_WINDOW:
         for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
-          CircularBuffer<?> cb = e.getValue();
-          for (int i = cb.size(); i-- > 0;) {
-            s.process(cb.get());
+          if (s != null) {
+            CircularBuffer<?> cb = e.getValue();
+            for (int i = cb.size(); i-- > 0;) {
+              s.process(cb.get());
+            }
           }
         }
         for (final Sink s: sinks) {
@@ -184,9 +188,11 @@ public abstract class AbstractInputNode implements Node, Runnable
         // i think there should be just one queue instead of one per port - lets defer till we find an example.
         for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
           final Sink s = outputs.get(e.getKey());
-          CircularBuffer<?> cb = e.getValue();
-          for (int i = cb.size(); i-- > 0;) {
-            s.process(cb.get());
+          if (s != null) {
+            CircularBuffer<?> cb = e.getValue();
+            for (int i = cb.size(); i-- > 0;) {
+              s.process(cb.get());
+            }
           }
         }
         break;
