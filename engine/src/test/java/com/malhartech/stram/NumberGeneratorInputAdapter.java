@@ -7,8 +7,6 @@ import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractInputNode;
-import com.malhartech.dag.EndStreamTuple;
-import com.malhartech.dag.NodeContext;
 import com.malhartech.dag.Sink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,4 +77,11 @@ public class NumberGeneratorInputAdapter extends AbstractInputNode
     }
     LOG.info("Finished generating tuples");
   }
+
+  @Override
+  public void teardown() {
+    shutdown = true;
+    super.teardown();
+  }
+
 }

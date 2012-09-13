@@ -65,7 +65,7 @@ public class HDFSOutputNode extends AbstractNode
     }
     catch (IOException ex) {
       logger.debug(ex.getLocalizedMessage());
-      throw new FailedOperationException(ex.getCause());
+      throw new FailedOperationException(ex);
     }
   }
 

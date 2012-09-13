@@ -216,31 +216,26 @@ public class DNodeManager
   }
 
   /**
-   * Create node tracking context for logical node. Exposed here for tests<p>
+   * Create deploy info for logical node.<p>
    * <br>
    * @param dnodeId
-   * @param nodeConf
-   * @return {@link com.malhartech.stram.NodePConf}
+   * @param nodeDecl
+   * @return {@link com.malhartech.stram.NodeDeployInfo}
    *
    */
   private NodeDeployInfo createNodeContext(String dnodeId, NodeDecl nodeDecl)
   {
     NodeDeployInfo ndi = new NodeDeployInfo();
-
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
-      Node node = StramUtils.initNode(nodeDecl.getNodeClass(), nodeDecl.getProperties());
+      Node node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
       this.nodeSerDe.write(node, os);
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {
       throw new RuntimeException("Failed to initialize " + nodeDecl + "(" + nodeDecl.getNodeClass() + ")", e);
     }
-    //snc.setDnodeClassName(nodeDecl.getProperties().get(TopologyBuilder.NODE_CLASSNAME));
-    //if (snc.getDnodeClassName() == null) {
-    //  throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", nodeDecl.getId(), TopologyBuilder.NODE_CLASSNAME));
-    //}
     ndi.properties = nodeDecl.getProperties();
     ndi.declaredId = nodeDecl.getId();
     ndi.id = dnodeId;

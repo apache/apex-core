@@ -69,7 +69,7 @@ public abstract class AbstractHDFSInputNode extends AbstractInputNode implements
     }
     catch (IOException ex) {
       logger.error(ex.getLocalizedMessage());
-      throw new FailedOperationException(ex.getCause());
+      throw new FailedOperationException(ex);
     }
   }
 

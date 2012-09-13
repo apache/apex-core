@@ -71,7 +71,7 @@ public class TestOutputNode extends AbstractNode
     }
     catch (IllegalArgumentException illegalArgumentException) {
       logger.debug(illegalArgumentException.getLocalizedMessage());
-      throw new FailedOperationException(illegalArgumentException.getCause());
+      throw new FailedOperationException(illegalArgumentException);
     }
   }
 

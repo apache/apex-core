@@ -585,15 +585,16 @@ public class StramChild
     for (NodeDeployInfo ndi: nodeList) {
       NodeContext nc = new NodeContext(ndi.id);
       try {
-        logger.debug("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
+          logger.debug("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
           foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
         }
         else {
           foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
         Node node = (Node)foreignObject;
+        StramUtils.internalSetupNode(node, ndi.id);
         node.setup(new NodeConfiguration(ndi.id, ndi.properties));
         nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
       }

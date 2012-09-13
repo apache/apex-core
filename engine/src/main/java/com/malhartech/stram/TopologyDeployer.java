@@ -232,8 +232,8 @@ public class TopologyDeployer {
     }
   }
 
-  private Map<NodeDecl, List<PTNode>> deployedNodes = new HashMap<NodeDecl, List<PTNode>>();
-  private List<PTContainer> containers = new ArrayList<PTContainer>();
+  private final Map<NodeDecl, List<PTNode>> deployedNodes = new HashMap<NodeDecl, List<PTNode>>();
+  private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private int maxContainers = 1;
 
   private PTContainer getContainer(int index) {
@@ -338,7 +338,7 @@ public class TopologyDeployer {
 
   }
 
-  private AtomicInteger nodeSequence = new AtomicInteger();
+  private final AtomicInteger nodeSequence = new AtomicInteger();
 
   private PTNode createPTNode(NodeDecl nodeDecl, byte[] partition, int instanceCount) {
 

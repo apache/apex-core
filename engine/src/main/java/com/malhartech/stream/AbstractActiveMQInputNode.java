@@ -42,7 +42,7 @@ public abstract class AbstractActiveMQInputNode extends AbstractInputNode implem
     }
     catch (JMSException ex) {
       logger.debug(ex.getLocalizedMessage());
-      throw new FailedOperationException(ex.getCause());
+      throw new FailedOperationException(ex);
     }
 
     maxiumMessages = config.getInt("maximumMessages", 0);
