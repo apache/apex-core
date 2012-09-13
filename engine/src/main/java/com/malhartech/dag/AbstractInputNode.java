@@ -136,6 +136,7 @@ public abstract class AbstractInputNode implements Node, Runnable
     Tuple t = (Tuple)payload;
     switch (t.getType()) {
       case BEGIN_WINDOW:
+        beginWindow();
         for (int i = sinks.length; i-- > 0;) {
           sinks[i].process(payload);
         }
@@ -161,8 +162,9 @@ public abstract class AbstractInputNode implements Node, Runnable
             }
           }
         }
-        for (final Sink s: sinks) {
-          s.process(payload);
+        endWindow();
+        for (int i = sinks.length; i-- > 0;) {
+          sinks[i].process(payload);
         }
 
         ctx.report(producedTupleCount, 0L, ((Tuple)payload).getWindowId());
@@ -198,8 +200,8 @@ public abstract class AbstractInputNode implements Node, Runnable
         break;
 
       default:
-        for (final Sink s: sinks) {
-          s.process(payload);
+        for (int i = sinks.length; i-- > 0;) {
+          sinks[i].process(payload);
         }
     }
   }
