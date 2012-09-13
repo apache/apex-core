@@ -145,12 +145,6 @@ public class StramLocalCluster implements Runnable {
     }
 
     @Override
-    public void setup(StreamingContainerContext ctx) throws Exception
-    {
-      super.setup(ctx);
-    }
-
-    @Override
     public void teardown()
     {
       super.teardown();
