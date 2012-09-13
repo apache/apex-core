@@ -314,6 +314,7 @@ public abstract class AbstractNode implements Node
         activePort = buffers.next();
 
         Object payload;
+        activeport:
         while ((payload = activePort.peek()) != null) {
           if (payload instanceof Tuple) {
             final Tuple t = (Tuple)payload;
@@ -337,6 +338,7 @@ public abstract class AbstractNode implements Node
                 }
                 else {
                   buffers.remove();
+                  break activeport;
                 }
                 break;
 
@@ -389,12 +391,13 @@ public abstract class AbstractNode implements Node
                   }
                   else {
                     buffers.remove();
+                    break activeport;
                   }
                 }
                 else {
                   buffers.remove();
+                  break activeport;
                 }
-                break;
 
               case RESET_WINDOW:
                 /**
@@ -424,7 +427,7 @@ public abstract class AbstractNode implements Node
                   alive = false;
                   break activequeue;
                 }
-                break;
+                break activeport;
 
               default:
                 throw new UnhandledException("Unrecognized Control Tuple", new IllegalArgumentException(t.toString()));
