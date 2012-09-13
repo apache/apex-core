@@ -10,12 +10,6 @@ package com.malhartech.dag;
  */
 public class FailedOperationException extends Exception
 {
-
-  public FailedOperationException()
-  {
-    super();
-  }
-
   public FailedOperationException(String message)
   {
     super(message);

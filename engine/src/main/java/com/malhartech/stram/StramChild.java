@@ -585,9 +585,9 @@ public class StramChild
     for (NodeDeployInfo ndi: nodeList) {
       NodeContext nc = new NodeContext(ndi.id);
       try {
-        logger.debug("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
+          logger.debug("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
           foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
         }
         else {
