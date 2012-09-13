@@ -86,7 +86,7 @@ public abstract class AbstractInputNode implements Node, Runnable
           }
         }
       }
-      while (pendingMessages);
+      while (pendingMessages && sinks.length > 0);
     }
     catch (InterruptedException ex) {
       logger.info("Not waiting for the emitted tuples to be flushed as got interrupted by {}", ex.getLocalizedMessage());
@@ -267,7 +267,7 @@ public abstract class AbstractInputNode implements Node, Runnable
   @Override
   public void teardown()
   {
-    }
+  }
 
   @Override
   public int hashCode()
