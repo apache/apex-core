@@ -42,6 +42,16 @@ public abstract class AbstractNode implements Node
   private transient volatile int spinMillis = 10;
   private transient volatile int bufferCapacity = 1024 * 1024;
 
+  public String getId()
+  {
+    return id;
+  }
+
+  public void setId(String id)
+  {
+    this.id = id;
+  }
+
   // optimize the performance of this method.
   private PortAnnotation getPort(String id)
   {
@@ -270,7 +280,10 @@ public abstract class AbstractNode implements Node
    */
   public final void emit(String id, Object payload)
   {
-    outputs.get(id).process(payload);
+    final Sink s = outputs.get(id);
+    if (s != null) {
+      outputs.get(id).process(payload);
+    }
   }
 
   @Override
@@ -287,7 +300,7 @@ public abstract class AbstractNode implements Node
    * long as there is useful workload for the node.
    */
   @Override
-  @SuppressWarnings({ "SleepWhileInLoop", "incomplete-switch" })
+  @SuppressWarnings({"SleepWhileInLoop", "incomplete-switch"})
   public final void activate(NodeContext ctx)
   {
     activateSinks();

@@ -103,7 +103,7 @@ public class StramChild
     this.conf = conf;
   }
 
-  public void setup(StreamingContainerContext ctx) throws Exception
+  public void setup(StreamingContainerContext ctx)
   {
     heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
     if (heartbeatIntervalMillis == 0) {
@@ -119,8 +119,12 @@ public class StramChild
     if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
       this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
     }
-
-    deploy(ctx.nodeList);
+    try {
+      deploy(ctx.nodeList);
+    }
+    catch (Exception ex) {
+      logger.debug("deploy request failed due to {}", ex);
+    }
   }
 
   public String getContainerId()
@@ -516,7 +520,7 @@ public class StramChild
         deploy(rsp.deployRequest);
       }
       catch (Exception e) {
-        logger.error(e.getLocalizedMessage());
+        logger.error("deploy request failed due to {}", e);
         // report it to stram
       }
     }
@@ -594,7 +598,15 @@ public class StramChild
           foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
         Node node = (Node)foreignObject;
-        StramUtils.internalSetupNode(node, ndi.id);
+        try {
+          StramUtils.internalSetupNode(node, ndi.id.concat(":").concat(ndi.declaredId));
+        }
+        catch (Exception e) {
+          /**
+           * we really do not care if the naming fails.
+           */
+          logger.debug("internal setup (currently setting the id) failed with {}", e);
+        }
         node.setup(new NodeConfiguration(ndi.id, ndi.properties));
         nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
       }

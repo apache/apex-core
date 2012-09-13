@@ -49,6 +49,16 @@ public abstract class AbstractInputNode implements Node, Runnable
     }
   }
 
+  public String getId()
+  {
+    return id;
+  }
+
+  public void setId(String id)
+  {
+    this.id = id;
+  }
+
   @Override
   @SuppressWarnings("SleepWhileInLoop")
   public final void activate(NodeContext context)

@@ -4,18 +4,19 @@
  */
 package com.malhartech.stram;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-
-import org.apache.commons.beanutils.BeanUtils;
-
 import com.malhartech.dag.DefaultNodeSerDe;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeSerDe;
 import com.malhartech.dag.SerDe;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
+import java.util.logging.Level;
+import org.apache.commons.beanutils.BeanUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -23,6 +24,8 @@ import com.malhartech.dag.SerDe;
  * <br>
  */
 public abstract class StramUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(StramUtils.class);
 
   public static SerDe getSerdeInstance(String className) {
     if (className != null) {
@@ -32,7 +35,7 @@ public abstract class StramUtils {
     }
   }
 
-  public static final <T> Class<? extends T> classForName(String className, Class<T> superClass) {
+  public static <T> Class<? extends T> classForName(String className, Class<T> superClass) {
     try {
       //return Class.forName(className).asSubclass(superClass);
       return Thread.currentThread().getContextClassLoader().loadClass(className).asSubclass(superClass);
@@ -41,7 +44,7 @@ public abstract class StramUtils {
     }
   }
 
-  public static final <T> T newInstance(Class<T> clazz) {
+  public static <T> T newInstance(Class<T> clazz) {
     try {
       return clazz.newInstance();
     } catch (IllegalAccessException e) {
@@ -91,15 +94,14 @@ public abstract class StramUtils {
    * @param id
    */
   public static void internalSetupNode(Node node, String id) {
-    if (node instanceof com.malhartech.dag.AbstractNode) {
-      // TODO: replace this with internal initialization interface on nodes
-      try {
-        Field f = com.malhartech.dag.AbstractNode.class.getDeclaredField("id");
-        f.setAccessible(true);
-        f.set(node, id);
-      } catch (Exception e) {
-        throw new RuntimeException("Set id failed for node " + node + ", id=" + id, e);
-      }
+    try {
+      Field f = node.getClass().getDeclaredField(id);
+      f.setAccessible(true);
+      f.set(node, id);
+    }
+    catch (Exception se) {
+      logger.debug(se.getLocalizedMessage());
+      throw new RuntimeException("Could not set id field of the node because of {}", se);
     }
   }
 
