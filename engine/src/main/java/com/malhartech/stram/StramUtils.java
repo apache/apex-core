@@ -4,6 +4,12 @@
  */
 package com.malhartech.stram;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
+
+import org.apache.commons.beanutils.BeanUtils;
+
 import com.malhartech.dag.AbstractInputNode;
 import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.DefaultNodeSerDe;
@@ -11,14 +17,6 @@ import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeSerDe;
 import com.malhartech.dag.SerDe;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.logging.Level;
-import org.apache.commons.beanutils.BeanUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -26,8 +24,6 @@ import org.slf4j.LoggerFactory;
  * <br>
  */
 public abstract class StramUtils {
-
-  private static final Logger logger = LoggerFactory.getLogger(StramUtils.class);
 
   public static SerDe getSerdeInstance(String className) {
     if (className != null) {
@@ -96,17 +92,11 @@ public abstract class StramUtils {
    * @param id
    */
   public static void internalSetupNode(Node node, String id) {
-    try {
-      Field f = node instanceof AbstractNode? AbstractNode.class.getDeclaredField("id"): node instanceof AbstractInputNode? AbstractInputNode.class.getDeclaredField("id"): null;
-      f.setAccessible(true);
-      f.set(node, id);
-    }
-    catch (NullPointerException npe) {
-      logger.debug(npe.getLocalizedMessage());
-    }
-    catch (Exception se) {
-      logger.debug(se.getLocalizedMessage());
-      throw new RuntimeException("Could not set id field of the node", se);
+    // TODO: what we really need is a common node interface for internal setup
+    if (node instanceof AbstractNode) {
+      ((AbstractNode)node).setId(id);
+    } else if (node instanceof AbstractInputNode) {
+      ((AbstractInputNode)node).setId(id);
     }
   }
 

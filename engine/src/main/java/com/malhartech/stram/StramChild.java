@@ -598,15 +598,7 @@ public class StramChild
           foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
         Node node = (Node)foreignObject;
-        try {
-          StramUtils.internalSetupNode(node, ndi.id.concat(":").concat(ndi.declaredId));
-        }
-        catch (Exception e) {
-          /**
-           * we really do not care if the naming fails.
-           */
-          logger.debug("internal setup (currently setting the id) failed with {}", e);
-        }
+        StramUtils.internalSetupNode(node, ndi.id.concat(":").concat(ndi.declaredId));
         node.setup(new NodeConfiguration(ndi.id, ndi.properties));
         nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
       }

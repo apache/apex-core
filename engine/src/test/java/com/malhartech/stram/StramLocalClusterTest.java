@@ -44,6 +44,11 @@ public class StramLocalClusterTest
     lc.run();
   }
 
+  /**
+   * Verify test configuration launches and stops after input terminates.
+   * Test validates expected output end to end.
+   * @throws Exception
+   */
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
