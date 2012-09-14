@@ -85,7 +85,7 @@
     <dependency>
       <groupId>com.esotericsoftware.reflectasm</groupId>
       <artifactId>reflectasm</artifactId>
-      <version>1.06</version>
+      <version>1.07</version>
       <classifier>shaded</classifier>
     </dependency>
     <dependency>
@@ -98,11 +98,11 @@
       <artifactId>netty-transport</artifactId>
       <version>4.0.0.Alpha2</version>
     </dependency>
-     <dependency>
+     <!--dependency>
          <groupId>org.reflections</groupId>
          <artifactId>reflections</artifactId>
          <version>0.9.8</version>
-     </dependency>
+     </dependency-->
     <dependency>
       <groupId>com.esotericsoftware.kryo</groupId>
       <artifactId>kryo</artifactId>
