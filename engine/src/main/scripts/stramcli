@@ -27,6 +27,11 @@ addhc io/netty/netty-common/4.0.0.Alpha2/netty-common-4.0.0.Alpha2.jar
 addhc io/netty/netty-buffer/4.0.0.Alpha2/netty-buffer-4.0.0.Alpha2.jar
 addhc io/netty/netty-codec/4.0.0.Alpha2/netty-codec-4.0.0.Alpha2.jar
 
-export HADOOP_CLIENT_OPTS="$HADOOP_OPTS"
+
+if [ "$STRAM_CLIENT_OPTS" = "" ]; then
+  STRAM_CLIENT_OPTS=-Xmx1024m
+fi
+
+export HADOOP_CLIENT_OPTS="$STRAM_CLIENT_OPTS"
 
 $HADOOP_PREFIX/bin/hadoop com.malhartech.stram.cli.StramCli 
