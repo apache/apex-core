@@ -258,10 +258,6 @@ public abstract class AbstractInputNode implements Node, Runnable
   @Override
   public void setup(NodeConfiguration config) throws FailedOperationException
   {
-    // TODO:
-    // component should always have identity assigned
-    // final setup method that cannot be bypassed by user code to perform required initialization
-    id = config.get("Id");
   }
 
   @Override
