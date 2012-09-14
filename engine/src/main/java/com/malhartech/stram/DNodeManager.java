@@ -4,22 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayOutputStream;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeSerDe;
 import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
@@ -44,6 +28,20 @@ import com.malhartech.stram.conf.Topology.InputPort;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.Topology.StreamDecl;
 import com.malhartech.stram.webapp.NodeInfo;
+import java.io.ByteArrayOutputStream;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  *
  * Tracks topology provisioning/allocation to containers<p>

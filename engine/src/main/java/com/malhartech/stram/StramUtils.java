@@ -4,6 +4,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.AbstractNode;
 import com.malhartech.dag.DefaultNodeSerDe;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Node;
@@ -95,13 +97,16 @@ public abstract class StramUtils {
    */
   public static void internalSetupNode(Node node, String id) {
     try {
-      Field f = node.getClass().getDeclaredField(id);
+      Field f = node instanceof AbstractNode? AbstractNode.class.getDeclaredField("id"): node instanceof AbstractInputNode? AbstractInputNode.class.getDeclaredField("id"): null;
       f.setAccessible(true);
       f.set(node, id);
     }
+    catch (NullPointerException npe) {
+      logger.debug(npe.getLocalizedMessage());
+    }
     catch (Exception se) {
       logger.debug(se.getLocalizedMessage());
-      throw new RuntimeException("Could not set id field of the node because of {}", se);
+      throw new RuntimeException("Could not set id field of the node", se);
     }
   }
 
