@@ -12,6 +12,7 @@ import com.malhartech.bufferserver.Buffer;
  * <br>
  * This defines the end of a window. A new begin window has to come after the end window of the previous window<br>
  * <br>
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class EndWindowTuple extends Tuple
@@ -39,9 +40,9 @@ public class EndWindowTuple extends Tuple
     this.tupleCount = tupleCount;
   }
 
-  @Override
-  public String toString()
-  {
-    return "tuples = " + tupleCount + " " + super.toString();
-  }
+//  @Override
+//  public String toString()
+//  {
+//    return "tuples = " + tupleCount + " " + super.toString();
+//  }
 }
