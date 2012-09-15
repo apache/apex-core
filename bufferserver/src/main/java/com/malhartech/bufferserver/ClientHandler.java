@@ -26,8 +26,6 @@ import org.slf4j.LoggerFactory;
 public class ClientHandler extends ChannelInboundMessageHandlerAdapter
 {
   private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
-  // Stateful properties
-  private volatile Channel channel;
 
   /**
    *
