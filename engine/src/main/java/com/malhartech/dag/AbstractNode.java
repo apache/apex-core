@@ -312,7 +312,7 @@ public abstract class AbstractNode implements Node
     activeQueues.addAll(inputs.values());
 
     int expectingBeginWindow = activeQueues.size();
-    int resetTuples = activeQueues.size();
+    int receivedResetTuples = 0;
     int receivedEndWindow = 0;
 
     boolean shouldWait;
@@ -419,12 +419,16 @@ public abstract class AbstractNode implements Node
                  */
                 shouldWait = false;
                 activePort.get();
-                if (--resetTuples == 0) {
-                  for (final Sink output: outputs.values()) {
-                    output.process(t);
+
+                if (receivedResetTuples++ == 0) {
+                  for (int s = sinks.length; s-- > 0;) {
+                    sinks[s].process(t);
                   }
-                  resetTuples = totalQueues;
                 }
+                else if (receivedResetTuples == activeQueues.size()) {
+                  receivedResetTuples = 0;
+                }
+
                 break;
 
               case END_STREAM:
