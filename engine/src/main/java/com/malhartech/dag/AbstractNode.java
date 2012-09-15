@@ -14,6 +14,7 @@ import java.util.Iterator;
 import org.apache.commons.lang.UnhandledException;
 import org.slf4j.LoggerFactory;
 
+// inflight changes to the port connections should be captured.
 /**
  *
  * The base class for node implementation<p>
@@ -395,11 +396,11 @@ public abstract class AbstractNode implements Node
                       logger.warn("Exception while catering to external request", e.getLocalizedMessage());
                     }
 
-                    expectingBeginWindow = activeQueues.size();
 
                     buffers.remove();
                     assert (activeQueues.isEmpty());
                     activeQueues.addAll(inputs.values());
+                    expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
                   else {
@@ -456,7 +457,7 @@ public abstract class AbstractNode implements Node
 
       if (shouldWait) {
         if (activeQueues.isEmpty()) {
-          logger.error("Invalid State - the node is blocked forever!!!");
+          logger.error("Invalid State - the node {} is blocked forever!!!", this);
         }
 
         int oldCount = 0;

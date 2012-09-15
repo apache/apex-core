@@ -13,6 +13,7 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// write recoverable AIN
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -300,7 +301,7 @@ public abstract class AbstractInputNode implements Node, Runnable
   @Override
   public String toString()
   {
-    return getClass().getSimpleName() + "{" + "id=" + id + ", outputs=" + outputs.keySet() + '}';
+    return getClass().getSimpleName() + "{" + "id=" + id + '}';
   }
 
   @SuppressWarnings("SillyAssignment")

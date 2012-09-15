@@ -60,6 +60,7 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// make sure that setup and teardown is called through the same thread which calls process
 /**
  *
  * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.<p>
@@ -284,12 +285,12 @@ public class StramChild
           }
           else if (stream.isMultiSinkCapable()) {
             ComponentContextPair<Stream, StreamContext> spair = streams.get(sinkId);
-            logger.debug("found stream {} against {}", spair == null? null: spair.component, sinkId);
+            logger.debug("found stream {} against {}", spair == null ? null : spair.component, sinkId);
             if (spair == null) {
-              assert(!sinkId.startsWith("tcp://"));
+              assert (!sinkId.startsWith("tcp://"));
             }
             else {
-              assert(sinkId.startsWith("tcp://"));
+              assert (sinkId.startsWith("tcp://"));
               if (activeStreams.containsKey(spair.component)) {
                 logger.debug("deactivating {} for sink {}", spair.component, sinkId);
                 spair.component.deactivate();
@@ -348,7 +349,9 @@ public class StramChild
     }
 
     for (String streamId: removableSocketOutputStreams) {
-      logger.debug("{} removing stream {}", Thread.currentThread(), streamId);
+      logger.debug("removing stream {}", streamId);
+      // need to check why control comes here twice to remove the stream which was deleted before.
+      // is it because of multiSinkCapableStream ?
       ComponentContextPair<Stream, StreamContext> pair = streams.remove(streamId);
       pair.component.teardown();
     }
@@ -458,7 +461,7 @@ public class StramChild
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
         e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
-        hb.setState((activeNodes.containsKey(e.getValue().component)? DNodeState.PROCESSING: DNodeState.IDLE).toString());
+        hb.setState((activeNodes.containsKey(e.getValue().component) ? DNodeState.PROCESSING : DNodeState.IDLE).toString());
         // propagate the backup window, if any
         Long backupWindowId = backupInfo.get(e.getKey());
         if (backupWindowId != null) {
@@ -662,9 +665,6 @@ public class StramChild
              * Although there is a node in this container interested in output placed on this stream, there
              * seems to at least one more party interested but placed in a container other than this one.
              */
-            stream = new MuxStream();
-            stream.setup(new StreamConfiguration());
-
             StreamConfiguration config = new StreamConfiguration();
             config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
@@ -679,10 +679,15 @@ public class StramChild
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
 
+            streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
+
+            // should we create inline stream here or wait for the input deployments to create the inline streams?
+            stream = new MuxStream();
+            stream.setup(new StreamConfiguration());
+
             Sink s = bsos.connect(Component.INPUT, stream);
             stream.connect(sinkIdentifier, s);
 
-            streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
           }
         }
