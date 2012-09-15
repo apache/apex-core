@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.conf.Configuration;
@@ -257,7 +258,8 @@ public class StramChild
     Node node = nodes.get(nodeid).component;
     disconnectWindowGenerator(nodeid, node);
 
-    List<String> removableSocketOutputStreams = new ArrayList<String>();
+    Set<String> removableSocketOutputStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
+    // with the logic i have in here, the list should not contain repeated streams. but it does and that causes problem.
     for (Entry<String, ComponentContextPair<Stream, StreamContext>> entry: streams.entrySet()) {
       String indexingKey = entry.getKey();
       Stream stream = entry.getValue().component;
