@@ -126,7 +126,9 @@ public abstract class AbstractNode implements Node
     @SuppressWarnings("SleepWhileInLoop")
     public final void process(Object payload)
     {
-//      logger.debug(AbstractNode.this + "::" + this + " got payload " + payload);
+//      if (AbstractNode.this.id.endsWith("adviewsNode")) {
+//        logger.debug(AbstractNode.this + "::" + this + " got payload " + payload);
+//      }
       try {
         while (true) {
           try {
@@ -189,12 +191,17 @@ public abstract class AbstractNode implements Node
         }
 
       case INPUT:
+        CompoundSink cs = inputs.get(pa.name());
         if (dagpart == null) {
-          inputs.remove(pa.name());
+          // since there are tuples which are not yet processed downstream, rather than just removing
+          // the sink, it makes sense to wait for all the data to be processed on this sink and then
+          // remove it.
+          if (cs != null) {
+            cs.process(new EndStreamTuple());
+          }
           s = null;
         }
         else {
-          CompoundSink cs = inputs.get(pa.name());
           if (cs == null) {
             cs = new CompoundSink(pa.name(), dagpart);
             inputs.put(pa.name(), cs);
@@ -461,7 +468,7 @@ public abstract class AbstractNode implements Node
 
       if (shouldWait) {
         if (activeQueues.isEmpty()) {
-          logger.error("Invalid State - the node {} is blocked forever!!!", this);
+          logger.error("Invalid State - the node blocked forever!!!");
         }
 
         int oldCount = 0;
