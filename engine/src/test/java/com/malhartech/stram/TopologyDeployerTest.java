@@ -14,6 +14,7 @@ import org.junit.Test;
 
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.TopologyDeployer.PTNode;
+import com.malhartech.stram.TopologyDeployer.PTOutput;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.NodeDecl;
@@ -101,6 +102,40 @@ public class TopologyDeployerTest {
       Assert.assertEquals("nodes container" + cindex, 1, deployer1.getContainers().get(cindex).nodes.size());
       Assert.assertEquals("nodes container" + cindex, tplg.getNode(partNode.getId()), deployer1.getContainers().get(cindex).nodes.get(0).getLogicalNode());
     }
+
+  }
+
+  @Test
+  public void testInlineMultipleInputs() {
+
+    NewTopologyBuilder b = new NewTopologyBuilder();
+
+    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
+    NodeDecl node3 = b.addNode("node3", GenericTestNode.class);
+
+    b.addStream("n1Output1")
+      .setInline(true)
+      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node3.getInput(GenericTestNode.INPUT1));
+
+    b.addStream("n2Output1")
+      .setInline(true)
+      .setSource(node2.getOutput(GenericTestNode.OUTPUT1))
+      .addSink(node3.getInput(GenericTestNode.INPUT2));
+
+    int maxContainers = 5;
+    Topology tplg = b.getTopology();
+    tplg.setMaxContainerCount(maxContainers);
+    TopologyDeployer deployer = new TopologyDeployer(tplg);
+    Assert.assertEquals("number of containers", 2, deployer.getContainers().size());
+
+    PTOutput node1Out = deployer.getNodes(node1).get(0).outputs.get(0);
+    Assert.assertTrue("inline " + node1Out, deployer.isDownStreamInline(node1Out));
+
+    // per current logic, different container is assigned to second input node
+    PTOutput node2Out = deployer.getNodes(node2).get(0).outputs.get(0);
+    Assert.assertFalse("inline " + node2Out, deployer.isDownStreamInline(node2Out));
 
   }
 

@@ -47,6 +47,11 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
+/**
+ * The purpose of this test is to verify basic streaming application deployment
+ * on a distributed yarn cluster. Specifically this exercises the application master,
+ * which is not used in other tests that rely on local mode.
+ */
 public class StramMiniClusterTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramMiniClusterTest.class);
@@ -293,14 +298,14 @@ public class StramMiniClusterTest
 
       // Create classpath from generated classpath
       // Check maven pom.xml for generated classpath info
-      // Works if compile time env is same as runtime. Mainly tests.
+      // Works in tests where compile time env is same as runtime.
       ClassLoader thisClassLoader =
               Thread.currentThread().getContextClassLoader();
       String generatedClasspathFile = "mvn-generated-classpath";
       classpathFileStream =
               thisClassLoader.getResourceAsStream(generatedClasspathFile);
       if (classpathFileStream == null) {
-        LOG.info("Could not classpath resource from class loader");
+        LOG.info("Could not load classpath resource " + generatedClasspathFile);
         return envClassPath;
       }
       LOG.info("Readable bytes from stream=" + classpathFileStream.available());

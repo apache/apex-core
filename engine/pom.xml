@@ -199,7 +199,7 @@
               <source>1.6</source>
               <target>1.6</target>
               <debug>true</debug>
-              <optimize>true</optimize>
+              <!--optimize>true</optimize-->
               <showDeprecation>true</showDeprecation>
               <showWarnings>true</showWarnings>
             </configuration>

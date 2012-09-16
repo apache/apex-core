@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.InputPort;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stram.conf.Topology.StreamDecl;
 
@@ -47,6 +48,7 @@ public class TopologyDeployer {
    */
   public abstract static class PTComponent {
     String id;
+    PTContainer container;
 
     /**
      *
@@ -77,7 +79,7 @@ public class TopologyDeployer {
    * <br>
    *
    */
-  public static class PTInput extends PTComponent {
+  public static class PTInput {
     final Topology.StreamDecl logicalStream;
     final PTComponent target;
     final byte[] partition;
@@ -104,8 +106,12 @@ public class TopologyDeployer {
      * @return String
      */
     @Override
-    public String getLogicalId() {
-      return logicalStream.getId();
+    public String toString() {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+          append("target", this.target).
+          append("port", this.portName).
+          append("stream", this.logicalStream.getId()).
+          toString();
     }
 
   }
@@ -118,7 +124,7 @@ public class TopologyDeployer {
    * <br>
    *
    */
-  public static class PTOutput extends PTComponent {
+  public static class PTOutput {
     final Topology.StreamDecl logicalStream;
     final PTComponent source;
     final String portName;
@@ -139,27 +145,14 @@ public class TopologyDeployer {
      * @return String
      */
     @Override
-    public String getLogicalId() {
-      return logicalStream.getId();
+    public String toString() {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+          append("source", this.source).
+          append("port", this.portName).
+          append("stream", this.logicalStream.getId()).
+          toString();
     }
 
-  }
-
-  /**
-   *
-   * Representation of output adapter in the physical layout<p>
-   * <br>
-   *
-   */
-  public static class PTOutputAdapter extends PTOutput {
-      /**
-       *
-       * @param logicalStream
-       * @param source
-       */
-    protected PTOutputAdapter(String portName, StreamDecl logicalStream, PTComponent source) {
-      super(portName, logicalStream, source);
-    }
   }
 
   /**
@@ -174,7 +167,6 @@ public class TopologyDeployer {
     Topology.NodeDecl logicalNode;
     List<PTInput> inputs;
     List<PTOutput> outputs;
-    PTContainer container;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
 
     /**
@@ -397,6 +389,23 @@ public class TopologyDeployer {
 
   protected List<PTNode> getNodes(NodeDecl nodeDecl) {
     return this.deployedNodes.get(nodeDecl);
+  }
+
+  /**
+   * Determine whether downstream nodes are deployed inline.
+   * (all instances of the logical downstream node are in the same container)
+   * @param output
+   */
+  protected boolean isDownStreamInline(PTOutput output) {
+    StreamDecl logicalStream = output.logicalStream;
+    for (InputPort downStreamPort : logicalStream.getSinks()) {
+      for (PTNode downStreamNode : getNodes(downStreamPort.getNode())) {
+        if (output.source.container != downStreamNode.container) {
+            return false;
+        }
+      }
+    }
+    return true;
   }
 
 }

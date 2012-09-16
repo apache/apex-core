@@ -22,7 +22,6 @@ import com.malhartech.stram.TopologyDeployer.PTContainer;
 import com.malhartech.stram.TopologyDeployer.PTInput;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.TopologyDeployer.PTOutput;
-import com.malhartech.stram.TopologyDeployer.PTOutputAdapter;
 import com.malhartech.stram.conf.Topology;
 import com.malhartech.stram.conf.Topology.InputPort;
 import com.malhartech.stram.conf.Topology.NodeDecl;
@@ -82,7 +81,7 @@ public class DNodeManager
       if ((lastHeartbeat != null && DNodeState.IDLE.name().equals(lastHeartbeat.getState()))) {
         return true;
       }
-      return (node instanceof PTOutputAdapter);
+      return false;
     }
   }
 
@@ -319,7 +318,7 @@ public class DNodeManager
         portInfo.declaredStreamId = streamDecl.getId();
         portInfo.portName = out.portName;
 
-        if (!streamDecl.isInline()) {
+        if (!(streamDecl.isInline() && this.deployer.isDownStreamInline(out))) {
           portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
           portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
           if (streamDecl.getSerDeClass() != null) {
@@ -347,7 +346,7 @@ public class DNodeManager
         if (streamDecl.getSource() == null) {
           throw new IllegalStateException("source is null: " + in);
         }
-        PTNode sourceNode = (PTNode)in.source;
+        PTComponent sourceNode = in.source;
 
         NodeInputDeployInfo inputInfo = new NodeInputDeployInfo();
         inputInfo.declaredStreamId = streamDecl.getId();
@@ -369,7 +368,7 @@ public class DNodeManager
         } else {
           // buffer server input
           // FIXME: address to come from upstream node, should be guaranteed assigned first
-          InetSocketAddress addr = ((PTNode)in.source).container.bufferServerAddress;
+          InetSocketAddress addr = in.source.container.bufferServerAddress;
           if (addr == null) {
             LOG.warn("upstream address not assigned: " + in.source);
             addr = container.bufferServerAddress;
