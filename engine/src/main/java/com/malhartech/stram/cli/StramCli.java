@@ -328,6 +328,17 @@ public class StramCli
       return response;
     }
     catch (Exception e) {
+      // check the application status as above may have failed due application termination etc.
+      try {
+        this.currentApp = rmClient.getApplicationReport(currentApp.getApplicationId());
+        if (currentApp.getYarnApplicationState() != YarnApplicationState.RUNNING) {
+          String msg = String.format("Application %s not running (status %s)",
+              currentApp.getApplicationId().getId(), currentApp.getYarnApplicationState());
+          throw new CliException(msg);
+        }
+      } catch (YarnRemoteException rmExc) {
+        throw new CliException("Unable to determine application status.", rmExc);
+      }
       throw new CliException("Failed to request " + r.getURI(), e);
     }
   }
