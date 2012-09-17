@@ -80,7 +80,7 @@ public class StramClient
   // App master priority
   private int amPriority = 0;
   // Queue for App master
-  private String amQueue = "";
+  private String amQueue = "default";
   // User to run app master as
   private String amUser = "";
   private ApplicationId appId;
@@ -205,9 +205,9 @@ public class StramClient
       topology.getConf().setBoolean(Topology.STRAM_DEBUG, true);
     }
 
-    amPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
-    amQueue = cliParser.getOptionValue("queue", "default");
-    amUser = cliParser.getOptionValue("user", "");
+    amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
+    amQueue = cliParser.getOptionValue("queue", amQueue);
+    amUser = cliParser.getOptionValue("user", amUser);
     int amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", ""+topology.getMasterMemoryMB()));
 
     if (amMemory < 0) {

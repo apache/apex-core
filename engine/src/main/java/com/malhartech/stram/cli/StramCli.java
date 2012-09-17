@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.Records;
@@ -317,6 +318,12 @@ public class StramCli
       throw new CliException("No application selected");
     }
 
+    if (StringUtils.isEmpty(currentApp.getTrackingUrl()) || currentApp.getFinalApplicationStatus() != FinalApplicationStatus.UNDEFINED) {
+      currentApp = null;
+      currentDir = "/";
+      throw new CliException("Application terminated.");
+    }
+
     Client wsClient = Client.create();
     wsClient.setFollowRedirects(true);
     WebResource r = wsClient.resource("http://" + currentApp.getTrackingUrl()).path("ws").path("v1").path("stram").path(resourcePath);
@@ -372,15 +379,24 @@ public class StramCli
       throw new CliException("Invalid application id: " + args[1]);
     }
 
+    boolean connected = false;
     try {
       LOG.info("Selected {} with tracking url: ", currentApp.getApplicationId(), currentApp.getTrackingUrl());
       ClientResponse rsp = getResource("info");
       JSONObject json = rsp.getEntity(JSONObject.class);
       System.out.println(json.toString(2));
+      connected = true; // set as current only upon successful connection
     }
-    catch (Exception e) {
-      currentApp = null;
+    catch (CliException e) {
+      throw e; // pass on
+    }
+    catch (JSONException e) {
       throw new CliException("Error connecting to app " + args[1], e);
+    } finally {
+      if (!connected) {
+        //currentApp = null;
+        //currentDir = "/";
+      }
     }
   }
 
