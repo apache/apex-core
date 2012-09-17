@@ -4,14 +4,14 @@
  */
 package com.malhartech.stram;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.google.common.collect.Sets;
 import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.TopologyDeployer.PTOutput;
@@ -87,8 +87,8 @@ public class TopologyDeployerTest {
     Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
     Assert.assertEquals("nodes container 0", 3, deployer1.getContainers().get(0).nodes.size());
 
-    List<NodeDecl> c1ExpNodes = Arrays.asList(tplg.getNode(node1.getId()), tplg.getNode(node2.getId()), tplg.getNode(node3.getId()));
-    List<NodeDecl> c1ActNodes = new ArrayList<NodeDecl>();
+    Set<NodeDecl> c1ExpNodes = Sets.newHashSet(tplg.getNode(node1.getId()), tplg.getNode(node2.getId()), tplg.getNode(node3.getId()));
+    Set<NodeDecl> c1ActNodes = new HashSet<NodeDecl>();
     for (PTNode pNode : deployer1.getContainers().get(0).nodes) {
       c1ActNodes.add(pNode.getLogicalNode());
     }
@@ -128,14 +128,14 @@ public class TopologyDeployerTest {
     Topology tplg = b.getTopology();
     tplg.setMaxContainerCount(maxContainers);
     TopologyDeployer deployer = new TopologyDeployer(tplg);
-    Assert.assertEquals("number of containers", 2, deployer.getContainers().size());
+    Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
 
     PTOutput node1Out = deployer.getNodes(node1).get(0).outputs.get(0);
     Assert.assertTrue("inline " + node1Out, deployer.isDownStreamInline(node1Out));
 
     // per current logic, different container is assigned to second input node
     PTOutput node2Out = deployer.getNodes(node2).get(0).outputs.get(0);
-    Assert.assertFalse("inline " + node2Out, deployer.isDownStreamInline(node2Out));
+    Assert.assertTrue("inline " + node2Out, deployer.isDownStreamInline(node2Out));
 
   }
 

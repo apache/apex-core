@@ -8,9 +8,12 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -224,7 +227,7 @@ public class TopologyDeployer {
     }
   }
 
-  private final Map<NodeDecl, List<PTNode>> deployedNodes = new HashMap<NodeDecl, List<PTNode>>();
+  private final Map<NodeDecl, List<PTNode>> deployedNodes = new LinkedHashMap<NodeDecl, List<PTNode>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private int maxContainers = 1;
 
@@ -249,34 +252,33 @@ public class TopologyDeployer {
     this.maxContainers = Math.max(tplg.getMaxContainerCount(),1);
     LOG.debug("Initializing topology for {} containers.", this.maxContainers);
 
+    Map<NodeDecl, Set<PTNode>> inlineGroups = new HashMap<NodeDecl, Set<PTNode>>();
+
     Stack<NodeDecl> pendingNodes = new Stack<NodeDecl>();
     for (NodeDecl n : tplg.getAllNodes()) {
       pendingNodes.push(n);
     }
 
-    int nodeCount = 0;
-
     while (!pendingNodes.isEmpty()) {
       NodeDecl n = pendingNodes.pop();
 
-      if (deployedNodes.containsKey(n)) {
-        // node already deployed as upstream dependency
+      if (inlineGroups.containsKey(n)) {
+        // node already processed as upstream dependency
         continue;
       }
 
-      // look at all input streams to determine number of nodes
-      // and upstream dependencies
+      // look at all input streams to determine partitioning / number of nodes
       byte[][] partitions = null;
       boolean upstreamDeployed = true;
-      PTNode inlineUpstreamNode = null;
-
+      boolean isSingleNodeInstance = true;
       for (StreamDecl s : n.getInputStreams().values()) {
-        if (s.getSource() != null && !deployedNodes.containsKey(s.getSource().getNode())) {
+        if (s.getSource() != null && !inlineGroups.containsKey(s.getSource().getNode())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getNode());
           upstreamDeployed = false;
           break;
         }
+
         byte[][] streamPartitions = getStreamPartitions(s);
         if (streamPartitions != null) {
           if (partitions != null) {
@@ -285,46 +287,68 @@ public class TopologyDeployer {
             }
           }
           partitions = streamPartitions;
-        } else {
-          if (s.isInline()) {
-            // node to be deployed with source node
-            if (s.getSource() != null) {
-              // find the container for the node?
-              List<PTNode> deployedNodes = this.deployedNodes.get(s.getSource().getNode());
-              inlineUpstreamNode = deployedNodes.get(0);
-            }
-          }
+          isSingleNodeInstance = false;
         }
       }
 
       if (upstreamDeployed) {
-        // ready to deploy this node
+        // ready to look at this node
+        Set<PTNode> inlineSet = new HashSet<PTNode>();
+        if (isSingleNodeInstance) {
+          for (StreamDecl s : n.getInputStreams().values()) {
+            if (s.isInline()) {
+              // if stream is marked inline, join the upstream nodes
+              Set<PTNode> inlineNodes = inlineGroups.get(s.getSource().getNode());
+              // empty set for partitioned upstream node
+              if (!inlineNodes.isEmpty()) {
+                // update group index for each of the member nodes
+                for (PTNode upstreamNode : inlineNodes) {
+                  inlineSet.add(upstreamNode);
+                  inlineGroups.put(upstreamNode.logicalNode, inlineSet);
+                }
+              }
+            }
+          }
+        }
+
+        // add new physical node(s)
         List<PTNode> pnodes = new ArrayList<PTNode>();
         if (partitions != null) {
-          // create node per partition,
-          // distribute over available containers
+          // create node per partition
           for (int i = 0; i < partitions.length; i++) {
             PTNode pNode = createPTNode(n, partitions[i], pnodes.size());
             pnodes.add(pNode);
-            PTContainer container = getContainer((nodeCount++) % maxContainers);
-            container.nodes.add(pNode);
-            pNode.container = container;
           }
         } else {
           // single instance, no partitions
           PTNode pNode = createPTNode(n, null, pnodes.size());
           pnodes.add(pNode);
-
-          PTContainer container;
-          if (inlineUpstreamNode != null) {
-            container = inlineUpstreamNode.container;
-          } else {
-            container = getContainer((nodeCount++) % maxContainers);
-          }
-          container.nodes.add(pNode);
-          pNode.container = container;
+          inlineSet.add(pNode);
         }
+
+        inlineGroups.put(n, inlineSet);
         this.deployedNodes.put(n, pnodes);
+      }
+    }
+
+    // assign nodes to containers
+    int groupCount = 0;
+    for (Map.Entry<NodeDecl, List<PTNode>> e : deployedNodes.entrySet()) {
+      for (PTNode node : e.getValue()) {
+        if (node.container == null) {
+          PTContainer container = getContainer((groupCount++) % maxContainers);
+          Set<PTNode> inlineNodes = inlineGroups.get(node.logicalNode);
+          if (!inlineNodes.isEmpty()) {
+            for (PTNode inlineNode : inlineNodes) {
+              inlineNode.container = container;
+              container.nodes.add(inlineNode);
+              inlineGroups.remove(inlineNode.logicalNode);
+            }
+          } else {
+            node.container = container;
+            container.nodes.add(node);
+          }
+        }
       }
     }
 
