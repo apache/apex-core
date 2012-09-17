@@ -306,7 +306,9 @@ public class StramAppLauncher {
   public static String runApp(AppConfig appConfig) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
 
-    StramClient client = new StramClient(appConfig.createApp());
+    Topology tplg = appConfig.createApp();
+    tplg.getConf().setIfUnset(Topology.STRAM_APPNAME, appConfig.getName());
+    StramClient client = new StramClient(tplg);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
   }

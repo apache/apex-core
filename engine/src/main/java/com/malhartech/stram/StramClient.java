@@ -55,6 +55,7 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Objects;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
@@ -76,7 +77,6 @@ public class StramClient
   // Handle to talk to the Resource Manager/Applications Manager
   private ClientRMHelper rmClient;
   // Application master specific info to register a new Application with RM/ASM
-  private final String appName = StramConstants.APPNAME;
   // App master priority
   private int amPriority = 0;
   // Queue for App master
@@ -379,12 +379,12 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(appName);
+    appContext.setApplicationName(topology.getConf().get(Topology.STRAM_APPNAME, StramConstants.APPNAME));
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
-    String pathSuffix = appName + "/" + appId.getId();
+    String pathSuffix = StramConstants.APPNAME + "/" + appId.getId();
 
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = FileSystem.get(conf);
@@ -427,19 +427,17 @@ public class StramClient
       localResources.put("log4j.properties", log4jRsrc);
     }
 
-    // push topology properties to run specific dfs location
-    Path topologyDst = new Path(fs.getHomeDirectory(), appName + "/" + appId.getId() + "/" + Topology.SER_FILE_NAME);
-    FSDataOutputStream outStream = fs.create(topologyDst, true);
- //   Properties tplgProperties = TopologyBuilder.toProperties(topology.getConf());
- //   tplgProperties.store(outStream, "topology for " + appId.getId());
+    // push application configuration to dfs location
+    Path cfgDst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + Topology.SER_FILE_NAME);
+    FSDataOutputStream outStream = fs.create(cfgDst, true);
     Topology.write(this.topology, outStream);
     outStream.close();
 
-    FileStatus topologyFileStatus = fs.getFileStatus(topologyDst);
+    FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
     LocalResource topologyRsrc = Records.newRecord(LocalResource.class);
     topologyRsrc.setType(LocalResourceType.FILE);
     topologyRsrc.setVisibility(LocalResourceVisibility.APPLICATION);
-    topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(topologyDst.toUri()));
+    topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(cfgDst.toUri()));
     topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
     topologyRsrc.setSize(topologyFileStatus.getLen());
     localResources.put(Topology.SER_FILE_NAME, topologyRsrc);
@@ -536,12 +534,17 @@ public class StramClient
     // SubmitApplicationResponse submitResp = rmClient.submitApplication(appRequest);
     // Ignore the response as either a valid response object is returned on success
     // or an exception thrown to denote some form of a failure
-    LOG.info("Submitting application to ASM");
+    String specStr = Objects.toStringHelper("Submitting application: ")
+      .add("name", appContext.getApplicationName())
+      .add("queue", appContext.getQueue())
+      .add("user", appContext.getUser())
+      .add("resource", appContext.getAMContainerSpec().getResource())
+      .toString();
+    LOG.info(specStr);
+    if (topology.isDebug()) {
+      LOG.info("Full submission context: " + appContext);
+    }
     rmClient.clientRM.submitApplication(appRequest);
-
-    // TODO
-    // Try submitting the same request again
-    // app submission failure?
 
   }
 

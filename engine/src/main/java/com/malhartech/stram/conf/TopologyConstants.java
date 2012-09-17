@@ -14,6 +14,7 @@ public interface TopologyConstants {
   /**
    * Comma separated list of jar files that will be made available to stram app master and child containers
    */
+  public static final String STRAM_APPNAME = "stram.appName";
   public static final String STRAM_LIBJARS = "stram.libjars";
   public static final String STRAM_MAX_CONTAINERS = "stram.numContainers";
   public static final String STRAM_DEBUG = "stram.debug";
