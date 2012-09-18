@@ -178,7 +178,7 @@ public abstract class AbstractInputNode implements Node, Runnable
           sinks[i].process(payload);
         }
 
-        ctx.report(producedTupleCount, 0L, ((Tuple)payload).getWindowId());
+        ctx.report(getProducedTupleCount(), 0L, ((Tuple)payload).getWindowId());
         producedTupleCount = 0;
 
         // the default is UNSPECIFIED which we ignore anyways as we ignore everything
@@ -314,5 +314,13 @@ public abstract class AbstractInputNode implements Node, Runnable
       sinks[i++] = s;
     }
     sinks = sinks;
+  }
+
+  /**
+   * @return the producedTupleCount
+   */
+  public int getProducedTupleCount()
+  {
+    return producedTupleCount;
   }
 }
