@@ -24,5 +24,4 @@ public interface TopologyConstants {
   public static final String STRAM_CHECKPOINT_DIR = "stram.checkpointDir";
   public static final String STRAM_CHECKPOINT_INTERVAL_MILLIS = "stram.checkpointIntervalMillis";
 
-
 }
