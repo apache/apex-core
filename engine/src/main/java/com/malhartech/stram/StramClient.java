@@ -477,7 +477,8 @@ public class StramClient
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
     // Set Xmx based on am memory size
-    vargs.add("-Xmx" + amMemory + "m");
+    // default heap size 75% of total memory
+    vargs.add("-Xmx" + (amMemory*3/4) + "m");
     // Set class name
     vargs.add(StramAppMaster.class.getName());
 

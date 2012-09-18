@@ -63,7 +63,7 @@ public class StramMiniClusterTest
   {
     LOG.info("Starting up YARN cluster");
     conf.setInt(YarnConfiguration.RM_SCHEDULER_MINIMUM_ALLOCATION_MB, 128);
-    conf.setInt("yarn.nodemanager.vmem-pmem-ratio", 10); // workaround to avoid containers being killed because java allocated too much vmem
+    conf.setInt("yarn.nodemanager.vmem-pmem-ratio", 20); // workaround to avoid containers being killed because java allocated too much vmem
 
     StringBuilder adminEnv = new StringBuilder();
     if (System.getenv("JAVA_HOME") == null) {
@@ -179,7 +179,7 @@ public class StramMiniClusterTest
     dagProps.put("stram.stream.n1n2.source", "node1.output1");
     dagProps.put("stram.stream.n1n2.sinks", "node2.input1");
 
-    dagProps.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "256");
+    dagProps.setProperty(Topology.STRAM_MASTER_MEMORY_MB, "512");
     dagProps.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
     dagProps.setProperty(Topology.STRAM_DEBUG, "true");
     dagProps.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
