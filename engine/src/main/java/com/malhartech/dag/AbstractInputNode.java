@@ -28,9 +28,9 @@ public abstract class AbstractInputNode implements Node, Runnable
   @SuppressWarnings("VolatileArrayField")
   private transient volatile Sink[] sinks = NO_SINKS;
   private transient NodeContext ctx;
-  private transient volatile int producedTupleCount;
-  private transient volatile int spinMillis = 10;
-  private transient volatile int bufferCapacity = 1024 * 1024;
+  private transient int producedTupleCount;
+  private transient int spinMillis = 10;
+  private transient int bufferCapacity = 1024 * 1024;
 
   public AbstractInputNode()
   {

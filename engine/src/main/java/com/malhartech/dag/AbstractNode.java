@@ -38,10 +38,10 @@ public abstract class AbstractNode implements Node
   private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   @SuppressWarnings("VolatileArrayField")
   private transient volatile Sink[] sinks = NO_SINKS;
-  private transient volatile int consumedTupleCount;
-  private transient volatile boolean alive;
-  private transient volatile int spinMillis = 10;
-  private transient volatile int bufferCapacity = 1024 * 1024;
+  private transient int consumedTupleCount;
+  private transient boolean alive;
+  private transient int spinMillis = 10;
+  private transient int bufferCapacity = 1024 * 1024;
 
   public String getId()
   {
@@ -193,9 +193,11 @@ public abstract class AbstractNode implements Node
       case INPUT:
         CompoundSink cs = inputs.get(pa.name());
         if (dagpart == null) {
-          // since there are tuples which are not yet processed downstream, rather than just removing
-          // the sink, it makes sense to wait for all the data to be processed on this sink and then
-          // remove it.
+          /**
+           * since there are tuples which are not yet processed downstream, rather than just removing
+           * the sink, it makes sense to wait for all the data to be processed on this sink and then
+           * remove it.
+           */
           if (cs != null) {
             cs.process(new EndStreamTuple());
           }

@@ -8,7 +8,7 @@ package com.malhartech.dag;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class FailedOperationException extends Exception
+public class FailedOperationException extends RuntimeException
 {
   public FailedOperationException(String message)
   {

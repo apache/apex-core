@@ -192,6 +192,7 @@ public class StramClientUtils {
      * @return true if application completed successfully
      * @throws YarnRemoteException
      */
+    @SuppressWarnings("SleepWhileInLoop")
     public boolean waitForCompletion(ApplicationId appId, AppStatusCallback callback, long timeoutMillis) throws YarnRemoteException
     {
       long startMillis = System.currentTimeMillis();

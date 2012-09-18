@@ -77,13 +77,13 @@ public class StramChild
   private final String containerId;
   private final Configuration conf;
   private final StreamingNodeUmbilicalProtocol umbilical;
-  protected final Map<String, ComponentContextPair<Node, NodeContext>> nodes = new ConcurrentHashMap<String, ComponentContextPair<Node, NodeContext>>();
+  protected final Map<String, Node> nodes = new ConcurrentHashMap<String, Node>();
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
    * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
    */
-  private final Map<Node, NodeContext> activeNodes = new ConcurrentHashMap<Node, NodeContext>();
+  protected final Map<String, NodeContext> activeNodes = new ConcurrentHashMap<String, NodeContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
@@ -132,11 +132,6 @@ public class StramChild
   public String getContainerId()
   {
     return this.containerId;
-  }
-
-  protected Map<String, ComponentContextPair<Node, NodeContext>> getNodes()
-  {
-    return this.nodes;
   }
 
   /**
@@ -243,8 +238,8 @@ public class StramChild
     }
     activeGenerators.clear();
 
-    for (Node node: activeNodes.keySet()) {
-      node.deactivate();
+    for (String nodeid: activeNodes.keySet()) {
+      nodes.get(nodeid).deactivate();
     }
 
     for (Stream stream: activeStreams.keySet()) {
@@ -255,7 +250,7 @@ public class StramChild
 
   private synchronized void disconnectNode(String nodeid)
   {
-    Node node = nodes.get(nodeid).component;
+    Node node = nodes.get(nodeid);
     disconnectWindowGenerator(nodeid, node);
 
     Set<String> removableSocketOutputStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
@@ -282,8 +277,8 @@ public class StramChild
         for (String sinkId: sinkIds) {
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-            ComponentContextPair<Node, NodeContext> npair = nodes.get(nodeport[0]);
-            npair.component.connect(nodeport[1], null);
+            Node n = nodes.get(nodeport[0]);
+            n.connect(nodeport[1], null);
           }
           else if (stream.isMultiSinkCapable()) {
             ComponentContextPair<Stream, StreamContext> spair = streams.get(sinkId);
@@ -388,7 +383,7 @@ public class StramChild
      */
     HashMap<String, Node> toUndeploy = new HashMap<String, Node>();
     for (NodeDeployInfo ndi: nodeList) {
-      ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
+      Node pair = nodes.get(ndi.id);
       if (pair == null) {
         throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
       }
@@ -396,14 +391,13 @@ public class StramChild
         throw new IllegalArgumentException("Node " + ndi.id + " is requested to be undeployed more than once");
       }
       else {
-        toUndeploy.put(ndi.id, pair.component);
+        toUndeploy.put(ndi.id, pair);
       }
     }
 
     for (NodeDeployInfo ndi: nodeList) {
-      ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
-      if (activeNodes.containsKey(pair.component)) {
-        pair.component.deactivate();
+      if (activeNodes.containsKey(ndi.id)) {
+        nodes.get(ndi.id).deactivate();
       }
     }
   }
@@ -417,15 +411,6 @@ public class StramChild
       wg.teardown();
     }
     gens.clear();
-
-    for (ComponentContextPair<Node, NodeContext> nc: this.nodes.values()) {
-      nc.component.teardown();
-    }
-
-    for (Stream stream: activeStreams.keySet()) {
-      stream.teardown();
-    }
-    activeStreams.clear();
   }
 
   protected void triggerHeartbeat()
@@ -457,13 +442,19 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all nodes
-      for (Map.Entry<String, ComponentContextPair<Node, NodeContext>> e: nodes.entrySet()) {
+      for (Map.Entry<String, Node> e: nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
-        e.getValue().context.drainHeartbeatCounters(hb.getHeartbeatsContainer());
-        hb.setState((activeNodes.containsKey(e.getValue().component) ? DNodeState.PROCESSING : DNodeState.IDLE).toString());
+        if (activeNodes.containsKey(e.getKey())) {
+          activeNodes.get(e.getKey()).drainHeartbeatCounters(hb.getHeartbeatsContainer());
+          hb.setState(DNodeState.PROCESSING.toString());
+        }
+        else {
+          hb.setState(DNodeState.IDLE.toString());
+        }
+
         // propagate the backup window, if any
         Long backupWindowId = backupInfo.get(e.getKey());
         if (backupWindowId != null) {
@@ -533,13 +524,13 @@ public class StramChild
     if (rsp.nodeRequests != null) {
       // extended processing per node
       for (StramToNodeRequest req: rsp.nodeRequests) {
-        ComponentContextPair<Node, NodeContext> pair = nodes.get(req.getNodeId());
-        if (pair == null) {
+        NodeContext nc = activeNodes.get(req.getNodeId());
+        if (nc == null) {
           logger.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
         else {
           logger.debug("Stram request: {}", req);
-          processStramRequest(pair, req);
+          processStramRequest(nc, req);
         }
       }
     }
@@ -551,7 +542,7 @@ public class StramChild
    * @param n
    * @param snr
    */
-  private void processStramRequest(ComponentContextPair<Node, NodeContext> pair, StramToNodeRequest snr)
+  private void processStramRequest(NodeContext context, StramToNodeRequest snr)
   {
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
@@ -559,7 +550,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        pair.context.requestBackup(new HdfsBackupAgent(StramUtils.getNodeSerDe(null)));
+        context.requestBackup(new HdfsBackupAgent(StramUtils.getNodeSerDe(null)));
         break;
 
       default:
@@ -592,7 +583,6 @@ public class StramChild
     NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
     HdfsBackupAgent backupAgent = new HdfsBackupAgent(nodeSerDe);
     for (NodeDeployInfo ndi: nodeList) {
-      NodeContext nc = new NodeContext(ndi.id);
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
@@ -602,10 +592,7 @@ public class StramChild
         else {
           foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
-        Node node = (Node)foreignObject;
-        StramUtils.internalSetupNode(node, ndi.id.concat(":").concat(ndi.declaredId));
-        node.setup(new NodeConfiguration(ndi.id, ndi.properties));
-        nodes.put(ndi.id, new ComponentContextPair<Node, NodeContext>(node, nc));
+        nodes.put(ndi.id, (Node)foreignObject);
       }
       catch (Exception e) {
         logger.error(e.getLocalizedMessage());
@@ -624,7 +611,7 @@ public class StramChild
      * the Buffer Server port to avoid collision and at the same time keep track of these buffer streams.
      */
     for (NodeDeployInfo ndi: nodeList) {
-      Node node = nodes.get(ndi.id).component;
+      Node node = nodes.get(ndi.id);
 
       for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
         String sourceIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
@@ -782,7 +769,7 @@ public class StramChild
         }
       }
       else {
-        Node node = nodes.get(ndi.id).component;
+        Node node = nodes.get(ndi.id);
 
         for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
           String sourceIdentifier = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
@@ -848,14 +835,14 @@ public class StramChild
                * Lets wire the MuxStream to upstream node.
                */
               String[] nodeport = sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR);
-              Node upstreamNode = nodes.get(nodeport[0]).component;
+              Node upstreamNode = nodes.get(nodeport[0]);
               Sink muxSink = stream.connect(Component.INPUT, upstreamNode);
               upstreamNode.connect(nodeport[1], muxSink);
 
               Sink existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-                Node anotherNode = nodes.get(np[0]).component;
+                Node anotherNode = nodes.get(np[0]);
                 existingSink = anotherNode.connect(np[1], stream);
 
                 /*
@@ -901,7 +888,7 @@ public class StramChild
       for (NodeDeployInfo ndi: inputNodes) {
         generators.put(ndi.id, windowGenerator);
 
-        Node node = nodes.get(ndi.id).component;
+        Node node = nodes.get(ndi.id);
         Sink s = node.connect(Component.INPUT, windowGenerator);
         windowGenerator.connect(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT),
                                 ndi.checkpointWindowId > 0
@@ -950,18 +937,33 @@ public class StramChild
 
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
     for (final NodeDeployInfo ndi: nodeList) {
-      final ComponentContextPair<Node, NodeContext> pair = nodes.get(ndi.id);
-      assert (!activeNodes.containsKey(pair.component));
-      logger.debug("activating node {} in container {}", pair.component.toString(), containerId);
-      new Thread(pair.component.toString())
+      final Node node = nodes.get(ndi.id);
+      final String nodeInternalId = ndi.id.concat(":").concat(ndi.declaredId);
+      assert (!activeNodes.containsKey(ndi.id));
+      logger.debug("activating node {} in container {}", node.toString(), containerId);
+      new Thread(nodeInternalId)
       {
         @Override
         public void run()
         {
-          activatedNodeCount.incrementAndGet();
-          activeNodes.put(pair.component, pair.context);
-          pair.component.activate(pair.context);
-          activeNodes.remove(pair.component);
+          try {
+            NodeConfiguration config = new NodeConfiguration(ndi.id, ndi.properties);
+            StramUtils.internalSetupNode(node, nodeInternalId);
+            node.setup(config);
+
+            NodeContext nc = new NodeContext(ndi.id);
+            activeNodes.put(ndi.id, nc);
+
+            activatedNodeCount.incrementAndGet();
+            node.activate(nc);
+          }
+          catch (Exception ex) {
+            logger.error("Node stopped abnormally because of exception {}", ex.getLocalizedMessage());
+          }
+
+          activeNodes.remove(ndi.id);
+
+          node.teardown();
           disconnectNode(ndi.id);
         }
       }.start();
