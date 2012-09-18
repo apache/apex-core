@@ -22,6 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.Node;
+import com.malhartech.dag.NodeContext;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
@@ -158,6 +160,20 @@ public class StramLocalCluster implements Runnable {
       return super.setupWindowGenerator(smallestWindowId);
     }
 
+    NodeContext getNodeContext(String id)
+    {
+      return activeNodes.get(id);
+    }
+
+    Node getNode(String id)
+    {
+      return nodes.get(id);
+    }
+
+    Map<String, Node> getNodes()
+    {
+      return nodes;
+    }
   }
 
   /**

@@ -4,23 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.File;
-import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import scala.actors.threadpool.Arrays;
-
 import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;
@@ -33,6 +16,20 @@ import com.malhartech.stram.TopologyDeployer.PTNode;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology.NodeDecl;
 import com.malhartech.stream.StramTestSupport;
+import java.io.File;
+import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import scala.actors.threadpool.Arrays;
 
 /**
  *
@@ -76,19 +73,18 @@ public class CheckpointTest {
     cc.setCheckpointDfsPath(testWorkDir.getPath());
     container.setup(cc);
 
-   // wingen.wingen.activate(null);
-
     mses.tick(1); // begin window 1
 
     Assert.assertEquals("number nodes", 1, container.getNodes().size());
-    ComponentContextPair<Node, NodeContext> nodePair = container.getNodes().get(cc.nodeList.get(0).id);
+    Node node = container.getNode(cc.nodeList.get(0).id);
+    NodeContext context = container.getNodeContext(cc.nodeList.get(0).id);
 
-    Assert.assertNotNull("node deployed " + cc.nodeList.get(0), nodePair);
-    Assert.assertEquals("nodeId", cc.nodeList.get(0).id, nodePair.context.getId());
-    Assert.assertEquals("maxTupes", 1, ((NumberGeneratorInputAdapter)nodePair.component).getMaxTuples());
+    Assert.assertNotNull("node deployed " + cc.nodeList.get(0), node);
+    Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());
+    Assert.assertEquals("maxTupes", 1, ((NumberGeneratorInputAdapter)node).getMaxTuples());
 
     StramToNodeRequest backupRequest = new StramToNodeRequest();
-    backupRequest.setNodeId(nodePair.context.getId());
+    backupRequest.setNodeId(context.getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.nodeRequests = Collections.singletonList(backupRequest);
@@ -97,12 +93,12 @@ public class CheckpointTest {
     mses.tick(1); // end window 1, begin window 2
 
     // node to move to next window before we verify the checkpoint state
-    // if (nodePair.context.getLastProcessedWindowId() < 2) {
+    // if (node.context.getLastProcessedWindowId() < 2) {
     // Thread.sleep(500);
     // }
 
     Assert.assertTrue("node >= window 1",
-        1 <= nodePair.context.getLastProcessedWindowId());
+        1 <= context.getLastProcessedWindowId());
 
     File expectedFile = new File(testWorkDir, backupRequest.getNodeId() + "/1");
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());

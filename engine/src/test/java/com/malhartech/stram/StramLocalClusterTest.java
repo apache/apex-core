@@ -124,30 +124,31 @@ public class StramLocalClusterTest
 
     LocalStramChild c0 = waitForContainer(localCluster, node1);
     //Thread.sleep(1000);
-
-    Map<String, ComponentContextPair<Node, NodeContext>> nodeMap = c0.getNodes();
+    Map<String, Node> nodeMap = c0.getNodes();
     Assert.assertEquals("number nodes", 1, nodeMap.size());
 
     PTNode ptNode1 = localCluster.findByLogicalNode(node1);
-    ComponentContextPair<Node, NodeContext> n1 = nodeMap.get(ptNode1.id);
+    Node n1 = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForContainer(localCluster, node2);
-    Map<String, ComponentContextPair<Node, NodeContext>> c2NodeMap = c2.getNodes();
+    Map<String, Node> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number nodes downstream", 1, c2NodeMap.size());
-    ComponentContextPair<Node, NodeContext> n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    Node n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
-    Assert.assertEquals("initial window id", 0, n1.context.getLastProcessedWindowId());
+    NodeContext n1Context = c0.getNodeContext(ptNode1.id);
+    Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
     wclock.tick(1);
 
-    waitForWindow(n1.context, 1);
-    backupNode(c0, n1.context);
+    waitForWindow(n1Context, 1);
+    backupNode(c0, n1Context);
 
     wclock.tick(1);
 
-    waitForWindow(n2.context, 2);
-    backupNode(c2, n2.context);
+    NodeContext n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
+    waitForWindow(n2Context, 2);
+    backupNode(c2, n2Context);
 
     wclock.tick(1);
 
@@ -156,7 +157,7 @@ public class StramLocalClusterTest
     wclock.tick(1);
 
     //waitForWindow(n1, 3);
-    waitForWindow(n2.context, 3);
+    waitForWindow(n2Context, 3);
 
     // propagate checkpoints to master
     c0.triggerHeartbeat();
@@ -191,16 +192,17 @@ public class StramLocalClusterTest
 
     Assert.assertEquals("downstream nodes after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify that the downstream node was replaced
-    ComponentContextPair<Node, NodeContext> n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    Node n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2Replaced);
     Assert.assertNotSame("node2 redeployed", n2, n2Replaced);
 
-    ComponentContextPair<Node, NodeContext> n1Replaced = nodeMap.get(ptNode1.id);
+    Node n1Replaced = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1Replaced);
-    Assert.assertEquals("initial window id", 1, n1Replaced.context.getLastProcessedWindowId());
+
+    NodeContext n1ReplacedContext = c0.getNodeContext(ptNode1.id);
+    Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
 
     localCluster.shutdown();
-
   }
 
   /**
