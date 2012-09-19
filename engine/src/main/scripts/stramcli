@@ -21,7 +21,8 @@ addhc com/esotericsoftware/kryo/kryo/2.19/kryo-2.19.jar
 addhc com/esotericsoftware/reflectasm/reflectasm/1.07/reflectasm-1.07-shaded.jar
 addhc com/esotericsoftware/minlog/minlog/1.2/minlog-1.2.jar
 addhc com/sun/jersey/jersey-client/1.8/jersey-client-1.8.jar
-addhc org/mockito/mockito-all/1.8.5/mockito-all-1.8.5.jar
+#addhc org/mockito/mockito-all/1.8.5/mockito-all-1.8.5.jar
+addhc org/objenesis/objenesis/1.2/objenesis-1.2.jar
 addhc io/netty/netty-transport/4.0.0.Alpha2/netty-transport-4.0.0.Alpha2.jar
 addhc io/netty/netty-common/4.0.0.Alpha2/netty-common-4.0.0.Alpha2.jar
 addhc io/netty/netty-buffer/4.0.0.Alpha2/netty-buffer-4.0.0.Alpha2.jar
