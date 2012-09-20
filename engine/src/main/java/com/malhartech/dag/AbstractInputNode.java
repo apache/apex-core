@@ -29,18 +29,6 @@ public abstract class AbstractInputNode extends AbstractBaseModule implements Ru
   {
     afterBeginWindows = new HashMap<String, CircularBuffer<Object>>();
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
-
-    Class<? extends Node> clazz = this.getClass();
-    NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
-    if (na != null) {
-      PortAnnotation[] ports = na.ports();
-      for (PortAnnotation pa: ports) {
-        if (pa.type() == PortAnnotation.PortType.OUTPUT || pa.type() == PortAnnotation.PortType.BIDI) {
-          afterBeginWindows.put(pa.name(), new CircularBuffer<Object>(bufferCapacity));
-          afterEndWindows.put(pa.name(), new CircularBuffer<Tuple>(bufferCapacity));
-        }
-      }
-    }
   }
 
   @Override
@@ -101,12 +89,22 @@ public abstract class AbstractInputNode extends AbstractBaseModule implements Ru
       retvalue = this;
     }
     else {
+      PortAnnotation pa = getPort(port);
+      if (pa == null) {
+        throw new IllegalArgumentException("Unrecognized Port " + port + " for " + this);
+      }
+
+      port = pa.name();
       if (component == null) {
         outputs.remove(port);
+        afterBeginWindows.remove(port);
       }
       else {
         outputs.put(port, component);
+        afterBeginWindows.put(port, new CircularBuffer<Object>(bufferCapacity));
+        afterEndWindows.put(port, new CircularBuffer<Tuple>(bufferCapacity));
       }
+
       if (sinks != NO_SINKS) {
         activateSinks();
       }
@@ -232,5 +230,4 @@ public abstract class AbstractInputNode extends AbstractBaseModule implements Ru
 
     processedTupleCount++;
   }
-
 }
