@@ -6,7 +6,7 @@ package com.malhartech.util;
 
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
-import static org.junit.Assert.fail;
+import org.junit.Assert;
 import org.junit.*;
 
 /**
@@ -48,9 +48,15 @@ public class CircularBufferTest
     System.out.println("add");
 
     CircularBuffer<Integer> instance = new CircularBuffer<Integer>(0);
+    Assert.assertEquals("capacity", instance.capacity(), 1);
+
+    for (int i = 0; i < instance.capacity(); i++) {
+      instance.add(i);
+    }
+
     try {
       instance.add(new Integer(0));
-      fail("exception should be raised for adding to buffer which does not have room");
+      Assert.fail("exception should be raised for adding to buffer which does not have room");
     }
     catch (Exception bue) {
       assert (bue instanceof BufferOverflowException);
@@ -60,11 +66,15 @@ public class CircularBufferTest
     for (int i = 0; i < 10; i++) {
       instance.add(i);
     }
-
     assert (instance.size() == 10);
+
+    for (int i = 10; i < instance.capacity(); i++) {
+      instance.add(i);
+    }
+
     try {
       instance.add(new Integer(0));
-      fail("exception should have been thrown");
+      Assert.fail("exception should have been thrown");
     }
     catch (Exception e) {
       assert (e instanceof BufferOverflowException);
@@ -72,7 +82,7 @@ public class CircularBufferTest
       instance.add(new Integer(0));
     }
 
-    assert (instance.size() == 10);
+    assert (instance.size() == instance.capacity());
   }
 
   /**
@@ -86,7 +96,7 @@ public class CircularBufferTest
     CircularBuffer<Integer> instance = new CircularBuffer<Integer>(0);
     try {
       instance.get();
-      fail("exception should be raised for getting from buffer which does not have data");
+      Assert.fail("exception should be raised for getting from buffer which does not have data");
     }
     catch (Exception bue) {
       assert (bue instanceof BufferUnderflowException);
@@ -95,7 +105,7 @@ public class CircularBufferTest
     instance = new CircularBuffer<Integer>(10);
     try {
       instance.get();
-      fail("exception should be raised for getting from buffer which does not have data");
+      Assert.fail("exception should be raised for getting from buffer which does not have data");
     }
     catch (Exception bue) {
       assert (bue instanceof BufferUnderflowException);
@@ -107,11 +117,11 @@ public class CircularBufferTest
 
     Integer i = instance.get();
     Integer j = instance.get();
-    assert(i == 0 && j == 1);
+    assert (i == 0 && j == 1);
 
     instance.add(10);
 
-    assert(instance.size() == 9);
-    assert(instance.get() == 2);
+    assert (instance.size() == 9);
+    assert (instance.get() == 2);
   }
 }
