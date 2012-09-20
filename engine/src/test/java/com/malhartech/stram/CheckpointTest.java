@@ -60,9 +60,9 @@ public class CheckpointTest {
   {
     NewDAGBuilder tb = new NewDAGBuilder();
     // node with no inputs will be connected to window generator
-    tb.addNode("node1", NumberGeneratorInputModule.class)
+    tb.addOperator("node1", NumberGeneratorInputModule.class)
         .setProperty("maxTuples", "1");
-    ModuleManager dnm = new ModuleManager(tb.getTopology());
+    ModuleManager dnm = new ModuleManager(tb.getDAG());
 
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
@@ -114,14 +114,14 @@ public class CheckpointTest {
   {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
-    Operator node2 = b.addNode("node2", GenericTestModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator node2 = b.addOperator("node2", GenericTestModule.class);
 
     b.addStream("n1n2")
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
       .addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    ModuleManager dnm = new ModuleManager(b.getTopology());
+    ModuleManager dnm = new ModuleManager(b.getDAG());
     DAGDeployer deployer = dnm.getTopologyDeployer();
     List<PTNode> nodes1 = deployer.getNodes(node1);
     Assert.assertNotNull(nodes1);
