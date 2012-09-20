@@ -45,6 +45,7 @@ import com.malhartech.dag.AbstractModule;
 import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.stram.conf.DAG;
 import com.malhartech.stram.conf.DAGBuilder;
+import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -255,17 +256,17 @@ public class StramMiniClusterTest
       Thread.sleep(5000); // delay to give web service time to fully initialize
       Client wsClient = Client.create();
       wsClient.setFollowRedirects(true);
-      WebResource r = wsClient.resource("http://" + appReport.getTrackingUrl()).path("ws").path("v1").path("stram").path("info");
+      WebResource r = wsClient.resource("http://" + appReport.getTrackingUrl()).path(StramWebServices.PATH).path(StramWebServices.PATH_INFO);
       LOG.info("Requesting: " + r.getURI());
       ClientResponse response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
       JSONObject json = response.getEntity(JSONObject.class);
       LOG.info("Got response: " + json.toString());
       assertEquals("incorrect number of elements", 1, json.length());
-      assertEquals("appId", appReport.getApplicationId().toString(), json.getJSONObject("info").get("appId"));
+      assertEquals("appId", appReport.getApplicationId().toString(), json.getJSONObject(StramWebServices.PATH_INFO).get("appId"));
 
 
-      r = wsClient.resource("http://" + appReport.getTrackingUrl()).path("ws").path("v1").path("stram").path("modules");
+      r = wsClient.resource("http://" + appReport.getTrackingUrl()).path(StramWebServices.PATH).path(StramWebServices.PATH_OPERATORS);
       LOG.info("Requesting: " + r.getURI());
       response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());

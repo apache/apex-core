@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -56,7 +57,7 @@ import com.sun.jersey.api.client.WebResource;
  * <tr><td><b>help</b></td><td></td><td>prints help on all cli commands</td></tr>
  * <tr><td><b>ls</b></td><td></td><td>lists all current running applications</td></tr>
  * <tr><td><b>connect</b></td><td>appId</td><td>Connects to the given application</td></tr>
- * <tr><td><b>listnodes</b></td><td></td><td>Lists deployed streaming nodes</td></tr>
+ * <tr><td><b>listoperators</b></td><td></td><td>Lists deployed streaming operators</td></tr>
  * <tr><td><b>launch</b></td><td>jarFile [, topologyFile ]</td><td>Launch topology packaged in jar file</td></tr>
  * <tr><td><b>timeout</b></td><td>duration</td><td>Wait for completion of current application</td></tr>
  * <tr><td><b>kill</b></td><td></td><td>Force termination for current application</td></tr>
@@ -106,7 +107,7 @@ public class StramCli
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[]{"help", "ls", "cd", "listnodes", "shutdown", "timeout", "kill", "exit"};
+    String[] commandsList = new String[]{"help", "ls", "cd", "listoperators", "shutdown", "timeout", "kill", "exit"};
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -143,8 +144,8 @@ public class StramCli
         else if (line.startsWith("connect") || line.startsWith("cd")) {
           connect(line);
         }
-        else if (line.startsWith("listnodes")) {
-          listNodes(null);
+        else if (line.startsWith("listoperators")) {
+          listOperators(null);
         }
         else if (line.startsWith("launch")) {
           launchApp(line, reader);
@@ -188,7 +189,7 @@ public class StramCli
     System.out.println("help             - Show help");
     System.out.println("ls               - Show running applications");
     System.out.println("connect <appId>  - Connect to running streaming application");
-    System.out.println("listnodes        - List deployed streaming nodes");
+    System.out.println("listoperators        - List deployed streaming operators");
     System.out.println("launch <jarFile> [<topologyFile>] - Launch topology packaged in jar file.");
     System.out.println("timeout <duration> - Wait for completion of current application.");
     System.out.println("kill             - Force termination for current application.");
@@ -246,7 +247,7 @@ public class StramCli
       listApplications(args);
     }
     else {
-      listNodes(args);
+      listOperators(args);
     }
   }
 
@@ -326,7 +327,7 @@ public class StramCli
 
     Client wsClient = Client.create();
     wsClient.setFollowRedirects(true);
-    WebResource r = wsClient.resource("http://" + currentApp.getTrackingUrl()).path("ws").path("v1").path("stram").path(resourcePath);
+    WebResource r = wsClient.resource("http://" + currentApp.getTrackingUrl()).path(StramWebServices.PATH).path(resourcePath);
     try {
       ClientResponse response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       if (!MediaType.APPLICATION_JSON_TYPE.equals(response.getType())) {
@@ -382,7 +383,7 @@ public class StramCli
     boolean connected = false;
     try {
       LOG.info("Selected {} with tracking url: ", currentApp.getApplicationId(), currentApp.getTrackingUrl());
-      ClientResponse rsp = getResource("info");
+      ClientResponse rsp = getResource(StramWebServices.PATH_INFO);
       JSONObject json = rsp.getEntity(JSONObject.class);
       System.out.println(json.toString(2));
       connected = true; // set as current only upon successful connection
@@ -400,9 +401,9 @@ public class StramCli
     }
   }
 
-  private void listNodes(String[] argv) throws JSONException
+  private void listOperators(String[] argv) throws JSONException
   {
-    ClientResponse rsp = getResource("nodes");
+    ClientResponse rsp = getResource(StramWebServices.PATH_OPERATORS);
     JSONObject json = rsp.getEntity(JSONObject.class);
     System.out.println(json.toString(2));
   }
@@ -505,7 +506,7 @@ public class StramCli
     Client wsClient = Client.create();
     wsClient.setFollowRedirects(true);
     // WebAppProxyServlet does not support POST - for now bypass it for this request
-    WebResource r = wsClient.resource("http://" + currentApp.getOriginalTrackingUrl()).path("ws").path("v1").path("stram").path("shutdown");
+    WebResource r = wsClient.resource("http://" + currentApp.getOriginalTrackingUrl()).path(StramWebServices.PATH).path(StramWebServices.PATH_SHUTDOWN);
     try {
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class);
       System.out.println("shutdown requested: " + response);

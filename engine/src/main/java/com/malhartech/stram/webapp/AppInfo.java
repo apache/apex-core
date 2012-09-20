@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
  */
 
 
-@XmlRootElement(name = "info")
+@XmlRootElement(name = StramWebServices.PATH_INFO)
 @XmlAccessorType(XmlAccessType.FIELD)
 public class AppInfo {
   private static final Logger LOG = LoggerFactory.getLogger(AppInfo.class);

@@ -162,40 +162,40 @@ public class StramWebServicesTest extends JerseyTest {
   @Test
   public void testAM() throws JSONException, Exception {
     WebResource r = resource();
-    ClientResponse response = r.path("ws").path("v1").path("stram")
+    ClientResponse response = r.path(StramWebServices.PATH)
         .accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
     assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
     JSONObject json = response.getEntity(JSONObject.class);
     assertEquals("incorrect number of elements", 1, json.length());
-    verifyAMInfo(json.getJSONObject("info"), appContext);
+    verifyAMInfo(json.getJSONObject(StramWebServices.PATH_INFO), appContext);
   }
 
   @Test
   public void testAMSlash() throws JSONException, Exception {
     WebResource r = resource();
-    ClientResponse response = r.path("ws").path("v1").path("stram/")
+    ClientResponse response = r.path(StramWebServices.PATH + "/")
         .accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
     assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
     JSONObject json = response.getEntity(JSONObject.class);
     assertEquals("incorrect number of elements", 1, json.length());
-    verifyAMInfo(json.getJSONObject("info"), appContext);
+    verifyAMInfo(json.getJSONObject(StramWebServices.PATH_INFO), appContext);
   }
 
   @Test
   public void testAMDefault() throws JSONException, Exception {
     WebResource r = resource();
-    ClientResponse response = r.path("ws").path("v1").path("stram/")
+    ClientResponse response = r.path(StramWebServices.PATH + "/")
         .get(ClientResponse.class);
     assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
     JSONObject json = response.getEntity(JSONObject.class);
     assertEquals("incorrect number of elements", 1, json.length());
-    verifyAMInfo(json.getJSONObject("info"), appContext);
+    verifyAMInfo(json.getJSONObject(StramWebServices.PATH_INFO), appContext);
   }
 
   @Test
   public void testAMXML() throws JSONException, Exception {
     WebResource r = resource();
-    ClientResponse response = r.path("ws").path("v1").path("stram")
+    ClientResponse response = r.path(StramWebServices.PATH)
         .accept(MediaType.APPLICATION_XML).get(ClientResponse.class);
     assertEquals(MediaType.APPLICATION_XML_TYPE, response.getType());
     String xml = response.getEntity(String.class);
@@ -205,43 +205,43 @@ public class StramWebServicesTest extends JerseyTest {
   @Test
   public void testInfo() throws JSONException, Exception {
     WebResource r = resource();
-    ClientResponse response = r.path("ws").path("v1").path("stram")
-        .path("info").accept(MediaType.APPLICATION_JSON)
+    ClientResponse response = r.path(StramWebServices.PATH)
+        .path(StramWebServices.PATH_INFO).accept(MediaType.APPLICATION_JSON)
         .get(ClientResponse.class);
     assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
     JSONObject json = response.getEntity(JSONObject.class);
     assertEquals("incorrect number of elements", 1, json.length());
-    verifyAMInfo(json.getJSONObject("info"), appContext);
+    verifyAMInfo(json.getJSONObject(StramWebServices.PATH_INFO), appContext);
   }
 
   @Test
   public void testInfoSlash() throws JSONException, Exception {
     WebResource r = resource();
-    ClientResponse response = r.path("ws").path("v1").path("stram")
-        .path("info/").accept(MediaType.APPLICATION_JSON)
+    ClientResponse response = r.path(StramWebServices.PATH)
+        .path(StramWebServices.PATH_INFO + "/").accept(MediaType.APPLICATION_JSON)
         .get(ClientResponse.class);
     assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
     JSONObject json = response.getEntity(JSONObject.class);
     assertEquals("incorrect number of elements", 1, json.length());
-    verifyAMInfo(json.getJSONObject("info"), appContext);
+    verifyAMInfo(json.getJSONObject(StramWebServices.PATH_INFO), appContext);
   }
 
   @Test
   public void testInfoDefault() throws JSONException, Exception {
     WebResource r = resource();
-    ClientResponse response = r.path("ws").path("v1").path("stram")
-        .path("info/").get(ClientResponse.class);
+    ClientResponse response = r.path(StramWebServices.PATH)
+        .path(StramWebServices.PATH_INFO + "/").get(ClientResponse.class);
     assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
     JSONObject json = response.getEntity(JSONObject.class);
     assertEquals("incorrect number of elements", 1, json.length());
-    verifyAMInfo(json.getJSONObject("info"), appContext);
+    verifyAMInfo(json.getJSONObject(StramWebServices.PATH_INFO), appContext);
   }
 
   @Test
   public void testInfoXML() throws JSONException, Exception {
     WebResource r = resource();
-    ClientResponse response = r.path("ws").path("v1").path("stram")
-        .path("info/").accept(MediaType.APPLICATION_XML)
+    ClientResponse response = r.path(StramWebServices.PATH)
+        .path(StramWebServices.PATH_INFO + "/").accept(MediaType.APPLICATION_XML)
         .get(ClientResponse.class);
     assertEquals(MediaType.APPLICATION_XML_TYPE, response.getType());
     String xml = response.getEntity(String.class);
@@ -253,7 +253,7 @@ public class StramWebServicesTest extends JerseyTest {
     WebResource r = resource();
     String responseStr = "";
     try {
-      responseStr = r.path("ws").path("v1").path("stram").path("bogus")
+      responseStr = r.path(StramWebServices.PATH).path("bogus")
           .accept(MediaType.APPLICATION_JSON).get(String.class);
       fail("should have thrown exception on invalid uri");
     } catch (UniformInterfaceException ue) {
@@ -289,7 +289,7 @@ public class StramWebServicesTest extends JerseyTest {
     WebResource r = resource();
     String responseStr = "";
     try {
-      responseStr = r.path("ws").path("v1").path("stram")
+      responseStr = r.path(StramWebServices.PATH)
           .accept(MediaType.TEXT_PLAIN).get(String.class);
       fail("should have thrown exception on invalid accept");
     } catch (UniformInterfaceException ue) {
@@ -317,7 +317,7 @@ public class StramWebServicesTest extends JerseyTest {
     InputSource is = new InputSource();
     is.setCharacterStream(new StringReader(xml));
     Document dom = db.parse(is);
-    NodeList nodes = dom.getElementsByTagName("info");
+    NodeList nodes = dom.getElementsByTagName(StramWebServices.PATH_INFO);
     assertEquals("incorrect number of elements", 1, nodes.getLength());
 
     for (int i = 0; i < nodes.getLength(); i++) {
