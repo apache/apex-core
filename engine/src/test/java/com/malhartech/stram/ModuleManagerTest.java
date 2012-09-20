@@ -77,9 +77,9 @@ public class ModuleManagerTest {
 
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
-    Operator node2 = b.addNode("node2", GenericTestModule.class);
-    Operator node3 = b.addNode("node3", GenericTestModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator node2 = b.addOperator("node2", GenericTestModule.class);
+    Operator node3 = b.addOperator("node3", GenericTestModule.class);
 
     b.addStream("n1n2")
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
@@ -90,7 +90,7 @@ public class ModuleManagerTest {
       .setSource(node2.getOutput(GenericTestModule.OUTPUT1))
       .addSink(node3.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = b.getTopology();
+    DAG tplg = b.getDAG();
     tplg.setMaxContainerCount(2);
 
     Assert.assertEquals("number nodes", 3, tplg.getAllOperators().size());
@@ -151,9 +151,9 @@ public class ModuleManagerTest {
   public void testStaticPartitioning() {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
-    Operator node2 = b.addNode("node2", GenericTestModule.class);
-    Operator mergeNode = b.addNode("mergeNode", GenericTestModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator node2 = b.addOperator("node2", GenericTestModule.class);
+    Operator mergeNode = b.addOperator("mergeNode", GenericTestModule.class);
 
     StreamBuilder n1n2 = b.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
@@ -164,7 +164,7 @@ public class ModuleManagerTest {
         .setSource(node2.getOutput(GenericTestModule.OUTPUT1))
         .addSink(mergeNode.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = b.getTopology();
+    DAG tplg = b.getDAG();
     tplg.setMaxContainerCount(5);
 
     ModuleManager dnm = new ModuleManager(tplg);
@@ -221,9 +221,9 @@ public class ModuleManagerTest {
   public void testBufferServerAssignment() {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
-    Operator node2 = b.addNode("node2", GenericTestModule.class);
-    Operator node3 = b.addNode("node3", GenericTestModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator node2 = b.addOperator("node2", GenericTestModule.class);
+    Operator node3 = b.addOperator("node3", GenericTestModule.class);
 
     b.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
@@ -234,7 +234,7 @@ public class ModuleManagerTest {
         .setSource(node2.getOutput(GenericTestModule.OUTPUT1))
         .addSink(node3.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = b.getTopology();
+    DAG tplg = b.getDAG();
     tplg.setMaxContainerCount(2);
 
     // node1 and node3 are assigned, node2 unassigned

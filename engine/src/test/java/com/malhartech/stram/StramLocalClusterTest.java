@@ -57,16 +57,16 @@ public class StramLocalClusterTest
   {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator genNode = b.addNode("genNode", NumberGeneratorInputModule.class);
+    Operator genNode = b.addOperator("genNode", NumberGeneratorInputModule.class);
     genNode.setProperty("maxTuples", "1");
 
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
     node1.setProperty("emitFormat", "%s >> node1");
 
     File outFile = new File("./target/" + StramLocalClusterTest.class.getName() + "-testLocalClusterInitShutdown.out");
     outFile.delete();
 
-    Operator outNode = b.addNode("outNode", TestOutputModule.class);
+    Operator outNode = b.addOperator("outNode", TestOutputModule.class);
     outNode.setProperty(TestOutputModule.P_FILEPATH, outFile.toURI().toString());
 
     b.addStream("fromGenNode")
@@ -77,7 +77,7 @@ public class StramLocalClusterTest
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
       .addSink(outNode.getInput(TestOutputModule.PORT_INPUT));
 
-    DAG t = b.getTopology();
+    DAG t = b.getDAG();
     t.setMaxContainerCount(2);
 
     StramLocalCluster localCluster = new StramLocalCluster(t);
@@ -100,14 +100,14 @@ public class StramLocalClusterTest
   {
     NewDAGBuilder tb = new NewDAGBuilder();
 
-    Operator node1 = tb.addNode("node1", NumberGeneratorInputModule.class);
-    Operator node2 = tb.addNode("node2", GenericTestModule.class);
+    Operator node1 = tb.addOperator("node1", NumberGeneratorInputModule.class);
+    Operator node2 = tb.addOperator("node2", GenericTestModule.class);
 
     tb.addStream("n1n2").
       setSource(node1.getOutput(NumberGeneratorInputModule.OUTPUT_PORT)).
       addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = tb.getTopology();
+    DAG tplg = tb.getDAG();
     tplg.validate();
 
     tplg.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup

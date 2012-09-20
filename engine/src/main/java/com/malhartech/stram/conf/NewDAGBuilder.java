@@ -49,7 +49,7 @@ public class NewDAGBuilder implements ApplicationFactory {
 
   }
 
-  public Operator addNode(String id, Class<? extends Module> nodeClass) {
+  public Operator addOperator(String id, Class<? extends Module> nodeClass) {
     return topology.addNode(id, nodeClass);
   }
 
@@ -57,7 +57,7 @@ public class NewDAGBuilder implements ApplicationFactory {
     return new StreamBuilder(topology.addStream(id));
   }
 
-  public DAG getTopology() {
+  public DAG getDAG() {
     return topology;
   }
 

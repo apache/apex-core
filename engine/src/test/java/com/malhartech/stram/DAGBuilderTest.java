@@ -189,12 +189,12 @@ public class DAGBuilderTest {
      NewDAGBuilder b = new NewDAGBuilder();
 
      //NodeConf module1 = b.getOrAddNode("module1");
-     Operator module2 = b.addNode("module2", GenericTestModule.class);
-     Operator module3 = b.addNode("module3", GenericTestModule.class);
-     Operator module4 = b.addNode("module4", GenericTestModule.class);
+     Operator module2 = b.addOperator("module2", GenericTestModule.class);
+     Operator module3 = b.addOperator("module3", GenericTestModule.class);
+     Operator module4 = b.addOperator("module4", GenericTestModule.class);
      //NodeConf module5 = b.getOrAddNode("module5");
      //NodeConf module6 = b.getOrAddNode("module6");
-     Operator module7 = b.addNode("module7", GenericTestModule.class);
+     Operator module7 = b.addOperator("module7", GenericTestModule.class);
 
      // strongly connect n2-n3-n4-n2
      b.addStream("n2n3")
@@ -220,7 +220,7 @@ public class DAGBuilderTest {
        // expected, stream can have single input/output only
      }
 
-     DAG tplg = b.getTopology();
+     DAG tplg = b.getDAG();
 
      List<List<String>> cycles = new ArrayList<List<String>>();
      tplg.findStronglyConnected(module7, cycles);
@@ -292,10 +292,10 @@ public class DAGBuilderTest {
 
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator validationNode = b.addNode("validationNode", ValidationModule.class);
-    Operator countGoodNode = b.addNode("countGoodNode", CounterModule.class);
-    Operator countBadNode = b.addNode("countBadNode", CounterModule.class);
-    Operator echoBadNode = b.addNode("echoBadNode", ConsoleOutputModule.class);
+    Operator validationNode = b.addOperator("validationNode", ValidationModule.class);
+    Operator countGoodNode = b.addOperator("countGoodNode", CounterModule.class);
+    Operator countBadNode = b.addOperator("countBadNode", CounterModule.class);
+    Operator echoBadNode = b.addOperator("echoBadNode", ConsoleOutputModule.class);
 
     // good tuples to counter module
     b.addStream("goodTuplesStream")
@@ -309,11 +309,11 @@ public class DAGBuilderTest {
       .addSink(countBadNode.getInput("countInputPort"))
       .addSink(echoBadNode.getInput("echoInputPort"));
 
-    DAG tplg = b.getTopology();
+    DAG tplg = b.getDAG();
     Assert.assertEquals("number root modules", 1, tplg.getRootOperators().size());
     Assert.assertEquals("root module id", "validationNode", tplg.getRootOperators().get(0).getId());
 
-    System.out.println(b.getTopology());
+    System.out.println(b.getDAG());
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     DAG.write(tplg, bos);

@@ -150,8 +150,8 @@ public class SocketStreamTest
   {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator generatorNode = b.addNode("generatorNode", NumberGeneratorInputModule.class);
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
+    Operator generatorNode = b.addOperator("generatorNode", NumberGeneratorInputModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
 
     StreamBuilder generatorOutput = b.addStream("generatorOutput");
     generatorOutput.setSource(generatorNode.getOutput(NumberGeneratorInputModule.OUTPUT_PORT))
@@ -161,7 +161,7 @@ public class SocketStreamTest
     //StreamConf output1 = b.getOrAddStream("output1");
     //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
     //                    ConsoleOutputNode.class.getName());
-    DAG tplg = b.getTopology();
+    DAG tplg = b.getDAG();
 
     ModuleManager dnm = new ModuleManager(tplg);
     int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;

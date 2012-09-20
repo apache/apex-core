@@ -26,10 +26,10 @@ public class DAGDeployerTest {
   public void testStaticPartitioning() {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
-    Operator node2 = b.addNode("node2", GenericTestModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator node2 = b.addOperator("node2", GenericTestModule.class);
 
-    Operator mergeNode = b.addNode("mergeNode", GenericTestModule.class);
+    Operator mergeNode = b.addOperator("mergeNode", GenericTestModule.class);
 
     b.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
@@ -40,7 +40,7 @@ public class DAGDeployerTest {
       .setSource(node2.getOutput(GenericTestModule.OUTPUT1))
       .addSink(mergeNode.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = b.getTopology();
+    DAG tplg = b.getDAG();
     tplg.setMaxContainerCount(2);
 
     DAGDeployer td = new DAGDeployer(tplg);
@@ -55,13 +55,13 @@ public class DAGDeployerTest {
 
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
-    Operator node2 = b.addNode("node2", GenericTestModule.class);
-    Operator node3 = b.addNode("node3", GenericTestModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator node2 = b.addOperator("node2", GenericTestModule.class);
+    Operator node3 = b.addOperator("node3", GenericTestModule.class);
 
-    Operator notInlineNode = b.addNode("notInlineNode", GenericTestModule.class);
+    Operator notInlineNode = b.addOperator("notInlineNode", GenericTestModule.class);
     // partNode has 2 inputs, inline must be ignored with partitioned input
-    Operator partNode = b.addNode("partNode", GenericTestModule.class);
+    Operator partNode = b.addOperator("partNode", GenericTestModule.class);
 
     b.addStream("n1Output1")
       .setInline(true)
@@ -82,7 +82,7 @@ public class DAGDeployerTest {
       .addSink(partNode.getInput(GenericTestModule.INPUT2));
 
     int maxContainers = 5;
-    DAG tplg = b.getTopology();
+    DAG tplg = b.getDAG();
     tplg.setMaxContainerCount(maxContainers);
     DAGDeployer deployer1 = new DAGDeployer(tplg);
     Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
@@ -111,9 +111,9 @@ public class DAGDeployerTest {
 
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator node1 = b.addNode("node1", GenericTestModule.class);
-    Operator node2 = b.addNode("node2", GenericTestModule.class);
-    Operator node3 = b.addNode("node3", GenericTestModule.class);
+    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator node2 = b.addOperator("node2", GenericTestModule.class);
+    Operator node3 = b.addOperator("node3", GenericTestModule.class);
 
     b.addStream("n1Output1")
       .setInline(true)
@@ -126,7 +126,7 @@ public class DAGDeployerTest {
       .addSink(node3.getInput(GenericTestModule.INPUT2));
 
     int maxContainers = 5;
-    DAG tplg = b.getTopology();
+    DAG tplg = b.getDAG();
     tplg.setMaxContainerCount(maxContainers);
     DAGDeployer deployer = new DAGDeployer(tplg);
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
