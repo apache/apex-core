@@ -363,7 +363,7 @@ public class Topology implements Serializable, TopologyConstants {
   }
 
   /**
-   * Validate the topology. Includes checks that required ports are connected,
+   * Validate the topology. Includes checks that required ports are connected (TBD),
    * required configuration parameters specified, graph free of cycles etc.
    */
   public void validate() {
