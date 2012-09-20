@@ -4,12 +4,20 @@
  */
 package com.malhartech.stram;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
+import com.google.common.collect.Sets;
+import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.annotation.PortAnnotation.PortType;
+import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.GenericTestNode;
+import com.malhartech.stram.conf.NewTopologyBuilder;
+import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
+import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.Topology.InputPort;
+import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.conf.Topology.StreamDecl;
+import com.malhartech.stram.conf.TopologyBuilder;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -20,25 +28,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import org.junit.Test;
-
-import com.google.common.collect.Sets;
-import com.malhartech.annotation.NodeAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractNode;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.stram.conf.NewTopologyBuilder;
-import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.Topology.InputPort;
-import com.malhartech.stram.conf.Topology.NodeDecl;
-import com.malhartech.stram.conf.Topology.StreamDecl;
-import com.malhartech.stram.conf.TopologyBuilder;
 
 public class TopologyBuilderTest {
 

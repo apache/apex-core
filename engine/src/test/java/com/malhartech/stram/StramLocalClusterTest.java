@@ -4,6 +4,9 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.TestOutputNode;
+import com.malhartech.dag.NumberGeneratorInputAdapter;
+import com.malhartech.dag.GenericTestNode;
 import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;

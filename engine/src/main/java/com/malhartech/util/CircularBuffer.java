@@ -21,11 +21,11 @@ public class CircularBuffer<T>
 {
   private static final BufferUnderflowException underflow = new BufferUnderflowException();
   private static final BufferOverflowException overflow = new BufferOverflowException();
-  private T[] buffer;
+  private final T[] buffer;
+  private final int buffermask;
   private volatile int tail;
   private volatile int head;
 
-  @SuppressWarnings("unchecked")
   /**
    *
    * Constructing a circular buffer of 'n' integers<p>
@@ -34,11 +34,16 @@ public class CircularBuffer<T>
    * @param n size of the buffer to be constructed
    * <br>
    */
+  @SuppressWarnings("unchecked")
   public CircularBuffer(int n)
   {
-    buffer = (T[])new Object[n];
-    tail = 0;
-    head = 0;
+    int i = 1;
+    while (i < n) {
+      i = i << 1;
+    }
+
+    buffer = (T[])new Object[i];
+    buffermask = i - 1;
   }
 
   /**
@@ -51,12 +56,12 @@ public class CircularBuffer<T>
    */
   public void add(T toAdd)
   {
-    if (head - tail == buffer.length) {
-      throw overflow;
+    if (head - tail <= buffermask) {
+      buffer[head++ & buffermask] = toAdd;
+      return;
     }
-    else {
-      buffer[head++ % buffer.length] = toAdd;
-    }
+
+    throw overflow;
   }
 
   /**
@@ -70,7 +75,7 @@ public class CircularBuffer<T>
   public T get()
   {
     if (head > tail) {
-      return buffer[tail++ % buffer.length];
+      return buffer[tail++ & buffermask];
     }
 
     throw underflow;
@@ -79,7 +84,7 @@ public class CircularBuffer<T>
   public T peek()
   {
     if (head > tail) {
-      return buffer[tail % buffer.length];
+      return buffer[tail & buffermask];
     }
 
     return null;
@@ -108,7 +113,7 @@ public class CircularBuffer<T>
    */
   public int capacity()
   {
-    return buffer.length;
+    return buffermask + 1;
   }
 
   /**
@@ -124,8 +129,8 @@ public class CircularBuffer<T>
   {
     int size = size();
 
-    while (tail < head) {
-      container.add(buffer[tail++ % buffer.length]);
+    while (head > tail) {
+      container.add(buffer[tail++ & buffermask]);
     }
 
     return size;
@@ -142,6 +147,6 @@ public class CircularBuffer<T>
   @Override
   public String toString()
   {
-    return "CircularBuffer(capacity=" + buffer.length + ", head=" + head + ", tail=" + tail + ")";
+    return "CircularBuffer(capacity=" + (buffermask + 1) + ", head=" + head + ", tail=" + tail + ")";
   }
 }
