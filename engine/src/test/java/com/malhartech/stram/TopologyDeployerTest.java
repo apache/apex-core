@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.GenericTestNode;
 import java.util.HashSet;
 import java.util.Set;
 

@@ -18,19 +18,12 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputNode implements Node, Runnable
+public abstract class AbstractInputNode extends AbstractBaseModule implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractInputNode.class);
-  private transient String id;
   private transient HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
-  private transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  @SuppressWarnings("VolatileArrayField")
-  private transient volatile Sink[] sinks = NO_SINKS;
   private transient NodeContext ctx;
-  private transient int producedTupleCount;
-  private transient int spinMillis = 10;
-  private transient int bufferCapacity = 1024 * 1024;
 
   public AbstractInputNode()
   {
@@ -48,16 +41,6 @@ public abstract class AbstractInputNode implements Node, Runnable
         }
       }
     }
-  }
-
-  public String getId()
-  {
-    return id;
-  }
-
-  public void setId(String id)
-  {
-    this.id = id;
   }
 
   @Override
@@ -107,8 +90,7 @@ public abstract class AbstractInputNode implements Node, Runnable
   @Override
   public final void deactivate()
   {
-    sinks = NO_SINKS;
-    outputs.clear();
+    super.deactivate();
   }
 
   @Override
@@ -133,11 +115,6 @@ public abstract class AbstractInputNode implements Node, Runnable
 
     connected(port, component);
     return retvalue;
-  }
-
-  public void connected(String id, Sink dagpart)
-  {
-    /* implementation to be optionally overridden by the user */
   }
 
   @Override
@@ -178,8 +155,8 @@ public abstract class AbstractInputNode implements Node, Runnable
           sinks[i].process(payload);
         }
 
-        ctx.report(getProducedTupleCount(), 0L, ((Tuple)payload).getWindowId());
-        producedTupleCount = 0;
+        ctx.report(processedTupleCount, 0L, ((Tuple)payload).getWindowId());
+        processedTupleCount = 0;
 
         // the default is UNSPECIFIED which we ignore anyways as we ignore everything
         // that we do not understand!
@@ -253,74 +230,7 @@ public abstract class AbstractInputNode implements Node, Runnable
       }
     }
 
-    producedTupleCount++;
+    processedTupleCount++;
   }
 
-  @Override
-  public void setup(NodeConfiguration config) throws FailedOperationException
-  {
-  }
-
-  @Override
-  public void beginWindow()
-  {
-  }
-
-  @Override
-  public void endWindow()
-  {
-  }
-
-  @Override
-  public void teardown()
-  {
-  }
-
-  @Override
-  public int hashCode()
-  {
-    return id == null ? super.hashCode() : id.hashCode();
-  }
-
-  @Override
-  public boolean equals(Object obj)
-  {
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    final AbstractInputNode other = (AbstractInputNode)obj;
-    if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
-      return false;
-    }
-    return true;
-  }
-
-  @Override
-  public String toString()
-  {
-    return getClass().getSimpleName() + "{" + "id=" + id + '}';
-  }
-
-  @SuppressWarnings("SillyAssignment")
-  private void activateSinks()
-  {
-    sinks = new Sink[outputs.size()];
-
-    int i = 0;
-    for (Sink s: outputs.values()) {
-      sinks[i++] = s;
-    }
-    sinks = sinks;
-  }
-
-  /**
-   * @return the producedTupleCount
-   */
-  public int getProducedTupleCount()
-  {
-    return producedTupleCount;
-  }
 }

@@ -4,7 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
@@ -29,85 +28,20 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode implements Node
+public abstract class AbstractNode extends AbstractBaseModule
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
-  private transient String id;
   private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
-  private transient final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  @SuppressWarnings("VolatileArrayField")
-  private transient volatile Sink[] sinks = NO_SINKS;
-  private transient int consumedTupleCount;
   private transient boolean alive;
-  private transient int spinMillis = 10;
-  private transient int bufferCapacity = 1024 * 1024;
-
-  public String getId()
-  {
-    return id;
-  }
-
-  public void setId(String id)
-  {
-    this.id = id;
-  }
-
-  // optimize the performance of this method.
-  private PortAnnotation getPort(String id)
-  {
-    Class<? extends Node> clazz = this.getClass();
-    NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
-    if (na != null) {
-      PortAnnotation[] ports = na.ports();
-      for (PortAnnotation pa: ports) {
-        if (id.equals(pa.name())) {
-          return pa;
-        }
-      }
-    }
-
-    return null;
-  }
 
   public final String getActivePort()
   {
     return activePort.id;
   }
 
-  @Override
-  public void setup(NodeConfiguration config) throws FailedOperationException
-  {
-  }
-
-  @Override
-  public void beginWindow()
-  {
-  }
-
-  @Override
-  public void endWindow()
-  {
-  }
-
-  @Override
-  public void teardown()
-  {
-  }
-
   public void handleIdleTimeout()
   {
-  }
-
-  @SuppressWarnings("SillyAssignment")
-  private void activateSinks()
-  {
-    sinks = new Sink[outputs.size()];
-    int i = 0;
-    for (Sink s: outputs.values()) {
-      sinks[i++] = s;
-    }
-    sinks = sinks;
   }
 
   class CompoundSink extends CircularBuffer<Object> implements Sink
@@ -117,7 +51,7 @@ public abstract class AbstractNode implements Node
 
     public CompoundSink(String id, Sink dagpart)
     {
-      super(bufferCapacity);
+      super(getBufferCapacity());
       this.id = id;
       this.dagpart = dagpart;
     }
@@ -136,7 +70,7 @@ public abstract class AbstractNode implements Node
             break;
           }
           catch (BufferOverflowException boe) {
-            Thread.sleep(spinMillis);
+            Thread.sleep(getSpinMillis());
           }
         }
       }
@@ -242,19 +176,6 @@ public abstract class AbstractNode implements Node
   }
 
   /**
-   * An opportunity for the derived node to use the connected dagcomponents.
-   *
-   * Motivation is that the derived node can tie the dagparts to class fields and use them for efficiency reasons instead of asking this class to do lookup.
-   *
-   * @param id
-   * @param dagpart
-   */
-  public void connected(String id, Sink dagpart)
-  {
-    /* implementation to be optionally overridden by the user */
-  }
-
-  /**
    *
    * A hook for user to do specific checking on a given configuration<p>
    * Basic checking like port connectivity, properties that have to be specified, their ranges etc. would be checked
@@ -266,18 +187,6 @@ public abstract class AbstractNode implements Node
   public boolean checkConfiguration(NodeConfiguration config)
   {
     return true;
-  }
-
-  /**
-   * Emit the payload to all active output ports
-   *
-   * @param payload
-   */
-  public void emit(final Object payload)
-  {
-    for (int i = sinks.length; i-- > 0;) {
-      sinks[i].process(payload);
-    }
   }
 
   /**
@@ -299,6 +208,7 @@ public abstract class AbstractNode implements Node
   @Override
   public final void deactivate()
   {
+    super.deactivate();
     alive = false;
   }
 
@@ -375,8 +285,8 @@ public abstract class AbstractNode implements Node
                       output.process(t);
                     }
 
-                    ctx.report(consumedTupleCount, 0L, currentWindowId);
-                    consumedTupleCount = 0;
+                    ctx.report(getProcessedTupleCount(), 0L, currentWindowId);
+                    processedTupleCount = 0;
                     /*
                      * we prefer to do quite a few operations at the end of the window boundary.
                      */
@@ -462,7 +372,7 @@ public abstract class AbstractNode implements Node
           }
           else {
             process(activePort.get());
-            consumedTupleCount++;
+            processedTupleCount++;
             shouldWait = false;
           }
         }
@@ -478,7 +388,7 @@ public abstract class AbstractNode implements Node
           oldCount += cb.size();
         }
         try {
-          Thread.sleep(spinMillis);
+          Thread.sleep(getSpinMillis());
           int newCount = 0;
           for (CircularBuffer<?> cb: activeQueues) {
             newCount += cb.size();
@@ -510,33 +420,5 @@ public abstract class AbstractNode implements Node
     for (final Sink output: outputs.values()) {
       output.process(est);
     }
-  }
-
-  @Override
-  public int hashCode()
-  {
-    return id == null ? super.hashCode() : id.hashCode();
-  }
-
-  @Override
-  public boolean equals(Object obj)
-  {
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    final AbstractNode other = (AbstractNode)obj;
-    if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
-      return false;
-    }
-    return true;
-  }
-
-  @Override
-  public String toString()
-  {
-    return this.getClass().getSimpleName() + "{id=" + id + '}';
   }
 }

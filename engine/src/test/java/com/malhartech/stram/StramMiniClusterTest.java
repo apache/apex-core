@@ -3,6 +3,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.NumberGeneratorInputAdapter;
+import com.malhartech.dag.GenericTestNode;
 import static org.junit.Assert.assertEquals;
 
 import java.io.BufferedReader;

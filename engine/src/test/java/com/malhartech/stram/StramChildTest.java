@@ -4,6 +4,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.NumberGeneratorInputAdapter;
+import com.malhartech.dag.GenericTestNode;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.stram.conf.NewTopologyBuilder;
 import com.malhartech.stram.conf.Topology;

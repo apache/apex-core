@@ -4,9 +4,10 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.ComponentContextPair;
+import com.malhartech.dag.GenericTestNode;
 import com.malhartech.dag.Node;
 import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.NumberGeneratorInputAdapter;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
