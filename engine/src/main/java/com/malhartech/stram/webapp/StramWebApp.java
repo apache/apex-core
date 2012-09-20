@@ -33,14 +33,14 @@ import com.sun.jersey.api.json.JSONJAXBContext;
  */
 public class StramWebApp extends WebApp {
 
-  private final ModuleManager topologyManager;
+  private final ModuleManager moduleManager;
 
   /**
    *
    * @param topolManager
    */
   public StramWebApp(ModuleManager topolManager) {
-    this.topologyManager = topolManager;
+    this.moduleManager = topolManager;
   }
 
   @Singleton
@@ -84,6 +84,6 @@ public class StramWebApp extends WebApp {
     bind(JAXBContextResolver.class);
     bind(GenericExceptionHandler.class);
     bind(StramWebServices.class);
-    bind(ModuleManager.class).toInstance(this.topologyManager);
+    bind(ModuleManager.class).toInstance(this.moduleManager);
   }
 }
