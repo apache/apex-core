@@ -4,22 +4,22 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.TestOutputNode;
-import com.malhartech.dag.NumberGeneratorInputAdapter;
-import com.malhartech.dag.GenericTestNode;
+import com.malhartech.dag.TestOutputModule;
+import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleContext;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.TopologyDeployer.PTNode;
-import com.malhartech.stram.conf.NewTopologyBuilder;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.Topology.NodeDecl;
-import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.conf.NewDAGBuilder;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAG.Operator;
+import com.malhartech.stram.conf.DAGBuilder;
 import com.malhartech.stream.StramTestSupport;
 import java.io.File;
 import java.io.FileReader;
@@ -42,7 +42,7 @@ public class StramLocalClusterTest
   @Test
   public void testTplg() throws IOException, Exception {
     String tplgFile = "src/test/resources/clusterTest.tplg.properties";
-    StramLocalCluster lc = new StramLocalCluster(TopologyBuilder.createTopology(new Configuration(), tplgFile));
+    StramLocalCluster lc = new StramLocalCluster(DAGBuilder.createTopology(new Configuration(), tplgFile));
     lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
   }
@@ -55,29 +55,29 @@ public class StramLocalClusterTest
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
-    NewTopologyBuilder b = new NewTopologyBuilder();
+    NewDAGBuilder b = new NewDAGBuilder();
 
-    NodeDecl genNode = b.addNode("genNode", NumberGeneratorInputAdapter.class);
+    Operator genNode = b.addNode("genNode", NumberGeneratorInputModule.class);
     genNode.setProperty("maxTuples", "1");
 
-    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    Operator node1 = b.addNode("node1", GenericTestModule.class);
     node1.setProperty("emitFormat", "%s >> node1");
 
     File outFile = new File("./target/" + StramLocalClusterTest.class.getName() + "-testLocalClusterInitShutdown.out");
     outFile.delete();
 
-    NodeDecl outNode = b.addNode("outNode", TestOutputNode.class);
-    outNode.setProperty(TestOutputNode.P_FILEPATH, outFile.toURI().toString());
+    Operator outNode = b.addNode("outNode", TestOutputModule.class);
+    outNode.setProperty(TestOutputModule.P_FILEPATH, outFile.toURI().toString());
 
     b.addStream("fromGenNode")
-      .setSource(genNode.getOutput(NumberGeneratorInputAdapter.OUTPUT_PORT))
-      .addSink(node1.getInput(GenericTestNode.INPUT1));
+      .setSource(genNode.getOutput(NumberGeneratorInputModule.OUTPUT_PORT))
+      .addSink(node1.getInput(GenericTestModule.INPUT1));
 
     b.addStream("fromNode1")
-      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
-      .addSink(outNode.getInput(TestOutputNode.PORT_INPUT));
+      .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
+      .addSink(outNode.getInput(TestOutputModule.PORT_INPUT));
 
-    Topology t = b.getTopology();
+    DAG t = b.getTopology();
     t.setMaxContainerCount(2);
 
     StramLocalCluster localCluster = new StramLocalCluster(t);
@@ -98,19 +98,19 @@ public class StramLocalClusterTest
   @Test
   public void testChildRecovery() throws Exception
   {
-    NewTopologyBuilder tb = new NewTopologyBuilder();
+    NewDAGBuilder tb = new NewDAGBuilder();
 
-    NodeDecl node1 = tb.addNode("node1", NumberGeneratorInputAdapter.class);
-    NodeDecl node2 = tb.addNode("node2", GenericTestNode.class);
+    Operator node1 = tb.addNode("node1", NumberGeneratorInputModule.class);
+    Operator node2 = tb.addNode("node2", GenericTestModule.class);
 
     tb.addStream("n1n2").
-      setSource(node1.getOutput(NumberGeneratorInputAdapter.OUTPUT_PORT)).
-      addSink(node2.getInput(GenericTestNode.INPUT1));
+      setSource(node1.getOutput(NumberGeneratorInputModule.OUTPUT_PORT)).
+      addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    Topology tplg = tb.getTopology();
+    DAG tplg = tb.getTopology();
     tplg.validate();
 
-    tplg.getConf().setInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
+    tplg.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
 
     final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
 
@@ -127,20 +127,20 @@ public class StramLocalClusterTest
 
     LocalStramChild c0 = waitForContainer(localCluster, node1);
     //Thread.sleep(1000);
-    Map<String, Node> nodeMap = c0.getNodes();
+    Map<String, Module> nodeMap = c0.getNodes();
     Assert.assertEquals("number nodes", 1, nodeMap.size());
 
     PTNode ptNode1 = localCluster.findByLogicalNode(node1);
-    Node n1 = nodeMap.get(ptNode1.id);
+    Module n1 = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForContainer(localCluster, node2);
-    Map<String, Node> c2NodeMap = c2.getNodes();
+    Map<String, Module> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number nodes downstream", 1, c2NodeMap.size());
-    Node n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    Module n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
-    NodeContext n1Context = c0.getNodeContext(ptNode1.id);
+    ModuleContext n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
     wclock.tick(1);
 
@@ -149,7 +149,7 @@ public class StramLocalClusterTest
 
     wclock.tick(1);
 
-    NodeContext n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
+    ModuleContext n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
     waitForWindow(n2Context, 2);
     backupNode(c2, n2Context);
 
@@ -195,14 +195,14 @@ public class StramLocalClusterTest
 
     Assert.assertEquals("downstream nodes after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify that the downstream node was replaced
-    Node n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    Module n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2Replaced);
     Assert.assertNotSame("node2 redeployed", n2, n2Replaced);
 
-    Node n1Replaced = nodeMap.get(ptNode1.id);
+    Module n1Replaced = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1Replaced);
 
-    NodeContext n1ReplacedContext = c0.getNodeContext(ptNode1.id);
+    ModuleContext n1ReplacedContext = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
 
     localCluster.shutdown();
@@ -216,7 +216,7 @@ public class StramLocalClusterTest
    * @return
    * @throws InterruptedException
    */
-  private LocalStramChild waitForContainer(StramLocalCluster localCluster, NodeDecl nodeDecl) throws InterruptedException
+  private LocalStramChild waitForContainer(StramLocalCluster localCluster, Operator nodeDecl) throws InterruptedException
   {
     PTNode node = localCluster.findByLogicalNode(nodeDecl);
     Assert.assertNotNull("no node for " + nodeDecl, node);
@@ -239,7 +239,7 @@ public class StramLocalClusterTest
     }
   }
 
-  private void waitForWindow(NodeContext nodeCtx, long windowId) throws InterruptedException
+  private void waitForWindow(ModuleContext nodeCtx, long windowId) throws InterruptedException
   {
     while (nodeCtx.getLastProcessedWindowId() < windowId) {
       LOG.debug("Waiting for window {} at node {}", windowId, nodeCtx.getId());
@@ -247,7 +247,7 @@ public class StramLocalClusterTest
     }
   }
 
-  private void backupNode(StramChild c, NodeContext nodeCtx)
+  private void backupNode(StramChild c, ModuleContext nodeCtx)
   {
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(nodeCtx.getId());

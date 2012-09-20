@@ -4,17 +4,17 @@
  */
 package com.malhartech.stram.conf;
 
-import com.malhartech.dag.Node;
+import com.malhartech.dag.Module;
 import com.malhartech.dag.SerDe;
-import com.malhartech.stram.conf.Topology.InputPort;
-import com.malhartech.stram.conf.Topology.NodeDecl;
-import com.malhartech.stram.conf.Topology.OutputPort;
-import com.malhartech.stram.conf.Topology.StreamDecl;
+import com.malhartech.stram.conf.DAG.InputPort;
+import com.malhartech.stram.conf.DAG.Operator;
+import com.malhartech.stram.conf.DAG.OutputPort;
+import com.malhartech.stram.conf.DAG.StreamDecl;
 
 
-public class NewTopologyBuilder implements StreamingApplicationFactory {
+public class NewDAGBuilder implements ApplicationFactory {
 
-  private final Topology topology = new Topology();;
+  private final DAG topology = new DAG();;
 
   public class StreamBuilder {
     private final StreamDecl streamDecl;
@@ -49,7 +49,7 @@ public class NewTopologyBuilder implements StreamingApplicationFactory {
 
   }
 
-  public NodeDecl addNode(String id, Class<? extends Node> nodeClass) {
+  public Operator addNode(String id, Class<? extends Module> nodeClass) {
     return topology.addNode(id, nodeClass);
   }
 
@@ -57,12 +57,12 @@ public class NewTopologyBuilder implements StreamingApplicationFactory {
     return new StreamBuilder(topology.addStream(id));
   }
 
-  public Topology getTopology() {
+  public DAG getTopology() {
     return topology;
   }
 
   @Override
-  public Topology getStreamingApplication() {
+  public DAG getApplication() {
     return topology;
   }
 

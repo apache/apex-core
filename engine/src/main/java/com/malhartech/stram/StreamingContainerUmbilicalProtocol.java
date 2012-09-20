@@ -40,7 +40,7 @@ import com.malhartech.dag.HeartbeatCounters;
 // @TokenInfo(JobTokenSelector.class)
 @InterfaceAudience.Private
 @InterfaceStability.Stable
-public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
+public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static final long versionID = 201208081755L;
 
   void log(String containerId, String msg) throws IOException;
@@ -118,7 +118,7 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     /**
      * The list of nodes to initially deploy in the container.
      */
-    public List<NodeDeployInfo> nodeList;
+    public List<ModuleDeployInfo> nodeList;
 
     /**
      * How frequently should nodes heartbeat to stram. Recommended setting is
@@ -419,12 +419,12 @@ public interface StreamingNodeUmbilicalProtocol extends VersionedProtocol {
     /**
      * Set when nodes need to be removed
      */
-    public List<NodeDeployInfo> undeployRequest;
+    public List<ModuleDeployInfo> undeployRequest;
 
     /**
      * Set when new nodes need to be deployed
      */
-    public List<NodeDeployInfo> deployRequest;
+    public List<ModuleDeployInfo> deployRequest;
 
   }
 

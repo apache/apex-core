@@ -4,10 +4,10 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.AbstractModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,19 +15,19 @@ import org.slf4j.LoggerFactory;
  * Node for topology testing.
  * Test should reference the ports defined using the constants.
  */
-@NodeAnnotation(
+@ModuleAnnotation(
     ports = {
-        @PortAnnotation(name = GenericTestNode.INPUT1,  type = PortType.INPUT),
-        @PortAnnotation(name = GenericTestNode.INPUT2,  type = PortType.INPUT),
-        @PortAnnotation(name = GenericTestNode.OUTPUT1, type = PortType.OUTPUT)
+        @PortAnnotation(name = GenericTestModule.INPUT1,  type = PortType.INPUT),
+        @PortAnnotation(name = GenericTestModule.INPUT2,  type = PortType.INPUT),
+        @PortAnnotation(name = GenericTestModule.OUTPUT1, type = PortType.OUTPUT)
     }
 )
-public class GenericTestNode extends AbstractNode {
+public class GenericTestModule extends AbstractModule {
   public static final String INPUT1 = "input1";
   public static final String INPUT2 = "input2";
   public static final String OUTPUT1 = "output1";
 
-  private static final Logger LOG = LoggerFactory.getLogger(GenericTestNode.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GenericTestModule.class);
 
   private String emitFormat;
 

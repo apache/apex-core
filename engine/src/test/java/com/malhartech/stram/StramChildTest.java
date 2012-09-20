@@ -4,19 +4,19 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.NumberGeneratorInputAdapter;
-import com.malhartech.dag.GenericTestNode;
 import com.malhartech.bufferserver.Server;
-import com.malhartech.stram.conf.NewTopologyBuilder;
-import com.malhartech.stram.conf.Topology;
+import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.NewDAGBuilder;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Test;
 import org.junit.BeforeClass;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,23 +58,23 @@ public class StramChildTest
   @Test
   public void testInit() throws Exception
   {
-    NewTopologyBuilder b = new NewTopologyBuilder();
+    NewDAGBuilder b = new NewDAGBuilder();
 
-    Topology.NodeDecl generatorNode = b.addNode("generatorNode", NumberGeneratorInputAdapter.class);
-    Topology.NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    DAG.Operator generator = b.addNode("generator", NumberGeneratorInputModule.class);
+    DAG.Operator operator1 = b.addNode("operator1", GenericTestModule.class);
 
-    NewTopologyBuilder.StreamBuilder generatorOutput = b.addStream("generatorOutput");
-    generatorOutput.setSource(generatorNode.getOutput(NumberGeneratorInputAdapter.OUTPUT_PORT))
-            .addSink(node1.getInput(GenericTestNode.INPUT1))
-            .setSerDeClass(DNodeManagerTest.TestStaticPartitioningSerDe.class);
+    NewDAGBuilder.StreamBuilder generatorOutput = b.addStream("generatorOutput");
+    generatorOutput.setSource(generator.getOutput(NumberGeneratorInputModule.OUTPUT_PORT))
+            .addSink(operator1.getInput(GenericTestModule.INPUT1))
+            .setSerDeClass(ModuleManagerTest.TestStaticPartitioningSerDe.class);
 
     //StreamConf output1 = b.getOrAddStream("output1");
     //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
     //                    ConsoleOutputStream.class.getName());
-    Topology tplg = b.getTopology();
+    DAG tplg = b.getTopology();
 
-    DNodeManager dnm = new DNodeManager(tplg);
-    int expectedContainerCount = DNodeManagerTest.TestStaticPartitioningSerDe.partitions.length;
+    ModuleManager dnm = new ModuleManager(tplg);
+    int expectedContainerCount = ModuleManagerTest.TestStaticPartitioningSerDe.partitions.length;
     Assert.assertEquals("number required containers",
                         expectedContainerCount,
                         dnm.getNumRequiredContainers());
@@ -83,7 +83,7 @@ public class StramChildTest
 
     for (int i = 0; i < expectedContainerCount; i++) {
       String containerId = "container" + (i + 1);
-      StreamingNodeUmbilicalProtocol.StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+      StreamingContainerUmbilicalProtocol.StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
       StramLocalCluster.LocalStramChild container = new StramLocalCluster.LocalStramChild(containerId, null, null);
       container.setup(cc);
       containers.add(container);

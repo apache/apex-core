@@ -3,8 +3,8 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.NumberGeneratorInputAdapter;
-import com.malhartech.dag.GenericTestNode;
+import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.GenericTestModule;
 import static org.junit.Assert.assertEquals;
 
 import java.io.BufferedReader;
@@ -41,10 +41,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.AbstractModule;
 import com.malhartech.dag.HeartbeatCounters;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAGBuilder;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -159,32 +159,32 @@ public class StramMiniClusterTest
     LOG.info("testJar: " + testJar);
 
     // create test topology
-    TopologyBuilder tb = new TopologyBuilder();
+    DAGBuilder tb = new DAGBuilder();
     Properties dagProps = new Properties();
 
-    // input node (ensure shutdown works while windows are generated)
-    dagProps.put("stram.node.numGen.classname", NumberGeneratorInputAdapter.class.getName());
-    dagProps.put("stram.node.numGen.maxTuples", "1");
+    // input module (ensure shutdown works while windows are generated)
+    dagProps.put("stram.module.numGen.classname", NumberGeneratorInputModule.class.getName());
+    dagProps.put("stram.module.numGen.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
     //props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
-    //props.put("stram.stream.output.inputNode", "node2");
+    //props.put("stram.stream.output.inputNode", "module2");
     //props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    dagProps.put("stram.node.node1.classname", GenericTestNode.class.getName());
+    dagProps.put("stram.module.module1.classname", GenericTestModule.class.getName());
 
-    dagProps.put("stram.node.node2.classname", GenericTestNode.class.getName());
+    dagProps.put("stram.module.module2.classname", GenericTestModule.class.getName());
 
     dagProps.put("stram.stream.fromNumGen.source", "numGen.outputPort");
-    dagProps.put("stram.stream.fromNumGen.sinks", "node1.input1");
+    dagProps.put("stram.stream.fromNumGen.sinks", "module1.input1");
 
-    dagProps.put("stram.stream.n1n2.source", "node1.output1");
-    dagProps.put("stram.stream.n1n2.sinks", "node2.input1");
+    dagProps.put("stram.stream.n1n2.source", "module1.output1");
+    dagProps.put("stram.stream.n1n2.sinks", "module2.input1");
 
-    dagProps.setProperty(Topology.STRAM_MASTER_MEMORY_MB, "512");
-    dagProps.setProperty(Topology.STRAM_CONTAINER_MEMORY_MB, "64");
-    dagProps.setProperty(Topology.STRAM_DEBUG, "true");
-    dagProps.setProperty(Topology.STRAM_MAX_CONTAINERS, "2");
+    dagProps.setProperty(DAG.STRAM_MASTER_MEMORY_MB, "512");
+    dagProps.setProperty(DAG.STRAM_CONTAINER_MEMORY_MB, "64");
+    dagProps.setProperty(DAG.STRAM_DEBUG, "true");
+    dagProps.setProperty(DAG.STRAM_MAX_CONTAINERS, "2");
     tb.addFromProperties(dagProps);
 
     //StramLocalCluster lc = new StramLocalCluster(tb.getTopology());
@@ -225,11 +225,11 @@ public class StramMiniClusterTest
   public void testWebService() throws Exception
   {
 
-    // single container topology of inline input and node
+    // single container topology of inline input and module
     Properties props = new Properties();
-    props.put("stram.stream.input.classname", NumberGeneratorInputAdapter.class.getName());
-    props.put("stram.stream.input.outputNode", "node1");
-    props.put("stram.node.node1.classname", NoTimeoutTestNode.class.getName());
+    props.put("stram.stream.input.classname", NumberGeneratorInputModule.class.getName());
+    props.put("stram.stream.input.outputNode", "module1");
+    props.put("stram.module.module1.classname", NoTimeoutTestNode.class.getName());
 
     File tmpFile = createTmpPropFile(props);
 
@@ -265,7 +265,7 @@ public class StramMiniClusterTest
       assertEquals("appId", appReport.getApplicationId().toString(), json.getJSONObject("info").get("appId"));
 
 
-      r = wsClient.resource("http://" + appReport.getTrackingUrl()).path("ws").path("v1").path("stram").path("nodes");
+      r = wsClient.resource("http://" + appReport.getTrackingUrl()).path("ws").path("v1").path("stram").path("modules");
       LOG.info("Requesting: " + r.getURI());
       response = r.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
       assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
@@ -338,7 +338,7 @@ public class StramMiniClusterTest
   }
 
   @SuppressWarnings("PublicInnerClass")
-  public static class TestDNode extends AbstractNode
+  public static class TestDNode extends AbstractModule
   {
     @SuppressWarnings("PackageVisibleField")
     int getResetCount = 0;
@@ -364,7 +364,7 @@ public class StramMiniClusterTest
     }
 
     /**
-     * used to parameterize test node for heartbeat reporting
+     * used to parameterize test module for heartbeat reporting
      *
      * @param tupleCounts
      */

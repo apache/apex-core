@@ -24,21 +24,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
+ *
  * Stram side implementation of communication protocol with hadoop container<p>
  * <br>
- * 
+ *
  */
 
-public class StreamingNodeParent extends CompositeService implements StreamingNodeUmbilicalProtocol {
+public class StreamingContainerParent extends CompositeService implements StreamingContainerUmbilicalProtocol {
 
-  private static final Logger LOG = LoggerFactory.getLogger(StreamingNodeParent.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerParent.class);
   private Server server;
   private SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;
-  private DNodeManager dnodeManager;
-  
-  public StreamingNodeParent(String name, DNodeManager dnodeMgr) {
+  private ModuleManager dnodeManager;
+
+  public StreamingContainerParent(String name, ModuleManager dnodeMgr) {
     super(name);
     this.dnodeManager = dnodeMgr;
   }
@@ -46,8 +46,8 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
   @Override
   public void init(Configuration conf) {
    super.init(conf);
-  }  
-  
+  }
+
   @Override
   public void start() {
     startRpcServer();
@@ -58,21 +58,21 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
   public void stop() {
     stopRpcServer();
     super.stop();
-  }  
+  }
 
   protected void startRpcServer() {
     Configuration conf = getConfig();
     LOG.info("Config: " + conf);
     try {
       server =
-          RPC.getServer(StreamingNodeUmbilicalProtocol.class, this, "0.0.0.0", 0, 
+          RPC.getServer(StreamingContainerUmbilicalProtocol.class, this, "0.0.0.0", 0,
               conf.getInt(MRJobConfig.MR_AM_TASK_LISTENER_THREAD_COUNT, // TODO: config
                   MRJobConfig.DEFAULT_MR_AM_TASK_LISTENER_THREAD_COUNT),
               false, conf, tokenSecretManager);
-      
+
       // Enable service authorization?
       if (conf.getBoolean(
-          CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION, 
+          CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION,
           false)) {
         refreshServiceAcls(conf, new MRAMPolicyProvider());
       }
@@ -82,7 +82,7 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
     } catch (IOException e) {
       throw new YarnException(e);
     }
-  }  
+  }
 
   protected void stopRpcServer() {
     server.stop();
@@ -90,23 +90,23 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
 
   public InetSocketAddress getAddress() {
     return address;
-  }  
-  
-  void refreshServiceAcls(Configuration configuration, 
+  }
+
+  void refreshServiceAcls(Configuration configuration,
       PolicyProvider policyProvider) {
     this.server.refreshServiceAcl(configuration, policyProvider);
   }
-    
+
   @Override
   public ProtocolSignature getProtocolSignature(String protocol,
       long clientVersion, int clientMethodsHash) throws IOException {
-      return ProtocolSignature.getProtocolSignature(this, 
+      return ProtocolSignature.getProtocolSignature(this,
           protocol, clientVersion, clientMethodsHash);
   }
 
   @Override
   public long getProtocolVersion(String arg0, long arg1) throws IOException {
-    return StreamingNodeUmbilicalProtocol.versionID;
+    return StreamingContainerUmbilicalProtocol.versionID;
   }
 
   @Override
@@ -136,5 +136,5 @@ public class StreamingNodeParent extends CompositeService implements StreamingNo
   public StramToNodeRequest processPartioningDetails() {
     throw new RuntimeException("processPartioningDetails not implemented");
   }
-  
+
 }

@@ -29,28 +29,28 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.Node;
+import com.malhartech.dag.Module;
 import com.malhartech.dag.SerDe;
 
 /**
- * Topology contains the logical declarations of nodes and streams.
+ * DAG contains the logical declarations of nodes and streams.
  * It will be serialized and deployed to the cluster, where it is translated into the physical plan.
  */
-public class Topology implements Serializable, TopologyConstants {
+public class DAG implements Serializable, DAGConstants {
   private static final long serialVersionUID = -2099729915606048704L;
 
-  private static final Logger LOG = LoggerFactory.getLogger(Topology.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DAG.class);
 
   private final Map<String, StreamDecl> streams = new HashMap<String, StreamDecl>();
-  private final Map<String, NodeDecl> nodes = new HashMap<String, NodeDecl>();
-  private final List<NodeDecl> rootNodes = new ArrayList<NodeDecl>();
+  private final Map<String, Operator> nodes = new HashMap<String, Operator>();
+  private final List<Operator> rootNodes = new ArrayList<Operator>();
   private final ExternalizableConf confHolder;
 
   private transient int nodeIndex = 0; // used for cycle validation
-  private transient Stack<NodeDecl> stack = new Stack<NodeDecl>(); // used for cycle validation
+  private transient Stack<Operator> stack = new Stack<Operator>(); // used for cycle validation
 
   public static class ExternalizableConf implements Externalizable {
     private final Configuration conf;
@@ -74,21 +74,21 @@ public class Topology implements Serializable, TopologyConstants {
     }
   }
 
-  public Topology() {
+  public DAG() {
     this.confHolder = new ExternalizableConf(new Configuration(false));
   }
 
-  public Topology(Configuration conf) {
+  public DAG(Configuration conf) {
     this.confHolder = new ExternalizableConf(conf);
   }
 
   public final class InputPort implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private NodeDecl node;
+    private Operator node;
     private PortAnnotation portAnnotation;
 
-    public NodeDecl getNode() {
+    public Operator getNode() {
       return node;
     }
 
@@ -104,10 +104,10 @@ public class Topology implements Serializable, TopologyConstants {
   public final class OutputPort implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private NodeDecl node;
+    private Operator node;
     private PortAnnotation portAnnotation;
 
-    public NodeDecl getNode() {
+    public Operator getNode() {
       return node;
     }
 
@@ -190,19 +190,19 @@ public class Topology implements Serializable, TopologyConstants {
 
   }
 
-  public final class NodeDecl implements Serializable {
+  public final class Operator implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final Map<String, StreamDecl> inputStreams = new HashMap<String, StreamDecl>();
     private final Map<String, StreamDecl> outputStreams = new HashMap<String, StreamDecl>();
     private final Map<String, String> properties = new HashMap<String, String>();
-    private final Class<? extends Node> nodeClass;
+    private final Class<? extends Module> nodeClass;
     private final String id;
 
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
-    private NodeDecl(String id, Class<? extends Node> nodeClass) {
+    private Operator(String id, Class<? extends Module> nodeClass) {
       this.nodeClass = nodeClass;
       this.id = id;
     }
@@ -235,7 +235,7 @@ public class Topology implements Serializable, TopologyConstants {
       return this.outputStreams;
     }
 
-    public Class<? extends Node> getNodeClass() {
+    public Class<? extends Module> getNodeClass() {
       return this.nodeClass;
     }
 
@@ -247,14 +247,14 @@ public class Topology implements Serializable, TopologyConstants {
       return properties;
     }
 
-    public NodeDecl setProperty(String name, String value) {
+    public Operator setProperty(String name, String value) {
       properties.put(name, value);
       return this;
     }
 
     private PortAnnotation findPortAnnotationByName(String portName, PortType type) {
       Class<?> clazz = this.nodeClass;
-      NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
+      ModuleAnnotation na = clazz.getAnnotation(ModuleAnnotation.class);
       if (na != null) {
         PortAnnotation[] ports = na.ports();
         for (PortAnnotation pa : ports) {
@@ -277,12 +277,12 @@ public class Topology implements Serializable, TopologyConstants {
 
   }
 
-  NodeDecl addNode(String id, Class<? extends Node> nodeClass) {
+  Operator addNode(String id, Class<? extends Module> nodeClass) {
     if (nodes.containsKey(id)) {
       throw new IllegalArgumentException("duplicate node id: " + nodes.get(id));
     }
 
-    NodeDecl decl = new NodeDecl(id, nodeClass);
+    Operator decl = new Operator(id, nodeClass);
     rootNodes.add(decl);
     nodes.put(id, decl);
 
@@ -302,15 +302,15 @@ public class Topology implements Serializable, TopologyConstants {
     return this.streams.get(id);
   }
 
-  public List<NodeDecl> getRootNodes() {
+  public List<Operator> getRootOperators() {
      return Collections.unmodifiableList(this.rootNodes);
   }
 
-  public Collection<NodeDecl> getAllNodes() {
+  public Collection<Operator> getAllOperators() {
     return Collections.unmodifiableCollection(this.nodes.values());
   }
 
-  public NodeDecl getNode(String nodeId) {
+  public Operator getOperator(String nodeId) {
     return this.nodes.get(nodeId);
   }
 
@@ -348,7 +348,7 @@ public class Topology implements Serializable, TopologyConstants {
    */
   public Set<String> getClassNames() {
     Set<String> classNames = new HashSet<String>();
-    for (NodeDecl n : this.nodes.values()) {
+    for (Operator n : this.nodes.values()) {
       String className = n.nodeClass.getName();
       if (className != null) {
         classNames.add(className);
@@ -368,13 +368,13 @@ public class Topology implements Serializable, TopologyConstants {
    */
   public void validate() {
     // clear visited on all nodes
-    for (NodeDecl n : nodes.values()) {
+    for (Operator n : nodes.values()) {
       n.nindex = null;
       n.lowlink = null;
     }
 
     List<List<String>> cycles = new ArrayList<List<String>>();
-    for (NodeDecl n : nodes.values()) {
+    for (Operator n : nodes.values()) {
       if (n.nindex == null) {
         findStronglyConnected(n, cycles);
       }
@@ -399,7 +399,7 @@ public class Topology implements Serializable, TopologyConstants {
    * @param n
    * @param cycles
    */
-  public void findStronglyConnected(NodeDecl n, List<List<String>> cycles) {
+  public void findStronglyConnected(Operator n, List<List<String>> cycles) {
     n.nindex = nodeIndex;
     n.lowlink = nodeIndex;
     nodeIndex++;
@@ -408,7 +408,7 @@ public class Topology implements Serializable, TopologyConstants {
     // depth first successors traversal
     for (StreamDecl downStream : n.outputStreams.values()) {
       for (InputPort sink : downStream.sinks) {
-        NodeDecl successor = sink.node;
+        Operator successor = sink.node;
         if (successor == null) {
           continue;
         }
@@ -430,7 +430,7 @@ public class Topology implements Serializable, TopologyConstants {
     if (n.lowlink.equals(n.nindex)) {
       List<String> connectedIds = new ArrayList<String>();
       while (!stack.isEmpty()) {
-        NodeDecl n2 = stack.pop();
+        Operator n2 = stack.pop();
         connectedIds.add(n2.id);
         if (n2 == n) {
           break; // collected all connected nodes
@@ -444,13 +444,13 @@ public class Topology implements Serializable, TopologyConstants {
     }
   }
 
-  public static void write(Topology tplg, OutputStream os) throws IOException {
+  public static void write(DAG tplg, OutputStream os) throws IOException {
     ObjectOutputStream oos = new ObjectOutputStream(os);
     oos.writeObject(tplg);
   }
 
-  public static Topology read(InputStream is) throws IOException, ClassNotFoundException {
-    return (Topology)new ObjectInputStream(is).readObject();
+  public static DAG read(InputStream is) throws IOException, ClassNotFoundException {
+    return (DAG)new ObjectInputStream(is).readObject();
   }
 
   @Override
@@ -458,7 +458,7 @@ public class Topology implements Serializable, TopologyConstants {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
         append("nodes", this.nodes).
         append("streams", this.streams).
-        append("properties", TopologyBuilder.toProperties(this.confHolder.conf)).
+        append("properties", DAGBuilder.toProperties(this.confHolder.conf)).
         toString();
   }
 

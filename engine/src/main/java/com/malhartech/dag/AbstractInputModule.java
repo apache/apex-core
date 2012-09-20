@@ -4,7 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.NodeAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
@@ -18,14 +17,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputNode extends AbstractBaseModule implements Runnable
+public abstract class AbstractInputModule extends AbstractBaseModule implements Runnable
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractInputNode.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractInputModule.class);
   private transient HashMap<String, CircularBuffer<Object>> afterBeginWindows;
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
-  private transient NodeContext ctx;
+  private transient ModuleContext ctx;
 
-  public AbstractInputNode()
+  public AbstractInputModule()
   {
     afterBeginWindows = new HashMap<String, CircularBuffer<Object>>();
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
@@ -33,7 +32,7 @@ public abstract class AbstractInputNode extends AbstractBaseModule implements Ru
 
   @Override
   @SuppressWarnings("SleepWhileInLoop")
-  public final void activate(NodeContext context)
+  public final void activate(ModuleContext context)
   {
     ctx = context;
     activateSinks();

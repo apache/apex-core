@@ -4,7 +4,7 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.dag.*;
 import java.util.logging.Level;
@@ -21,13 +21,13 @@ import static org.junit.Assert.assertNull;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 @Ignore
-public class InputActiveMQStreamTest
+public class InputActiveMQModuleTest
 {
-  static NodeConfiguration config;
-  static AbstractActiveMQInputNode instance;
+  static ModuleConfiguration config;
+  static AbstractActiveMQInputModule instance;
   static MyStreamContext context;
 
-  private static final class MyStreamContext extends NodeContext implements Sink
+  private static final class MyStreamContext extends ModuleContext implements Sink
   {
     DefaultSerDe myserde;
 
@@ -44,10 +44,10 @@ public class InputActiveMQStreamTest
     }
   }
 
-  @NodeAnnotation(ports = {
+  @ModuleAnnotation(ports = {
     @PortAnnotation(name = Component.OUTPUT, type = PortAnnotation.PortType.OUTPUT)
   })
-  private static final class InputActiveMQStream extends AbstractActiveMQInputNode
+  private static final class InputActiveMQStream extends AbstractActiveMQInputModule
   {
     @Override
     protected void emitMessage(Message message)
@@ -57,7 +57,7 @@ public class InputActiveMQStreamTest
           emit(Component.OUTPUT, ((TextMessage)message).getText());
         }
         catch (JMSException ex) {
-          Logger.getLogger(InputActiveMQStreamTest.class.getName()).log(Level.SEVERE, null, ex);
+          Logger.getLogger(InputActiveMQModuleTest.class.getName()).log(Level.SEVERE, null, ex);
         }
       }
     }
@@ -73,14 +73,14 @@ public class InputActiveMQStreamTest
     }
   }
 
-  public InputActiveMQStreamTest()
+  public InputActiveMQModuleTest()
   {
   }
 
   @BeforeClass
   public static void setUpClass() throws Exception
   {
-    config = new NodeConfiguration("instance", null);
+    config = new ModuleConfiguration("instance", null);
     config.set("user", "");
     config.set("password", "");
     config.set("url", "tcp://localhost:61616");
@@ -125,7 +125,7 @@ public class InputActiveMQStreamTest
   }
 
   /**
-   * Test of setup method, of class AbstractActiveMQInputNode.
+   * Test of setup method, of class AbstractActiveMQInputModule.
    */
   @Test
   public void testSetup()
@@ -138,7 +138,7 @@ public class InputActiveMQStreamTest
   }
 
   /**
-   * Test of teardown method, of class AbstractActiveMQInputNode.
+   * Test of teardown method, of class AbstractActiveMQInputModule.
    */
   @Test
   public void testTeardown() throws Exception
@@ -172,7 +172,7 @@ public class InputActiveMQStreamTest
       Thread.sleep(10000);
     }
     catch (InterruptedException ex) {
-      Logger.getLogger(InputActiveMQStreamTest.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(InputActiveMQModuleTest.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 }

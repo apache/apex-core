@@ -5,7 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.DAG;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -44,13 +44,13 @@ public class LaunchContainerRunnable implements Runnable
   private final YarnClientHelper yarnClient;
   private final Map<String, String> containerEnv = new HashMap<String, String>();
   private final InetSocketAddress heartbeatAddress;
-  private final Topology topology;
+  private final DAG topology;
   private final Container container;
 
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, Topology topology, InetSocketAddress heartbeatAddress)
+  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, DAG topology, InetSocketAddress heartbeatAddress)
   {
     this.container = lcontainer;
     this.yarnClient = yarnClient;

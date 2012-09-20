@@ -56,7 +56,7 @@ public class DefaultSerDe implements SerDe
   }
 
   @Override
-  public boolean transferState(Node destination, Node source, Collection<byte[]> partitions)
+  public boolean transferState(Module destination, Module source, Collection<byte[]> partitions)
   {
     return false;
   }

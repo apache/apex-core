@@ -4,16 +4,16 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.stram.conf.StreamingApplicationFactory;
-import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.ApplicationFactory;
+import com.malhartech.stram.conf.DAG;
 
 /**
  * Test class for java application configuration
  */
-public class TestAppFactory implements StreamingApplicationFactory {
+public class TestAppFactory implements ApplicationFactory {
 
   @Override
-  public Topology getStreamingApplication() {
+  public DAG getApplication() {
     throw new UnsupportedOperationException();
   }
 

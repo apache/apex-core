@@ -14,10 +14,10 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.TopologyDeployer.PTContainer;
-import com.malhartech.stram.TopologyDeployer.PTNode;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.DAGDeployer.PTContainer;
+import com.malhartech.stram.DAGDeployer.PTNode;
 
 /**
  *
@@ -31,7 +31,7 @@ public class StramChildAgent {
     final AtomicInteger ackCountdown;
     final PTContainer container;
     final AtomicInteger executeWhenZero;
-    private List<NodeDeployInfo> nodes;
+    private List<ModuleDeployInfo> nodes;
     Map<PTNode, Long> checkpoints;
 
     public DeployRequest(PTContainer container, AtomicInteger ackCountdown) {
@@ -55,7 +55,7 @@ public class StramChildAgent {
       ackCountdown.decrementAndGet();
     }
 
-    void setNodes(List<NodeDeployInfo> nodes) {
+    void setNodes(List<ModuleDeployInfo> nodes) {
       this.nodes = nodes;
     }
 

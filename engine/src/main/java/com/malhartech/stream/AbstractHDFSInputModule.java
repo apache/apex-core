@@ -4,14 +4,14 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.AbstractInputModule;
 import com.malhartech.dag.FailedOperationException;
-import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleConfiguration;
 import com.malhartech.dag.Tuple;
 import java.io.IOException;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -31,9 +31,9 @@ import org.slf4j.LoggerFactory;
  * Users need to implement getRecord to get HDFS input adapter to work as per their choice<br>
  * <br>
  */
-public abstract class AbstractHDFSInputNode extends AbstractInputNode implements Runnable
+public abstract class AbstractHDFSInputModule extends AbstractInputModule implements Runnable
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputNode.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractHDFSInputModule.class);
   protected FSDataInputStream input;
   private boolean skipEndStream = false;
 
@@ -60,7 +60,7 @@ public abstract class AbstractHDFSInputNode extends AbstractInputNode implements
    * @param config
    */
   @Override
-  public void setup(NodeConfiguration config) throws FailedOperationException
+  public void setup(ModuleConfiguration config) throws FailedOperationException
   {
     try {
       FileSystem fs = FileSystem.get(config);
@@ -92,8 +92,8 @@ public abstract class AbstractHDFSInputNode extends AbstractInputNode implements
       }
       else {
         logger.info("Ending the stream");
-        Class<? extends Node> clazz = this.getClass();
-        NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
+        Class<? extends Module> clazz = this.getClass();
+        ModuleAnnotation na = clazz.getAnnotation(ModuleAnnotation.class);
         if (na != null) {
           PortAnnotation[] ports = na.ports();
           for (PortAnnotation pa: ports) {

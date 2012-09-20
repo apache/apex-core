@@ -32,9 +32,9 @@ import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.stram.StramClient;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.StramUtils;
-import com.malhartech.stram.conf.StreamingApplicationFactory;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.ApplicationFactory;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAGBuilder;
 
 
 /**
@@ -91,7 +91,7 @@ public class StramAppLauncher {
 
 
   public static interface AppConfig {
-      Topology createApp();
+      DAG createApp();
       String getName();
   }
 
@@ -103,9 +103,9 @@ public class StramAppLauncher {
     }
 
     @Override
-    public Topology createApp() {
+    public DAG createApp() {
       try {
-        return TopologyBuilder.createTopology(new Configuration(), propertyFile.getAbsolutePath());
+        return DAGBuilder.createTopology(new Configuration(), propertyFile.getAbsolutePath());
       } catch (IOException e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
       }
@@ -244,7 +244,7 @@ public class StramAppLauncher {
       final String className = classFileName.replace('/', '.').substring(0, classFileName.length() - 6);
       try {
         Class<?> clazz = cl.loadClass(className);
-        if (StreamingApplicationFactory.class.isAssignableFrom(clazz)) {
+        if (ApplicationFactory.class.isAssignableFrom(clazz)) {
           configurationList.add(new AppConfig() {
 
             @Override
@@ -253,11 +253,11 @@ public class StramAppLauncher {
             }
 
             @Override
-            public Topology createApp() {
+            public DAG createApp() {
               // load class from current context class loader
-              Class<? extends StreamingApplicationFactory> c = StramUtils.classForName(className, StreamingApplicationFactory.class);
-              StreamingApplicationFactory f = StramUtils.newInstance(c);
-              return f.getStreamingApplication();
+              Class<? extends ApplicationFactory> c = StramUtils.classForName(className, ApplicationFactory.class);
+              ApplicationFactory f = StramUtils.newInstance(c);
+              return f.getApplication();
             }
           });
         }
@@ -306,8 +306,8 @@ public class StramAppLauncher {
   public static String runApp(AppConfig appConfig) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
 
-    Topology tplg = appConfig.createApp();
-    tplg.getConf().setIfUnset(Topology.STRAM_APPNAME, appConfig.getName());
+    DAG tplg = appConfig.createApp();
+    tplg.getConf().setIfUnset(DAG.STRAM_APPNAME, appConfig.getName());
     StramClient client = new StramClient(tplg);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();

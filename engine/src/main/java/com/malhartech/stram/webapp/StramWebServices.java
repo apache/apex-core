@@ -22,17 +22,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
-import com.malhartech.stram.DNodeManager;
+import com.malhartech.stram.ModuleManager;
 import com.malhartech.stram.StramAppContext;
 
 /**
- * 
+ *
  * The web services implementation in the stram<p>
  * <br>
- * This class would ensure the the caller is authorized and then provide access to all the dag data stored 
+ * This class would ensure the the caller is authorized and then provide access to all the dag data stored
  * in the stram<br>
  * <br>
- * 
+ *
  */
 
 @Path("/ws/v1/stram")
@@ -42,9 +42,9 @@ public class StramWebServices {
   private final StramAppContext appCtx;
 
   private @Context HttpServletResponse response;
-  
-  private @Inject @Nullable DNodeManager topologyManager;
-  
+
+  private @Inject @Nullable ModuleManager topologyManager;
+
   @Inject
   public StramWebServices(final StramAppContext context) {
     this.appCtx = context;
@@ -90,22 +90,22 @@ public class StramWebServices {
   @GET
   @Path("nodes")
   @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
-  public NodesInfo getNodes() throws Exception {
+  public ModulesInfo getNodes() throws Exception {
     init();
     LOG.info("topologyManager: {}", topologyManager);
-    NodesInfo nodeList = new NodesInfo();
+    ModulesInfo nodeList = new ModulesInfo();
     nodeList.nodes = topologyManager.getNodeInfoList();
     return nodeList;
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
-  @Path("shutdown") 
+  @Path("shutdown")
   @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
-  public JSONObject shutdown() { 
+  public JSONObject shutdown() {
       topologyManager.shutdownAllContainers();
       return new JSONObject();
-  }   
-  
-  
+  }
+
+
 }
 

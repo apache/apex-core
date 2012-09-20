@@ -23,10 +23,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.SerDe;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.Topology.InputPort;
-import com.malhartech.stram.conf.Topology.NodeDecl;
-import com.malhartech.stram.conf.Topology.StreamDecl;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAG.InputPort;
+import com.malhartech.stram.conf.DAG.Operator;
+import com.malhartech.stram.conf.DAG.StreamDecl;
 
 /**
  *
@@ -37,12 +37,12 @@ import com.malhartech.stram.conf.Topology.StreamDecl;
  * dynamic optimization.<br>
  * In current implementation optimization is not done with number of containers. The number provided in the dag
  * specification is treated as minimum as well as maximum. Once the optimization layer is built this would change<br>
- * Topology deployment thus blocks successful running of a streaming job in the current version of the streaming platform<br>
+ * DAG deployment thus blocks successful running of a streaming job in the current version of the streaming platform<br>
  * <br>
  */
-public class TopologyDeployer {
+public class DAGDeployer {
 
-  private final static Logger LOG = LoggerFactory.getLogger(TopologyDeployer.class);
+  private final static Logger LOG = LoggerFactory.getLogger(DAGDeployer.class);
 
   /**
    * Common abstraction for streams and nodes for heartbeat/monitoring.<p>
@@ -83,7 +83,7 @@ public class TopologyDeployer {
    *
    */
   public static class PTInput {
-    final Topology.StreamDecl logicalStream;
+    final DAG.StreamDecl logicalStream;
     final PTComponent target;
     final byte[] partition;
     final PTComponent source;
@@ -128,7 +128,7 @@ public class TopologyDeployer {
    *
    */
   public static class PTOutput {
-    final Topology.StreamDecl logicalStream;
+    final DAG.StreamDecl logicalStream;
     final PTComponent source;
     final String portName;
 
@@ -167,16 +167,16 @@ public class TopologyDeployer {
    *
    */
   public static class PTNode extends PTComponent {
-    Topology.NodeDecl logicalNode;
+    DAG.Operator logicalNode;
     List<PTInput> inputs;
     List<PTOutput> outputs;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
 
     /**
      *
-     * @return NodeDecl
+     * @return Operator
      */
-    public NodeDecl getLogicalNode() {
+    public Operator getLogicalNode() {
       return this.logicalNode;
     }
 
@@ -227,7 +227,7 @@ public class TopologyDeployer {
     }
   }
 
-  private final Map<NodeDecl, List<PTNode>> deployedNodes = new LinkedHashMap<NodeDecl, List<PTNode>>();
+  private final Map<Operator, List<PTNode>> deployedNodes = new LinkedHashMap<Operator, List<PTNode>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private int maxContainers = 1;
 
@@ -247,20 +247,20 @@ public class TopologyDeployer {
    *
    * @param tplg
    */
-  public TopologyDeployer(Topology tplg) {
+  public DAGDeployer(DAG tplg) {
 
     this.maxContainers = Math.max(tplg.getMaxContainerCount(),1);
     LOG.debug("Initializing topology for {} containers.", this.maxContainers);
 
-    Map<NodeDecl, Set<PTNode>> inlineGroups = new HashMap<NodeDecl, Set<PTNode>>();
+    Map<Operator, Set<PTNode>> inlineGroups = new HashMap<Operator, Set<PTNode>>();
 
-    Stack<NodeDecl> pendingNodes = new Stack<NodeDecl>();
-    for (NodeDecl n : tplg.getAllNodes()) {
+    Stack<Operator> pendingNodes = new Stack<Operator>();
+    for (Operator n : tplg.getAllOperators()) {
       pendingNodes.push(n);
     }
 
     while (!pendingNodes.isEmpty()) {
-      NodeDecl n = pendingNodes.pop();
+      Operator n = pendingNodes.pop();
 
       if (inlineGroups.containsKey(n)) {
         // node already processed as upstream dependency
@@ -333,7 +333,7 @@ public class TopologyDeployer {
 
     // assign nodes to containers
     int groupCount = 0;
-    for (Map.Entry<NodeDecl, List<PTNode>> e : deployedNodes.entrySet()) {
+    for (Map.Entry<Operator, List<PTNode>> e : deployedNodes.entrySet()) {
       for (PTNode node : e.getValue()) {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
@@ -356,7 +356,7 @@ public class TopologyDeployer {
 
   private final AtomicInteger nodeSequence = new AtomicInteger();
 
-  private PTNode createPTNode(NodeDecl nodeDecl, byte[] partition, int instanceCount) {
+  private PTNode createPTNode(Operator nodeDecl, byte[] partition, int instanceCount) {
 
     PTNode pNode = new PTNode();
     pNode.logicalNode = nodeDecl;
@@ -411,7 +411,7 @@ public class TopologyDeployer {
     return this.containers;
   }
 
-  protected List<PTNode> getNodes(NodeDecl nodeDecl) {
+  protected List<PTNode> getNodes(Operator nodeDecl) {
     return this.deployedNodes.get(nodeDecl);
   }
 

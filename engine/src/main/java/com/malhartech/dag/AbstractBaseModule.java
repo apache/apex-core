@@ -4,7 +4,7 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import java.util.HashMap;
 
@@ -12,7 +12,7 @@ import java.util.HashMap;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractBaseModule implements Node
+public abstract class AbstractBaseModule implements Module
 {
   protected transient String id;
   protected final transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
@@ -25,8 +25,8 @@ public abstract class AbstractBaseModule implements Node
   // optimize the performance of this method.
   protected PortAnnotation getPort(String id)
   {
-    Class<? extends Node> clazz = this.getClass();
-    NodeAnnotation na = clazz.getAnnotation(NodeAnnotation.class);
+    Class<? extends Module> clazz = this.getClass();
+    ModuleAnnotation na = clazz.getAnnotation(ModuleAnnotation.class);
     if (na != null) {
       PortAnnotation[] ports = na.ports();
       for (PortAnnotation pa: ports) {
@@ -158,7 +158,7 @@ public abstract class AbstractBaseModule implements Node
   }
 
   @Override
-  public void setup(NodeConfiguration config) throws FailedOperationException
+  public void setup(ModuleConfiguration config) throws FailedOperationException
   {
   }
 

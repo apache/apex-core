@@ -28,9 +28,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractNode extends AbstractBaseModule
+public abstract class AbstractModule extends AbstractBaseModule
 {
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractNode.class);
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractModule.class);
   private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
   private transient boolean alive;
@@ -60,8 +60,8 @@ public abstract class AbstractNode extends AbstractBaseModule
     @SuppressWarnings("SleepWhileInLoop")
     public final void process(Object payload)
     {
-//      if (AbstractNode.this.id.endsWith("adviewsNode")) {
-//        logger.debug(AbstractNode.this + "::" + this + " got payload " + payload);
+//      if (AbstractModule.this.id.endsWith("adviewsNode")) {
+//        logger.debug(AbstractModule.this + "::" + this + " got payload " + payload);
 //      }
       try {
         while (true) {
@@ -184,7 +184,7 @@ public abstract class AbstractNode extends AbstractBaseModule
    * @param config
    * @return boolean
    */
-  public boolean checkConfiguration(NodeConfiguration config)
+  public boolean checkConfiguration(ModuleConfiguration config)
   {
     return true;
   }
@@ -216,12 +216,12 @@ public abstract class AbstractNode extends AbstractBaseModule
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
    * Although it seems that it's called from another thread which implements Runnable, so we take this
-   * opportunity to pass the NodeContext through the run method. Note that activate does not return as
+   * opportunity to pass the ModuleContext through the run method. Note that activate does not return as
    * long as there is useful workload for the node.
    */
   @Override
   @SuppressWarnings({"SleepWhileInLoop", "incomplete-switch"})
-  public final void activate(NodeContext ctx)
+  public final void activate(ModuleContext ctx)
   {
     activateSinks();
 

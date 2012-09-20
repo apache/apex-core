@@ -14,11 +14,11 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class NodeConfiguration extends Configuration
+public class ModuleConfiguration extends Configuration
 {
   private final Map<String, String> properties;
 
-  public NodeConfiguration(String id, Map<String, String> properties)
+  public ModuleConfiguration(String id, Map<String, String> properties)
   {
     set("Id", id);
     this.properties = properties;

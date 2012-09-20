@@ -10,16 +10,16 @@ import com.malhartech.dag.Sink;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
-import com.malhartech.stram.DNodeManager;
-import com.malhartech.stram.DNodeManagerTest.TestStaticPartitioningSerDe;
-import com.malhartech.dag.GenericTestNode;
-import com.malhartech.dag.NumberGeneratorInputAdapter;
+import com.malhartech.stram.ModuleManager;
+import com.malhartech.stram.ModuleManagerTest.TestStaticPartitioningSerDe;
+import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.NumberGeneratorInputModule;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.conf.NewTopologyBuilder;
-import com.malhartech.stram.conf.NewTopologyBuilder.StreamBuilder;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.conf.NewDAGBuilder;
+import com.malhartech.stram.conf.NewDAGBuilder.StreamBuilder;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAG.Operator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -148,22 +148,22 @@ public class SocketStreamTest
   @Test
   public void testStramChildInit() throws Exception
   {
-    NewTopologyBuilder b = new NewTopologyBuilder();
+    NewDAGBuilder b = new NewDAGBuilder();
 
-    NodeDecl generatorNode = b.addNode("generatorNode", NumberGeneratorInputAdapter.class);
-    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
+    Operator generatorNode = b.addNode("generatorNode", NumberGeneratorInputModule.class);
+    Operator node1 = b.addNode("node1", GenericTestModule.class);
 
     StreamBuilder generatorOutput = b.addStream("generatorOutput");
-    generatorOutput.setSource(generatorNode.getOutput(NumberGeneratorInputAdapter.OUTPUT_PORT))
-            .addSink(node1.getInput(GenericTestNode.INPUT1))
+    generatorOutput.setSource(generatorNode.getOutput(NumberGeneratorInputModule.OUTPUT_PORT))
+            .addSink(node1.getInput(GenericTestModule.INPUT1))
             .setSerDeClass(TestStaticPartitioningSerDe.class);
 
     //StreamConf output1 = b.getOrAddStream("output1");
     //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
     //                    ConsoleOutputNode.class.getName());
-    Topology tplg = b.getTopology();
+    DAG tplg = b.getTopology();
 
-    DNodeManager dnm = new DNodeManager(tplg);
+    ModuleManager dnm = new ModuleManager(tplg);
     int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
     Assert.assertEquals("number required containers",
                         expectedContainerCount,

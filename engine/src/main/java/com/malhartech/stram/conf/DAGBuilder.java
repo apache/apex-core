@@ -24,11 +24,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
-import com.malhartech.dag.Node;
+import com.malhartech.dag.Module;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.StramUtils;
-import com.malhartech.stram.conf.Topology.NodeDecl;
-import com.malhartech.stram.conf.Topology.StreamDecl;
+import com.malhartech.stram.conf.DAG.Operator;
+import com.malhartech.stram.conf.DAG.StreamDecl;
 
 /**
  *
@@ -39,9 +39,9 @@ import com.malhartech.stram.conf.Topology.StreamDecl;
  *
  */
 
-public class TopologyBuilder implements StreamingApplicationFactory {
+public class DAGBuilder implements ApplicationFactory {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TopologyBuilder.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DAGBuilder.class);
 
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
   private static final String STRAM_SITE_XML_FILE = "stram-site.xml";
@@ -54,12 +54,12 @@ public class TopologyBuilder implements StreamingApplicationFactory {
   public static final String STREAM_INLINE = "inline";
   public static final String STREAM_SERDE_CLASSNAME = "serdeClassname";
 
-  public static final String NODE_PREFIX = "stram.node";
-  public static final String NODE_CLASSNAME = "classname";
-  public static final String NODE_TEMPLATE = "template";
+  public static final String MODULE_PREFIX = "stram.module";
+  public static final String MODULE_CLASSNAME = "classname";
+  public static final String MODULE_TEMPLATE = "template";
 
-  public static final String NODE_LB_TUPLECOUNT_MIN = "lb.tuplecount.min";
-  public static final String NODE_LB_TUPLECOUNT_MAX = "lb.tuplecount.max";
+  public static final String MODULE_LB_TUPLECOUNT_MIN = "lb.tuplecount.min";
+  public static final String MODULE_LB_TUPLECOUNT_MAX = "lb.tuplecount.max";
 
   public static final String TEMPLATE_PREFIX = "stram.template";
 
@@ -213,7 +213,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
   }
 
   /**
-   * Node configuration
+   * Module configuration
    */
   public class NodeConf {
     public NodeConf(String id) {
@@ -244,9 +244,9 @@ public class TopologyBuilder implements StreamingApplicationFactory {
     }
 
     public String getNodeClassNameReqd() {
-      String className = properties.getProperty(NODE_CLASSNAME);
+      String className = properties.getProperty(MODULE_CLASSNAME);
       if (className == null) {
-        throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", getId(), TopologyBuilder.NODE_CLASSNAME));
+        throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", getId(), DAGBuilder.MODULE_CLASSNAME));
       }
       return className;
     }
@@ -289,7 +289,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
 
 
     public void setClassName(String className) {
-      this.properties.put(NODE_CLASSNAME, className);
+      this.properties.put(MODULE_CLASSNAME, className);
     }
 
     public void setProperty(String name, String value) {
@@ -312,7 +312,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
   private final Map<String, TemplateConf> templates;
   private final Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
 
-  public TopologyBuilder() {
+  public DAGBuilder() {
     this.nodes = new HashMap<String, NodeConf>();
     this.streams = new HashMap<String, StreamConf>();
     this.templates = new HashMap<String,TemplateConf>();
@@ -324,7 +324,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
    * More nodes can be added programmatically.
    * @param conf
    */
-  public TopologyBuilder(Configuration conf) {
+  public DAGBuilder(Configuration conf) {
     this();
     addFromConfiguration(conf);
   }
@@ -394,7 +394,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
    *
    * @param props
    */
-  public TopologyBuilder addFromProperties(Properties props) {
+  public DAGBuilder addFromProperties(Properties props) {
 
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
@@ -431,7 +431,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
            // all other stream properties
           stream.properties.put(propertyKey, propertyValue);
         }
-      } else if (propertyName.startsWith(NODE_PREFIX)) {
+      } else if (propertyName.startsWith(MODULE_PREFIX)) {
          // get the node id
          String[] keyComps = propertyName.split("\\.");
          // must have at least id and single component property
@@ -442,7 +442,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
          String nodeId = keyComps[2];
          String propertyKey = keyComps[3];
          NodeConf nc = getOrAddNode(nodeId);
-         if (NODE_TEMPLATE.equals(propertyKey)) {
+         if (MODULE_TEMPLATE.equals(propertyKey)) {
            nc.template = getOrAddTemplate(propertyValue);
            // TODO: defer until all keys are read?
            nc.properties.setDefaultProperties(nc.template.properties);
@@ -486,23 +486,23 @@ public class TopologyBuilder implements StreamingApplicationFactory {
    * @return Properties
    */
   public Properties getProperties() {
-    return TopologyBuilder.toProperties(this.conf);
+    return DAGBuilder.toProperties(this.conf);
   }
 
   /**
    *
-   * @return Topology
+   * @return DAG
    */
-  public Topology getTopology() {
+  public DAG getTopology() {
 
-    Topology tplg = new Topology(conf);
+    DAG tplg = new DAG(conf);
 
-    Map<NodeConf, NodeDecl> nodeMap = new HashMap<NodeConf, NodeDecl>(this.nodes.size());
+    Map<NodeConf, Operator> nodeMap = new HashMap<NodeConf, Operator>(this.nodes.size());
     // add all nodes first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
-      Class<? extends Node> nodeClass = StramUtils.classForName(nodeConf.getNodeClassNameReqd(), Node.class);
-      NodeDecl nd = tplg.addNode(nodeConfEntry.getKey(), nodeClass);
+      Class<? extends Module> nodeClass = StramUtils.classForName(nodeConf.getNodeClassNameReqd(), Module.class);
+      Operator nd = tplg.addNode(nodeConfEntry.getKey(), nodeClass);
       nd.getProperties().putAll(nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
     }
@@ -513,7 +513,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
       StreamDecl sd = tplg.addStream(streamConfEntry.getKey());
       sd.setInline(streamConf.isInline());
 
-      String serdeClassName = streamConf.getProperty(TopologyBuilder.STREAM_SERDE_CLASSNAME);
+      String serdeClassName = streamConf.getProperty(DAGBuilder.STREAM_SERDE_CLASSNAME);
       if (serdeClassName != null) {
         sd.setSerDeClass(StramUtils.classForName(serdeClassName, SerDe.class));
       }
@@ -525,7 +525,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
             portName = e.getKey();
           }
         }
-        NodeDecl sourceDecl = nodeMap.get(streamConf.sourceNode);
+        Operator sourceDecl = nodeMap.get(streamConf.sourceNode);
         sd.setSource(sourceDecl.getOutput(portName));
       }
 
@@ -536,7 +536,7 @@ public class TopologyBuilder implements StreamingApplicationFactory {
             portName = e.getKey();
           }
         }
-        NodeDecl targetDecl = nodeMap.get(targetNode);
+        Operator targetDecl = nodeMap.get(targetNode);
         sd.addSink(targetDecl.getInput(portName));
       }
     }
@@ -545,13 +545,13 @@ public class TopologyBuilder implements StreamingApplicationFactory {
   }
 
   @Override
-  public Topology getStreamingApplication() {
+  public DAG getApplication() {
     return getTopology();
   }
 
-  public static Topology createTopology(Configuration conf, String tplgPropsFile) throws IOException {
+  public static DAG createTopology(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
-    TopologyBuilder tb = new TopologyBuilder(conf);
+    DAGBuilder tb = new DAGBuilder(conf);
     tb.addFromProperties(topologyProperties);
     return tb.getTopology();
   }

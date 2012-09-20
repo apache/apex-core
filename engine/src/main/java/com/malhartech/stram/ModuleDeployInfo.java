@@ -14,7 +14,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
  * Node deployment info passed from master to container as part of initialization
  * or incremental undeploy/deploy during topology recovery, balancing or other modification.
  */
-public class NodeDeployInfo implements Serializable
+public class ModuleDeployInfo implements Serializable
 {
   private static final long serialVersionUID = 201208271956L;
 
@@ -68,7 +68,7 @@ public class NodeDeployInfo implements Serializable
      * Class name of tuple SerDe (buffer server stream only).
      */
     public String serDeClassName;
-    
+
     /**
      * Partition keys. For dynamic partitioning, set is initially empty (after
      * topology initialization) and will be populated from node processing stats
@@ -93,7 +93,7 @@ public class NodeDeployInfo implements Serializable
   }
 
   /**
-   * Node output, publisher info. 
+   * Node output, publisher info.
    * Streams can have multiple sinks, hence output won't reference target node or port.
    * For inline streams, input info will have source node for wiring.
    * For buffer server output, node id/port will be used as publisher id and referenced by subscribers.
@@ -127,7 +127,7 @@ public class NodeDeployInfo implements Serializable
      * Class name of tuple SerDe (buffer server stream only).
      */
     public String serDeClassName;
-    
+
     @Override
     public String toString()
     {

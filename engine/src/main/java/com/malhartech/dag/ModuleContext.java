@@ -17,9 +17,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class NodeContext implements Context
+public class ModuleContext implements Context
 {
-  private static final Logger LOG = LoggerFactory.getLogger(NodeContext.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ModuleContext.class);
   private BackupAgent backupAgent;
 
   @SuppressWarnings("PublicInnerClass")
@@ -65,7 +65,7 @@ public class NodeContext implements Context
     this.idleTimeout = idleTimeout;
   }
 
-  public NodeContext(String id)
+  public ModuleContext(String id)
   {
     this.id = id;
   }
@@ -108,7 +108,7 @@ public class NodeContext implements Context
     }
   }
 
-  void backup(Node aThis, long windowId) throws IOException
+  void backup(Module aThis, long windowId) throws IOException
   {
     LOG.debug("Backup node={}, window={}", id, windowId);
     this.backupAgent.backup(id, windowId, aThis);

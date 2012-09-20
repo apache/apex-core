@@ -4,29 +4,29 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeSerDe;
-import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
-import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleSerDe;
+import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
+import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StramChildAgent.UndeployRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.TopologyDeployer.PTComponent;
-import com.malhartech.stram.TopologyDeployer.PTContainer;
-import com.malhartech.stram.TopologyDeployer.PTInput;
-import com.malhartech.stram.TopologyDeployer.PTNode;
-import com.malhartech.stram.TopologyDeployer.PTOutput;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.Topology.InputPort;
-import com.malhartech.stram.conf.Topology.NodeDecl;
-import com.malhartech.stram.conf.Topology.StreamDecl;
-import com.malhartech.stram.webapp.NodeInfo;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.DAGDeployer.PTComponent;
+import com.malhartech.stram.DAGDeployer.PTContainer;
+import com.malhartech.stram.DAGDeployer.PTInput;
+import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.DAGDeployer.PTOutput;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAG.InputPort;
+import com.malhartech.stram.conf.DAG.Operator;
+import com.malhartech.stram.conf.DAG.StreamDecl;
+import com.malhartech.stram.webapp.ModuleInfo;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -48,19 +48,19 @@ import org.slf4j.LoggerFactory;
  * The tasks include<br>
  * Provisioning nodes one container at a time. Each container gets assigned the nodes, streams and its context<br>
  * Monitors run time operations including heartbeat protocol and node status<br>
- * Node recovery and restart<br>
+ * Module recovery and restart<br>
  * <br>
  *
  */
 
-public class DNodeManager
+public class ModuleManager
 {
-  private final static Logger LOG = LoggerFactory.getLogger(DNodeManager.class);
+  private final static Logger LOG = LoggerFactory.getLogger(ModuleManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private int windowSizeMillis = 500;
   private final int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
-  private final NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
+  private final ModuleSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
 
   private class NodeStatus
   {
@@ -89,17 +89,17 @@ public class DNodeManager
   protected final  ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
-  private final TopologyDeployer deployer;
+  private final DAGDeployer deployer;
   private final String checkpointDir;
 
-  public DNodeManager(Topology topology) {
-    this.deployer = new TopologyDeployer(topology);
+  public ModuleManager(DAG topology) {
+    this.deployer = new DAGDeployer(topology);
 
-    this.windowSizeMillis = topology.getConf().getInt(Topology.STRAM_WINDOW_SIZE_MILLIS, 500);
+    this.windowSizeMillis = topology.getConf().getInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
-    checkpointDir = topology.getConf().get(Topology.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
-    this.checkpointIntervalMillis = topology.getConf().getInt(Topology.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
+    checkpointDir = topology.getConf().get(DAG.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
+    this.checkpointIntervalMillis = topology.getConf().getInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
 
     // fill initial deploy requests
     for (PTContainer container : deployer.getContainers()) {
@@ -113,7 +113,7 @@ public class DNodeManager
     return containerStartRequests.size();
   }
 
-  protected TopologyDeployer getTopologyDeployer() {
+  protected DAGDeployer getTopologyDeployer() {
     return deployer;
   }
 
@@ -157,12 +157,12 @@ public class DNodeManager
       getRecoveryCheckpoint(node, checkpoints);
     }
 
-    Map<PTContainer, List<PTNode>> resetNodes = new HashMap<PTContainer, List<TopologyDeployer.PTNode>>();
+    Map<PTContainer, List<PTNode>> resetNodes = new HashMap<PTContainer, List<DAGDeployer.PTNode>>();
     // group by container
     for (PTNode node : checkpoints.keySet()) {
         List<PTNode> nodes = resetNodes.get(node.container);
         if (nodes == null) {
-          nodes = new ArrayList<TopologyDeployer.PTNode>();
+          nodes = new ArrayList<DAGDeployer.PTNode>();
           resetNodes.put(node.container, nodes);
         }
         nodes.add(node);
@@ -217,16 +217,16 @@ public class DNodeManager
    * <br>
    * @param dnodeId
    * @param nodeDecl
-   * @return {@link com.malhartech.stram.NodeDeployInfo}
+   * @return {@link com.malhartech.stram.ModuleDeployInfo}
    *
    */
-  private NodeDeployInfo createNodeContext(String dnodeId, NodeDecl nodeDecl)
+  private ModuleDeployInfo createNodeContext(String dnodeId, Operator nodeDecl)
   {
-    NodeDeployInfo ndi = new NodeDeployInfo();
+    ModuleDeployInfo ndi = new ModuleDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
-      Node node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
+      Module node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
       this.nodeSerDe.write(node, os);
       ndi.serializedNode = os.toByteArray();
       os.close();
@@ -276,7 +276,7 @@ public class DNodeManager
     }
     StreamingContainerContext initCtx = createStramChildInitContext(container.nodes, container, checkpoints);
     cdr.setNodes(initCtx.nodeList);
-    initCtx.nodeList = new ArrayList<NodeDeployInfo>(0);
+    initCtx.nodeList = new ArrayList<ModuleDeployInfo>(0);
 
     StramChildAgent sca = new StramChildAgent(container, initCtx);
     containers.put(containerId, sca);
@@ -297,11 +297,11 @@ public class DNodeManager
     scc.setCheckpointDfsPath(this.checkpointDir);
 
 //    List<StreamPConf> streams = new ArrayList<StreamPConf>();
-    Map<NodeDeployInfo, PTNode> nodes = new LinkedHashMap<NodeDeployInfo, PTNode>();
+    Map<ModuleDeployInfo, PTNode> nodes = new LinkedHashMap<ModuleDeployInfo, PTNode>();
     Map<String, NodeOutputDeployInfo> publishers = new LinkedHashMap<String, NodeOutputDeployInfo>();
 
     for (PTNode node : deployNodes) {
-      NodeDeployInfo ndi = createNodeContext(node.id, node.getLogicalNode());
+      ModuleDeployInfo ndi = createNodeContext(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
       if (checkpointWindowId != null) {
         LOG.debug("Node {} has checkpoint state {}", node.id, checkpointWindowId);
@@ -328,7 +328,7 @@ public class DNodeManager
           // target set below
           //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
         }
-        //portInfo.setBufferServerChannelType(streamDecl.getSource().getNode().getId());
+        //portInfo.setBufferServerChannelType(streamDecl.getSource().getOperator().getId());
 
         ndi.outputs.add(portInfo);
         publishers.put(node.id + "/" + streamDecl.getId(), portInfo);
@@ -337,8 +337,8 @@ public class DNodeManager
 
     // after we know all publishers within container, determine subscribers
 
-    for (Map.Entry<NodeDeployInfo, PTNode> nodeEntry : nodes.entrySet()) {
-      NodeDeployInfo ndi = nodeEntry.getKey();
+    for (Map.Entry<ModuleDeployInfo, PTNode> nodeEntry : nodes.entrySet()) {
+      ModuleDeployInfo ndi = nodeEntry.getKey();
       PTNode node = nodeEntry.getValue();
       for (PTInput in : node.inputs) {
         final StreamDecl streamDecl = in.logicalStream;
@@ -386,9 +386,9 @@ public class DNodeManager
       }
     }
 
-    scc.nodeList = new ArrayList<NodeDeployInfo>(nodes.keySet());
+    scc.nodeList = new ArrayList<ModuleDeployInfo>(nodes.keySet());
 
-    for (Map.Entry<NodeDeployInfo, PTNode> e : nodes.entrySet()) {
+    for (Map.Entry<ModuleDeployInfo, PTNode> e : nodes.entrySet()) {
       this.nodeStatusMap.put(e.getKey().id, new NodeStatus(container, e.getValue()));
     }
 
@@ -496,7 +496,7 @@ public class DNodeManager
    * Compute checkpoint required for a given node to be recovered.
    * This is done by looking at checkpoints available for downstream dependencies first,
    * and then selecting the most recent available checkpoint that is smaller than downstream.
-   * @param node Node for which to find recovery checkpoint
+   * @param node Module for which to find recovery checkpoint
    * @param recoveryCheckpoints Map to collect all downstream recovery checkpoints
    * @return Checkpoint that can be used to recover node (along with dependent nodes in recoveryCheckpoints).
    */
@@ -505,7 +505,7 @@ public class DNodeManager
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : node.outputs) {
       for (InputPort targetPort : out.logicalStream.getSinks()) {
-        NodeDecl lDownNode = targetPort.getNode();
+        Operator lDownNode = targetPort.getNode();
         if (lDownNode != null) {
           List<PTNode> downNodes = deployer.getNodes(lDownNode);
           for (PTNode downNode : downNodes) {
@@ -556,10 +556,10 @@ public class DNodeManager
     containerStopRequests.put(containerId, containerId);
   }
 
-  public ArrayList<NodeInfo> getNodeInfoList() {
-    ArrayList<NodeInfo> nodeInfoList = new ArrayList<NodeInfo>(this.nodeStatusMap.size());
+  public ArrayList<ModuleInfo> getNodeInfoList() {
+    ArrayList<ModuleInfo> nodeInfoList = new ArrayList<ModuleInfo>(this.nodeStatusMap.size());
     for (NodeStatus ns : this.nodeStatusMap.values()) {
-      NodeInfo ni = new NodeInfo();
+      ModuleInfo ni = new ModuleInfo();
       ni.containerId = ns.container.containerId;
       ni.id = ns.node.id;
       ni.name = ns.node.getLogicalId();

@@ -4,18 +4,18 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.GenericTestNode;
-import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.NumberGeneratorInputAdapter;
+import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleContext;
+import com.malhartech.dag.NumberGeneratorInputModule;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.TopologyDeployer.PTNode;
-import com.malhartech.stram.conf.NewTopologyBuilder;
-import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.conf.NewDAGBuilder;
+import com.malhartech.stram.conf.DAG.Operator;
 import com.malhartech.stream.StramTestSupport;
 import java.io.File;
 import java.net.InetSocketAddress;
@@ -58,11 +58,11 @@ public class CheckpointTest {
   @Test
   public void testBackup() throws Exception
   {
-    NewTopologyBuilder tb = new NewTopologyBuilder();
+    NewDAGBuilder tb = new NewDAGBuilder();
     // node with no inputs will be connected to window generator
-    tb.addNode("node1", NumberGeneratorInputAdapter.class)
+    tb.addNode("node1", NumberGeneratorInputModule.class)
         .setProperty("maxTuples", "1");
-    DNodeManager dnm = new DNodeManager(tb.getTopology());
+    ModuleManager dnm = new ModuleManager(tb.getTopology());
 
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
@@ -77,12 +77,12 @@ public class CheckpointTest {
     mses.tick(1); // begin window 1
 
     Assert.assertEquals("number nodes", 1, container.getNodes().size());
-    Node node = container.getNode(cc.nodeList.get(0).id);
-    NodeContext context = container.getNodeContext(cc.nodeList.get(0).id);
+    Module node = container.getNode(cc.nodeList.get(0).id);
+    ModuleContext context = container.getNodeContext(cc.nodeList.get(0).id);
 
     Assert.assertNotNull("node deployed " + cc.nodeList.get(0), node);
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());
-    Assert.assertEquals("maxTupes", 1, ((NumberGeneratorInputAdapter)node).getMaxTuples());
+    Assert.assertEquals("maxTupes", 1, ((NumberGeneratorInputModule)node).getMaxTuples());
 
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(context.getId());
@@ -112,17 +112,17 @@ public class CheckpointTest {
   @Test
   public void testRecoveryCheckpoint() throws Exception
   {
-    NewTopologyBuilder b = new NewTopologyBuilder();
+    NewDAGBuilder b = new NewDAGBuilder();
 
-    NodeDecl node1 = b.addNode("node1", GenericTestNode.class);
-    NodeDecl node2 = b.addNode("node2", GenericTestNode.class);
+    Operator node1 = b.addNode("node1", GenericTestModule.class);
+    Operator node2 = b.addNode("node2", GenericTestModule.class);
 
     b.addStream("n1n2")
-      .setSource(node1.getOutput(GenericTestNode.OUTPUT1))
-      .addSink(node2.getInput(GenericTestNode.INPUT1));
+      .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
+      .addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    DNodeManager dnm = new DNodeManager(b.getTopology());
-    TopologyDeployer deployer = dnm.getTopologyDeployer();
+    ModuleManager dnm = new ModuleManager(b.getTopology());
+    DAGDeployer deployer = dnm.getTopologyDeployer();
     List<PTNode> nodes1 = deployer.getNodes(node1);
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());

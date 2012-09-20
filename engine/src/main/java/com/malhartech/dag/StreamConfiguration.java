@@ -22,7 +22,7 @@ public class StreamConfiguration extends Configuration
 
   public StreamConfiguration(Map<String, String> properties) {
     this.properties = properties;
-    NodeConfiguration.addAll(this, properties);
+    ModuleConfiguration.addAll(this, properties);
   }
 
   public StreamConfiguration() {

@@ -7,7 +7,7 @@ package com.malhartech.stram.conf;
 /**
  *
  */
-public interface TopologyConstants {
+public interface DAGConstants {
 
   public static final String SER_FILE_NAME = "stram-conf.ser";
 

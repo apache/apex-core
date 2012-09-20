@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.conf.Topology;
+import com.malhartech.stram.conf.DAG;
 import com.malhartech.stram.webapp.StramWebApp;
 
 /**
@@ -72,7 +72,7 @@ import com.malhartech.stram.webapp.StramWebApp;
  * As part of initialization the following tasks are done<br>
  * The DAG is parsed, and properties are read to create a physical query map<br>
  * ResourceMgr is queried to get the requisite containers<br>
- * Then {@link com.malhartech.stram.DNodeManager} provisions the DAG into those containers and starts them<br>
+ * Then {@link com.malhartech.stram.ModuleManager} provisions the DAG into those containers and starts them<br>
  * Once the dag is starts {@link com.malhartech.stram.StramAppMaster} runs the dag on a continual basis<br>
  * Stram can be shut down in the following ways<br>
  * cli command shutdown<br>
@@ -87,7 +87,7 @@ public class StramAppMaster
   // Configuration
   private Configuration conf;
   private YarnClientHelper yarnClient;
-  private Topology topology;
+  private DAG topology;
   // Handle to communicate with the Resource Manager
   private AMRMProtocol resourceManager;
   // Application Attempt Id ( combination of attemptId and fail count )
@@ -118,8 +118,8 @@ public class StramAppMaster
   // Launch threads
   private List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
-  private StreamingNodeParent rpcImpl;
-  private DNodeManager dnmgr;
+  private StreamingContainerParent rpcImpl;
+  private ModuleManager dnmgr;
   private InetSocketAddress bufferServerAddress;
   private final Clock clock = new SystemClock();
   private final long startTime = clock.getTime();
@@ -332,23 +332,23 @@ public class StramAppMaster
     //b.addFromProperties(tplgProperties);
     //this.topology = b.getTopology();
 
-    FileInputStream fis = new FileInputStream("./" + Topology.SER_FILE_NAME);
-    this.topology = Topology.read(fis);
+    FileInputStream fis = new FileInputStream("./" + DAG.SER_FILE_NAME);
+    this.topology = DAG.read(fis);
     fis.close();
     // "debug" simply dumps all data using LOG.info
     if (topology.isDebug()) {
       dumpOutDebugInfo();
     }
 
-    this.dnmgr = new DNodeManager(topology);
+    this.dnmgr = new ModuleManager(topology);
 
     // start RPC server
-    rpcImpl = new StreamingNodeParent(this.getClass().getName(), dnmgr);
+    rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr);
     rpcImpl.init(conf);
     rpcImpl.start();
     LOG.info("Container callback server listening at " + rpcImpl.getAddress());
 
-    LOG.info("Initializing logical topology with {} nodes in {} containers", topology.getAllNodes().size(), dnmgr.getNumRequiredContainers());
+    LOG.info("Initializing logical topology with {} nodes in {} containers", topology.getAllOperators().size(), dnmgr.getNumRequiredContainers());
 
     // start buffer server
     com.malhartech.bufferserver.Server s = new Server(0);

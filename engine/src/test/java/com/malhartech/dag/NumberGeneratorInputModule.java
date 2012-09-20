@@ -3,21 +3,21 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractInputNode;
+import com.malhartech.dag.AbstractInputModule;
 import com.malhartech.dag.Sink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@NodeAnnotation(
+@ModuleAnnotation(
     ports = {
-  @PortAnnotation(name = NumberGeneratorInputAdapter.OUTPUT_PORT, type = PortType.OUTPUT)
+  @PortAnnotation(name = NumberGeneratorInputModule.OUTPUT_PORT, type = PortType.OUTPUT)
 })
-public class NumberGeneratorInputAdapter extends AbstractInputNode
+public class NumberGeneratorInputModule extends AbstractInputModule
 {
-  private static final Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputAdapter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputModule.class);
   public static final String OUTPUT_PORT = "outputPort";
   private volatile boolean shutdown = false; // how do we handle this now that deactivate is not overridable.
   private String myConfigProperty;

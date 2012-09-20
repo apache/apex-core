@@ -4,7 +4,7 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.dag.*;
 import java.io.IOException;
@@ -26,12 +26,12 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  */
-@NodeAnnotation(ports= {
+@ModuleAnnotation(ports= {
   @PortAnnotation(name = Component.INPUT, type = PortAnnotation.PortType.INPUT)
 })
-public class HDFSOutputNode extends AbstractNode
+public class HDFSOutputModule extends AbstractModule
 {
-  private static org.slf4j.Logger logger = LoggerFactory.getLogger(HDFSOutputNode.class);
+  private static org.slf4j.Logger logger = LoggerFactory.getLogger(HDFSOutputModule.class);
   private FSDataOutputStream output;
   private SerDe serde; // it was taken from context before, but now what, it's not a stream but a node!
   private FileSystem fs;
@@ -43,7 +43,7 @@ public class HDFSOutputNode extends AbstractNode
    * @param config
    */
   @Override
-  public void setup(NodeConfiguration config) throws FailedOperationException
+  public void setup(ModuleConfiguration config) throws FailedOperationException
   {
     try {
       fs = FileSystem.get(config);

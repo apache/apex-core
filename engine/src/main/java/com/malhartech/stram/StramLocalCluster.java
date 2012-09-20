@@ -5,14 +5,14 @@
 package com.malhartech.stram;
 
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeContext;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleContext;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.TopologyDeployer.PTNode;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.Topology.NodeDecl;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAG.Operator;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -39,7 +39,7 @@ public class StramLocalCluster implements Runnable {
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
 
-  private final DNodeManager dnmgr;
+  private final ModuleManager dnmgr;
   private final UmbilicalProtocolLocalImpl umbilical;
   private final InetSocketAddress bufferServerAddress;
   private Server bufferServer = null;
@@ -57,7 +57,7 @@ public class StramLocalCluster implements Runnable {
 
   private MockComponentFactory mockComponentFactory;
 
-  private class UmbilicalProtocolLocalImpl implements StreamingNodeUmbilicalProtocol {
+  private class UmbilicalProtocolLocalImpl implements StreamingContainerUmbilicalProtocol {
 
     @Override
     public long getProtocolVersion(String protocol, long clientVersion)
@@ -122,7 +122,7 @@ public class StramLocalCluster implements Runnable {
     private final AtomicInteger heartbeatCount = new AtomicInteger();
     private final WindowGenerator windowGenerator;
 
-    public LocalStramChild(String containerId, StreamingNodeUmbilicalProtocol umbilical, WindowGenerator winGen)
+    public LocalStramChild(String containerId, StreamingContainerUmbilicalProtocol umbilical, WindowGenerator winGen)
     {
       super(containerId, new Configuration(), umbilical);
       this.windowGenerator = winGen;
@@ -158,17 +158,17 @@ public class StramLocalCluster implements Runnable {
       return super.setupWindowGenerator(smallestWindowId);
     }
 
-    NodeContext getNodeContext(String id)
+    ModuleContext getNodeContext(String id)
     {
       return activeNodes.get(id);
     }
 
-    Node getNode(String id)
+    Module getNode(String id)
     {
       return nodes.get(id);
     }
 
-    Map<String, Node> getNodes()
+    Map<String, Module> getNodes()
     {
       return nodes;
     }
@@ -211,7 +211,7 @@ public class StramLocalCluster implements Runnable {
     }
   }
 
-  public StramLocalCluster(Topology topology) throws Exception {
+  public StramLocalCluster(DAG topology) throws Exception {
     topology.validate();
     try {
       FileContext.getLocalFSFileContext().delete(
@@ -220,10 +220,10 @@ public class StramLocalCluster implements Runnable {
       throw new RuntimeException("could not cleanup test dir", e);
     }
 
-    if (topology.getConf().get(Topology.STRAM_CHECKPOINT_DIR) == null) {
-      topology.getConf().set(Topology.STRAM_CHECKPOINT_DIR, CLUSTER_WORK_DIR.getPath());
+    if (topology.getConf().get(DAG.STRAM_CHECKPOINT_DIR) == null) {
+      topology.getConf().set(DAG.STRAM_CHECKPOINT_DIR, CLUSTER_WORK_DIR.getPath());
     }
-    this.dnmgr = new DNodeManager(topology);
+    this.dnmgr = new ModuleManager(topology);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
     // start buffer server
@@ -237,7 +237,7 @@ public class StramLocalCluster implements Runnable {
     return this.childContainers.get(id);
   }
 
-  public StramLocalCluster(Topology topology, MockComponentFactory mcf) throws Exception {
+  public StramLocalCluster(DAG topology, MockComponentFactory mcf) throws Exception {
     this(topology);
     this.mockComponentFactory = mcf;
   }
@@ -255,7 +255,7 @@ public class StramLocalCluster implements Runnable {
     this.childContainers.remove(c.getContainerId());
   }
 
-  PTNode findByLogicalNode(NodeDecl logicalNode) {
+  PTNode findByLogicalNode(Operator logicalNode) {
     List<PTNode> nodes = dnmgr.getTopologyDeployer().getNodes(logicalNode);
     if (nodes.isEmpty()) {
       return null;

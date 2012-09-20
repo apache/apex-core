@@ -59,8 +59,8 @@ import com.google.common.base.Objects;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.conf.Topology;
-import com.malhartech.stram.conf.TopologyBuilder;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAGBuilder;
 
 /**
  *
@@ -84,7 +84,7 @@ public class StramClient
   // User to run app master as
   private String amUser = "";
   private ApplicationId appId;
-  private Topology topology;
+  private DAG topology;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
@@ -141,7 +141,7 @@ public class StramClient
     this(new Configuration());
   }
 
-  public StramClient(Topology tplg) throws Exception
+  public StramClient(DAG tplg) throws Exception
   {
     this(new Configuration());
     this.topology = tplg;
@@ -199,10 +199,10 @@ public class StramClient
     }
     LOG.info("Configuration: " + propertyFileName);
 
-    topology = TopologyBuilder.createTopology(conf, propertyFileName);
+    topology = DAGBuilder.createTopology(conf, propertyFileName);
     topology.validate();
     if (cliParser.hasOption("debug")) {
-      topology.getConf().setBoolean(Topology.STRAM_DEBUG, true);
+      topology.getConf().setBoolean(DAG.STRAM_DEBUG, true);
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
@@ -225,8 +225,8 @@ public class StramClient
     }
 
     topology.setMaxContainerCount(containerCount);
-    topology.getConf().setInt(Topology.STRAM_MASTER_MEMORY_MB, amMemory);
-    topology.getConf().setInt(Topology.STRAM_CONTAINER_MEMORY_MB, containerMemory);
+    topology.getConf().setInt(DAG.STRAM_MASTER_MEMORY_MB, amMemory);
+    topology.getConf().setInt(DAG.STRAM_CONTAINER_MEMORY_MB, containerMemory);
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
     if (clientTimeout == 0) {
@@ -238,7 +238,7 @@ public class StramClient
     return true;
   }
 
-  public static LinkedHashSet<String> findJars(Topology tplg) {
+  public static LinkedHashSet<String> findJars(DAG tplg) {
     // platform jar files - always required
     Class<?>[] defaultClasses = new Class<?>[]{
       com.malhartech.bufferserver.Server.class,
@@ -379,7 +379,7 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(topology.getConf().get(Topology.STRAM_APPNAME, StramConstants.APPNAME));
+    appContext.setApplicationName(topology.getConf().get(DAG.STRAM_APPNAME, StramConstants.APPNAME));
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
@@ -402,8 +402,8 @@ public class StramClient
     }
 
     LOG.info("libjars: {}", libJarsCsv);
-    topology.getConf().set(Topology.STRAM_LIBJARS, libJarsCsv);
-    topology.getConf().set(Topology.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
+    topology.getConf().set(DAG.STRAM_LIBJARS, libJarsCsv);
+    topology.getConf().set(DAG.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
 
 
     // set local resources for the application master
@@ -428,9 +428,9 @@ public class StramClient
     }
 
     // push application configuration to dfs location
-    Path cfgDst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + Topology.SER_FILE_NAME);
+    Path cfgDst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + DAG.SER_FILE_NAME);
     FSDataOutputStream outStream = fs.create(cfgDst, true);
-    Topology.write(this.topology, outStream);
+    DAG.write(this.topology, outStream);
     outStream.close();
 
     FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
@@ -440,7 +440,7 @@ public class StramClient
     topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(cfgDst.toUri()));
     topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
     topologyRsrc.setSize(topologyFileStatus.getLen());
-    localResources.put(Topology.SER_FILE_NAME, topologyRsrc);
+    localResources.put(DAG.SER_FILE_NAME, topologyRsrc);
 
     // Set local resource info into app master container launch context
     amContainer.setLocalResources(localResources);

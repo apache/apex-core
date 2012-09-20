@@ -7,21 +7,21 @@ package com.malhartech.stram;
 import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.Node;
-import com.malhartech.dag.NodeConfiguration;
-import com.malhartech.dag.NodeContext;
-import com.malhartech.dag.NodeSerDe;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleConfiguration;
+import com.malhartech.dag.ModuleContext;
+import com.malhartech.dag.ModuleSerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.WindowIdActivatedSink;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingNodeUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.BufferServerOutputStream;
 import com.malhartech.stream.InlineStream;
@@ -76,14 +76,14 @@ public class StramChild
   //private static final String SOURCE_SINK_SEPARATOR = "\u279C";
   private final String containerId;
   private final Configuration conf;
-  private final StreamingNodeUmbilicalProtocol umbilical;
-  protected final Map<String, Node> nodes = new ConcurrentHashMap<String, Node>();
+  private final StreamingContainerUmbilicalProtocol umbilical;
+  protected final Map<String, Module> nodes = new ConcurrentHashMap<String, Module>();
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
    * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
    */
-  protected final Map<String, NodeContext> activeNodes = new ConcurrentHashMap<String, NodeContext>();
+  protected final Map<String, ModuleContext> activeNodes = new ConcurrentHashMap<String, ModuleContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
@@ -97,7 +97,7 @@ public class StramChild
   private long firstWindowMillis;
   private int windowWidthMillis;
 
-  protected StramChild(String containerId, Configuration conf, StreamingNodeUmbilicalProtocol umbilical)
+  protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
     logger.debug("instantiated StramChild {}", containerId);
     this.umbilical = umbilical;
@@ -161,14 +161,14 @@ public class StramChild
     UserGroupInformation taskOwner =
             UserGroupInformation.createRemoteUser(StramChild.class.getName());
     //taskOwner.addToken(jt);
-    final StreamingNodeUmbilicalProtocol umbilical =
-            taskOwner.doAs(new PrivilegedExceptionAction<StreamingNodeUmbilicalProtocol>()
+    final StreamingContainerUmbilicalProtocol umbilical =
+            taskOwner.doAs(new PrivilegedExceptionAction<StreamingContainerUmbilicalProtocol>()
     {
       @Override
-      public StreamingNodeUmbilicalProtocol run() throws Exception
+      public StreamingContainerUmbilicalProtocol run() throws Exception
       {
-        return RPC.getProxy(StreamingNodeUmbilicalProtocol.class,
-                            StreamingNodeUmbilicalProtocol.versionID, address, defaultConf);
+        return RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
+                            StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
       }
     });
 
@@ -250,7 +250,7 @@ public class StramChild
 
   private synchronized void disconnectNode(String nodeid)
   {
-    Node node = nodes.get(nodeid);
+    Module node = nodes.get(nodeid);
     disconnectWindowGenerator(nodeid, node);
 
     Set<String> removableSocketOutputStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
@@ -277,7 +277,7 @@ public class StramChild
         for (String sinkId: sinkIds) {
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-            Node n = nodes.get(nodeport[0]);
+            Module n = nodes.get(nodeport[0]);
             n.connect(nodeport[1], null);
           }
           else if (stream.isMultiSinkCapable()) {
@@ -354,7 +354,7 @@ public class StramChild
     }
   }
 
-  private void disconnectWindowGenerator(String nodeid, Node node)
+  private void disconnectWindowGenerator(String nodeid, Module node)
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
@@ -376,14 +376,14 @@ public class StramChild
     }
   }
 
-  private synchronized void undeploy(List<NodeDeployInfo> nodeList)
+  private synchronized void undeploy(List<ModuleDeployInfo> nodeList)
   {
     /**
      * make sure that all the nodes which we are asked to undeploy are in this container.
      */
-    HashMap<String, Node> toUndeploy = new HashMap<String, Node>();
-    for (NodeDeployInfo ndi: nodeList) {
-      Node pair = nodes.get(ndi.id);
+    HashMap<String, Module> toUndeploy = new HashMap<String, Module>();
+    for (ModuleDeployInfo ndi: nodeList) {
+      Module pair = nodes.get(ndi.id);
       if (pair == null) {
         throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
       }
@@ -395,7 +395,7 @@ public class StramChild
       }
     }
 
-    for (NodeDeployInfo ndi: nodeList) {
+    for (ModuleDeployInfo ndi: nodeList) {
       if (activeNodes.containsKey(ndi.id)) {
         nodes.get(ndi.id).deactivate();
       }
@@ -442,7 +442,7 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all nodes
-      for (Map.Entry<String, Node> e: nodes.entrySet()) {
+      for (Map.Entry<String, Module> e: nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
@@ -524,7 +524,7 @@ public class StramChild
     if (rsp.nodeRequests != null) {
       // extended processing per node
       for (StramToNodeRequest req: rsp.nodeRequests) {
-        NodeContext nc = activeNodes.get(req.getNodeId());
+        ModuleContext nc = activeNodes.get(req.getNodeId());
         if (nc == null) {
           logger.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
@@ -542,7 +542,7 @@ public class StramChild
    * @param n
    * @param snr
    */
-  private void processStramRequest(NodeContext context, StramToNodeRequest snr)
+  private void processStramRequest(ModuleContext context, StramToNodeRequest snr)
   {
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
@@ -558,13 +558,13 @@ public class StramChild
     }
   }
 
-  private synchronized void deploy(List<NodeDeployInfo> nodeList) throws Exception
+  private synchronized void deploy(List<ModuleDeployInfo> nodeList) throws Exception
   {
     /**
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
      */
     HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
-    for (NodeDeployInfo ndi: nodeList) {
+    for (ModuleDeployInfo ndi: nodeList) {
       if (nodes.containsKey(ndi.id)) {
         throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
       }
@@ -578,11 +578,11 @@ public class StramChild
     activate(nodeList);
   }
 
-  private void deployNodes(List<NodeDeployInfo> nodeList) throws Exception
+  private void deployNodes(List<ModuleDeployInfo> nodeList) throws Exception
   {
-    NodeSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
+    ModuleSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
     HdfsBackupAgent backupAgent = new HdfsBackupAgent(nodeSerDe);
-    for (NodeDeployInfo ndi: nodeList) {
+    for (ModuleDeployInfo ndi: nodeList) {
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
@@ -592,7 +592,7 @@ public class StramChild
         else {
           foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
-        nodes.put(ndi.id, (Node)foreignObject);
+        nodes.put(ndi.id, (Module)foreignObject);
       }
       catch (Exception e) {
         logger.error(e.getLocalizedMessage());
@@ -601,7 +601,7 @@ public class StramChild
     }
   }
 
-  private void deployOutputStreams(List<NodeDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams) throws Exception
+  private void deployOutputStreams(List<ModuleDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams) throws Exception
   {
     /**
      * We proceed to deploy all the output streams.
@@ -610,10 +610,10 @@ public class StramChild
      * But the BufferOutputStreams which share the output port with other inline streams are mapped against
      * the Buffer Server port to avoid collision and at the same time keep track of these buffer streams.
      */
-    for (NodeDeployInfo ndi: nodeList) {
-      Node node = nodes.get(ndi.id);
+    for (ModuleDeployInfo ndi: nodeList) {
+      Module node = nodes.get(ndi.id);
 
-      for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
+      for (ModuleDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
         String sourceIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
         String sinkIdentifier;
 
@@ -739,11 +739,11 @@ public class StramChild
     }
   }
 
-  private void deployInputStreams(List<NodeDeployInfo> nodeList) throws Exception
+  private void deployInputStreams(List<ModuleDeployInfo> nodeList) throws Exception
   {
     // collect any input nodes along with their smallest window id,
     // those are subsequently used to setup the window generator
-    ArrayList<NodeDeployInfo> inputNodes = new ArrayList<NodeDeployInfo>();
+    ArrayList<ModuleDeployInfo> inputNodes = new ArrayList<ModuleDeployInfo>();
     long smallestWindowId = Long.MAX_VALUE;
 
     /**
@@ -753,7 +753,7 @@ public class StramChild
      * to create the stream. We need to track this stream along with other streams, and many such streams may exist,
      * we hash them against buffer server info as we did for outputs but throw in the sinkid in the mix as well.
      */
-    for (NodeDeployInfo ndi: nodeList) {
+    for (ModuleDeployInfo ndi: nodeList) {
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         /**
          * This has to be AbstractInputNode, so let's hook the WindowGenerator to it.
@@ -769,9 +769,9 @@ public class StramChild
         }
       }
       else {
-        Node node = nodes.get(ndi.id);
+        Module node = nodes.get(ndi.id);
 
-        for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
+        for (ModuleDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
           String sourceIdentifier = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
@@ -835,14 +835,14 @@ public class StramChild
                * Lets wire the MuxStream to upstream node.
                */
               String[] nodeport = sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR);
-              Node upstreamNode = nodes.get(nodeport[0]);
+              Module upstreamNode = nodes.get(nodeport[0]);
               Sink muxSink = stream.connect(Component.INPUT, upstreamNode);
               upstreamNode.connect(nodeport[1], muxSink);
 
               Sink existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-                Node anotherNode = nodes.get(np[0]);
+                Module anotherNode = nodes.get(np[0]);
                 existingSink = anotherNode.connect(np[1], stream);
 
                 /*
@@ -885,10 +885,10 @@ public class StramChild
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestWindowId);
-      for (NodeDeployInfo ndi: inputNodes) {
+      for (ModuleDeployInfo ndi: inputNodes) {
         generators.put(ndi.id, windowGenerator);
 
-        Node node = nodes.get(ndi.id);
+        Module node = nodes.get(ndi.id);
         Sink s = node.connect(Component.INPUT, windowGenerator);
         windowGenerator.connect(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT),
                                 ndi.checkpointWindowId > 0
@@ -912,7 +912,7 @@ public class StramChild
      * let's make sure that we send the same window Ids with the same reset windows.
      */
     // let's see if we want to send the exact same window id even the second time.
-    NodeConfiguration config = new NodeConfiguration("doesn't matter", null);
+    ModuleConfiguration config = new ModuleConfiguration("doesn't matter", null);
     config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, firstWindowMillis);
     if (smallestWindowId > firstWindowMillis) {
       config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID));
@@ -926,7 +926,7 @@ public class StramChild
   }
 
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
-  public synchronized void activate(List<NodeDeployInfo> nodeList)
+  public synchronized void activate(List<ModuleDeployInfo> nodeList)
   {
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
@@ -936,8 +936,8 @@ public class StramChild
     }
 
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
-    for (final NodeDeployInfo ndi: nodeList) {
-      final Node node = nodes.get(ndi.id);
+    for (final ModuleDeployInfo ndi: nodeList) {
+      final Module node = nodes.get(ndi.id);
       final String nodeInternalId = ndi.id.concat(":").concat(ndi.declaredId);
       assert (!activeNodes.containsKey(ndi.id));
       logger.debug("activating node {} in container {}", node.toString(), containerId);
@@ -947,11 +947,11 @@ public class StramChild
         public void run()
         {
           try {
-            NodeConfiguration config = new NodeConfiguration(ndi.id, ndi.properties);
+            ModuleConfiguration config = new ModuleConfiguration(ndi.id, ndi.properties);
             StramUtils.internalSetupNode(node, nodeInternalId);
             node.setup(config);
 
-            NodeContext nc = new NodeContext(ndi.id);
+            ModuleContext nc = new ModuleContext(ndi.id);
             activeNodes.put(ndi.id, nc);
 
             activatedNodeCount.incrementAndGet();
@@ -997,9 +997,9 @@ public class StramChild
     }
   }
 
-  private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, NodeDeployInfo ndi)
+  private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, ModuleDeployInfo ndi)
   {
-    for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
+    for (ModuleDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
       String source = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
       /**
@@ -1021,9 +1021,9 @@ public class StramChild
 
   private class HdfsBackupAgent implements BackupAgent
   {
-    private final NodeSerDe serDe;
+    private final ModuleSerDe serDe;
 
-    private HdfsBackupAgent(NodeSerDe serde)
+    private HdfsBackupAgent(ModuleSerDe serde)
     {
       serDe = serde;
     }

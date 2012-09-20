@@ -4,12 +4,12 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractNode;
+import com.malhartech.dag.AbstractModule;
 import com.malhartech.dag.FailedOperationException;
-import com.malhartech.dag.NodeConfiguration;
+import com.malhartech.dag.ModuleConfiguration;
 import com.malhartech.dag.Tuple;
 import java.io.IOException;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -22,13 +22,13 @@ import org.slf4j.LoggerFactory;
  * Writes stringified tuple to a file stream.
  * Used to verify data flow in test.
  */
-@NodeAnnotation(
+@ModuleAnnotation(
     ports = {
-  @PortAnnotation(name = TestOutputNode.PORT_INPUT, type = PortType.INPUT)
+  @PortAnnotation(name = TestOutputModule.PORT_INPUT, type = PortType.INPUT)
 })
-public class TestOutputNode extends AbstractNode
+public class TestOutputModule extends AbstractModule
 {
-  private static final Logger logger = LoggerFactory.getLogger(TestOutputNode.class);
+  private static final Logger logger = LoggerFactory.getLogger(TestOutputModule.class);
   /**
    * The path name for the output file.
    */
@@ -40,7 +40,7 @@ public class TestOutputNode extends AbstractNode
   private boolean append;
 
   @Override
-  public void setup(NodeConfiguration config) throws FailedOperationException
+  public void setup(ModuleConfiguration config) throws FailedOperationException
   {
     try {
       fs = FileSystem.get(config);

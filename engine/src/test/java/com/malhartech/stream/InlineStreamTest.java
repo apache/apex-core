@@ -3,7 +3,7 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.annotation.NodeAnnotation;
+import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.*;
@@ -31,11 +31,11 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
     prev = null;
 
-    final AbstractNode node1 = new PassThroughNode();
-    node1.setup(new NodeConfiguration("node1", null));
+    final AbstractModule node1 = new PassThroughNode();
+    node1.setup(new ModuleConfiguration("node1", null));
 
-    final AbstractNode node2 = new PassThroughNode();
-    node2.setup(new NodeConfiguration("node2", null));
+    final AbstractModule node2 = new PassThroughNode();
+    node2.setup(new ModuleConfiguration("node2", null));
 
     InlineStream stream = new InlineStream();
     stream.setup(new StreamConfiguration());
@@ -99,7 +99,7 @@ public class InlineStreamTest
 
     stream.activate(streamContext);
 
-    Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
+    Map<String, Module> activeNodes = new ConcurrentHashMap<String, Module>();
     launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
 
     for (int i = 0; i < totalTupleCount; i++) {
@@ -131,11 +131,11 @@ public class InlineStreamTest
     Assert.assertEquals("active nodes", 0, activeNodes.size());
   }
 
-  private void launchNodeThreads(Collection<? extends AbstractNode> nodes, final Map<String, Node> activeNodes)
+  private void launchNodeThreads(Collection<? extends AbstractModule> nodes, final Map<String, Module> activeNodes)
   {
     int i = 1;
-    for (final AbstractNode node: nodes) {
-      final NodeContext ctx = new NodeContext(String.valueOf(i++));
+    for (final AbstractModule node: nodes) {
+      final ModuleContext ctx = new ModuleContext(String.valueOf(i++));
       // launch nodes
       Runnable nodeRunnable = new Runnable()
       {
@@ -153,13 +153,13 @@ public class InlineStreamTest
   }
 
   /**
-   * Node implementation that simply passes on any tuple received
+   * Module implementation that simply passes on any tuple received
    */
-  @NodeAnnotation(ports = {
+  @ModuleAnnotation(ports = {
     @PortAnnotation(name = Component.INPUT, type = PortType.INPUT),
     @PortAnnotation(name = Component.OUTPUT, type = PortType.OUTPUT)
   })
-  public static class PassThroughNode extends AbstractNode
+  public static class PassThroughNode extends AbstractModule
   {
     private boolean logMessages = false;
 

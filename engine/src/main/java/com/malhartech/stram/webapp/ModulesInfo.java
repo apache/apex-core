@@ -11,7 +11,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * 
+ *
  * Provides dag level node data<p>
  * <br>
  * This call provides restful access to individual node data<br>
@@ -20,24 +20,24 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement(name = "nodes")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class NodesInfo {
+public class ModulesInfo {
 
-  protected ArrayList<NodeInfo> nodes = new ArrayList<NodeInfo>();
+  protected ArrayList<ModuleInfo> nodes = new ArrayList<ModuleInfo>();
 
   /**
-   * 
-   * @param nodeInfo 
+   *
+   * @param nodeInfo
    */
-  public void add(NodeInfo nodeInfo) {
+  public void add(ModuleInfo nodeInfo) {
     nodes.add(nodeInfo);
   }
 
   /**
-   * 
+   *
    * @return ArrayList<NodeInfo>
-   * 
+   *
    */
-  public ArrayList<NodeInfo> getNodes() {
+  public ArrayList<ModuleInfo> getNodes() {
     return nodes;
   }
 

@@ -7,6 +7,6 @@ package com.malhartech.stram.conf;
 /**
  * Interface to be implemented by custom classes for Java based application declaration.
  */
-public interface StreamingApplicationFactory {
-    Topology getStreamingApplication();
+public interface ApplicationFactory {
+    DAG getApplication();
 }

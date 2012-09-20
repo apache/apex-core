@@ -19,30 +19,30 @@ import org.apache.hadoop.yarn.webapp.RemoteExceptionData;
 import org.apache.hadoop.yarn.webapp.WebApp;
 
 import com.google.inject.Singleton;
-import com.malhartech.stram.DNodeManager;
+import com.malhartech.stram.ModuleManager;
 import com.sun.jersey.api.json.JSONConfiguration;
 import com.sun.jersey.api.json.JSONJAXBContext;
 
 /**
- * 
+ *
  * The web services interface in the stram. All web services are routed through this interface<p>
  * <br>
  * This class does all the wiring and controls the context. The implementation is in StramWebServices class<br>
  * <br>
- * 
+ *
  */
 public class StramWebApp extends WebApp {
 
-  private final DNodeManager topologyManager;
+  private final ModuleManager topologyManager;
 
   /**
-   * 
-   * @param topolManager 
+   *
+   * @param topolManager
    */
-  public StramWebApp(DNodeManager topolManager) {
+  public StramWebApp(ModuleManager topolManager) {
     this.topologyManager = topolManager;
   }
-  
+
   @Singleton
   @Provider
   public static class JAXBContextResolver implements ContextResolver<JAXBContext> {
@@ -55,8 +55,8 @@ public class StramWebApp extends WebApp {
       AppInfo.class, RemoteExceptionData.class};
 
     /**
-     * 
-     * @throws Exception 
+     *
+     * @throws Exception
      */
     public JAXBContextResolver() throws Exception {
       this.types = new HashSet<Class<?>>(Arrays.asList(cTypes));
@@ -65,7 +65,7 @@ public class StramWebApp extends WebApp {
     }
 
     /**
-     * 
+     *
      * @param type
      * @return JAXContext
      */
@@ -73,17 +73,17 @@ public class StramWebApp extends WebApp {
     public JAXBContext getContext(Class<?> type) {
       return (types.contains(type)) ? context : null;
     }
-    
-  }  
-  
+
+  }
+
   /**
-   * 
+   *
    */
   @Override
   public void setup() {
     bind(JAXBContextResolver.class);
     bind(GenericExceptionHandler.class);
     bind(StramWebServices.class);
-    bind(DNodeManager.class).toInstance(this.topologyManager);
+    bind(ModuleManager.class).toInstance(this.topologyManager);
   }
 }

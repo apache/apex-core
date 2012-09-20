@@ -13,7 +13,7 @@ import java.io.OutputStream;
 /**
  * Default serializer that uses Kryo.
  */
-public class DefaultNodeSerDe implements NodeSerDe {
+public class DefaultModuleSerDe implements ModuleSerDe {
 
   @Override
   public Object read(InputStream is)
