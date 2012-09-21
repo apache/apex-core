@@ -7,8 +7,6 @@ package com.malhartech.stram.conf;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -32,16 +30,16 @@ import com.malhartech.stram.conf.DAG.StreamDecl;
 
 /**
  *
- * Builder for the DAG logical representation of nodes and streams<p>
+ * Builder for the DAG logical representation of operators and streams from properties.<p>
  * <br>
- * Supports reading as name-value pairs from Hadoop Config or properties file.
+ * Supports reading as name-value pairs from Hadoop {@link Configuration} or properties file.
  * <br>
  *
  */
 
-public class DAGBuilder implements ApplicationFactory {
+public class DAGPropertiesBuilder implements ApplicationFactory {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DAGBuilder.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DAGPropertiesBuilder.class);
 
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
   private static final String STRAM_SITE_XML_FILE = "stram-site.xml";
@@ -87,7 +85,7 @@ public class DAGBuilder implements ApplicationFactory {
   /**
    *
    */
-  public class StreamConf {
+  private class StreamConf {
     private final String id;
     private NodeConf sourceNode;
     private final Set<NodeConf> targetNodes = new HashSet<NodeConf>();
@@ -102,53 +100,11 @@ public class DAGBuilder implements ApplicationFactory {
 
     /**
      *
-     * @return String
-     */
-    public String getId() {
-      return id;
-    }
-
-    /**
-     *
-     * @return {com.malhartech.stram.conf.NodeConf}
-     */
-    public NodeConf getSourceNode() {
-      return sourceNode;
-    }
-
-    /**
-     *
-     * @return {com.malhartech.stram.conf.NodeConf}
-     */
-    public Set<NodeConf> getTargetNodes() {
-      return targetNodes;
-    }
-
-    /**
-     *
      * @param key get property of key
      * @return String
      */
     public String getProperty(String key) {
       return properties.getProperty(key);
-    }
-
-    /**
-     * Immutable properties. Template values (if set) become defaults.
-     * @return Map<String, String>
-     */
-    public Map<String, String> getProperties() {
-      return Maps.fromProperties(properties);
-    }
-
-    /**
-     *
-     * @param key
-     * @param value
-     */
-    public StreamConf addProperty(String key, String value) {
-      properties.put(key, value);
-      return this;
     }
 
     /**
@@ -213,9 +169,9 @@ public class DAGBuilder implements ApplicationFactory {
   }
 
   /**
-   * Module configuration
+   * Operator configuration
    */
-  public class NodeConf {
+  private class NodeConf {
     public NodeConf(String id) {
       this.id = id;
     }
@@ -227,11 +183,11 @@ public class DAGBuilder implements ApplicationFactory {
     /**
      * The inputs for the node
      */
-    Map<String, StreamConf> inputs = new HashMap<String, StreamConf>();
+    private final Map<String, StreamConf> inputs = new HashMap<String, StreamConf>();
     /**
      * The outputs for the node
      */
-    Map<String, StreamConf> outputs = new HashMap<String, StreamConf>();
+    private final Map<String, StreamConf> outputs = new HashMap<String, StreamConf>();
 
     private TemplateConf template;
 
@@ -243,12 +199,20 @@ public class DAGBuilder implements ApplicationFactory {
       return id;
     }
 
-    public String getNodeClassNameReqd() {
+    private String getModuleClassNameReqd() {
       String className = properties.getProperty(MODULE_CLASSNAME);
       if (className == null) {
-        throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", getId(), DAGBuilder.MODULE_CLASSNAME));
+        throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", getId(), DAGPropertiesBuilder.MODULE_CLASSNAME));
       }
       return className;
+    }
+
+    /**
+     * Properties for the node. Template values (if set) become property defaults.
+     * @return Map<String, String>
+     */
+    private Map<String, String> getProperties() {
+      return Maps.fromProperties(properties);
     }
 
     /**
@@ -262,48 +226,6 @@ public class DAGBuilder implements ApplicationFactory {
           toString();
     }
 
-    /**
-     *
-     * @param portName
-     * @return StreamConf
-     */
-    public StreamConf getInput(String portName) {
-      return inputs.get(portName);
-    }
-
-    /**
-     *
-     * @return Collection<StreamConf>
-     */
-    public Collection<StreamConf> getInputStreams() {
-      return inputs.values();
-    }
-
-    public StreamConf getOutput(String portName) {
-      return outputs.get(portName);
-    }
-
-    public Collection<StreamConf> getOutputStreams() {
-      return outputs.values();
-    }
-
-
-    public void setClassName(String className) {
-      this.properties.put(MODULE_CLASSNAME, className);
-    }
-
-    public void setProperty(String name, String value) {
-      this.properties.put(name, value);
-    }
-
-    /**
-     * Properties for the node. Template values (if set) become property defaults.
-     * @return Map<String, String>
-     */
-    public Map<String, String> getProperties() {
-      return Maps.fromProperties(properties);
-    }
-
   }
 
   private final Configuration conf = new Configuration(false);
@@ -312,7 +234,7 @@ public class DAGBuilder implements ApplicationFactory {
   private final Map<String, TemplateConf> templates;
   private final Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
 
-  public DAGBuilder() {
+  public DAGPropertiesBuilder() {
     this.nodes = new HashMap<String, NodeConf>();
     this.streams = new HashMap<String, StreamConf>();
     this.templates = new HashMap<String,TemplateConf>();
@@ -324,7 +246,7 @@ public class DAGBuilder implements ApplicationFactory {
    * More nodes can be added programmatically.
    * @param conf
    */
-  public DAGBuilder(Configuration conf) {
+  public DAGPropertiesBuilder(Configuration conf) {
     this();
     addFromConfiguration(conf);
   }
@@ -394,7 +316,7 @@ public class DAGBuilder implements ApplicationFactory {
    *
    * @param props
    */
-  public DAGBuilder addFromProperties(Properties props) {
+  public DAGPropertiesBuilder addFromProperties(Properties props) {
 
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
@@ -466,34 +388,16 @@ public class DAGBuilder implements ApplicationFactory {
   }
 
   /**
-   * Map of fully constructed node configurations with inputs/outputs set.
-   * @return Map<String, NodeConf>
-   */
-  public Map<String, NodeConf> getAllNodes() {
-    return Collections.unmodifiableMap(this.nodes);
-  }
-
-  /**
-   * @return Set<NodeConf>
-   */
-  public Set<NodeConf> getRootNodes() {
-    return Collections.unmodifiableSet(this.rootNodes);
-  }
-
-  /**
    * Return all properties of the topology constructed by the builder.
    * Can be serialized to property file and used to read back into builder.
    * @return Properties
    */
   public Properties getProperties() {
-    return DAGBuilder.toProperties(this.conf);
+    return DAGPropertiesBuilder.toProperties(this.conf);
   }
 
-  /**
-   *
-   * @return DAG
-   */
-  public DAG getTopology() {
+  @Override
+  public DAG getApplication() {
 
     DAG tplg = new DAG(conf);
 
@@ -501,7 +405,7 @@ public class DAGBuilder implements ApplicationFactory {
     // add all nodes first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
-      Class<? extends Module> nodeClass = StramUtils.classForName(nodeConf.getNodeClassNameReqd(), Module.class);
+      Class<? extends Module> nodeClass = StramUtils.classForName(nodeConf.getModuleClassNameReqd(), Module.class);
       Operator nd = tplg.addNode(nodeConfEntry.getKey(), nodeClass);
       nd.getProperties().putAll(nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
@@ -513,7 +417,7 @@ public class DAGBuilder implements ApplicationFactory {
       StreamDecl sd = tplg.addStream(streamConfEntry.getKey());
       sd.setInline(streamConf.isInline());
 
-      String serdeClassName = streamConf.getProperty(DAGBuilder.STREAM_SERDE_CLASSNAME);
+      String serdeClassName = streamConf.getProperty(DAGPropertiesBuilder.STREAM_SERDE_CLASSNAME);
       if (serdeClassName != null) {
         sd.setSerDeClass(StramUtils.classForName(serdeClassName, SerDe.class));
       }
@@ -544,16 +448,11 @@ public class DAGBuilder implements ApplicationFactory {
     return tplg;
   }
 
-  @Override
-  public DAG getApplication() {
-    return getTopology();
-  }
-
-  public static DAG createTopology(Configuration conf, String tplgPropsFile) throws IOException {
+  public static DAG create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
-    DAGBuilder tb = new DAGBuilder(conf);
+    DAGPropertiesBuilder tb = new DAGPropertiesBuilder(conf);
     tb.addFromProperties(topologyProperties);
-    return tb.getTopology();
+    return tb.getApplication();
   }
 
   public static Properties readProperties(String filePath) throws IOException

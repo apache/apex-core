@@ -4,20 +4,12 @@
  */
 package com.malhartech.stram;
 
-import com.google.common.collect.Sets;
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractModule;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.GenericTestModule;
-import com.malhartech.stram.conf.NewDAGBuilder;
-import com.malhartech.stram.conf.NewDAGBuilder.StreamBuilder;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.InputPort;
-import com.malhartech.stram.conf.DAG.Operator;
-import com.malhartech.stram.conf.DAG.StreamDecl;
-import com.malhartech.stram.conf.DAGBuilder;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -28,15 +20,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Test;
+
+import com.google.common.collect.Sets;
+import com.malhartech.annotation.ModuleAnnotation;
+import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.annotation.PortAnnotation.PortType;
+import com.malhartech.dag.AbstractModule;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.GenericTestModule;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAG.InputPort;
+import com.malhartech.stram.conf.DAG.Operator;
+import com.malhartech.stram.conf.DAG.StreamDecl;
+import com.malhartech.stram.conf.DAGPropertiesBuilder;
+import com.malhartech.stram.conf.NewDAGBuilder;
+import com.malhartech.stram.conf.NewDAGBuilder.StreamBuilder;
 
 public class DAGBuilderTest {
 
@@ -51,11 +54,11 @@ public class DAGBuilderTest {
    */
   @Test
   public void testLoadFromConfigXml() {
-    Configuration conf = DAGBuilder.addStramResources(new Configuration());
+    Configuration conf = DAGPropertiesBuilder.addStramResources(new Configuration());
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
-    DAGBuilder tb = new DAGBuilder(conf);
-    DAG dag = tb.getTopology();
+    DAGPropertiesBuilder tb = new DAGPropertiesBuilder(conf);
+    DAG dag = tb.getApplication();
     dag.validate();
 
 //    Map<String, NodeConf> moduleConfs = tb.getAllOperators();
@@ -143,10 +146,10 @@ public class DAGBuilderTest {
         fail("Could not load " + resourcePath);
       }
       props.load(is);
-      DAGBuilder pb = new DAGBuilder()
+      DAGPropertiesBuilder pb = new DAGPropertiesBuilder()
         .addFromProperties(props);
 
-      DAG dag = pb.getTopology();
+      DAG dag = pb.getApplication();
       dag.validate();
 
       assertEquals("number of module confs", 5, dag.getAllOperators().size());
@@ -160,7 +163,7 @@ public class DAGBuilderTest {
       Map<String, String> module3Props = module3.getProperties();
 
       assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", module3Props.get("myStringProperty"));
-      assertEquals("module3.classname", GenericTestModule.class.getName(), module3Props.get(DAGBuilder.MODULE_CLASSNAME));
+      assertEquals("module3.classname", GenericTestModule.class.getName(), module3Props.get(DAGPropertiesBuilder.MODULE_CLASSNAME));
 
       GenericTestModule dmodule3 = initOperator(module3);
       assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());

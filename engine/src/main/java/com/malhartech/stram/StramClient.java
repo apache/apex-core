@@ -60,7 +60,7 @@ import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAGBuilder;
+import com.malhartech.stram.conf.DAGPropertiesBuilder;
 
 /**
  *
@@ -84,7 +84,7 @@ public class StramClient
   // User to run app master as
   private String amUser = "";
   private ApplicationId appId;
-  private DAG topology;
+  private DAG dag;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
@@ -144,8 +144,8 @@ public class StramClient
   public StramClient(DAG tplg) throws Exception
   {
     this(new Configuration());
-    this.topology = tplg;
-    topology.validate();
+    this.dag = tplg;
+    dag.validate();
   }
 
   /**
@@ -174,9 +174,9 @@ public class StramClient
     opts.addOption("user", true, "User to run the application as");
     opts.addOption("timeout", true, "Application timeout in milliseconds");
     opts.addOption("master_memory", true, "Amount of memory in MB to be requested to run the application master");
-    opts.addOption("topologyProperties", true, "Property file defining the topology");
+    opts.addOption("topologyProperties", true, "Property file defining the dag");
     opts.addOption("container_memory", true, "Amount of memory in MB per child container");
-    opts.addOption("num_containers", true, "No. of containers to use for topology");
+    opts.addOption("num_containers", true, "No. of containers to use for dag");
     opts.addOption("log_properties", true, "log4j.properties file");
     opts.addOption("debug", false, "Dump out debug information");
     opts.addOption("help", false, "Print usage");
@@ -192,41 +192,41 @@ public class StramClient
       return false;
     }
 
-    // topology properties
+    // dag properties
     String propertyFileName = cliParser.getOptionValue("topologyProperties");
     if (propertyFileName == null) {
-      throw new IllegalArgumentException("No topology property file specified, exiting.");
+      throw new IllegalArgumentException("No dag property file specified, exiting.");
     }
     LOG.info("Configuration: " + propertyFileName);
 
-    topology = DAGBuilder.createTopology(conf, propertyFileName);
-    topology.validate();
+    dag = DAGPropertiesBuilder.create(conf, propertyFileName);
+    dag.validate();
     if (cliParser.hasOption("debug")) {
-      topology.getConf().setBoolean(DAG.STRAM_DEBUG, true);
+      dag.getConf().setBoolean(DAG.STRAM_DEBUG, true);
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
     amQueue = cliParser.getOptionValue("queue", amQueue);
     amUser = cliParser.getOptionValue("user", amUser);
-    int amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", ""+topology.getMasterMemoryMB()));
+    int amMemory = Integer.parseInt(cliParser.getOptionValue("master_memory", ""+dag.getMasterMemoryMB()));
 
     if (amMemory < 0) {
       throw new IllegalArgumentException("Invalid memory specified for application master, exiting."
                                          + " Specified memory=" + amMemory);
     }
 
-    int containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", ""+topology.getContainerMemoryMB()));
-    int containerCount = Integer.parseInt(cliParser.getOptionValue("num_containers", ""+ topology.getMaxContainerCount()));
+    int containerMemory = Integer.parseInt(cliParser.getOptionValue("container_memory", ""+dag.getContainerMemoryMB()));
+    int containerCount = Integer.parseInt(cliParser.getOptionValue("num_containers", ""+ dag.getMaxContainerCount()));
 
-    if (containerMemory < 0 || topology.getMaxContainerCount() < 1) {
+    if (containerMemory < 0 || dag.getMaxContainerCount() < 1) {
       throw new IllegalArgumentException("Invalid no. of containers or container memory specified, exiting."
                                          + " Specified containerMemory=" + containerMemory
                                          + ", numContainer=" + containerCount);
     }
 
-    topology.setMaxContainerCount(containerCount);
-    topology.getConf().setInt(DAG.STRAM_MASTER_MEMORY_MB, amMemory);
-    topology.getConf().setInt(DAG.STRAM_CONTAINER_MEMORY_MB, containerMemory);
+    dag.setMaxContainerCount(containerCount);
+    dag.getConf().setInt(DAG.STRAM_MASTER_MEMORY_MB, amMemory);
+    dag.getConf().setInt(DAG.STRAM_CONTAINER_MEMORY_MB, containerMemory);
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
     if (clientTimeout == 0) {
@@ -292,14 +292,14 @@ public class StramClient
 
 
   /**
-   * Launch application for the topology represented by this client.
+   * Launch application for the dag represented by this client.
    *
    * @throws IOException
    */
   public void startApplication() throws IOException
   {
     // process dependencies
-    LinkedHashSet<String> localJarFiles = findJars(topology);
+    LinkedHashSet<String> localJarFiles = findJars(dag);
 
     // Connect to ResourceManager
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
@@ -358,7 +358,7 @@ public class StramClient
     // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be
     // a multiple of the min value and cannot exceed the max.
     // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
-    int amMemory = topology.getMasterMemoryMB();
+    int amMemory = dag.getMasterMemoryMB();
     if (amMemory < minMem) {
       LOG.info("AM memory specified below min threshold of cluster. Using min value."
                + ", specified=" + amMemory
@@ -379,7 +379,7 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(topology.getConf().get(DAG.STRAM_APPNAME, StramConstants.APPNAME));
+    appContext.setApplicationName(dag.getConf().get(DAG.STRAM_APPNAME, StramConstants.APPNAME));
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
@@ -402,8 +402,8 @@ public class StramClient
     }
 
     LOG.info("libjars: {}", libJarsCsv);
-    topology.getConf().set(DAG.STRAM_LIBJARS, libJarsCsv);
-    topology.getConf().set(DAG.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
+    dag.getConf().set(DAG.STRAM_LIBJARS, libJarsCsv);
+    dag.getConf().set(DAG.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
 
 
     // set local resources for the application master
@@ -430,7 +430,7 @@ public class StramClient
     // push application configuration to dfs location
     Path cfgDst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + DAG.SER_FILE_NAME);
     FSDataOutputStream outStream = fs.create(cfgDst, true);
-    DAG.write(this.topology, outStream);
+    DAG.write(this.dag, outStream);
     outStream.close();
 
     FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
@@ -473,7 +473,7 @@ public class StramClient
     // Set java executable command
     LOG.info("Setting up app master command");
     vargs.add(javaCmd);
-    if (topology.isDebug()) {
+    if (dag.isDebug()) {
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
     // Set Xmx based on am memory size
@@ -542,7 +542,7 @@ public class StramClient
       .add("resource", appContext.getAMContainerSpec().getResource())
       .toString();
     LOG.info(specStr);
-    if (topology.isDebug()) {
+    if (dag.isDebug()) {
       LOG.info("Full submission context: " + appContext);
     }
     rmClient.clientRM.submitApplication(appRequest);
