@@ -169,7 +169,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
           }
         }
         catch (Exception e) {
-          logger.warn("Exception while catering to external request", e.getLocalizedMessage());
+          logger.warn("Exception while catering to external request {}", e);
         }
 
         // i think there should be just one queue instead of one per port - lets defer till we find an example.

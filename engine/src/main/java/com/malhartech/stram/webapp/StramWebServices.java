@@ -41,11 +41,11 @@ public class StramWebServices
   public static final String PATH_OPERATORS = "operators";
   public static final String PATH_SHUTDOWN = "shutdown";
   private final StramAppContext appCtx;
-  private @Context
-  HttpServletResponse response;
-  private @Inject
+  @Context
+  private HttpServletResponse response;
+  @Inject
   @Nullable
-  ModuleManager dagManager;
+  private ModuleManager dagManager;
 
   @Inject
   public StramWebServices(final StramAppContext context)

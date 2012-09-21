@@ -249,6 +249,7 @@ public class StramWebServicesTest extends JerseyTest {
   }
 
   @Test
+  @SuppressWarnings("UnusedAssignment")
   public void testInvalidUri() throws JSONException, Exception {
     WebResource r = resource();
     String responseStr = "";
@@ -265,6 +266,7 @@ public class StramWebServicesTest extends JerseyTest {
   }
 
   @Test
+  @SuppressWarnings("UnusedAssignment")
   public void testInvalidUri2() throws JSONException, Exception {
     WebResource r = resource();
     String responseStr = "";
@@ -281,6 +283,7 @@ public class StramWebServicesTest extends JerseyTest {
   }
 
   @Test
+  @SuppressWarnings("UnusedAssignment")
   public void testInvalidAccept() throws JSONException, Exception {
     // suppress logging in jersey to get rid of expected stack traces from test log
     java.util.logging.Logger.getLogger("org.glassfish.grizzly.servlet.ServletHandler").setLevel(Level.OFF);
@@ -301,7 +304,7 @@ public class StramWebServicesTest extends JerseyTest {
     }
   }
 
-  public void verifyAMInfo(JSONObject info, TestAppContext ctx)
+  void verifyAMInfo(JSONObject info, TestAppContext ctx)
       throws JSONException {
     assertEquals("incorrect number of elements", 5, info.length());
 
@@ -310,7 +313,7 @@ public class StramWebServicesTest extends JerseyTest {
         info.getLong("elapsedTime"));
   }
 
-  public void verifyAMInfoXML(String xml, TestAppContext ctx)
+   void verifyAMInfoXML(String xml, TestAppContext ctx)
       throws JSONException, Exception {
     DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
     DocumentBuilder db = dbf.newDocumentBuilder();
@@ -331,7 +334,7 @@ public class StramWebServicesTest extends JerseyTest {
     }
   }
 
-  public void verifyAMInfoGeneric(TestAppContext ctx, String id, String user,
+  void verifyAMInfoGeneric(TestAppContext ctx, String id, String user,
       String name, long startedOn, long elapsedTime) {
 
     StramTestSupport.checkStringMatch("id", ctx.getApplicationID()
