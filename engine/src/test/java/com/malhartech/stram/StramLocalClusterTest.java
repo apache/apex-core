@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleContext;
-import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.dag.TestOutputModule;
 import com.malhartech.stram.DAGDeployer.PTNode;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -58,7 +58,7 @@ public class StramLocalClusterTest
   {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator genNode = b.addOperator("genNode", NumberGeneratorInputModule.class);
+    Operator genNode = b.addOperator("genNode", TestGeneratorInputModule.class);
     genNode.setProperty("maxTuples", "1");
 
     Operator node1 = b.addOperator("node1", GenericTestModule.class);
@@ -71,7 +71,7 @@ public class StramLocalClusterTest
     outNode.setProperty(TestOutputModule.P_FILEPATH, outFile.toURI().toString());
 
     b.addStream("fromGenNode")
-      .setSource(genNode.getOutput(NumberGeneratorInputModule.OUTPUT_PORT))
+      .setSource(genNode.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
       .addSink(node1.getInput(GenericTestModule.INPUT1));
 
     b.addStream("fromNode1")
@@ -101,11 +101,11 @@ public class StramLocalClusterTest
   {
     NewDAGBuilder tb = new NewDAGBuilder();
 
-    Operator node1 = tb.addOperator("node1", NumberGeneratorInputModule.class);
+    Operator node1 = tb.addOperator("node1", TestGeneratorInputModule.class);
     Operator node2 = tb.addOperator("node2", GenericTestModule.class);
 
     tb.addStream("n1n2").
-      setSource(node1.getOutput(NumberGeneratorInputModule.OUTPUT_PORT)).
+      setSource(node1.getOutput(TestGeneratorInputModule.OUTPUT_PORT)).
       addSink(node2.getInput(GenericTestModule.INPUT1));
 
     DAG tplg = tb.getDAG();

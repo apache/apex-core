@@ -13,7 +13,7 @@ import com.malhartech.dag.Tuple;
 import com.malhartech.stram.ModuleManager;
 import com.malhartech.stram.ModuleManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.conf.NewDAGBuilder;
@@ -150,11 +150,11 @@ public class SocketStreamTest
   {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    Operator generatorNode = b.addOperator("generatorNode", NumberGeneratorInputModule.class);
+    Operator generatorNode = b.addOperator("generatorNode", TestGeneratorInputModule.class);
     Operator node1 = b.addOperator("node1", GenericTestModule.class);
 
     StreamBuilder generatorOutput = b.addStream("generatorOutput");
-    generatorOutput.setSource(generatorNode.getOutput(NumberGeneratorInputModule.OUTPUT_PORT))
+    generatorOutput.setSource(generatorNode.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
             .addSink(node1.getInput(GenericTestModule.INPUT1))
             .setSerDeClass(TestStaticPartitioningSerDe.class);
 

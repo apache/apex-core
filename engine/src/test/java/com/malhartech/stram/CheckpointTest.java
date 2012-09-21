@@ -7,7 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleContext;
-import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -60,7 +60,7 @@ public class CheckpointTest {
   {
     NewDAGBuilder tb = new NewDAGBuilder();
     // node with no inputs will be connected to window generator
-    tb.addOperator("node1", NumberGeneratorInputModule.class)
+    tb.addOperator("node1", TestGeneratorInputModule.class)
         .setProperty("maxTuples", "1");
     ModuleManager dnm = new ModuleManager(tb.getDAG());
 
@@ -82,7 +82,7 @@ public class CheckpointTest {
 
     Assert.assertNotNull("node deployed " + cc.nodeList.get(0), node);
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());
-    Assert.assertEquals("maxTupes", 1, ((NumberGeneratorInputModule)node).getMaxTuples());
+    Assert.assertEquals("maxTupes", 1, ((TestGeneratorInputModule)node).getMaxTuples());
 
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(context.getId());

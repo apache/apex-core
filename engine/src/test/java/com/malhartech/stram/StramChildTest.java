@@ -6,7 +6,7 @@ package com.malhartech.stram;
 
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.stram.conf.DAG;
 import com.malhartech.stram.conf.NewDAGBuilder;
 import java.io.IOException;
@@ -60,11 +60,11 @@ public class StramChildTest
   {
     NewDAGBuilder b = new NewDAGBuilder();
 
-    DAG.Operator generator = b.addOperator("generator", NumberGeneratorInputModule.class);
+    DAG.Operator generator = b.addOperator("generator", TestGeneratorInputModule.class);
     DAG.Operator operator1 = b.addOperator("operator1", GenericTestModule.class);
 
     NewDAGBuilder.StreamBuilder generatorOutput = b.addStream("generatorOutput");
-    generatorOutput.setSource(generator.getOutput(NumberGeneratorInputModule.OUTPUT_PORT))
+    generatorOutput.setSource(generator.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
             .addSink(operator1.getInput(GenericTestModule.INPUT1))
             .setSerDeClass(ModuleManagerTest.TestStaticPartitioningSerDe.class);
 

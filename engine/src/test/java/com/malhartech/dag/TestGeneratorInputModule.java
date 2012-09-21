@@ -13,11 +13,11 @@ import org.slf4j.LoggerFactory;
 
 @ModuleAnnotation(
     ports = {
-  @PortAnnotation(name = NumberGeneratorInputModule.OUTPUT_PORT, type = PortType.OUTPUT)
+  @PortAnnotation(name = TestGeneratorInputModule.OUTPUT_PORT, type = PortType.OUTPUT)
 })
-public class NumberGeneratorInputModule extends AbstractInputModule
+public class TestGeneratorInputModule extends AbstractInputModule
 {
-  private static final Logger LOG = LoggerFactory.getLogger(NumberGeneratorInputModule.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputModule.class);
   public static final String OUTPUT_PORT = "outputPort";
   private volatile boolean shutdown = false; // how do we handle this now that deactivate is not overridable.
   private String myConfigProperty;
