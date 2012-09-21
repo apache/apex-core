@@ -34,7 +34,7 @@ import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.StramUtils;
 import com.malhartech.stram.conf.ApplicationFactory;
 import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAGBuilder;
+import com.malhartech.stram.conf.DAGPropertiesBuilder;
 
 
 /**
@@ -105,7 +105,7 @@ public class StramAppLauncher {
     @Override
     public DAG createApp() {
       try {
-        return DAGBuilder.createTopology(new Configuration(), propertyFile.getAbsolutePath());
+        return DAGPropertiesBuilder.create(new Configuration(), propertyFile.getAbsolutePath());
       } catch (IOException e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
       }

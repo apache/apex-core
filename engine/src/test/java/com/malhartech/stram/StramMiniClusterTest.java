@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.dag.AbstractModule;
 import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAGBuilder;
+import com.malhartech.stram.conf.DAGPropertiesBuilder;
 import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -160,7 +160,7 @@ public class StramMiniClusterTest
     LOG.info("testJar: " + testJar);
 
     // create test topology
-    DAGBuilder tb = new DAGBuilder();
+    DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)

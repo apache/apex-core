@@ -4,35 +4,36 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.TestOutputModule;
-import com.malhartech.dag.NumberGeneratorInputModule;
-import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.ComponentContextPair;
-import com.malhartech.dag.Module;
-import com.malhartech.dag.ModuleContext;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.DAGDeployer.PTNode;
-import com.malhartech.stram.conf.NewDAGBuilder;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.Operator;
-import com.malhartech.stram.conf.DAGBuilder;
-import com.malhartech.stream.StramTestSupport;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.util.Collections;
 import java.util.Map;
+
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleContext;
+import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.TestOutputModule;
+import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAG.Operator;
+import com.malhartech.stram.conf.DAGPropertiesBuilder;
+import com.malhartech.stram.conf.NewDAGBuilder;
+import com.malhartech.stream.StramTestSupport;
 
 public class StramLocalClusterTest
 {
@@ -42,7 +43,7 @@ public class StramLocalClusterTest
   @Test
   public void testTplg() throws IOException, Exception {
     String tplgFile = "src/test/resources/clusterTest.tplg.properties";
-    StramLocalCluster lc = new StramLocalCluster(DAGBuilder.createTopology(new Configuration(), tplgFile));
+    StramLocalCluster lc = new StramLocalCluster(DAGPropertiesBuilder.create(new Configuration(), tplgFile));
     lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
   }
