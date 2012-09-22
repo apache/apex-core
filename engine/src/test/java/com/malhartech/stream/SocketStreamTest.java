@@ -16,8 +16,6 @@ import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.conf.NewDAGBuilder;
-import com.malhartech.stram.conf.NewDAGBuilder.StreamBuilder;
 import com.malhartech.stram.conf.DAG;
 import com.malhartech.stram.conf.DAG.Operator;
 import java.io.IOException;
@@ -29,7 +27,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +83,8 @@ public class SocketStreamTest
                 SocketStreamTest.this.notifyAll();
               }
               break;
+
+            default:
           }
         }
         else {
@@ -148,22 +147,17 @@ public class SocketStreamTest
   @Test
   public void testStramChildInit() throws Exception
   {
-    NewDAGBuilder b = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    Operator generatorNode = b.addOperator("generatorNode", TestGeneratorInputModule.class);
-    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator generatorNode = dag.addOperator("generatorNode", TestGeneratorInputModule.class);
+    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
 
-    StreamBuilder generatorOutput = b.addStream("generatorOutput");
+    DAG.StreamDecl generatorOutput = dag.addStream("generatorOutput");
     generatorOutput.setSource(generatorNode.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
             .addSink(node1.getInput(GenericTestModule.INPUT1))
             .setSerDeClass(TestStaticPartitioningSerDe.class);
 
-    //StreamConf output1 = b.getOrAddStream("output1");
-    //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
-    //                    ConsoleOutputNode.class.getName());
-    DAG tplg = b.getDAG();
-
-    ModuleManager dnm = new ModuleManager(tplg);
+    ModuleManager dnm = new ModuleManager(dag);
     int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
     Assert.assertEquals("number required containers",
                         expectedContainerCount,

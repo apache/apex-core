@@ -406,7 +406,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
       Class<? extends Module> nodeClass = StramUtils.classForName(nodeConf.getModuleClassNameReqd(), Module.class);
-      Operator nd = tplg.addNode(nodeConfEntry.getKey(), nodeClass);
+      Operator nd = tplg.addOperator(nodeConfEntry.getKey(), nodeClass);
       nd.getProperties().putAll(nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
     }

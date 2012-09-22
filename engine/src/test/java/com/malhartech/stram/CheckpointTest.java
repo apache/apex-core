@@ -4,25 +4,13 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.Module;
-import com.malhartech.dag.ModuleContext;
-import com.malhartech.dag.TestGeneratorInputModule;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.DAGDeployer.PTNode;
-import com.malhartech.stram.conf.NewDAGBuilder;
-import com.malhartech.stram.conf.DAG.Operator;
-import com.malhartech.stream.StramTestSupport;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
@@ -30,7 +18,22 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import scala.actors.threadpool.Arrays;
+
+import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleContext;
+import com.malhartech.dag.TestGeneratorInputModule;
+import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.conf.DAG;
+import com.malhartech.stram.conf.DAG.Operator;
+import com.malhartech.stream.StramTestSupport;
 
 /**
  *
@@ -58,11 +61,11 @@ public class CheckpointTest {
   @Test
   public void testBackup() throws Exception
   {
-    NewDAGBuilder tb = new NewDAGBuilder();
+    DAG dag = new DAG();
     // node with no inputs will be connected to window generator
-    tb.addOperator("node1", TestGeneratorInputModule.class)
+    dag.addOperator("node1", TestGeneratorInputModule.class)
         .setProperty("maxTuples", "1");
-    ModuleManager dnm = new ModuleManager(tb.getDAG());
+    ModuleManager dnm = new ModuleManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
@@ -112,16 +115,16 @@ public class CheckpointTest {
   @Test
   public void testRecoveryCheckpoint() throws Exception
   {
-    NewDAGBuilder b = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    Operator node1 = b.addOperator("node1", GenericTestModule.class);
-    Operator node2 = b.addOperator("node2", GenericTestModule.class);
+    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
+    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
 
-    b.addStream("n1n2")
+    dag.addStream("n1n2")
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
       .addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    ModuleManager dnm = new ModuleManager(b.getDAG());
+    ModuleManager dnm = new ModuleManager(dag);
     DAGDeployer deployer = dnm.getTopologyDeployer();
     List<PTNode> nodes1 = deployer.getNodes(node1);
     Assert.assertNotNull(nodes1);

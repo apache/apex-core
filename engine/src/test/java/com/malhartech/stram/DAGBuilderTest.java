@@ -38,8 +38,6 @@ import com.malhartech.stram.conf.DAG.InputPort;
 import com.malhartech.stram.conf.DAG.Operator;
 import com.malhartech.stram.conf.DAG.StreamDecl;
 import com.malhartech.stram.conf.DAGPropertiesBuilder;
-import com.malhartech.stram.conf.NewDAGBuilder;
-import com.malhartech.stram.conf.NewDAGBuilder.StreamBuilder;
 
 public class DAGBuilderTest {
 
@@ -189,31 +187,31 @@ public class DAGBuilderTest {
 
   @Test
   public void testCycleDetection() {
-     NewDAGBuilder b = new NewDAGBuilder();
+     DAG dag = new DAG();
 
      //NodeConf module1 = b.getOrAddNode("module1");
-     Operator module2 = b.addOperator("module2", GenericTestModule.class);
-     Operator module3 = b.addOperator("module3", GenericTestModule.class);
-     Operator module4 = b.addOperator("module4", GenericTestModule.class);
+     Operator module2 = dag.addOperator("module2", GenericTestModule.class);
+     Operator module3 = dag.addOperator("module3", GenericTestModule.class);
+     Operator module4 = dag.addOperator("module4", GenericTestModule.class);
      //NodeConf module5 = b.getOrAddNode("module5");
      //NodeConf module6 = b.getOrAddNode("module6");
-     Operator module7 = b.addOperator("module7", GenericTestModule.class);
+     Operator module7 = dag.addOperator("module7", GenericTestModule.class);
 
      // strongly connect n2-n3-n4-n2
-     b.addStream("n2n3")
+     dag.addStream("n2n3")
        .setSource(module2.getOutput(GenericTestModule.OUTPUT1))
        .addSink(module3.getInput(GenericTestModule.INPUT1));
 
-     b.addStream("n3n4")
+     dag.addStream("n3n4")
        .setSource(module3.getOutput(GenericTestModule.OUTPUT1))
        .addSink(module4.getInput(GenericTestModule.INPUT1));
 
-     b.addStream("n4n2")
+     dag.addStream("n4n2")
        .setSource(module4.getOutput(GenericTestModule.OUTPUT1))
        .addSink(module2.getInput(GenericTestModule.INPUT1));
 
      // self referencing module cycle
-     StreamBuilder n7n7 = b.addStream("n7n7")
+     StreamDecl n7n7 = dag.addStream("n7n7")
          .setSource(module7.getOutput(GenericTestModule.OUTPUT1))
          .addSink(module7.getInput(GenericTestModule.INPUT1));
      try {
@@ -223,17 +221,15 @@ public class DAGBuilderTest {
        // expected, stream can have single input/output only
      }
 
-     DAG tplg = b.getDAG();
-
      List<List<String>> cycles = new ArrayList<List<String>>();
-     tplg.findStronglyConnected(module7, cycles);
+     dag.findStronglyConnected(module7, cycles);
      assertEquals("module self reference", 1, cycles.size());
      assertEquals("module self reference", 1, cycles.get(0).size());
      assertEquals("module self reference", module7.getId(), cycles.get(0).get(0));
 
      // 3 module cycle
      cycles.clear();
-     tplg.findStronglyConnected(module4, cycles);
+     dag.findStronglyConnected(module4, cycles);
      assertEquals("3 module cycle", 1, cycles.size());
      assertEquals("3 module cycle", 3, cycles.get(0).size());
      assertTrue("module2", cycles.get(0).contains(module2.getId()));
@@ -241,7 +237,7 @@ public class DAGBuilderTest {
      assertTrue("module4", cycles.get(0).contains(module4.getId()));
 
      try {
-       tplg.validate();
+       dag.validate();
        fail("validation should fail");
      } catch (IllegalStateException e) {
        // expected
@@ -293,42 +289,41 @@ public class DAGBuilderTest {
   @Test
   public void testJavaBuilder() throws Exception {
 
-    NewDAGBuilder b = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    Operator validationNode = b.addOperator("validationNode", ValidationModule.class);
-    Operator countGoodNode = b.addOperator("countGoodNode", CounterModule.class);
-    Operator countBadNode = b.addOperator("countBadNode", CounterModule.class);
-    Operator echoBadNode = b.addOperator("echoBadNode", ConsoleOutputModule.class);
+    Operator validationNode = dag.addOperator("validationNode", ValidationModule.class);
+    Operator countGoodNode = dag.addOperator("countGoodNode", CounterModule.class);
+    Operator countBadNode = dag.addOperator("countBadNode", CounterModule.class);
+    Operator echoBadNode = dag.addOperator("echoBadNode", ConsoleOutputModule.class);
 
     // good tuples to counter module
-    b.addStream("goodTuplesStream")
+    dag.addStream("goodTuplesStream")
       .setSource(validationNode.getOutput("goodOutputPort"))
       .addSink(countGoodNode.getInput("countInputPort"));
 
     // bad tuples to separate stream and echo module
     // (stream with 2 outputs)
-    b.addStream("badTuplesStream")
+    dag.addStream("badTuplesStream")
       .setSource(validationNode.getOutput("badOutputPort"))
       .addSink(countBadNode.getInput("countInputPort"))
       .addSink(echoBadNode.getInput("echoInputPort"));
 
-    DAG tplg = b.getDAG();
-    Assert.assertEquals("number root modules", 1, tplg.getRootOperators().size());
-    Assert.assertEquals("root module id", "validationNode", tplg.getRootOperators().get(0).getId());
+    Assert.assertEquals("number root modules", 1, dag.getRootOperators().size());
+    Assert.assertEquals("root module id", "validationNode", dag.getRootOperators().get(0).getId());
 
-    System.out.println(b.getDAG());
+    System.out.println(dag);
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    DAG.write(tplg, bos);
+    DAG.write(dag, bos);
 
     System.out.println("serialized size: " + bos.toByteArray().length);
 
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
-    DAG tplgClone = DAG.read(bis);
-    Assert.assertNotNull(tplgClone);
-    Assert.assertEquals("number modules in clone", tplg.getAllOperators().size(), tplgClone.getAllOperators().size());
-    Assert.assertEquals("number root modules in clone", 1, tplgClone.getRootOperators().size());
-    Assert.assertTrue("root module in modules", tplgClone.getAllOperators().contains(tplgClone.getRootOperators().get(0)));
+    DAG dagClone = DAG.read(bis);
+    Assert.assertNotNull(dagClone);
+    Assert.assertEquals("number modules in clone", dag.getAllOperators().size(), dagClone.getAllOperators().size());
+    Assert.assertEquals("number root modules in clone", 1, dagClone.getRootOperators().size());
+    Assert.assertTrue("root module in modules", dagClone.getAllOperators().contains(dagClone.getRootOperators().get(0)));
   }
 
 }

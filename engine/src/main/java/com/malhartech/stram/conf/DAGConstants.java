@@ -15,6 +15,10 @@ public interface DAGConstants {
    */
   public static final String SER_FILE_NAME = "stram-conf.ser";
 
+  /**
+   * Name under which the application will be shown in the resource manager.
+   * If not set, the default is the configuration Java class or property file name.
+   */
   public static final String STRAM_APPNAME = "stram.appName";
   /**
    * Comma separated list of jar file dependencies to be deployed with the application.

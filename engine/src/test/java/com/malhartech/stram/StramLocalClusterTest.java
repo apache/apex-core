@@ -32,7 +32,6 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.conf.DAG;
 import com.malhartech.stram.conf.DAG.Operator;
 import com.malhartech.stram.conf.DAGPropertiesBuilder;
-import com.malhartech.stram.conf.NewDAGBuilder;
 import com.malhartech.stream.StramTestSupport;
 
 public class StramLocalClusterTest
@@ -56,32 +55,31 @@ public class StramLocalClusterTest
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
-    NewDAGBuilder b = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    Operator genNode = b.addOperator("genNode", TestGeneratorInputModule.class);
+    Operator genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
     genNode.setProperty("maxTuples", "1");
 
-    Operator node1 = b.addOperator("node1", GenericTestModule.class);
+    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
     node1.setProperty("emitFormat", "%s >> node1");
 
     File outFile = new File("./target/" + StramLocalClusterTest.class.getName() + "-testLocalClusterInitShutdown.out");
     outFile.delete();
 
-    Operator outNode = b.addOperator("outNode", TestOutputModule.class);
+    Operator outNode = dag.addOperator("outNode", TestOutputModule.class);
     outNode.setProperty(TestOutputModule.P_FILEPATH, outFile.toURI().toString());
 
-    b.addStream("fromGenNode")
+    dag.addStream("fromGenNode")
       .setSource(genNode.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
       .addSink(node1.getInput(GenericTestModule.INPUT1));
 
-    b.addStream("fromNode1")
+    dag.addStream("fromNode1")
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
       .addSink(outNode.getInput(TestOutputModule.PORT_INPUT));
 
-    DAG t = b.getDAG();
-    t.setMaxContainerCount(2);
+    dag.setMaxContainerCount(2);
 
-    StramLocalCluster localCluster = new StramLocalCluster(t);
+    StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.setHeartbeatMonitoringEnabled(false);
     localCluster.run();
 
@@ -99,19 +97,18 @@ public class StramLocalClusterTest
   @Test
   public void testChildRecovery() throws Exception
   {
-    NewDAGBuilder tb = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    Operator node1 = tb.addOperator("node1", TestGeneratorInputModule.class);
-    Operator node2 = tb.addOperator("node2", GenericTestModule.class);
+    Operator node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
+    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
 
-    tb.addStream("n1n2").
+    dag.addStream("n1n2").
       setSource(node1.getOutput(TestGeneratorInputModule.OUTPUT_PORT)).
       addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = tb.getDAG();
-    tplg.validate();
+    dag.validate();
 
-    tplg.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
+    dag.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
 
     final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
 
@@ -123,7 +120,7 @@ public class StramLocalClusterTest
       }
     };
 
-    StramLocalCluster localCluster = new StramLocalCluster(tplg, mcf);
+    StramLocalCluster localCluster = new StramLocalCluster(dag, mcf);
     localCluster.runAsync();
 
     LocalStramChild c0 = waitForContainer(localCluster, node1);

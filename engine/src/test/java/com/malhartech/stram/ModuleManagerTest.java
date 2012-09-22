@@ -23,8 +23,6 @@ import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.DAGDeployer.PTNode;
-import com.malhartech.stram.conf.NewDAGBuilder;
-import com.malhartech.stram.conf.NewDAGBuilder.StreamBuilder;
 import com.malhartech.stram.conf.DAG;
 import com.malhartech.stram.conf.DAG.Operator;
 
@@ -75,28 +73,27 @@ public class ModuleManagerTest {
   @Test
   public void testAssignContainer() {
 
-    NewDAGBuilder b = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    Operator node1 = b.addOperator("node1", GenericTestModule.class);
-    Operator node2 = b.addOperator("node2", GenericTestModule.class);
-    Operator node3 = b.addOperator("node3", GenericTestModule.class);
+    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
+    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
+    Operator node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    b.addStream("n1n2")
+    dag.addStream("n1n2")
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
       .addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    b.addStream("n2n3")
+    dag.addStream("n2n3")
       .setInline(true)
       .setSource(node2.getOutput(GenericTestModule.OUTPUT1))
       .addSink(node3.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = b.getDAG();
-    tplg.setMaxContainerCount(2);
+    dag.setMaxContainerCount(2);
 
-    Assert.assertEquals("number nodes", 3, tplg.getAllOperators().size());
-    Assert.assertEquals("number root nodes", 1, tplg.getRootOperators().size());
+    Assert.assertEquals("number nodes", 3, dag.getAllOperators().size());
+    Assert.assertEquals("number root nodes", 1, dag.getRootOperators().size());
 
-    ModuleManager dnm = new ModuleManager(tplg);
+    ModuleManager dnm = new ModuleManager(dag);
     Assert.assertEquals("number required containers", 2, dnm.getNumRequiredContainers());
 
     String container1Id = "container1";
@@ -149,25 +146,24 @@ public class ModuleManagerTest {
 
   @Test
   public void testStaticPartitioning() {
-    NewDAGBuilder b = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    Operator node1 = b.addOperator("node1", GenericTestModule.class);
-    Operator node2 = b.addOperator("node2", GenericTestModule.class);
-    Operator mergeNode = b.addOperator("mergeNode", GenericTestModule.class);
+    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
+    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
+    Operator mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
-    StreamBuilder n1n2 = b.addStream("n1n2")
+    DAG.StreamDecl n1n2 = dag.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
       .addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    StreamBuilder mergeStream = b.addStream("mergeStream")
+    DAG.StreamDecl mergeStream = dag.addStream("mergeStream")
         .setSource(node2.getOutput(GenericTestModule.OUTPUT1))
         .addSink(mergeNode.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = b.getDAG();
-    tplg.setMaxContainerCount(5);
+    dag.setMaxContainerCount(5);
 
-    ModuleManager dnm = new ModuleManager(tplg);
+    ModuleManager dnm = new ModuleManager(dag);
     Assert.assertEquals("number required containers", 5, dnm.getNumRequiredContainers());
 
     String container1Id = "container1";
@@ -187,7 +183,7 @@ public class ModuleManagerTest {
       Assert.assertEquals("outputs " + ndi, 1, ndi.outputs.size());
 
       NodeInputDeployInfo nidi = ndi.inputs.get(0);
-      Assert.assertEquals("stream " + nidi, n1n2.getDecl().getId(), nidi.declaredStreamId);
+      Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], nidi.partitionKeys.get(0)));
       Assert.assertEquals("serde " + nidi, TestStaticPartitioningSerDe.class.getName(), nidi.serDeClassName);
     }
@@ -202,13 +198,13 @@ public class ModuleManagerTest {
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
     List<String> sourceNodeIds = new ArrayList<String>();
     for (NodeInputDeployInfo nidi : mergeNodeDI.inputs) {
-      Assert.assertEquals("streamName " + nidi, mergeStream.getDecl().getId(), nidi.declaredStreamId);
+      Assert.assertEquals("streamName " + nidi, mergeStream.getId(), nidi.declaredStreamId);
       Assert.assertEquals("streamName " + nidi, GenericTestModule.INPUT1, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       sourceNodeIds.add(nidi.sourceNodeId);
     }
 
-    for (PTNode node : dnm.getTopologyDeployer().getNodes(tplg.getOperator(node2.getId()))) {
+    for (PTNode node : dnm.getTopologyDeployer().getNodes(dag.getOperator(node2.getId()))) {
       Assert.assertTrue(sourceNodeIds + " contains " + node.id, sourceNodeIds.contains(node.id));
     }
     Assert.assertEquals("outputs " + mergeNodeDI, 0, mergeNodeDI.outputs.size());
@@ -219,26 +215,25 @@ public class ModuleManagerTest {
    */
   @Test
   public void testBufferServerAssignment() {
-    NewDAGBuilder b = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    Operator node1 = b.addOperator("node1", GenericTestModule.class);
-    Operator node2 = b.addOperator("node2", GenericTestModule.class);
-    Operator node3 = b.addOperator("node3", GenericTestModule.class);
+    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
+    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
+    Operator node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    b.addStream("n1n2")
+    dag.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
       .addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    b.addStream("n2n3")
+    dag.addStream("n2n3")
         .setSource(node2.getOutput(GenericTestModule.OUTPUT1))
         .addSink(node3.getInput(GenericTestModule.INPUT1));
 
-    DAG tplg = b.getDAG();
-    tplg.setMaxContainerCount(2);
+    dag.setMaxContainerCount(2);
 
     // node1 and node3 are assigned, node2 unassigned
-    ModuleManager dnmgr = new ModuleManager(tplg);
+    ModuleManager dnmgr = new ModuleManager(dag);
     dnmgr.assignContainerForTest("container1", InetSocketAddress.createUnresolved("localhost", 9001));
 
   }
