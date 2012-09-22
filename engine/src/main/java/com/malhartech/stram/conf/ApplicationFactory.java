@@ -6,6 +6,7 @@ package com.malhartech.stram.conf;
 
 /**
  * Interface to be implemented by custom classes for Java based application declaration.
+ * The interface is used by the CLI to identify Java DAG configuration classes within jar files.
  */
 public interface ApplicationFactory {
     DAG getApplication();

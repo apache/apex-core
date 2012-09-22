@@ -152,7 +152,7 @@ public class LaunchContainerRunnable implements Runnable
     for (CharSequence str : vargs) {
       command.append(str).append(" ");
     }
-    LOG.info("Final command is: {}", command);
+    LOG.info("Launching on node: {} command: {}", container.getNodeId(), command);
 
     List<String> commands = new ArrayList<String>();
     commands.add(command.toString());

@@ -26,7 +26,7 @@ import com.malhartech.stram.conf.DAG;
 import com.malhartech.stram.conf.DAG.InputPort;
 import com.malhartech.stram.conf.DAG.Operator;
 import com.malhartech.stram.conf.DAG.StreamDecl;
-import com.malhartech.stram.webapp.ModuleInfo;
+import com.malhartech.stram.webapp.OperatorInfo;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -260,7 +260,7 @@ public class ModuleManager
    * @param bufferServerAddress Buffer server for publishers on the container.
    * @param cdr
    */
-  public void assignContainer(DeployRequest cdr, String containerId, InetSocketAddress bufferServerAddress) {
+  public void assignContainer(DeployRequest cdr, String containerId, String containerHost, InetSocketAddress bufferServerAddress) {
     PTContainer container = cdr.container;
     if (container.containerId != null) {
       LOG.info("Removing existing container agent {}", cdr.container.containerId);
@@ -269,6 +269,7 @@ public class ModuleManager
       container.bufferServerAddress = bufferServerAddress;
     }
     container.containerId = containerId;
+    container.host = containerHost;
 
     Map<PTNode, Long> checkpoints = cdr.checkpoints;
     if (checkpoints == null) {
@@ -556,11 +557,11 @@ public class ModuleManager
     containerStopRequests.put(containerId, containerId);
   }
 
-  public ArrayList<ModuleInfo> getNodeInfoList() {
-    ArrayList<ModuleInfo> nodeInfoList = new ArrayList<ModuleInfo>(this.nodeStatusMap.size());
+  public ArrayList<OperatorInfo> getNodeInfoList() {
+    ArrayList<OperatorInfo> nodeInfoList = new ArrayList<OperatorInfo>(this.nodeStatusMap.size());
     for (NodeStatus ns : this.nodeStatusMap.values()) {
-      ModuleInfo ni = new ModuleInfo();
-      ni.containerId = ns.container.containerId;
+      OperatorInfo ni = new OperatorInfo();
+      ni.container = ns.container.containerId + "@" + ns.container.host;
       ni.id = ns.node.id;
       ni.name = ns.node.getLogicalId();
       StreamingNodeHeartbeat hb = ns.lastHeartbeat;

@@ -98,11 +98,11 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATORS)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public ModulesInfo getModules() throws Exception
+  public OperatorsInfo getModules() throws Exception
   {
     init();
     LOG.info("DAGManager: {}", dagManager);
-    ModulesInfo nodeList = new ModulesInfo();
+    OperatorsInfo nodeList = new OperatorsInfo();
     nodeList.nodes = dagManager.getNodeInfoList();
     return nodeList;
   }

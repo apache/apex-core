@@ -189,7 +189,7 @@ public class StramLocalCluster implements Runnable {
         wingen = mockComponentFactory.setupWindowGenerator();
       }
       this.child = new LocalStramChild(containerId, umbilical, wingen);
-      dnmgr.assignContainer(cdr, containerId, NetUtils.getConnectAddress(bufferServerAddress));
+      dnmgr.assignContainer(cdr, containerId, "localhost", NetUtils.getConnectAddress(bufferServerAddress));
       Thread launchThread = new Thread(this, containerId);
       launchThread.start();
       childContainers.put(containerId, child);

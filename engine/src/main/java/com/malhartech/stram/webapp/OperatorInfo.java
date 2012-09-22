@@ -10,7 +10,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 /**
  *
- * Provides node level data like node id, container id, throughput, etc.<p>
+ * Provides operator instance level data like id, container id, throughput, etc.<p>
  * <br>Current data includes<br>
  * <b>Node Id</b><br>
  * <b>Node Name</b><br>
@@ -25,17 +25,17 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement(name = "node")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class ModuleInfo {
+public class OperatorInfo {
 
   public String id;
   public String name;
-  public String containerId;
+  public String container;
   public long totalTuples;
   public long totalBytes;
   public String status;
   public long lastHeartbeat;
 
-  public ModuleInfo() {
+  public OperatorInfo() {
   }
 
 }
