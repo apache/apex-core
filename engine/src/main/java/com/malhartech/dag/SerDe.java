@@ -15,10 +15,10 @@ import java.util.Collection;
  * Serializing and Deserializing the data tuples and controlling the partitioning<p>
  * <br>
  * Data flows from one Module to another Module through a stream. For load balancing the
- * downstream nodes, we can use sticky partitions. Since the framework has no knowledge
+ * downstream operators, we can use sticky partitions. Since the framework has no knowledge
  * about the internals of the data flowing between the node, it has to ask the
  * application if payload can be partitioned and appropriately creates downstream
- * nodes to share the load as per the partitions. The logic to correspond about
+ * operators to share the load as per the partitions. The logic to correspond about
  * partitions is abstracted out in SerDe which is defined on each stream.<br>
  * <br>
  * The default SerDe does not define any partitions so it cannot be used for sticky

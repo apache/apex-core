@@ -39,7 +39,7 @@ public class StramLocalCluster implements Runnable {
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
 
-  private final ModuleManager dnmgr;
+  private final StreamingContainerManager dnmgr;
   private final UmbilicalProtocolLocalImpl umbilical;
   private final InetSocketAddress bufferServerAddress;
   private Server bufferServer = null;
@@ -223,7 +223,7 @@ public class StramLocalCluster implements Runnable {
     if (topology.getConf().get(DAG.STRAM_CHECKPOINT_DIR) == null) {
       topology.getConf().set(DAG.STRAM_CHECKPOINT_DIR, CLUSTER_WORK_DIR.getPath());
     }
-    this.dnmgr = new ModuleManager(topology);
+    this.dnmgr = new StreamingContainerManager(topology);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
     // start buffer server

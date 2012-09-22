@@ -32,7 +32,7 @@ import com.malhartech.dag.DAG.StreamDecl;
  *
  * Derives the physical model from the logical dag and assigned to hadoop container. Is the initial query planner<p>
  * <br>
- * Does the static binding of dag to physical nodes. Parse the dag and figures out the topology. The upstream
+ * Does the static binding of dag to physical operators. Parse the dag and figures out the topology. The upstream
  * dependencies are deployed first. Static partitions are defined by the dag are enforced. Stram an later on do
  * dynamic optimization.<br>
  * In current implementation optimization is not done with number of containers. The number provided in the dag
@@ -45,7 +45,7 @@ public class PhysicalPlan {
   private final static Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
 
   /**
-   * Common abstraction for streams and nodes for heartbeat/monitoring.<p>
+   * Common abstraction for streams and operators for heartbeat/monitoring.<p>
    * <br>
    *
    */
@@ -211,8 +211,8 @@ public class PhysicalPlan {
    */
 
   public static class PTContainer {
-    List<PTOperator> nodes = new ArrayList<PTOperator>();
-    String containerId; // assigned to yarn container
+    List<PTOperator> operators = new ArrayList<PTOperator>();
+    String containerId; // assigned to yarn container id
     String host;
     InetSocketAddress bufferServerAddress;
 
@@ -223,7 +223,7 @@ public class PhysicalPlan {
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-          append("nodes", this.nodes).
+          append("operators", this.operators).
           toString();
     }
   }
@@ -246,17 +246,17 @@ public class PhysicalPlan {
 
   /**
    *
-   * @param tplg
+   * @param dag
    */
-  public PhysicalPlan(DAG tplg) {
+  public PhysicalPlan(DAG dag) {
 
-    this.maxContainers = Math.max(tplg.getMaxContainerCount(),1);
+    this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing topology for {} containers.", this.maxContainers);
 
     Map<Operator, Set<PTOperator>> inlineGroups = new HashMap<Operator, Set<PTOperator>>();
 
     Stack<Operator> pendingNodes = new Stack<Operator>();
-    for (Operator n : tplg.getAllOperators()) {
+    for (Operator n : dag.getAllOperators()) {
       pendingNodes.push(n);
     }
 
@@ -268,7 +268,7 @@ public class PhysicalPlan {
         continue;
       }
 
-      // look at all input streams to determine partitioning / number of nodes
+      // look at all input streams to determine partitioning / number of operators
       byte[][] partitions = null;
       boolean upstreamDeployed = true;
       boolean isSingleNodeInstance = true;
@@ -298,11 +298,11 @@ public class PhysicalPlan {
         if (isSingleNodeInstance) {
           for (StreamDecl s : n.getInputStreams().values()) {
             if (s.isInline()) {
-              // if stream is marked inline, join the upstream nodes
+              // if stream is marked inline, join the upstream operators
               Set<PTOperator> inlineNodes = inlineGroups.get(s.getSource().getNode());
               // empty set for partitioned upstream node
               if (!inlineNodes.isEmpty()) {
-                // update group index for each of the member nodes
+                // update group index for each of the member operators
                 for (PTOperator upstreamNode : inlineNodes) {
                   inlineSet.add(upstreamNode);
                   inlineGroups.put(upstreamNode.logicalNode, inlineSet);
@@ -332,7 +332,7 @@ public class PhysicalPlan {
       }
     }
 
-    // assign nodes to containers
+    // assign operators to containers
     int groupCount = 0;
     for (Map.Entry<Operator, List<PTOperator>> e : deployedNodes.entrySet()) {
       for (PTOperator node : e.getValue()) {
@@ -342,12 +342,12 @@ public class PhysicalPlan {
           if (!inlineNodes.isEmpty()) {
             for (PTOperator inlineNode : inlineNodes) {
               inlineNode.container = container;
-              container.nodes.add(inlineNode);
+              container.operators.add(inlineNode);
               inlineGroups.remove(inlineNode.logicalNode);
             }
           } else {
             node.container = container;
-            container.nodes.add(node);
+            container.operators.add(node);
           }
         }
       }
@@ -359,11 +359,11 @@ public class PhysicalPlan {
 
   private PTOperator createPTOperator(Operator nodeDecl, byte[] partition, int instanceCount) {
 
-    PTOperator pNode = new PTOperator();
-    pNode.logicalNode = nodeDecl;
-    pNode.inputs = new ArrayList<PTInput>();
-    pNode.outputs = new ArrayList<PTOutput>();
-    pNode.id = ""+nodeSequence.incrementAndGet();
+    PTOperator pOperator = new PTOperator();
+    pOperator.logicalNode = nodeDecl;
+    pOperator.inputs = new ArrayList<PTInput>();
+    pOperator.outputs = new ArrayList<PTOutput>();
+    pOperator.id = ""+nodeSequence.incrementAndGet();
 
     for (Map.Entry<String, StreamDecl> inputEntry : nodeDecl.getInputStreams().entrySet()) {
       // find upstream node(s),
@@ -375,8 +375,8 @@ public class PhysicalPlan {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
             if (upstreamOut.logicalStream == streamDecl) {
-              PTInput input = new PTInput(inputEntry.getKey(), streamDecl, pNode, partition, upNode);
-              pNode.inputs.add(input);
+              PTInput input = new PTInput(inputEntry.getKey(), streamDecl, pOperator, partition, upNode);
+              pOperator.inputs.add(input);
             }
           }
         }
@@ -384,10 +384,10 @@ public class PhysicalPlan {
     }
 
     for (Map.Entry<String, StreamDecl> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
-      pNode.outputs.add(new PTOutput(outputEntry.getKey(), outputEntry.getValue(), pNode));
+      pOperator.outputs.add(new PTOutput(outputEntry.getKey(), outputEntry.getValue(), pOperator));
     }
 
-    return pNode;
+    return pOperator;
   }
 
   private byte[][] getStreamPartitions(StreamDecl streamConf)
@@ -417,7 +417,7 @@ public class PhysicalPlan {
   }
 
   /**
-   * Determine whether downstream nodes are deployed inline.
+   * Determine whether downstream operators are deployed inline.
    * (all instances of the logical downstream node are in the same container)
    * @param output
    */

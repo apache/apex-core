@@ -72,7 +72,7 @@ import com.malhartech.stram.webapp.StramWebApp;
  * As part of initialization the following tasks are done<br>
  * The DAG is parsed, and properties are read to create a physical query map<br>
  * ResourceMgr is queried to get the requisite containers<br>
- * Then {@link com.malhartech.stram.ModuleManager} provisions the DAG into those containers and starts them<br>
+ * Then {@link com.malhartech.stram.StreamingContainerManager} provisions the DAG into those containers and starts them<br>
  * Once the dag is starts {@link com.malhartech.stram.StramAppMaster} runs the dag on a continual basis<br>
  * Stram can be shut down in the following ways<br>
  * cli command shutdown<br>
@@ -119,7 +119,7 @@ public class StramAppMaster
   private final List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
   private StreamingContainerParent rpcImpl;
-  private ModuleManager dnmgr;
+  private StreamingContainerManager dnmgr;
   private InetSocketAddress bufferServerAddress;
   private final Clock clock = new SystemClock();
   private final long startTime = clock.getTime();
@@ -340,7 +340,7 @@ public class StramAppMaster
       dumpOutDebugInfo();
     }
 
-    this.dnmgr = new ModuleManager(topology);
+    this.dnmgr = new StreamingContainerManager(topology);
 
     // start RPC server
     rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr);
@@ -348,7 +348,7 @@ public class StramAppMaster
     rpcImpl.start();
     LOG.info("Container callback server listening at " + rpcImpl.getAddress());
 
-    LOG.info("Initializing logical topology with {} nodes in {} containers", topology.getAllOperators().size(), dnmgr.getNumRequiredContainers());
+    LOG.info("Initializing logical topology with {} operators in {} containers", topology.getAllOperators().size(), dnmgr.getNumRequiredContainers());
 
     // start buffer server
     com.malhartech.bufferserver.Server s = new Server(0);
@@ -524,7 +524,7 @@ public class StramAppMaster
       }
 
       // TODO: we need to obtain the initial list...
-      // keep track of updated nodes - we use this info to make decisions about where to request new containers
+      // keep track of updated operators - we use this info to make decisions about where to request new containers
       List<NodeReport> nodeReports = amResp.getUpdatedNodes();
       LOG.info("Got {} updated node reports.", nodeReports.size());
       for (NodeReport nr : nodeReports) {

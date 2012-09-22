@@ -354,7 +354,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                 shouldWait = false;
                 activePort.get();
                 /**
-                 * Since one of the nodes we care about it gone, we should relook at our nodes.
+                 * Since one of the operators we care about it gone, we should relook at our operators.
                  * We need to make sure that the END_STREAM comes outside of the window.
                  */
                 totalQueues--;
@@ -411,7 +411,7 @@ public abstract class AbstractModule extends AbstractBaseModule
 
     logger.debug("{} sending EndOfStream", this);
     /*
-     * since we are going away, we should let all the downstream nodes know that.
+     * since we are going away, we should let all the downstream operators know that.
      */
     // we need to think about this as well.
     EndStreamTuple est = new EndStreamTuple();

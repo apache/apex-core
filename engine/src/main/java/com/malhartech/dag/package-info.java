@@ -5,7 +5,7 @@
 */
 
 /**
- * <b>com.malhartech.dag</b> package deals with data nodes, tuple processing, serialization, streams, window boundaries etc.<p>
+ * <b>com.malhartech.dag</b> package deals with data operators, tuple processing, serialization, streams, window boundaries etc.<p>
  * <br>
  * All code needed that is executed by Stram to run the dag in Hadoop. Once you have designed your DAG, and designed what each node would do, you would need to write your code by deriving your classes from
  * dag package.<br>
@@ -14,11 +14,11 @@
  * The streaming platform would take care of the following for you<br>(TBD, add "How it will")<br>
  * - Standard partitioning (round robin, sticky key). You can add  your own partitioning.<br>
  * - End of window statistics collection in terms of number of tuples, bandwidth, I/O etc<br>
- * - Ensuring the the emitted tuple reaches the downstream nodes<br>
- * - Queueing tuples and retaining them till all future downstream nodes have consumed it<br>
+ * - Ensuring the the emitted tuple reaches the downstream operators<br>
+ * - Queueing tuples and retaining them till all future downstream operators have consumed it<br>
  * <br>
  * <br>
- * There are pre-defined library nodes that you can use: see ...<br>
+ * There are pre-defined library operators that you can use: see ...<br>
  * Examples are in the following packages<br>
  * <b>com.malhartech.example.wordcount</b><br>
  * <b>com.malhattech.example.twitter</b><br>
@@ -38,8 +38,8 @@
  * <b>{@link com.malhartech.dag.EndWindowTuple}</b>: End of window tuple<br>
  * <b>{@link com.malhartech.dag.HeartbeatCounters}</b>: Data for heartbeat from node to stram<br>
  * <b>{@link com.malhartech.dag.Node}</b>: TBD<br>
- * <b>{@link com.malhartech.dag.NodeConfiguration}</b>: Extends {@link org.apache.hadoop.conf.Configuration} for nodes of the dag<br>
- * <b>{@link com.malhartech.dag.NodeContext}</b>: The for context for all of the nodes<br>
+ * <b>{@link com.malhartech.dag.NodeConfiguration}</b>: Extends {@link org.apache.hadoop.conf.Configuration} for operators of the dag<br>
+ * <b>{@link com.malhartech.dag.NodeContext}</b>: The for context for all of the operators<br>
  * <b>{@link com.malhartech.dag.NodeSerDe}</b>: <b>TBD</b><br>
  * <b>{@link com.malhartech.dag.ResetWindowTuple}</b>: Resets window id<br>
  * <b>{@link com.malhartech.dag.SerDe}</b>: Serializing and Deserializing the data tuples and controlling the partitioning<<br>

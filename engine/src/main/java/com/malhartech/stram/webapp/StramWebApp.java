@@ -19,7 +19,7 @@ import org.apache.hadoop.yarn.webapp.RemoteExceptionData;
 import org.apache.hadoop.yarn.webapp.WebApp;
 
 import com.google.inject.Singleton;
-import com.malhartech.stram.ModuleManager;
+import com.malhartech.stram.StreamingContainerManager;
 import com.sun.jersey.api.json.JSONConfiguration;
 import com.sun.jersey.api.json.JSONJAXBContext;
 
@@ -33,13 +33,13 @@ import com.sun.jersey.api.json.JSONJAXBContext;
  */
 public class StramWebApp extends WebApp {
 
-  private final ModuleManager moduleManager;
+  private final StreamingContainerManager moduleManager;
 
   /**
    *
    * @param topolManager
    */
-  public StramWebApp(ModuleManager topolManager) {
+  public StramWebApp(StreamingContainerManager topolManager) {
     this.moduleManager = topolManager;
   }
 
@@ -84,6 +84,6 @@ public class StramWebApp extends WebApp {
     bind(JAXBContextResolver.class);
     bind(GenericExceptionHandler.class);
     bind(StramWebServices.class);
-    bind(ModuleManager.class).toInstance(this.moduleManager);
+    bind(StreamingContainerManager.class).toInstance(this.moduleManager);
   }
 }

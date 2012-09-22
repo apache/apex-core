@@ -32,7 +32,7 @@ public interface DAGConstants {
   /**
    * The maximum number or containers (not excluding the application master) that the application is allowed to request.
    * If the DAG plan requires less containers, remaining count won't be allocated from the resource manager.
-   * Example: DAG with several nodes and all inline streams would require one container,
+   * Example: DAG with several operators and all inline streams would require one container,
    * only one container will be requested from the resource manager.
    */
   public static final String STRAM_MAX_CONTAINERS = "stram.numContainers";

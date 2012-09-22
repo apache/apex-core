@@ -46,16 +46,16 @@ import org.slf4j.LoggerFactory;
  * Tracks topology provisioning/allocation to containers<p>
  * <br>
  * The tasks include<br>
- * Provisioning nodes one container at a time. Each container gets assigned the nodes, streams and its context<br>
+ * Provisioning operators one container at a time. Each container gets assigned the operators, streams and its context<br>
  * Monitors run time operations including heartbeat protocol and node status<br>
  * Module recovery and restart<br>
  * <br>
  *
  */
 
-public class ModuleManager
+public class StreamingContainerManager
 {
-  private final static Logger LOG = LoggerFactory.getLogger(ModuleManager.class);
+  private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private int windowSizeMillis = 500;
   private final int heartbeatTimeoutMillis = 30000;
@@ -92,7 +92,7 @@ public class ModuleManager
   private final PhysicalPlan deployer;
   private final String checkpointDir;
 
-  public ModuleManager(DAG topology) {
+  public StreamingContainerManager(DAG topology) {
     this.deployer = new PhysicalPlan(topology);
 
     this.windowSizeMillis = topology.getConf().getInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
@@ -150,10 +150,10 @@ public class ModuleManager
     StramChildAgent cs = getContainerAgent(containerId);
 
     // building the checkpoint dependency,
-    // downstream nodes will appear first in map
-    // TODO: traversal needs to include inline upstream nodes
+    // downstream operators will appear first in map
+    // TODO: traversal needs to include inline upstream operators
     Map<PTOperator, Long> checkpoints = new LinkedHashMap<PTOperator, Long>();
-    for (PTOperator node : cs.container.nodes) {
+    for (PTOperator node : cs.container.operators) {
       getRecoveryCheckpoint(node, checkpoints);
     }
 
@@ -168,7 +168,7 @@ public class ModuleManager
         nodes.add(node);
     }
 
-    // stop affected downstream dependency nodes (all except failed container)
+    // stop affected downstream dependency operators (all except failed container)
     AtomicInteger undeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
@@ -181,14 +181,14 @@ public class ModuleManager
       }
     }
 
-    // schedule deployment for replacement container, depends on above downstream nodes stop
+    // schedule deployment for replacement container, depends on above downstream operators stop
     AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
     DeployRequest dr = new DeployRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
     dr.checkpoints = checkpoints;
     // launch replacement container, the deploy request will be queued with new container agent in assignContainer
     containerStartRequests.add(dr);
 
-    // (re)deploy affected downstream nodes
+    // (re)deploy affected downstream operators
     AtomicInteger redeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
@@ -245,7 +245,7 @@ public class ModuleManager
       if (container.containerId == null) {
         container.containerId = containerId;
         container.bufferServerAddress = bufferServerAddress;
-        StreamingContainerContext scc = createStramChildInitContext(container.nodes, container, Collections.<PTOperator, Long>emptyMap());
+        StreamingContainerContext scc = createStramChildInitContext(container.operators, container, Collections.<PTOperator, Long>emptyMap());
         containers.put(containerId, new StramChildAgent(container, scc));
         return scc;
       }
@@ -254,7 +254,7 @@ public class ModuleManager
   }
 
   /**
-   * Get nodes/streams for next container. Multiple nodes can share a container.
+   * Get operators/streams for next container. Multiple operators can share a container.
    *
    * @param containerId
    * @param bufferServerAddress Buffer server for publishers on the container.
@@ -275,7 +275,7 @@ public class ModuleManager
     if (checkpoints == null) {
       checkpoints = Collections.emptyMap();
     }
-    StreamingContainerContext initCtx = createStramChildInitContext(container.nodes, container, checkpoints);
+    StreamingContainerContext initCtx = createStramChildInitContext(container.operators, container, checkpoints);
     cdr.setNodes(initCtx.nodeList);
     initCtx.nodeList = new ArrayList<ModuleDeployInfo>(0);
 
@@ -361,7 +361,7 @@ public class ModuleManager
         }
 
         if (streamDecl.isInline() && sourceNode.container == node.container) {
-          // inline input (both nodes in same container and inline hint set)
+          // inline input (both operators in same container and inline hint set)
           NodeOutputDeployInfo outputInfo = publishers.get(sourceNode.id + "/" + streamDecl.getId());
           if (outputInfo == null) {
             throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
@@ -470,7 +470,7 @@ public class ModuleManager
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
     if (checkpointIntervalMillis > 0) {
       if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
-        for (PTOperator node : cs.container.nodes) {
+        for (PTOperator node : cs.container.operators) {
           StramToNodeRequest backupRequest = new StramToNodeRequest();
           backupRequest.setNodeId(node.id);
           backupRequest.setRequestType(RequestType.CHECKPOINT);
@@ -499,7 +499,7 @@ public class ModuleManager
    * and then selecting the most recent available checkpoint that is smaller than downstream.
    * @param node Module for which to find recovery checkpoint
    * @param recoveryCheckpoints Map to collect all downstream recovery checkpoints
-   * @return Checkpoint that can be used to recover node (along with dependent nodes in recoveryCheckpoints).
+   * @return Checkpoint that can be used to recover node (along with dependent operators in recoveryCheckpoints).
    */
   public long getRecoveryCheckpoint(PTOperator node, Map<PTOperator, Long> recoveryCheckpoints) {
     long maxCheckpoint = node.getRecentCheckpoint();

@@ -36,9 +36,9 @@ public class StreamingContainerParent extends CompositeService implements Stream
   private Server server;
   private SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;
-  private ModuleManager dnodeManager;
+  private StreamingContainerManager dnodeManager;
 
-  public StreamingContainerParent(String name, ModuleManager dnodeMgr) {
+  public StreamingContainerParent(String name, StreamingContainerManager dnodeMgr) {
     super(name);
     this.dnodeManager = dnodeMgr;
   }

@@ -26,7 +26,7 @@ import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 
-public class ModuleManagerTest {
+public class StreamingContainerManagerTest {
 
   @Test
   public void testNodeDeployInfoSerialization() throws Exception {
@@ -90,10 +90,10 @@ public class ModuleManagerTest {
 
     dag.setMaxContainerCount(2);
 
-    Assert.assertEquals("number nodes", 3, dag.getAllOperators().size());
-    Assert.assertEquals("number root nodes", 1, dag.getRootOperators().size());
+    Assert.assertEquals("number operators", 3, dag.getAllOperators().size());
+    Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
 
-    ModuleManager dnm = new ModuleManager(dag);
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals("number required containers", 2, dnm.getNumRequiredContainers());
 
     String container1Id = "container1";
@@ -101,7 +101,7 @@ public class ModuleManagerTest {
 
     // node1 needs to be deployed first, regardless in which order they were given
     StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
-    Assert.assertEquals("number nodes assigned to c1", 1, c1.nodeList.size());
+    Assert.assertEquals("number operators assigned to c1", 1, c1.nodeList.size());
     ModuleDeployInfo node1DI = getNodeDeployInfo(c1, node1);
     Assert.assertNotNull(node1.getId() + " assigned to " + container1Id, node1DI);
     Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
@@ -116,7 +116,7 @@ public class ModuleManagerTest {
     Assert.assertFalse("stream inline", c1n1n2.isInline());
 
     StreamingContainerContext c2 = dnm.assignContainerForTest(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
-    Assert.assertEquals("number nodes assigned to container", 2, c2.nodeList.size());
+    Assert.assertEquals("number operators assigned to container", 2, c2.nodeList.size());
     ModuleDeployInfo node2DI = getNodeDeployInfo(c2, node2);
     ModuleDeployInfo node3DI = getNodeDeployInfo(c2, node3);
     Assert.assertNotNull(node2.getId() + " assigned to " + container2Id, node2DI);
@@ -163,18 +163,18 @@ public class ModuleManagerTest {
 
     dag.setMaxContainerCount(5);
 
-    ModuleManager dnm = new ModuleManager(dag);
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals("number required containers", 5, dnm.getNumRequiredContainers());
 
     String container1Id = "container1";
     StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
-    Assert.assertEquals("number nodes assigned to container", 1, c1.nodeList.size());
+    Assert.assertEquals("number operators assigned to container", 1, c1.nodeList.size());
     Assert.assertTrue(node2.getId() + " assigned to " + container1Id, containsNodeContext(c1, node1));
 
     for (int i=0; i<TestStaticPartitioningSerDe.partitions.length; i++) {
       String containerId = "container"+(i+1);
       StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved(containerId+"Host", 9001));
-      Assert.assertEquals("number nodes assigned to container", 1, cc.nodeList.size());
+      Assert.assertEquals("number operators assigned to container", 1, cc.nodeList.size());
       Assert.assertTrue(node2.getId() + " assigned to " + containerId, containsNodeContext(cc, node2));
 
       // n1n2 in, mergeStream out
@@ -191,7 +191,7 @@ public class ModuleManagerTest {
     // mergeNode container
     String mergeContainerId = "mergeNodeContainer";
     StreamingContainerContext cmerge = dnm.assignContainerForTest(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
-    Assert.assertEquals("number nodes assigned to " + mergeContainerId, 1, cmerge.nodeList.size());
+    Assert.assertEquals("number operators assigned to " + mergeContainerId, 1, cmerge.nodeList.size());
 
     ModuleDeployInfo mergeNodeDI = getNodeDeployInfo(cmerge,  mergeNode);
     Assert.assertNotNull(mergeNode.getId() + " assigned to " + container1Id, mergeNodeDI);
@@ -233,7 +233,7 @@ public class ModuleManagerTest {
     dag.setMaxContainerCount(2);
 
     // node1 and node3 are assigned, node2 unassigned
-    ModuleManager dnmgr = new ModuleManager(dag);
+    StreamingContainerManager dnmgr = new StreamingContainerManager(dag);
     dnmgr.assignContainerForTest("container1", InetSocketAddress.createUnresolved("localhost", 9001));
 
   }

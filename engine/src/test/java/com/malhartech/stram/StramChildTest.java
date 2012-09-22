@@ -65,14 +65,14 @@ public class StramChildTest
     DAG.StreamDecl generatorOutput = dag.addStream("generatorOutput");
     generatorOutput.setSource(generator.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
             .addSink(operator1.getInput(GenericTestModule.INPUT1))
-            .setSerDeClass(ModuleManagerTest.TestStaticPartitioningSerDe.class);
+            .setSerDeClass(StreamingContainerManagerTest.TestStaticPartitioningSerDe.class);
 
     //StreamConf output1 = b.getOrAddStream("output1");
     //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
     //                    ConsoleOutputStream.class.getName());
 
-    ModuleManager dnm = new ModuleManager(dag);
-    int expectedContainerCount = ModuleManagerTest.TestStaticPartitioningSerDe.partitions.length;
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    int expectedContainerCount = StreamingContainerManagerTest.TestStaticPartitioningSerDe.partitions.length;
     Assert.assertEquals("number required containers",
                         expectedContainerCount,
                         dnm.getNumRequiredContainers());

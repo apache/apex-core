@@ -65,7 +65,7 @@ public class CheckpointTest {
     // node with no inputs will be connected to window generator
     dag.addOperator("node1", TestGeneratorInputModule.class)
         .setProperty("maxTuples", "1");
-    ModuleManager dnm = new ModuleManager(dag);
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
@@ -79,7 +79,7 @@ public class CheckpointTest {
 
     mses.tick(1); // begin window 1
 
-    Assert.assertEquals("number nodes", 1, container.getNodes().size());
+    Assert.assertEquals("number operators", 1, container.getNodes().size());
     Module node = container.getNode(cc.nodeList.get(0).id);
     ModuleContext context = container.getNodeContext(cc.nodeList.get(0).id);
 
@@ -124,7 +124,7 @@ public class CheckpointTest {
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
       .addSink(node2.getInput(GenericTestModule.INPUT1));
 
-    ModuleManager dnm = new ModuleManager(dag);
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan deployer = dnm.getTopologyDeployer();
     List<PTOperator> nodes1 = deployer.getOperators(node1);
     Assert.assertNotNull(nodes1);

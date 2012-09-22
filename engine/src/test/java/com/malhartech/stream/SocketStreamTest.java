@@ -11,8 +11,8 @@ import com.malhartech.dag.Sink;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
-import com.malhartech.stram.ModuleManager;
-import com.malhartech.stram.ModuleManagerTest.TestStaticPartitioningSerDe;
+import com.malhartech.stram.StreamingContainerManager;
+import com.malhartech.stram.StreamingContainerManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.dag.DAG.Operator;
@@ -157,7 +157,7 @@ public class SocketStreamTest
             .addSink(node1.getInput(GenericTestModule.INPUT1))
             .setSerDeClass(TestStaticPartitioningSerDe.class);
 
-    ModuleManager dnm = new ModuleManager(dag);
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
     int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
     Assert.assertEquals("number required containers",
                         expectedContainerCount,

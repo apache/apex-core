@@ -166,7 +166,7 @@ public class StramAppLauncher {
               cp = null;
               pomCrc = jarEntry.getCrc();
             }
-          } else if (jarEntry.getName().endsWith(".tplg.properties")) {
+          } else if (jarEntry.getName().endsWith(".app.properties")) {
             // TODO: handle subdirs
             File targetFile = new File(baseDir, jarEntry.getName());
             FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);

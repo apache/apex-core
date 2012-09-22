@@ -60,7 +60,7 @@ public class ModuleDeployInfo implements Serializable
 
     /**
      * The subscriber type/group. This would be different for every partition
-     * and same for all nodes within a partition (or no partition).
+     * and same for all operators within a partition (or no partition).
      */
     public String bufferServerSubscriberType;
 
@@ -73,10 +73,10 @@ public class ModuleDeployInfo implements Serializable
      * Partition keys. For dynamic partitioning, set is initially empty (after
      * topology initialization) and will be populated from node processing stats
      * if the node emits partitioned data. Value(s), once assigned assigned by
-     * stram limit what data flows between 2 physical nodes. Once values are set,
+     * stram limit what data flows between 2 physical operators. Once values are set,
      * node uses them subscribe to buffer server. Stram may request detailed
      * partition stats as heartbeat response, based on which it can load balance
-     * (split/merge nodes) if node is elastic.
+     * (split/merge operators) if node is elastic.
      */
     public List<byte[]> partitionKeys;
 

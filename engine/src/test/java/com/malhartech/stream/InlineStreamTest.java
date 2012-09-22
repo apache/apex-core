@@ -111,7 +111,7 @@ public class InlineStreamTest
     }
 
     Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
-    Assert.assertEquals("active nodes", 2, activeNodes.size());
+    Assert.assertEquals("active operators", 2, activeNodes.size());
 
     node2.deactivate();
     node1.deactivate();
@@ -128,7 +128,7 @@ public class InlineStreamTest
     node1.teardown();
     stream.teardown();
 
-    Assert.assertEquals("active nodes", 0, activeNodes.size());
+    Assert.assertEquals("active operators", 0, activeNodes.size());
   }
 
   private void launchNodeThreads(Collection<? extends AbstractModule> nodes, final Map<String, Module> activeNodes)
@@ -136,7 +136,7 @@ public class InlineStreamTest
     int i = 1;
     for (final AbstractModule node: nodes) {
       final ModuleContext ctx = new ModuleContext(String.valueOf(i++));
-      // launch nodes
+      // launch operators
       Runnable nodeRunnable = new Runnable()
       {
         @Override

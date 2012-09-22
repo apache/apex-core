@@ -5,7 +5,7 @@
 package com.malhartech.stram.webapp;
 
 import com.google.inject.Inject;
-import com.malhartech.stram.ModuleManager;
+import com.malhartech.stram.StreamingContainerManager;
 import com.malhartech.stram.StramAppContext;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -45,7 +45,7 @@ public class StramWebServices
   private HttpServletResponse response;
   @Inject
   @Nullable
-  private ModuleManager dagManager;
+  private StreamingContainerManager dagManager;
 
   @Inject
   public StramWebServices(final StramAppContext context)

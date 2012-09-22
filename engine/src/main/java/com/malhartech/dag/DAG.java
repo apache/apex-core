@@ -35,7 +35,7 @@ import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.stram.DAGPropertiesBuilder;
 
 /**
- * DAG contains the logical declarations of nodes and streams.
+ * DAG contains the logical declarations of operators and streams.
  * It will be serialized and deployed to the cluster, where it is translated into the physical plan.
  */
 public class DAG implements Serializable, DAGConstants {
@@ -141,7 +141,7 @@ public class DAG implements Serializable, DAGConstants {
     }
 
     /**
-     * Hint to manager that adjacent nodes should be deployed in same container.
+     * Hint to manager that adjacent operators should be deployed in same container.
      * @return boolean
      */
     public boolean isInline() {
@@ -370,7 +370,7 @@ public class DAG implements Serializable, DAGConstants {
    * required configuration parameters specified, graph free of cycles etc.
    */
   public void validate() {
-    // clear visited on all nodes
+    // clear visited on all operators
     for (Operator n : nodes.values()) {
       n.nindex = null;
       n.lowlink = null;
@@ -429,14 +429,14 @@ public class DAG implements Serializable, DAGConstants {
       }
     }
 
-    // pop stack for all root nodes
+    // pop stack for all root operators
     if (n.lowlink.equals(n.nindex)) {
       List<String> connectedIds = new ArrayList<String>();
       while (!stack.isEmpty()) {
         Operator n2 = stack.pop();
         connectedIds.add(n2.id);
         if (n2 == n) {
-          break; // collected all connected nodes
+          break; // collected all connected operators
         }
       }
       // strongly connected (cycle) if more than one node in stack
@@ -459,7 +459,7 @@ public class DAG implements Serializable, DAGConstants {
   @Override
   public String toString() {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-        append("nodes", this.nodes).
+        append("operators", this.nodes).
         append("streams", this.streams).
         append("properties", DAGPropertiesBuilder.toProperties(this.confHolder.conf)).
         toString();

@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The for context for all of the nodes<p>
+ * The for context for all of the operators<p>
  * <br>
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>

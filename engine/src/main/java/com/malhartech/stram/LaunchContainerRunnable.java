@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming nodes<p>
+ * Runnable to connect to the {@link ContainerManager} and launch the container that will host streaming operators<p>
  * <br>
  */
 public class LaunchContainerRunnable implements Runnable

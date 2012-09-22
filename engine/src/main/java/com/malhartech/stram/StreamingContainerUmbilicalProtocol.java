@@ -116,12 +116,12 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 201209071402L;
 
     /**
-     * The list of nodes to initially deploy in the container.
+     * The list of operators to initially deploy in the container.
      */
     public List<ModuleDeployInfo> nodeList;
 
     /**
-     * How frequently should nodes heartbeat to stram. Recommended setting is
+     * How frequently should operators heartbeat to stram. Recommended setting is
      * 1000ms. Can be set to 0 for unit testing.
      */
     private long heartbeatIntervalMillis;
@@ -172,7 +172,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-          .append("nodes", this.nodeList).toString();
+          .append("operators", this.nodeList).toString();
     }
   }
 
@@ -195,7 +195,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * Stats of the node that is sent to the hadoop container
    * <p>
    * <br>
-   * Hadoop container wraps this together with stats from other nodes and sends
+   * Hadoop container wraps this together with stats from other operators and sends
    * it to stram <br>
    */
   public static class StreamingNodeHeartbeat extends WritableAdapter {
@@ -223,7 +223,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     }
 
     /**
-     * The originating node. There can be multiple nodes in a container.
+     * The originating node. There can be multiple operators in a container.
      */
     private String nodeId;
 
@@ -316,7 +316,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
   /**
    *
-   * Sends stats aggregated by all nodes in the this container to the stram
+   * Sends stats aggregated by all operators in the this container to the stram
    * <p>
    * <br>
    *
@@ -334,7 +334,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     }
 
     /**
-     * List with all nodes in the container.
+     * List with all operators in the container.
      */
     private List<StreamingNodeHeartbeat> dnodeEntries;
 
@@ -406,7 +406,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public boolean shutdown;
 
     /**
-     * Optional list of responses for nodes in the container.
+     * Optional list of responses for operators in the container.
      */
     public List<StramToNodeRequest> nodeRequests;
 
@@ -417,12 +417,12 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public boolean hasPendingRequests = false;
 
     /**
-     * Set when nodes need to be removed
+     * Set when operators need to be removed
      */
     public List<ModuleDeployInfo> undeployRequest;
 
     /**
-     * Set when new nodes need to be deployed
+     * Set when new operators need to be deployed
      */
     public List<ModuleDeployInfo> deployRequest;
 
@@ -443,9 +443,9 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   ContainerHeartbeatResponse pollRequest(String containerId);
 
   /**
-   * Reporting of partitioning stats - requested by stram for nodes that
+   * Reporting of partitioning stats - requested by stram for operators that
    * participate in partitioning when the basic heartbeat indicates a
-   * bottleneck. The details would then be used by stram to split or merge nodes
+   * bottleneck. The details would then be used by stram to split or merge operators
    * to re-balance load.
    *
    * @return {com.malhartech.stram.StramToNodeRequest}

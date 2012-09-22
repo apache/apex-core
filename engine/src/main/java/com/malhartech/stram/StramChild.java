@@ -135,8 +135,8 @@ public class StramChild
   }
 
   /**
-   * Initialize container with nodes and streams in the context.
-   * Existing nodes are not affected by this operation.
+   * Initialize container with operators and streams in the context.
+   * Existing operators are not affected by this operation.
    *
    * @param ctx
    * @throws IOException
@@ -264,7 +264,7 @@ public class StramChild
       logger.debug("considering stream {} against id {}", stream, indexingKey);
       if (nodeid.equals(sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR)[0])) {
         /**
-         * the stream originates at the output port of one of the nodes that are going to vanish.
+         * the stream originates at the output port of one of the operators that are going to vanish.
          */
         if (activeStreams.containsKey(stream)) {
           logger.debug("deactivating {}", stream);
@@ -304,7 +304,7 @@ public class StramChild
       }
       else {
         /**
-         * the stream may or may not feed into one of the nodes which are being undeployed.
+         * the stream may or may not feed into one of the operators which are being undeployed.
          */
         String[] sinkIds = sinkIdentifier.split(", ");
         for (int i = sinkIds.length; i-- > 0;) {
@@ -379,7 +379,7 @@ public class StramChild
   private synchronized void undeploy(List<ModuleDeployInfo> nodeList)
   {
     /**
-     * make sure that all the nodes which we are asked to undeploy are in this container.
+     * make sure that all the operators which we are asked to undeploy are in this container.
      */
     HashMap<String, Module> toUndeploy = new HashMap<String, Module>();
     for (ModuleDeployInfo ndi: nodeList) {
@@ -441,7 +441,7 @@ public class StramChild
       msg.setContainerId(this.containerId);
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
-      // gather heartbeat info for all nodes
+      // gather heartbeat info for all operators
       for (Map.Entry<String, Module> e: nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
@@ -465,7 +465,7 @@ public class StramChild
       msg.setDnodeEntries(heartbeats);
 
       // heartbeat call and follow-up processing
-      //logger.debug("Sending heartbeat for {} nodes.", msg.getDnodeEntries().size());
+      //logger.debug("Sending heartbeat for {} operators.", msg.getDnodeEntries().size());
       try {
         ContainerHeartbeatResponse rsp = umbilical.processHeartbeat(msg);
         if (rsp != null) {
@@ -606,7 +606,7 @@ public class StramChild
     /**
      * We proceed to deploy all the output streams.
      * At the end of this block, our streams collection will contain all the streams which originate at the
-     * output port of the nodes. The streams are generally mapped against the "nodename.portname" string.
+     * output port of the operators. The streams are generally mapped against the "nodename.portname" string.
      * But the BufferOutputStreams which share the output port with other inline streams are mapped against
      * the Buffer Server port to avoid collision and at the same time keep track of these buffer streams.
      */
@@ -741,7 +741,7 @@ public class StramChild
 
   private void deployInputStreams(List<ModuleDeployInfo> nodeList) throws Exception
   {
-    // collect any input nodes along with their smallest window id,
+    // collect any input operators along with their smallest window id,
     // those are subsequently used to setup the window generator
     ArrayList<ModuleDeployInfo> inputNodes = new ArrayList<ModuleDeployInfo>();
     long smallestWindowId = Long.MAX_VALUE;
@@ -779,7 +779,7 @@ public class StramChild
           if (pair == null) {
             /**
              * We connect to the buffer server for the input on this port.
-             * We have already placed all the output streams for all the nodes in this container yet, there is no stream
+             * We have already placed all the output streams for all the operators in this container yet, there is no stream
              * which can source this port so it has to come from the buffer server, so let's make a connection to it.
              */
             assert (nidi.isInline() == false);
@@ -970,7 +970,7 @@ public class StramChild
     }
 
     /**
-     * we need to make sure that before any of the nodes gets the first message, it's activated.
+     * we need to make sure that before any of the operators gets the first message, it's activated.
      */
     try {
       do {

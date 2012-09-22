@@ -15,7 +15,7 @@ import com.malhartech.dag.StreamContext;
  */
 /**
  *
- * Inline streams are used for performance enhancement when both the nodes are in the same hadoop container<p>
+ * Inline streams are used for performance enhancement when both the operators are in the same hadoop container<p>
  * <br>
  * Inline is a hint that the stram can choose to ignore. Stram may also convert a normal stream into an inline one
  * for performance reasons. A stream tagged with persist flag will not be inlined, as persistence requires a buffer

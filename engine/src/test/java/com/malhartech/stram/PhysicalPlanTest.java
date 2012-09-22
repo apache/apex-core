@@ -16,7 +16,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
-import com.malhartech.stram.ModuleManagerTest.TestStaticPartitioningSerDe;
+import com.malhartech.stram.StreamingContainerManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 
@@ -84,22 +84,22 @@ public class PhysicalPlanTest {
     dag.setMaxContainerCount(maxContainers);
     PhysicalPlan deployer1 = new PhysicalPlan(dag);
     Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
-    Assert.assertEquals("nodes container 0", 3, deployer1.getContainers().get(0).nodes.size());
+    Assert.assertEquals("operators container 0", 3, deployer1.getContainers().get(0).operators.size());
 
     Set<Operator> c1ExpNodes = Sets.newHashSet(dag.getOperator(node1.getId()), dag.getOperator(node2.getId()), dag.getOperator(node3.getId()));
     Set<Operator> c1ActNodes = new HashSet<Operator>();
-    for (PTOperator pNode : deployer1.getContainers().get(0).nodes) {
+    for (PTOperator pNode : deployer1.getContainers().get(0).operators) {
       c1ActNodes.add(pNode.getLogicalNode());
     }
-    Assert.assertEquals("nodes container 0", c1ExpNodes, c1ActNodes);
+    Assert.assertEquals("operators container 0", c1ExpNodes, c1ActNodes);
 
-    Assert.assertEquals("nodes container 1", 1, deployer1.getContainers().get(1).nodes.size());
-    Assert.assertEquals("nodes container 1", dag.getOperator(notInlineNode.getId()), deployer1.getContainers().get(1).nodes.get(0).getLogicalNode());
+    Assert.assertEquals("operators container 1", 1, deployer1.getContainers().get(1).operators.size());
+    Assert.assertEquals("operators container 1", dag.getOperator(notInlineNode.getId()), deployer1.getContainers().get(1).operators.get(0).getLogicalNode());
 
     // one container per partition
     for (int cindex = 2; cindex < maxContainers; cindex++) {
-      Assert.assertEquals("nodes container" + cindex, 1, deployer1.getContainers().get(cindex).nodes.size());
-      Assert.assertEquals("nodes container" + cindex, dag.getOperator(partNode.getId()), deployer1.getContainers().get(cindex).nodes.get(0).getLogicalNode());
+      Assert.assertEquals("operators container" + cindex, 1, deployer1.getContainers().get(cindex).operators.size());
+      Assert.assertEquals("operators container" + cindex, dag.getOperator(partNode.getId()), deployer1.getContainers().get(cindex).operators.get(0).getLogicalNode());
     }
 
   }

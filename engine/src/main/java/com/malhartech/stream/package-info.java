@@ -9,13 +9,13 @@
  * <b>com.malhartech.stream</b> package contains all code related to various implementations of Stream interface<p>
  * <br>
  * A stream is a logical unit of a dag that defines the connection between
- * a node and list of listener nodes. Stream has the following properties in Malhar's streaming platform<br>
+ * a node and list of listener operators. Stream has the following properties in Malhar's streaming platform<br>
  * - One writer node<br>
- * - Any number of listener nodes<br>
+ * - Any number of listener operators<br>
  * - Context as defined by the properties specified in the dag<br>
- * A stream definition in the dag is a logical definition. Multiple logical listerner nodes means that the emitted tuple
+ * A stream definition in the dag is a logical definition. Multiple logical listerner operators means that the emitted tuple
  * would reach each of them. Partitioning is done when a single 
- * logical listener node partitions into multilpe physical nodes. This may happen due to initial user 
+ * logical listener node partitions into multilpe physical operators. This may happen due to initial user 
  * specification, or dynamic run time constraint enforcement. In such a scenerio the logical stream gets partitioned
  * into physical streams. Each physical stream would retain the
  * characteristics of the logical node (one writer, multiple readers, and context).<br>
@@ -53,7 +53,7 @@
  * node with high throughput<br>
  * 
  * <br><b>Inline Stream (Within a Hadoop Container)</b><br>
- * <b>{@link com.malhartech.stream.InlineStream}</b>: Streams data between two nodes in inline mode. This implementation of
+ * <b>{@link com.malhartech.stream.InlineStream}</b>: Streams data between two operators in inline mode. This implementation of
  * {@link com.malhartech.dag.Stream} and {{@link com.malhartech.dag.Sink}
  * interface does not have connection to BufferServer and cannot be persisted.<br>
  * 

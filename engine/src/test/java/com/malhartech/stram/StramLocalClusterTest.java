@@ -125,7 +125,7 @@ public class StramLocalClusterTest
     LocalStramChild c0 = waitForContainer(localCluster, node1);
     //Thread.sleep(1000);
     Map<String, Module> nodeMap = c0.getNodes();
-    Assert.assertEquals("number nodes", 1, nodeMap.size());
+    Assert.assertEquals("number operators", 1, nodeMap.size());
 
     PTOperator ptNode1 = localCluster.findByLogicalNode(node1);
     Module n1 = nodeMap.get(ptNode1.id);
@@ -133,7 +133,7 @@ public class StramLocalClusterTest
 
     LocalStramChild c2 = waitForContainer(localCluster, node2);
     Map<String, Module> c2NodeMap = c2.getNodes();
-    Assert.assertEquals("number nodes downstream", 1, c2NodeMap.size());
+    Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
     Module n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
@@ -152,7 +152,7 @@ public class StramLocalClusterTest
 
     wclock.tick(1);
 
-    // move window forward and wait for nodes to reach,
+    // move window forward and wait for operators to reach,
     // to ensure backup in previous windows was processed
     wclock.tick(1);
 
@@ -171,7 +171,7 @@ public class StramLocalClusterTest
     localCluster.failContainer(c0);
 
     // replacement container starts empty
-    // nodes will deploy after downstream node was removed
+    // operators will deploy after downstream node was removed
     LocalStramChild c0Replaced = waitForContainer(localCluster, node1);
     c0Replaced.triggerHeartbeat();
     c0Replaced.waitForHeartbeat(5000); // next heartbeat after setup
@@ -190,7 +190,7 @@ public class StramLocalClusterTest
       LOG.debug("Waiting for {} to complete pending work.", c2.getContainerId());
     }
 
-    Assert.assertEquals("downstream nodes after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
+    Assert.assertEquals("downstream operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify that the downstream node was replaced
     Module n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2Replaced);

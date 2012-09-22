@@ -38,8 +38,8 @@ import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceServletContextListener;
 import com.google.inject.servlet.ServletModule;
 import com.google.inject.util.Providers;
-import com.malhartech.stram.ModuleManager;
 import com.malhartech.stram.StramAppContext;
+import com.malhartech.stram.StreamingContainerManager;
 import com.malhartech.stram.webapp.StramWebApp.JAXBContextResolver;
 import com.malhartech.stream.StramTestSupport;
 import com.sun.jersey.api.client.ClientResponse;
@@ -133,7 +133,7 @@ public class StramWebServicesTest extends JerseyTest {
         bind(StramWebServices.class);
         bind(GenericExceptionHandler.class);
         bind(StramAppContext.class).toInstance(appContext);
-        bind(ModuleManager.class).toProvider(Providers.<ModuleManager>of(null));
+        bind(StreamingContainerManager.class).toProvider(Providers.<StreamingContainerManager>of(null));
         bind(Configuration.class).toInstance(conf);
         serve("/*").with(GuiceContainer.class);
       }

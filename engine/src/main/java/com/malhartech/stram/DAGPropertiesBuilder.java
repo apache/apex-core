@@ -69,7 +69,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   }
 
   /**
-   * Named set of properties that can be used to instantiate streams or nodes
+   * Named set of properties that can be used to instantiate streams or operators
    * with common settings.
    */
   private class TemplateConf {
@@ -109,7 +109,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     }
 
     /**
-     * Hint to manager that adjacent nodes should be deployed in same container.
+     * Hint to manager that adjacent operators should be deployed in same container.
      * @return boolean
      */
     public boolean isInline() {
@@ -138,7 +138,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       //LOG.debug("Adding {} to {}", targetNode, this);
       targetNode.inputs.put(portName, this);
       targetNodes.add(targetNode);
-      // root nodes don't receive input from other node(s)
+      // root operators don't receive input from other node(s)
       if (sourceNode != null) {
         rootNodes.remove(targetNode);
       }
@@ -161,7 +161,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     private static final long serialVersionUID = -4675421720308249982L;
 
     /**
-     * Hint to manager that adjacent nodes should be deployed in same container.
+     * Hint to manager that adjacent operators should be deployed in same container.
      * @param defaults
      */
     void setDefaultProperties(Properties defaults) {
@@ -233,7 +233,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   private final Map<String, NodeConf> nodes;
   private final Map<String, StreamConf> streams;
   private final Map<String, TemplateConf> templates;
-  private final Set<NodeConf> rootNodes; // root nodes (nodes that don't have input from another node)
+  private final Set<NodeConf> rootNodes; // root operators (operators that don't have input from another node)
 
   public DAGPropertiesBuilder() {
     this.nodes = new HashMap<String, NodeConf>();
@@ -244,7 +244,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
   /**
    * Create topology from given configuration.
-   * More nodes can be added programmatically.
+   * More operators can be added programmatically.
    * @param conf
    */
   public DAGPropertiesBuilder(Configuration conf) {
@@ -282,7 +282,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   }
 
   /**
-   * Add nodes from flattened name value pairs in configuration object.
+   * Add operators from flattened name value pairs in configuration object.
    * @param conf
    */
   public void addFromConfiguration(Configuration conf) {
@@ -403,7 +403,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     DAG tplg = new DAG(conf);
 
     Map<NodeConf, Operator> nodeMap = new HashMap<NodeConf, Operator>(this.nodes.size());
-    // add all nodes first
+    // add all operators first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
       Class<? extends Module> nodeClass = StramUtils.classForName(nodeConf.getModuleClassNameReqd(), Module.class);
@@ -412,7 +412,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       nodeMap.put(nodeConf, nd);
     }
 
-    // wire nodes
+    // wire operators
     for (Map.Entry<String, StreamConf> streamConfEntry : this.streams.entrySet()) {
       StreamConf streamConf = streamConfEntry.getValue();
       StreamDecl sd = tplg.addStream(streamConfEntry.getKey());
