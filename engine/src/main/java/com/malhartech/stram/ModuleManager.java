@@ -4,8 +4,12 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleSerDe;
+import com.malhartech.dag.DAG.InputPort;
+import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.StreamDecl;
 import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
@@ -22,10 +26,6 @@ import com.malhartech.stram.DAGDeployer.PTContainer;
 import com.malhartech.stram.DAGDeployer.PTInput;
 import com.malhartech.stram.DAGDeployer.PTNode;
 import com.malhartech.stram.DAGDeployer.PTOutput;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.InputPort;
-import com.malhartech.stram.conf.DAG.Operator;
-import com.malhartech.stram.conf.DAG.StreamDecl;
 import com.malhartech.stram.webapp.OperatorInfo;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;

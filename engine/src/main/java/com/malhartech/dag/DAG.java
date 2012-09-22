@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.conf;
+package com.malhartech.dag;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -32,8 +32,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.Module;
-import com.malhartech.dag.SerDe;
+import com.malhartech.stram.DAGPropertiesBuilder;
 
 /**
  * DAG contains the logical declarations of nodes and streams.

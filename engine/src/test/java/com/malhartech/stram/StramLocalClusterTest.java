@@ -18,20 +18,19 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleContext;
 import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.dag.TestOutputModule;
+import com.malhartech.dag.DAG.Operator;
 import com.malhartech.stram.DAGDeployer.PTNode;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.Operator;
-import com.malhartech.stram.conf.DAGPropertiesBuilder;
 import com.malhartech.stream.StramTestSupport;
 
 public class StramLocalClusterTest

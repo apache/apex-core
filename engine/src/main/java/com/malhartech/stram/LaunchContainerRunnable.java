@@ -4,8 +4,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.DAG;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.conf.DAG;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;

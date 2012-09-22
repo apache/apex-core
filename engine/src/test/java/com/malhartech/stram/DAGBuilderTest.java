@@ -31,13 +31,12 @@ import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.dag.AbstractModule;
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.InputPort;
-import com.malhartech.stram.conf.DAG.Operator;
-import com.malhartech.stram.conf.DAG.StreamDecl;
-import com.malhartech.stram.conf.DAGPropertiesBuilder;
+import com.malhartech.dag.DAG.InputPort;
+import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.StreamDecl;
 
 public class DAGBuilderTest {
 

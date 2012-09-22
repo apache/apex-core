@@ -4,7 +4,10 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.DAG.Operator;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -16,8 +19,6 @@ import com.google.common.collect.Sets;
 import com.malhartech.stram.ModuleManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.stram.DAGDeployer.PTNode;
 import com.malhartech.stram.DAGDeployer.PTOutput;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.Operator;
 
 public class DAGDeployerTest {
 

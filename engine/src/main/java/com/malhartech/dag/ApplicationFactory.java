@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.conf;
+package com.malhartech.dag;
 
 /**
  * Interface to be implemented by custom classes for Java based application declaration.

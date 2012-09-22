@@ -4,6 +4,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.SerDe;
 import com.malhartech.dag.Sink;
@@ -14,10 +15,9 @@ import com.malhartech.stram.ModuleManager;
 import com.malhartech.stram.ModuleManagerTest.TestStaticPartitioningSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.TestGeneratorInputModule;
+import com.malhartech.dag.DAG.Operator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.Operator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;

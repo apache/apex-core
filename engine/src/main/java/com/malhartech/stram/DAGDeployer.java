@@ -22,11 +22,11 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.SerDe;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.InputPort;
-import com.malhartech.stram.conf.DAG.Operator;
-import com.malhartech.stram.conf.DAG.StreamDecl;
+import com.malhartech.dag.DAG.InputPort;
+import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.StreamDecl;
 
 /**
  *

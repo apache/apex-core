@@ -29,12 +29,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.annotation.ShipContainingJars;
+import com.malhartech.dag.ApplicationFactory;
+import com.malhartech.dag.DAG;
+import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramClient;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.StramUtils;
-import com.malhartech.stram.conf.ApplicationFactory;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAGPropertiesBuilder;
 
 
 /**

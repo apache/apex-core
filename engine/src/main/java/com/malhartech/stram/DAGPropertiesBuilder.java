@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.conf;
+package com.malhartech.stram;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -22,11 +22,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.malhartech.dag.ApplicationFactory;
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.SerDe;
-import com.malhartech.stram.StramUtils;
-import com.malhartech.stram.conf.DAG.Operator;
-import com.malhartech.stram.conf.DAG.StreamDecl;
+import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.StreamDecl;
 
 /**
  *

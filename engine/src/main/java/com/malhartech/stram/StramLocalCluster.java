@@ -5,14 +5,14 @@
 package com.malhartech.stram;
 
 import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleContext;
+import com.malhartech.dag.DAG.Operator;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.DAGDeployer.PTNode;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.Operator;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;

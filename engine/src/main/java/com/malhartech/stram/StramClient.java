@@ -57,10 +57,9 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Objects;
 import com.malhartech.annotation.ShipContainingJars;
+import com.malhartech.dag.DAG;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAGPropertiesBuilder;
 
 /**
  *

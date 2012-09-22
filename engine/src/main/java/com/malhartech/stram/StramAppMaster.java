@@ -60,9 +60,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.DAG;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.conf.DAG;
 import com.malhartech.stram.webapp.StramWebApp;
 
 /**

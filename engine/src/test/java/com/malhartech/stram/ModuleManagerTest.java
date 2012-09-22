@@ -17,14 +17,14 @@ import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
+import com.malhartech.dag.DAG;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Tuple;
+import com.malhartech.dag.DAG.Operator;
 import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.DAGDeployer.PTNode;
-import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.DAG.Operator;
 
 public class ModuleManagerTest {
 
