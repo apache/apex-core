@@ -6,9 +6,8 @@ package com.malhartech.stram;
 
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.stram.conf.DAG;
-import com.malhartech.stram.conf.NewDAGBuilder;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -58,22 +57,21 @@ public class StramChildTest
   @Test
   public void testInit() throws Exception
   {
-    NewDAGBuilder b = new NewDAGBuilder();
+    DAG dag = new DAG();
 
-    DAG.Operator generator = b.addOperator("generator", NumberGeneratorInputModule.class);
-    DAG.Operator operator1 = b.addOperator("operator1", GenericTestModule.class);
+    DAG.Operator generator = dag.addOperator("generator", TestGeneratorInputModule.class);
+    DAG.Operator operator1 = dag.addOperator("operator1", GenericTestModule.class);
 
-    NewDAGBuilder.StreamBuilder generatorOutput = b.addStream("generatorOutput");
-    generatorOutput.setSource(generator.getOutput(NumberGeneratorInputModule.OUTPUT_PORT))
+    DAG.StreamDecl generatorOutput = dag.addStream("generatorOutput");
+    generatorOutput.setSource(generator.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
             .addSink(operator1.getInput(GenericTestModule.INPUT1))
             .setSerDeClass(ModuleManagerTest.TestStaticPartitioningSerDe.class);
 
     //StreamConf output1 = b.getOrAddStream("output1");
     //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
     //                    ConsoleOutputStream.class.getName());
-    DAG tplg = b.getDAG();
 
-    ModuleManager dnm = new ModuleManager(tplg);
+    ModuleManager dnm = new ModuleManager(dag);
     int expectedContainerCount = ModuleManagerTest.TestStaticPartitioningSerDe.partitions.length;
     Assert.assertEquals("number required containers",
                         expectedContainerCount,

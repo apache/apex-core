@@ -12,32 +12,32 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 /**
  *
- * Provides dag level node data<p>
+ * Provides plan level operator data<p>
  * <br>
- * This call provides restful access to individual node data<br>
+ * This call provides restful access to individual operator instance data<br>
  * <br>
  */
 
-@XmlRootElement(name = "nodes")
+@XmlRootElement(name = "operators")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class ModulesInfo {
+public class OperatorsInfo {
 
-  protected ArrayList<ModuleInfo> nodes = new ArrayList<ModuleInfo>();
+  protected ArrayList<OperatorInfo> nodes = new ArrayList<OperatorInfo>();
 
   /**
    *
-   * @param nodeInfo
+   * @param operatorInfo
    */
-  public void add(ModuleInfo nodeInfo) {
-    nodes.add(nodeInfo);
+  public void add(OperatorInfo operatorInfo) {
+    nodes.add(operatorInfo);
   }
 
   /**
    *
-   * @return ArrayList<NodeInfo>
+   * @return ArrayList<OperatorInfo>
    *
    */
-  public ArrayList<ModuleInfo> getNodes() {
+  public ArrayList<OperatorInfo> getOperators() {
     return nodes;
   }
 

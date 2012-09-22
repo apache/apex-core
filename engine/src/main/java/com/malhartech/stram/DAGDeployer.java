@@ -213,6 +213,7 @@ public class DAGDeployer {
   public static class PTContainer {
     List<PTNode> nodes = new ArrayList<PTNode>();
     String containerId; // assigned to yarn container
+    String host;
     InetSocketAddress bufferServerAddress;
 
     /**

@@ -149,36 +149,39 @@ public class DAG implements Serializable, DAGConstants {
       return inline;
     }
 
-    public void setInline(boolean inline) {
+    public StreamDecl setInline(boolean inline) {
       this.inline = inline;
+      return this;
     }
 
     public Class<? extends SerDe> getSerDeClass() {
       return serDeClass;
     }
 
-    public void setSerDeClass(Class<? extends SerDe> serDeClass) {
+    public StreamDecl setSerDeClass(Class<? extends SerDe> serDeClass) {
       this.serDeClass = serDeClass;
+      return this;
     }
 
     public OutputPort getSource() {
       return source;
     }
 
-    public void setSource(OutputPort port) {
+    public StreamDecl setSource(OutputPort port) {
       this.source = port;
       if (port.node.outputStreams.containsKey(port.portAnnotation.name())) {
         String msg = String.format("Node %s already connected to %s", port.node.id, port.node.outputStreams.get(port.portAnnotation.name()).id);
         throw new IllegalArgumentException(msg);
       }
       port.node.outputStreams.put(port.portAnnotation.name(), this);
+      return this;
     }
 
     public List<InputPort> getSinks() {
       return sinks;
     }
 
-    public void addSink(InputPort port) {
+    public StreamDecl addSink(InputPort port) {
       String portName = port.portAnnotation.name();
       if (port.node.inputStreams.containsKey(portName)) {
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, port.node.inputStreams.get(portName)));
@@ -186,6 +189,7 @@ public class DAG implements Serializable, DAGConstants {
       sinks.add(port);
       port.node.inputStreams.put(port.portAnnotation.name(), this);
       rootNodes.remove(port.node);
+      return this;
     }
 
   }
@@ -277,19 +281,19 @@ public class DAG implements Serializable, DAGConstants {
 
   }
 
-  Operator addNode(String id, Class<? extends Module> nodeClass) {
+  public Operator addOperator(String id, Class<? extends Module> moduleClass) {
     if (nodes.containsKey(id)) {
       throw new IllegalArgumentException("duplicate node id: " + nodes.get(id));
     }
 
-    Operator decl = new Operator(id, nodeClass);
+    Operator decl = new Operator(id, moduleClass);
     rootNodes.add(decl);
     nodes.put(id, decl);
 
     return decl;
   }
 
-  StreamDecl addStream(String id) {
+  public StreamDecl addStream(String id) {
     StreamDecl s = this.streams.get(id);
     if (s == null) {
       s = new StreamDecl(id);

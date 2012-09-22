@@ -3,7 +3,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.NumberGeneratorInputModule;
+import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.dag.GenericTestModule;
 import static org.junit.Assert.assertEquals;
 
@@ -164,7 +164,7 @@ public class StramMiniClusterTest
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)
-    dagProps.put("stram.module.numGen.classname", NumberGeneratorInputModule.class.getName());
+    dagProps.put("stram.module.numGen.classname", TestGeneratorInputModule.class.getName());
     dagProps.put("stram.module.numGen.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
@@ -228,7 +228,7 @@ public class StramMiniClusterTest
 
     // single container topology of inline input and module
     Properties props = new Properties();
-    props.put("stram.stream.input.classname", NumberGeneratorInputModule.class.getName());
+    props.put("stram.stream.input.classname", TestGeneratorInputModule.class.getName());
     props.put("stram.stream.input.outputNode", "module1");
     props.put("stram.module.module1.classname", NoTimeoutTestNode.class.getName());
 

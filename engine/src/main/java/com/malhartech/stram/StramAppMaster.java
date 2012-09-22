@@ -85,8 +85,8 @@ public class StramAppMaster
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
   // Configuration
-  private Configuration conf;
-  private YarnClientHelper yarnClient;
+  private final Configuration conf;
+  private final YarnClientHelper yarnClient;
   private DAG topology;
   // Handle to communicate with the Resource Manager
   private AMRMProtocol resourceManager;
@@ -95,9 +95,9 @@ public class StramAppMaster
   // TODO
   // For status update for clients - yet to be implemented
   // Hostname of the container
-  private String appMasterHostname = "";
+  private final String appMasterHostname = "";
   // Port on which the app master listens for status update requests from clients
-  private int appMasterRpcPort = 0;
+  private final int appMasterRpcPort = 0;
   // Tracking url to which app master publishes info for clients to monitor
   private String appMasterTrackingUrl = "";
   // App Master configuration
@@ -105,18 +105,18 @@ public class StramAppMaster
   // Priority of the request
   private int requestPriority;
   // Incremental counter for rpc calls to the RM
-  private AtomicInteger rmRequestID = new AtomicInteger();
+  private final AtomicInteger rmRequestID = new AtomicInteger();
   // Simple flag to denote whether all works is done
   private boolean appDone = false;
   // Counter for completed containers ( complete denotes successful or failed )
-  private AtomicInteger numCompletedContainers = new AtomicInteger();
+  private final AtomicInteger numCompletedContainers = new AtomicInteger();
   // Containers that the RM has allocated to us
-  private Map<String, Container> allAllocatedContainers = new HashMap<String, Container>();
+  private final Map<String, Container> allAllocatedContainers = new HashMap<String, Container>();
 
   // Count of failed containers
-  private AtomicInteger numFailedContainers = new AtomicInteger();
+  private final AtomicInteger numFailedContainers = new AtomicInteger();
   // Launch threads
-  private List<Thread> launchThreads = new ArrayList<Thread>();
+  private final List<Thread> launchThreads = new ArrayList<Thread>();
   // child container callback
   private StreamingContainerParent rpcImpl;
   private ModuleManager dnmgr;
@@ -394,10 +394,6 @@ public class StramAppMaster
     // Connect to ResourceManager
     resourceManager = yarnClient.connectToRM();
 
-    // Setup local RPC Server to accept status requests directly from clients
-    // TODO need to setup a protocol for client to be able to communicate to the RPC server
-    // TODO use the rpc port info to register with the RM for the client to send requests to this app master
-
     // Register self with ResourceManager
     RegisterApplicationMasterResponse response = registerToRM();
     // Dump out information about cluster capability as seen by the resource manager
@@ -517,7 +513,7 @@ public class StramAppMaster
           releasedContainers.add(allocatedContainer.getId());
         } else {
           // setup new container context
-          dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), NetUtils.getConnectAddress(this.bufferServerAddress));
+          dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), NetUtils.getConnectAddress(this.bufferServerAddress));
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
           LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, topology, rpcImpl.getAddress());
