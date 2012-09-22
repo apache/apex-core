@@ -9,14 +9,14 @@
   <!--  Module 1 -->
 
   <property>
-    <name>stram.module.module1.classname</name>
+    <name>stram.operator.module1.classname</name>
     <value>com.malhartech.dag.GenericTestModule</value>
     <description>The root module</description>
   </property>
 
   <!-- dmodule subclass specific property -->
   <property>
-    <name>stram.module.module1.myStringProperty</name>
+    <name>stram.operator.module1.myStringProperty</name>
     <value>myStringPropertyValue</value>
     <description>subclass specific property</description>
   </property>
@@ -24,7 +24,7 @@
   <!-- Module 2, with stream partitioning policy -->
 
   <property>
-    <name>stram.module.module2.classname</name>
+    <name>stram.operator.module2.classname</name>
     <value>com.malhartech.dag.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>
@@ -52,7 +52,7 @@
   <!-- Module 3, receives input from module 2 -->
 
   <property>
-    <name>stram.module.module3.classname</name>
+    <name>stram.operator.module3.classname</name>
     <value>com.malhartech.dag.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>
@@ -60,7 +60,7 @@
   <!-- Module 4, also receives input from module 2 -->
 
   <property>
-    <name>stram.module.module4.classname</name>
+    <name>stram.operator.module4.classname</name>
     <value>com.malhartech.dag.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>
@@ -80,7 +80,7 @@
   <!-- Module 5 -->
 
   <property>
-    <name>stram.module.module5.classname</name>
+    <name>stram.operator.module5.classname</name>
     <value>com.malhartech.dag.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>
@@ -101,7 +101,7 @@
   <!-- Module 6, single module w/o links -->
 
   <property>
-    <name>stram.module.module6.classname</name>
+    <name>stram.operator.module6.classname</name>
     <value>com.malhartech.dag.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>

@@ -161,7 +161,7 @@ public class DAGBuilderTest {
       Map<String, String> module3Props = module3.getProperties();
 
       assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", module3Props.get("myStringProperty"));
-      assertEquals("module3.classname", GenericTestModule.class.getName(), module3Props.get(DAGPropertiesBuilder.MODULE_CLASSNAME));
+      assertEquals("module3.classname", GenericTestModule.class.getName(), module3Props.get(DAGPropertiesBuilder.OPERATOR_CLASSNAME));
 
       GenericTestModule dmodule3 = initOperator(module3);
       assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());

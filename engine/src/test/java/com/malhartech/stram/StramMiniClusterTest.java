@@ -164,17 +164,17 @@ public class StramMiniClusterTest
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)
-    dagProps.put("stram.module.numGen.classname", TestGeneratorInputModule.class.getName());
-    dagProps.put("stram.module.numGen.maxTuples", "1");
+    dagProps.put("stram.operator.numGen.classname", TestGeneratorInputModule.class.getName());
+    dagProps.put("stram.operator.numGen.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
     //props.put("stram.stream.output.classname", HDFSOutputStream.class.getName());
     //props.put("stram.stream.output.inputNode", "module2");
     //props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    dagProps.put("stram.module.module1.classname", GenericTestModule.class.getName());
+    dagProps.put("stram.operator.module1.classname", GenericTestModule.class.getName());
 
-    dagProps.put("stram.module.module2.classname", GenericTestModule.class.getName());
+    dagProps.put("stram.operator.module2.classname", GenericTestModule.class.getName());
 
     dagProps.put("stram.stream.fromNumGen.source", "numGen.outputPort");
     dagProps.put("stram.stream.fromNumGen.sinks", "module1.input1");

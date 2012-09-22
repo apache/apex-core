@@ -52,12 +52,12 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   public static final String STREAM_INLINE = "inline";
   public static final String STREAM_SERDE_CLASSNAME = "serdeClassname";
 
-  public static final String MODULE_PREFIX = "stram.module";
-  public static final String MODULE_CLASSNAME = "classname";
-  public static final String MODULE_TEMPLATE = "template";
+  public static final String OPERATOR_PREFIX = "stram.operator";
+  public static final String OPERATOR_CLASSNAME = "classname";
+  public static final String OPERATOR_TEMPLATE = "template";
 
-  public static final String MODULE_LB_TUPLECOUNT_MIN = "lb.tuplecount.min";
-  public static final String MODULE_LB_TUPLECOUNT_MAX = "lb.tuplecount.max";
+  public static final String OPERATOR_LB_TUPLECOUNT_MIN = "lb.tuplecount.min";
+  public static final String OPERATOR_LB_TUPLECOUNT_MAX = "lb.tuplecount.max";
 
   public static final String TEMPLATE_PREFIX = "stram.template";
 
@@ -200,9 +200,9 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     }
 
     private String getModuleClassNameReqd() {
-      String className = properties.getProperty(MODULE_CLASSNAME);
+      String className = properties.getProperty(OPERATOR_CLASSNAME);
       if (className == null) {
-        throw new IllegalArgumentException(String.format("Configuration for node '%s' is missing property '%s'", getId(), DAGPropertiesBuilder.MODULE_CLASSNAME));
+        throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), DAGPropertiesBuilder.OPERATOR_CLASSNAME));
       }
       return className;
     }
@@ -353,7 +353,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
            // all other stream properties
           stream.properties.put(propertyKey, propertyValue);
         }
-      } else if (propertyName.startsWith(MODULE_PREFIX)) {
+      } else if (propertyName.startsWith(OPERATOR_PREFIX)) {
          // get the node id
          String[] keyComps = propertyName.split("\\.");
          // must have at least id and single component property
@@ -364,7 +364,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
          String nodeId = keyComps[2];
          String propertyKey = keyComps[3];
          NodeConf nc = getOrAddNode(nodeId);
-         if (MODULE_TEMPLATE.equals(propertyKey)) {
+         if (OPERATOR_TEMPLATE.equals(propertyKey)) {
            nc.template = getOrAddTemplate(propertyValue);
            // TODO: defer until all keys are read?
            nc.properties.setDefaultProperties(nc.template.properties);
