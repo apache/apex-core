@@ -155,14 +155,22 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
       }
     };
 
-    long currentTms = ses.getCurrentTimeMillis();
-
+    final long currentTms = ses.getCurrentTimeMillis();
     if (currentWindowMillis < currentTms) {
-      run();
-      do {
-        nextWindow();
-      }
-      while (currentWindowMillis < currentTms);
+      ses.schedule(
+              new Runnable()
+              {
+                @Override
+                public void run()
+                {
+                  WindowGenerator.this.run();
+                  do {
+                    nextWindow();
+                  }
+                  while (currentWindowMillis < currentTms);
+                }
+              },
+              0, TimeUnit.MILLISECONDS);
     }
     else {
       ses.schedule(this, currentWindowMillis - currentTms, TimeUnit.MILLISECONDS);

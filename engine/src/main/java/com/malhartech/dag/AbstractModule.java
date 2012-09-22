@@ -312,7 +312,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                       }
                     }
                     catch (Exception e) {
-                      logger.warn("Exception while catering to external request", e.getLocalizedMessage());
+                      logger.warn("Exception while catering to external request {}", e);
                     }
 
 
