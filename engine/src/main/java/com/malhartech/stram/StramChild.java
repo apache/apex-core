@@ -907,7 +907,7 @@ public class StramChild
    */
   protected WindowGenerator setupWindowGenerator(long smallestWindowId)
   {
-    WindowGenerator windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
+    WindowGenerator windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"));
     /**
      * let's make sure that we send the same window Ids with the same reset windows.
      */

@@ -100,27 +100,31 @@ public class WindowGeneratorTest
 
     Configuration config = new Configuration();
 
-    long firstWindowMillis = System.currentTimeMillis() - 1000;
+    ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1, "WindowGenerator");
+    long firstWindowMillis = stpe.getCurrentTimeMillis();
+    firstWindowMillis = firstWindowMillis - firstWindowMillis % 1000L;
+
     config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, firstWindowMillis);
     config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 200);
     // even if you do not set it, it defaults to the value we are trying to set here.
     // config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, config.getLog(WindowGenerator.FIRST_WINDOW_MILLIS));
 
-    WindowGenerator wg = new WindowGenerator(new ScheduledThreadPoolExecutor(1));
+    WindowGenerator wg = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"));
     wg.setup(config);
     wg.connect("GeneratorTester", s);
 
     wg.activate(null);
-    Thread.sleep(300);
-    long lastWindowMillis = System.currentTimeMillis();
+    Thread.sleep(200);
     wg.deactivate();
+    long lastWindowMillis = System.currentTimeMillis();
 
-    System.out.println("completed windows: " + endWindowCount.get());
+
+    System.out.println("firstWindowMillis: " + firstWindowMillis + " lastWindowMillis: " + lastWindowMillis + " completed windows: " + endWindowCount.get());
     Assert.assertEquals("only last window open", currentWindow.get(), windowXor.get());
 
-    long expectedCnt = (lastWindowMillis - firstWindowMillis) / config.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
+    long expectedCnt = (lastWindowMillis - firstWindowMillis) / config.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 200);
 
-    Assert.assertEquals("begin window count", expectedCnt + 1, beginWindowCount.get());
-    Assert.assertEquals("end window count", expectedCnt, endWindowCount.get());
+    Assert.assertTrue("Minimum begin window count", expectedCnt + 1 <= beginWindowCount.get());
+    Assert.assertEquals("end window count", beginWindowCount.get() - 1, endWindowCount.get());
   }
 }
