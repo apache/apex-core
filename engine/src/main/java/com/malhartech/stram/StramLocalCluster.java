@@ -12,7 +12,7 @@ import com.malhartech.dag.DAG.Operator;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -255,8 +255,8 @@ public class StramLocalCluster implements Runnable {
     this.childContainers.remove(c.getContainerId());
   }
 
-  PTNode findByLogicalNode(Operator logicalNode) {
-    List<PTNode> nodes = dnmgr.getTopologyDeployer().getNodes(logicalNode);
+  PTOperator findByLogicalNode(Operator logicalNode) {
+    List<PTOperator> nodes = dnmgr.getTopologyDeployer().getOperators(logicalNode);
     if (nodes.isEmpty()) {
       return null;
     }

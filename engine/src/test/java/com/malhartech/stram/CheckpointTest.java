@@ -27,7 +27,7 @@ import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleContext;
 import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.dag.DAG.Operator;
-import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -125,43 +125,43 @@ public class CheckpointTest {
       .addSink(node2.getInput(GenericTestModule.INPUT1));
 
     ModuleManager dnm = new ModuleManager(dag);
-    DAGDeployer deployer = dnm.getTopologyDeployer();
-    List<PTNode> nodes1 = deployer.getNodes(node1);
+    PhysicalPlan deployer = dnm.getTopologyDeployer();
+    List<PTOperator> nodes1 = deployer.getOperators(node1);
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());
-    PTNode pnode1 = nodes1.get(0);
+    PTOperator pnode1 = nodes1.get(0);
 
-    List<PTNode> nodes2 = deployer.getNodes(node2);
+    List<PTOperator> nodes2 = deployer.getOperators(node2);
     Assert.assertNotNull(nodes2);
     Assert.assertEquals(1, nodes2.size());
-    PTNode pnode2 = nodes2.get(0);
+    PTOperator pnode2 = nodes2.get(0);
 
-    Map<PTNode, Long> checkpoints = new HashMap<PTNode, Long>();
+    Map<PTOperator, Long> checkpoints = new HashMap<PTOperator, Long>();
     long cp = dnm.getRecoveryCheckpoint(pnode2, checkpoints);
     Assert.assertEquals("no checkpoints " + pnode2, 0, cp);
 
-    cp = dnm.getRecoveryCheckpoint(pnode1, new HashMap<PTNode, Long>());
+    cp = dnm.getRecoveryCheckpoint(pnode1, new HashMap<PTOperator, Long>());
     Assert.assertEquals("no checkpoints " + pnode1, 0, cp);
 
     // adding checkpoints to upstream only does not move recovery checkpoint
     pnode1.checkpointWindows.add(3L);
     pnode1.checkpointWindows.add(5L);
-    cp = dnm.getRecoveryCheckpoint(pnode1, new HashMap<PTNode, Long>());
+    cp = dnm.getRecoveryCheckpoint(pnode1, new HashMap<PTOperator, Long>());
     Assert.assertEquals("no checkpoints " + pnode1, 0L, cp);
 
     pnode2.checkpointWindows.add(3L);
-    checkpoints = new HashMap<PTNode, Long>();
+    checkpoints = new HashMap<PTOperator, Long>();
     cp = dnm.getRecoveryCheckpoint(pnode1, checkpoints);
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
 
     pnode2.checkpointWindows.add(4L);
-    checkpoints = new HashMap<PTNode, Long>();
+    checkpoints = new HashMap<PTOperator, Long>();
     cp = dnm.getRecoveryCheckpoint(pnode1, checkpoints);
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
 
     pnode1.checkpointWindows.add(1, 4L);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[]{3L, 4L, 5L}));
-    checkpoints = new HashMap<PTNode, Long>();
+    checkpoints = new HashMap<PTOperator, Long>();
     cp = dnm.getRecoveryCheckpoint(pnode1, checkpoints);
     Assert.assertEquals("checkpoint pnode1", 4L, cp);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[]{4L, 5L}));

@@ -17,10 +17,10 @@ import org.junit.Test;
 
 import com.google.common.collect.Sets;
 import com.malhartech.stram.ModuleManagerTest.TestStaticPartitioningSerDe;
-import com.malhartech.stram.DAGDeployer.PTNode;
-import com.malhartech.stram.DAGDeployer.PTOutput;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.PhysicalPlan.PTOutput;
 
-public class DAGDeployerTest {
+public class PhysicalPlanTest {
 
   @Test
   public void testStaticPartitioning() {
@@ -42,11 +42,11 @@ public class DAGDeployerTest {
 
     dag.setMaxContainerCount(2);
 
-    DAGDeployer td = new DAGDeployer(dag);
+    PhysicalPlan td = new PhysicalPlan(dag);
 
     Assert.assertEquals("number of containers", 2, td.getContainers().size());
     Operator node2Decl = dag.getOperator(node2.getId());
-    Assert.assertEquals("number partition instances", TestStaticPartitioningSerDe.partitions.length, td.getNodes(node2Decl).size());
+    Assert.assertEquals("number partition instances", TestStaticPartitioningSerDe.partitions.length, td.getOperators(node2Decl).size());
   }
 
   @Test
@@ -82,13 +82,13 @@ public class DAGDeployerTest {
 
     int maxContainers = 5;
     dag.setMaxContainerCount(maxContainers);
-    DAGDeployer deployer1 = new DAGDeployer(dag);
+    PhysicalPlan deployer1 = new PhysicalPlan(dag);
     Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
     Assert.assertEquals("nodes container 0", 3, deployer1.getContainers().get(0).nodes.size());
 
     Set<Operator> c1ExpNodes = Sets.newHashSet(dag.getOperator(node1.getId()), dag.getOperator(node2.getId()), dag.getOperator(node3.getId()));
     Set<Operator> c1ActNodes = new HashSet<Operator>();
-    for (PTNode pNode : deployer1.getContainers().get(0).nodes) {
+    for (PTOperator pNode : deployer1.getContainers().get(0).nodes) {
       c1ActNodes.add(pNode.getLogicalNode());
     }
     Assert.assertEquals("nodes container 0", c1ExpNodes, c1ActNodes);
@@ -126,14 +126,14 @@ public class DAGDeployerTest {
     int maxContainers = 5;
     dag.setMaxContainerCount(maxContainers);
 
-    DAGDeployer deployer = new DAGDeployer(dag);
+    PhysicalPlan deployer = new PhysicalPlan(dag);
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
 
-    PTOutput node1Out = deployer.getNodes(node1).get(0).outputs.get(0);
+    PTOutput node1Out = deployer.getOperators(node1).get(0).outputs.get(0);
     Assert.assertTrue("inline " + node1Out, deployer.isDownStreamInline(node1Out));
 
     // per current logic, different container is assigned to second input node
-    PTOutput node2Out = deployer.getNodes(node2).get(0).outputs.get(0);
+    PTOutput node2Out = deployer.getOperators(node2).get(0).outputs.get(0);
     Assert.assertTrue("inline " + node2Out, deployer.isDownStreamInline(node2Out));
 
   }

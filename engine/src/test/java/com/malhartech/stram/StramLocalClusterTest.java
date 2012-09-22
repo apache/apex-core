@@ -25,7 +25,7 @@ import com.malhartech.dag.ModuleContext;
 import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.dag.TestOutputModule;
 import com.malhartech.dag.DAG.Operator;
-import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -127,7 +127,7 @@ public class StramLocalClusterTest
     Map<String, Module> nodeMap = c0.getNodes();
     Assert.assertEquals("number nodes", 1, nodeMap.size());
 
-    PTNode ptNode1 = localCluster.findByLogicalNode(node1);
+    PTOperator ptNode1 = localCluster.findByLogicalNode(node1);
     Module n1 = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1);
 
@@ -215,7 +215,7 @@ public class StramLocalClusterTest
    */
   private LocalStramChild waitForContainer(StramLocalCluster localCluster, Operator nodeDecl) throws InterruptedException
   {
-    PTNode node = localCluster.findByLogicalNode(nodeDecl);
+    PTOperator node = localCluster.findByLogicalNode(nodeDecl);
     Assert.assertNotNull("no node for " + nodeDecl, node);
 
     LocalStramChild container;

@@ -21,11 +21,11 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.DAGDeployer.PTComponent;
-import com.malhartech.stram.DAGDeployer.PTContainer;
-import com.malhartech.stram.DAGDeployer.PTInput;
-import com.malhartech.stram.DAGDeployer.PTNode;
-import com.malhartech.stram.DAGDeployer.PTOutput;
+import com.malhartech.stram.PhysicalPlan.PTComponent;
+import com.malhartech.stram.PhysicalPlan.PTContainer;
+import com.malhartech.stram.PhysicalPlan.PTInput;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.webapp.OperatorInfo;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
@@ -89,11 +89,11 @@ public class ModuleManager
   protected final  ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
-  private final DAGDeployer deployer;
+  private final PhysicalPlan deployer;
   private final String checkpointDir;
 
   public ModuleManager(DAG topology) {
-    this.deployer = new DAGDeployer(topology);
+    this.deployer = new PhysicalPlan(topology);
 
     this.windowSizeMillis = topology.getConf().getInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
     // try to align to it pleases eyes.
@@ -113,7 +113,7 @@ public class ModuleManager
     return containerStartRequests.size();
   }
 
-  protected DAGDeployer getTopologyDeployer() {
+  protected PhysicalPlan getTopologyDeployer() {
     return deployer;
   }
 
@@ -152,17 +152,17 @@ public class ModuleManager
     // building the checkpoint dependency,
     // downstream nodes will appear first in map
     // TODO: traversal needs to include inline upstream nodes
-    Map<PTNode, Long> checkpoints = new LinkedHashMap<PTNode, Long>();
-    for (PTNode node : cs.container.nodes) {
+    Map<PTOperator, Long> checkpoints = new LinkedHashMap<PTOperator, Long>();
+    for (PTOperator node : cs.container.nodes) {
       getRecoveryCheckpoint(node, checkpoints);
     }
 
-    Map<PTContainer, List<PTNode>> resetNodes = new HashMap<PTContainer, List<DAGDeployer.PTNode>>();
+    Map<PTContainer, List<PTOperator>> resetNodes = new HashMap<PTContainer, List<PhysicalPlan.PTOperator>>();
     // group by container
-    for (PTNode node : checkpoints.keySet()) {
-        List<PTNode> nodes = resetNodes.get(node.container);
+    for (PTOperator node : checkpoints.keySet()) {
+        List<PTOperator> nodes = resetNodes.get(node.container);
         if (nodes == null) {
-          nodes = new ArrayList<DAGDeployer.PTNode>();
+          nodes = new ArrayList<PhysicalPlan.PTOperator>();
           resetNodes.put(node.container, nodes);
         }
         nodes.add(node);
@@ -170,7 +170,7 @@ public class ModuleManager
 
     // stop affected downstream dependency nodes (all except failed container)
     AtomicInteger undeployAckCountdown = new AtomicInteger();
-    for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
+    for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
         StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
         UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
@@ -190,7 +190,7 @@ public class ModuleManager
 
     // (re)deploy affected downstream nodes
     AtomicInteger redeployAckCountdown = new AtomicInteger();
-    for (Map.Entry<PTContainer, List<PTNode>> e : resetNodes.entrySet()) {
+    for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
         StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
         DeployRequest r = new DeployRequest(e.getKey(), redeployAckCountdown, failedContainerDeployCnt);
@@ -245,7 +245,7 @@ public class ModuleManager
       if (container.containerId == null) {
         container.containerId = containerId;
         container.bufferServerAddress = bufferServerAddress;
-        StreamingContainerContext scc = createStramChildInitContext(container.nodes, container, Collections.<PTNode, Long>emptyMap());
+        StreamingContainerContext scc = createStramChildInitContext(container.nodes, container, Collections.<PTOperator, Long>emptyMap());
         containers.put(containerId, new StramChildAgent(container, scc));
         return scc;
       }
@@ -271,7 +271,7 @@ public class ModuleManager
     container.containerId = containerId;
     container.host = containerHost;
 
-    Map<PTNode, Long> checkpoints = cdr.checkpoints;
+    Map<PTOperator, Long> checkpoints = cdr.checkpoints;
     if (checkpoints == null) {
       checkpoints = Collections.emptyMap();
     }
@@ -291,17 +291,17 @@ public class ModuleManager
    * @param checkpoints
    * @return StreamingContainerContext
    */
-  private StreamingContainerContext createStramChildInitContext(List<PTNode> deployNodes, PTContainer container, Map<PTNode, Long> checkpoints) {
+  private StreamingContainerContext createStramChildInitContext(List<PTOperator> deployNodes, PTContainer container, Map<PTOperator, Long> checkpoints) {
     StreamingContainerContext scc = new StreamingContainerContext();
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setCheckpointDfsPath(this.checkpointDir);
 
 //    List<StreamPConf> streams = new ArrayList<StreamPConf>();
-    Map<ModuleDeployInfo, PTNode> nodes = new LinkedHashMap<ModuleDeployInfo, PTNode>();
+    Map<ModuleDeployInfo, PTOperator> nodes = new LinkedHashMap<ModuleDeployInfo, PTOperator>();
     Map<String, NodeOutputDeployInfo> publishers = new LinkedHashMap<String, NodeOutputDeployInfo>();
 
-    for (PTNode node : deployNodes) {
+    for (PTOperator node : deployNodes) {
       ModuleDeployInfo ndi = createNodeContext(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
       if (checkpointWindowId != null) {
@@ -338,9 +338,9 @@ public class ModuleManager
 
     // after we know all publishers within container, determine subscribers
 
-    for (Map.Entry<ModuleDeployInfo, PTNode> nodeEntry : nodes.entrySet()) {
+    for (Map.Entry<ModuleDeployInfo, PTOperator> nodeEntry : nodes.entrySet()) {
       ModuleDeployInfo ndi = nodeEntry.getKey();
-      PTNode node = nodeEntry.getValue();
+      PTOperator node = nodeEntry.getValue();
       for (PTInput in : node.inputs) {
         final StreamDecl streamDecl = in.logicalStream;
         // input from other node(s) OR input adapter
@@ -389,7 +389,7 @@ public class ModuleManager
 
     scc.nodeList = new ArrayList<ModuleDeployInfo>(nodes.keySet());
 
-    for (Map.Entry<ModuleDeployInfo, PTNode> e : nodes.entrySet()) {
+    for (Map.Entry<ModuleDeployInfo, PTOperator> e : nodes.entrySet()) {
       this.nodeStatusMap.put(e.getKey().id, new NodeStatus(container, e.getValue()));
     }
 
@@ -429,7 +429,7 @@ public class ModuleManager
         status.tuplesTotal += shb.getNumberTuplesProcessed();
 
         // checkpoint tracking
-        PTNode node = (PTNode)status.node;
+        PTOperator node = (PTOperator)status.node;
         if (shb.getLastBackupWindowId() != 0) {
           synchronized (node.checkpointWindows) {
             if (!node.checkpointWindows.isEmpty()) {
@@ -470,7 +470,7 @@ public class ModuleManager
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
     if (checkpointIntervalMillis > 0) {
       if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
-        for (PTNode node : cs.container.nodes) {
+        for (PTOperator node : cs.container.nodes) {
           StramToNodeRequest backupRequest = new StramToNodeRequest();
           backupRequest.setNodeId(node.id);
           backupRequest.setRequestType(RequestType.CHECKPOINT);
@@ -501,15 +501,15 @@ public class ModuleManager
    * @param recoveryCheckpoints Map to collect all downstream recovery checkpoints
    * @return Checkpoint that can be used to recover node (along with dependent nodes in recoveryCheckpoints).
    */
-  public long getRecoveryCheckpoint(PTNode node, Map<PTNode, Long> recoveryCheckpoints) {
+  public long getRecoveryCheckpoint(PTOperator node, Map<PTOperator, Long> recoveryCheckpoints) {
     long maxCheckpoint = node.getRecentCheckpoint();
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : node.outputs) {
       for (InputPort targetPort : out.logicalStream.getSinks()) {
         Operator lDownNode = targetPort.getNode();
         if (lDownNode != null) {
-          List<PTNode> downNodes = deployer.getNodes(lDownNode);
-          for (PTNode downNode : downNodes) {
+          List<PTOperator> downNodes = deployer.getOperators(lDownNode);
+          for (PTOperator downNode : downNodes) {
             Long downstreamCheckpoint = recoveryCheckpoints.get(downNode);
             if (downstreamCheckpoint == null) {
               // downstream traversal

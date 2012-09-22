@@ -16,8 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.DAGDeployer.PTContainer;
-import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.PhysicalPlan.PTContainer;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
 
 /**
  *
@@ -32,7 +32,7 @@ public class StramChildAgent {
     final PTContainer container;
     final AtomicInteger executeWhenZero;
     private List<ModuleDeployInfo> nodes;
-    Map<PTNode, Long> checkpoints;
+    Map<PTOperator, Long> checkpoints;
 
     public DeployRequest(PTContainer container, AtomicInteger ackCountdown) {
       this.container = container;

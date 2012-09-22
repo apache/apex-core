@@ -40,9 +40,9 @@ import com.malhartech.dag.DAG.StreamDecl;
  * DAG deployment thus blocks successful running of a streaming job in the current version of the streaming platform<br>
  * <br>
  */
-public class DAGDeployer {
+public class PhysicalPlan {
 
-  private final static Logger LOG = LoggerFactory.getLogger(DAGDeployer.class);
+  private final static Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
 
   /**
    * Common abstraction for streams and nodes for heartbeat/monitoring.<p>
@@ -166,7 +166,7 @@ public class DAGDeployer {
    * <br>
    *
    */
-  public static class PTNode extends PTComponent {
+  public static class PTOperator extends PTComponent {
     DAG.Operator logicalNode;
     List<PTInput> inputs;
     List<PTOutput> outputs;
@@ -211,7 +211,7 @@ public class DAGDeployer {
    */
 
   public static class PTContainer {
-    List<PTNode> nodes = new ArrayList<PTNode>();
+    List<PTOperator> nodes = new ArrayList<PTOperator>();
     String containerId; // assigned to yarn container
     String host;
     InetSocketAddress bufferServerAddress;
@@ -228,7 +228,7 @@ public class DAGDeployer {
     }
   }
 
-  private final Map<Operator, List<PTNode>> deployedNodes = new LinkedHashMap<Operator, List<PTNode>>();
+  private final Map<Operator, List<PTOperator>> deployedNodes = new LinkedHashMap<Operator, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private int maxContainers = 1;
 
@@ -248,12 +248,12 @@ public class DAGDeployer {
    *
    * @param tplg
    */
-  public DAGDeployer(DAG tplg) {
+  public PhysicalPlan(DAG tplg) {
 
     this.maxContainers = Math.max(tplg.getMaxContainerCount(),1);
     LOG.debug("Initializing topology for {} containers.", this.maxContainers);
 
-    Map<Operator, Set<PTNode>> inlineGroups = new HashMap<Operator, Set<PTNode>>();
+    Map<Operator, Set<PTOperator>> inlineGroups = new HashMap<Operator, Set<PTOperator>>();
 
     Stack<Operator> pendingNodes = new Stack<Operator>();
     for (Operator n : tplg.getAllOperators()) {
@@ -294,16 +294,16 @@ public class DAGDeployer {
 
       if (upstreamDeployed) {
         // ready to look at this node
-        Set<PTNode> inlineSet = new HashSet<PTNode>();
+        Set<PTOperator> inlineSet = new HashSet<PTOperator>();
         if (isSingleNodeInstance) {
           for (StreamDecl s : n.getInputStreams().values()) {
             if (s.isInline()) {
               // if stream is marked inline, join the upstream nodes
-              Set<PTNode> inlineNodes = inlineGroups.get(s.getSource().getNode());
+              Set<PTOperator> inlineNodes = inlineGroups.get(s.getSource().getNode());
               // empty set for partitioned upstream node
               if (!inlineNodes.isEmpty()) {
                 // update group index for each of the member nodes
-                for (PTNode upstreamNode : inlineNodes) {
+                for (PTOperator upstreamNode : inlineNodes) {
                   inlineSet.add(upstreamNode);
                   inlineGroups.put(upstreamNode.logicalNode, inlineSet);
                 }
@@ -313,16 +313,16 @@ public class DAGDeployer {
         }
 
         // add new physical node(s)
-        List<PTNode> pnodes = new ArrayList<PTNode>();
+        List<PTOperator> pnodes = new ArrayList<PTOperator>();
         if (partitions != null) {
           // create node per partition
           for (int i = 0; i < partitions.length; i++) {
-            PTNode pNode = createPTNode(n, partitions[i], pnodes.size());
+            PTOperator pNode = createPTOperator(n, partitions[i], pnodes.size());
             pnodes.add(pNode);
           }
         } else {
           // single instance, no partitions
-          PTNode pNode = createPTNode(n, null, pnodes.size());
+          PTOperator pNode = createPTOperator(n, null, pnodes.size());
           pnodes.add(pNode);
           inlineSet.add(pNode);
         }
@@ -334,13 +334,13 @@ public class DAGDeployer {
 
     // assign nodes to containers
     int groupCount = 0;
-    for (Map.Entry<Operator, List<PTNode>> e : deployedNodes.entrySet()) {
-      for (PTNode node : e.getValue()) {
+    for (Map.Entry<Operator, List<PTOperator>> e : deployedNodes.entrySet()) {
+      for (PTOperator node : e.getValue()) {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          Set<PTNode> inlineNodes = inlineGroups.get(node.logicalNode);
+          Set<PTOperator> inlineNodes = inlineGroups.get(node.logicalNode);
           if (!inlineNodes.isEmpty()) {
-            for (PTNode inlineNode : inlineNodes) {
+            for (PTOperator inlineNode : inlineNodes) {
               inlineNode.container = container;
               container.nodes.add(inlineNode);
               inlineGroups.remove(inlineNode.logicalNode);
@@ -357,9 +357,9 @@ public class DAGDeployer {
 
   private final AtomicInteger nodeSequence = new AtomicInteger();
 
-  private PTNode createPTNode(Operator nodeDecl, byte[] partition, int instanceCount) {
+  private PTOperator createPTOperator(Operator nodeDecl, byte[] partition, int instanceCount) {
 
-    PTNode pNode = new PTNode();
+    PTOperator pNode = new PTOperator();
     pNode.logicalNode = nodeDecl;
     pNode.inputs = new ArrayList<PTInput>();
     pNode.outputs = new ArrayList<PTOutput>();
@@ -370,8 +370,8 @@ public class DAGDeployer {
       // (can be multiple with partitioning or load balancing)
       StreamDecl streamDecl = inputEntry.getValue();
       if (streamDecl.getSource() != null) {
-        List<PTNode> upstreamNodes = deployedNodes.get(streamDecl.getSource().getNode());
-        for (PTNode upNode : upstreamNodes) {
+        List<PTOperator> upstreamNodes = deployedNodes.get(streamDecl.getSource().getNode());
+        for (PTOperator upNode : upstreamNodes) {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
             if (upstreamOut.logicalStream == streamDecl) {
@@ -412,7 +412,7 @@ public class DAGDeployer {
     return this.containers;
   }
 
-  protected List<PTNode> getNodes(Operator nodeDecl) {
+  protected List<PTOperator> getOperators(Operator nodeDecl) {
     return this.deployedNodes.get(nodeDecl);
   }
 
@@ -424,7 +424,7 @@ public class DAGDeployer {
   protected boolean isDownStreamInline(PTOutput output) {
     StreamDecl logicalStream = output.logicalStream;
     for (InputPort downStreamPort : logicalStream.getSinks()) {
-      for (PTNode downStreamNode : getNodes(downStreamPort.getNode())) {
+      for (PTOperator downStreamNode : getOperators(downStreamPort.getNode())) {
         if (output.source.container != downStreamNode.container) {
             return false;
         }

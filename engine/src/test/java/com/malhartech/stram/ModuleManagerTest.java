@@ -24,7 +24,7 @@ import com.malhartech.dag.DAG.Operator;
 import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.DAGDeployer.PTNode;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
 
 public class ModuleManagerTest {
 
@@ -204,7 +204,7 @@ public class ModuleManagerTest {
       sourceNodeIds.add(nidi.sourceNodeId);
     }
 
-    for (PTNode node : dnm.getTopologyDeployer().getNodes(dag.getOperator(node2.getId()))) {
+    for (PTOperator node : dnm.getTopologyDeployer().getOperators(dag.getOperator(node2.getId()))) {
       Assert.assertTrue(sourceNodeIds + " contains " + node.id, sourceNodeIds.contains(node.id));
     }
     Assert.assertEquals("outputs " + mergeNodeDI, 0, mergeNodeDI.outputs.size());
