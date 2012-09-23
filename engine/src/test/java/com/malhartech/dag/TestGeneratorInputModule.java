@@ -19,6 +19,8 @@ public class TestGeneratorInputModule extends AbstractInputModule
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputModule.class);
   public static final String OUTPUT_PORT = "outputPort";
+  public static final String KEY_MAX_TUPLES = "maxTuples";
+
   private volatile boolean shutdown = false; // how do we handle this now that deactivate is not overridable.
   private String myConfigProperty;
   private int maxTuples = -1;

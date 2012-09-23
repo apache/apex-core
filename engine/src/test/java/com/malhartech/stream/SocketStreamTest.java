@@ -149,7 +149,9 @@ public class SocketStreamTest
   {
     DAG dag = new DAG();
 
-    Operator generatorNode = dag.addOperator("generatorNode", TestGeneratorInputModule.class);
+    Operator generatorNode = dag.addOperator("SocketStreamTest.generator", TestGeneratorInputModule.class);
+    generatorNode.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "1");
+
     Operator node1 = dag.addOperator("node1", GenericTestModule.class);
 
     DAG.StreamDecl generatorOutput = dag.addStream("generatorOutput");

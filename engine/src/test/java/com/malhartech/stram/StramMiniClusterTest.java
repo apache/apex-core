@@ -119,6 +119,7 @@ public class StramMiniClusterTest
     return tmpFile;
   }
 
+  @Ignore
   @Test
   public void testMiniClusterTestNode()
   {

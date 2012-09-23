@@ -59,17 +59,13 @@ public class StramChildTest
   {
     DAG dag = new DAG();
 
-    DAG.Operator generator = dag.addOperator("generator", TestGeneratorInputModule.class);
+    DAG.Operator generator = dag.addOperator("StramChildTest.generator", TestGeneratorInputModule.class);
     DAG.Operator operator1 = dag.addOperator("operator1", GenericTestModule.class);
 
     DAG.StreamDecl generatorOutput = dag.addStream("generatorOutput");
     generatorOutput.setSource(generator.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
             .addSink(operator1.getInput(GenericTestModule.INPUT1))
             .setSerDeClass(StreamingContainerManagerTest.TestStaticPartitioningSerDe.class);
-
-    //StreamConf output1 = b.getOrAddStream("output1");
-    //output1.addProperty(TopologyBuilder.STREAM_CLASSNAME,
-    //                    ConsoleOutputStream.class.getName());
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     int expectedContainerCount = StreamingContainerManagerTest.TestStaticPartitioningSerDe.partitions.length;
