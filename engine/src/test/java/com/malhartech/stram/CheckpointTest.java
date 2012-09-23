@@ -64,7 +64,7 @@ public class CheckpointTest {
     DAG dag = new DAG();
     // node with no inputs will be connected to window generator
     dag.addOperator("node1", TestGeneratorInputModule.class)
-        .setProperty("maxTuples", "1");
+        .setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "1");
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());

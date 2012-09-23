@@ -92,13 +92,14 @@ public class StramLocalClusterTest
     lnr.close();
   }
 
-  @Ignore // windows lost problem?
+  //@Ignore // windows lost problem?
   @Test
   public void testChildRecovery() throws Exception
   {
     DAG dag = new DAG();
 
     Operator node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
+    node1.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "1"); // TODO: need solution for graceful container shutdown
     Operator node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2").
@@ -123,7 +124,6 @@ public class StramLocalClusterTest
     localCluster.runAsync();
 
     LocalStramChild c0 = waitForContainer(localCluster, node1);
-    //Thread.sleep(1000);
     Map<String, Module> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
 
@@ -134,38 +134,43 @@ public class StramLocalClusterTest
     LocalStramChild c2 = waitForContainer(localCluster, node2);
     Map<String, Module> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
-    Module n2 = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
+    Thread.sleep(500); // TODO: wait until active
     ModuleContext n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
-    wclock.tick(1);
+    wclock.tick(1); // begin window 1
 
-    waitForWindow(n1Context, 1);
-    backupNode(c0, n1Context);
+    backupNode(c0, n1Context); // backup window 1
 
-    wclock.tick(1);
+    wclock.tick(1); // end window 1
+
+    waitForWindowComplete(n1Context, 1);
 
     ModuleContext n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
-    waitForWindow(n2Context, 2);
-    backupNode(c2, n2Context);
 
+    wclock.tick(1); // end window 2
+
+    waitForWindowComplete(n2Context, 2);
+    n2.setMyStringProperty("checkpoint3");
+    backupNode(c2, n2Context); // backup window 3
+
+    // move window forward, wait until propagated to module,
+    // to ensure backup at previous window end was processed
     wclock.tick(1);
-
-    // move window forward and wait for operators to reach,
-    // to ensure backup in previous windows was processed
-    wclock.tick(1);
-
-    //waitForWindow(n1, 3);
-    waitForWindow(n2Context, 3);
+    waitForWindowComplete(n2Context, 3);
 
     // propagate checkpoints to master
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
     c0.waitForHeartbeat(5000);
+    Assert.assertEquals("checkpoint " + ptNode1, 1, ptNode1.getRecentCheckpoint());
 
     c2.triggerHeartbeat();
     c2.waitForHeartbeat(5000);
+    PTOperator ptNode2 = localCluster.findByLogicalNode(node2);
+    Assert.assertEquals("checkpoint " + ptNode2, 3, ptNode2.getRecentCheckpoint());
 
     // simulate node failure
     localCluster.failContainer(c0);
@@ -192,15 +197,20 @@ public class StramLocalClusterTest
 
     Assert.assertEquals("downstream operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify that the downstream node was replaced
-    Module n2Replaced = c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    GenericTestModule n2Replaced = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2Replaced);
     Assert.assertNotSame("node2 redeployed", n2, n2Replaced);
+    Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());
+
 
     Module n1Replaced = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1Replaced);
 
-    ModuleContext n1ReplacedContext = c0.getNodeContext(ptNode1.id);
-    Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
+    Thread.sleep(500); // TODO: wait until active
+    ModuleContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
+    Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
+    // the node context should reflect the last processed window (the backup window)?
+    //Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
 
     localCluster.shutdown();
   }
@@ -236,7 +246,7 @@ public class StramLocalClusterTest
     }
   }
 
-  private void waitForWindow(ModuleContext nodeCtx, long windowId) throws InterruptedException
+  private void waitForWindowComplete(ModuleContext nodeCtx, long windowId) throws InterruptedException
   {
     while (nodeCtx.getLastProcessedWindowId() < windowId) {
       LOG.debug("Waiting for window {} at node {}", windowId, nodeCtx.getId());

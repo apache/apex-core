@@ -91,6 +91,7 @@ public class StramLocalCluster implements Runnable {
         return r;
       }
       try {
+        //LOG.debug("processing heartbeat " + msg.getContainerId());
         return dnmgr.processHeartbeat(msg);
       } finally {
         LocalStramChild c = childContainers.get(msg.getContainerId());

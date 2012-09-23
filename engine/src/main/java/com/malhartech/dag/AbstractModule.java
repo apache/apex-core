@@ -285,8 +285,6 @@ public abstract class AbstractModule extends AbstractBaseModule
                       output.process(t);
                     }
 
-                    ctx.report(getProcessedTupleCount(), 0L, currentWindowId);
-                    processedTupleCount = 0;
                     /*
                      * we prefer to do quite a few operations at the end of the window boundary.
                      */
@@ -315,6 +313,9 @@ public abstract class AbstractModule extends AbstractBaseModule
                       logger.warn("Exception while catering to external request {}", e);
                     }
 
+                    // report window as complete after control operations are completed
+                    ctx.report(getProcessedTupleCount(), 0L, currentWindowId);
+                    processedTupleCount = 0;
 
                     buffers.remove();
                     assert (activeQueues.isEmpty());

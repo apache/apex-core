@@ -9,7 +9,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -401,6 +400,10 @@ public class StramChild
     for (ModuleDeployInfo ndi: nodeList) {
       if (activeNodes.containsKey(ndi.id)) {
         nodes.get(ndi.id).deactivate();
+        // must remove from node list to reach defined state before next heartbeat,
+        // subsequent response may request deploy, which would fail if deactivate node is still tracked
+        activeNodes.remove(ndi.id);
+        nodes.remove(ndi.id);
       }
     }
   }
