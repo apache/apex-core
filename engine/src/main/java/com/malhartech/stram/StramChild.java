@@ -4,6 +4,40 @@
  */
 package com.malhartech.stram;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FSError;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.util.StringUtils;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ComponentContextPair;
@@ -29,37 +63,6 @@ import com.malhartech.stream.MuxStream;
 import com.malhartech.stream.PartitionAwareSink;
 import com.malhartech.stream.SocketInputStream;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.net.InetSocketAddress;
-import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FSError;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 // make sure that setup and teardown is called through the same thread which calls process
 /**
@@ -1029,16 +1032,16 @@ public class StramChild
     }
 
     @Override
-    public void backup(String nodeId, long windowId, Object o) throws IOException
+    public void backup(String id, long windowId, Object o) throws IOException
     {
-      FileSystem fs = FileSystem.get(conf);
-      Path path = new Path(StramChild.this.checkpointDfsPath + "/" + nodeId + "/" + windowId);
+      Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId);
+      FileSystem fs = FileSystem.get(path.toUri(), conf);
       logger.debug("Backup path: {}", path);
       FSDataOutputStream output = fs.create(path);
       try {
         serDe.write(o, output);
         // record last backup window id for heartbeat
-        StramChild.this.backupInfo.put(nodeId, windowId);
+        StramChild.this.backupInfo.put(id, windowId);
       }
       finally {
         output.close();
@@ -1049,8 +1052,9 @@ public class StramChild
     @Override
     public Object restore(String id, long windowId) throws IOException
     {
-      FileSystem fs = FileSystem.get(conf);
-      FSDataInputStream input = fs.open(new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId));
+      Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId);
+      FileSystem fs = FileSystem.get(path.toUri(), conf);
+      FSDataInputStream input = fs.open(path);
       try {
         return serDe.read(input);
       }

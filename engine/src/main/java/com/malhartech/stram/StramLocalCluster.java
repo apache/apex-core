@@ -213,15 +213,18 @@ public class StramLocalCluster implements Runnable {
 
   public StramLocalCluster(DAG topology) throws Exception {
     topology.validate();
+    // convert to URI so we always write to local file system,
+    // even when the environment has a default HDFS location.
+    String pathUri = CLUSTER_WORK_DIR.toURI().toString();
     try {
       FileContext.getLocalFSFileContext().delete(
-          new Path(CLUSTER_WORK_DIR.getAbsolutePath()), true);
+          new Path(pathUri/*CLUSTER_WORK_DIR.getAbsolutePath()*/), true);
     } catch (Exception e) {
       throw new RuntimeException("could not cleanup test dir", e);
     }
 
     if (topology.getConf().get(DAG.STRAM_CHECKPOINT_DIR) == null) {
-      topology.getConf().set(DAG.STRAM_CHECKPOINT_DIR, CLUSTER_WORK_DIR.getPath());
+      topology.getConf().set(DAG.STRAM_CHECKPOINT_DIR, pathUri);
     }
     this.dnmgr = new StreamingContainerManager(topology);
     this.umbilical = new UmbilicalProtocolLocalImpl();
