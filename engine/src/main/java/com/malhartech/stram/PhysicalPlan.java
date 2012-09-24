@@ -228,7 +228,7 @@ public class PhysicalPlan {
     }
   }
 
-  private final Map<Operator, List<PTOperator>> deployedNodes = new LinkedHashMap<Operator, List<PTOperator>>();
+  private final Map<Operator, List<PTOperator>> deployedOperators = new LinkedHashMap<Operator, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private int maxContainers = 1;
 
@@ -328,13 +328,13 @@ public class PhysicalPlan {
         }
 
         inlineGroups.put(n, inlineSet);
-        this.deployedNodes.put(n, pnodes);
+        this.deployedOperators.put(n, pnodes);
       }
     }
 
     // assign operators to containers
     int groupCount = 0;
-    for (Map.Entry<Operator, List<PTOperator>> e : deployedNodes.entrySet()) {
+    for (Map.Entry<Operator, List<PTOperator>> e : deployedOperators.entrySet()) {
       for (PTOperator node : e.getValue()) {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
@@ -370,7 +370,7 @@ public class PhysicalPlan {
       // (can be multiple with partitioning or load balancing)
       StreamDecl streamDecl = inputEntry.getValue();
       if (streamDecl.getSource() != null) {
-        List<PTOperator> upstreamNodes = deployedNodes.get(streamDecl.getSource().getNode());
+        List<PTOperator> upstreamNodes = deployedOperators.get(streamDecl.getSource().getNode());
         for (PTOperator upNode : upstreamNodes) {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
@@ -413,7 +413,7 @@ public class PhysicalPlan {
   }
 
   protected List<PTOperator> getOperators(Operator nodeDecl) {
-    return this.deployedNodes.get(nodeDecl);
+    return this.deployedOperators.get(nodeDecl);
   }
 
   /**

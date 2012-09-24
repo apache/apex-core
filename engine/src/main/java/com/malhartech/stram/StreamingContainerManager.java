@@ -89,20 +89,20 @@ public class StreamingContainerManager
   protected final  ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
-  private final PhysicalPlan deployer;
+  private final PhysicalPlan plan;
   private final String checkpointDir;
 
-  public StreamingContainerManager(DAG topology) {
-    this.deployer = new PhysicalPlan(topology);
+  public StreamingContainerManager(DAG dag) {
+    this.plan = new PhysicalPlan(dag);
 
-    this.windowSizeMillis = topology.getConf().getInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
+    this.windowSizeMillis = dag.getConf().getInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
-    checkpointDir = topology.getConf().get(DAG.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
-    this.checkpointIntervalMillis = topology.getConf().getInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
+    checkpointDir = dag.getConf().get(DAG.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
+    this.checkpointIntervalMillis = dag.getConf().getInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
 
     // fill initial deploy requests
-    for (PTContainer container : deployer.getContainers()) {
+    for (PTContainer container : plan.getContainers()) {
       this.containerStartRequests.add(new DeployRequest(container, null));
     }
 
@@ -114,7 +114,7 @@ public class StreamingContainerManager
   }
 
   protected PhysicalPlan getTopologyDeployer() {
-    return deployer;
+    return plan;
   }
 
   /**
@@ -241,7 +241,7 @@ public class StreamingContainerManager
 
   public StreamingContainerContext assignContainerForTest(String containerId, InetSocketAddress bufferServerAddress)
   {
-    for (PTContainer container : this.deployer.getContainers()) {
+    for (PTContainer container : this.plan.getContainers()) {
       if (container.containerId == null) {
         container.containerId = containerId;
         container.bufferServerAddress = bufferServerAddress;
@@ -319,7 +319,7 @@ public class StreamingContainerManager
         portInfo.declaredStreamId = streamDecl.getId();
         portInfo.portName = out.portName;
 
-        if (!(streamDecl.isInline() && this.deployer.isDownStreamInline(out))) {
+        if (!(streamDecl.isInline() && this.plan.isDownStreamInline(out))) {
           portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
           portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
           if (streamDecl.getSerDeClass() != null) {
@@ -508,7 +508,7 @@ public class StreamingContainerManager
       for (InputPort targetPort : out.logicalStream.getSinks()) {
         Operator lDownNode = targetPort.getNode();
         if (lDownNode != null) {
-          List<PTOperator> downNodes = deployer.getOperators(lDownNode);
+          List<PTOperator> downNodes = plan.getOperators(lDownNode);
           for (PTOperator downNode : downNodes) {
             Long downstreamCheckpoint = recoveryCheckpoints.get(downNode);
             if (downstreamCheckpoint == null) {
