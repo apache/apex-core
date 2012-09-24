@@ -92,7 +92,6 @@ public class StramLocalClusterTest
     lnr.close();
   }
 
-  //@Ignore // windows lost problem?
   @Test
   public void testChildRecovery() throws Exception
   {
@@ -123,7 +122,7 @@ public class StramLocalClusterTest
     StramLocalCluster localCluster = new StramLocalCluster(dag, mcf);
     localCluster.runAsync();
 
-    LocalStramChild c0 = waitForContainer(localCluster, node1);
+    LocalStramChild c0 = waitForActivation(localCluster, node1);
     Map<String, Module> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
 
@@ -131,13 +130,12 @@ public class StramLocalClusterTest
     Module n1 = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1);
 
-    LocalStramChild c2 = waitForContainer(localCluster, node2);
+    LocalStramChild c2 = waitForActivation(localCluster, node2);
     Map<String, Module> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
     GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
-    Thread.sleep(500); // TODO: wait until active
     ModuleContext n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
     wclock.tick(1); // begin window 1
@@ -177,7 +175,7 @@ public class StramLocalClusterTest
 
     // replacement container starts empty
     // operators will deploy after downstream node was removed
-    LocalStramChild c0Replaced = waitForContainer(localCluster, node1);
+    LocalStramChild c0Replaced = waitForActivation(localCluster, node1);
     c0Replaced.triggerHeartbeat();
     c0Replaced.waitForHeartbeat(5000); // next heartbeat after setup
 
@@ -206,7 +204,6 @@ public class StramLocalClusterTest
     Module n1Replaced = nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1Replaced);
 
-    Thread.sleep(500); // TODO: wait until active
     ModuleContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
     Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
     // the node context should reflect the last processed window (the backup window)?
@@ -216,14 +213,14 @@ public class StramLocalClusterTest
   }
 
   /**
-   * Wait until instance of node comes online in a container
+   * Wait until instance of operator comes online in a container and return the container reference.
    *
    * @param localCluster
    * @param nodeConf
    * @return
    * @throws InterruptedException
    */
-  private LocalStramChild waitForContainer(StramLocalCluster localCluster, Operator nodeDecl) throws InterruptedException
+  private LocalStramChild waitForActivation(StramLocalCluster localCluster, Operator nodeDecl) throws InterruptedException
   {
     PTOperator node = localCluster.findByLogicalNode(nodeDecl);
     Assert.assertNotNull("no node for " + nodeDecl, node);
@@ -232,7 +229,7 @@ public class StramLocalClusterTest
     while (true) {
       if (node.container.containerId != null) {
         if ((container = localCluster.getContainer(node.container.containerId)) != null) {
-          if (container.getNodes().get(node.id) != null) {
+          if (container.getNodeContext(node.id) != null) {
             return container;
           }
         }

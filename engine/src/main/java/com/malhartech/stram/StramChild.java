@@ -946,7 +946,6 @@ public class StramChild
       final Module node = nodes.get(ndi.id);
       final String nodeInternalId = ndi.id.concat(":").concat(ndi.declaredId);
       assert (!activeNodes.containsKey(ndi.id));
-      logger.debug("activating node {} in container {}", node.toString(), containerId);
       new Thread(nodeInternalId)
       {
         @Override
@@ -961,6 +960,7 @@ public class StramChild
             activeNodes.put(ndi.id, nc);
 
             activatedNodeCount.incrementAndGet();
+            logger.debug("activating {} in container {}", node.toString(), containerId);
             node.activate(nc);
           }
           catch (Exception ex) {
