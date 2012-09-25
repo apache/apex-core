@@ -7,72 +7,82 @@ package com.malhartech.bufferserver;
 option optimize_for = SPEED;
 
 message SimpleData {
-    required bytes data = 1;
+  required bytes data = 1;
 }
 
 message PartitionedData {
-    required bytes data = 1;
-    required bytes partition = 2;
+  required bytes data = 1;
+  required bytes partition = 2;
 }
 
 message ResetWindow {
-    required uint32 width = 1;
+  required uint32 width = 1;
 }
 
 message BeginWindow {
-    required string node = 1;
+  required string node = 1;
 }
 
 message EndWindow {
-    required string node = 1;
-    required uint32 tuple_count = 2;
+  required string node = 1;
+  required uint32 tuple_count = 2;
 }
 
 message SubscriberRequest {
   enum PolicyType {
-      CUSTOM = 0;
-      ROUND_ROBIN = 1;
-      RANDOM_ONE = 2;
-      LEAST_BUSY = 3;
-      GIVE_ALL = 4;
+    CUSTOM = 0;
+    ROUND_ROBIN = 1;
+    RANDOM_ONE = 2;
+    LEAST_BUSY = 3;
+    GIVE_ALL = 4;
   }
 
-    required string identifier = 1;
-    required string type = 2;
-    optional uint32 base_seconds = 3 [default = 0];
-    optional string upstream_identifier = 4;
-    required string upstream_type = 5;
-    repeated bytes partition = 6;
-    optional PolicyType policy = 7 [default = GIVE_ALL ];
+  required string identifier = 1;
+  required string type = 2;
+  optional uint32 base_seconds = 3 [default = 0];
+  optional string upstream_identifier = 4;
+  required string upstream_type = 5;
+  repeated bytes partition = 6;
+  optional PolicyType policy = 7 [default = GIVE_ALL ];
 }
 
 message PublisherRequest {
-     required string identifier = 1;
-     required string type = 2;
-     optional uint32 base_seconds = 3 [default = 0];
+  required string identifier = 1;
+  required string type = 2;
+  optional uint32 base_seconds = 3 [default = 0];
+}
+
+message PurgeRequest {
+  required string identifier = 1;
+  required string type = 2;
+  optional uint32 base_seconds = 3 [default = 0];
+  optional uint32 start_window = 4 [default = 0];
+  optional uint32 end_window = 5 [default = 0x7fffffff];
 }
 
 message Data {
-    enum DataType {
-        NO_DATA = 0;
-        RESET_WINDOW = 1;
-        BEGIN_WINDOW = 2;
-        SIMPLE_DATA = 3;
-        PARTITIONED_DATA = 4;
-        END_WINDOW = 5;
-        END_STREAM = 6;
-        PUBLISHER_REQUEST = 7;
-        SUBSCRIBER_REQUEST = 8;
-    }
+  enum DataType {
+    NO_DATA = 0;
+    RESET_WINDOW = 1;
+    BEGIN_WINDOW = 2;
+    SIMPLE_DATA = 3;
+    PARTITIONED_DATA = 4;
+    END_WINDOW = 5;
+    END_STREAM = 6;
+    PUBLISHER_REQUEST = 7;
+    SUBSCRIBER_REQUEST = 8;
+    PURGE_REQUEST = 9;
+  }
 
-    required DataType type = 1;
-    required uint32 window_id = 2;
+  required DataType type = 1;
+  required uint32 window_id = 2;
 
-optional ResetWindow resetWindow = 3;
-    optional BeginWindow beginWindow = 4;
-    optional SimpleData simpleData = 5;
-    optional PartitionedData partitionedData = 6;
-    optional EndWindow endWindow = 7;
-    optional PublisherRequest publishRequest = 8;
-    optional SubscriberRequest subscribeRequest = 9;
+  optional ResetWindow resetWindow = 3;
+  optional BeginWindow beginWindow = 4;
+  optional SimpleData simpleData = 5;
+  optional PartitionedData partitionedData = 6;
+  optional EndWindow endWindow = 7;
+  optional PublisherRequest publishRequest = 8;
+  optional SubscriberRequest subscribeRequest = 9;
+  optional PurgeRequest purgeRequest = 10;
 }
