@@ -547,8 +547,8 @@ public class StreamingContainerManager
   }
 
   /**
-   * Visit all operators to update checkpoint dependency info.
-   * Collect checkpoints that may be purged based on current downstream state.
+   * Visit all operators to update current checkpoint.
+   * Collect checkpoints that may be purged based on updated downstream state.
    * @param op
    * @param recentCheckpoint
    */

@@ -6,7 +6,6 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
-import com.sun.jdi.request.InvalidRequestStateException;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -82,7 +81,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
   public final void deactivate()
   {
     if (ctx == null) {
-      throw new InvalidRequestStateException("deactivate is called on non active module!");
+      throw new IllegalStateException("deactivate is called on non active module!");
     }
 
     ctx.getExecutingThread().interrupt();
