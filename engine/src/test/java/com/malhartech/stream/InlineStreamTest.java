@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -133,20 +134,21 @@ public class InlineStreamTest
 
   private void launchNodeThreads(Collection<? extends AbstractModule> nodes, final Map<String, Module> activeNodes)
   {
-    int i = 1;
+    final AtomicInteger i = new AtomicInteger(0);
     for (final AbstractModule node: nodes) {
-      final ModuleContext ctx = new ModuleContext(String.valueOf(i++));
       // launch operators
       Runnable nodeRunnable = new Runnable()
       {
         @Override
         public void run()
         {
+          ModuleContext ctx = new ModuleContext(String.valueOf(i.incrementAndGet()), Thread.currentThread());
           activeNodes.put(ctx.getId(), node);
           node.activate(ctx);
           activeNodes.remove(ctx.getId());
         }
       };
+      
       Thread launchThread = new Thread(nodeRunnable);
       launchThread.start();
     }

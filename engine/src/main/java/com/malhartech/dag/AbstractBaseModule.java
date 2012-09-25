@@ -51,8 +51,7 @@ public abstract class AbstractBaseModule implements Module
     sinks = sinks;
   }
 
-  @Override
-  public void deactivate()
+  public void deactivateSinks()
   {
     sinks = NO_SINKS;
     outputs.clear();

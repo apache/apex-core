@@ -21,6 +21,12 @@ public class ModuleContext implements Context
 {
   private static final Logger LOG = LoggerFactory.getLogger(ModuleContext.class);
   private BackupAgent backupAgent;
+  private final Thread executingThread;
+
+  public Thread getExecutingThread()
+  {
+    return executingThread;
+  }
 
   @SuppressWarnings("PublicInnerClass")
   public static enum RequestType
@@ -65,9 +71,10 @@ public class ModuleContext implements Context
     this.idleTimeout = idleTimeout;
   }
 
-  public ModuleContext(String id)
+  public ModuleContext(String id, Thread t)
   {
     this.id = id;
+    executingThread = t;
   }
 
   public String getId()

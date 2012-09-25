@@ -6,6 +6,8 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
+import com.sun.jdi.request.InvalidRequestStateException;
+import com.sun.tools.corba.se.idl.InvalidArgument;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -70,14 +72,21 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
       while (pendingMessages && sinks.length > 0);
     }
     catch (InterruptedException ex) {
-      logger.info("Not waiting for the emitted tuples to be flushed as got interrupted by {}", ex.getLocalizedMessage());
+      logger.info("Not waiting for the emitted tuples to be flushed as got interrupted by {}", ex);
     }
+
+    deactivateSinks();
+    ctx = null;
   }
 
   @Override
   public final void deactivate()
   {
-    super.deactivate();
+    if (ctx == null) {
+      throw new InvalidRequestStateException("deactivate is called on non active module!");
+    }
+
+    ctx.getExecutingThread().interrupt();
   }
 
   @Override

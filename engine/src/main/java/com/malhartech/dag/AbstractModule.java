@@ -208,7 +208,6 @@ public abstract class AbstractModule extends AbstractBaseModule
   @Override
   public final void deactivate()
   {
-    super.deactivate();
     alive = false;
   }
 
@@ -421,5 +420,7 @@ public abstract class AbstractModule extends AbstractBaseModule
     for (final Sink output: outputs.values()) {
       output.process(est);
     }
+
+    deactivateSinks();
   }
 }

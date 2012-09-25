@@ -956,7 +956,7 @@ public class StramChild
             StramUtils.internalSetupNode(node, nodeInternalId);
             node.setup(config);
 
-            ModuleContext nc = new ModuleContext(ndi.id);
+            ModuleContext nc = new ModuleContext(ndi.id, this);
             activeNodes.put(ndi.id, nc);
 
             activatedNodeCount.incrementAndGet();
