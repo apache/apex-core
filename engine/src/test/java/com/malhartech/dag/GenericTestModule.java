@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Node for topology testing.
+ * Module for constructing unit test DAG.
  * Test should reference the ports defined using the constants.
  */
 @ModuleAnnotation(

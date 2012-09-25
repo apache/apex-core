@@ -301,6 +301,22 @@ public class DAG implements Serializable, DAGConstants {
     return s;
   }
 
+  /**
+   * Add identified stream for given source and sinks.
+   * @param id
+   * @param source
+   * @param sinks
+   * @return
+   */
+  public StreamDecl addStream(String id, OutputPort source, InputPort... sinks) {
+    StreamDecl s = addStream(id);
+    s.setSource(source);
+    for (InputPort sink : sinks) {
+      s.addSink(sink);
+    }
+    return s;
+  }
+
   public StreamDecl getStream(String id) {
     return this.streams.get(id);
   }
