@@ -2,16 +2,18 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stram;
 
 import org.apache.hadoop.conf.Configuration;
+
+import com.malhartech.dag.Component;
 
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class ComponentConfigurationPair<COMPONENT extends Component, CONFIG extends Configuration> extends ComponentComplementPair<COMPONENT, CONFIG>
+public class ComponentConfigurationPair<COMPONENT extends Component<?,?>, CONFIG extends Configuration> extends ComponentComplementPair<COMPONENT, CONFIG>
 {
   public final CONFIG config;
 

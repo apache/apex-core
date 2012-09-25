@@ -1,7 +1,7 @@
 /*
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
- * 
+ *
 */
 
 /**
@@ -27,10 +27,8 @@
  * com.malhartech.dag package contains the following classes<br>
  * <b>{@link com.malhartech.dag.AbstractInputNode}</b>: <b>TBD</b>:The input adapter class<br>
  * <b>{@link com.malhartech.dag.AbstractNode}</b>: The base class for node implementation. Emits and consumes tuples<br>
- * <b>{@link com.malhartech.stram.BackupAgent}</b>: Interface that defines how to write checkpoint state<br>
  * <b>{@link com.malhartech.dag.Blackhole}</b>: To send tuples to no where<br>
  * <b>{@link com.malhartech.dag.Component}</b>: <b>TBD</b><br>
- * <b>{@link com.malhartech.dag.ComponentContextPair}</b>: <b>TBD</b><br>
  * <b>{@link com.malhartech.dag.Context}</b>: The base interface for context for all of the streaming platform objects<br>
  * <b>{@link com.malhartech.dag.DefaultNodeSerDe}</b>: <b>TBD</b><br>
  * <b>{@link com.malhartech.dag.DefaultSerDe}</b>: Default SerDe for streams if nothing is configured<br>
@@ -49,8 +47,8 @@
  * <b>{@link com.malhartech.dag.StreamContext}</b>: Defines the destination for tuples processed<br>
  * <b>{@link com.malhartech.dag.Tuple}</b>: Basic object to be streamed<br>
  * <br>
- * 
- * 
+ *
+ *
  */
 
 package com.malhartech.dag;

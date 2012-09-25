@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.Component;
-import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleConfiguration;
 import com.malhartech.dag.ModuleContext;
