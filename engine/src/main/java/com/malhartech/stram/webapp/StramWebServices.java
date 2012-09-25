@@ -98,7 +98,7 @@ public class StramWebServices
   @GET
   @Path(PATH_OPERATORS)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public OperatorsInfo getModules() throws Exception
+  public OperatorsInfo getOperatorsInfo() throws Exception
   {
     init();
     LOG.info("DAGManager: {}", dagManager);

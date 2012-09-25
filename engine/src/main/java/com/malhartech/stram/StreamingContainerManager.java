@@ -433,8 +433,8 @@ public class StreamingContainerManager
         if (shb.getLastBackupWindowId() != 0) {
           synchronized (node.checkpointWindows) {
             if (!node.checkpointWindows.isEmpty()) {
-              Long lastCheckpoint = node.checkpointWindows.get(node.checkpointWindows.size()-1);
-              // no need to do any work unless checkpoint moves
+              Long lastCheckpoint = node.checkpointWindows.getLast();
+              // no need for extra work unless checkpoint moves
               if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
                 // keep track of current
                 node.checkpointWindows.add(shb.getLastBackupWindowId());
@@ -528,7 +528,7 @@ public class StreamingContainerManager
           long c2 = 0;
           while (node.checkpointWindows.size() > 1 && (c2 = node.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
             node.checkpointWindows.removeFirst();
-            // TODO: async hdfs cleanup task
+            // TODO: async checkpoint state cleanup task (including buffer server)
             LOG.warn("Checkpoint purging not implemented node={} windowId={}", node.id,  c1);
             c1 = c2;
           }
