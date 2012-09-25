@@ -27,7 +27,7 @@
  * com.malhartech.dag package contains the following classes<br>
  * <b>{@link com.malhartech.dag.AbstractInputNode}</b>: <b>TBD</b>:The input adapter class<br>
  * <b>{@link com.malhartech.dag.AbstractNode}</b>: The base class for node implementation. Emits and consumes tuples<br>
- * <b>{@link com.malhartech.dag.BackupAgent}</b>: Interface that defines how to write checkpoint state<br>
+ * <b>{@link com.malhartech.stram.BackupAgent}</b>: Interface that defines how to write checkpoint state<br>
  * <b>{@link com.malhartech.dag.Blackhole}</b>: To send tuples to no where<br>
  * <b>{@link com.malhartech.dag.Component}</b>: <b>TBD</b><br>
  * <b>{@link com.malhartech.dag.ComponentContextPair}</b>: <b>TBD</b><br>

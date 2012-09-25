@@ -73,7 +73,7 @@ public class TestGeneratorInputModule extends AbstractInputModule
         Thread.sleep(1000);
       }
       catch (InterruptedException e) {
-        LOG.error("Unexpected error in run.", e);
+        LOG.info("Exiting generator loop.", e);
         break;
       }
     }

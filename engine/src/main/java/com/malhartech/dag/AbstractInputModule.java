@@ -7,7 +7,6 @@ package com.malhartech.dag;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
 import com.sun.jdi.request.InvalidRequestStateException;
-import com.sun.tools.corba.se.idl.InvalidArgument;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -170,10 +169,6 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
           switch (ctx.getRequestType()) {
             case BACKUP:
               ctx.backup(this, ((Tuple)payload).getWindowId());
-              break;
-
-            case RESTORE:
-              logger.info("restore requests are not implemented");
               break;
           }
         }

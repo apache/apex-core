@@ -230,6 +230,7 @@ public class PhysicalPlan {
 
   private final Map<Operator, List<PTOperator>> deployedOperators = new LinkedHashMap<Operator, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
+  private final DAG dag;
   private int maxContainers = 1;
 
   private PTContainer getContainer(int index) {
@@ -250,6 +251,7 @@ public class PhysicalPlan {
    */
   public PhysicalPlan(DAG dag) {
 
+    this.dag = dag;
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing topology for {} containers.", this.maxContainers);
 
@@ -412,8 +414,12 @@ public class PhysicalPlan {
     return this.containers;
   }
 
-  protected List<PTOperator> getOperators(Operator nodeDecl) {
-    return this.deployedOperators.get(nodeDecl);
+  protected List<PTOperator> getOperators(Operator logicalOperator) {
+    return this.deployedOperators.get(logicalOperator);
+  }
+
+  protected List<Operator> getRootOperators() {
+    return dag.getRootOperators();
   }
 
   /**

@@ -19,8 +19,16 @@ import org.slf4j.LoggerFactory;
  */
 public class ModuleContext implements Context
 {
+  /**
+   * Command to be executed at subsequent end of window.
+   * Current used for module state saving, but applicable more widely.
+   */
+  public interface EndWindowCommand {
+    public void execute(Module module, String id, long windowId) throws IOException;
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(ModuleContext.class);
-  private BackupAgent backupAgent;
+  private EndWindowCommand backupRequest;
   private final Thread executingThread;
 
   public Thread getExecutingThread()
@@ -34,12 +42,11 @@ public class ModuleContext implements Context
     UNDEFINED,
     REPORT,
     BACKUP,
-    RESTORE,
     TERMINATE
   }
-  private String id;
+  private final String id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
-  private CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
+  private final CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
   private volatile RequestType request = RequestType.UNDEFINED;
   /**
    * The AbstractNode to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
@@ -92,15 +99,15 @@ public class ModuleContext implements Context
     return heartbeatCounters.drainTo(counters);
   }
 
-  long lastProcessedWidnowId;
+  long lastProcessedWindowId;
   public final synchronized long getLastProcessedWindowId()
   {
-    return lastProcessedWidnowId;
+    return lastProcessedWindowId;
   }
 
   synchronized void report(int consumedTupleCount, long processedBytes, long windowId)
   {
-    lastProcessedWidnowId = windowId;
+    lastProcessedWindowId = windowId;
 
     HeartbeatCounters newWindow = new HeartbeatCounters();
     newWindow.windowId = windowId;
@@ -118,13 +125,13 @@ public class ModuleContext implements Context
   void backup(Module aThis, long windowId) throws IOException
   {
     LOG.debug("Backup node={}, window={}", id, windowId);
-    this.backupAgent.backup(id, windowId, aThis);
+    this.backupRequest.execute(aThis, id, windowId);
     request = RequestType.UNDEFINED;
   }
 
-  public void requestBackup(BackupAgent agent)
+  public void requestBackup(EndWindowCommand backupRequest)
   {
-    this.backupAgent = agent;
+    this.backupRequest = backupRequest;
     request = RequestType.BACKUP;
     LOG.debug("Received backup request (node={})", id);
   }

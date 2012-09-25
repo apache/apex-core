@@ -4,29 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.DAG;
-import com.malhartech.dag.Module;
-import com.malhartech.dag.ModuleSerDe;
-import com.malhartech.dag.DAG.InputPort;
-import com.malhartech.dag.DAG.Operator;
-import com.malhartech.dag.DAG.StreamDecl;
-import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
-import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
-import com.malhartech.stram.StramChildAgent.DeployRequest;
-import com.malhartech.stram.StramChildAgent.UndeployRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.PhysicalPlan.PTComponent;
-import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTInput;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.PhysicalPlan.PTOutput;
-import com.malhartech.stram.webapp.OperatorInfo;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -39,8 +16,35 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.dag.DAG;
+import com.malhartech.dag.DAG.InputPort;
+import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.StreamDecl;
+import com.malhartech.dag.Module;
+import com.malhartech.dag.ModuleSerDe;
+import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
+import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
+import com.malhartech.stram.PhysicalPlan.PTComponent;
+import com.malhartech.stram.PhysicalPlan.PTContainer;
+import com.malhartech.stram.PhysicalPlan.PTInput;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.PhysicalPlan.PTOutput;
+import com.malhartech.stram.StramChildAgent.DeployRequest;
+import com.malhartech.stram.StramChildAgent.UndeployRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.webapp.OperatorInfo;
+import com.malhartech.util.Pair;
 /**
  *
  * Tracks topology provisioning/allocation to containers<p>
@@ -90,7 +94,7 @@ public class StreamingContainerManager
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   private final PhysicalPlan plan;
-  private final String checkpointDir;
+  private final String checkpointFsPath;
 
   public StreamingContainerManager(DAG dag) {
     this.plan = new PhysicalPlan(dag);
@@ -98,7 +102,7 @@ public class StreamingContainerManager
     this.windowSizeMillis = dag.getConf().getInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
-    checkpointDir = dag.getConf().get(DAG.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
+    checkpointFsPath = dag.getConf().get(DAG.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
     this.checkpointIntervalMillis = dag.getConf().getInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
 
     // fill initial deploy requests
@@ -136,6 +140,7 @@ public class StreamingContainerManager
          }
        }
     }
+    updateCheckpoints();
   }
 
   /**
@@ -154,7 +159,7 @@ public class StreamingContainerManager
     // TODO: traversal needs to include inline upstream operators
     Map<PTOperator, Long> checkpoints = new LinkedHashMap<PTOperator, Long>();
     for (PTOperator node : cs.container.operators) {
-      getRecoveryCheckpoint(node, checkpoints);
+      updateRecoveryCheckpoints(node, checkpoints);
     }
 
     Map<PTContainer, List<PTOperator>> resetNodes = new HashMap<PTContainer, List<PhysicalPlan.PTOperator>>();
@@ -295,7 +300,7 @@ public class StreamingContainerManager
     StreamingContainerContext scc = new StreamingContainerContext();
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
-    scc.setCheckpointDfsPath(this.checkpointDir);
+    scc.setCheckpointDfsPath(this.checkpointFsPath);
 
 //    List<StreamPConf> streams = new ArrayList<StreamPConf>();
     Map<ModuleDeployInfo, PTOperator> nodes = new LinkedHashMap<ModuleDeployInfo, PTOperator>();
@@ -494,42 +499,42 @@ public class StreamingContainerManager
   }
 
   /**
-   * Compute checkpoint required for a given node to be recovered.
+   * Compute checkpoints required for a given operator instance to be recovered.
    * This is done by looking at checkpoints available for downstream dependencies first,
    * and then selecting the most recent available checkpoint that is smaller than downstream.
-   * @param node Module for which to find recovery checkpoint
-   * @param recoveryCheckpoints Map to collect all downstream recovery checkpoints
-   * @return Checkpoint that can be used to recover node (along with dependent operators in recoveryCheckpoints).
+   * @param operator Operator instance for which to find recovery checkpoint
+   * @param visitedCheckpoints Map into which to collect checkpoints for visited dependencies
+   * @return Checkpoint that can be used to recover (along with dependencies in visitedCheckpoints).
    */
-  public long getRecoveryCheckpoint(PTOperator node, Map<PTOperator, Long> recoveryCheckpoints) {
-    long maxCheckpoint = node.getRecentCheckpoint();
+  public long updateRecoveryCheckpoints(PTOperator operator, Map<PTOperator, Long> visitedCheckpoints) {
+    long maxCheckpoint = operator.getRecentCheckpoint();
     // find smallest most recent subscriber checkpoint
-    for (PTOutput out : node.outputs) {
+    for (PTOutput out : operator.outputs) {
       for (InputPort targetPort : out.logicalStream.getSinks()) {
         Operator lDownNode = targetPort.getNode();
         if (lDownNode != null) {
           List<PTOperator> downNodes = plan.getOperators(lDownNode);
           for (PTOperator downNode : downNodes) {
-            Long downstreamCheckpoint = recoveryCheckpoints.get(downNode);
+            Long downstreamCheckpoint = visitedCheckpoints.get(downNode);
             if (downstreamCheckpoint == null) {
               // downstream traversal
-              downstreamCheckpoint = getRecoveryCheckpoint(downNode, recoveryCheckpoints);
+              downstreamCheckpoint = updateRecoveryCheckpoints(downNode, visitedCheckpoints);
             }
             maxCheckpoint = Math.min(maxCheckpoint, downstreamCheckpoint);
           }
         }
       }
     }
-    // find most recent checkpoint for downstream dependency
+    // find checkpoint for downstream dependency, remove checkpoints that are no longer needed
     long c1 = 0;
-    synchronized (node.checkpointWindows) {
-      if (node.checkpointWindows != null && !node.checkpointWindows.isEmpty()) {
-        if ((c1 = node.checkpointWindows.getFirst().longValue()) <= maxCheckpoint) {
+    synchronized (operator.checkpointWindows) {
+      if (operator.checkpointWindows != null && !operator.checkpointWindows.isEmpty()) {
+        if ((c1 = operator.checkpointWindows.getFirst().longValue()) <= maxCheckpoint) {
           long c2 = 0;
-          while (node.checkpointWindows.size() > 1 && (c2 = node.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
-            node.checkpointWindows.removeFirst();
-            // TODO: async checkpoint state cleanup task (including buffer server)
-            LOG.warn("Checkpoint purging not implemented node={} windowId={}", node.id,  c1);
+          while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
+            operator.checkpointWindows.removeFirst();
+            LOG.debug("Checkpoint to purge: operator={} windowId={}", operator.id,  c1);
+            this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
             c1 = c2;
           }
         } else {
@@ -537,8 +542,40 @@ public class StreamingContainerManager
         }
       }
     }
-    recoveryCheckpoints.put(node, c1);
+    visitedCheckpoints.put(operator, c1);
     return c1;
+  }
+
+  /**
+   * Visit all operators to update checkpoint dependency info.
+   * Collect checkpoints that may be purged based on current downstream state.
+   * @param op
+   * @param recentCheckpoint
+   */
+  private void updateCheckpoints() {
+    Map<PTOperator, Long> visitedCheckpoints = new LinkedHashMap<PTOperator, Long>();
+    for (Operator logicalOperator : plan.getRootOperators()) {
+      List<PTOperator> operators = plan.getOperators(logicalOperator);
+      if (operators != null) {
+        for (PTOperator operator : operators) {
+          updateRecoveryCheckpoints(operator, visitedCheckpoints);
+        }
+      }
+    }
+    purgeCheckpoints();
+  }
+
+  private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
+
+  private void purgeCheckpoints() {
+    BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath);
+    for (Pair<PTOperator, Long> p : purgeCheckpoints) {
+      try {
+        ba.delete(p.getFirst().id, p.getSecond());
+      } catch (Exception e) {
+        LOG.error("Failed to purge checkpoint " + p, e);
+      }
+    }
   }
 
   /**
