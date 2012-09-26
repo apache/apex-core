@@ -87,7 +87,6 @@ public class StramChildTest
 
     for (StramLocalCluster.LocalStramChild cc: containers) {
       logger.info("shutting down " + cc.getContainerId());
-      cc.deactivate();
       cc.teardown();
     }
   }

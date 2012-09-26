@@ -108,7 +108,6 @@ public class CheckpointTest {
     Assert.assertTrue("checkpoint file not found: " + expectedFile, expectedFile.exists() && expectedFile.isFile());
 
     LOG.debug("Shutdown container {}", container.getContainerId());
-    container.deactivate();
     container.teardown();
   }
 

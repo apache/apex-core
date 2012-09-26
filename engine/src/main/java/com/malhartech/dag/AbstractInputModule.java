@@ -6,8 +6,6 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
-import com.sun.jdi.request.InvalidRequestStateException;
-import com.sun.tools.corba.se.idl.InvalidArgument;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -38,7 +36,20 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
   {
     ctx = context;
     activateSinks();
+
+    try {
     run();
+    }
+    catch (Exception ex) {
+      logger.error("{} has an opportunity to handle {}", this, ex);
+    }
+
+    /**
+     * at this point the thread may still have pending interrupt, which we should clear.
+     */
+    if (Thread.interrupted()) {
+      logger.info("{} has an opportunity to handle interrupts to optimize its operations", this);
+    }
 
     try {
       EndStreamTuple est = new EndStreamTuple();
@@ -83,7 +94,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
   public final void deactivate()
   {
     if (ctx == null) {
-      throw new InvalidRequestStateException("deactivate is called on non active module!");
+      throw new IllegalStateException("deactivate is called on non active module!");
     }
 
     ctx.getExecutingThread().interrupt();

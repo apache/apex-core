@@ -179,7 +179,6 @@ public class SocketStreamTest
 
     for (LocalStramChild cc: containers) {
       LOG.info("shutting down " + cc.getContainerId());
-      cc.deactivate();
       cc.teardown();
     }
   }

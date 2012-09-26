@@ -75,7 +75,7 @@ public class StramChild
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
   private static final String NODE_PORT_SPLIT_SEPARATOR = "\\.";
   private static final String NODE_PORT_CONCAT_SEPARATOR = ".";
-  //private static final String SOURCE_SINK_SEPARATOR = "\u279C";
+  private static final int SPIN_MILLIS = 20;
   private final String containerId;
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
@@ -196,7 +196,6 @@ public class StramChild
           // main thread enters heartbeat loop
           stramChild.monitorHeartbeat();
           // teardown
-          stramChild.deactivate();
           stramChild.teardown();
           return null;
         }
@@ -233,16 +232,26 @@ public class StramChild
     }
   }
 
+  @SuppressWarnings( {"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void deactivate()
   {
+    for (String nodeid: activeNodes.keySet()) {
+      nodes.get(nodeid).deactivate();
+    }
+
+    try {
+      while (!activeNodes.isEmpty()) {
+        Thread.sleep(SPIN_MILLIS);
+      }
+    }
+    catch (InterruptedException ex) {
+      logger.info("Aborting wait for for operators to get deactivated as got interrupted with {}", ex);
+    }
+
     for (WindowGenerator wg: activeGenerators.keySet()) {
       wg.deactivate();
     }
     activeGenerators.clear();
-
-    for (String nodeid: activeNodes.keySet()) {
-      nodes.get(nodeid).deactivate();
-    }
 
     for (Stream stream: activeStreams.keySet()) {
       stream.deactivate();
@@ -410,6 +419,8 @@ public class StramChild
 
   public void teardown()
   {
+    deactivate();
+    
     HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
     gens.addAll(generators.values());
     generators.clear();
@@ -980,7 +991,7 @@ public class StramChild
      */
     try {
       do {
-        Thread.sleep(20);
+        Thread.sleep(SPIN_MILLIS);
       }
       while (activatedNodeCount.get() < nodes.size());
     }

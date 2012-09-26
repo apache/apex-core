@@ -135,7 +135,6 @@ public class StramLocalCluster implements Runnable {
       // main thread enters heartbeat loop
       stramChild.monitorHeartbeat();
       // teardown
-      stramChild.deactivate();
       stramChild.teardown();
     }
 
