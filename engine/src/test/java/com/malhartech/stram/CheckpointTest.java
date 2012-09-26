@@ -4,23 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.File;
-import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import scala.actors.threadpool.Arrays;
-
 import com.malhartech.dag.DAG;
 import com.malhartech.dag.DAG.Operator;
 import com.malhartech.dag.GenericTestModule;
@@ -36,6 +19,20 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stream.StramTestSupport;
+import java.io.File;
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
