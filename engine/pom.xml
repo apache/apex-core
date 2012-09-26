@@ -126,6 +126,7 @@
       <properties>
         <hadoop.version>2.0.0-alpha</hadoop.version>
         <slf4j.version>1.6.1</slf4j.version>
+        <test.excludedGroups>com.malhartech.PerformanceTestCategory</test.excludedGroups>
       </properties>
       <dependencies>
         <dependency>
@@ -232,6 +233,20 @@
                   <!--downloadJavadocs>true</downloadJavadocs-->
               </configuration>
           </plugin>
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>2.12</version>
+            <dependencies>
+                <dependency>
+                  <groupId>org.apache.maven.surefire</groupId>
+                  <artifactId>surefire-junit47</artifactId>
+                  <version>2.12</version>
+                </dependency>
+            </dependencies>
+            <configuration>
+                <excludedGroups>${test.excludedGroups}</excludedGroups>
+            </configuration>
+          </plugin>          
         </plugins>
       </build>
     </profile>
@@ -261,7 +276,12 @@
         </plugins>
       </build>
     </profile>
-
+    <profile>
+      <id>fullTests</id>
+      <properties>
+        <test.excludedGroups></test.excludedGroups>
+      </properties>      
+    </profile>
   </profiles>
 
 
