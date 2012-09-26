@@ -284,24 +284,16 @@ public abstract class AbstractModule extends AbstractBaseModule
                       output.process(t);
                     }
 
+                    ctx.report(getProcessedTupleCount(), 0L, currentWindowId);
+                    processedTupleCount = 0;
+
                     /*
-                     * we prefer to do quite a few operations at the end of the window boundary.
+                     * we prefer to cater to requests at the end of the window boundary.
                      */
-                    // I wanted to take this opportunity to do multiple tasks at the same time
-                    // Java recommends using EnumSet. EnumSet is inefficient since I can iterate
-                    // over elements but cannot remove them without access to iterator.
-
-                    // the default is UNSPECIFIED which we ignore anyways as we ignore everything
-                    // that we do not understand!
                     try {
-                      switch (ctx.getRequestType()) {
-                        case BACKUP:
-                          ctx.backup(this, currentWindowId);
-                          break;
-
-                        case TERMINATE:
-                          alive = false;
-                          break;
+                      CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
+                      for (int i = requests.size(); i-- > 0;) {
+                        requests.get().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
                       }
                     }
                     catch (Exception e) {
@@ -309,9 +301,6 @@ public abstract class AbstractModule extends AbstractBaseModule
                     }
 
                     // report window as complete after control operations are completed
-                    ctx.report(getProcessedTupleCount(), 0L, currentWindowId);
-                    processedTupleCount = 0;
-
                     buffers.remove();
                     assert (activeQueues.isEmpty());
                     activeQueues.addAll(inputs.values());

@@ -5,6 +5,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.dag.ModuleContext.ModuleRequest;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
@@ -38,7 +39,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
     activateSinks();
 
     try {
-    run();
+      run();
     }
     catch (Exception ex) {
       logger.error("{} has an opportunity to handle {}", this, ex);
@@ -175,13 +176,10 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
         ctx.report(processedTupleCount, 0L, ((Tuple)payload).getWindowId());
         processedTupleCount = 0;
 
-        // the default is UNSPECIFIED which we ignore anyways as we ignore everything
-        // that we do not understand!
         try {
-          switch (ctx.getRequestType()) {
-            case BACKUP:
-              ctx.backup(this, ((Tuple)payload).getWindowId());
-              break;
+          CircularBuffer<ModuleRequest> requests = ctx.getRequests();
+          for (int i = requests.size(); i-- > 0;) {
+            requests.get().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
           }
         }
         catch (Exception e) {

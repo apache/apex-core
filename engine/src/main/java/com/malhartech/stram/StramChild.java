@@ -4,35 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.net.InetSocketAddress;
-import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSError;
-import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
-import org.apache.log4j.LogManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.dag.Component;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleConfiguration;
@@ -56,6 +27,33 @@ import com.malhartech.stream.MuxStream;
 import com.malhartech.stream.PartitionAwareSink;
 import com.malhartech.stream.SocketInputStream;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.net.InetSocketAddress;
+import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSError;
+import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
+import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.Token;
+import org.apache.hadoop.util.StringUtils;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // make sure that setup and teardown is called through the same thread which calls process
 /**
@@ -414,7 +412,7 @@ public class StramChild
   public void teardown()
   {
     deactivate();
-    
+
     HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
     gens.addAll(generators.values());
     generators.clear();
@@ -561,7 +559,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        context.requestBackup(new ModuleContext.EndWindowCommand() {
+        context.request(new ModuleContext.ModuleRequest() {
           @Override
           public void execute(Module module, String id, long windowId) throws IOException {
             new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, module, StramUtils.getNodeSerDe(null));

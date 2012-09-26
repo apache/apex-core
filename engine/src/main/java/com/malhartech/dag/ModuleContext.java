@@ -19,47 +19,40 @@ import org.slf4j.LoggerFactory;
  */
 public class ModuleContext implements Context
 {
-  /**
-   * Command to be executed at subsequent end of window.
-   * Current used for module state saving, but applicable more widely.
-   */
-  public interface EndWindowCommand {
+  private static final Logger LOG = LoggerFactory.getLogger(ModuleContext.class);
+
+  public interface ModuleRequest
+  {
+    @SuppressWarnings("PublicInnerClass")
+    public static enum Type
+    {
+      UNDEFINED,
+      REPORT,
+      BACKUP,
+      TERMINATE
+    }
+
+    /**
+     * Command to be executed at subsequent end of window.
+     * Current used for module state saving, but applicable more widely.
+     */
     public void execute(Module module, String id, long windowId) throws IOException;
   }
-
-  private static final Logger LOG = LoggerFactory.getLogger(ModuleContext.class);
-  private EndWindowCommand backupRequest;
+  private long lastProcessedWindowId;
   private final Thread executingThread;
-
-  public Thread getExecutingThread()
-  {
-    return executingThread;
-  }
-
-  @SuppressWarnings("PublicInnerClass")
-  public static enum RequestType
-  {
-    UNDEFINED,
-    REPORT,
-    BACKUP,
-    TERMINATE
-  }
   private final String id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
-  private volatile RequestType request = RequestType.UNDEFINED;
+  private final CircularBuffer<ModuleRequest> requests = new CircularBuffer<ModuleRequest>(4);
   /**
-   * The AbstractNode to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
+   * The AbstractModule to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
    */
   // we should make it configurable somehow.
   private long idleTimeout = 1000L;
 
-  /**
-   * @return the requestType
-   */
-  public final RequestType getRequestType()
+  public CircularBuffer<ModuleRequest> getRequests()
   {
-    return request;
+    return requests;
   }
 
   /**
@@ -99,7 +92,6 @@ public class ModuleContext implements Context
     return heartbeatCounters.drainTo(counters);
   }
 
-  long lastProcessedWindowId;
   public final synchronized long getLastProcessedWindowId()
   {
     return lastProcessedWindowId;
@@ -122,18 +114,14 @@ public class ModuleContext implements Context
     }
   }
 
-  void backup(Module aThis, long windowId) throws IOException
+  public void request(ModuleRequest request)
   {
-    LOG.debug("Backup node={}, window={}", id, windowId);
-    this.backupRequest.execute(aThis, id, windowId);
-    request = RequestType.UNDEFINED;
+    LOG.debug("Received request {} for (node={})", request, id);
+    requests.add(request);
   }
 
-  public void requestBackup(EndWindowCommand backupRequest)
+  public Thread getExecutingThread()
   {
-    this.backupRequest = backupRequest;
-    request = RequestType.BACKUP;
-    LOG.debug("Received backup request (node={})", id);
+    return executingThread;
   }
-
 }
