@@ -182,10 +182,6 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
             case BACKUP:
               ctx.backup(this, ((Tuple)payload).getWindowId());
               break;
-
-            case RESTORE:
-              logger.info("restore requests are not implemented");
-              break;
           }
         }
         catch (Exception e) {

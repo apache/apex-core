@@ -299,10 +299,6 @@ public abstract class AbstractModule extends AbstractBaseModule
                           ctx.backup(this, currentWindowId);
                           break;
 
-                        case RESTORE:
-                          logger.info("restore requests are not implemented");
-                          break;
-
                         case TERMINATE:
                           alive = false;
                           break;

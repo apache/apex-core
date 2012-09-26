@@ -21,11 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FSError;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
@@ -37,9 +33,7 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.BackupAgent;
 import com.malhartech.dag.Component;
-import com.malhartech.dag.ComponentContextPair;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleConfiguration;
 import com.malhartech.dag.ModuleContext;
@@ -91,7 +85,7 @@ public class StramChild
   private long heartbeatIntervalMillis = 1000;
   private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
-  private String checkpointDfsPath;
+  private String checkpointFsPath;
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
@@ -120,8 +114,8 @@ public class StramChild
       windowWidthMillis = 500;
     }
 
-    if ((this.checkpointDfsPath = ctx.getCheckpointDfsPath()) == null) {
-      this.checkpointDfsPath = "checkpoint-dfs-path-not-configured";
+    if ((this.checkpointFsPath = ctx.getCheckpointDfsPath()) == null) {
+      this.checkpointFsPath = "checkpoint-dfs-path-not-configured";
     }
     try {
       deploy(ctx.nodeList);
@@ -567,7 +561,14 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        context.requestBackup(new HdfsBackupAgent(StramUtils.getNodeSerDe(null)));
+        context.requestBackup(new ModuleContext.EndWindowCommand() {
+          @Override
+          public void execute(Module module, String id, long windowId) throws IOException {
+            new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, module, StramUtils.getNodeSerDe(null));
+            // record last backup window id for heartbeat
+            StramChild.this.backupInfo.put(id, windowId);
+          }
+        });
         break;
 
       default:
@@ -597,17 +598,17 @@ public class StramChild
 
   private void deployNodes(List<ModuleDeployInfo> nodeList) throws Exception
   {
-    ModuleSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
-    HdfsBackupAgent backupAgent = new HdfsBackupAgent(nodeSerDe);
+    ModuleSerDe moduleSerDe = StramUtils.getNodeSerDe(null);
+    HdfsBackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
     for (ModuleDeployInfo ndi: nodeList) {
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
           logger.debug("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
-          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
+          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId, moduleSerDe);
         }
         else {
-          foreignObject = nodeSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
+          foreignObject = moduleSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
         nodes.put(ndi.id, (Module)foreignObject);
       }
@@ -1033,48 +1034,6 @@ public class StramChild
         groupedInputStreams.put(source, collection);
       }
       collection.add(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName));
-    }
-  }
-
-  private class HdfsBackupAgent implements BackupAgent
-  {
-    private final ModuleSerDe serDe;
-
-    private HdfsBackupAgent(ModuleSerDe serde)
-    {
-      serDe = serde;
-    }
-
-    @Override
-    public void backup(String id, long windowId, Object o) throws IOException
-    {
-      Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId);
-      FileSystem fs = FileSystem.get(path.toUri(), conf);
-      logger.debug("Backup path: {}", path);
-      FSDataOutputStream output = fs.create(path);
-      try {
-        serDe.write(o, output);
-        // record last backup window id for heartbeat
-        StramChild.this.backupInfo.put(id, windowId);
-      }
-      finally {
-        output.close();
-      }
-
-    }
-
-    @Override
-    public Object restore(String id, long windowId) throws IOException
-    {
-      Path path = new Path(StramChild.this.checkpointDfsPath + "/" + id + "/" + windowId);
-      FileSystem fs = FileSystem.get(path.toUri(), conf);
-      FSDataInputStream input = fs.open(path);
-      try {
-        return serDe.read(input);
-      }
-      finally {
-        input.close();
-      }
     }
   }
 }

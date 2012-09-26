@@ -2,13 +2,15 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.stram;
+
+import com.malhartech.dag.Component;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class ComponentComplementPair<COMPONENT extends Component, COMPLEMENT>
+public abstract class ComponentComplementPair<COMPONENT extends Component<?,?>, COMPLEMENT>
 {
   public final COMPONENT component;
 
@@ -35,6 +37,7 @@ public abstract class ComponentComplementPair<COMPONENT extends Component, COMPL
     if (getClass() != obj.getClass()) {
       return false;
     }
+    @SuppressWarnings("unchecked")
     final ComponentComplementPair<COMPONENT, COMPLEMENT> other = (ComponentComplementPair<COMPONENT, COMPLEMENT>)obj;
     if (this.component != other.component && (this.component == null || !this.component.equals(other.component))) {
       return false;
