@@ -6,6 +6,7 @@ package com.malhartech.bufferserver;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -111,6 +112,21 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     channel.write(builder.build());
   }
 
+  static void purge(Channel channel, String id, long windowId)
+  {
+    Buffer.PurgeRequest.Builder prb = Buffer.PurgeRequest.newBuilder();
+    prb.setBaseSeconds((int)(windowId >> 32));
+    prb.setIdentifier(id);
+    prb.setType("irrelevant");
+
+    Data.Builder builder = Data.newBuilder();
+    builder.setType(DataType.PURGE_REQUEST);
+    builder.setPurgeRequest(prb);
+    builder.setWindowId((int)windowId);
+
+    channel.write(builder.build());
+  }
+
   /**
    *
    * @param arg0
@@ -120,7 +136,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
   @Override
   public void messageReceived(ChannelHandlerContext arg0, Object arg1) throws Exception
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    logger.info("received message {}", arg1);
   }
 
   /**

@@ -56,8 +56,6 @@ message PurgeRequest {
   required string identifier = 1;
   required string type = 2;
   optional uint32 base_seconds = 3 [default = 0];
-  optional uint32 start_window = 4 [default = 0];
-  optional uint32 end_window = 5 [default = 0x7fffffff];
 }
 
 message Data {
