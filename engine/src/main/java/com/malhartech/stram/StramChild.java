@@ -60,7 +60,7 @@ import com.malhartech.util.ScheduledThreadPoolExecutor;
 // make sure that setup and teardown is called through the same thread which calls process
 /**
  *
- * The main() for streaming node processes launched by {@link com.malhartech.stram.StramAppMaster}.<p>
+ * The main() for streaming container processes launched by {@link com.malhartech.stram.StramAppMaster}.<p>
  * <br>
  *
  */
@@ -131,11 +131,13 @@ public class StramChild
   }
 
   /**
-   * Initialize container with operators and streams in the context.
-   * Existing operators are not affected by this operation.
+   * Initialize container. Establishes heartbeat connection to the master
+   * process through the callback address provided on the command line. Deploys
+   * initial modules, then enters the heartbeat loop, which will only terminate
+   * once container receives shutdown request from the master. On shutdown,
+   * after exiting heartbeat loop, deactivate all modules and terminate
+   * processing threads.
    *
-   * @param ctx
-   * @throws IOException
    */
   public static void main(String[] args) throws Throwable
   {
