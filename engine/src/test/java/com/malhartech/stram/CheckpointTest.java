@@ -22,19 +22,19 @@ import org.slf4j.LoggerFactory;
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.DAG;
+import com.malhartech.dag.DAG.Operator;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleContext;
 import com.malhartech.dag.TestGeneratorInputModule;
-import com.malhartech.dag.DAG.Operator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stream.StramTestSupport;
 
 /**
