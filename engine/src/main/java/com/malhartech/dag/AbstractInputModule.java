@@ -87,7 +87,17 @@ public abstract class AbstractInputModule extends AbstractBaseModule
       }
 
       if (inWindow) {
+        int oldg = generatedTupleCount;
+        int oldp = processedTupleCount;
         process(NO_DATA);
+
+        if (generatedTupleCount == oldg && processedTupleCount == oldp) {
+          try {
+            Thread.sleep(spinMillis);
+          }
+          catch (InterruptedException ex) {
+          }
+        }
       }
     }
 
@@ -204,6 +214,6 @@ public abstract class AbstractInputModule extends AbstractBaseModule
       }
     }
 
-    processedTupleCount++;
+    generatedTupleCount++;
   }
 }

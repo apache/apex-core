@@ -203,6 +203,8 @@ public abstract class AbstractModule extends AbstractBaseModule
     if (s != null) {
       outputs.get(id).process(payload);
     }
+
+    generatedTupleCount++;
   }
 
   @Override
