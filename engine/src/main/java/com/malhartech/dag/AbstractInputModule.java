@@ -66,6 +66,19 @@ public abstract class AbstractInputModule extends AbstractBaseModule
             context.report(processedTupleCount, 0L, t.getWindowId());
             processedTupleCount = 0;
 
+            /*
+             * we prefer to cater to requests at the end of the window boundary.
+             */
+            try {
+              CircularBuffer<ModuleContext.ModuleRequest> requests = context.getRequests();
+              for (int i = requests.size(); i-- > 0;) {
+                requests.get().execute(this, context.getId(), t.getWindowId());
+              }
+            }
+            catch (Exception e) {
+              logger.warn("Exception while catering to external request {}", e);
+            }
+
             // i think there should be just one queue instead of one per port - lets defer till we find an example.
             for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
               final Sink s = outputs.get(e.getKey());
