@@ -4,12 +4,8 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.DAG;
 import com.malhartech.dag.DAG.Operator;
-import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.Module;
-import com.malhartech.dag.ModuleContext;
-import com.malhartech.dag.TestGeneratorInputModule;
+import com.malhartech.dag.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -21,11 +17,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stream.StramTestSupport;
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;

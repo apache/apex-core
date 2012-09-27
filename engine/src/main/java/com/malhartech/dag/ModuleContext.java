@@ -23,15 +23,6 @@ public class ModuleContext implements Context
 
   public interface ModuleRequest
   {
-    @SuppressWarnings("PublicInnerClass")
-    public static enum Type
-    {
-      UNDEFINED,
-      REPORT,
-      BACKUP,
-      TERMINATE
-    }
-
     /**
      * Command to be executed at subsequent end of window.
      * Current used for module state saving, but applicable more widely.
