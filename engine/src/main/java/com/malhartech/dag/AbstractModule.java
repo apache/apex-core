@@ -219,7 +219,7 @@ public abstract class AbstractModule extends AbstractBaseModule
    * long as there is useful workload for the node.
    */
   @Override
-  @SuppressWarnings({"SleepWhileInLoop", "incomplete-switch"})
+  @SuppressWarnings({"SleepWhileInLoop"})
   public final void activate(ModuleContext ctx)
   {
     activateSinks();

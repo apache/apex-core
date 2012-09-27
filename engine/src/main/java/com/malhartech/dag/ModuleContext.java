@@ -22,7 +22,7 @@ public class ModuleContext implements Context
   private static final Logger LOG = LoggerFactory.getLogger(ModuleContext.class);
 
   public interface ModuleRequest
-  {
+  {/*
     @SuppressWarnings("PublicInnerClass")
     public static enum Type
     {
@@ -31,7 +31,7 @@ public class ModuleContext implements Context
       BACKUP,
       TERMINATE
     }
-
+    */
     /**
      * Command to be executed at subsequent end of window.
      * Current used for module state saving, but applicable more widely.
@@ -83,7 +83,7 @@ public class ModuleContext implements Context
   }
 
   /**
-   * Reset counts for next heartbeateinterval and return current counts. This is called as part of the heartbeat processing.
+   * Reset counts for next heartbeat interval and return current counts. This is called as part of the heartbeat processing.
    *
    * @return int
    */

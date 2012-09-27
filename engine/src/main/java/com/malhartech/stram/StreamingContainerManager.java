@@ -95,6 +95,7 @@ public class StreamingContainerManager
   private final Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   private final PhysicalPlan plan;
   private final String checkpointFsPath;
+  private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
 
   public StreamingContainerManager(DAG dag) {
     this.plan = new PhysicalPlan(dag);
@@ -564,8 +565,6 @@ public class StreamingContainerManager
     }
     purgeCheckpoints();
   }
-
-  private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
 
   private void purgeCheckpoints() {
     BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath);
