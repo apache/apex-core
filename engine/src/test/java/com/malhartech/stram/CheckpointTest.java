@@ -4,29 +4,8 @@
  */
 package com.malhartech.stram;
 
-import java.io.File;
-import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import scala.actors.threadpool.Arrays;
-
-import com.malhartech.dag.DAG;
 import com.malhartech.dag.DAG.Operator;
-import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.Module;
-import com.malhartech.dag.ModuleContext;
-import com.malhartech.dag.TestGeneratorInputModule;
+import com.malhartech.dag.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -36,21 +15,33 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stream.StramTestSupport;
+import java.io.File;
+import java.net.InetSocketAddress;
+import java.util.*;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  */
-public class CheckpointTest {
+public class CheckpointTest
+{
   private static final Logger LOG = LoggerFactory.getLogger(CheckpointTest.class);
-
   private static File testWorkDir = new File("target", CheckpointTest.class.getName());
 
   @BeforeClass
-  public static void setup() {
+  public static void setup()
+  {
     try {
       FileContext.getLocalFSFileContext().delete(
-          new Path(testWorkDir.getAbsolutePath()), true);
-    } catch (Exception e) {
+              new Path(testWorkDir.getAbsolutePath()), true);
+    }
+    catch (Exception e) {
       throw new RuntimeException("could not cleanup test dir", e);
     }
   }
@@ -66,7 +57,7 @@ public class CheckpointTest {
     DAG dag = new DAG();
     // node with no inputs will be connected to window generator
     dag.addOperator("node1", TestGeneratorInputModule.class)
-        .setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "1");
+            .setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "1");
     dag.getConf().set(DAG.STRAM_CHECKPOINT_DIR, testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
@@ -89,6 +80,8 @@ public class CheckpointTest {
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());
     Assert.assertEquals("maxTupes", 1, ((TestGeneratorInputModule)node).getMaxTuples());
 
+    mses.tick(1);
+
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(context.getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
@@ -98,13 +91,8 @@ public class CheckpointTest {
 
     mses.tick(1); // end window 1, begin window 2
 
-    // node to move to next window before we verify the checkpoint state
-    // if (node.context.getLastProcessedWindowId() < 2) {
-    // Thread.sleep(500);
-    // }
-
     Assert.assertTrue("node >= window 1",
-        1 <= context.getLastProcessedWindowId());
+                      1 <= context.getLastProcessedWindowId());
 
     File cpFile1 = new File(testWorkDir, backupRequest.getNodeId() + "/1");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
@@ -148,8 +136,8 @@ public class CheckpointTest {
     Operator node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2")
-      .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
-      .addSink(node2.getInput(GenericTestModule.INPUT1));
+            .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
+            .addSink(node2.getInput(GenericTestModule.INPUT1));
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan deployer = dnm.getTopologyDeployer();
@@ -187,13 +175,11 @@ public class CheckpointTest {
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
 
     pnode1.checkpointWindows.add(1, 4L);
-    Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[]{3L, 4L, 5L}));
+    Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {3L, 4L, 5L}));
     checkpoints = new HashMap<PTOperator, Long>();
     cp = dnm.updateRecoveryCheckpoints(pnode1, checkpoints);
     Assert.assertEquals("checkpoint pnode1", 4L, cp);
-    Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[]{4L, 5L}));
+    Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));
 
   }
-
-
 }

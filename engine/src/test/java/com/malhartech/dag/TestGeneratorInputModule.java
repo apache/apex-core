@@ -20,12 +20,11 @@ public class TestGeneratorInputModule extends AbstractInputModule
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputModule.class);
   public static final String OUTPUT_PORT = "outputPort";
   public static final String KEY_MAX_TUPLES = "maxTuples";
-
-  private volatile boolean shutdown = false; // how do we handle this now that deactivate is not overridable.
   private String myConfigProperty;
   private int maxTuples = -1;
   private int generatedNumbers = 0;
   private boolean outputConnected = false;
+  private int remainingSleepTime;
 
   public int getMaxTuples()
   {
@@ -57,33 +56,25 @@ public class TestGeneratorInputModule extends AbstractInputModule
   }
 
   @Override
-  @SuppressWarnings("SleepWhileInLoop")
-  public void run()
+  public void process(Object payload)
   {
-    while (!shutdown) {
-      if (outputConnected) {
-        generatedNumbers++;
-        LOG.info("sending tuple " + generatedNumbers);
-        emit(OUTPUT_PORT, String.valueOf(generatedNumbers));
-        if (maxTuples > 0 && maxTuples < generatedNumbers) {
-          break;
-        }
-      }
+    if (remainingSleepTime > 0) {
       try {
-        Thread.sleep(1000);
+        Thread.sleep(spinMillis);
+        remainingSleepTime -= spinMillis;
       }
-      catch (InterruptedException e) {
-        LOG.info("Exiting generator loop.", e);
-        break;
+      catch (InterruptedException ie) {
       }
     }
-    LOG.info("Finished generating tuples");
-  }
+    else if (outputConnected) {
+      generatedNumbers++;
+      LOG.info("sending tuple " + generatedNumbers);
+      emit(OUTPUT_PORT, String.valueOf(generatedNumbers));
+      if (maxTuples > 0 && maxTuples < generatedNumbers) {
+        deactivate();
+      }
 
-  @Override
-  public void teardown() {
-    shutdown = true;
-    super.teardown();
+      remainingSleepTime = 1000;
+    }
   }
-
 }

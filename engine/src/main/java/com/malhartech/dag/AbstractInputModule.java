@@ -5,11 +5,13 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.dag.ModuleContext.ModuleRequest;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,16 +20,17 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputModule extends AbstractBaseModule implements Runnable
+public abstract class AbstractInputModule extends AbstractBaseModule
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractInputModule.class);
-  private transient HashMap<String, CircularBuffer<Object>> afterBeginWindows;
-  private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows;
-  private transient ModuleContext ctx;
+  private transient final Tuple NO_DATA = new Tuple(DataType.NO_DATA);
+  private transient CircularBuffer<Tuple> controlTuples;
+  private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
+  private boolean alive;
 
   public AbstractInputModule()
   {
-    afterBeginWindows = new HashMap<String, CircularBuffer<Object>>();
+    controlTuples = new CircularBuffer<Tuple>(1024);
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
   }
 
@@ -35,70 +38,112 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
   @SuppressWarnings("SleepWhileInLoop")
   public final void activate(ModuleContext context)
   {
-    ctx = context;
     activateSinks();
+    alive = true;
 
-    try {
-      run();
-    }
-    catch (Exception ex) {
-      logger.error("{} has an opportunity to handle {}", this, ex);
-    }
-
-    /**
-     * at this point the thread may still have pending interrupt, which we should clear.
-     */
-    if (Thread.interrupted()) {
-      logger.info("{} has an opportunity to handle interrupts to optimize its operations", this);
-    }
-
-    try {
-      EndStreamTuple est = new EndStreamTuple();
-      for (CircularBuffer<Tuple> cb: afterEndWindows.values()) {
-        while (true) {
-          try {
-            cb.add(est);
+    boolean inWindow = false;
+    Tuple t = null;
+    while (alive) {
+      for (int size = controlTuples.size(); size-- > 0;) {
+        t = controlTuples.get();
+        switch (t.getType()) {
+          case BEGIN_WINDOW:
+            for (int i = sinks.length; i-- > 0;) {
+              sinks[i].process(t);
+            }
+            inWindow = true;
+            NO_DATA.setWindowId(t.getWindowId());
+            beginWindow();
             break;
-          }
-          catch (BufferOverflowException boe) {
+
+          case END_WINDOW:
+            endWindow();
+            inWindow = false;
+            for (int i = sinks.length; i-- > 0;) {
+              sinks[i].process(t);
+            }
+
+            /*
+             * we prefer to cater to requests at the end of the window boundary.
+             */
+            try {
+              CircularBuffer<ModuleContext.ModuleRequest> requests = context.getRequests();
+              for (int i = requests.size(); i-- > 0;) {
+                logger.debug("endwindow: " + t.getWindowId() + "lastprocessed: " + context.getLastProcessedWindowId());
+                requests.get().execute(this, context.getId(), t.getWindowId());
+              }
+            }
+            catch (Exception e) {
+              logger.warn("Exception while catering to external request {}", e);
+            }
+
+            context.report(generatedTupleCount, 0L, t.getWindowId());
+            generatedTupleCount = 0;
+
+            // i think there should be just one queue instead of one per port - lets defer till we find an example.
+            for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
+              final Sink s = outputs.get(e.getKey());
+              if (s != null) {
+                CircularBuffer<?> cb = e.getValue();
+                for (int i = cb.size(); i-- > 0;) {
+                  s.process(cb.get());
+                }
+              }
+            }
+            break;
+
+          default:
+            for (int i = sinks.length; i-- > 0;) {
+              sinks[i].process(t);
+            }
+            break;
+        }
+      }
+
+      if (inWindow) {
+        int oldg = generatedTupleCount;
+        int oldp = processedTupleCount;
+        process(NO_DATA);
+
+        if (generatedTupleCount == oldg && processedTupleCount == oldp) {
+          try {
             Thread.sleep(spinMillis);
           }
-        }
-      }
-
-      /*
-       * make sure that it's sent.
-       */
-      boolean pendingMessages;
-      do {
-        Thread.sleep(spinMillis);
-
-        pendingMessages = false;
-        for (CircularBuffer<Tuple> cb: afterEndWindows.values()) {
-          if (cb.size() > 0) {
-            pendingMessages = true;
-            break;
+          catch (InterruptedException ex) {
           }
         }
       }
-      while (pendingMessages && sinks.length > 0);
     }
-    catch (InterruptedException ex) {
-      logger.info("Not waiting for the emitted tuples to be flushed as got interrupted by {}", ex);
+
+    logger.debug("{} sending EndOfStream", this);
+
+    if (inWindow) {
+      EndWindowTuple ewt = new EndWindowTuple();
+      ewt.setWindowId(t.getWindowId());
+      for (final Sink output: outputs.values()) {
+        output.process(ewt);
+      }
+    }
+
+    /*
+     * since we are going away, we should let all the downstream operators know that.
+     */
+    // we need to think about this as well.
+    EndStreamTuple est = new EndStreamTuple();
+    if (t != null) {
+      est.setWindowId(t.getWindowId());
+    }
+    for (final Sink output: outputs.values()) {
+      output.process(est);
     }
 
     deactivateSinks();
-    ctx = null;
   }
 
   @Override
   public final void deactivate()
   {
-    if (ctx == null) {
-      throw new IllegalStateException("deactivate is called on non active module!");
-    }
-
-    ctx.getExecutingThread().interrupt();
+    alive = false;
   }
 
   @Override
@@ -106,7 +151,28 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
   {
     Sink retvalue;
     if (Component.INPUT.equals(port)) {
-      retvalue = this;
+      retvalue = new Sink()
+      {
+        @Override
+        @SuppressWarnings("SleepWhileInLoop")
+        public void process(Object payload)
+        {
+          while (true) {
+            try {
+              controlTuples.add((Tuple)payload);
+              break;
+            }
+            catch (BufferOverflowException boe) {
+              try {
+                Thread.sleep(spinMillis);
+              }
+              catch (InterruptedException ex) {
+                break;
+              }
+            }
+          }
+        }
+      };
     }
     else {
       PortAnnotation pa = getPort(port);
@@ -117,11 +183,10 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
       port = pa.name();
       if (component == null) {
         outputs.remove(port);
-        afterBeginWindows.remove(port);
+        afterEndWindows.remove(port);
       }
       else {
         outputs.put(port, component);
-        afterBeginWindows.put(port, new CircularBuffer<Object>(bufferCapacity));
         afterEndWindows.put(port, new CircularBuffer<Tuple>(bufferCapacity));
       }
 
@@ -135,112 +200,34 @@ public abstract class AbstractInputModule extends AbstractBaseModule implements 
     return retvalue;
   }
 
-  @Override
-  @SuppressWarnings("SillyAssignment")
-  public final void process(Object payload)
-  {
-    Tuple t = (Tuple)payload;
-    switch (t.getType()) {
-      case BEGIN_WINDOW:
-        beginWindow();
-        for (int i = sinks.length; i-- > 0;) {
-          sinks[i].process(payload);
-        }
-
-        for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
-          final Sink s = outputs.get(e.getKey());
-          if (s != null) {
-            CircularBuffer<?> cb = e.getValue();
-            for (int i = cb.size(); i-- > 0;) {
-              s.process(cb.get());
-            }
-          }
-        }
-        break;
-
-      case END_WINDOW:
-        for (Entry<String, CircularBuffer<Object>> e: afterBeginWindows.entrySet()) {
-          final Sink s = outputs.get(e.getKey());
-          if (s != null) {
-            CircularBuffer<?> cb = e.getValue();
-            for (int i = cb.size(); i-- > 0;) {
-              s.process(cb.get());
-            }
-          }
-        }
-        endWindow();
-        for (int i = sinks.length; i-- > 0;) {
-          sinks[i].process(payload);
-        }
-
-        ctx.report(processedTupleCount, 0L, ((Tuple)payload).getWindowId());
-        processedTupleCount = 0;
-
-        try {
-          CircularBuffer<ModuleRequest> requests = ctx.getRequests();
-          for (int i = requests.size(); i-- > 0;) {
-            requests.get().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
-          }
-        }
-        catch (Exception e) {
-          logger.warn("Exception while catering to external request {}", e);
-        }
-
-        // i think there should be just one queue instead of one per port - lets defer till we find an example.
-        for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
-          final Sink s = outputs.get(e.getKey());
-          if (s != null) {
-            CircularBuffer<?> cb = e.getValue();
-            for (int i = cb.size(); i-- > 0;) {
-              s.process(cb.get());
-            }
-          }
-        }
-        break;
-
-      default:
-        for (int i = sinks.length; i-- > 0;) {
-          sinks[i].process(payload);
-        }
-    }
-  }
-
-  @SuppressWarnings("SleepWhileInLoop")
-  public void emit(String id, Object payload)
+  /**
+   * Emit the payload to the specified output port.
+   *
+   * It's expected that the output port is active, otherwise NullPointerException is thrown.
+   *
+   * @param id
+   * @param payload
+   */
+  public final void emit(String id, Object payload)
   {
     if (payload instanceof Tuple) {
-      while (true) {
+      CircularBuffer<Tuple> cb = afterEndWindows.get(id);
+      if (cb != null) {
         try {
-          afterEndWindows.get(id).add((Tuple)payload);
-          break;
+          cb.add((Tuple)payload);
         }
-        catch (BufferOverflowException ex) {
-          try {
-            Thread.sleep(spinMillis);
-          }
-          catch (InterruptedException ex1) {
-            break;
-          }
+        catch (BufferOverflowException boe) {
+          logger.error("Emitting too many control tuples within a window, please check your logic or increase the buffer size");
         }
       }
     }
     else {
-      while (true) {
-        try {
-          afterBeginWindows.get(id).add(payload);
-          break;
-        }
-        catch (BufferOverflowException ex) {
-          try {
-            Thread.sleep(spinMillis);
-          }
-          catch (InterruptedException ex1) {
-            break;
-          }
-        }
+      final Sink s = outputs.get(id);
+      if (s != null) {
+        outputs.get(id).process(payload);
       }
     }
 
-    processedTupleCount++;
+    generatedTupleCount++;
   }
 }

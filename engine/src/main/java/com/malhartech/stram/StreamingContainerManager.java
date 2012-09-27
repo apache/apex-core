@@ -575,6 +575,7 @@ public class StreamingContainerManager
         LOG.error("Failed to purge checkpoint " + p, e);
       }
     }
+    purgeCheckpoints.clear();
   }
 
   /**

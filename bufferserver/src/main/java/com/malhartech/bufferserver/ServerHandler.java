@@ -7,9 +7,11 @@ package com.malhartech.bufferserver;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.PurgeRequest;
+import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.policy.*;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
@@ -299,6 +301,20 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
 
   private void handlePurgeRequest(PurgeRequest purgeRequest, ChannelHandlerContext ctx, int windowId)
   {
-    throw new UnsupportedOperationException("Not yet implemented");
+    DataList dl;
+    synchronized (publisher_bufffers) {
+      dl = publisher_bufffers.get(purgeRequest.getIdentifier());
+    }
+
+    SimpleData.Builder sdb = SimpleData.newBuilder();
+    if (dl == null) {
+      sdb.setData(ByteString.copyFromUtf8("invalid identifier '" + purgeRequest.getIdentifier() + "'"));
+    }
+    else {
+      dl.purge(purgeRequest.getBaseSeconds(), windowId, new ProtobufDataInspector());
+      sdb.setData(ByteString.copyFromUtf8("request sent for processing"));
+    }
+
+    ctx.write(sdb.build()).addListener(ChannelFutureListener.CLOSE);
   }
 }

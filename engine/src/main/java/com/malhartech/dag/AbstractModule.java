@@ -203,6 +203,8 @@ public abstract class AbstractModule extends AbstractBaseModule
     if (s != null) {
       outputs.get(id).process(payload);
     }
+
+    generatedTupleCount++;
   }
 
   @Override
@@ -257,10 +259,10 @@ public abstract class AbstractModule extends AbstractBaseModule
                   activePort.get();
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
-                  beginWindow();
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].process(t);
                   }
+                  beginWindow();
                   receivedEndWindow = 0;
                 }
                 else if (t.getWindowId() == currentWindowId) {

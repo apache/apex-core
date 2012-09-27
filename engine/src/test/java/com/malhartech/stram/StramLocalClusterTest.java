@@ -220,6 +220,7 @@ public class StramLocalClusterTest
    * @return
    * @throws InterruptedException
    */
+  @SuppressWarnings("SleepWhileInLoop")
   private LocalStramChild waitForActivation(StramLocalCluster localCluster, Operator nodeDecl) throws InterruptedException
   {
     PTOperator node = localCluster.findByLogicalNode(nodeDecl);
@@ -243,6 +244,7 @@ public class StramLocalClusterTest
     }
   }
 
+  @SuppressWarnings("SleepWhileInLoop")
   private void waitForWindowComplete(ModuleContext nodeCtx, long windowId) throws InterruptedException
   {
     while (nodeCtx.getLastProcessedWindowId() < windowId) {

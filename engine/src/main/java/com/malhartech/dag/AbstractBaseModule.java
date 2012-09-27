@@ -19,6 +19,7 @@ public abstract class AbstractBaseModule implements Module
   protected transient int spinMillis = 10;
   protected transient int bufferCapacity = 1024 * 1024;
   protected transient int processedTupleCount;
+  protected transient int generatedTupleCount;
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile transient Sink[] sinks = NO_SINKS;
 
@@ -85,6 +86,14 @@ public abstract class AbstractBaseModule implements Module
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(payload);
     }
+
+    generatedTupleCount++;
+  }
+
+  public final void emit(Sink s, Object payload)
+  {
+    s.process(payload);
+    generatedTupleCount++;
   }
 
   @Override

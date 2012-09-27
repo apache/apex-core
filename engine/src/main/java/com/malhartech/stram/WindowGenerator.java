@@ -78,6 +78,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
       }
 
       advanceWindow();
+
       run();
     }
     else {
@@ -105,8 +106,8 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   public void run()
   {
     long timespanBetween2Resets = (long)MAX_WINDOW_ID * windowWidthMillis + windowWidthMillis;
-    resetWindowMillis = firstWindowMillis - ((firstWindowMillis - resetWindowMillis) % timespanBetween2Resets);
-    windowId = (int)((firstWindowMillis - resetWindowMillis) / windowWidthMillis);
+    resetWindowMillis = currentWindowMillis - ((currentWindowMillis - resetWindowMillis) % timespanBetween2Resets);
+    windowId = (int)((currentWindowMillis - resetWindowMillis) / windowWidthMillis);
 
     //    logger.debug("generating reset -> begin {}", Long.toHexString(currentWindowMillis));
 
