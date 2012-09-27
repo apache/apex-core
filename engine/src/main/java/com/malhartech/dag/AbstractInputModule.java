@@ -6,12 +6,10 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
-import com.malhartech.dag.ModuleContext.ModuleRequest;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
