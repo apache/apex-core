@@ -63,8 +63,8 @@ public abstract class AbstractInputModule extends AbstractBaseModule
               sinks[i].process(t);
             }
 
-            context.report(processedTupleCount, 0L, t.getWindowId());
-            processedTupleCount = 0;
+            context.report(generatedTupleCount, 0L, t.getWindowId());
+            generatedTupleCount = 0;
 
             /*
              * we prefer to cater to requests at the end of the window boundary.
