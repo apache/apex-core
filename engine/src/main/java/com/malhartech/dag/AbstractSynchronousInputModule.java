@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractSynchronousInputModule extends AbstractInputModule implements Runnable
 {
-  public static final Logger logger = LoggerFactory.getLogger(AbstractSynchronousInputModule.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractSynchronousInputModule.class);
   protected transient Thread syncThread;
   protected transient HashMap<String, CircularBuffer> handoverBuffers = new HashMap<String, CircularBuffer>();
 
