@@ -90,8 +90,8 @@ public class ManualScheduledExecutorService extends ScheduledThreadPoolExecutor 
       if (tr.time > currentTime) {
         break;
       }
-      tr.runnable.run();
       queue.poll();
+      tr.runnable.run();
     }
   }
 }

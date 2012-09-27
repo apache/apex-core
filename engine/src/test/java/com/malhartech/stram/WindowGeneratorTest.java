@@ -8,14 +8,78 @@ import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WindowGeneratorTest
 {
+  public static final Logger logger = LoggerFactory.getLogger(WindowGeneratorTest.class);
+  @Test
+  public void test2ndResetWindow() throws InterruptedException
+  {
+    logger.debug("Testing 2nd Reset Window");
+
+    ManualScheduledExecutorService msse = new ManualScheduledExecutorService(1);
+    WindowGenerator generator = new WindowGenerator(msse);
+
+    final Configuration config = new Configuration();
+    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0L);
+    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
+
+    generator.setup(config);
+
+    final AtomicInteger beginWindowCount = new AtomicInteger(0);
+    final AtomicInteger endWindowCount = new AtomicInteger(0);
+    final AtomicInteger resetWindowCount = new AtomicInteger(0);
+    final AtomicBoolean loggingEnabled = new AtomicBoolean(true);
+
+    generator.connect(Component.OUTPUT, new Sink() {
+      @Override
+      public void process(Object payload)
+      {
+        if (loggingEnabled.get()) {
+          logger.debug(payload.toString());
+        }
+
+        switch (((Tuple)payload).getType()) {
+          case BEGIN_WINDOW:
+            beginWindowCount.incrementAndGet();
+            break;
+
+          case END_WINDOW:
+            endWindowCount.incrementAndGet();
+            break;
+
+          case RESET_WINDOW:
+            resetWindowCount.incrementAndGet();
+            break;
+        }
+      }
+    });
+
+    generator.activate(null);
+
+    msse.tick(1);
+    msse.tick(1);
+    loggingEnabled.set(false);
+    for (int i = 0; i < WindowGenerator.MAX_WINDOW_ID - 2; i++) {
+      msse.tick(1);
+    }
+    loggingEnabled.set(true);
+    msse.tick(1);
+
+    Thread.sleep(20);
+
+    Assert.assertEquals("begin windows", WindowGenerator.MAX_WINDOW_ID + 1 + 1, beginWindowCount.get());
+    Assert.assertEquals("end windows", WindowGenerator.MAX_WINDOW_ID + 1, endWindowCount.get());
+    Assert.assertEquals("reset windows", 2, resetWindowCount.get());
+  }
   /**
    * Test of resetWindow functionality of WindowGenerator.
    */
