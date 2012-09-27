@@ -30,7 +30,6 @@ public class ModuleContext implements Context
     public void execute(Module module, String id, long windowId) throws IOException;
   }
   private long lastProcessedWindowId;
-  private final Thread executingThread;
   private final String id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
@@ -65,7 +64,6 @@ public class ModuleContext implements Context
   public ModuleContext(String id, Thread t)
   {
     this.id = id;
-    executingThread = t;
   }
 
   public String getId()
@@ -109,10 +107,5 @@ public class ModuleContext implements Context
   {
     LOG.debug("Received request {} for (node={})", request, id);
     requests.add(request);
-  }
-
-  public Thread getExecutingThread()
-  {
-    return executingThread;
   }
 }
