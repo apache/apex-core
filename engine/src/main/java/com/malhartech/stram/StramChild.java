@@ -501,7 +501,7 @@ public class StramChild
         }
       }
       catch (Exception e) {
-        logger.warn("Exception received (may be during shutdown?) {}", e.getLocalizedMessage(), e);
+        logger.warn("Exception received (may be during shutdown?)", e);
       }
     }
     logger.debug("Exiting hearbeat loop");

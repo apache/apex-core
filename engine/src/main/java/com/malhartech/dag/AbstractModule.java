@@ -33,7 +33,6 @@ public abstract class AbstractModule extends AbstractBaseModule
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractModule.class);
   private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
-  private transient boolean alive;
 
   public final String getActivePort()
   {
@@ -190,30 +189,6 @@ public abstract class AbstractModule extends AbstractBaseModule
   }
 
   /**
-   * Emit the payload to the specified output port.
-   *
-   * It's expected that the output port is active, otherwise NullPointerException is thrown.
-   *
-   * @param id
-   * @param payload
-   */
-  public final void emit(String id, Object payload)
-  {
-    final Sink s = outputs.get(id);
-    if (s != null) {
-      outputs.get(id).process(payload);
-    }
-
-    generatedTupleCount++;
-  }
-
-  @Override
-  public final void deactivate()
-  {
-    alive = false;
-  }
-
-  /**
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
    * Although it seems that it's called from another thread which implements Runnable, so we take this
@@ -225,6 +200,8 @@ public abstract class AbstractModule extends AbstractBaseModule
   public final void activate(ModuleContext ctx)
   {
     activateSinks();
+    alive = true;
+    activated(ctx);
 
     int totalQueues = inputs.size();
 
@@ -237,7 +214,6 @@ public abstract class AbstractModule extends AbstractBaseModule
 
     boolean shouldWait;
     long currentWindowId = 0;
-    alive = true;
 
     do {
       shouldWait = true;
@@ -396,6 +372,8 @@ public abstract class AbstractModule extends AbstractBaseModule
     }
     while (alive);
 
+
+    deactivated(ctx);
     logger.debug("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream operators know that.

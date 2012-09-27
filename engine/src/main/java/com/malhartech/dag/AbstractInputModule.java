@@ -24,7 +24,6 @@ public abstract class AbstractInputModule extends AbstractBaseModule
   private transient final Tuple NO_DATA = new Tuple(DataType.NO_DATA);
   private transient CircularBuffer<Tuple> controlTuples;
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
-  private boolean alive;
 
   public AbstractInputModule()
   {
@@ -38,6 +37,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
   {
     activateSinks();
     alive = true;
+    activated(context);
 
     boolean inWindow = false;
     Tuple t = null;
@@ -113,8 +113,6 @@ public abstract class AbstractInputModule extends AbstractBaseModule
       }
     }
 
-    logger.debug("{} sending EndOfStream", this);
-
     if (inWindow) {
       EndWindowTuple ewt = new EndWindowTuple();
       ewt.setWindowId(t.getWindowId());
@@ -123,6 +121,8 @@ public abstract class AbstractInputModule extends AbstractBaseModule
       }
     }
 
+    deactivated(context);
+    logger.debug("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
@@ -136,12 +136,6 @@ public abstract class AbstractInputModule extends AbstractBaseModule
     }
 
     deactivateSinks();
-  }
-
-  @Override
-  public final void deactivate()
-  {
-    alive = false;
   }
 
   @Override
@@ -196,36 +190,5 @@ public abstract class AbstractInputModule extends AbstractBaseModule
 
     connected(port, component);
     return retvalue;
-  }
-
-  /**
-   * Emit the payload to the specified output port.
-   *
-   * It's expected that the output port is active, otherwise NullPointerException is thrown.
-   *
-   * @param id
-   * @param payload
-   */
-  public final void emit(String id, Object payload)
-  {
-    if (payload instanceof Tuple) {
-      CircularBuffer<Tuple> cb = afterEndWindows.get(id);
-      if (cb != null) {
-        try {
-          cb.add((Tuple)payload);
-        }
-        catch (BufferOverflowException boe) {
-          logger.error("Emitting too many control tuples within a window, please check your logic or increase the buffer size");
-        }
-      }
-    }
-    else {
-      final Sink s = outputs.get(id);
-      if (s != null) {
-        outputs.get(id).process(payload);
-      }
-    }
-
-    generatedTupleCount++;
   }
 }

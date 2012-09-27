@@ -22,6 +22,7 @@ public abstract class AbstractBaseModule implements Module
   protected transient int generatedTupleCount;
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile transient Sink[] sinks = NO_SINKS;
+  protected transient boolean alive;
 
   // optimize the performance of this method.
   protected PortAnnotation getPort(String id)
@@ -59,6 +60,12 @@ public abstract class AbstractBaseModule implements Module
   }
 
   @Override
+  public final void deactivate()
+  {
+    alive = false;
+  }
+
+  @Override
   public void beginWindow()
   {
   }
@@ -72,6 +79,16 @@ public abstract class AbstractBaseModule implements Module
    * @param dagpart
    */
   public void connected(String id, Sink dagpart)
+  {
+    /* implementation to be optionally overridden by the user */
+  }
+
+  public void activated(ModuleContext context)
+  {
+    /* implementation to be optionally overridden by the user */
+  }
+
+  public void deactivated(ModuleContext context)
   {
     /* implementation to be optionally overridden by the user */
   }
@@ -90,9 +107,18 @@ public abstract class AbstractBaseModule implements Module
     generatedTupleCount++;
   }
 
-  public final void emit(Sink s, Object payload)
+  /**
+   * Emit the payload to the specified output port.
+   *
+   * It's expected that the output port is active, otherwise NullPointerException is thrown.
+   *
+   * @param id
+   * @param payload
+   */
+  public void emit(String id, Object payload)
   {
-    s.process(payload);
+    final Sink s = outputs.get(id);
+    outputs.get(id).process(payload);
     generatedTupleCount++;
   }
 
