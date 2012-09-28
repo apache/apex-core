@@ -41,7 +41,6 @@
     <module>stram</module>
     <module>library</module>
     <module>demos</module>
-    <module>examples/twitter</module>
     <module>examples/wordcount</module>
     <module>examples/performance</module>
   </modules>
