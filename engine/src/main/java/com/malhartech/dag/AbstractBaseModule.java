@@ -7,6 +7,8 @@ package com.malhartech.dag;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -14,6 +16,7 @@ import java.util.HashMap;
  */
 public abstract class AbstractBaseModule implements Module
 {
+  private static final Logger logger = LoggerFactory.getLogger(AbstractBaseModule.class);
   protected transient String id;
   protected final transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   protected transient int spinMillis = 10;
@@ -213,5 +216,18 @@ public abstract class AbstractBaseModule implements Module
   public int getProcessedTupleCount()
   {
     return processedTupleCount;
+  }
+
+  protected void emitEndStream()
+  {
+    logger.debug("{} sending EndOfStream", this);
+    /*
+     * since we are going away, we should let all the downstream operators know that.
+     */
+    // we need to think about this as well.
+    EndStreamTuple est = new EndStreamTuple();
+    for (final Sink output: outputs.values()) {
+      output.process(est);
+    }
   }
 }

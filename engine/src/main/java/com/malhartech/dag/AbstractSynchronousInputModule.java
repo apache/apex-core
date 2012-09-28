@@ -30,7 +30,7 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
     PortAnnotation port = getPort(id);
     if (port != null && (port.type() == PortAnnotation.PortType.OUTPUT || port.type() == PortAnnotation.PortType.BIDI)) {
       if (dagpart == null) {
-        handoverBuffers.remove(port.name());
+        handoverBuffers.remove(port.name()); // is it good thing to remove this?
       }
       else {
         handoverBuffers.put(port.name(), new CircularBuffer<Object>(bufferCapacity));

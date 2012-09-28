@@ -122,19 +122,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
     }
 
     deactivated(context);
-    logger.debug("{} sending EndOfStream", this);
-    /*
-     * since we are going away, we should let all the downstream operators know that.
-     */
-    // we need to think about this as well.
-    EndStreamTuple est = new EndStreamTuple();
-    if (t != null) {
-      est.setWindowId(t.getWindowId());
-    }
-    for (final Sink output: outputs.values()) {
-      output.process(est);
-    }
-
+    emitEndStream();
     deactivateSinks();
   }
 
