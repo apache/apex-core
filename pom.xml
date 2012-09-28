@@ -40,7 +40,7 @@
     <module>bufferserver</module>
     <module>stram</module>
     <module>library</module>
-    <module>examples/ads</module>
+    <module>demos</module>
     <module>examples/twitter</module>
     <module>examples/wordcount</module>
     <module>examples/performance</module>
