@@ -7,7 +7,10 @@ package com.malhartech.dag;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,19 +24,32 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractSynchronousInputModule extends AbstractInputModule implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractSynchronousInputModule.class);
-  protected transient Thread syncThread;
   protected transient HashMap<String, CircularBuffer> handoverBuffers = new HashMap<String, CircularBuffer>();
+  protected transient Thread syncThread;
 
   @Override
+  @SuppressWarnings("SleepWhileInLoop")
   public void connected(String id, Sink dagpart)
   {
     PortAnnotation port = getPort(id);
     if (port != null && (port.type() == PortAnnotation.PortType.OUTPUT || port.type() == PortAnnotation.PortType.BIDI)) {
+      CircularBuffer cb = handoverBuffers.get(port.name());
       if (dagpart == null) {
-        handoverBuffers.remove(port.name()); // is it good thing to remove this?
+        /* this is remove request */
+        if (cb != null) {
+          try {
+            while (cb.size() > 0) {
+              Thread.sleep(spinMillis);
+            }
+          }
+          catch (InterruptedException ie) {
+            logger.info("{} aborting handing over messages downstream due to interrupt", this);
+          }
+        }
       }
-      else {
-        handoverBuffers.put(port.name(), new CircularBuffer<Object>(bufferCapacity));
+      else if (cb == null) {
+        /* this is a new connection request */
+        handoverBuffers.put(port.name(), new CircularBuffer(bufferCapacity));
       }
     }
   }
