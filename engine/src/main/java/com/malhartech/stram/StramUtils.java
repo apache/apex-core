@@ -78,7 +78,7 @@ public abstract class StramUtils {
       throw new IllegalArgumentException("Error creating instance of class: " + nodeClass, e);
     }
     catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException("Constructor with NodeContext not found: " + nodeClass, e);
+      throw new IllegalArgumentException("Constructor not found: " + nodeClass, e);
     }
     catch (InstantiationException e) {
       throw new IllegalArgumentException("Failed to instantiate: " + nodeClass, e);

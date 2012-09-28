@@ -168,8 +168,6 @@ public abstract class AbstractModule extends AbstractBaseModule
         break;
     }
 
-    // irrelevant place : think about window generator logic as well
-
     connected(pa.name(), dagpart);
     return s;
   }
