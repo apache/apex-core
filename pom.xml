@@ -41,7 +41,7 @@
     <module>stram</module>
     <module>library</module>
     <module>demos</module>
-    <module>examples/wordcount</module>
-    <module>examples/performance</module>
+    <!-- module>examples/wordcount</module>
+    <module>examples/performance</module -->
   </modules>
 </project>
