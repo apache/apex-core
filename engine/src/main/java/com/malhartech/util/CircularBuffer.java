@@ -19,6 +19,11 @@ import java.util.Collection;
  */
 public class CircularBuffer<T>
 {
+  //static {
+  //  System.err.println("CircularBuffer clinit " + Thread.currentThread());
+  //  Thread.dumpStack();
+  //}
+
   private static final BufferUnderflowException underflow = new BufferUnderflowException();
   private static final BufferOverflowException overflow = new BufferOverflowException();
   private final T[] buffer;

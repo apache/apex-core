@@ -44,7 +44,7 @@ public class LaunchContainerRunnable implements Runnable
   private final YarnClientHelper yarnClient;
   private final Map<String, String> containerEnv = new HashMap<String, String>();
   private final InetSocketAddress heartbeatAddress;
-  private final DAG topology;
+  private final DAG dag;
   private final Container container;
 
   /**
@@ -55,7 +55,7 @@ public class LaunchContainerRunnable implements Runnable
     this.container = lcontainer;
     this.yarnClient = yarnClient;
     this.heartbeatAddress = heartbeatAddress;
-    this.topology = topology;
+    this.dag = topology;
   }
 
   private void setClasspath(Map<String, String> env)
@@ -136,7 +136,7 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(yarnClient.getConf());
-      addLibJarsToLocalResources(topology.getLibJars(), localResources, fs);
+      addLibJarsToLocalResources(dag.getLibJars(), localResources, fs);
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
@@ -207,12 +207,17 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add("java");
     }
 
-    if (topology.isDebug()) {
+    if (dag.isDebug()) {
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
-    // TODO: heap size - VM may use more memory and the container may get killed
-    // Set Xmx based on am memory size
-    vargs.add("-Xmx" + container.getResource().getMemory() + "m");
+
+    if (dag.getConf().get(DAG.STRAM_CONTAINER_JVM_OPTS) != null) {
+      vargs.add(dag.getConf().get(DAG.STRAM_CONTAINER_JVM_OPTS));
+    } else {
+      // default Xmx based on total allocated memory size
+      // default heap size 75% of total memory
+      vargs.add("-Xmx" + (container.getResource().getMemory()*3/4) + "m");
+    }
 
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);

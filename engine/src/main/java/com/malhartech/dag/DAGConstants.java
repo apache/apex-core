@@ -46,6 +46,7 @@ public interface DAGConstants {
    * The amount of memory to be requested for streaming containers. Not used in local mode.
    */
   public static final String STRAM_CONTAINER_MEMORY_MB = "stram.containerMemoryMB";
+  public static final String STRAM_CONTAINER_JVM_OPTS = "stram.containerJvmOpts";
 
   /**
    * The amount of memory to be requested for the application master. Not used in local mode.
