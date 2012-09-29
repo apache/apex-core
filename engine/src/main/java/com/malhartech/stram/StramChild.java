@@ -139,7 +139,7 @@ public class StramChild
    */
   public static void main(String[] args) throws Throwable
   {
-    logger.debug("Child starting with classpath: {}", System.getProperty("java.class.path"));
+    logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
     //defaultConf.addResource(MRJobConfig.JOB_CONF_FILE);
