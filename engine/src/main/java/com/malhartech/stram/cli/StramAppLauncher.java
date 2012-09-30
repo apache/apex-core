@@ -22,6 +22,7 @@ import java.util.jar.JarEntry;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.log4j.lf5.util.StreamUtils;
@@ -91,7 +92,7 @@ public class StramAppLauncher {
 
 
   public static interface AppConfig {
-      DAG createApp();
+      DAG createApp(Configuration conf);
       String getName();
   }
 
@@ -103,9 +104,9 @@ public class StramAppLauncher {
     }
 
     @Override
-    public DAG createApp() {
+    public DAG createApp(Configuration conf) {
       try {
-        return DAGPropertiesBuilder.create(new Configuration(), propertyFile.getAbsolutePath());
+        return DAGPropertiesBuilder.create(conf, propertyFile.getAbsolutePath());
       } catch (IOException e) {
         throw new IllegalArgumentException("Failed to load: " + this, e);
       }
@@ -253,11 +254,11 @@ public class StramAppLauncher {
             }
 
             @Override
-            public DAG createApp() {
+            public DAG createApp(Configuration conf) {
               // load class from current context class loader
               Class<? extends ApplicationFactory> c = StramUtils.classForName(className, ApplicationFactory.class);
               ApplicationFactory f = StramUtils.newInstance(c);
-              return f.getApplication();
+              return f.getApplication(conf);
             }
           });
         }
@@ -267,6 +268,24 @@ public class StramAppLauncher {
     }
   }
 
+  private static Configuration getConfig(String launchMode) {
+    Configuration conf = new Configuration(false);
+    StramClientUtils.addStramResources(conf);
+    // user settings
+    File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.STRAM_SITE_XML_FILE);
+    if (cfgResource.exists()) {
+      LOG.info("Loading settings: " + cfgResource.toURI());
+      conf.addResource(new Path(cfgResource.toURI()));
+    }
+    //File appDir = new File(StramClientUtils.getSettingsRootDir(), jarFile.getName());
+    //cfgResource = new File(appDir, StramClientUtils.STRAM_SITE_XML_FILE);
+    //if (cfgResource.exists()) {
+    //  LOG.info("Loading settings from: " + cfgResource.toURI());
+    //  conf.addResource(new Path(cfgResource.toURI()));
+    //}
+    conf.set(DAG.STRAM_LAUNCH_MODE, launchMode);
+    return conf;
+  }
 
   /**
    * Run application in-process. Returns only once application completes.
@@ -277,7 +296,7 @@ public class StramAppLauncher {
     // local mode requires custom classes to be resolved through the context class loader
     URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
     Thread.currentThread().setContextClassLoader(cl);
-    StramLocalCluster lc = new StramLocalCluster(appConfig.createApp());
+    StramLocalCluster lc = new StramLocalCluster(appConfig.createApp(getConfig(ApplicationFactory.LAUNCHMODE_LOCAL)));
     lc.run();
   }
 
@@ -306,9 +325,9 @@ public class StramAppLauncher {
   public static String runApp(AppConfig appConfig) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
 
-    DAG tplg = appConfig.createApp();
-    tplg.getConf().setIfUnset(DAG.STRAM_APPNAME, appConfig.getName());
-    StramClient client = new StramClient(tplg);
+    DAG dag = appConfig.createApp(getConfig(ApplicationFactory.LAUNCHMODE_YARN));
+    dag.getConf().setIfUnset(DAG.STRAM_APPNAME, appConfig.getName());
+    StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
   }

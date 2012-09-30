@@ -198,7 +198,7 @@ public class StramClient
     }
     LOG.info("Configuration: " + propertyFileName);
 
-    dag = DAGPropertiesBuilder.create(conf, propertyFileName);
+    dag = DAGPropertiesBuilder.create(new Configuration(false), propertyFileName);
     dag.validate();
     if (cliParser.hasOption("debug")) {
       dag.getConf().setBoolean(DAG.STRAM_DEBUG, true);

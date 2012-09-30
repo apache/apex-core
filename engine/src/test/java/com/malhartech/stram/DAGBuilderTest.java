@@ -37,6 +37,7 @@ import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.DAG.InputPort;
 import com.malhartech.dag.DAG.Operator;
 import com.malhartech.dag.DAG.StreamDecl;
+import com.malhartech.stram.cli.StramClientUtils;
 
 public class DAGBuilderTest {
 
@@ -51,11 +52,13 @@ public class DAGBuilderTest {
    */
   @Test
   public void testLoadFromConfigXml() {
-    Configuration conf = DAGPropertiesBuilder.addStramResources(new Configuration());
+    Configuration conf = StramClientUtils.addStramResources(new Configuration());
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
-    DAGPropertiesBuilder tb = new DAGPropertiesBuilder(conf);
-    DAG dag = tb.getApplication();
+    DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
+    tb.addFromConfiguration(conf);
+
+    DAG dag = tb.getApplication(new Configuration(false));
     dag.validate();
 
 //    Map<String, NodeConf> moduleConfs = tb.getAllOperators();
@@ -146,7 +149,7 @@ public class DAGBuilderTest {
       DAGPropertiesBuilder pb = new DAGPropertiesBuilder()
         .addFromProperties(props);
 
-      DAG dag = pb.getApplication();
+      DAG dag = pb.getApplication(new Configuration(false));
       dag.validate();
 
       assertEquals("number of module confs", 5, dag.getAllOperators().size());

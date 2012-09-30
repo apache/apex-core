@@ -41,7 +41,7 @@ public class StramLocalClusterTest
   @Test
   public void testTplg() throws IOException, Exception {
     String tplgFile = "src/test/resources/clusterTest.tplg.properties";
-    StramLocalCluster lc = new StramLocalCluster(DAGPropertiesBuilder.create(new Configuration(), tplgFile));
+    StramLocalCluster lc = new StramLocalCluster(DAGPropertiesBuilder.create(new Configuration(false), tplgFile));
     lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
   }

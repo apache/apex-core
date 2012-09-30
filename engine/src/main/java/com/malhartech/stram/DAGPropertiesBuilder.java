@@ -42,10 +42,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
   private static final Logger LOG = LoggerFactory.getLogger(DAGPropertiesBuilder.class);
 
-  private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
-  private static final String STRAM_SITE_XML_FILE = "stram-site.xml";
-
-
   public static final String STREAM_PREFIX = "stram.stream";
   public static final String STREAM_SOURCE = "source";
   public static final String STREAM_SINKS = "sinks";
@@ -62,11 +58,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
   public static final String TEMPLATE_PREFIX = "stram.template";
 
-  public static Configuration addStramResources(Configuration conf) {
-    conf.addResource(STRAM_DEFAULT_XML_FILE);
-    conf.addResource(STRAM_SITE_XML_FILE);
-    return conf;
-  }
 
   /**
    * Named set of properties that can be used to instantiate streams or operators
@@ -229,7 +220,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
   }
 
-  private final Configuration conf = new Configuration(false);
+  private final Properties properties = new Properties();
   private final Map<String, NodeConf> nodes;
   private final Map<String, StreamConf> streams;
   private final Map<String, TemplateConf> templates;
@@ -241,17 +232,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     this.templates = new HashMap<String,TemplateConf>();
     this.rootNodes = new HashSet<NodeConf>();
   }
-
-  /**
-   * Create topology from given configuration.
-   * More operators can be added programmatically.
-   * @param conf
-   */
-  public DAGPropertiesBuilder(Configuration conf) {
-    this();
-    addFromConfiguration(conf);
-  }
-
 
   private NodeConf getOrAddNode(String nodeId) {
     NodeConf nc = nodes.get(nodeId);
@@ -321,7 +301,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
     for (final String propertyName : props.stringPropertyNames()) {
       String propertyValue = props.getProperty(propertyName);
-      conf.set(propertyName, propertyValue);
+      this.properties.setProperty(propertyName, propertyValue);
       if (propertyName.startsWith(STREAM_PREFIX)) {
          // stream definition
         String[] keyComps = propertyName.split("\\.");
@@ -389,16 +369,22 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   }
 
   /**
-   * Return all properties of the topology constructed by the builder.
+   * Return all properties set on the builder.
    * Can be serialized to property file and used to read back into builder.
    * @return Properties
    */
   public Properties getProperties() {
-    return DAGPropertiesBuilder.toProperties(this.conf);
+    return this.properties;
   }
 
   @Override
-  public DAG getApplication() {
+  public DAG getApplication(Configuration appConf) {
+
+    Configuration conf = new Configuration(appConf);
+    for (final String propertyName : this.properties.stringPropertyNames()) {
+      String propertyValue = this.properties.getProperty(propertyName);
+      conf.setIfUnset(propertyName, propertyValue);
+    }
 
     DAG tplg = new DAG(conf);
 
@@ -451,9 +437,9 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
   public static DAG create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
-    DAGPropertiesBuilder tb = new DAGPropertiesBuilder(conf);
+    DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
     tb.addFromProperties(topologyProperties);
-    return tb.getApplication();
+    return tb.getApplication(conf);
   }
 
   public static Properties readProperties(String filePath) throws IOException
