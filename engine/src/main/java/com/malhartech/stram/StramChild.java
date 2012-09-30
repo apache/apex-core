@@ -976,7 +976,7 @@ public class StramChild
             node.activate(nc);
           }
           catch (Exception ex) {
-            logger.error("Node stopped abnormally because of exception {}", ex.getLocalizedMessage());
+            logger.error("Node stopped abnormally because of exception", ex);
           }
 
           activeNodes.remove(ndi.id);
