@@ -246,4 +246,14 @@ public class StramClientUtils {
     return new File(FileUtils.getUserDirectory(), ".stram");
   }
 
+  private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
+  public static final String STRAM_SITE_XML_FILE = "stram-site.xml";
+
+  public static Configuration addStramResources(Configuration conf) {
+    conf.addResource(STRAM_DEFAULT_XML_FILE);
+    conf.addResource(STRAM_SITE_XML_FILE);
+    return conf;
+  }
+
+
 }

@@ -42,6 +42,14 @@ public interface DAGConstants {
    */
   public static final String STRAM_DEBUG = "stram.debug";
 
+
+  /**
+   * Launch mode for the application.
+   * Used in the client to set configuration depending on how the DAG is executed.
+   */
+  public static final String STRAM_LAUNCH_MODE = "stram.launchmode";
+
+
   /**
    * The amount of memory to be requested for streaming containers. Not used in local mode.
    */

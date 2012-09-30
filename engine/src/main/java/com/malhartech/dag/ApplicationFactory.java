@@ -4,10 +4,15 @@
  */
 package com.malhartech.dag;
 
+import org.apache.hadoop.conf.Configuration;
+
 /**
  * Interface to be implemented by custom classes for Java based application declaration.
  * The interface is used by the CLI to identify Java DAG configuration classes within jar files.
  */
 public interface ApplicationFactory {
-    DAG getApplication();
+    public static final String LAUNCHMODE_YARN = "yarn";
+    public static final String LAUNCHMODE_LOCAL = "local";
+
+    DAG getApplication(Configuration conf);
 }
