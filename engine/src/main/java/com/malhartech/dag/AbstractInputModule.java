@@ -42,74 +42,79 @@ public abstract class AbstractInputModule extends AbstractBaseModule
     boolean inWindow = false;
     Tuple t = null;
     while (alive) {
-      for (int size = controlTuples.size(); size-- > 0;) {
-        t = controlTuples.get();
-        switch (t.getType()) {
-          case BEGIN_WINDOW:
-            for (int i = sinks.length; i-- > 0;) {
-              sinks[i].process(t);
-            }
-            inWindow = true;
-            NO_DATA.setWindowId(t.getWindowId());
-            beginWindow();
-            break;
-
-          case END_WINDOW:
-            endWindow();
-            inWindow = false;
-            for (int i = sinks.length; i-- > 0;) {
-              sinks[i].process(t);
-            }
-
-            /*
-             * we prefer to cater to requests at the end of the window boundary.
-             */
-            try {
-              CircularBuffer<ModuleContext.ModuleRequest> requests = context.getRequests();
-              for (int i = requests.size(); i-- > 0;) {
-                logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
-                requests.get().execute(this, context.getId(), t.getWindowId());
-              }
-            }
-            catch (Exception e) {
-              logger.warn("Exception while catering to external request {}", e);
-            }
-
-            context.report(generatedTupleCount, 0L, t.getWindowId());
-            generatedTupleCount = 0;
-
-            // i think there should be just one queue instead of one per port - lets defer till we find an example.
-            for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
-              final Sink s = outputs.get(e.getKey());
-              if (s != null) {
-                CircularBuffer<?> cb = e.getValue();
-                for (int i = cb.size(); i-- > 0;) {
-                  s.process(cb.get());
+      try {
+        int size;
+        if ((size = controlTuples.size()) > 0) {
+          while (size-- > 0) {
+            t = controlTuples.get();
+            switch (t.getType()) {
+              case BEGIN_WINDOW:
+                for (int i = sinks.length; i-- > 0;) {
+                  sinks[i].process(t);
                 }
-              }
-            }
-            break;
+                inWindow = true;
+                NO_DATA.setWindowId(t.getWindowId());
+                beginWindow();
+                break;
 
-          default:
-            for (int i = sinks.length; i-- > 0;) {
-              sinks[i].process(t);
+              case END_WINDOW:
+                endWindow();
+                inWindow = false;
+                for (int i = sinks.length; i-- > 0;) {
+                  sinks[i].process(t);
+                }
+
+                /*
+                 * we prefer to cater to requests at the end of the window boundary.
+                 */
+                try {
+                  CircularBuffer<ModuleContext.ModuleRequest> requests = context.getRequests();
+                  for (int i = requests.size(); i-- > 0;) {
+                    logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
+                    requests.get().execute(this, context.getId(), t.getWindowId());
+                  }
+                }
+                catch (Exception e) {
+                  logger.warn("Exception while catering to external request {}", e);
+                }
+
+                context.report(generatedTupleCount, 0L, t.getWindowId());
+                generatedTupleCount = 0;
+
+                // i think there should be just one queue instead of one per port - lets defer till we find an example.
+                for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
+                  final Sink s = outputs.get(e.getKey());
+                  if (s != null) {
+                    CircularBuffer<?> cb = e.getValue();
+                    for (int i = cb.size(); i-- > 0;) {
+                      s.process(cb.get());
+                    }
+                  }
+                }
+                break;
+
+              default:
+                for (int i = sinks.length; i-- > 0;) {
+                  sinks[i].process(t);
+                }
+                break;
             }
-            break;
+          }
         }
-      }
-
-      if (inWindow) {
-        int oldg = generatedTupleCount;
-        int oldp = processedTupleCount;
-        process(NO_DATA);
-
-        if (generatedTupleCount == oldg && processedTupleCount == oldp) {
-          try {
+        else {
+          if (inWindow) {
+            int oldg = generatedTupleCount;
+            process(NO_DATA);
+            if (generatedTupleCount == oldg) {
+              Thread.sleep(spinMillis);
+            }
+          }
+          else {
             Thread.sleep(spinMillis);
           }
-          catch (InterruptedException ex) {
-          }
         }
+      }
+      catch (InterruptedException ex) {
       }
     }
 
