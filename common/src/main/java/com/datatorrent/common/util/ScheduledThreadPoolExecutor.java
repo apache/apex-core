@@ -72,42 +72,11 @@ public class ScheduledThreadPoolExecutor extends java.util.concurrent.ScheduledT
   }
 
   @Override
-  public ScheduledFuture scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit)
+  protected void afterExecute(Runnable r, Throwable t)
   {
-    return super.scheduleAtFixedRate(wrapRunnable(command), initialDelay, period, unit);
-  }
-
-  @Override
-  public ScheduledFuture scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit)
-  {
-    return super.scheduleWithFixedDelay(wrapRunnable(command), initialDelay, delay, unit);
-  }
-
-  private Runnable wrapRunnable(Runnable command)
-  {
-    return new LogOnExceptionRunnable(command);
-  }
-
-  private class LogOnExceptionRunnable implements Runnable
-  {
-    private Runnable theRunnable;
-
-    public LogOnExceptionRunnable(Runnable theRunnable)
-    {
-      super();
-      this.theRunnable = theRunnable;
-    }
-
-    @Override
-    public void run()
-    {
-      try {
-        theRunnable.run();
-      }
-      catch (Exception e) {
-        logger.error("Scheduled task died with {}", e);
-        throw new RuntimeException(e);
-      }
+    super.afterExecute(r, t);
+    if (t != null) {
+      logger.error("Scheduled task {} died with {}", r, t);
     }
   }
 }
