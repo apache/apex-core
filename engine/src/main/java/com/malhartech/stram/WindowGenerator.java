@@ -59,11 +59,38 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     windowId++;
   }
 
+  private void resetBeginNewWindow()
+  {
+    long timespanBetween2Resets = (long)MAX_WINDOW_ID * windowWidthMillis + windowWidthMillis;
+    resetWindowMillis = currentWindowMillis - ((currentWindowMillis - resetWindowMillis) % timespanBetween2Resets);
+    windowId = (int)((currentWindowMillis - resetWindowMillis) / windowWidthMillis);
+
+//    logger.debug("generating reset -> begin {}", Long.toHexString(resetWindowMillis));
+
+    baseSeconds = (resetWindowMillis / 1000) << 32;
+    ResetWindowTuple rwt = new ResetWindowTuple();
+    rwt.setWindowId(baseSeconds | windowWidthMillis);
+
+    Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
+    bwt.setWindowId(baseSeconds | windowId);
+
+    /**
+     * we do two separate loops to ensure that we do not end up sending the same tuple twice to a single sink.
+     */
+    for (int i = sinks.length; i-- > 0;) {
+      sinks[i].process(rwt);
+    }
+//    logger.debug("generating begin {}", Long.toHexString(windowId));
+    for (int i = sinks.length; i-- > 0;) {
+      sinks[i].process(bwt);
+    }
+  }
+
   /**
    * Updates window in a circular buffer on inputAdapters<p>
    * This code generates the windows
    */
-  protected final void nextWindow()
+  private void endCurrentBeginNewWindow()
   {
     if (windowId == MAX_WINDOW_ID) {
       EndWindowTuple t = new EndWindowTuple();
@@ -94,35 +121,10 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     }
   }
 
-  /**
-   *
-   */
   @Override
   public final void run()
   {
-    long timespanBetween2Resets = (long)MAX_WINDOW_ID * windowWidthMillis + windowWidthMillis;
-    resetWindowMillis = currentWindowMillis - ((currentWindowMillis - resetWindowMillis) % timespanBetween2Resets);
-    windowId = (int)((currentWindowMillis - resetWindowMillis) / windowWidthMillis);
-
-//    logger.debug("generating reset -> begin {}", Long.toHexString(resetWindowMillis));
-
-    baseSeconds = (resetWindowMillis / 1000) << 32;
-    ResetWindowTuple rwt = new ResetWindowTuple();
-    rwt.setWindowId(baseSeconds | windowWidthMillis);
-
-    Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
-    bwt.setWindowId(baseSeconds | windowId);
-
-    /**
-     * we do two separate loops to ensure that we do not end up sending the same tuple twice to a single sink.
-     */
-    for (int i = sinks.length; i-- > 0;) {
-      sinks[i].process(rwt);
-    }
-//    logger.debug("generating begin {}", Long.toHexString(windowId));
-    for (int i = sinks.length; i-- > 0;) {
-      sinks[i].process(bwt);
-    }
+    resetBeginNewWindow();
   }
 
   @Override
@@ -149,7 +151,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
       @Override
       public void run()
       {
-        nextWindow();
+        endCurrentBeginNewWindow();
       }
     };
 
@@ -162,9 +164,9 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
                 @Override
                 public void run()
                 {
-                  WindowGenerator.this.run();
+                  resetBeginNewWindow();
                   do {
-                    nextWindow();
+                    endCurrentBeginNewWindow();
                   }
                   while (currentWindowMillis < ses.getCurrentTimeMillis());
                 }
@@ -211,11 +213,6 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   public void process(Object payload)
   {
     throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  public Set<String> getOutputIds()
-  {
-    return outputs.keySet();
   }
 
   @SuppressWarnings("SillyAssignment")
