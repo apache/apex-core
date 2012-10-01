@@ -5,12 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.dag.Component;
-import com.malhartech.dag.Context;
-import com.malhartech.dag.EndWindowTuple;
-import com.malhartech.dag.ResetWindowTuple;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import com.malhartech.util.ScheduledExecutorService;
 import java.util.HashMap;
 import java.util.Set;
@@ -45,7 +40,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
-  private long currentWindowMillis = -1;
+  private long currentWindowMillis;
   private long baseSeconds;
   private int windowId;
   private long resetWindowMillis;
@@ -103,13 +98,13 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
    *
    */
   @Override
-  public void run()
+  public final void run()
   {
     long timespanBetween2Resets = (long)MAX_WINDOW_ID * windowWidthMillis + windowWidthMillis;
     resetWindowMillis = currentWindowMillis - ((currentWindowMillis - resetWindowMillis) % timespanBetween2Resets);
     windowId = (int)((currentWindowMillis - resetWindowMillis) / windowWidthMillis);
 
-    //    logger.debug("generating reset -> begin {}", Long.toHexString(currentWindowMillis));
+//    logger.debug("generating reset -> begin {}", Long.toHexString(resetWindowMillis));
 
     baseSeconds = (resetWindowMillis / 1000) << 32;
     ResetWindowTuple rwt = new ResetWindowTuple();
@@ -124,6 +119,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(rwt);
     }
+//    logger.debug("generating begin {}", Long.toHexString(windowId));
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(bwt);
     }
@@ -138,6 +134,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
       throw new IllegalArgumentException(String.format("Window width %d is invalid as it's not in the range 1 to %d", windowWidthMillis, MAX_WINDOW_WIDTH));
     }
     resetWindowMillis = config.getLong(RESET_WINDOW_MILLIS, firstWindowMillis);
+//    logger.debug("firstWindowMillis {} resetwindowmillis = {}", firstWindowMillis, resetWindowMillis);
   }
 
   @Override
@@ -158,6 +155,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
 
     final long currentTms = ses.getCurrentTimeMillis();
     if (currentWindowMillis < currentTms) {
+      logger.info("Catching up for the time lost from {} to {}", currentWindowMillis, currentTms);
       ses.schedule(
               new Runnable()
               {
@@ -168,12 +166,13 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
                   do {
                     nextWindow();
                   }
-                  while (currentWindowMillis < currentTms);
+                  while (currentWindowMillis < ses.getCurrentTimeMillis());
                 }
               },
               0, TimeUnit.MILLISECONDS);
     }
     else {
+      logger.info("The input will start to be sliced in {} milliseconds", currentWindowMillis - currentTms);
       ses.schedule(this, currentWindowMillis - currentTms, TimeUnit.MILLISECONDS);
     }
 
