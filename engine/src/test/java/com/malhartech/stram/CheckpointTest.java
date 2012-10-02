@@ -70,6 +70,7 @@ public class CheckpointTest
     LocalStramChild container = new LocalStramChild(containerId, null, wingen);
     container.setup(cc);
 
+    //mses.tick(1); // begin window 0
     mses.tick(1); // begin window 1
 
     Assert.assertEquals("number operators", 1, container.getNodes().size());
@@ -80,7 +81,9 @@ public class CheckpointTest
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());
     Assert.assertEquals("maxTupes", 1, ((TestGeneratorInputModule)node).getMaxTuples());
 
-    mses.tick(1);
+    mses.tick(1); // end window 1, start window 2
+    // await end window 1 to ensure backup is executed at window 2
+    StramTestSupport.waitForWindowComplete(context, 1);
 
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(context.getId());
@@ -89,17 +92,16 @@ public class CheckpointTest
     rsp.nodeRequests = Collections.singletonList(backupRequest);
     container.processHeartbeatResponse(rsp);
 
-    mses.tick(1); // end window 1, begin window 2
+    mses.tick(1); // end window 2, begin window 3
+    StramTestSupport.waitForWindowComplete(context, 2);
+    Assert.assertEquals("node = window 2", 2, context.getLastProcessedWindowId());
 
-    Assert.assertTrue("node >= window 1",
-                      1 <= context.getLastProcessedWindowId());
-
-    File cpFile1 = new File(testWorkDir, backupRequest.getNodeId() + "/1");
+    File cpFile1 = new File(testWorkDir, backupRequest.getNodeId() + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
     StreamingNodeHeartbeat hbe = new StreamingNodeHeartbeat();
     hbe.setNodeId(context.getId());
-    hbe.setLastBackupWindowId(1);
+    hbe.setLastBackupWindowId(context.getLastProcessedWindowId());
     ContainerHeartbeat hb = new ContainerHeartbeat();
     hb.setContainerId(containerId);
     hb.setDnodeEntries(Collections.singletonList(hbe));
@@ -108,13 +110,15 @@ public class CheckpointTest
     dnm.processHeartbeat(hb);
 
     container.processHeartbeatResponse(rsp);
-    mses.tick(1); // end window 2
+    mses.tick(1); // end window 3
+    StramTestSupport.waitForWindowComplete(context, 3);
+    Assert.assertEquals("node = window 3", 3, context.getLastProcessedWindowId());
 
-    File cpFile2 = new File(testWorkDir, backupRequest.getNodeId() + "/2");
+    File cpFile2 = new File(testWorkDir, backupRequest.getNodeId() + "/3");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     // fake heartbeat to propagate checkpoint
-    hbe.setLastBackupWindowId(2);
+    hbe.setLastBackupWindowId(context.getLastProcessedWindowId());
     dnm.processHeartbeat(hb);
 
     // purge checkpoints

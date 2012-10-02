@@ -4,18 +4,25 @@
  */
 package com.malhartech.stream;
 
+import static org.junit.Assert.assertTrue;
+
+import org.apache.hadoop.conf.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.EndWindowTuple;
+import com.malhartech.dag.ModuleContext;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.ManualScheduledExecutorService;
 import com.malhartech.stram.WindowGenerator;
-import org.apache.hadoop.conf.Configuration;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Bunch of utilities shared between tests.
  */
 abstract public class StramTestSupport {
+
+  private static final Logger LOG = LoggerFactory.getLogger( StramTestSupport.class);
 
   public static Object generateTuple(Object payload, int windowId) {
     return payload;
@@ -51,6 +58,15 @@ abstract public class StramTestSupport {
     config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
     gen.setup(config);
     return gen;
+  }
+
+  @SuppressWarnings("SleepWhileInLoop")
+  public static void waitForWindowComplete(ModuleContext nodeCtx, long windowId) throws InterruptedException
+  {
+    while (nodeCtx.getLastProcessedWindowId() < windowId) {
+      LOG.debug("Waiting for window {} at node {}", windowId, nodeCtx.getId());
+      Thread.sleep(100);
+    }
   }
 
 

@@ -144,20 +144,20 @@ public class StramLocalClusterTest
 
     wclock.tick(1); // end window 1
 
-    waitForWindowComplete(n1Context, 1);
+    StramTestSupport.waitForWindowComplete(n1Context, 1);
 
     ModuleContext n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
 
     wclock.tick(1); // end window 2
 
-    waitForWindowComplete(n2Context, 2);
+    StramTestSupport.waitForWindowComplete(n2Context, 2);
     n2.setMyStringProperty("checkpoint3");
     backupNode(c2, n2Context); // backup window 3
 
     // move window forward, wait until propagated to module,
     // to ensure backup at previous window end was processed
     wclock.tick(1);
-    waitForWindowComplete(n2Context, 3);
+    StramTestSupport.waitForWindowComplete(n2Context, 3);
 
     // propagate checkpoints to master
     c0.triggerHeartbeat();
@@ -241,15 +241,6 @@ public class StramLocalClusterTest
       }
       catch (InterruptedException e) {
       }
-    }
-  }
-
-  @SuppressWarnings("SleepWhileInLoop")
-  private void waitForWindowComplete(ModuleContext nodeCtx, long windowId) throws InterruptedException
-  {
-    while (nodeCtx.getLastProcessedWindowId() < windowId) {
-      LOG.debug("Waiting for window {} at node {}", windowId, nodeCtx.getId());
-      Thread.sleep(100);
     }
   }
 

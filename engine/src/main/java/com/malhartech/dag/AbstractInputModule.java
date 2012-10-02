@@ -70,7 +70,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
                 try {
                   CircularBuffer<ModuleContext.ModuleRequest> requests = context.getRequests();
                   for (int i = requests.size(); i-- > 0;) {
-                    logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
+                    //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
                     requests.get().execute(this, context.getId(), t.getWindowId());
                   }
                 }
