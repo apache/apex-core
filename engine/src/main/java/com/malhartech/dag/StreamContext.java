@@ -17,7 +17,18 @@ import org.apache.commons.lang.builder.ToStringStyle;
  */
 public class StreamContext implements Context
 {
+  public static enum State
+  {
+    UNDEFINED,
+    OUTSIDE_WINDOW,
+    INSIDE_WINDOW,
+    TERMINATED
+  }
+  private String sourceId;
+  private String sinkId;
+  private long startingWindowId;
   private HashSet<byte[]> partitions;
+  private String id;
 
   /**
    *
@@ -42,7 +53,6 @@ public class StreamContext implements Context
   {
     return partitions;
   }
-  String id;
 
   public StreamContext(String id)
   {
@@ -115,30 +125,12 @@ public class StreamContext implements Context
     this.sinkId = downstreamNodeId;
   }
 
-  public static enum State
-  {
-    UNDEFINED,
-    OUTSIDE_WINDOW,
-    INSIDE_WINDOW,
-    TERMINATED
-  }
-  private int tupleCount;
-  private String sourceId;
-  private String sinkId;
-  private long startingWindowId;
-
-  public int getTupleCount()
-  {
-    return tupleCount;
-  }
-
   @Override
   public String toString()
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
             .append("sourceId", sourceId)
             .append("sinkId", sinkId)
-            .append("tuples", tupleCount)
             .toString();
   }
 }

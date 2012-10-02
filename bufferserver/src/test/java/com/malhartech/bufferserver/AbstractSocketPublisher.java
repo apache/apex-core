@@ -7,8 +7,9 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.netty.ClientInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
+import io.netty.channel.ChannelOutboundMessageHandlerAdapter;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import org.slf4j.Logger;
@@ -18,11 +19,11 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class SubscriberTest<T> extends ChannelInboundMessageHandlerAdapter<T>
+public abstract class AbstractSocketPublisher extends ChannelOutboundMessageHandlerAdapter
 {
-  private static final Logger logger = LoggerFactory.getLogger(SubscriberTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractSocketPublisher.class);
+  protected Bootstrap bootstrap;
   protected Channel channel;
-  private Bootstrap bootstrap;
 
   public void setup(String host, int port)
   {
@@ -41,28 +42,17 @@ public class SubscriberTest<T> extends ChannelInboundMessageHandlerAdapter<T>
 
   public void activate()
   {
-    // Make a new connection.
     channel = bootstrap.connect().syncUninterruptibly().channel();
+  }
 
-    // Netty does not provide a way to read in all the data that comes
-    // onto the channel into a byte buffer managed by the user. It causes
-    // various problems:
-    // 1. There is excessive copy of data between the 2 buffers.
-    // 2. Once the BufferFactory has given out the buffer, it does not know
-    //    if it can ever recycle it.
-    // 3. Causes fragmentation and need for garbage collection
-
-    // Netty needs some way to prevent it.
+  public void flush(ChannelHandlerContext ctx, ChannelFuture future) throws Exception
+  {
+    ctx.outboundMessageBuffer().drainTo(ctx.nextOutboundMessageBuffer());
+    ctx.flush(future);
   }
 
   public void deactivate()
   {
     channel.close().awaitUninterruptibly();
-  }
-
-  @Override
-  public void messageReceived(ChannelHandlerContext ctx, T msg) throws Exception
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 }

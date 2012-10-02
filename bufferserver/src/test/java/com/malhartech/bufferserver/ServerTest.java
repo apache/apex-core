@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
+import com.malhartech.bufferserver.Buffer.Data.DataType;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.logging.Level;
@@ -39,22 +40,65 @@ public class ServerTest extends TestCase
 
     instance.shutdown();
   }
-
   Server instance;
+
   /**
    * Test of run method, of class Server.
    */
   public void testRun()
   {
-        try {
-            System.out.println("run");
-            SocketAddress result = instance.run();
-            assertNotNull(result);
-            assertTrue(((InetSocketAddress) result).getPort() != 0);
-        }
-        catch (Exception ex) {
-            LoggerFactory.getLogger(ServerTest.class).error(null, ex);
-        }
+    try {
+      System.out.println("run");
+      SocketAddress result = instance.run();
+      assertNotNull(result);
+      assertTrue(((InetSocketAddress)result).getPort() != 0);
+    }
+    catch (Exception ex) {
+      LoggerFactory.getLogger(ServerTest.class).error(null, ex);
+    }
+  }
+
+  class ResetTuple implements Tuple
+  {
+    long id;
+
+    public DataType getType()
+    {
+      return DataType.RESET_WINDOW;
+    }
+
+    public long getWindowId()
+    {
+      return id;
+    }
+
+    public int getIntervalMillis()
+    {
+      return (int)id;
+    }
+
+    public int getBaseSeconds()
+    {
+      return (int)(id >> 32);
+    }
+  }
+
+  class BeginTuple extends ResetTuple
+  {
+    @Override
+    public DataType getType()
+    {
+      return DataType.BEGIN_WINDOW;
+    }
+  }
+
+  class EndTuple extends ResetTuple
+  {
+    @Override
+    public DataType getType()
+    {
+      return DataType.END_WINDOW;
+    }
   }
 
   public void testPurge()
@@ -62,7 +106,7 @@ public class ServerTest extends TestCase
     System.out.println("purge");
     try {
       SocketAddress result = instance.run();
-          // create no tuples
+      // create no tuples
       // ensure that no data is received
       // ensure that no data is received
     }
@@ -102,5 +146,4 @@ public class ServerTest extends TestCase
     for (int i = 0; i < 1000; i++) {
     }
   }
-
 }

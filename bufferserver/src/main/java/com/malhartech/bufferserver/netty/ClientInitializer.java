@@ -20,47 +20,45 @@ import org.slf4j.LoggerFactory;
  * Extend {@link io.netty.channel.ChannelInitializer}
  *
  */
-
 public class ClientInitializer extends ChannelInitializer<SocketChannel>
 {
-    private static final Logger logger = LoggerFactory.getLogger(ClientInitializer.class);
-    final ChannelHandler handler;
+  private static final Logger logger = LoggerFactory.getLogger(ClientInitializer.class);
+  final ChannelHandler handler;
 
-    /**
-     *
-     * @param handler
-     */
-    public ClientInitializer(ChannelHandler handler)
-    {
-      this.handler = handler;
-    }
+  /**
+   *
+   * @param handler
+   */
+  public ClientInitializer(ChannelHandler handler)
+  {
+    this.handler = handler;
+  }
 
+  /**
+   *
+   * @param channel
+   * @throws Exception
+   */
+  @Override
+  public void initChannel(SocketChannel channel) throws Exception
+  {
+    ChannelPipeline p = channel.pipeline();
+    p.addLast("frameDecoder", new ProtobufVarint32FrameDecoder());
+    p.addLast("protobufDecoder", new ProtobufDecoder(Buffer.Data.getDefaultInstance()));
 
-    /**
-     *
-     * @param channel
-     * @throws Exception
-     */
-    @Override
-    public void initChannel(SocketChannel channel) throws Exception
-    {
-        ChannelPipeline p = channel.pipeline();
-        p.addLast("frameDecoder", new ProtobufVarint32FrameDecoder());
-        p.addLast("protobufDecoder", new ProtobufDecoder(Buffer.Data.getDefaultInstance()));
+    p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
+    p.addLast("protobufEncoder", new ProtobufEncoder());
+    //    p.addLast("debug", new SimpleChannelDownstreamHandler()
+    //    {
+    //
+    //      @Override
+    //      public void writeRequested(ChannelHandlerContext ctx, MessageEvent me) throws Exception
+    //      {
+    //        logger.debug("buffer handing out {0} for window {1}", new Object[]{((Data) me.getMessage()).getType(), ((Data) me.getMessage()).getWindowId()});
+    //        super.writeRequested(ctx, me);
+    //      }
+    //    });
 
-        p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
-        p.addLast("protobufEncoder", new ProtobufEncoder());
-//    p.addLast("debug", new SimpleChannelDownstreamHandler()
-//    {
-//
-//      @Override
-//      public void writeRequested(ChannelHandlerContext ctx, MessageEvent me) throws Exception
-//      {
-//        logger.debug("buffer handing out {0} for window {1}", new Object[]{((Data) me.getMessage()).getType(), ((Data) me.getMessage()).getWindowId()});
-//        super.writeRequested(ctx, me);
-//      }
-//    });
-
-        p.addLast("handler", handler);
-    }
+    p.addLast("handler", handler);
+  }
 }
