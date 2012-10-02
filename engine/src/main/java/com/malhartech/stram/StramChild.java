@@ -403,11 +403,11 @@ public class StramChild
     for (ModuleDeployInfo ndi: nodeList) {
       if (activeNodes.containsKey(ndi.id)) {
         nodes.get(ndi.id).deactivate();
-        // must remove from node list to reach defined state before next heartbeat,
-        // subsequent response may request deploy, which would fail if deactivate node is still tracked
         activeNodes.remove(ndi.id);
-        nodes.remove(ndi.id);
       }
+      // must remove from list to reach defined state before next heartbeat,
+      // subsequent response may request deploy, which would fail if deactivate node is still tracked
+      nodes.remove(ndi.id);
     }
   }
 

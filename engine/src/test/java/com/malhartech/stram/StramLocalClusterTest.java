@@ -98,7 +98,7 @@ public class StramLocalClusterTest
     DAG dag = new DAG();
 
     Operator node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
-    node1.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "1"); // TODO: need solution for graceful container shutdown
+    node1.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "10"); // TODO: need solution for graceful container shutdown
     Operator node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2").
@@ -139,36 +139,38 @@ public class StramLocalClusterTest
     ModuleContext n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
     wclock.tick(1); // begin window 1
-
-    backupNode(c0, n1Context); // backup window 1
-
-    wclock.tick(1); // end window 1
-
+    wclock.tick(2); // begin window 2
     StramTestSupport.waitForWindowComplete(n1Context, 1);
+
+    backupNode(c0, n1Context); // backup window 2
+
+    wclock.tick(1); // end window 2
+    StramTestSupport.waitForWindowComplete(n1Context, 2);
 
     ModuleContext n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
 
-    wclock.tick(1); // end window 2
+    wclock.tick(1); // end window 3
 
-    StramTestSupport.waitForWindowComplete(n2Context, 2);
+    StramTestSupport.waitForWindowComplete(n2Context, 3);
     n2.setMyStringProperty("checkpoint3");
-    backupNode(c2, n2Context); // backup window 3
+    backupNode(c2, n2Context); // backup window 4
 
     // move window forward, wait until propagated to module,
     // to ensure backup at previous window end was processed
     wclock.tick(1);
-    StramTestSupport.waitForWindowComplete(n2Context, 3);
+    StramTestSupport.waitForWindowComplete(n2Context, 4);
 
     // propagate checkpoints to master
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
     c0.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint " + ptNode1, 1, ptNode1.getRecentCheckpoint());
-
+    Assert.assertEquals("checkpoint propagated " + ptNode1, 2, ptNode1.getRecentCheckpoint());
     c2.triggerHeartbeat();
+    Thread.yield();
+    Thread.sleep(50); // the heartbeat trigger cycle does not seem to work here
     c2.waitForHeartbeat(5000);
     PTOperator ptNode2 = localCluster.findByLogicalNode(node2);
-    Assert.assertEquals("checkpoint " + ptNode2, 3, ptNode2.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint propagated " + ptNode2, 4, ptNode2.getRecentCheckpoint());
 
     // simulate node failure
     localCluster.failContainer(c0);
@@ -251,7 +253,7 @@ public class StramLocalClusterTest
     backupRequest.setRequestType(RequestType.CHECKPOINT);
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.nodeRequests = Collections.singletonList(backupRequest);
-    LOG.debug("Requesting backup {} {}", c.getContainerId(), nodeCtx);
+    LOG.debug("Requesting backup {} node {}", c.getContainerId(), nodeCtx.getId());
     c.processHeartbeatResponse(rsp);
   }
 
