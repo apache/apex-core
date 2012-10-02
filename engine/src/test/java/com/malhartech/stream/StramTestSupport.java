@@ -64,7 +64,7 @@ abstract public class StramTestSupport {
   public static void waitForWindowComplete(ModuleContext nodeCtx, long windowId) throws InterruptedException
   {
     while (nodeCtx.getLastProcessedWindowId() < windowId) {
-      LOG.debug("Waiting for window {} at node {}", windowId, nodeCtx.getId());
+      LOG.debug("Waiting for end of window {} at node {}", windowId, nodeCtx.getId());
       Thread.sleep(100);
     }
   }
