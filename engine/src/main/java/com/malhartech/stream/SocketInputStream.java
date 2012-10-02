@@ -3,17 +3,16 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.bufferserver.netty.ClientInitializer;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +28,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  */
+@Sharable
 public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerAdapter<T> implements Stream
 {
   private static final Logger logger = LoggerFactory.getLogger(SocketInputStream.class);
@@ -41,7 +41,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
     bootstrap = new Bootstrap();
 
     bootstrap.group(new NioEventLoopGroup())
-            .channel(new NioSocketChannel())
+            .channel(NioSocketChannel.class)
             .remoteAddress(config.getBufferServerAddress())
             .handler(new ClientInitializer(this));
   }

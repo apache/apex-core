@@ -81,7 +81,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
    * @param partitions
    * @param startingWindowId
    */
-  public static void registerPartitions(
+  public static void subscribe(
           Channel channel,
           String id,
           String down_type,

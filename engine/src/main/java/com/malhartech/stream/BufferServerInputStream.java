@@ -40,7 +40,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
 
     String type = "unused";
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId()});
-    ClientHandler.registerPartitions(channel,
+    ClientHandler.subscribe(channel,
                                      context.getSinkId(),
                                      context.getId() + '/' + context.getSinkId(),
                                      context.getSourceId(), type,

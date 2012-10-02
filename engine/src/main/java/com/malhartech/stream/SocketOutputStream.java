@@ -14,6 +14,7 @@ import com.malhartech.dag.StreamContext;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundMessageHandlerAdapter;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
+@Sharable
 public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter implements Stream
 {
   private static final Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
@@ -41,7 +43,7 @@ public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAd
     bootstrap = new Bootstrap();
 
     bootstrap.group(new NioEventLoopGroup())
-            .channel(new NioSocketChannel())
+            .channel(NioSocketChannel.class)
             .remoteAddress(config.getBufferServerAddress())
             .handler(new ClientInitializer(this));
   }

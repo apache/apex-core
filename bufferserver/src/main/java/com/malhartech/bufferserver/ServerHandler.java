@@ -6,12 +6,13 @@ package com.malhartech.bufferserver;
 
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.PurgeRequest;
 import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.policy.*;
+import com.malhartech.bufferserver.util.SerializedData;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
@@ -22,6 +23,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handler to serve connections accepted by the server<p>
@@ -32,7 +34,7 @@ import java.util.logging.Logger;
 @Sharable
 public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
 {
-  private static final Logger logger = Logger.getLogger(ServerHandler.class.getName());
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ServerHandler.class);
   private static final AttributeKey<DataList> DATALIST = new AttributeKey<DataList>("ServerHandler.datalist");
   private static final AttributeKey<LogicalNode> LOGICALNODE = new AttributeKey<LogicalNode>("ServerHandler.logicalnode");
   final HashMap<String, DataList> publisher_bufffers = new HashMap<String, DataList>();
@@ -66,7 +68,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
       default:
         DataList dl = ctx.attr(DATALIST).get();
         if (dl == null) {
-          logger.log(Level.INFO, "Attempt to send data w/o talking protocol");
+          logger.warn("Attempt to send data w/o talking protocol {}", ctx.channel());
         }
         else {
           dl.add(data);
@@ -85,7 +87,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
-    logger.log(Level.INFO, "received publisher request: {0}", request);
+    logger.info("received publisher request: {}", request);
 
     DataList dl;
 
@@ -123,7 +125,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
     String type = request.getType();
     String upstream_identifier = request.getUpstreamIdentifier();
     //String upstream_type = request.getUpstreamType();
-    logger.log(Level.INFO, "received subscriber request: {0}", request);
+    logger.info("Received subscriber request: {}", request);
 
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;
@@ -286,10 +288,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
   {
-    logger.log(
-            Level.WARNING,
-            "Unexpected exception from downstream.",
-            cause.getCause());
+    logger.info("Exception with ctx = " + ctx.toString(), cause);
 
     try {
       channelInactive(ctx);
@@ -299,22 +298,36 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
     }
   }
 
-  private void handlePurgeRequest(PurgeRequest purgeRequest, ChannelHandlerContext ctx, int windowId)
+  private void handlePurgeRequest(PurgeRequest request, ChannelHandlerContext ctx, int windowId)
   {
+    logger.info("Received purge request: {}", request);
+
     DataList dl;
     synchronized (publisher_bufffers) {
-      dl = publisher_bufffers.get(purgeRequest.getIdentifier());
+      dl = publisher_bufffers.get(request.getIdentifier());
     }
 
     SimpleData.Builder sdb = SimpleData.newBuilder();
     if (dl == null) {
-      sdb.setData(ByteString.copyFromUtf8("invalid identifier '" + purgeRequest.getIdentifier() + "'"));
+      sdb.setData(ByteString.copyFromUtf8("invalid identifier '" + request.getIdentifier() + "'"));
     }
     else {
-      dl.purge(purgeRequest.getBaseSeconds(), windowId, new ProtobufDataInspector());
+      dl.purge(request.getBaseSeconds(), windowId, new ProtobufDataInspector());
       sdb.setData(ByteString.copyFromUtf8("request sent for processing"));
     }
 
-    ctx.write(sdb.build()).addListener(ChannelFutureListener.CLOSE);
+    Data.Builder db = Data.newBuilder();
+    db.setType(DataType.SIMPLE_DATA);
+    db.setWindowId(0);
+    db.setSimpleData(sdb);
+
+    ctx.write(SerializedData.getInstanceFrom(db.build()));
+//            .addListener(new ChannelFutureListener() {
+//
+//      public void operationComplete(ChannelFuture cf) throws Exception
+//      {
+//        throw new UnsupportedOperationException("Not supported yet.");
+//      }
+//    });
   }
 }

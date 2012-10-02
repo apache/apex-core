@@ -7,8 +7,6 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import junit.framework.TestCase;
 import org.slf4j.LoggerFactory;
 
@@ -45,17 +43,102 @@ public class ServerTest extends TestCase
   /**
    * Test of run method, of class Server.
    */
-  public void testRun()
+  public void testRun() throws Exception
   {
-    try {
-      System.out.println("run");
-      SocketAddress result = instance.run();
-      assertNotNull(result);
-      assertTrue(((InetSocketAddress)result).getPort() != 0);
+    System.out.println("run");
+    SocketAddress result = instance.run();
+    assertNotNull(result);
+    assertTrue(((InetSocketAddress)result).getPort() != 0);
+  }
+
+  private void testNoPublishNoSubscribe(BufferServerPublisher bsp, BufferServerSubscriber bss) throws InterruptedException
+  {
+    bsp.activate();
+    bss.activate();
+
+    Thread.sleep(100);
+
+    bss.deactivate();
+    bsp.deactivate();
+
+    assert (bss.tupleCount.get() == 0);
+  }
+
+  private void test1Window(BufferServerPublisher bsp, BufferServerSubscriber bss) throws InterruptedException
+  {
+    bsp.activate();
+    bss.activate();
+
+    ResetTuple rt = new ResetTuple();
+    rt.id = 0x7afebabe000000faL;
+    bsp.publishMessage(rt);
+
+    Thread.sleep(300);
+
+    bss.deactivate();
+    bsp.deactivate();
+
+    assert (bss.tupleCount.get() == 1);
+    assert (bss.firstPayload.getType() == rt.getType());
+  }
+
+  private void testLateSubscriber(BufferServerSubscriber bss) throws InterruptedException
+  {
+    bss.activate();
+
+    Thread.sleep(100);
+
+    bss.deactivate();
+
+    assert (bss.tupleCount.get() == 1);
+    assert (bss.firstPayload.getType() == DataType.RESET_WINDOW);
+  }
+
+  private void testATonOfData(BufferServerPublisher bsp, BufferServerSubscriber bss) throws InterruptedException
+  {
+    bsp.activate();
+    bss.activate();
+
+    BeginTuple bt = new BeginTuple();
+    bt.id = 0x7afebabe00000000L;
+    bsp.publishMessage(bt);
+
+    for (int i = 0; i < 100; i++) {
+      bsp.publishMessage(new byte[i]);
     }
-    catch (Exception ex) {
-      LoggerFactory.getLogger(ServerTest.class).error(null, ex);
+
+    EndTuple et = new EndTuple();
+    et.id = bt.id;
+    bsp.publishMessage(et);
+
+    BeginTuple bt1 = new BeginTuple();
+    bt1.id = bt.id + 1;
+    bsp.publishMessage(bt1);
+
+    for (int i = 0; i < 100; i++) {
+      bsp.publishMessage(new byte[i]);
     }
+
+    EndTuple et1 = new EndTuple();
+    et1.id = bt1.id;
+    bsp.publishMessage(et1);
+
+    Thread.sleep(100);
+
+    bsp.deactivate();
+    bss.deactivate();
+
+    assert (bss.tupleCount.get() == 205);
+  }
+
+  private void testPurgeSome(BufferServerController bsc, BufferServerSubscriber bss) throws InterruptedException
+  {
+    bsc.windowId = 0;
+    bsc.activate();
+    Thread.sleep(1000);
+    bsc.deactivate();
+
+//    assert(bsc.data != null);
   }
 
   class ResetTuple implements Tuple
@@ -101,39 +184,32 @@ public class ServerTest extends TestCase
     }
   }
 
-  public void testPurge()
+  public void testPurge() throws Exception
   {
     System.out.println("purge");
-    try {
-      SocketAddress result = instance.run();
-      // create no tuples
-      // ensure that no data is received
-      // ensure that no data is received
-    }
-    catch (Exception ex) {
-      Logger.getLogger(ServerTest.class.getName()).log(Level.SEVERE, null, ex);
-    }
+    SocketAddress result = instance.run();
+    assert (result instanceof InetSocketAddress);
+    String host = ((InetSocketAddress)result).getHostName();
+    int port = ((InetSocketAddress)result).getPort();
 
-    // register publisher
-    // register subscriber
-    // ensure that no data is received
+    BufferServerPublisher bsp = new BufferServerPublisher("MyPublisher");
+    bsp.setup(host, port);
 
-    // register publisher
-    // register subscriber
-    // publish a window
-    // ensure that data is received
+    BufferServerSubscriber bss = new BufferServerSubscriber("MyPublisher", null);
+    bss.setup(host, port);
 
-    // register subscriber
-    // ensure that data is received
+    BufferServerController bsc = new BufferServerController("MyPublisher");
+    bsc.setup(host, port);
 
-    // register publisher
-    // register subscriber
-    // publish a lot of data
-    // ensure that all the data is received
+    testNoPublishNoSubscribe(bsp, bss);
 
-    // purge most of it
-    // register subscriber
-    // ensure that the remanining data is received
+    test1Window(bsp, bss);
+
+    testLateSubscriber(bss);
+
+    testATonOfData(bsp, bss);
+
+    testPurgeSome(bsc, bss);
 
     // purge all of it
     // register subscriber
@@ -142,8 +218,6 @@ public class ServerTest extends TestCase
     // publish some more
     // register subscriber
     // ensure that the data is received
-
-    for (int i = 0; i < 1000; i++) {
-    }
+    logger.debug("done!");
   }
 }

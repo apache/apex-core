@@ -36,17 +36,6 @@
       <version>4.8.2</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>com.malhartech</groupId>
-      <artifactId>malhar-bufferserver</artifactId>
-      <version>0.1-SNAPSHOT</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>netty</artifactId>
-          <groupId>io.netty</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
 
     <dependency>
       <groupId>org.apache.activemq</groupId>
@@ -88,16 +77,6 @@
       <version>1.07</version>
       <classifier>shaded</classifier>
     </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-common</artifactId>
-      <version>4.0.0.Alpha2</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-transport</artifactId>
-      <version>4.0.0.Alpha2</version>
-    </dependency>
      <!--dependency>
          <groupId>org.reflections</groupId>
          <artifactId>reflections</artifactId>
@@ -107,6 +86,11 @@
       <groupId>com.esotericsoftware.kryo</groupId>
       <artifactId>kryo</artifactId>
       <version>2.19</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>malhar-bufferserver</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 
@@ -246,7 +230,7 @@
             <configuration>
                 <excludedGroups>${test.excludedGroups}</excludedGroups>
             </configuration>
-          </plugin>          
+          </plugin>
         </plugins>
       </build>
     </profile>
@@ -280,7 +264,7 @@
       <id>fullTests</id>
       <properties>
         <test.excludedGroups></test.excludedGroups>
-      </properties>      
+      </properties>
     </profile>
   </profiles>
 

@@ -35,9 +35,9 @@ public class Server
     }
 
     /**
-     * 
+     *
      * @return {@link java.net.SocketAddress}
-     * @throws Exception 
+     * @throws Exception
      */
     public SocketAddress run() throws Exception
     {
@@ -45,7 +45,7 @@ public class Server
         bootstrap = new ServerBootstrap();
 
         bootstrap.group(new NioEventLoopGroup(), new NioEventLoopGroup())
-                .channel(new NioServerSocketChannel())
+                .channel(NioServerSocketChannel.class)
                 .option(ChannelOption.SO_BACKLOG, 100)
                 .localAddress(port)
                 .childOption(ChannelOption.TCP_NODELAY, true)
@@ -59,7 +59,7 @@ public class Server
     }
 
     /**
-     * 
+     *
      */
     public void shutdown()
     {
@@ -68,9 +68,9 @@ public class Server
     }
 
     /**
-     * 
+     *
      * @param args
-     * @throws Exception 
+     * @throws Exception
      */
     public static void main(String[] args) throws Exception
     {

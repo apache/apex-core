@@ -90,7 +90,7 @@ public class Client
     // Set up.
     Bootstrap bootstrap = new Bootstrap();
     bootstrap.group(new NioEventLoopGroup())
-            .channel(new NioSocketChannel())
+            .channel(NioSocketChannel.class)
             .remoteAddress(host, port)
             .handler(new ClientInitializer(new ClientHandler()));
 
@@ -104,7 +104,7 @@ public class Client
       ClientHandler.publish(channel, node, type, 0L);
     }
     else {
-      ClientHandler.registerPartitions(channel, id, down_type, node, type, partitions, 0L);
+      ClientHandler.subscribe(channel, id, down_type, node, type, partitions, 0L);
     }
   }
 

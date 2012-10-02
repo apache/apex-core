@@ -7,6 +7,7 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.netty.ClientInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
@@ -18,6 +19,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+@Sharable
 public abstract class AbstractSocketSubscriber<T> extends ChannelInboundMessageHandlerAdapter<T>
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractSocketSubscriber.class);
@@ -29,7 +31,7 @@ public abstract class AbstractSocketSubscriber<T> extends ChannelInboundMessageH
     bootstrap = new Bootstrap();
 
     bootstrap.group(new NioEventLoopGroup())
-            .channel(new NioSocketChannel())
+            .channel(NioSocketChannel.class)
             .remoteAddress(host, port)
             .handler(new ClientInitializer(this));
   }

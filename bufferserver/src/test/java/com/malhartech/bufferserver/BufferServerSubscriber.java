@@ -35,8 +35,9 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   @Override
   public void activate()
   {
+    tupleCount.set(0);
     super.activate();
-    ClientHandler.registerPartitions(channel,
+    ClientHandler.subscribe(channel,
                                      "BufferServerSubscriber",
                                      "BufferServerOutput/BufferServerSubscriber",
                                      sourceId, "irrelevant",
@@ -46,6 +47,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   @Override
   public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
   {
+    tupleCount.incrementAndGet();
     logger.debug("received {}", data);
     if (firstPayload == null) {
       firstPayload = data;

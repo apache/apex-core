@@ -246,7 +246,7 @@ public class StramClient
       io.netty.channel.socket.nio.NioEventLoopGroup.class, // there should be another way of handling this!
       io.netty.util.AttributeMap.class,
       io.netty.buffer.ChannelBufType.class,
-      io.netty.handler.codec.MessageToMessageEncoder.class
+      io.netty.handler.codec.ByteToByteCodec.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
