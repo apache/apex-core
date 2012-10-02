@@ -6,6 +6,8 @@ package com.malhartech.bufferserver;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import junit.framework.TestCase;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +17,8 @@ import org.slf4j.LoggerFactory;
  */
 public class ServerTest extends TestCase
 {
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ServerTest.class);
+
   public ServerTest(String testName)
   {
     super(testName);
@@ -51,6 +55,52 @@ public class ServerTest extends TestCase
         catch (Exception ex) {
             LoggerFactory.getLogger(ServerTest.class).error(null, ex);
         }
+  }
+
+  public void testPurge()
+  {
+    System.out.println("purge");
+    try {
+      SocketAddress result = instance.run();
+          // create no tuples
+      // ensure that no data is received
+      // ensure that no data is received
+    }
+    catch (Exception ex) {
+      Logger.getLogger(ServerTest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+
+    // register publisher
+    // register subscriber
+    // ensure that no data is received
+
+    // register publisher
+    // register subscriber
+    // publish a window
+    // ensure that data is received
+
+    // register subscriber
+    // ensure that data is received
+
+    // register publisher
+    // register subscriber
+    // publish a lot of data
+    // ensure that all the data is received
+
+    // purge most of it
+    // register subscriber
+    // ensure that the remanining data is received
+
+    // purge all of it
+    // register subscriber
+    // ensure that no data is received
+
+    // publish some more
+    // register subscriber
+    // ensure that the data is received
+
+    for (int i = 0; i < 1000; i++) {
+    }
   }
 
 }

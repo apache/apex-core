@@ -1,59 +1,45 @@
 /*
- * Copyright (c) 2012 Malhar, Inc. All Rights Reserved.
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.bufferserver.netty.ClientInitializer;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author chetan
+ * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-/**
- *
- * Implements a stream that is read from a socket by a node<p>
- * <br>
- * The main class for all socket based input streams.<br>
- * <br>
- *
- */
-public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerAdapter<T> implements Stream
+public class SubscriberTest<T> extends ChannelInboundMessageHandlerAdapter<T>
 {
-  private static final Logger logger = LoggerFactory.getLogger(SocketInputStream.class);
+  private static final Logger logger = LoggerFactory.getLogger(SubscriberTest.class);
   protected Channel channel;
   private Bootstrap bootstrap;
 
-  @Override
-  public void setup(StreamConfiguration config)
+  public void setup(String host, int port)
   {
     bootstrap = new Bootstrap();
 
     bootstrap.group(new NioEventLoopGroup())
             .channel(new NioSocketChannel())
-            .remoteAddress(config.getBufferServerAddress())
+            .remoteAddress(host, port)
             .handler(new ClientInitializer(this));
   }
 
-  @Override
   public void teardown()
   {
     bootstrap.shutdown();
   }
 
-  @Override
-  public void activate(StreamContext context)
+  public void activate()
   {
     // Make a new connection.
     channel = bootstrap.connect().syncUninterruptibly().channel();
@@ -69,9 +55,14 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
     // Netty needs some way to prevent it.
   }
 
-  @Override
   public void deactivate()
   {
     channel.close().awaitUninterruptibly();
+  }
+
+  @Override
+  public void messageReceived(ChannelHandlerContext ctx, T msg) throws Exception
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }
