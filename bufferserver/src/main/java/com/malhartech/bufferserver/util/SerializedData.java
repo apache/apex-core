@@ -2,7 +2,6 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-
 package com.malhartech.bufferserver.util;
 
 import com.malhartech.bufferserver.Buffer.Data;
@@ -19,17 +18,14 @@ public final class SerializedData
    * the byte buffer where various messages including this one are stored.
    */
   public byte[] bytes;
-
   /**
    * the offset at which the current messages's length followed by the actual message is stored.
    */
   public int offset;
-
   /**
    * the offset at which the actual data begins. Between offset and dataOffset, the length of the data is stored.
    */
   public int dataOffset;
-
   /**
    * size is the total size of the slice of the byte array which stores the length and the message.
    */
@@ -38,12 +34,15 @@ public final class SerializedData
   public static SerializedData getInstanceFrom(Data d)
   {
     SerializedData sd = new SerializedData();
-    sd.bytes = new byte[5 + d.getSerializedSize()];
+    int size = d.getSerializedSize();
+    sd.bytes = new byte[5 + size];
     sd.offset = 0;
-    sd.dataOffset = Codec.writeRawVarint32(d.getSerializedSize(), sd.bytes, 0);
+    sd.dataOffset = Codec.writeRawVarint32(size, sd.bytes, 0);
     sd.size = sd.dataOffset + d.getSerializedSize();
+    System.arraycopy(d.toByteArray(), 0, sd.bytes, sd.dataOffset, size);
     return sd;
   }
+
   /**
    *
    * @return String

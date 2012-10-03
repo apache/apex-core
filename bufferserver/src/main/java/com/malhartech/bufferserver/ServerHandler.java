@@ -13,6 +13,7 @@ import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.util.SerializedData;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
@@ -309,25 +310,19 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
 
     SimpleData.Builder sdb = SimpleData.newBuilder();
     if (dl == null) {
-      sdb.setData(ByteString.copyFromUtf8("invalid identifier '" + request.getIdentifier() + "'"));
+      sdb.setData(ByteString.copyFromUtf8("Invalid identifier '" + request.getIdentifier() + "'"));
     }
     else {
       dl.purge(request.getBaseSeconds(), windowId, new ProtobufDataInspector());
-      sdb.setData(ByteString.copyFromUtf8("request sent for processing"));
+      sdb.setData(ByteString.copyFromUtf8("Request sent for processing"));
     }
 
     Data.Builder db = Data.newBuilder();
     db.setType(DataType.SIMPLE_DATA);
-    db.setWindowId(0);
+    db.setWindowId(windowId);
     db.setSimpleData(sdb);
 
-    ctx.write(SerializedData.getInstanceFrom(db.build()));
-//            .addListener(new ChannelFutureListener() {
-//
-//      public void operationComplete(ChannelFuture cf) throws Exception
-//      {
-//        throw new UnsupportedOperationException("Not supported yet.");
-//      }
-//    });
+    ctx.write(SerializedData.getInstanceFrom(db.build()))
+            .addListener(ChannelFutureListener.CLOSE);
   }
 }

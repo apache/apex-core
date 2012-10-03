@@ -138,7 +138,7 @@ public class ServerTest extends TestCase
     Thread.sleep(1000);
     bsc.deactivate();
 
-//    assert(bsc.data != null);
+    assert(bsc.data != null);
   }
 
   class ResetTuple implements Tuple
