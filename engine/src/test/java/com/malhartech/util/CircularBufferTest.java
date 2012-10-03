@@ -6,6 +6,8 @@ package com.malhartech.util;
 
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.junit.Assert;
 import org.junit.*;
 
@@ -123,5 +125,89 @@ public class CircularBufferTest
 
     assert (instance.size() == 9);
     assert (instance.get() == 2);
+  }
+
+  @Test
+  public void testVolatile() throws InterruptedException
+  {
+    Thread.currentThread().setName("TestVolatile");
+    final CircularBuffer<Long> buffer = new CircularBuffer<Long>(1024 * 1024);
+    final long spinMillis = 35;
+    Thread producer = new Thread("Producer")
+    {
+      @Override
+      public void run()
+      {
+        long l = 0;
+        try {
+          do {
+            try {
+              for (int i = 0; i < 1024; i++) {
+                buffer.add(l++);
+              }
+            }
+            catch (BufferOverflowException ex) {
+              l--;
+              sleep(spinMillis);
+            }
+          }
+          while (!interrupted());
+        }
+        catch (InterruptedException ex1) {
+        }
+        System.out.println("Produced " + l + " Longs");
+      }
+    };
+
+    Thread consumer = new Thread("Consumer")
+    {
+      @Override
+      public void run()
+      {
+        long l = 0;
+        try {
+          int size;
+          do {
+            if ((size = buffer.size()) == 0) {
+              sleep(spinMillis);
+            }
+            else {
+              while (size-- > 0) {
+                Long ll;
+//                buffer.get();
+//                l++;
+                while (true) {
+                  ll = buffer.peek();
+                  if (ll.longValue() == l) {
+                    break;
+                  }
+                  else {
+                    sleep(spinMillis);
+                  }
+                }
+
+                buffer.get();
+                Assert.assertEquals(l++, ll.longValue());
+              }
+            }
+          }
+          while (!interrupted());
+        }
+        catch (InterruptedException ex1) {
+        }
+        System.out.println("Consumed " + l + " Longs");
+      }
+    };
+
+    producer.start();
+    consumer.start();
+
+    Thread.sleep(30000);
+
+    producer.interrupt();
+    consumer.interrupt();
+
+    producer.join();
+    consumer.join();
   }
 }
