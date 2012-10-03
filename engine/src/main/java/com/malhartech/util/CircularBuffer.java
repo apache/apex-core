@@ -11,25 +11,23 @@ package com.malhartech.util;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.util.Collection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Provides a circular buffer<p>
+ * Provides a premium implementation of circular buffer<p>
  * <br>
  *
  */
-public class CircularBuffer<T>
+public class CircularBuffer<T> implements CBuffer<T>
 {
-  //static {
-  //  System.err.println("CircularBuffer clinit " + Thread.currentThread());
-  //  Thread.dumpStack();
-  //}
-
+  private static final Logger logger = LoggerFactory.getLogger(CircularBuffer.class);
   private static final BufferUnderflowException underflow = new BufferUnderflowException();
   private static final BufferOverflowException overflow = new BufferOverflowException();
   private final T[] buffer;
   private final int buffermask;
-  private volatile int tail;
-  private volatile int head;
+  private volatile long tail;
+  private volatile long head;
 
   /**
    *
@@ -59,10 +57,12 @@ public class CircularBuffer<T>
    * @param toAdd object to be added
    *
    */
+  @Override
   public void add(T toAdd)
   {
     if (head - tail <= buffermask) {
-      buffer[head++ & buffermask] = toAdd;
+      buffer[(int)(head & buffermask)] = toAdd;
+      head++;
       return;
     }
 
@@ -77,10 +77,13 @@ public class CircularBuffer<T>
    * @return object removed from the buffer returned
    * <br>
    */
+  @Override
   public T get()
   {
     if (head > tail) {
-      return buffer[tail++ & buffermask];
+      T t = buffer[(int)(tail & buffermask)];
+      tail++;
+      return t;
     }
 
     throw underflow;
@@ -89,7 +92,7 @@ public class CircularBuffer<T>
   public T peek()
   {
     if (head > tail) {
-      return buffer[tail & buffermask];
+      return buffer[(int)(tail & buffermask)];
     }
 
     return null;
@@ -103,9 +106,10 @@ public class CircularBuffer<T>
    * @return Number of objects in the buffer
    * <br>
    */
+  @Override
   public final int size()
   {
-    return head - tail;
+    return (int)(head - tail);
   }
 
   /**
@@ -135,7 +139,8 @@ public class CircularBuffer<T>
     int size = size();
 
     while (head > tail) {
-      container.add(buffer[tail++ & buffermask]);
+      container.add(buffer[(int)(tail & buffermask)]);
+      tail++;
     }
 
     return size;

@@ -13,11 +13,11 @@ import java.nio.BufferUnderflowException;
 import java.util.Collection;
 
 /**
- * Provides a circular buffer<p>
+ * Provides a non-premium implementation of circular buffer<p>
  * <br>
  *
  */
-public class SynchronizedCircularBuffer<T>
+public class SynchronizedCircularBuffer<T> implements CBuffer<T>
 {
   private static final BufferUnderflowException underflow = new BufferUnderflowException();
   private static final BufferOverflowException overflow = new BufferOverflowException();
@@ -54,6 +54,7 @@ public class SynchronizedCircularBuffer<T>
    * @param toAdd object to be added
    *
    */
+  @Override
   public synchronized void add(T toAdd)
   {
     if (head - tail <= buffermask) {
@@ -72,6 +73,7 @@ public class SynchronizedCircularBuffer<T>
    * @return object removed from the buffer returned
    * <br>
    */
+  @Override
   public synchronized T get()
   {
     if (head > tail) {
@@ -98,6 +100,7 @@ public class SynchronizedCircularBuffer<T>
    * @return Number of objects in the buffer
    * <br>
    */
+  @Override
   public final synchronized int size()
   {
     return head - tail;

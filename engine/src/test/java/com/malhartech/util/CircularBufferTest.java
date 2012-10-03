@@ -6,10 +6,9 @@ package com.malhartech.util;
 
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.junit.Assert;
 import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -17,6 +16,8 @@ import org.junit.*;
  */
 public class CircularBufferTest
 {
+  private static final Logger logger = LoggerFactory.getLogger(CircularBufferTest.class);
+
   public CircularBufferTest()
   {
   }
@@ -47,7 +48,7 @@ public class CircularBufferTest
   @Test
   public void testAdd()
   {
-    System.out.println("add");
+    Thread.currentThread().setName("TestAdd");
 
     CircularBuffer<Integer> instance = new CircularBuffer<Integer>(0);
     Assert.assertEquals("capacity", instance.capacity(), 1);
@@ -93,7 +94,7 @@ public class CircularBufferTest
   @Test
   public void testGet()
   {
-    System.out.println("get");
+    Thread.currentThread().setName("TestGet");
 
     CircularBuffer<Integer> instance = new CircularBuffer<Integer>(0);
     try {
@@ -128,11 +129,23 @@ public class CircularBufferTest
   }
 
   @Test
-  public void testVolatile() throws InterruptedException
+  public void testPerformanceOfCircularBuffer() throws InterruptedException
   {
-    Thread.currentThread().setName("TestVolatile");
-    final CircularBuffer<Long> buffer = new CircularBuffer<Long>(1024 * 1024);
-    final long spinMillis = 35;
+    Thread.currentThread().setName("testPerformanceOfCircularBuffer");
+    testPerformanceOf(new CircularBuffer<Long>(1024 * 1024), 500);
+    testPerformanceOf(new CircularBuffer<Long>(1024 * 1024), 500);
+  }
+
+  @Test
+  public void testPerformanceOfSynchronizedCircularBuffer() throws InterruptedException
+  {
+    Thread.currentThread().setName("testPerformanceOfSynchronizedCircularBuffer");
+    testPerformanceOf(new SynchronizedCircularBuffer<Long>(1024 * 1024), 500);
+    testPerformanceOf(new SynchronizedCircularBuffer<Long>(1024 * 1024), 500);
+  }
+
+  private <T extends CBuffer<Long>> void testPerformanceOf(final T buffer, long millis) throws InterruptedException
+  {
     Thread producer = new Thread("Producer")
     {
       @Override
@@ -148,14 +161,14 @@ public class CircularBufferTest
             }
             catch (BufferOverflowException ex) {
               l--;
-              sleep(spinMillis);
+              sleep(10);
             }
           }
           while (!interrupted());
         }
         catch (InterruptedException ex1) {
         }
-        System.out.println("Produced " + l + " Longs");
+        logger.debug("Produced {} Longs", l);
       }
     };
 
@@ -169,25 +182,11 @@ public class CircularBufferTest
           int size;
           do {
             if ((size = buffer.size()) == 0) {
-              sleep(spinMillis);
+              sleep(10);
             }
             else {
               while (size-- > 0) {
-                Long ll;
-//                buffer.get();
-//                l++;
-                while (true) {
-                  ll = buffer.peek();
-                  if (ll.longValue() == l) {
-                    break;
-                  }
-                  else {
-                    sleep(spinMillis);
-                  }
-                }
-
-                buffer.get();
-                Assert.assertEquals(l++, ll.longValue());
+                Assert.assertEquals(l++, buffer.get().longValue());
               }
             }
           }
@@ -195,14 +194,14 @@ public class CircularBufferTest
         }
         catch (InterruptedException ex1) {
         }
-        System.out.println("Consumed " + l + " Longs");
+        logger.debug("Consumed {} Longs", l);
       }
     };
 
     producer.start();
     consumer.start();
 
-    Thread.sleep(30000);
+    Thread.sleep(millis);
 
     producer.interrupt();
     consumer.interrupt();
