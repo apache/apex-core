@@ -43,7 +43,7 @@ public class BufferServerController extends AbstractSocketSubscriber<Buffer.Data
   @Override
   public void messageReceived(ChannelHandlerContext ctx, Data data) throws Exception
   {
-    logger.debug("received {}", data);
+//    logger.debug("received {}", data);
     this.data = data;
   }
 }

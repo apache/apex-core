@@ -7,51 +7,56 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import junit.framework.TestCase;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class ServerTest extends TestCase
+public class ServerTest
 {
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ServerTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(ServerTest.class);
+  static Server instance;
+  static BufferServerPublisher bsp;
+  static BufferServerSubscriber bss;
+  static BufferServerController bsc;
 
-  public ServerTest(String testName)
+  @BeforeClass
+  public static void setupServerAndClients() throws Exception
   {
-    super(testName);
-  }
-
-  @Override
-  protected void setUp() throws Exception
-  {
-    super.setUp();
-
     instance = new Server(0);
+    SocketAddress result = instance.run();
+    assert (result instanceof InetSocketAddress);
+    String host = ((InetSocketAddress)result).getHostName();
+    int port = ((InetSocketAddress)result).getPort();
+
+    bsp = new BufferServerPublisher("MyPublisher");
+    bsp.setup(host, port);
+
+    bss = new BufferServerSubscriber("MyPublisher", null);
+    bss.setup(host, port);
+
+    bsc = new BufferServerController("MyPublisher");
+    bsc.setup(host, port);
   }
 
-  @Override
-  protected void tearDown() throws Exception
+  @AfterClass
+  public static void teardownServerAndClients()
   {
-    super.tearDown();
-
+    bsc.teardown();
+    bss.teardown();
+    bsp.teardown();
     instance.shutdown();
   }
-  Server instance;
 
-  /**
-   * Test of run method, of class Server.
-   */
-  public void testRun() throws Exception
-  {
-    System.out.println("run");
-    SocketAddress result = instance.run();
-    assertNotNull(result);
-    assertTrue(((InetSocketAddress)result).getPort() != 0);
-  }
-
-  private void testNoPublishNoSubscribe(BufferServerPublisher bsp, BufferServerSubscriber bss) throws InterruptedException
+  @Test
+  public void testNoPublishNoSubscribe() throws InterruptedException
   {
     bsp.activate();
     bss.activate();
@@ -61,10 +66,11 @@ public class ServerTest extends TestCase
     bss.deactivate();
     bsp.deactivate();
 
-    assert (bss.tupleCount.get() == 0);
+    assertEquals(0, bss.tupleCount.get());
   }
 
-  private void test1Window(BufferServerPublisher bsp, BufferServerSubscriber bss) throws InterruptedException
+  @Test(dependsOnMethods="testNoPublishNoSubscribe")
+  public void test1Window() throws InterruptedException
   {
     bsp.activate();
     bss.activate();
@@ -78,11 +84,12 @@ public class ServerTest extends TestCase
     bss.deactivate();
     bsp.deactivate();
 
-    assert (bss.tupleCount.get() == 1);
-    assert (bss.firstPayload.getType() == rt.getType());
+    assertEquals(bss.tupleCount.get(), 1);
+    assertEquals(rt.getType(), bss.firstPayload.getType());
   }
 
-  private void testLateSubscriber(BufferServerSubscriber bss) throws InterruptedException
+  @Test(dependsOnMethods="test1Window")
+  public void testLateSubscriber() throws InterruptedException
   {
     bss.activate();
 
@@ -90,11 +97,12 @@ public class ServerTest extends TestCase
 
     bss.deactivate();
 
-    assert (bss.tupleCount.get() == 1);
-    assert (bss.firstPayload.getType() == DataType.RESET_WINDOW);
+    assertEquals(bss.tupleCount.get(), 1);
+    assertEquals(bss.firstPayload.getType(), DataType.RESET_WINDOW);
   }
 
-  private void testATonOfData(BufferServerPublisher bsp, BufferServerSubscriber bss) throws InterruptedException
+  @Test(dependsOnMethods="testLateSubscriber")
+  public void testATonOfData() throws InterruptedException
   {
     bsp.activate();
     bss.activate();
@@ -128,19 +136,31 @@ public class ServerTest extends TestCase
     bsp.deactivate();
     bss.deactivate();
 
-    assert (bss.tupleCount.get() == 205);
+    assertEquals(bss.tupleCount.get(), 205);
   }
 
-  private void testPurgeSome(BufferServerController bsc, BufferServerSubscriber bss) throws InterruptedException
+  @Test(dependsOnMethods="testATonOfData")
+  public void testPurgeSome() throws InterruptedException
   {
     bsc.windowId = 0;
     bsc.activate();
     Thread.sleep(1000);
     bsc.deactivate();
 
-    assert(bsc.data != null);
+    assertNotNull(bsc.data);
+
+    bss.activate();
+    Thread.sleep(1000);
+    bss.deactivate();
+    assertEquals(bss.tupleCount.get(), 205);
   }
 
+  // purge all of it
+  // register subscriber
+  // ensure that no data is received
+  // publish some more
+  // register subscriber
+  // ensure that the data is received
   class ResetTuple implements Tuple
   {
     long id;
@@ -182,42 +202,5 @@ public class ServerTest extends TestCase
     {
       return DataType.END_WINDOW;
     }
-  }
-
-  public void testPurge() throws Exception
-  {
-    System.out.println("purge");
-    SocketAddress result = instance.run();
-    assert (result instanceof InetSocketAddress);
-    String host = ((InetSocketAddress)result).getHostName();
-    int port = ((InetSocketAddress)result).getPort();
-
-    BufferServerPublisher bsp = new BufferServerPublisher("MyPublisher");
-    bsp.setup(host, port);
-
-    BufferServerSubscriber bss = new BufferServerSubscriber("MyPublisher", null);
-    bss.setup(host, port);
-
-    BufferServerController bsc = new BufferServerController("MyPublisher");
-    bsc.setup(host, port);
-
-    testNoPublishNoSubscribe(bsp, bss);
-
-    test1Window(bsp, bss);
-
-    testLateSubscriber(bss);
-
-    testATonOfData(bsp, bss);
-
-    testPurgeSome(bsc, bss);
-
-    // purge all of it
-    // register subscriber
-    // ensure that no data is received
-
-    // publish some more
-    // register subscriber
-    // ensure that the data is received
-    logger.debug("done!");
   }
 }

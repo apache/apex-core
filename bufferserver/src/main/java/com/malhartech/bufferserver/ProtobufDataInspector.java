@@ -14,22 +14,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class ProtobufDataInspector implements DataIntrospector
 {
   private static final Logger logger = LoggerFactory.getLogger(ProtobufDataInspector.class);
-  SerializedData previousSerializedMessage;
+  int previousOffset = -1;
   Data previousMessage;
 
   /**
-   * 
-   * @param data 
+   *
+   * @param data
    */
   private void readyMessage(SerializedData data)
   {
-    if (data != previousSerializedMessage) {
+    if (data.offset != previousOffset) {
       try {
         int size = data.size - data.dataOffset + data.offset;
         if (size < BasicDataMinLength) {
@@ -45,12 +45,12 @@ public class ProtobufDataInspector implements DataIntrospector
         previousMessage = null;
       }
 
-      previousSerializedMessage = data;
+      previousOffset = data.offset;
     }
   }
 
   /**
-   * 
+   *
    * @param data
    * @return DataType
    */
@@ -62,7 +62,7 @@ public class ProtobufDataInspector implements DataIntrospector
   }
 
   /**
-   * 
+   *
    * @param data
    * @return long
    */
@@ -74,7 +74,7 @@ public class ProtobufDataInspector implements DataIntrospector
   }
 
   /**
-   * 
+   *
    * @param data
    * @return Data
    */
@@ -86,18 +86,18 @@ public class ProtobufDataInspector implements DataIntrospector
   }
 
   /**
-   * 
-   * @param data 
+   *
+   * @param data
    */
   @Override
   public void wipeData(SerializedData data)
   {
-    if (data.size + data.offset - data.dataOffset > BasicDataMinLength) {
-      System.arraycopy(BasicData, 0, data.bytes, data.dataOffset, BasicDataMinLength);
-    }
-    else {
+    if (data.size + data.offset - data.dataOffset < BasicDataMinLength) {
       logger.debug("we do not need to wipe the SerializedData since it's smaller than min length");
       /* Arrays.fill(data.bytes, data.dataOffset, data.size + data.offset, (byte) 0); */
+    }
+    else {
+      System.arraycopy(BasicData, 0, data.bytes, data.dataOffset, BasicDataMinLength);
     }
   }
   /**

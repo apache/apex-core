@@ -21,19 +21,33 @@ public class Codec
   {
     while (true) {
       if ((value & ~0x7F) == 0) {
-        buffer[offset++] = (byte) value;
+        buffer[offset++] = (byte)value;
         return offset;
       }
       else {
-        buffer[offset++] = (byte) ((value & 0x7F) | 0x80);
+        buffer[offset++] = (byte)((value & 0x7F) | 0x80);
+        value >>>= 7;
+      }
+    }
+  }
+
+  public static int getSizeOfRawVarint32(int value)
+  {
+    int offset = 0;
+    while (true) {
+      if ((value & ~0x7F) == 0) {
+        return ++offset;
+      }
+      else {
+        ++offset;
         value >>>= 7;
       }
     }
   }
 
   /**
-   * 
-   * @param current 
+   *
+   * @param current
    */
   public static void readRawVarInt32(SerializedData current)
   {
@@ -72,7 +86,7 @@ public class Codec
                 return;
               }
             }
-            
+
             current.size = -1;
             return;
           }

@@ -34,13 +34,13 @@ public class LogicalNode implements DataListener
     private final HashSet<ByteBuffer> partitions;
     private final Policy policy;
     private final DataListIterator iterator;
-    
+
     /**
-     * 
+     *
      * @param upstream
      * @param group
      * @param iterator
-     * @param policy 
+     * @param policy
      */
 
     LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy)
@@ -60,7 +60,7 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
+     *
      * @return String
      */
     public String getGroup()
@@ -69,7 +69,7 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
+     *
      * @return Iterator<SerializedData>
      */
     public Iterator<SerializedData> getIterator()
@@ -78,8 +78,8 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
-     * @param channel 
+     *
+     * @param channel
      */
     public void addChannel(Channel channel)
     {
@@ -90,8 +90,8 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
-     * @param channel 
+     *
+     * @param channel
      */
     public void removeChannel(Channel channel)
     {
@@ -104,8 +104,8 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
-     * @param partition 
+     *
+     * @param partition
      */
     public void addPartition(ByteBuffer partition)
     {
@@ -113,12 +113,12 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
-     * @param longWindowId 
+     *
+     * @param longWindowId
      */
     public synchronized void catchUp(long longWindowId)
     {
-        int baseSeconds = 0;
+        long baseSeconds = 0;
         int intervalMillis;
         /*
          * fast forward to catch up with the windowId without consuming
@@ -129,7 +129,7 @@ public class LogicalNode implements DataListener
             switch (iterator.getType()) {
                 case RESET_WINDOW:
                     Data resetWindow = (Data)iterator.getData();
-                    baseSeconds = resetWindow.getWindowId();
+                    baseSeconds = (long)resetWindow.getWindowId() << 32;
                     intervalMillis = resetWindow.getResetWindow().getWidth();
                     if (intervalMillis <= 0) {
                         logger.warn("Interval value set to non positive value = {}", intervalMillis);
@@ -138,7 +138,7 @@ public class LogicalNode implements DataListener
                     break;
 
                 case BEGIN_WINDOW:
-                    if ((((long)baseSeconds << 32) | iterator.getWindowId()) >= longWindowId) {
+                    if ((baseSeconds | iterator.getWindowId()) >= longWindowId) {
                         GiveAll.getInstance().distribute(physicalNodes, data);
                         break outer;
                     }
@@ -153,8 +153,8 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
-     * @param partition 
+     *
+     * @param partition
      */
     public synchronized void dataAdded(ByteBuffer partition)
     {
@@ -169,6 +169,9 @@ public class LogicalNode implements DataListener
                     case SIMPLE_DATA:
                         policy.distribute(physicalNodes, data);
                         break;
+
+                    case NO_DATA:
+                      break;
 
                     default:
                         GiveAll.getInstance().distribute(physicalNodes, data);
@@ -186,6 +189,7 @@ public class LogicalNode implements DataListener
                         }
                         break;
 
+                    case NO_DATA:
                     case SIMPLE_DATA:
                         break;
 
@@ -198,7 +202,7 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
+     *
      * @param partitions
      * @return int
      */
@@ -209,7 +213,7 @@ public class LogicalNode implements DataListener
     }
 
     /**
-     * 
+     *
      * @return int
      */
     public final int getPhysicalNodeCount()

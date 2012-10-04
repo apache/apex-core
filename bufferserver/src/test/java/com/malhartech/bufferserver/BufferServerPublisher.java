@@ -70,7 +70,7 @@ public class BufferServerPublisher extends AbstractSocketPublisher
       db.setSimpleData(sdb);
     }
 
-    logger.debug("write with data {}", db.build());
+//    logger.debug("write with data {}", db.build());
     channel.write(db.build());
   }
 
@@ -81,7 +81,7 @@ public class BufferServerPublisher extends AbstractSocketPublisher
   public void activate()
   {
     super.activate();
-    logger.debug("registering publisher: {}", id);
+//    logger.debug("registering publisher: {}", id);
     ClientHandler.publish(channel, id, "BufferServerPublisher", 0);
   }
 }

@@ -8,6 +8,7 @@ import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
+import com.sun.org.apache.bcel.internal.classfile.Code;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
@@ -25,7 +26,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DataList
 {
-  private static final Logger logger = LoggerFactory.getLogger(DataList.class.getName());
+  private static final Logger logger = LoggerFactory.getLogger(DataList.class);
   /**
    * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
    */
@@ -109,7 +110,7 @@ public class DataList
 
   synchronized void purge(int baseSeconds, int windowId, DataIntrospector di)
   {
-    long longWindowId = (long) baseSeconds << 32 | windowId;
+    long longWindowId = (long)baseSeconds << 32 | windowId;
     for (DataArray temp = first; temp != last; temp = temp.next) {
       if (temp.starting_window >= longWindowId) {
         synchronized (BLOCKSIZE) {
@@ -124,15 +125,24 @@ public class DataList
     }
 
     if (last.starting_window >= longWindowId) {
+      logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}",
+                   new Object[]{Long.toHexString(last.starting_window), Long.toHexString(longWindowId), Long.toHexString(last.baseSeconds)});
       last.lockWrite();
       try {
+        long bs = (long)last.baseSeconds << 32;
         DataListIterator dli = new DataListIterator(last, di);
         while (dli.hasNext()) {
           SerializedData sd = dli.next();
           if (di.getType(sd) == DataType.BEGIN_WINDOW
-                  && (((long)baseSeconds << 32) | di.getWindowId(sd)) >= longWindowId) {
+                  && (bs | di.getWindowId(sd)) > longWindowId) {
+            sd.size = sd.offset;
+            sd.offset = 0;
+            sd.dataOffset = Codec.getSizeOfRawVarint32(sd.size);
             last.offset = sd.offset;
-            Arrays.fill(last.data, last.offset, last.data.length - 1, Byte.MIN_VALUE);
+            if (sd.dataOffset <= sd.size) {
+              di.wipeData(sd);
+            }
+            break;
           }
         }
       }
@@ -234,6 +244,8 @@ public class DataList
         switch (d.getType()) {
           case BEGIN_WINDOW:
             long long_window_id = ((long)baseSeconds << 32 | d.getWindowId());
+            logger.debug("baseSeconds = {}, windowId = {}, long_window_id = {}",
+                         new Object[] {Integer.toHexString(baseSeconds), Integer.toHexString(d.getWindowId()), Long.toHexString(long_window_id)});
             if (starting_window == 0) {
               starting_window = long_window_id;
             }

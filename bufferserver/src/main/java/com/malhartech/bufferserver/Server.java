@@ -17,70 +17,78 @@ import org.slf4j.LoggerFactory;
 /**
  * The buffer server application<p>
  * <br>
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class Server
 {
-    private static final Logger logger = LoggerFactory.getLogger(Server.class);
-    public static final int DEFAULT_PORT = 9080;
-    private final int port;
-    private ServerBootstrap bootstrap;
+  private static final Logger logger = LoggerFactory.getLogger(Server.class);
+  public static final int DEFAULT_PORT = 9080;
+  private final int port;
+  private ServerBootstrap bootstrap;
+  private String identity;
 
-    /**
-     * @param port - port number to bind to or 0 to auto select a free port
-     */
-    public Server(int port)
-    {
-        this.port = port;
+  /**
+   * @param port - port number to bind to or 0 to auto select a free port
+   */
+  public Server(int port)
+  {
+    this.port = port;
+  }
+
+  /**
+   *
+   * @return {@link java.net.SocketAddress}
+   * @throws Exception
+   */
+  public SocketAddress run() throws Exception
+  {
+    // Configure the server.
+    bootstrap = new ServerBootstrap();
+
+    bootstrap.group(new NioEventLoopGroup(), new NioEventLoopGroup())
+            .channel(NioServerSocketChannel.class)
+            .option(ChannelOption.SO_BACKLOG, 100)
+            .localAddress(port)
+            .childOption(ChannelOption.TCP_NODELAY, true)
+            .childHandler(new ServerInitializer());
+
+    ChannelFuture f = bootstrap.bind().syncUninterruptibly();
+    identity = f.channel().localAddress().toString();
+    logger.info("Server instance bound to: {}", identity);
+
+    return f.channel().localAddress();
+  }
+
+  /**
+   *
+   */
+  public void shutdown()
+  {
+    logger.info("Server instance {} being shutdown", identity);
+    bootstrap.shutdown();
+  }
+
+  /**
+   *
+   * @param args
+   * @throws Exception
+   */
+  public static void main(String[] args) throws Exception
+  {
+    int port;
+    if (args.length > 0) {
+      port = Integer.parseInt(args[0]);
     }
-
-    /**
-     *
-     * @return {@link java.net.SocketAddress}
-     * @throws Exception
-     */
-    public SocketAddress run() throws Exception
-    {
-        // Configure the server.
-        bootstrap = new ServerBootstrap();
-
-        bootstrap.group(new NioEventLoopGroup(), new NioEventLoopGroup())
-                .channel(NioServerSocketChannel.class)
-                .option(ChannelOption.SO_BACKLOG, 100)
-                .localAddress(port)
-                .childOption(ChannelOption.TCP_NODELAY, true)
-                .childHandler(new ServerInitializer());
-
-        ChannelFuture f = bootstrap.bind().syncUninterruptibly();
-
-        logger.info("Server instance {} bound to: {}", this, f.channel().localAddress());
-
-        return f.channel().localAddress();
+    else {
+      port = DEFAULT_PORT;
     }
+    new Server(port).run();
+  }
 
-    /**
-     *
-     */
-    public void shutdown()
-    {
-        logger.info("Server instance {} being shutdown", this);
-        bootstrap.shutdown();
-    }
-
-    /**
-     *
-     * @param args
-     * @throws Exception
-     */
-    public static void main(String[] args) throws Exception
-    {
-        int port;
-        if (args.length > 0) {
-            port = Integer.parseInt(args[0]);
-        }
-        else {
-            port = DEFAULT_PORT;
-        }
-        new Server(port).run();
-    }
+  @Override
+  public String toString()
+  {
+    return identity;
+  }
 }
