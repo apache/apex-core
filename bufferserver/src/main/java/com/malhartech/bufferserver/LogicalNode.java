@@ -27,205 +27,207 @@ import org.slf4j.LoggerFactory;
  */
 public class LogicalNode implements DataListener
 {
-    private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);
-    private final String upstream;
-    private final String group;
-    private final HashSet<PhysicalNode> physicalNodes;
-    private final HashSet<ByteBuffer> partitions;
-    private final Policy policy;
-    private final DataListIterator iterator;
+  private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);
+  private final String upstream;
+  private final String group;
+  private final HashSet<PhysicalNode> physicalNodes;
+  private final HashSet<ByteBuffer> partitions;
+  private final Policy policy;
+  private final DataListIterator iterator;
 
-    /**
-     *
-     * @param upstream
-     * @param group
-     * @param iterator
-     * @param policy
-     */
+  /**
+   *
+   * @param upstream
+   * @param group
+   * @param iterator
+   * @param policy
+   */
+  LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy)
+  {
+    this.upstream = upstream;
+    this.group = group;
+    this.policy = policy;
+    this.physicalNodes = new HashSet<PhysicalNode>();
+    this.partitions = new HashSet<ByteBuffer>();
 
-    LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy)
-    {
-        this.upstream = upstream;
-        this.group = group;
-        this.policy = policy;
-        this.physicalNodes = new HashSet<PhysicalNode>();
-        this.partitions = new HashSet<ByteBuffer>();
-
-        if (iterator instanceof DataListIterator) {
-            this.iterator = (DataListIterator)iterator;
-        }
-        else {
-            throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
-        }
+    if (iterator instanceof DataListIterator) {
+      this.iterator = (DataListIterator)iterator;
     }
-
-    /**
-     *
-     * @return String
-     */
-    public String getGroup()
-    {
-        return group;
+    else {
+      throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
     }
+  }
 
-    /**
-     *
-     * @return Iterator<SerializedData>
-     */
-    public Iterator<SerializedData> getIterator()
-    {
-        return iterator;
+  /**
+   *
+   * @return String
+   */
+  public String getGroup()
+  {
+    return group;
+  }
+
+  /**
+   *
+   * @return Iterator<SerializedData>
+   */
+  public Iterator<SerializedData> getIterator()
+  {
+    return iterator;
+  }
+
+  /**
+   *
+   * @param channel
+   */
+  public void addChannel(Channel channel)
+  {
+    PhysicalNode pn = new PhysicalNode(channel);
+    if (!physicalNodes.contains(pn)) {
+      physicalNodes.add(pn);
     }
+  }
 
-    /**
-     *
-     * @param channel
-     */
-    public void addChannel(Channel channel)
-    {
-        PhysicalNode pn = new PhysicalNode(channel);
-        if (!physicalNodes.contains(pn)) {
-            physicalNodes.add(pn);
-        }
+  /**
+   *
+   * @param channel
+   */
+  public void removeChannel(Channel channel)
+  {
+    for (PhysicalNode pn: physicalNodes) {
+      if (pn.getChannel() == channel) {
+        physicalNodes.remove(pn);
+        break;
+      }
     }
+  }
 
-    /**
-     *
-     * @param channel
+  /**
+   *
+   * @param partition
+   */
+  public void addPartition(ByteBuffer partition)
+  {
+    partitions.add(partition);
+  }
+
+  /**
+   *
+   * @param longWindowId
+   */
+  public synchronized void catchUp(long longWindowId)
+  {
+    long baseSeconds = 0;
+    int intervalMillis = 0;
+    /*
+     * fast forward to catch up with the windowId without consuming
      */
-    public void removeChannel(Channel channel)
-    {
-        for (PhysicalNode pn: physicalNodes) {
-            if (pn.getChannel() == channel) {
-                physicalNodes.remove(pn);
-                break;
+    outer:
+    while (iterator.hasNext()) {
+      SerializedData data = iterator.next();
+      switch (iterator.getType()) {
+        case RESET_WINDOW:
+          Data resetWindow = (Data)iterator.getData();
+          baseSeconds = (long)resetWindow.getWindowId() << 32;
+          intervalMillis = resetWindow.getResetWindow().getWidth();
+          if (intervalMillis <= 0) {
+            logger.warn("Interval value set to non positive value = {}", intervalMillis);
+          }
+          GiveAll.getInstance().distribute(physicalNodes, data);
+          break;
+
+        case BEGIN_WINDOW:
+          if ((baseSeconds | iterator.getWindowId()) >= longWindowId) {
+            if (intervalMillis == 0) {
+              // we need to send a reset window as well.
             }
+            GiveAll.getInstance().distribute(physicalNodes, data);
+            break outer;
+          }
+          break;
+      }
+    }
+
+    if (iterator.hasNext()) {
+      dataAdded(DataListener.NULL_PARTITION);
+    }
+
+  }
+
+  /**
+   *
+   * @param partition
+   */
+  public synchronized void dataAdded(ByteBuffer partition)
+  {
+    /*
+     * consume as much data as you can before running out of steam
+     */
+    if (partitions.isEmpty()) {
+      while (iterator.hasNext()) {
+        SerializedData data = iterator.next();
+        switch (iterator.getType()) {
+          case PARTITIONED_DATA:
+          case SIMPLE_DATA:
+            policy.distribute(physicalNodes, data);
+            break;
+
+          case NO_DATA:
+            break;
+
+          default:
+            GiveAll.getInstance().distribute(physicalNodes, data);
+            break;
         }
+      }
     }
-
-    /**
-     *
-     * @param partition
-     */
-    public void addPartition(ByteBuffer partition)
-    {
-        partitions.add(partition);
-    }
-
-    /**
-     *
-     * @param longWindowId
-     */
-    public synchronized void catchUp(long longWindowId)
-    {
-        long baseSeconds = 0;
-        int intervalMillis;
-        /*
-         * fast forward to catch up with the windowId without consuming
-         */
-        outer:
-        while (iterator.hasNext()) {
-            SerializedData data = iterator.next();
-            switch (iterator.getType()) {
-                case RESET_WINDOW:
-                    Data resetWindow = (Data)iterator.getData();
-                    baseSeconds = (long)resetWindow.getWindowId() << 32;
-                    intervalMillis = resetWindow.getResetWindow().getWidth();
-                    if (intervalMillis <= 0) {
-                        logger.warn("Interval value set to non positive value = {}", intervalMillis);
-                    }
-                    GiveAll.getInstance().distribute(physicalNodes, data);
-                    break;
-
-                case BEGIN_WINDOW:
-                    if ((baseSeconds | iterator.getWindowId()) >= longWindowId) {
-                        GiveAll.getInstance().distribute(physicalNodes, data);
-                        break outer;
-                    }
-                    break;
+    else {
+      while (iterator.hasNext()) {
+        SerializedData data = iterator.next();
+        switch (iterator.getType()) {
+          case PARTITIONED_DATA:
+            if (partitions.contains(((Data)iterator.getData()).getPartitionedData().getPartition().asReadOnlyByteBuffer())) {
+              policy.distribute(physicalNodes, data);
             }
+            break;
+
+          case NO_DATA:
+          case SIMPLE_DATA:
+            break;
+
+          default:
+            GiveAll.getInstance().distribute(physicalNodes, data);
+            break;
         }
-
-        if (iterator.hasNext()) {
-            dataAdded(DataListener.NULL_PARTITION);
-        }
-
+      }
     }
+  }
 
-    /**
-     *
-     * @param partition
-     */
-    public synchronized void dataAdded(ByteBuffer partition)
-    {
-        /*
-         * consume as much data as you can before running out of steam
-         */
-        if (partitions.isEmpty()) {
-            while (iterator.hasNext()) {
-                SerializedData data = iterator.next();
-                switch (iterator.getType()) {
-                    case PARTITIONED_DATA:
-                    case SIMPLE_DATA:
-                        policy.distribute(physicalNodes, data);
-                        break;
+  /**
+   *
+   * @param partitions
+   * @return int
+   */
+  public int getPartitions(Collection<ByteBuffer> partitions)
+  {
+    partitions.addAll(this.partitions);
+    return partitions.size();
+  }
 
-                    case NO_DATA:
-                      break;
+  /**
+   *
+   * @return int
+   */
+  public final int getPhysicalNodeCount()
+  {
+    return physicalNodes.size();
+  }
 
-                    default:
-                        GiveAll.getInstance().distribute(physicalNodes, data);
-                        break;
-                }
-            }
-        }
-        else {
-            while (iterator.hasNext()) {
-                SerializedData data = iterator.next();
-                switch (iterator.getType()) {
-                    case PARTITIONED_DATA:
-                        if (partitions.contains(((Data)iterator.getData()).getPartitionedData().getPartition().asReadOnlyByteBuffer())) {
-                            policy.distribute(physicalNodes, data);
-                        }
-                        break;
-
-                    case NO_DATA:
-                    case SIMPLE_DATA:
-                        break;
-
-                    default:
-                        GiveAll.getInstance().distribute(physicalNodes, data);
-                        break;
-                }
-            }
-        }
-    }
-
-    /**
-     *
-     * @param partitions
-     * @return int
-     */
-    public int getPartitions(Collection<ByteBuffer> partitions)
-    {
-        partitions.addAll(this.partitions);
-        return partitions.size();
-    }
-
-    /**
-     *
-     * @return int
-     */
-    public final int getPhysicalNodeCount()
-    {
-        return physicalNodes.size();
-    }
-
-    /**
-     * @return the upstream
-     */
-    public String getUpstream()
-    {
-        return upstream;
-    }
+  /**
+   * @return the upstream
+   */
+  public String getUpstream()
+  {
+    return upstream;
+  }
 }

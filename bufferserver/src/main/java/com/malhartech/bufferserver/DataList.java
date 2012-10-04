@@ -6,6 +6,7 @@ package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.ResetWindow;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import com.sun.org.apache.bcel.internal.classfile.Code;
@@ -126,23 +127,44 @@ public class DataList
 
     if (last.starting_window >= longWindowId) {
       logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}",
-                   new Object[]{Long.toHexString(last.starting_window), Long.toHexString(longWindowId), Long.toHexString(last.baseSeconds)});
+                   new Object[] {Long.toHexString(last.starting_window), Long.toHexString(longWindowId), Long.toHexString(last.baseSeconds)});
       last.lockWrite();
       try {
         long bs = (long)last.baseSeconds << 32;
+        SerializedData lastReset = null;
+
         DataListIterator dli = new DataListIterator(last, di);
+        done:
         while (dli.hasNext()) {
           SerializedData sd = dli.next();
-          if (di.getType(sd) == DataType.BEGIN_WINDOW
-                  && (bs | di.getWindowId(sd)) > longWindowId) {
-            sd.size = sd.offset;
-            sd.offset = 0;
-            sd.dataOffset = Codec.getSizeOfRawVarint32(sd.size);
-            last.offset = sd.offset;
-            if (sd.dataOffset <= sd.size) {
-              di.wipeData(sd);
-            }
-            break;
+          switch (di.getType(sd)) {
+            case RESET_WINDOW:
+              bs = (long)di.getWindowId(sd) << 32;
+              lastReset = sd;
+              break;
+
+            case BEGIN_WINDOW:
+              if ((bs | di.getWindowId(sd)) > longWindowId) {
+                if (lastReset != null) {
+                  /**
+                   * Restore the last Reset tuple if there was any.
+                   */
+                  if (sd.offset >= lastReset.size) {
+                    sd.offset -= lastReset.size;
+                    if (!(sd.bytes == lastReset.bytes && sd.offset == lastReset.offset)) {
+                      System.arraycopy(lastReset.bytes, lastReset.offset, sd.bytes, sd.offset, lastReset.size);
+                    }
+                  }
+                }
+                sd.size = sd.offset;
+                sd.offset = 0;
+                sd.dataOffset = Codec.getSizeOfRawVarint32(sd.size);
+                last.offset = sd.offset;
+                if (sd.dataOffset <= sd.size) {
+                  di.wipeData(sd);
+                }
+                break done;
+              }
           }
         }
       }
@@ -233,6 +255,20 @@ public class DataList
 
           DataList.this.last = next = getDataArray(newblockSize);
 
+          /**
+           * Add reset window at the beginning of each new block.
+           */
+          if (d.getType() != DataType.RESET_WINDOW) {
+            Data.Builder db = Data.newBuilder();
+            db.setType(DataType.RESET_WINDOW);
+            db.setWindowId(baseSeconds);
+
+            ResetWindow.Builder rwb = ResetWindow.newBuilder();
+            rwb.setWidth(intervalMillis);
+            db.setResetWindow(rwb);
+            next.add(db.build());
+          }
+
           next.add(d);
         }
         else {
@@ -244,15 +280,13 @@ public class DataList
         switch (d.getType()) {
           case BEGIN_WINDOW:
             long long_window_id = ((long)baseSeconds << 32 | d.getWindowId());
-            logger.debug("baseSeconds = {}, windowId = {}, long_window_id = {}",
-                         new Object[] {Integer.toHexString(baseSeconds), Integer.toHexString(d.getWindowId()), Long.toHexString(long_window_id)});
+//            logger.debug("baseSeconds = {}, windowId = {}, long_window_id = {}",
+//                         new Object[] {Integer.toHexString(baseSeconds), Integer.toHexString(d.getWindowId()), Long.toHexString(long_window_id)});
             if (starting_window == 0) {
               starting_window = long_window_id;
             }
             ending_window = long_window_id;
-
             break;
-
 
           case RESET_WINDOW:
             baseSeconds = d.getWindowId();
@@ -265,12 +299,6 @@ public class DataList
       }
     }
 
-    /*
-     * public void purge(int currentOffset) { w.lock();
-     *
-     * try { this.offset_2_delete += currentOffset; this.currentOffset -= currentOffset; } finally { w.unlock(); } }
-     *
-     */
     public void lockWrite()
     {
       w.lock();
