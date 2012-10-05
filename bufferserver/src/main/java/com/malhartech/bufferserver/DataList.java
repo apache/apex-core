@@ -45,46 +45,50 @@ public class DataList
     return this.type;
   }
 
-  synchronized void rewind(long longWindowId, DataIntrospector di)
+  synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
   {
-    for (DataArray temp = first; temp != last; temp = temp.next) {
-      if (temp.starting_window >= longWindowId) {
-        synchronized (BLOCKSIZE) {
+    long longWindowId = (long)baseSeconds << 32 | windowId;
+
+    for (DataArray temp = first; temp != null; temp = temp.next) {
+      if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
+        if (temp != last) {
           last.next = free;
           free = temp.next;
+          temp.next = null;
+          last = temp;
         }
 
-        last = temp;
-        last.next = null;
-        break;
-      }
-    }
+        long bs = temp.starting_window & 0x7fffffff00000000L;
+        temp.lockWrite();
+        try {
+          DataListIterator dli = new DataListIterator(last, di);
+          done:
+          while (dli.hasNext()) {
+            SerializedData sd = dli.next();
+            switch (di.getType(sd)) {
+              case RESET_WINDOW:
+                bs = (long)di.getWindowId(sd) << 32;
+                if (bs > longWindowId) {
+                  temp.offset = sd.offset;
+                  Arrays.fill(temp.data, temp.offset, temp.data.length, Byte.MIN_VALUE);
+                  break done;
+                }
+                break;
 
-    if (last.starting_window >= longWindowId) {
-      long baseSeconds = last.starting_window & 0xffffffff00000000L;
-      last.lockWrite();
-      try {
-        DataListIterator dli = new DataListIterator(last, di);
-        done:
-        while (dli.hasNext()) {
-          SerializedData sd = dli.next();
-          switch (di.getType(sd)) {
-            case RESET_WINDOW:
-              baseSeconds = (long)di.getWindowId(sd) << 32;
-              break;
-
-            case BEGIN_WINDOW:
-              if ((baseSeconds | di.getWindowId(sd)) >= longWindowId) {
-                last.offset = sd.offset;
-                Arrays.fill(last.data, last.offset, last.data.length - 1, Byte.MIN_VALUE);
-                break done;
-              }
-              break;
+              case BEGIN_WINDOW:
+                if ((bs | di.getWindowId(sd)) >= longWindowId) {
+                  temp.offset = sd.offset;
+                  Arrays.fill(temp.data, temp.offset, temp.data.length, Byte.MIN_VALUE);
+                  break done;
+                }
+                break;
+            }
           }
+
         }
-      }
-      finally {
-        last.unlockWrite();
+        finally {
+          temp.unlockWrite();
+        }
       }
     }
   }
@@ -123,7 +127,7 @@ public class DataList
 
     DataArray prev = null;
     for (DataArray temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
-      if (temp.ending_window > longWindowId) {
+      if (temp.ending_window > longWindowId || temp == last) {
         if (prev != null) {
           synchronized (BLOCKSIZE) {
             prev.next = free;
@@ -179,16 +183,39 @@ public class DataList
               while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
                 i++;
               }
-              
-              if (i <= sd.size) {
+
+              if (i <= sd.offset) {
                 sd.size = sd.offset;
                 sd.offset = 0;
                 sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
                 di.wipeData(sd);
               }
+              else {
+                logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
+              }
               break done;
             }
         }
+      }
+
+      /**
+       * If we ended up purging all the data from the current DataArray then,
+       * it also makes sense to start all over.
+       * It helps with better utilization of the RAM.
+       */
+      if (!dli.hasNext()) {
+        int previousOffset = da.offset;
+        if (lastReset != null && lastReset.offset != 0) {
+          System.arraycopy(lastReset.bytes, lastReset.offset, da.data, 0, lastReset.size);
+          da.offset = lastReset.size;
+          da.starting_window = da.ending_window = bs;
+        }
+        else {
+          da.offset = 0;
+          da.starting_window = da.ending_window = 0;
+        }
+
+        Arrays.fill(da.data, da.offset, previousOffset, Byte.MIN_VALUE);
       }
     }
     finally {
@@ -221,7 +248,7 @@ public class DataList
     /**
      * actual data - stored as length followed by actual data.
      */
-    volatile byte data[];
+    byte data[];
     /**
      * the next in the chain.
      */

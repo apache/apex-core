@@ -52,7 +52,6 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
   @Override
   public void messageReceived(ChannelHandlerContext ctx, Data data) throws Exception
   {
-
     switch (data.getType()) {
       case PUBLISHER_REQUEST:
         handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
@@ -110,7 +109,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
       }
     }
 
-    dl.rewind(((long)request.getBaseSeconds() << 32) | windowId, new ProtobufDataInspector());
+    dl.rewind(request.getBaseSeconds(), windowId, new ProtobufDataInspector());
     ctx.attr(DATALIST).set(dl);
   }
 
