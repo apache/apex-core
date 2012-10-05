@@ -45,46 +45,50 @@ public class DataList
     return this.type;
   }
 
-  synchronized void rewind(long longWindowId, DataIntrospector di)
+  synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
   {
-    for (DataArray temp = first; temp != last; temp = temp.next) {
-      if (temp.starting_window >= longWindowId) {
-        synchronized (BLOCKSIZE) {
+    long longWindowId = (long)baseSeconds << 32 | windowId;
+
+    for (DataArray temp = first; temp != null; temp = temp.next) {
+      if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
+        if (temp != last) {
           last.next = free;
           free = temp.next;
+          temp.next = null;
+          last = temp;
         }
 
-        last = temp;
-        last.next = null;
-        break;
-      }
-    }
+        long bs = temp.starting_window & 0x7fffffff00000000L;
+        temp.lockWrite();
+        try {
+          DataListIterator dli = new DataListIterator(last, di);
+          done:
+          while (dli.hasNext()) {
+            SerializedData sd = dli.next();
+            switch (di.getType(sd)) {
+              case RESET_WINDOW:
+                bs = (long)di.getWindowId(sd) << 32;
+                if (bs > longWindowId) {
+                  temp.offset = sd.offset;
+                  Arrays.fill(temp.data, temp.offset, temp.data.length, Byte.MIN_VALUE);
+                  break done;
+                }
+                break;
 
-    if (last.starting_window >= longWindowId) {
-      long baseSeconds = last.starting_window & 0xffffffff00000000L;
-      last.lockWrite();
-      try {
-        DataListIterator dli = new DataListIterator(last, di);
-        done:
-        while (dli.hasNext()) {
-          SerializedData sd = dli.next();
-          switch (di.getType(sd)) {
-            case RESET_WINDOW:
-              baseSeconds = (long)di.getWindowId(sd) << 32;
-              break;
-
-            case BEGIN_WINDOW:
-              if ((baseSeconds | di.getWindowId(sd)) >= longWindowId) {
-                last.offset = sd.offset;
-                Arrays.fill(last.data, last.offset, last.data.length - 1, Byte.MIN_VALUE);
-                break done;
-              }
-              break;
+              case BEGIN_WINDOW:
+                if ((bs | di.getWindowId(sd)) >= longWindowId) {
+                  temp.offset = sd.offset;
+                  Arrays.fill(temp.data, temp.offset, temp.data.length, Byte.MIN_VALUE);
+                  break done;
+                }
+                break;
+            }
           }
+
         }
-      }
-      finally {
-        last.unlockWrite();
+        finally {
+          temp.unlockWrite();
+        }
       }
     }
   }
