@@ -123,7 +123,7 @@ public class DataList
 
     DataArray prev = null;
     for (DataArray temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
-      if (temp.ending_window > longWindowId) {
+      if (temp.ending_window > longWindowId || temp == last) {
         if (prev != null) {
           synchronized (BLOCKSIZE) {
             prev.next = free;
@@ -179,16 +179,39 @@ public class DataList
               while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
                 i++;
               }
-              
-              if (i <= sd.size) {
+
+              if (i <= sd.offset) {
                 sd.size = sd.offset;
                 sd.offset = 0;
                 sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
                 di.wipeData(sd);
               }
+              else {
+                logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
+              }
               break done;
             }
         }
+      }
+
+      /**
+       * If we ended up purging all the data from the current DataArray then,
+       * it also makes sense to start all over.
+       * It helps with better utilization of the RAM.
+       */
+      if (!dli.hasNext()) {
+        int previousOffset = da.offset;
+        if (lastReset != null && lastReset.offset != 0) {
+          System.arraycopy(lastReset.bytes, lastReset.offset, da.data, 0, lastReset.size);
+          da.offset = lastReset.size;
+          da.starting_window = da.ending_window = bs;
+        }
+        else {
+          da.offset = 0;
+          da.starting_window = da.ending_window = 0;
+        }
+
+        Arrays.fill(da.data, da.offset, previousOffset, Byte.MIN_VALUE);
       }
     }
     finally {
@@ -221,7 +244,7 @@ public class DataList
     /**
      * actual data - stored as length followed by actual data.
      */
-    volatile byte data[];
+    byte data[];
     /**
      * the next in the chain.
      */

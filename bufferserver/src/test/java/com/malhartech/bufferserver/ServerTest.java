@@ -211,12 +211,39 @@ public class ServerTest
     bss.deactivate();
     assertEquals(bss.tupleCount.get(), 103);
   }
-  // purge all of it
-  // register subscriber
-  // ensure that no data is received
-  // publish some more
-  // register subscriber
-  // ensure that the data is received
+
+  @Test(dependsOnMethods = {"testPurgeSome"})
+  public void testPurgeAll() throws InterruptedException
+  {
+    bsc.windowId = 0x7afebabe00000001L;
+    bsc.activate();
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bsc.data != null) {
+        break;
+      }
+    }
+    bsc.deactivate();
+
+    assertNotNull(bsc.data);
+
+    bss.activate();
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bss.tupleCount.get() > 0) {
+        break;
+      }
+    }
+    Thread.sleep(10);
+    bss.deactivate();
+    assertEquals(bss.tupleCount.get(), 1);
+  }
+
+  @Test(dependsOnMethods = {"testPurgeAll"})
+  public void testRepublish() throws InterruptedException
+  {
+    testATonOfData();
+  }
 
   class ResetTuple implements Tuple
   {

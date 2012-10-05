@@ -16,7 +16,8 @@ public class BufferServerPublisher extends AbstractSocketPublisher
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
   private final String id;
-  private int windowId;
+  int baseWindow;
+  int windowId;
 
   public BufferServerPublisher(String id)
   {
@@ -82,6 +83,6 @@ public class BufferServerPublisher extends AbstractSocketPublisher
   {
     super.activate();
 //    logger.debug("registering publisher: {}", id);
-    ClientHandler.publish(channel, id, "BufferServerPublisher", 0);
+    ClientHandler.publish(channel, id, "BufferServerPublisher", (long)baseWindow << 32 | windowId);
   }
 }
