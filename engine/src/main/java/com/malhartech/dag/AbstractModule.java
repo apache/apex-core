@@ -212,6 +212,7 @@ public abstract class AbstractModule extends AbstractBaseModule
 
     boolean shouldWait;
     long currentWindowId = 0;
+    Object lastEndWindow = null;
 
     do {
       shouldWait = true;
@@ -253,7 +254,7 @@ public abstract class AbstractModule extends AbstractBaseModule
               case END_WINDOW:
                 if (t.getWindowId() == currentWindowId) {
                   shouldWait = false;
-                  activePort.get();
+                  lastEndWindow = activePort.get();
                   if (++receivedEndWindow == totalQueues) {
                     endWindow();
                     for (final Sink output: outputs.values()) {
@@ -317,14 +318,53 @@ public abstract class AbstractModule extends AbstractBaseModule
                 shouldWait = false;
                 activePort.get();
                 /**
+                 * We are not going to receive begin window on this ever!
+                 */
+                expectingBeginWindow--;
+                /**
                  * Since one of the operators we care about it gone, we should relook at our operators.
                  * We need to make sure that the END_STREAM comes outside of the window.
                  */
                 totalQueues--;
-                inputs.remove(activePort.id); // should i do this, since the stream said that there is nothing more to expect on it.
+                inputs.remove(activePort.id);
                 buffers.remove();
                 if (totalQueues == 0) {
                   alive = false;
+                  break activequeue;
+                }
+                else if (activeQueues.isEmpty()) {
+                  assert (!inputs.isEmpty());
+                  assert (lastEndWindow != null);
+                  /*
+                   * Do the same sequence as the end window since the current window is not ended.
+                   */
+                  endWindow();
+                  for (final Sink output: outputs.values()) {
+                    output.process(lastEndWindow);
+                  }
+
+                  /*
+                   * we prefer to cater to requests at the end of the window boundary.
+                   */
+                  try {
+                    CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
+                    for (int i = requests.size(); i-- > 0;) {
+                      requests.get().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
+                    }
+                  }
+                  catch (Exception e) {
+                    logger.warn("Exception while catering to external request {}", e);
+                  }
+
+                  /*
+                   * report window as complete after control operations are completed
+                   */
+                  ctx.report(processedTupleCount, 0L, currentWindowId);
+                  processedTupleCount = 0;
+
+                  assert (activeQueues.isEmpty());
+                  activeQueues.addAll(inputs.values());
+                  expectingBeginWindow = activeQueues.size();
                   break activequeue;
                 }
                 break activeport;
