@@ -70,7 +70,7 @@ public class ProtobufDataInspector implements DataIntrospector
   public final long getWindowId(SerializedData data)
   {
     readyMessage(data);
-    return previousMessage instanceof Data ? 0 : previousMessage.getWindowId();
+    return previousMessage instanceof Data ? previousMessage.getWindowId() : 0;
   }
 
   /**

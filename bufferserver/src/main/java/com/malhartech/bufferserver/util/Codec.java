@@ -31,6 +31,21 @@ public class Codec
     }
   }
 
+  public static int writeRawVarint32(int value, byte[] buffer, int offset, int size)
+  {
+    int i = writeRawVarint32(value, buffer, offset);
+    int expectedOffset = offset + size;
+    if (i < expectedOffset--) {
+      buffer[i -1] |= 0x80;
+      while (i < expectedOffset) {
+        buffer[i++] = (byte)0x80;
+      }
+      buffer[i++] = 0;
+    }
+
+    return i;
+  }
+
   public static int getSizeOfRawVarint32(int value)
   {
     int offset = 0;

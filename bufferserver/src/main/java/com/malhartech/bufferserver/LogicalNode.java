@@ -138,9 +138,6 @@ public class LogicalNode implements DataListener
 
         case BEGIN_WINDOW:
           if ((baseSeconds | iterator.getWindowId()) >= longWindowId) {
-            if (intervalMillis == 0) {
-              // we need to send a reset window as well.
-            }
             GiveAll.getInstance().distribute(physicalNodes, data);
             break outer;
           }

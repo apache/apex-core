@@ -9,7 +9,6 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.ResetWindow;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
-import com.sun.org.apache.bcel.internal.classfile.Code;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
@@ -38,8 +37,8 @@ public class DataList
   String identifier;
   String type;
   static volatile DataArray free = null;
-  DataArray first;
-  DataArray last;
+  volatile DataArray first;
+  volatile DataArray last;
 
   Object getType()
   {
@@ -62,16 +61,25 @@ public class DataList
     }
 
     if (last.starting_window >= longWindowId) {
-      int baseSeconds = (int)(last.starting_window >> 32);
+      long baseSeconds = last.starting_window & 0xffffffff00000000L;
       last.lockWrite();
       try {
         DataListIterator dli = new DataListIterator(last, di);
+        done:
         while (dli.hasNext()) {
           SerializedData sd = dli.next();
-          if (di.getType(sd) == DataType.BEGIN_WINDOW
-                  && (((long)baseSeconds << 32) | di.getWindowId(sd)) >= longWindowId) {
-            last.offset = sd.offset;
-            Arrays.fill(last.data, last.offset, last.data.length - 1, Byte.MIN_VALUE);
+          switch (di.getType(sd)) {
+            case RESET_WINDOW:
+              baseSeconds = (long)di.getWindowId(sd) << 32;
+              break;
+
+            case BEGIN_WINDOW:
+              if ((baseSeconds | di.getWindowId(sd)) >= longWindowId) {
+                last.offset = sd.offset;
+                Arrays.fill(last.data, last.offset, last.data.length - 1, Byte.MIN_VALUE);
+                break done;
+              }
+              break;
           }
         }
       }
@@ -112,65 +120,79 @@ public class DataList
   synchronized void purge(int baseSeconds, int windowId, DataIntrospector di)
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
-    for (DataArray temp = first; temp != last; temp = temp.next) {
-      if (temp.starting_window >= longWindowId) {
-        synchronized (BLOCKSIZE) {
-          last.next = free;
-          free = temp.next;
-        }
 
-        last = temp;
-        last.next = null;
-        break;
-      }
-    }
-
-    if (last.starting_window >= longWindowId) {
-      logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}",
-                   new Object[] {Long.toHexString(last.starting_window), Long.toHexString(longWindowId), Long.toHexString(last.baseSeconds)});
-      last.lockWrite();
-      try {
-        long bs = (long)last.baseSeconds << 32;
-        SerializedData lastReset = null;
-
-        DataListIterator dli = new DataListIterator(last, di);
-        done:
-        while (dli.hasNext()) {
-          SerializedData sd = dli.next();
-          switch (di.getType(sd)) {
-            case RESET_WINDOW:
-              bs = (long)di.getWindowId(sd) << 32;
-              lastReset = sd;
-              break;
-
-            case BEGIN_WINDOW:
-              if ((bs | di.getWindowId(sd)) > longWindowId) {
-                if (lastReset != null) {
-                  /**
-                   * Restore the last Reset tuple if there was any.
-                   */
-                  if (sd.offset >= lastReset.size) {
-                    sd.offset -= lastReset.size;
-                    if (!(sd.bytes == lastReset.bytes && sd.offset == lastReset.offset)) {
-                      System.arraycopy(lastReset.bytes, lastReset.offset, sd.bytes, sd.offset, lastReset.size);
-                    }
-                  }
-                }
-                sd.size = sd.offset;
-                sd.offset = 0;
-                sd.dataOffset = Codec.getSizeOfRawVarint32(sd.size);
-                last.offset = sd.offset;
-                if (sd.dataOffset <= sd.size) {
-                  di.wipeData(sd);
-                }
-                break done;
-              }
+    DataArray prev = null;
+    for (DataArray temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
+      if (temp.ending_window > longWindowId) {
+        if (prev != null) {
+          synchronized (BLOCKSIZE) {
+            prev.next = free;
+            free = first;
+            first = temp;
           }
         }
+
+        purge(first, longWindowId, di);
+        break;
       }
-      finally {
-        last.unlockWrite();
+
+      prev = temp;
+    }
+  }
+
+  private static void purge(DataArray da, long longWindowId, DataIntrospector di)
+  {
+    logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}",
+                 new Object[] {Long.toHexString(da.starting_window), Long.toHexString(longWindowId), Long.toHexString(da.baseSeconds)});
+    da.lockWrite();
+    try {
+      long bs = (long)da.baseSeconds << 32;
+      SerializedData lastReset = null;
+
+      DataListIterator dli = new DataListIterator(da, di);
+      done:
+      while (dli.hasNext()) {
+        SerializedData sd = dli.next();
+        switch (di.getType(sd)) {
+          case RESET_WINDOW:
+            bs = (long)di.getWindowId(sd) << 32;
+            lastReset = sd;
+            break;
+
+          case BEGIN_WINDOW:
+            if ((bs | di.getWindowId(sd)) > longWindowId) {
+              if (lastReset != null) {
+                /**
+                 * Restore the last Reset tuple if there was any.
+                 */
+                if (sd.offset >= lastReset.size) {
+                  sd.offset -= lastReset.size;
+                  if (!(sd.bytes == lastReset.bytes && sd.offset == lastReset.offset)) {
+                    System.arraycopy(lastReset.bytes, lastReset.offset, sd.bytes, sd.offset, lastReset.size);
+                  }
+                }
+
+                da.starting_window = bs | di.getWindowId(sd);
+              }
+
+              int i = 1;
+              while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
+                i++;
+              }
+              
+              if (i <= sd.size) {
+                sd.size = sd.offset;
+                sd.offset = 0;
+                sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
+                di.wipeData(sd);
+              }
+              break done;
+            }
+        }
       }
+    }
+    finally {
+      da.unlockWrite();
     }
   }
 
@@ -182,24 +204,24 @@ public class DataList
     private final ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
     private final Lock r = rwl.readLock();
     private final Lock w = rwl.writeLock();
-    private int baseSeconds = 0;
-    private int intervalMillis = 0;
+    private volatile int baseSeconds = 0;
+    private volatile int intervalMillis = 0;
     /**
      * currentOffset is the number of data elements in the array.
      */
-    int offset;
+    volatile int offset;
     /**
      * The starting window which is available in this data array
      */
-    long starting_window;
+    volatile long starting_window;
     /**
      * the ending window which is available in this data array
      */
-    long ending_window;
+    volatile long ending_window;
     /**
      * actual data - stored as length followed by actual data.
      */
-    byte data[];
+    volatile byte data[];
     /**
      * the next in the chain.
      */
@@ -275,23 +297,27 @@ public class DataList
           offset = Codec.writeRawVarint32(size, data, offset);
           System.arraycopy(d.toByteArray(), 0, data, offset, size);
           offset += size;
-        }
 
-        switch (d.getType()) {
-          case BEGIN_WINDOW:
-            long long_window_id = ((long)baseSeconds << 32 | d.getWindowId());
+          switch (d.getType()) {
+            case BEGIN_WINDOW:
+              long long_window_id = ((long)baseSeconds << 32 | d.getWindowId());
 //            logger.debug("baseSeconds = {}, windowId = {}, long_window_id = {}",
 //                         new Object[] {Integer.toHexString(baseSeconds), Integer.toHexString(d.getWindowId()), Long.toHexString(long_window_id)});
-            if (starting_window == 0) {
-              starting_window = long_window_id;
-            }
-            ending_window = long_window_id;
-            break;
+              if (starting_window == 0) {
+                starting_window = long_window_id;
+              }
+              ending_window = long_window_id;
+              break;
 
-          case RESET_WINDOW:
-            baseSeconds = d.getWindowId();
-            intervalMillis = d.getResetWindow().getWidth();
-            break;
+            case RESET_WINDOW:
+              baseSeconds = d.getWindowId();
+              intervalMillis = d.getResetWindow().getWidth();
+              if (starting_window == 0) {
+                starting_window = (long)baseSeconds << 32;
+              }
+              ending_window = (long)baseSeconds << 32;
+              break;
+          }
         }
       }
       finally {

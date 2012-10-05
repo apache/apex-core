@@ -36,6 +36,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   public void activate()
   {
     tupleCount.set(0);
+    firstPayload = lastPayload = null;
     super.activate();
     ClientHandler.subscribe(channel,
                                      "BufferServerSubscriber",

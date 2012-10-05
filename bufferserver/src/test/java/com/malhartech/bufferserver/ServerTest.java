@@ -26,6 +26,7 @@ public class ServerTest
   static BufferServerPublisher bsp;
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
+  static int spinCount = 500;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
@@ -69,7 +70,7 @@ public class ServerTest
     assertEquals(0, bss.tupleCount.get());
   }
 
-  @Test(dependsOnMethods="testNoPublishNoSubscribe")
+  @Test(dependsOnMethods = {"testNoPublishNoSubscribe"})
   public void test1Window() throws InterruptedException
   {
     bsp.activate();
@@ -79,7 +80,13 @@ public class ServerTest
     rt.id = 0x7afebabe000000faL;
     bsp.publishMessage(rt);
 
-    Thread.sleep(300);
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bss.tupleCount.get() > 0) {
+        break;
+      }
+    }
+    Thread.sleep(10);
 
     bss.deactivate();
     bsp.deactivate();
@@ -88,12 +95,19 @@ public class ServerTest
     assertEquals(rt.getType(), bss.firstPayload.getType());
   }
 
-  @Test(dependsOnMethods="test1Window")
+  @Test(dependsOnMethods = {"test1Window"})
   public void testLateSubscriber() throws InterruptedException
   {
     bss.activate();
 
-    Thread.sleep(100);
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bss.tupleCount.get() > 0) {
+        logger.debug("{}", bss.tupleCount);
+        break;
+      }
+    }
+    Thread.sleep(10);
 
     bss.deactivate();
 
@@ -101,11 +115,11 @@ public class ServerTest
     assertEquals(bss.firstPayload.getType(), DataType.RESET_WINDOW);
   }
 
-  @Test(dependsOnMethods="testLateSubscriber")
+  @Test(dependsOnMethods = {"testLateSubscriber"})
   public void testATonOfData() throws InterruptedException
   {
-    bsp.activate();
     bss.activate();
+    bsp.activate();
 
     BeginTuple bt = new BeginTuple();
     bt.id = 0x7afebabe00000000L;
@@ -131,7 +145,13 @@ public class ServerTest
     et1.id = bt1.id;
     bsp.publishMessage(et1);
 
-    Thread.sleep(100);
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bss.tupleCount.get() > 204) {
+        break;
+      }
+    }
+    Thread.sleep(10); // wait some more to receive more tuples if possible
 
     bsp.deactivate();
     bss.deactivate();
@@ -139,28 +159,65 @@ public class ServerTest
     assertEquals(bss.tupleCount.get(), 205);
   }
 
-  @Test(dependsOnMethods="testATonOfData")
-  public void testPurgeSome() throws InterruptedException
+  @Test(dependsOnMethods = {"testATonOfData"})
+  public void testPurgeNonExistent() throws InterruptedException
   {
     bsc.windowId = 0;
     bsc.activate();
-    Thread.sleep(1000);
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bsc.data != null) {
+        break;
+      }
+    }
     bsc.deactivate();
 
     assertNotNull(bsc.data);
 
     bss.activate();
-    Thread.sleep(1000);
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bss.tupleCount.get() > 204) {
+        break;
+      }
+    }
+    Thread.sleep(10);
     bss.deactivate();
     assertEquals(bss.tupleCount.get(), 205);
   }
 
+  @Test(dependsOnMethods = {"testPurgeNonExistent"})
+  public void testPurgeSome() throws InterruptedException
+  {
+    bsc.windowId = 0x7afebabe00000000L;
+    bsc.activate();
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bsc.data != null) {
+        break;
+      }
+    }
+    bsc.deactivate();
+
+    assertNotNull(bsc.data);
+
+    bss.activate();
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bss.tupleCount.get() > 102) {
+        break;
+      }
+    }
+    bss.deactivate();
+    assertEquals(bss.tupleCount.get(), 103);
+  }
   // purge all of it
   // register subscriber
   // ensure that no data is received
   // publish some more
   // register subscriber
   // ensure that the data is received
+
   class ResetTuple implements Tuple
   {
     long id;

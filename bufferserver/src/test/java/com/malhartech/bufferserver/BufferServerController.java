@@ -36,6 +36,7 @@ public class BufferServerController extends AbstractSocketSubscriber<Buffer.Data
   @Override
   public void activate()
   {
+    data = null;
     super.activate();
     ClientHandler.purge(channel, sourceId, windowId);
   }
