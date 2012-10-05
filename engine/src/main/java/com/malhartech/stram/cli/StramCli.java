@@ -32,6 +32,7 @@ import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.Records;
+import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -405,6 +406,21 @@ public class StramCli
   {
     ClientResponse rsp = getResource(StramWebServices.PATH_OPERATORS);
     JSONObject json = rsp.getEntity(JSONObject.class);
+
+    if (argv.length > 1) {
+      String singleKey = ""+json.keys().next();
+      JSONArray matches = new JSONArray();
+      // filter operators
+      JSONArray arr = json.getJSONArray(singleKey);
+      for (int i=0; i<arr.length(); i++) {
+        Object val = arr.get(i);
+        if (val.toString().matches(argv[1])) {
+          matches.put(val);
+        }
+      }
+      json.put(singleKey, matches);
+    }
+
     System.out.println(json.toString(2));
   }
 
