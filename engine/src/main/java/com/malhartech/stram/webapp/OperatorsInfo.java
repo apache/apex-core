@@ -22,14 +22,14 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class OperatorsInfo {
 
-  protected ArrayList<OperatorInfo> nodes = new ArrayList<OperatorInfo>();
+  protected ArrayList<OperatorInfo> operators = new ArrayList<OperatorInfo>();
 
   /**
    *
    * @param operatorInfo
    */
   public void add(OperatorInfo operatorInfo) {
-    nodes.add(operatorInfo);
+    operators.add(operatorInfo);
   }
 
   /**
@@ -38,7 +38,7 @@ public class OperatorsInfo {
    *
    */
   public ArrayList<OperatorInfo> getOperators() {
-    return nodes;
+    return operators;
   }
 
 }

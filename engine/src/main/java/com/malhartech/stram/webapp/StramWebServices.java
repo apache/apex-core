@@ -103,7 +103,7 @@ public class StramWebServices
     init();
     LOG.info("DAGManager: {}", dagManager);
     OperatorsInfo nodeList = new OperatorsInfo();
-    nodeList.nodes = dagManager.getNodeInfoList();
+    nodeList.operators = dagManager.getNodeInfoList();
     return nodeList;
   }
 
