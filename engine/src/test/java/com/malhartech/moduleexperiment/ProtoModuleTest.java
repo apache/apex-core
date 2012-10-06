@@ -4,16 +4,15 @@
  */
 package com.malhartech.moduleexperiment;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import org.junit.Test;
 
 import scala.actors.threadpool.Arrays;
 
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.moduleexperiment.ProtoModule.InputPort;
+import com.malhartech.moduleexperiment.ProtoModule.OutputPort;
 
 /**
  *
@@ -23,11 +22,11 @@ public class ProtoModuleTest {
   int callCount = 100 * 1000 * 1000;
 
   @Test
-  public void testDirectProcessCall() {
-    ProtoModule module = new MyProtoModule();
+  public void testDirectProcessCall() throws Exception {
+    ProtoModule module = MyProtoModule.class.newInstance();
     long startTimeMillis = System.currentTimeMillis();
     for (int i=0; i<callCount; i++) {
-      module.processPort1("hello");
+      module.processGeneric("hello");
     }
     System.out.println(callCount + " direct process calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
   }
@@ -58,7 +57,7 @@ public class ProtoModuleTest {
   @Test
   public void testInputPortMethodAnnotation() throws Exception {
 
-    String portName = "port1";
+    String portName = "methodAnnotatedPort1";
     MyProtoModule module = new MyProtoModule();
     Method m = getInputPortMethod(portName, module.getClass());
     long startTimeMillis = System.currentTimeMillis();
@@ -90,9 +89,25 @@ public class ProtoModuleTest {
         return (ProtoModule.InputPort<T>)m.invoke(module);
       }
     }
-    throw new IllegalArgumentException("No port processor method found in " + module + " for " + portName);
+    throw new IllegalArgumentException("Port processor factory method not found in " + module + " for " + portName);
   }
 
+  private static void injectOutportSink(ProtoModule module, String portName, OutputPort<?> sink) throws Exception {
+    Field[] fields = module.getClass().getDeclaredFields();
+    for (int i = 0; i < fields.length; i++) {
+      Field field = fields[i];
+      ProtoOutputPortFieldAnnotation a = field.getAnnotation(ProtoOutputPortFieldAnnotation.class);
+      if (a != null && portName.equals(a.name())) {
+        if (!field.getType().isAssignableFrom(sink.getClass())) {
+          throw new IllegalArgumentException("Invalid type for output port " + field);
+        }
+        field.setAccessible(true);
+        field.set(module, sink);
+        return;
+      }
+    }
+    throw new IllegalArgumentException("Failed to inject sink for port " + portName);
+  }
 
   /**
    * Calls port interface created by module.
@@ -102,7 +117,7 @@ public class ProtoModuleTest {
   @Test
   public void testInputPortInterfaceAnnotation() throws Exception {
 
-    String portName = "port3";
+    String portName = "port1";
     MyProtoModule module = new MyProtoModule();
     InputPort<String> portObject = getInputPortInterface(module, portName, String.class);
 
@@ -111,6 +126,28 @@ public class ProtoModuleTest {
       portObject.process("hello");
     }
     System.out.println(callCount + " port interface calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
+  }
+
+
+  @Test
+  public void testOutputPortAnnotation() throws Exception {
+
+    MyProtoModule module = new MyProtoModule();
+    InputPort<String> inport = getInputPortInterface(module, "port2", String.class);
+
+    // inject sink
+    // object is not typed as container does not know type at compile time
+    OutputPort<?> sink = new OutputPort<Object>() {
+      @Override
+      public void emit(Object payload) {
+        System.out.println(payload);
+      }
+    };
+
+    injectOutportSink(module, "outport1", sink);
+
+    inport.process("hello");
+
   }
 
 

@@ -4,32 +4,35 @@
  */
 package com.malhartech.moduleexperiment;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  *
  */
 public class MyProtoModule implements ProtoModule {
 
+  @ProtoOutputPortFieldAnnotation(name="outport1")
+  private OutputPort<Map<String, String>> outport1;
+
+  @ProtoOutputPortFieldAnnotation(name="outport2")
+  private OutputPort<byte[]> outport2;
+
   @Override
   public void beginWindow() {
-    // TODO Auto-generated method stub
-
   }
 
   @Override
   public void endWindow() {
-    // TODO Auto-generated method stub
-
   }
 
-  @Override
-  @ProtoInputPortProcessAnnotation(name="port1")
+  @ProtoInputPortProcessAnnotation(name="methodAnnotatedPort1")
   public void processPort1(String s) {
 
   }
 
-  @ProtoInputPortProcessAnnotation(name="port2")
-  public void processPort2() {
-
+  @Override
+  public void processGeneric(Object payload) {
   }
 
   private static class MyInputPort implements InputPort<String> {
@@ -38,7 +41,7 @@ public class MyProtoModule implements ProtoModule {
     }
   }
 
-  @ProtoInputPortGetAnnotation(name="port3")
+  @ProtoInputPortGetAnnotation(name="port1")
   public InputPort<String> getPort1() {
     // anonymous class vs static class makes no difference
     /*
@@ -49,6 +52,18 @@ public class MyProtoModule implements ProtoModule {
     };
     */
     return new MyInputPort();
+  }
+
+  @ProtoInputPortGetAnnotation(name="port2")
+  public InputPort<String> getPort2() {
+    return new InputPort<String>() {
+      @Override
+      final public void process(String payload) {
+        HashMap<String, String> m = new HashMap<String, String>();
+        m.put(payload, payload);
+        MyProtoModule.this.outport1.emit(m);
+      }
+    };
   }
 
 }
