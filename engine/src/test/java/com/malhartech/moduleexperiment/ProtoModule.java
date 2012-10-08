@@ -4,6 +4,8 @@
  */
 package com.malhartech.moduleexperiment;
 
+import com.malhartech.dag.Sink;
+
 /**
  *
  */
@@ -20,13 +22,40 @@ public interface ProtoModule {
   }
 
   /**
-   * Output ports are declared as annotated fields by the module and injected by the execution engine.
-   * The module developer simply calls emit on the typed port object.
-   *
+   * Output ports are declared as annotated typed fields by the module.
+   * The module processing logic simply calls emit on the port object.
+   * Output ports also define how output from replicated operators is merged.
    * @param <T>
    */
-  public static interface OutputPort<T extends Object> {
-    public void emit(T payload);
+  public static class OutputPort<T extends Object> {
+    private transient Sink sink;
+
+    final public void emit(T payload) {
+      sink.process(payload);
+    }
+
+    /**
+     * Internally called by execution engine to inject sink.
+     * @param s
+     */
+    final void setSink(Sink s) {
+      this.sink = s;
+    }
+
+    /**
+     * Opportunity for user code to check whether the port is connected, if optional.
+     */
+    public boolean isConnected() {
+      return sink != null;
+    }
+
+    /**
+     * Module developer can override for merge functionality
+     * @param o
+     */
+    public void merge(T o) {
+    }
+
   }
 
 

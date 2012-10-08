@@ -7,16 +7,17 @@ package com.malhartech.moduleexperiment;
 import java.util.HashMap;
 import java.util.Map;
 
+
 /**
  *
  */
-public class MyProtoModule implements ProtoModule {
+public class MyProtoModule<T extends Object> implements ProtoModule {
 
   @ProtoOutputPortFieldAnnotation(name="outport1")
-  private OutputPort<Map<String, String>> outport1;
+  private final OutputPort<Map<String, T>> outport1 = new OutputPort<Map<String,T>>();
 
   @ProtoOutputPortFieldAnnotation(name="outport2")
-  private OutputPort<byte[]> outport2;
+  private final OutputPort<byte[]> outport2 = new OutputPort<byte[]>();
 
   @Override
   public void beginWindow() {
@@ -55,12 +56,12 @@ public class MyProtoModule implements ProtoModule {
   }
 
   @ProtoInputPortGetAnnotation(name="port2")
-  public InputPort<String> getPort2() {
-    return new InputPort<String>() {
+  public InputPort<T> getPort2() {
+    return new InputPort<T>() {
       @Override
-      final public void process(String payload) {
-        HashMap<String, String> m = new HashMap<String, String>();
-        m.put(payload, payload);
+      final public void process(T payload) {
+        HashMap<String, T> m = new HashMap<String, T>();
+        m.put("payload", payload);
         MyProtoModule.this.outport1.emit(m);
       }
     };
