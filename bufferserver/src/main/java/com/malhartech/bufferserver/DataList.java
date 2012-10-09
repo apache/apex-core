@@ -265,7 +265,7 @@ public class DataList
 
     void getNextData(SerializedData current)
     {
-      if (current.offset + 5 < current.bytes.length) {
+      if (current.offset < data.length) {
         r.lock();
         try {
           Codec.readRawVarInt32(current);
@@ -285,14 +285,26 @@ public class DataList
 
       try {
         int size = d.getSerializedSize();
-        if (size + 5 + offset >= data.length) {
-          if (offset < data.length) {
-            offset = Codec.writeRawVarint32(data.length - offset, data, offset);
+        if (offset + 5 /* for max varint size */ + size > data.length && /* this is a fast check */
+              offset + Codec.getSizeOfRawVarint32(size) + size > data.length) {
+          int i = 1;
+          while (i < Codec.getSizeOfRawVarint32(data.length - offset - i)) {
+            i++;
+          }
+
+          if (i + offset <= data.length) {
+            offset = Codec.writeRawVarint32(data.length - offset, data, offset, i);
             if (offset < data.length) {
               Data.Builder db = Data.newBuilder();
               db.setType(DataType.NO_DATA);
               db.setWindowId(0);
-              System.arraycopy(db.build().toByteArray(), 0, data, offset, data.length - offset);
+
+              Data noData = db.build();
+              int writeSize = data.length - offset;
+              if (writeSize > noData.getSerializedSize()) {
+                writeSize = noData.getSerializedSize();
+              }
+              System.arraycopy(db.build().toByteArray(), 0, data, offset, writeSize);
               offset = data.length;
             }
           }
