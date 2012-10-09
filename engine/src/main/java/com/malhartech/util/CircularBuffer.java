@@ -22,8 +22,6 @@ import org.slf4j.LoggerFactory;
 public class CircularBuffer<T> implements CBuffer<T>
 {
   private static final Logger logger = LoggerFactory.getLogger(CircularBuffer.class);
-  private static final BufferUnderflowException underflow = new BufferUnderflowException();
-  private static final BufferOverflowException overflow = new BufferOverflowException();
   private final T[] buffer;
   private final int buffermask;
   private volatile long tail;
@@ -66,7 +64,7 @@ public class CircularBuffer<T> implements CBuffer<T>
       return;
     }
 
-    throw overflow;
+    throw new BufferOverflowException();
   }
 
   /**
@@ -86,7 +84,7 @@ public class CircularBuffer<T> implements CBuffer<T>
       return t;
     }
 
-    throw underflow;
+    throw new BufferUnderflowException();
   }
 
   public T peek()
