@@ -7,10 +7,12 @@ package com.malhartech.moduleexperiment;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import scala.actors.threadpool.Arrays;
 
+import com.malhartech.dag.Sink;
 import com.malhartech.moduleexperiment.ProtoModule.InputPort;
 import com.malhartech.moduleexperiment.ProtoModule.OutputPort;
 
@@ -54,6 +56,7 @@ public class ProtoModuleTest {
    * Method calls through reflection are much slower (600x+)
    * @throws Exception
    */
+  @Ignore
   @Test
   public void testInputPortMethodAnnotation() throws Exception {
 
@@ -92,17 +95,21 @@ public class ProtoModuleTest {
     throw new IllegalArgumentException("Port processor factory method not found in " + module + " for " + portName);
   }
 
-  private static void injectOutportSink(ProtoModule module, String portName, OutputPort<?> sink) throws Exception {
+  private static void injectSink(ProtoModule module, String portName, Sink sink) throws Exception {
     Field[] fields = module.getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
       ProtoOutputPortFieldAnnotation a = field.getAnnotation(ProtoOutputPortFieldAnnotation.class);
       if (a != null && portName.equals(a.name())) {
-        if (!field.getType().isAssignableFrom(sink.getClass())) {
-          throw new IllegalArgumentException("Invalid type for output port " + field);
-        }
         field.setAccessible(true);
-        field.set(module, sink);
+        Object outPort = field.get(module);
+        if (outPort == null) {
+          throw new IllegalArgumentException("port is null " + field);
+        }
+        if (!(outPort instanceof OutputPort)) {
+          throw new IllegalArgumentException("port is not of type " + OutputPort.class.getName());
+        }
+        ((OutputPort<?>)outPort).setSink(sink);
         return;
       }
     }
@@ -132,19 +139,18 @@ public class ProtoModuleTest {
   @Test
   public void testOutputPortAnnotation() throws Exception {
 
-    MyProtoModule module = new MyProtoModule();
+    MyProtoModule<String> module = new MyProtoModule<String>();
     InputPort<String> inport = getInputPortInterface(module, "port2", String.class);
 
-    // inject sink
-    // object is not typed as container does not know type at compile time
-    OutputPort<?> sink = new OutputPort<Object>() {
+    // inject (untyped) sink
+    Sink sink = new Sink() {
       @Override
-      public void emit(Object payload) {
-        System.out.println(payload);
+      public void process(Object payload) {
+        System.out.println("sink: " + payload);
       }
     };
 
-    injectOutportSink(module, "outport1", sink);
+    injectSink(module, "outport1", sink);
 
     inport.process("hello");
 
@@ -152,3 +158,4 @@ public class ProtoModuleTest {
 
 
 }
+
