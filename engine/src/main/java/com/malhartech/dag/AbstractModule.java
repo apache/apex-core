@@ -231,7 +231,7 @@ public abstract class AbstractModule extends AbstractBaseModule
               case BEGIN_WINDOW:
                 if (expectingBeginWindow == totalQueues) {
                   shouldWait = false;
-                  activePort.get();
+                  activePort.remove();
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
                   for (int s = sinks.length; s-- > 0;) {
@@ -242,7 +242,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                 }
                 else if (t.getWindowId() == currentWindowId) {
                   shouldWait = false;
-                  activePort.get();
+                  activePort.remove();
                   expectingBeginWindow--;
                 }
                 else {
@@ -254,7 +254,7 @@ public abstract class AbstractModule extends AbstractBaseModule
               case END_WINDOW:
                 if (t.getWindowId() == currentWindowId) {
                   shouldWait = false;
-                  lastEndWindow = activePort.get();
+                  lastEndWindow = activePort.remove();
                   if (++receivedEndWindow == totalQueues) {
                     endWindow();
                     for (final Sink output: outputs.values()) {
@@ -267,7 +267,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                     try {
                       CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
                       for (int i = requests.size(); i-- > 0;) {
-                        requests.get().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
+                        requests.remove().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
                       }
                     }
                     catch (Exception e) {
@@ -301,7 +301,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                  * we will receive tuples which are equal to the number of input streams.
                  */
                 shouldWait = false;
-                activePort.get();
+                activePort.remove();
 
                 if (receivedResetTuples++ == 0) {
                   for (int s = sinks.length; s-- > 0;) {
@@ -316,7 +316,7 @@ public abstract class AbstractModule extends AbstractBaseModule
 
               case END_STREAM:
                 shouldWait = false;
-                activePort.get();
+                activePort.remove();
                 /**
                  * We are not going to receive begin window on this ever!
                  */
@@ -349,7 +349,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                   try {
                     CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
                     for (int i = requests.size(); i-- > 0;) {
-                      requests.get().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
+                      requests.remove().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
                     }
                   }
                   catch (Exception e) {
@@ -374,7 +374,7 @@ public abstract class AbstractModule extends AbstractBaseModule
             }
           }
           else {
-            process(activePort.get());
+            process(activePort.remove());
             processedTupleCount++;
             shouldWait = false;
           }

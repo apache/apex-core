@@ -122,7 +122,7 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
       Sink s = outputs.get(e.getKey());
       CircularBuffer cb = e.getValue();
       for (int i = cb.size(); i-- > 0;) {
-        s.process(cb.get());
+        s.process(cb.remove());
       }
     }
   }

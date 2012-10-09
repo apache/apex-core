@@ -98,7 +98,7 @@ public class ModuleContext implements Context
       heartbeatCounters.add(newWindow);
     }
     catch (BufferOverflowException boe) {
-      heartbeatCounters.get();
+      heartbeatCounters.remove();
       heartbeatCounters.add(newWindow);
     }
   }

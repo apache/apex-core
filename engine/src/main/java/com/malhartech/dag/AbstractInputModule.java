@@ -46,7 +46,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
         int size;
         if ((size = controlTuples.size()) > 0) {
           while (size-- > 0) {
-            t = controlTuples.get();
+            t = controlTuples.remove();
             switch (t.getType()) {
               case BEGIN_WINDOW:
                 for (int i = sinks.length; i-- > 0;) {
@@ -71,7 +71,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
                   CircularBuffer<ModuleContext.ModuleRequest> requests = context.getRequests();
                   for (int i = requests.size(); i-- > 0;) {
                     //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
-                    requests.get().execute(this, context.getId(), t.getWindowId());
+                    requests.remove().execute(this, context.getId(), t.getWindowId());
                   }
                 }
                 catch (Exception e) {
@@ -87,7 +87,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
                   if (s != null) {
                     CircularBuffer<?> cb = e.getValue();
                     for (int i = cb.size(); i-- > 0;) {
-                      s.process(cb.get());
+                      s.process(cb.remove());
                     }
                   }
                 }

@@ -10,7 +10,12 @@ package com.malhartech.util;
  */
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,13 +24,14 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  */
-public class CircularBuffer<T> implements CBuffer<T>
+public class CircularBuffer<T> implements BlockingQueue<T>
 {
   private static final Logger logger = LoggerFactory.getLogger(CircularBuffer.class);
   private final T[] buffer;
   private final int buffermask;
   private volatile long tail;
   private volatile long head;
+  private final int spinMillis;
 
   /**
    *
@@ -36,7 +42,7 @@ public class CircularBuffer<T> implements CBuffer<T>
    * <br>
    */
   @SuppressWarnings("unchecked")
-  public CircularBuffer(int n)
+  public CircularBuffer(int n, int spin)
   {
     int i = 1;
     while (i < n) {
@@ -45,6 +51,13 @@ public class CircularBuffer<T> implements CBuffer<T>
 
     buffer = (T[])new Object[i];
     buffermask = i - 1;
+
+    spinMillis = spin;
+  }
+
+  public CircularBuffer(int n)
+  {
+    this(n, 10);
   }
 
   /**
@@ -56,12 +69,12 @@ public class CircularBuffer<T> implements CBuffer<T>
    *
    */
   @Override
-  public void add(T toAdd)
+  public boolean add(T e)
   {
     if (head - tail <= buffermask) {
-      buffer[(int)(head & buffermask)] = toAdd;
+      buffer[(int)(head & buffermask)] = e;
       head++;
-      return;
+      return true;
     }
 
     throw new BufferOverflowException();
@@ -76,7 +89,7 @@ public class CircularBuffer<T> implements CBuffer<T>
    * <br>
    */
   @Override
-  public T get()
+  public T remove()
   {
     if (head > tail) {
       T t = buffer[(int)(tail & buffermask)];
@@ -87,6 +100,7 @@ public class CircularBuffer<T> implements CBuffer<T>
     throw new BufferUnderflowException();
   }
 
+  @Override
   public T peek()
   {
     if (head > tail) {
@@ -132,6 +146,7 @@ public class CircularBuffer<T> implements CBuffer<T>
    * @return Number of objects removed from the buffer
    * <br>
    */
+  @Override
   public int drainTo(Collection<? super T> container)
   {
     int size = size();
@@ -156,5 +171,232 @@ public class CircularBuffer<T> implements CBuffer<T>
   public String toString()
   {
     return "CircularBuffer(capacity=" + (buffermask + 1) + ", head=" + head + ", tail=" + tail + ")";
+  }
+
+  @Override
+  public boolean offer(T e)
+  {
+    if (head - tail <= buffermask) {
+      buffer[(int)(head & buffermask)] = e;
+      head++;
+      return true;
+    }
+
+    return false;
+  }
+
+  @Override
+  @SuppressWarnings("SleepWhileInLoop")
+  public void put(T e) throws InterruptedException
+  {
+    do {
+      if (head - tail < buffermask) {
+        buffer[(int)(head & buffermask)] = e;
+        head++;
+        return;
+      }
+
+      Thread.sleep(spinMillis);
+    }
+    while (true);
+  }
+
+  @Override
+  @SuppressWarnings("SleepWhileInLoop")
+  public boolean offer(T e, long timeout, TimeUnit unit) throws InterruptedException
+  {
+    long millis = unit.toMillis(timeout);
+    do {
+      if (head - tail < buffermask) {
+        buffer[(int)(head & buffermask)] = e;
+        head++;
+        return true;
+      }
+
+      Thread.sleep(spinMillis);
+    }
+    while ((millis -= spinMillis) >= 0);
+
+    return false;
+  }
+
+  @Override
+  @SuppressWarnings("SleepWhileInLoop")
+  public T take() throws InterruptedException
+  {
+    do {
+      if (head > tail) {
+        T t = buffer[(int)(tail & buffermask)];
+        tail++;
+        return t;
+      }
+
+      Thread.sleep(spinMillis);
+    }
+    while (true);
+  }
+
+  @Override
+  @SuppressWarnings("SleepWhileInLoop")
+  public T poll(long timeout, TimeUnit unit) throws InterruptedException
+  {
+    long millis = unit.toMillis(timeout);
+    do {
+      if (head > tail) {
+        T t = buffer[(int)(tail & buffermask)];
+        tail++;
+        return t;
+      }
+
+      Thread.sleep(spinMillis);
+    }
+    while ((millis -= spinMillis) >= 0);
+
+    return null;
+  }
+
+  @Override
+  public int remainingCapacity()
+  {
+    return buffermask + 1 - (int)(head - tail);
+  }
+
+  @Override
+  public boolean remove(Object o)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean contains(Object o)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public int drainTo(final Collection<? super T> collection, final int maxElements)
+  {
+    int i = -1;
+    while (i++ < maxElements && head > tail) {
+      collection.add(buffer[(int)(tail & buffermask)]);
+      tail++;
+    }
+
+    return i;
+  }
+
+  @Override
+  public T poll()
+  {
+    if (head > tail) {
+      T t = buffer[(int)(tail & buffermask)];
+      tail++;
+      return t;
+    }
+
+    return null;
+  }
+
+  @Override
+  public T element()
+  {
+    if (head > tail) {
+      return buffer[(int)(tail & buffermask)];
+    }
+
+    throw new BufferUnderflowException();
+  }
+
+  @Override
+  public boolean isEmpty()
+  {
+    return head == tail;
+  }
+
+  @Override
+  public Iterator<T> iterator()
+  {
+    return new Iterator<T>() {
+
+      @Override
+      public boolean hasNext()
+      {
+        return head > tail;
+      }
+
+      @Override
+      public T next()
+      {
+        T t = buffer[(int)(tail & buffermask)];
+        tail++;
+        return t;
+      }
+
+      @Override
+      public void remove()
+      {
+      }
+    };
+  }
+
+  @Override
+  public Object[] toArray()
+  {
+    final int count = (int)(head - tail);
+    Object[] array = new Object[count];
+    for (int i = 0; i < count; i++) {
+      array[i] = buffer[(int)(tail & buffermask)];
+      tail++;
+    }
+
+    return array;
+  }
+
+  @Override
+  public <T> T[] toArray(T[] a)
+  {
+    int count = (int)(head - tail);
+    if (a.length < count) {
+      a = (T[])new Object[count];
+    }
+
+    for (int i = 0; i < count; i++) {
+      a[i] = (T)buffer[(int)(tail & buffermask)];
+      tail++;
+    }
+
+    return a;
+  }
+
+  @Override
+  public boolean containsAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean addAll(Collection<? extends T> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean removeAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean retainAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void clear()
+  {
+    head = 0;
+    tail = 0;
+    Arrays.fill(buffer, null);
   }
 }

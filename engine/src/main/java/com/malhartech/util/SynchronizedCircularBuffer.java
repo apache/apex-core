@@ -11,13 +11,16 @@ package com.malhartech.util;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Provides a non-premium implementation of circular buffer<p>
  * <br>
  *
  */
-public class SynchronizedCircularBuffer<T> implements CBuffer<T>
+public class SynchronizedCircularBuffer<T> implements BlockingDeque<T>
 {
   private static final BufferUnderflowException underflow = new BufferUnderflowException();
   private static final BufferOverflowException overflow = new BufferOverflowException();
@@ -55,11 +58,11 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
    *
    */
   @Override
-  public synchronized void add(T toAdd)
+  public synchronized boolean add(T toAdd)
   {
     if (head - tail <= buffermask) {
       buffer[head++ & buffermask] = toAdd;
-      return;
+      return true;
     }
 
     throw overflow;
@@ -74,7 +77,7 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
    * <br>
    */
   @Override
-  public synchronized T get()
+  public synchronized T remove()
   {
     if (head > tail) {
       return buffer[tail++ & buffermask];
@@ -83,6 +86,7 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
     throw underflow;
   }
 
+  @Override
   public synchronized T peek()
   {
     if (head > tail) {
@@ -128,6 +132,7 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
    * @return Number of objects removed from the buffer
    * <br>
    */
+  @Override
   public synchronized int drainTo(Collection<? super T> container)
   {
     int size = size();
@@ -151,5 +156,275 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
   public synchronized String toString()
   {
     return "CircularBuffer(capacity=" + (buffermask + 1) + ", head=" + head + ", tail=" + tail + ")";
+  }
+
+  @Override
+  public void addFirst(T e)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void addLast(T e)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean offerFirst(T e)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean offerLast(T e)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void putFirst(T e) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void putLast(T e) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean offerFirst(T e, long timeout, TimeUnit unit) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean offerLast(T e, long timeout, TimeUnit unit) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T takeFirst() throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T takeLast() throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T pollFirst(long timeout, TimeUnit unit) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T pollLast(long timeout, TimeUnit unit) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean removeFirstOccurrence(Object o)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean removeLastOccurrence(Object o)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean offer(T e)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void put(T e) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean offer(T e, long timeout, TimeUnit unit) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T poll()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T take() throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T poll(long timeout, TimeUnit unit) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T element()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean remove(Object o)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean contains(Object o)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public Iterator<T> iterator()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void push(T e)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public int remainingCapacity()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public int drainTo(Collection<? super T> c, int maxElements)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean isEmpty()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public Object[] toArray()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public <T> T[] toArray(T[] a)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean containsAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean addAll(Collection<? extends T> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean removeAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean retainAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void clear()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T removeFirst()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T removeLast()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T pollFirst()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T pollLast()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T getFirst()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T getLast()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T peekFirst()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T peekLast()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T pop()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public Iterator<T> descendingIterator()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }
