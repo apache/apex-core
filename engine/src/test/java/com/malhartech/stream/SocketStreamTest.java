@@ -3,33 +3,25 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DAG;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
-import com.malhartech.stram.StreamingContainerManager;
-import com.malhartech.stram.StreamingContainerManagerTest.TestStaticPartitioningSerDe;
-import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.TestGeneratorInputModule;
-import com.malhartech.dag.DAG.Operator;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.SerDe;
+import com.malhartech.dag.Sink;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
 
 /**
  *
@@ -139,47 +131,4 @@ public class SocketStreamTest
     Assert.assertEquals("Received messages", 1, messageCount.get());
   }
 
-  /**
-   * Instantiate physical model with adapters and partitioning in mock container.
-   *
-   * @throws Exception
-   */
-  @Test
-  public void testStramChildInit() throws Exception
-  {
-    DAG dag = new DAG();
-
-    Operator generatorNode = dag.addOperator("SocketStreamTest.generator", TestGeneratorInputModule.class);
-    generatorNode.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "1");
-
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-
-    DAG.StreamDecl generatorOutput = dag.addStream("generatorOutput");
-    generatorOutput.setSource(generatorNode.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
-            .addSink(node1.getInput(GenericTestModule.INPUT1))
-            .setSerDeClass(TestStaticPartitioningSerDe.class);
-
-    StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    int expectedContainerCount = TestStaticPartitioningSerDe.partitions.length;
-    Assert.assertEquals("number required containers",
-                        expectedContainerCount,
-                        dnm.getNumRequiredContainers());
-
-    List<LocalStramChild> containers = new ArrayList<LocalStramChild>();
-
-    for (int i = 0; i < expectedContainerCount; i++) {
-      String containerId = "container" + (i + 1);
-      StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
-      LocalStramChild container = new LocalStramChild(containerId, null, null);
-      container.setup(cc);
-      containers.add(container);
-    }
-
-    // TODO: validate data flow
-
-    for (LocalStramChild cc: containers) {
-      LOG.info("shutting down " + cc.getContainerId());
-      cc.teardown();
-    }
-  }
 }

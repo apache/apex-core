@@ -173,13 +173,13 @@ public class StramLocalClusterTest
     PTOperator ptNode1 = localCluster.findByLogicalNode(node1);
     PTOperator ptNode2 = localCluster.findByLogicalNode(node2);
 
-    LocalStramChild c0 = waitForActivation(localCluster, node1);
+    LocalStramChild c0 = waitForActivation(localCluster, ptNode1);
     Map<String, Module> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
     TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1);
 
-    LocalStramChild c2 = waitForActivation(localCluster, node2);
+    LocalStramChild c2 = waitForActivation(localCluster, ptNode2);
     Map<String, Module> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
     GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
@@ -203,7 +203,7 @@ public class StramLocalClusterTest
     wclock.tick(1); // end window 2
     StramTestSupport.waitForWindowComplete(n1Context, 2);
 
-    ModuleContext n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
+    ModuleContext n2Context = c2.getNodeContext(ptNode2.id);
 
     wclock.tick(1); // end window 3
 
@@ -237,7 +237,7 @@ public class StramLocalClusterTest
 
     // replacement container starts empty
     // operators will deploy after downstream node was removed
-    LocalStramChild c0Replaced = waitForActivation(localCluster, node1);
+    LocalStramChild c0Replaced = waitForActivation(localCluster, ptNode1);
     c0Replaced.triggerHeartbeat();
     c0Replaced.waitForHeartbeat(5000); // next heartbeat after setup
 
@@ -262,12 +262,12 @@ public class StramLocalClusterTest
     }
 
     Assert.assertEquals("downstream operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
-    // verify that the downstream node was replaced
+    // verify downstream node was replaced in same container
+    Assert.assertEquals("active " + ptNode2, c2, waitForActivation(localCluster, ptNode2));
     GenericTestModule n2Replaced = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
-    Assert.assertNotNull(n2Replaced);
-    Assert.assertNotSame("node2 redeployed", n2, n2Replaced);
+    Assert.assertNotNull("redeployed " + ptNode2, n2Replaced);
+    Assert.assertNotSame("new instance " + ptNode2, n2, n2Replaced);
     Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());
-
 
     TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1Replaced);
@@ -276,16 +276,20 @@ public class StramLocalClusterTest
     Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
     // the node context should reflect the last processed window (the backup window)?
     //Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
-
     wclock.tick(1);
     StramTestSupport.waitForWindowComplete(n1ReplacedContext, 5);
-    // refresh context after operator was re-deployed
-    //n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
-    Assert.assertNotNull(n2Context);
+
+    // refresh n2 context after operator was re-deployed
+    n2Context = c2.getNodeContext(ptNode2.id);
+    Assert.assertNotNull("node active " + ptNode2, n2Context);
+
     StramTestSupport.waitForWindowComplete(n2Context, 5);
     backupNode(c0Replaced, n1ReplacedContext); // backup window 6
     backupNode(c2, n2Context); // backup window 6
     wclock.tick(1); // end window 6
+
+    StramTestSupport.waitForWindowComplete(n1ReplacedContext, 6);
+    StramTestSupport.waitForWindowComplete(n2Context, 6);
 
     // propagate checkpoints to master
     c0Replaced.triggerHeartbeat();
@@ -296,8 +300,8 @@ public class StramLocalClusterTest
     // purge checkpoints
     localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
 
-    //Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
-    //Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
 
     localCluster.shutdown();
   }
@@ -311,11 +315,8 @@ public class StramLocalClusterTest
    * @throws InterruptedException
    */
   @SuppressWarnings("SleepWhileInLoop")
-  private LocalStramChild waitForActivation(StramLocalCluster localCluster, Operator nodeDecl) throws InterruptedException
+  private LocalStramChild waitForActivation(StramLocalCluster localCluster, PTOperator node) throws InterruptedException
   {
-    PTOperator node = localCluster.findByLogicalNode(nodeDecl);
-    Assert.assertNotNull("no node for " + nodeDecl, node);
-
     LocalStramChild container;
     while (true) {
       if (node.container.containerId != null) {
