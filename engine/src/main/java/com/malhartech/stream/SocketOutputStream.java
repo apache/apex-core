@@ -70,6 +70,7 @@ public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAd
   @Override
   public void deactivate()
   {
+    channel.flush().awaitUninterruptibly();
     channel.close().awaitUninterruptibly();
   }
 }

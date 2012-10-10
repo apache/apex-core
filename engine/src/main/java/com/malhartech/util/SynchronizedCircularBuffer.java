@@ -8,19 +8,18 @@ package com.malhartech.util;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Provides a non-premium implementation of circular buffer<p>
  * <br>
  *
  */
-public class SynchronizedCircularBuffer<T> implements CBuffer<T>
+public class SynchronizedCircularBuffer<T> implements UnsafeBlockingQueue<T>
 {
-  private static final BufferUnderflowException underflow = new BufferUnderflowException();
-  private static final BufferOverflowException overflow = new BufferOverflowException();
   private final T[] buffer;
   private final int buffermask;
   private int tail;
@@ -55,14 +54,14 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
    *
    */
   @Override
-  public synchronized void add(T toAdd)
+  public synchronized boolean add(T toAdd)
   {
     if (head - tail <= buffermask) {
       buffer[head++ & buffermask] = toAdd;
-      return;
+      return true;
     }
 
-    throw overflow;
+    throw new IllegalStateException("Collection is full");
   }
 
   /**
@@ -74,15 +73,16 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
    * <br>
    */
   @Override
-  public synchronized T get()
+  public synchronized T remove()
   {
     if (head > tail) {
       return buffer[tail++ & buffermask];
     }
 
-    throw underflow;
+    throw new IllegalStateException("Collection is empty");
   }
 
+  @Override
   public synchronized T peek()
   {
     if (head > tail) {
@@ -128,6 +128,7 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
    * @return Number of objects removed from the buffer
    * <br>
    */
+  @Override
   public synchronized int drainTo(Collection<? super T> container)
   {
     int size = size();
@@ -150,6 +151,141 @@ public class SynchronizedCircularBuffer<T> implements CBuffer<T>
   @Override
   public synchronized String toString()
   {
-    return "CircularBuffer(capacity=" + (buffermask + 1) + ", head=" + head + ", tail=" + tail + ")";
+    return "head=" + head + ", tail=" + tail + ", capacity=" + (buffermask + 1);
+  }
+
+  @Override
+  public final synchronized boolean offer(T e)
+  {
+    if (head - tail <= buffermask) {
+      buffer[head++ & buffermask] = e;
+      return true;
+    }
+
+    return false;
+  }
+
+  @Override
+  public void put(T e) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean offer(T e, long timeout, TimeUnit unit) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T take() throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public T poll(long timeout, TimeUnit unit) throws InterruptedException
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public int remainingCapacity()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean remove(Object o)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean contains(Object o)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public int drainTo(Collection<? super T> c, int maxElements)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public final synchronized T poll()
+  {
+    if (head > tail) {
+      return buffer[tail++ & buffermask];
+    }
+
+    return null;
+  }
+
+  @Override
+  public T element()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean isEmpty()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public Iterator<T> iterator()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public Object[] toArray()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public <T> T[] toArray(T[] a)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean containsAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean addAll(Collection<? extends T> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean removeAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public boolean retainAll(Collection<?> c)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void clear()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public final synchronized T pollUnsafe()
+  {
+    return buffer[tail++ & buffermask];
   }
 }

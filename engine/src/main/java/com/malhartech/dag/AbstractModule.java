@@ -59,24 +59,11 @@ public abstract class AbstractModule extends AbstractBaseModule
     @SuppressWarnings("SleepWhileInLoop")
     public final void process(Object payload)
     {
-//      if (AbstractModule.this.id.endsWith("adviewsNode")) {
-//        logger.debug(AbstractModule.this + "::" + this + " got payload " + payload);
-//      }
       try {
-        while (true) {
-          try {
-            add(payload);
-            break;
-          }
-          catch (BufferOverflowException boe) {
-            Thread.sleep(getSpinMillis());
-          }
-        }
+        put(payload);
       }
       catch (InterruptedException ex) {
-        /**
-         * if we got interrupted while we were sleeping, then there must be emergency. so exit.
-         */
+        logger.warn("Abandoning processing of the payload {} due to an interrupt", payload);
       }
     }
 
@@ -231,7 +218,7 @@ public abstract class AbstractModule extends AbstractBaseModule
               case BEGIN_WINDOW:
                 if (expectingBeginWindow == totalQueues) {
                   shouldWait = false;
-                  activePort.get();
+                  activePort.remove();
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
                   for (int s = sinks.length; s-- > 0;) {
@@ -242,7 +229,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                 }
                 else if (t.getWindowId() == currentWindowId) {
                   shouldWait = false;
-                  activePort.get();
+                  activePort.remove();
                   expectingBeginWindow--;
                 }
                 else {
@@ -254,7 +241,7 @@ public abstract class AbstractModule extends AbstractBaseModule
               case END_WINDOW:
                 if (t.getWindowId() == currentWindowId) {
                   shouldWait = false;
-                  lastEndWindow = activePort.get();
+                  lastEndWindow = activePort.remove();
                   if (++receivedEndWindow == totalQueues) {
                     endWindow();
                     for (final Sink output: outputs.values()) {
@@ -267,7 +254,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                     try {
                       CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
                       for (int i = requests.size(); i-- > 0;) {
-                        requests.get().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
+                        requests.poll().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
                       }
                     }
                     catch (Exception e) {
@@ -301,7 +288,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                  * we will receive tuples which are equal to the number of input streams.
                  */
                 shouldWait = false;
-                activePort.get();
+                activePort.remove();
 
                 if (receivedResetTuples++ == 0) {
                   for (int s = sinks.length; s-- > 0;) {
@@ -316,7 +303,7 @@ public abstract class AbstractModule extends AbstractBaseModule
 
               case END_STREAM:
                 shouldWait = false;
-                activePort.get();
+                activePort.remove();
                 /**
                  * We are not going to receive begin window on this ever!
                  */
@@ -349,7 +336,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                   try {
                     CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
                     for (int i = requests.size(); i-- > 0;) {
-                      requests.get().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
+                      requests.remove().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
                     }
                   }
                   catch (Exception e) {
@@ -374,7 +361,7 @@ public abstract class AbstractModule extends AbstractBaseModule
             }
           }
           else {
-            process(activePort.get());
+            process(activePort.remove());
             processedTupleCount++;
             shouldWait = false;
           }

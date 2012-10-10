@@ -94,12 +94,10 @@ public class ModuleContext implements Context
     newWindow.windowId = windowId;
     newWindow.tuplesProcessed = consumedTupleCount;
     newWindow.bytesProcessed = processedBytes;
-    try {
-      heartbeatCounters.add(newWindow);
-    }
-    catch (BufferOverflowException boe) {
-      heartbeatCounters.get();
-      heartbeatCounters.add(newWindow);
+
+    if (!heartbeatCounters.offer(newWindow)) {
+      heartbeatCounters.poll();
+      heartbeatCounters.offer(newWindow);
     }
   }
 

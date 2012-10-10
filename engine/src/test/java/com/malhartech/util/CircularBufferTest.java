@@ -4,8 +4,7 @@
  */
 package com.malhartech.util;
 
-import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
+import java.util.concurrent.BlockingQueue;
 import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +16,7 @@ import org.slf4j.LoggerFactory;
 public class CircularBufferTest
 {
   private static final Logger logger = LoggerFactory.getLogger(CircularBufferTest.class);
+  private static final long waitMillis = 500;
 
   public CircularBufferTest()
   {
@@ -62,7 +62,7 @@ public class CircularBufferTest
       Assert.fail("exception should be raised for adding to buffer which does not have room");
     }
     catch (Exception bue) {
-      assert (bue instanceof BufferOverflowException);
+      assert (bue instanceof IllegalStateException);
     }
 
     instance = new CircularBuffer<Integer>(10);
@@ -80,8 +80,8 @@ public class CircularBufferTest
       Assert.fail("exception should have been thrown");
     }
     catch (Exception e) {
-      assert (e instanceof BufferOverflowException);
-      instance.get();
+      assert (e instanceof IllegalStateException);
+      instance.remove();
       instance.add(new Integer(0));
     }
 
@@ -89,7 +89,7 @@ public class CircularBufferTest
   }
 
   /**
-   * Test of get method, of class CircularBuffer.
+   * Test of remove method, of class CircularBuffer.
    */
   @Test
   public void testGet()
@@ -98,83 +98,82 @@ public class CircularBufferTest
 
     CircularBuffer<Integer> instance = new CircularBuffer<Integer>(0);
     try {
-      instance.get();
+      instance.remove();
       Assert.fail("exception should be raised for getting from buffer which does not have data");
     }
     catch (Exception bue) {
-      assert (bue instanceof BufferUnderflowException);
+      assert (bue instanceof IllegalStateException);
+      assert (bue.getMessage().equals("Collection is empty"));
     }
 
     instance = new CircularBuffer<Integer>(10);
     try {
-      instance.get();
+      instance.remove();
       Assert.fail("exception should be raised for getting from buffer which does not have data");
     }
     catch (Exception bue) {
-      assert (bue instanceof BufferUnderflowException);
+      assert (bue instanceof IllegalStateException);
+      assert (bue.getMessage().equals("Collection is empty"));
     }
 
     for (int i = 0; i < 10; i++) {
       instance.add(i);
     }
 
-    Integer i = instance.get();
-    Integer j = instance.get();
+    Integer i = instance.remove();
+    Integer j = instance.remove();
     assert (i == 0 && j == 1);
 
     instance.add(10);
 
     assert (instance.size() == 9);
-    assert (instance.get() == 2);
+    assert (instance.remove() == 2);
   }
 
   @Test
   public void testPerformanceOfCircularBuffer() throws InterruptedException
   {
-    Thread.currentThread().setName("testPerformanceOfCircularBuffer");
-    testPerformanceOf(new CircularBuffer<Long>(1024 * 1024), 500);
-    testPerformanceOf(new CircularBuffer<Long>(1024 * 1024), 500);
+    testPerformanceOf(new CircularBuffer<Long>(1024 * 1024), 100);
+    testPerformanceOf(new CircularBuffer<Long>(1024 * 1024), waitMillis);
   }
 
   @Test
   public void testPerformanceOfSynchronizedCircularBuffer() throws InterruptedException
   {
-    Thread.currentThread().setName("testPerformanceOfSynchronizedCircularBuffer");
-    testPerformanceOf(new SynchronizedCircularBuffer<Long>(1024 * 1024), 500);
-    testPerformanceOf(new SynchronizedCircularBuffer<Long>(1024 * 1024), 500);
+    testPerformanceOf(new SynchronizedCircularBuffer<Long>(1024 * 1024), 100);
+    testPerformanceOf(new SynchronizedCircularBuffer<Long>(1024 * 1024), waitMillis);
   }
 
-  private <T extends CBuffer<Long>> void testPerformanceOf(final T buffer, long millis) throws InterruptedException
+  private <T extends UnsafeBlockingQueue<Long>> void testPerformanceOf(final T buffer, long millis) throws InterruptedException
   {
     Thread producer = new Thread("Producer")
     {
       @Override
+      @SuppressWarnings("SleepWhileInLoop")
       public void run()
       {
         long l = 0;
         try {
           do {
-            try {
-              for (int i = 0; i < 1024; i++) {
-                buffer.add(l++);
-              }
+            int i = 0;
+            while (i++ < 1024 && buffer.offer(l++)) {
             }
-            catch (BufferOverflowException ex) {
+            if (i != 1025) {
               l--;
-              sleep(10);
+              Thread.sleep(10);
             }
           }
           while (!interrupted());
         }
         catch (InterruptedException ex1) {
         }
-        logger.debug("Produced {} Longs", l);
       }
     };
 
     Thread consumer = new Thread("Consumer")
     {
       @Override
+      @SuppressWarnings("SleepWhileInLoop")
       public void run()
       {
         long l = 0;
@@ -186,7 +185,7 @@ public class CircularBufferTest
             }
             else {
               while (size-- > 0) {
-                Assert.assertEquals(l++, buffer.get().longValue());
+                Assert.assertEquals(l++, buffer.pollUnsafe().longValue());
               }
             }
           }
@@ -194,7 +193,6 @@ public class CircularBufferTest
         }
         catch (InterruptedException ex1) {
         }
-        logger.debug("Consumed {} Longs", l);
       }
     };
 
@@ -208,5 +206,7 @@ public class CircularBufferTest
 
     producer.join();
     consumer.join();
+
+    logger.debug(buffer.getClass().getSimpleName() + "(" + buffer.toString() + ")");
   }
 }
