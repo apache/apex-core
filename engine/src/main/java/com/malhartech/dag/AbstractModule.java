@@ -59,24 +59,11 @@ public abstract class AbstractModule extends AbstractBaseModule
     @SuppressWarnings("SleepWhileInLoop")
     public final void process(Object payload)
     {
-//      if (AbstractModule.this.id.endsWith("adviewsNode")) {
-//        logger.debug(AbstractModule.this + "::" + this + " got payload " + payload);
-//      }
       try {
-        while (true) {
-          try {
-            add(payload);
-            break;
-          }
-          catch (BufferOverflowException boe) {
-            Thread.sleep(getSpinMillis());
-          }
-        }
+        put(payload);
       }
       catch (InterruptedException ex) {
-        /**
-         * if we got interrupted while we were sleeping, then there must be emergency. so exit.
-         */
+        logger.warn("Abandoning processing of the payload {} due to an interrupt", payload);
       }
     }
 
@@ -267,7 +254,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                     try {
                       CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
                       for (int i = requests.size(); i-- > 0;) {
-                        requests.remove().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
+                        requests.poll().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
                       }
                     }
                     catch (Exception e) {

@@ -7,10 +7,7 @@ package com.malhartech.dag;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,45 +69,26 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
   @SuppressWarnings("SleepWhileInLoop")
   public void emit(Object payload)
   {
-    for (CircularBuffer cb: handoverBuffers.values()) {
-      while (true) {
-        try {
-          cb.add(payload);
-          break;
-        }
-        catch (BufferOverflowException boe) {
-          try {
-            Thread.sleep(spinMillis);
-          }
-          catch (InterruptedException ex) {
-            logger.warn("{} aborting emit as got interrupted while writing {}", this, payload);
-            break;
-          }
-        }
+    try {
+      for (CircularBuffer cb: handoverBuffers.values()) {
+        cb.put(payload);
       }
+    }
+    catch (InterruptedException ex) {
+      logger.warn("{} aborting emit as got interrupted while writing {}", this, payload);
     }
   }
 
   @Override
-  @SuppressWarnings("SleepWhileInLoop")
   public void emit(String id, Object payload)
   {
     CircularBuffer cb = handoverBuffers.get(id);
     if (cb != null) {
-      while (true) {
-        try {
-          cb.add(payload);
-          break;
-        }
-        catch (BufferOverflowException boe) {
-          try {
-            Thread.sleep(spinMillis);
-          }
-          catch (InterruptedException ex) {
-            logger.warn("{} aborting emit as got interrupted while writing {}", this, payload);
-            break;
-          }
-        }
+      try {
+        cb.put(payload);
+      }
+      catch (InterruptedException ex) {
+        logger.warn("{} aborting emit as got interrupted while writing {}", this, payload);
       }
     }
   }
@@ -122,7 +100,7 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
       Sink s = outputs.get(e.getKey());
       CircularBuffer cb = e.getValue();
       for (int i = cb.size(); i-- > 0;) {
-        s.process(cb.remove());
+        s.process(cb.poll());
       }
     }
   }

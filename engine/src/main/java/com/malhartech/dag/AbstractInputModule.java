@@ -10,6 +10,7 @@ import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +47,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
         int size;
         if ((size = controlTuples.size()) > 0) {
           while (size-- > 0) {
-            t = controlTuples.remove();
+            t = controlTuples.poll();
             switch (t.getType()) {
               case BEGIN_WINDOW:
                 for (int i = sinks.length; i-- > 0;) {
@@ -87,7 +88,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
                   if (s != null) {
                     CircularBuffer<?> cb = e.getValue();
                     for (int i = cb.size(); i-- > 0;) {
-                      s.process(cb.remove());
+                      s.process(cb.poll());
                     }
                   }
                 }
@@ -143,19 +144,11 @@ public abstract class AbstractInputModule extends AbstractBaseModule
         @SuppressWarnings("SleepWhileInLoop")
         public void process(Object payload)
         {
-          while (true) {
-            try {
-              controlTuples.add((Tuple)payload);
-              break;
-            }
-            catch (BufferOverflowException boe) {
-              try {
-                Thread.sleep(spinMillis);
-              }
-              catch (InterruptedException ex) {
-                break;
-              }
-            }
+          try {
+            controlTuples.put((Tuple)payload);
+          }
+          catch (InterruptedException ex) {
+            logger.debug("Got interrupted while putting {}", payload);
           }
         }
       };

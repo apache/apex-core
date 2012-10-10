@@ -8,12 +8,9 @@ package com.malhartech.util;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-import java.nio.BufferOverflowException;
-import java.nio.BufferUnderflowException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -60,14 +57,6 @@ public class CircularBuffer<T> implements BlockingQueue<T>
     this(n, 10);
   }
 
-  /**
-   *
-   * Add object at the head<p>
-   * <br>
-   *
-   * @param toAdd object to be added
-   *
-   */
   @Override
   public boolean add(T e)
   {
@@ -77,17 +66,9 @@ public class CircularBuffer<T> implements BlockingQueue<T>
       return true;
     }
 
-    throw new BufferOverflowException();
+    throw new IllegalStateException("Collection is full");
   }
 
-  /**
-   *
-   * Get object from the tail<p>
-   * <br>
-   *
-   * @return object removed from the buffer returned
-   * <br>
-   */
   @Override
   public T remove()
   {
@@ -97,7 +78,7 @@ public class CircularBuffer<T> implements BlockingQueue<T>
       return t;
     }
 
-    throw new BufferUnderflowException();
+    throw new IllegalStateException("Collection is empty");
   }
 
   @Override
@@ -110,14 +91,6 @@ public class CircularBuffer<T> implements BlockingQueue<T>
     return null;
   }
 
-  /**
-   *
-   * Number of objects in the buffer<p>
-   * <br>
-   *
-   * @return Number of objects in the buffer
-   * <br>
-   */
   @Override
   public final int size()
   {
@@ -137,15 +110,6 @@ public class CircularBuffer<T> implements BlockingQueue<T>
     return buffermask + 1;
   }
 
-  /**
-   *
-   * Drain the buffer<p>
-   * <br>
-   *
-   * @param container {@link java.util.Collection} class to which the buffer objects are added
-   * @return Number of objects removed from the buffer
-   * <br>
-   */
   @Override
   public int drainTo(Collection<? super T> container)
   {
@@ -159,18 +123,10 @@ public class CircularBuffer<T> implements BlockingQueue<T>
     return size;
   }
 
-  /**
-   *
-   * Printing status for debugging<p>
-   * <br>
-   *
-   * @return String containing capacity, head, and tail
-   * <br>
-   */
   @Override
   public String toString()
   {
-    return "CircularBuffer(capacity=" + (buffermask + 1) + ", head=" + head + ", tail=" + tail + ")";
+    return getClass().getSimpleName() + "(head=" + head + ", tail=" + tail + ", capacity=" + (buffermask + 1) + ")";
   }
 
   @Override
@@ -304,7 +260,7 @@ public class CircularBuffer<T> implements BlockingQueue<T>
       return buffer[(int)(tail & buffermask)];
     }
 
-    throw new BufferUnderflowException();
+    throw new IllegalStateException("Collection is empty");
   }
 
   @Override
