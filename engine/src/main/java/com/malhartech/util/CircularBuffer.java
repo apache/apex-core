@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  */
-public class CircularBuffer<T> implements BlockingQueue<T>
+public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
 {
   private static final Logger logger = LoggerFactory.getLogger(CircularBuffer.class);
   private final T[] buffer;
@@ -260,6 +260,14 @@ public class CircularBuffer<T> implements BlockingQueue<T>
     }
 
     return null;
+  }
+
+  @Override
+  public final T pollUnsafe()
+  {
+    T t = buffer[(int)tail & buffermask];
+    tail++;
+    return t;
   }
 
   @Override

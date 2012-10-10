@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * <br>
  *
  */
-public class SynchronizedCircularBuffer<T> implements BlockingQueue<T>
+public class SynchronizedCircularBuffer<T> implements UnsafeBlockingQueue<T>
 {
   private final T[] buffer;
   private final int buffermask;
@@ -281,5 +281,11 @@ public class SynchronizedCircularBuffer<T> implements BlockingQueue<T>
   public void clear()
   {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public final synchronized T pollUnsafe()
+  {
+    return buffer[tail++ & buffermask];
   }
 }

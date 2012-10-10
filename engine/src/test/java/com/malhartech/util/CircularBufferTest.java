@@ -144,7 +144,7 @@ public class CircularBufferTest
     testPerformanceOf(new SynchronizedCircularBuffer<Long>(1024 * 1024), waitMillis);
   }
 
-  private <T extends BlockingQueue<Long>> void testPerformanceOf(final T buffer, long millis) throws InterruptedException
+  private <T extends UnsafeBlockingQueue<Long>> void testPerformanceOf(final T buffer, long millis) throws InterruptedException
   {
     Thread producer = new Thread("Producer")
     {
@@ -185,7 +185,7 @@ public class CircularBufferTest
             }
             else {
               while (size-- > 0) {
-                Assert.assertEquals(l++, buffer.poll().longValue());
+                Assert.assertEquals(l++, buffer.pollUnsafe().longValue());
               }
             }
           }
