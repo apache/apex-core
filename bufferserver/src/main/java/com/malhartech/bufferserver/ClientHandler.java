@@ -112,7 +112,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     channel.write(builder.build());
   }
 
-  static void purge(Channel channel, String id, long windowId)
+  public static void purge(Channel channel, String id, long windowId)
   {
     Buffer.PurgeRequest.Builder prb = Buffer.PurgeRequest.newBuilder();
     prb.setBaseSeconds((int)(windowId >> 32));

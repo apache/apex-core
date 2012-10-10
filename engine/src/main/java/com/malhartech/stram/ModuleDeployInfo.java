@@ -59,12 +59,6 @@ public class ModuleDeployInfo implements Serializable
     public int bufferServerPort;
 
     /**
-     * The subscriber type/group. This would be different for every partition
-     * and same for all operators within a partition (or no partition).
-     */
-    public String bufferServerSubscriberType;
-
-    /**
      * Class name of tuple SerDe (buffer server stream only).
      */
     public String serDeClassName;

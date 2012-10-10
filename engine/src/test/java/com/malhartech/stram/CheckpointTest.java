@@ -144,7 +144,7 @@ public class CheckpointTest
             .addSink(node2.getInput(GenericTestModule.INPUT1));
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    PhysicalPlan deployer = dnm.getTopologyDeployer();
+    PhysicalPlan deployer = dnm.getPhysicalPlan();
     List<PTOperator> nodes1 = deployer.getOperators(node1);
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());

@@ -6,7 +6,6 @@ package com.malhartech.stream;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.Component;
 import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.ResetWindowTuple;
 import com.malhartech.dag.SerDe;
@@ -108,7 +107,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   public void activate(StreamContext context)
   {
     super.activate(context);
-    logger.debug("registering publisher: {} {}", context.getSourceId(), context.getId());
+    logger.debug("registering publisher: {} {} windowId={}", new Object[]{context.getSourceId(), context.getId(), context.getStartingWindowId()});
     ClientHandler.publish(channel, context.getSourceId(), context.getId(), context.getStartingWindowId());
   }
 

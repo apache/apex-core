@@ -4,6 +4,13 @@
  */
 package com.malhartech.stram;
 
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundMessageHandlerAdapter;
+import io.netty.channel.socket.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
+
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -21,6 +28,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.bufferserver.Buffer;
+import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.bufferserver.netty.ClientInitializer;
 import com.malhartech.dag.DAG;
 import com.malhartech.dag.DAG.InputPort;
 import com.malhartech.dag.DAG.Operator;
@@ -118,7 +129,7 @@ public class StreamingContainerManager
     return containerStartRequests.size();
   }
 
-  protected PhysicalPlan getTopologyDeployer() {
+  protected PhysicalPlan getPhysicalPlan() {
     return plan;
   }
 
@@ -226,7 +237,7 @@ public class StreamingContainerManager
    * @return {@link com.malhartech.stram.ModuleDeployInfo}
    *
    */
-  private ModuleDeployInfo createNodeContext(String dnodeId, Operator nodeDecl)
+  private ModuleDeployInfo createModuleDeployInfo(String dnodeId, Operator nodeDecl)
   {
     ModuleDeployInfo ndi = new ModuleDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
@@ -308,7 +319,7 @@ public class StreamingContainerManager
     Map<String, NodeOutputDeployInfo> publishers = new LinkedHashMap<String, NodeOutputDeployInfo>();
 
     for (PTOperator node : deployNodes) {
-      ModuleDeployInfo ndi = createNodeContext(node.id, node.getLogicalNode());
+      ModuleDeployInfo ndi = createModuleDeployInfo(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
       if (checkpointWindowId != null) {
         LOG.debug("Node {} has checkpoint state {}", node.id, checkpointWindowId);
@@ -335,7 +346,6 @@ public class StreamingContainerManager
           // target set below
           //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
         }
-        //portInfo.setBufferServerChannelType(streamDecl.getSource().getOperator().getId());
 
         ndi.outputs.add(portInfo);
         publishers.put(node.id + "/" + streamDecl.getId(), portInfo);
@@ -360,10 +370,8 @@ public class StreamingContainerManager
         inputInfo.portName = in.portName;
         inputInfo.sourceNodeId = sourceNode.id;
         inputInfo.sourcePortName = in.logicalStream.getSource().getPortName();
-        String partSuffix = "";
         if (in.partition != null) {
           inputInfo.partitionKeys = Arrays.asList(in.partition);
-          partSuffix = "/" + ndi.id; // each partition is separate group
         }
 
         if (streamDecl.isInline() && sourceNode.container == node.container) {
@@ -374,7 +382,7 @@ public class StreamingContainerManager
           }
         } else {
           // buffer server input
-          // FIXME: address to come from upstream node, should be guaranteed assigned first
+          // FIXME: address to come from upstream output port, should be assigned first
           InetSocketAddress addr = in.source.container.bufferServerAddress;
           if (addr == null) {
             LOG.warn("upstream address not assigned: " + in.source);
@@ -385,9 +393,6 @@ public class StreamingContainerManager
           if (streamDecl.getSerDeClass() != null) {
             inputInfo.serDeClassName = streamDecl.getSerDeClass().getName();
           }
-          // buffer server wide unique subscriber grouping:
-          // publisher id + stream name + partition identifier (if any)
-          inputInfo.bufferServerSubscriberType = sourceNode.id + "/" + streamDecl.getId() + partSuffix;
         }
         ndi.inputs.add(inputInfo);
       }
@@ -442,9 +447,8 @@ public class StreamingContainerManager
               Long lastCheckpoint = node.checkpointWindows.getLast();
               // no need for extra work unless checkpoint moves
               if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
-                // keep track of current
                 node.checkpointWindows.add(shb.getLastBackupWindowId());
-                // TODO: purge older checkpoints, if no longer needed downstream
+                //System.out.println(node.container.containerId + " " + node + " checkpoint " + Long.toHexString(shb.getLastBackupWindowId()) + " at " + Long.toHexString(currentTimeMillis/1000));
               }
             } else {
               node.checkpointWindows.add(shb.getLastBackupWindowId());
@@ -476,6 +480,7 @@ public class StreamingContainerManager
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
     if (checkpointIntervalMillis > 0) {
       if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
+        //System.out.println("\n\n*** sending checkpoint to " + cs.container.containerId + " at " + currentTimeMillis);
         for (PTOperator node : cs.container.operators) {
           StramToNodeRequest backupRequest = new StramToNodeRequest();
           backupRequest.setNodeId(node.id);
@@ -569,14 +574,49 @@ public class StreamingContainerManager
   private void purgeCheckpoints() {
     BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath);
     for (Pair<PTOperator, Long> p : purgeCheckpoints) {
+      PTOperator operator = p.getFirst();
       try {
-        ba.delete(p.getFirst().id, p.getSecond());
+        ba.delete(operator.id, p.getSecond());
       } catch (Exception e) {
         LOG.error("Failed to purge checkpoint " + p, e);
+      }
+      // purge stream state when using buffer server
+      for (PTOutput out : operator.outputs) {
+        final StreamDecl streamDecl = out.logicalStream;
+        if (!(streamDecl.isInline() && this.plan.isDownStreamInline(out))) {
+          // following needs to match the concat logic in StramChild
+          String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+          // purge everything from buffer server prior to new checkpoint
+          LOG.debug("Should purge sourceId=" + sourceIdentifier + ", windowId=" + (operator.checkpointWindows.getFirst()-1) + " @" + operator.container.bufferServerAddress);
+          //new BufferServerConnector<Object>(operator.container.bufferServerAddress);
+        }
       }
     }
     purgeCheckpoints.clear();
   }
+
+  private class BufferServerConnector<T> extends ChannelInboundMessageHandlerAdapter<T> {
+    final Bootstrap bootstrap = new Bootstrap();
+
+    private BufferServerConnector(InetSocketAddress addr) {
+      bootstrap.group(new NioEventLoopGroup())
+      .channel(NioSocketChannel.class)
+      .remoteAddress(addr)
+      .handler(new ClientInitializer(this));
+    }
+
+    void purge(String sourceIdentifier, long windowId) {
+      Channel channel = bootstrap.connect().syncUninterruptibly().channel();
+      ClientHandler.purge(channel, sourceIdentifier, windowId);
+    }
+
+    @Override
+    public void messageReceived(ChannelHandlerContext ctx, T msg) throws Exception {
+      LOG.debug("received: " + msg);
+      ctx.channel().close();
+    }
+  }
+
 
   /**
    * Mark all containers for shutdown, next container heartbeat response

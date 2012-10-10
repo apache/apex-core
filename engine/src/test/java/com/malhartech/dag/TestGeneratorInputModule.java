@@ -3,6 +3,8 @@
  */
 package com.malhartech.dag;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
@@ -22,9 +24,10 @@ public class TestGeneratorInputModule extends AbstractInputModule
   public static final String KEY_MAX_TUPLES = "maxTuples";
   private String myConfigProperty;
   private int maxTuples = -1;
-  private int generatedNumbers = 0;
+  private int generatedTuples = 0;
   private boolean outputConnected = false;
   private int remainingSleepTime;
+  private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
 
   public int getMaxTuples()
   {
@@ -58,6 +61,11 @@ public class TestGeneratorInputModule extends AbstractInputModule
   @Override
   public void process(Object payload)
   {
+    Object tuple;
+    while ((tuple = this.externallyAddedTuples.poll()) != null) {
+      emit(OUTPUT_PORT, tuple);
+    }
+
     if (remainingSleepTime > 0) {
       try {
         Thread.sleep(spinMillis);
@@ -66,15 +74,25 @@ public class TestGeneratorInputModule extends AbstractInputModule
       catch (InterruptedException ie) {
       }
     }
-    else if (outputConnected) {
-      generatedNumbers++;
-      LOG.info("sending tuple " + generatedNumbers);
-      emit(OUTPUT_PORT, String.valueOf(generatedNumbers));
-      if (maxTuples > 0 && maxTuples < generatedNumbers) {
+    else if (outputConnected && maxTuples != 0) {
+      generatedTuples++;
+      LOG.info("sending tuple " + generatedTuples);
+      emit(OUTPUT_PORT, String.valueOf(generatedTuples));
+      if (maxTuples > 0 && maxTuples < generatedTuples) {
         deactivate();
       }
-
+      remainingSleepTime = 1000;
+    } else {
       remainingSleepTime = 1000;
     }
   }
+
+  /**
+   * Manually add a tuple to emit.
+   */
+  public void addTuple(String s) {
+    externallyAddedTuples.add(s);
+  }
+
+
 }

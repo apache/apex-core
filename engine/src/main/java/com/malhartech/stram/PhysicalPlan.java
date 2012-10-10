@@ -253,7 +253,7 @@ public class PhysicalPlan {
 
     this.dag = dag;
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
-    LOG.debug("Initializing topology for {} containers.", this.maxContainers);
+    LOG.debug("Initializing for {} containers.", this.maxContainers);
 
     Map<Operator, Set<PTOperator>> inlineGroups = new HashMap<Operator, Set<PTOperator>>();
 

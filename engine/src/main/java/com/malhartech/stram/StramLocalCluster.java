@@ -39,7 +39,7 @@ public class StramLocalCluster implements Runnable {
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
 
-  private final StreamingContainerManager dnmgr;
+  protected final StreamingContainerManager dnmgr;
   private final UmbilicalProtocolLocalImpl umbilical;
   private final InetSocketAddress bufferServerAddress;
   private Server bufferServer = null;
@@ -259,7 +259,7 @@ public class StramLocalCluster implements Runnable {
   }
 
   PTOperator findByLogicalNode(Operator logicalNode) {
-    List<PTOperator> nodes = dnmgr.getTopologyDeployer().getOperators(logicalNode);
+    List<PTOperator> nodes = dnmgr.getPhysicalPlan().getOperators(logicalNode);
     if (nodes.isEmpty()) {
       return null;
     }

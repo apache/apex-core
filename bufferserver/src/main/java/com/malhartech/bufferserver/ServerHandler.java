@@ -87,7 +87,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
-    logger.info("received publisher request: {}", request);
+    logger.info("received publisher request: {} windowId: {}", request, windowId);
 
     DataList dl;
 
@@ -125,7 +125,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
     String type = request.getType();
     String upstream_identifier = request.getUpstreamIdentifier();
     //String upstream_type = request.getUpstreamType();
-    logger.info("Received subscriber request: {}", request);
+    logger.info("received subscriber request: {} windowId: {}", request, windowId);
 
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;

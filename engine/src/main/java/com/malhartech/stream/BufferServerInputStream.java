@@ -21,11 +21,11 @@ import org.slf4j.LoggerFactory;
 public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
-  private HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  private final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   private long baseSeconds = 0;
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
-  private SerDe serde;
+  private final SerDe serde;
 
   public BufferServerInputStream(SerDe serde)
   {
@@ -39,7 +39,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     activateSinks();
 
     String type = "unused";
-    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId()});
+    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId()});
     ClientHandler.subscribe(channel,
                                      context.getSinkId(),
                                      context.getId() + '/' + context.getSinkId(),

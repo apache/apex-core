@@ -8,7 +8,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
@@ -19,18 +22,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.DAG;
+import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Module;
 import com.malhartech.dag.ModuleContext;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.dag.TestOutputModule;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.TestSink;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.StramTestSupport;
 
 public class StramLocalClusterTest
@@ -92,13 +100,52 @@ public class StramLocalClusterTest
     lnr.close();
   }
 
+  private static class TestBufferServerSubscriber {
+    final BufferServerInputStream bsi;
+    final StreamContext streamContext;
+    final TestSink<Object> sink;
+
+    TestBufferServerSubscriber(PTOperator publisherOperator, String publisherPortName) {
+      // sink to collect tuples emitted by the input module
+      sink = new TestSink<Object>();
+      String streamName = "testSinkStream";
+      String sourceId = publisherOperator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(TestGeneratorInputModule.OUTPUT_PORT);
+      streamContext = new StreamContext(streamName);
+      streamContext.setSourceId(sourceId);
+      streamContext.setSinkId(this.getClass().getSimpleName());
+      StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
+      sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, publisherOperator.container.bufferServerAddress);
+      bsi = new BufferServerInputStream(new DefaultSerDe());
+      bsi.setup(sconf);
+      bsi.connect("testSink", sink);
+    }
+
+
+    List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException {
+      bsi.activate(streamContext);
+      //LOG.debug("test sink activated");
+      sink.waitForResultCount(1, 3000);
+      Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
+      List<Object> result = new ArrayList<Object>(sink.collectedTuples);
+
+      bsi.deactivate();
+      sink.collectedTuples.clear();
+      return result;
+    }
+
+  }
+
+
+
+
   @Test
   public void testChildRecovery() throws Exception
   {
     DAG dag = new DAG();
 
     Operator node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
-    node1.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "10"); // TODO: need solution for graceful container shutdown
+    // data will be added externally from test
+    node1.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "0");
     Operator node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2").
@@ -122,12 +169,14 @@ public class StramLocalClusterTest
     StramLocalCluster localCluster = new StramLocalCluster(dag, mcf);
     localCluster.runAsync();
 
+
+    PTOperator ptNode1 = localCluster.findByLogicalNode(node1);
+    PTOperator ptNode2 = localCluster.findByLogicalNode(node2);
+
     LocalStramChild c0 = waitForActivation(localCluster, node1);
     Map<String, Module> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
-
-    PTOperator ptNode1 = localCluster.findByLogicalNode(node1);
-    Module n1 = nodeMap.get(ptNode1.id);
+    TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForActivation(localCluster, node2);
@@ -136,10 +185,17 @@ public class StramLocalClusterTest
     GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
 
+    // sink to collect tuples emitted by the input module
+    TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputModule.OUTPUT_PORT);
+
+    // input data
+    String window0Tuple = "window0Tuple";
+    n1.addTuple(window0Tuple);
+
     ModuleContext n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
     wclock.tick(1); // begin window 1
-    wclock.tick(2); // begin window 2
+    wclock.tick(1); // begin window 2
     StramTestSupport.waitForWindowComplete(n1Context, 1);
 
     backupNode(c0, n1Context); // backup window 2
@@ -169,8 +225,12 @@ public class StramLocalClusterTest
     Thread.yield();
     Thread.sleep(50); // the heartbeat trigger cycle does not seem to work here
     c2.waitForHeartbeat(5000);
-    PTOperator ptNode2 = localCluster.findByLogicalNode(node2);
     Assert.assertEquals("checkpoint propagated " + ptNode2, 4, ptNode2.getRecentCheckpoint());
+
+    // activate test sink, verify tuple stored at buffer server
+    List<Object> tuples = sink.retrieveTuples(1, 3000);
+    Assert.assertEquals("received " + tuples, 1, tuples.size());
+    Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));
 
     // simulate node failure
     localCluster.failContainer(c0);
@@ -183,6 +243,12 @@ public class StramLocalClusterTest
 
     Assert.assertNotSame("old container", c0, c0Replaced);
     Assert.assertNotSame("old container", c0.getContainerId(), c0Replaced.getContainerId());
+
+    // verify tuple sent before publisher went down remains in buffer
+    // (publisher to resume from checkpoint id)
+    tuples = sink.retrieveTuples(1, 3000);
+    Assert.assertEquals("received " + tuples, 1, tuples.size());
+    Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));
 
     // verify change in downstream container
     LOG.debug("triggering c2 heartbeat processing");
@@ -203,13 +269,35 @@ public class StramLocalClusterTest
     Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());
 
 
-    Module n1Replaced = nodeMap.get(ptNode1.id);
+    TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1Replaced);
 
     ModuleContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
     Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
     // the node context should reflect the last processed window (the backup window)?
     //Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
+
+    wclock.tick(1);
+    StramTestSupport.waitForWindowComplete(n1ReplacedContext, 5);
+    // refresh context after operator was re-deployed
+    //n2Context = c2.getNodeContext(localCluster.findByLogicalNode(node2).id);
+    Assert.assertNotNull(n2Context);
+    StramTestSupport.waitForWindowComplete(n2Context, 5);
+    backupNode(c0Replaced, n1ReplacedContext); // backup window 6
+    backupNode(c2, n2Context); // backup window 6
+    wclock.tick(1); // end window 6
+
+    // propagate checkpoints to master
+    c0Replaced.triggerHeartbeat();
+    c0Replaced.waitForHeartbeat(5000);
+    c2.triggerHeartbeat();
+    c2.waitForHeartbeat(5000);
+
+    // purge checkpoints
+    localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
+
+    //Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
+    //Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
 
     localCluster.shutdown();
   }

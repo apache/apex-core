@@ -55,7 +55,6 @@ import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// make sure that setup and teardown is called through the same thread which calls process
 /**
  *
  * The main() for streaming container processes launched by {@link com.malhartech.stram.StramAppMaster}.<p>
@@ -66,7 +65,7 @@ public class StramChild
 {
   private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
   private static final String NODE_PORT_SPLIT_SEPARATOR = "\\.";
-  private static final String NODE_PORT_CONCAT_SEPARATOR = ".";
+  public static final String NODE_PORT_CONCAT_SEPARATOR = ".";
   private static final int SPIN_MILLIS = 20;
   private final String containerId;
   private final Configuration conf;
@@ -685,6 +684,7 @@ public class StramChild
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
+            bssc.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
 
             streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
 
@@ -733,6 +733,7 @@ public class StramChild
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
+            bssc.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
 
             Sink s = bsos.connect(Component.INPUT, stream);
             stream.connect(sinkIdentifier, s);
@@ -749,6 +750,7 @@ public class StramChild
           StreamContext context = new StreamContext(nodi.declaredStreamId);
           context.setSourceId(sourceIdentifier);
           context.setSinkId(sinkIdentifier);
+          context.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
 
           streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
           logger.debug("stored stream {} against key {}", stream, sourceIdentifier);
@@ -813,6 +815,7 @@ public class StramChild
             context.setPartitions(nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
+            context.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
 
             Sink s = node.connect(nidi.portName, stream);
             stream.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(stream, sinkIdentifier, s, ndi.checkpointWindowId) : s);
@@ -841,6 +844,7 @@ public class StramChild
               StreamContext context = new StreamContext(nidi.declaredStreamId);
               context.setSourceId(sourceIdentifier);
               context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
+              context.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
 
               Stream stream = new MuxStream();
               stream.setup(new StreamConfiguration());

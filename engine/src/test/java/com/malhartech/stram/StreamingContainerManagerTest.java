@@ -204,7 +204,7 @@ public class StreamingContainerManagerTest {
       sourceNodeIds.add(nidi.sourceNodeId);
     }
 
-    for (PTOperator node : dnm.getTopologyDeployer().getOperators(dag.getOperator(node2.getId()))) {
+    for (PTOperator node : dnm.getPhysicalPlan().getOperators(dag.getOperator(node2.getId()))) {
       Assert.assertTrue(sourceNodeIds + " contains " + node.id, sourceNodeIds.contains(node.id));
     }
     Assert.assertEquals("outputs " + mergeNodeDI, 0, mergeNodeDI.outputs.size());
