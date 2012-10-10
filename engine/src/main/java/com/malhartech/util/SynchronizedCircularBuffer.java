@@ -155,7 +155,7 @@ public class SynchronizedCircularBuffer<T> implements BlockingQueue<T>
   }
 
   @Override
-  public synchronized boolean offer(T e)
+  public final synchronized boolean offer(T e)
   {
     if (head - tail <= buffermask) {
       buffer[head++ & buffermask] = e;
@@ -214,7 +214,7 @@ public class SynchronizedCircularBuffer<T> implements BlockingQueue<T>
   }
 
   @Override
-  public T poll()
+  public final synchronized T poll()
   {
     if (head > tail) {
       return buffer[tail++ & buffermask];

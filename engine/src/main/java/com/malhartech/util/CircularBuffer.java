@@ -130,7 +130,7 @@ public class CircularBuffer<T> implements BlockingQueue<T>
   }
 
   @Override
-  public boolean offer(T e)
+  public final boolean offer(T e)
   {
     if (head - tail <= buffermask) {
       buffer[(int)(head & buffermask)] = e;
@@ -242,7 +242,7 @@ public class CircularBuffer<T> implements BlockingQueue<T>
   }
 
   @Override
-  public T poll()
+  public final T poll()
   {
     if (head > tail) {
       T t = buffer[(int)(tail & buffermask)];

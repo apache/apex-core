@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 public class CircularBufferTest
 {
   private static final Logger logger = LoggerFactory.getLogger(CircularBufferTest.class);
-  private static final long waitMillis = 10000;
+  private static final long waitMillis = 500;
 
   public CircularBufferTest()
   {
