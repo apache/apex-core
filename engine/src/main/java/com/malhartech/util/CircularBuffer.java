@@ -36,6 +36,7 @@ public class CircularBuffer<T> implements BlockingQueue<T>
    * <br>
    *
    * @param n size of the buffer to be constructed
+   * @param spin time in milliseconds for which to wait before checking for expected value if it's missing
    * <br>
    */
   @SuppressWarnings("unchecked")
@@ -52,6 +53,14 @@ public class CircularBuffer<T> implements BlockingQueue<T>
     spinMillis = spin;
   }
 
+  /**
+   *
+   * Constructing a circular buffer of 'n' integers<p>
+   * <br>
+   *
+   * @param n size of the buffer to be constructed
+   * <br>
+   */
   public CircularBuffer(int n)
   {
     this(n, 10);
@@ -126,7 +135,7 @@ public class CircularBuffer<T> implements BlockingQueue<T>
   @Override
   public String toString()
   {
-    return getClass().getSimpleName() + "(head=" + head + ", tail=" + tail + ", capacity=" + (buffermask + 1) + ")";
+    return "head=" + head + ", tail=" + tail + ", capacity=" + (buffermask + 1);
   }
 
   @Override

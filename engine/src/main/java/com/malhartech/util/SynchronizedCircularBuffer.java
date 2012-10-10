@@ -151,7 +151,7 @@ public class SynchronizedCircularBuffer<T> implements BlockingQueue<T>
   @Override
   public synchronized String toString()
   {
-    return getClass().getSimpleName() + "(head=" + head + ", tail=" + tail + ", capacity=" + (buffermask + 1) + ")";
+    return "head=" + head + ", tail=" + tail + ", capacity=" + (buffermask + 1);
   }
 
   @Override

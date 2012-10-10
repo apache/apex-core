@@ -207,6 +207,6 @@ public class CircularBufferTest
     producer.join();
     consumer.join();
 
-    logger.debug(buffer.toString());
+    logger.debug(buffer.getClass().getSimpleName() + "(" + buffer.toString() + ")");
   }
 }
