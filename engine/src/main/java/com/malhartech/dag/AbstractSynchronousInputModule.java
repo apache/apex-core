@@ -6,7 +6,6 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
-import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
@@ -21,7 +20,7 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractSynchronousInputModule extends AbstractInputModule implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractSynchronousInputModule.class);
-  protected transient HashMap<String, CircularBuffer> handoverBuffers = new HashMap<String, CircularBuffer>();
+  protected transient HashMap<String, CircularBuffer<Object>> handoverBuffers = new HashMap<String, CircularBuffer<Object>>();
   protected transient Thread syncThread;
 
   @Override
@@ -30,7 +29,7 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
   {
     PortAnnotation port = getPort(id);
     if (port != null && (port.type() == PortAnnotation.PortType.OUTPUT || port.type() == PortAnnotation.PortType.BIDI)) {
-      CircularBuffer cb = handoverBuffers.get(port.name());
+      CircularBuffer<?> cb = handoverBuffers.get(port.name());
       if (dagpart == null) {
         /* this is remove request */
         if (cb != null) {
@@ -46,7 +45,7 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
       }
       else if (cb == null) {
         /* this is a new connection request */
-        handoverBuffers.put(port.name(), new CircularBuffer(bufferCapacity));
+        handoverBuffers.put(port.name(), new CircularBuffer<Object>(bufferCapacity));
       }
     }
   }
@@ -70,7 +69,7 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
   public void emit(Object payload)
   {
     try {
-      for (CircularBuffer cb: handoverBuffers.values()) {
+      for (CircularBuffer<Object> cb: handoverBuffers.values()) {
         cb.put(payload);
       }
     }
@@ -82,7 +81,7 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
   @Override
   public void emit(String id, Object payload)
   {
-    CircularBuffer cb = handoverBuffers.get(id);
+    CircularBuffer<Object> cb = handoverBuffers.get(id);
     if (cb != null) {
       try {
         cb.put(payload);
@@ -94,11 +93,11 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
   }
 
   @Override
-  public void process(Object payload)
+  final public void process(Object payload)
   {
-    for (Entry<String, CircularBuffer> e: handoverBuffers.entrySet()) {
+    for (Entry<String, CircularBuffer<Object>> e: handoverBuffers.entrySet()) {
       Sink s = outputs.get(e.getKey());
-      CircularBuffer cb = e.getValue();
+      CircularBuffer<?> cb = e.getValue();
       for (int i = cb.size(); i-- > 0;) {
         s.process(cb.poll());
       }
