@@ -14,6 +14,7 @@ public interface ProtoModule {
   /**
    * Input ports are declared as annotated factory methods and return a port
    * object that the execution engine will call to pass the tuples.
+   * Since the interface is implemented by the user, the type parameters are available at runtime for validation.
    *
    * @param <T>
    */

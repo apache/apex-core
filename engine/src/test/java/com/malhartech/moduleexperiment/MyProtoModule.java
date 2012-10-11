@@ -36,35 +36,31 @@ public class MyProtoModule<T extends Object> implements ProtoModule {
   public void processGeneric(Object payload) {
   }
 
-  private static class MyInputPort implements InputPort<String> {
-    @Override
-    public void process(String payload) {
-    }
-  }
-
+  /**
+   * Example for (runtime) typed input port.
+   * The type information is retained at runtime and can be used for validation by the framework.
+   */
   @ProtoInputPortGetAnnotation(name="port1")
-  public InputPort<String> getPort1() {
-    // anonymous class vs static class makes no difference
-    /*
-    return new InputPort<String>() {
-      @Override
-      final public void process(String payload) {
-      }
-    };
-    */
-    return new MyInputPort();
-  }
+  public InputPort<String> inport1 = new InputPort<String>() {
+    @Override
+    final public void process(String payload) {
+    }
+  };
 
+  /**
+   * Untyped input port implemented using anonymous class
+   * The port is untyped because it is using the enclosing classes type parameter.
+   */
   @ProtoInputPortGetAnnotation(name="port2")
-  public InputPort<T> getPort2() {
-    return new InputPort<T>() {
-      @Override
-      final public void process(T payload) {
-        HashMap<String, T> m = new HashMap<String, T>();
-        m.put("payload", payload);
-        MyProtoModule.this.outport1.emit(m);
+  public InputPort<T> inport2 = new InputPort<T>() {
+    @Override
+    final public void process(T payload) {
+      if (outport1.isConnected()) {
+          HashMap<String, T> m = new HashMap<String, T>();
+          m.put("payload", payload);
+          outport1.emit(m);
       }
-    };
-  }
+    }
+  };
 
 }

@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  *
  */
 @Documented
-@Target(ElementType.METHOD)
+@Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ProtoInputPortGetAnnotation {
 
