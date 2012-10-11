@@ -244,12 +244,6 @@ public class StramLocalClusterTest
     Assert.assertNotSame("old container", c0, c0Replaced);
     Assert.assertNotSame("old container", c0.getContainerId(), c0Replaced.getContainerId());
 
-    // verify tuple sent before publisher went down remains in buffer
-    // (publisher to resume from checkpoint id)
-    tuples = sink.retrieveTuples(1, 3000);
-    Assert.assertEquals("received " + tuples, 1, tuples.size());
-    Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));
-
     // verify change in downstream container
     LOG.debug("triggering c2 heartbeat processing");
     StramChildAgent c2Agent = localCluster.getContainerAgent(c2);
@@ -274,7 +268,7 @@ public class StramLocalClusterTest
 
     ModuleContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
     Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
-    // the node context should reflect the last processed window (the backup window)?
+    // should node context should reflect last processed window (the backup window)?
     //Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
     wclock.tick(1);
     StramTestSupport.waitForWindowComplete(n1ReplacedContext, 5);
@@ -297,11 +291,21 @@ public class StramLocalClusterTest
     c2.triggerHeartbeat();
     c2.waitForHeartbeat(5000);
 
+    // verify tuple sent before publisher went down remains in buffer
+    // (publisher to resume from checkpoint id)
+    tuples = sink.retrieveTuples(1, 3000);
+    Assert.assertEquals("received " + tuples, 1, tuples.size());
+    Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));
+
     // purge checkpoints
     localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
 
     Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
     Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
+
+    // buffer server data purged
+    tuples = sink.retrieveTuples(0, 3000);
+    Assert.assertEquals("received " + tuples, 0, tuples.size());
 
     localCluster.shutdown();
   }

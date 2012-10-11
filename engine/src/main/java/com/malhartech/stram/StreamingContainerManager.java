@@ -4,12 +4,6 @@
  */
 package com.malhartech.stram;
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
-import io.netty.channel.socket.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
@@ -28,10 +22,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.bufferserver.netty.ClientInitializer;
 import com.malhartech.dag.DAG;
 import com.malhartech.dag.DAG.InputPort;
 import com.malhartech.dag.DAG.Operator;
@@ -587,36 +577,20 @@ public class StreamingContainerManager
           // following needs to match the concat logic in StramChild
           String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
           // purge everything from buffer server prior to new checkpoint
-          LOG.debug("Should purge sourceId=" + sourceIdentifier + ", windowId=" + (operator.checkpointWindows.getFirst()-1) + " @" + operator.container.bufferServerAddress);
-          //new BufferServerConnector<Object>(operator.container.bufferServerAddress);
+          BufferServerClient bsc = bufferServers.get(operator.container.bufferServerAddress);
+          if (bsc == null) {
+            bsc = new BufferServerClient(operator.container.bufferServerAddress);
+            bufferServers.put(bsc.addr, bsc);
+            LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
+          }
+          bsc.purge(sourceIdentifier, operator.checkpointWindows.getFirst()-1);
         }
       }
     }
     purgeCheckpoints.clear();
   }
 
-  private class BufferServerConnector<T> extends ChannelInboundMessageHandlerAdapter<T> {
-    final Bootstrap bootstrap = new Bootstrap();
-
-    private BufferServerConnector(InetSocketAddress addr) {
-      bootstrap.group(new NioEventLoopGroup())
-      .channel(NioSocketChannel.class)
-      .remoteAddress(addr)
-      .handler(new ClientInitializer(this));
-    }
-
-    void purge(String sourceIdentifier, long windowId) {
-      Channel channel = bootstrap.connect().syncUninterruptibly().channel();
-      ClientHandler.purge(channel, sourceIdentifier, windowId);
-    }
-
-    @Override
-    public void messageReceived(ChannelHandlerContext ctx, T msg) throws Exception {
-      LOG.debug("received: " + msg);
-      ctx.channel().close();
-    }
-  }
-
+  private final Map<InetSocketAddress, BufferServerClient> bufferServers = new HashMap<InetSocketAddress, BufferServerClient>();
 
   /**
    * Mark all containers for shutdown, next container heartbeat response

@@ -288,7 +288,10 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
   {
-    logger.info("Exception with ctx = " + ctx.toString(), cause);
+    // reduce noise on shutdown
+    if (! (cause instanceof java.nio.channels.ClosedChannelException)) {
+      logger.info("Exception with ctx = " + ctx.toString(), cause);
+    }
 
     try {
       channelInactive(ctx);
@@ -300,7 +303,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
 
   private void handlePurgeRequest(PurgeRequest request, ChannelHandlerContext ctx, int windowId)
   {
-    logger.info("Received purge request: {}", request);
+    logger.info("Received purge request: {} window: {}", request, windowId);
 
     DataList dl;
     synchronized (publisher_bufffers) {

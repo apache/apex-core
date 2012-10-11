@@ -8,6 +8,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.netty.ClientInitializer;
+import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * @author chetan
  */
 @Sharable
-public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter implements Stream
+public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter<Object> implements Stream
 {
   private static final Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
   protected Bootstrap bootstrap;
@@ -65,6 +66,13 @@ public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAd
   {
     ctx.outboundMessageBuffer().drainTo(ctx.nextOutboundMessageBuffer());
     ctx.flush(future);
+  }
+
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    if (! (cause instanceof java.nio.channels.ClosedChannelException) ) {
+      super.exceptionCaught(ctx, cause);
+    }
   }
 
   @Override
