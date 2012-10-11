@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Map;
 
 import junit.framework.Assert;
 
@@ -26,13 +27,58 @@ import com.malhartech.moduleexperiment.ProtoModule.OutputPort;
 public class ProtoModuleTest {
   int callCount = 100 * 1000 * 1000;
 
+  public static Type getParameterizedTypeArgument(Type type, Class<?> rawType) {
+    if (type instanceof ParameterizedType) {
+      ParameterizedType ptype = (ParameterizedType)type;
+      if (rawType.isAssignableFrom((Class<?>)ptype.getRawType())) {
+        return ptype.getActualTypeArguments()[0];
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Find the type argument for a given class and parameterized interface
+   * the is implemented directly or in a super class or super interface.
+   * @param c
+   * @param genericInterfaceClass
+   * @return
+   */
+  public static Type findTypeArgument(Class<?> c, Class<?> genericInterfaceClass) {
+    while (c != null) {
+      // extends generic class?
+      Type t = getParameterizedTypeArgument(c.getGenericSuperclass(), genericInterfaceClass);
+      if (t != null) {
+        return t;
+      }
+      // implemented interfaces
+      Type[] types = c.getGenericInterfaces();
+      for (Type interfaceType : types) {
+        if ((t = getParameterizedTypeArgument(interfaceType, genericInterfaceClass)) != null) {
+          return t;
+        }
+      }
+      // interface that extends parameterized interface?
+      for (Class<?> ifClass : c.getInterfaces()) {
+        types = ifClass.getGenericInterfaces();
+        for (Type interfaceType : types) {
+          if ((t = getParameterizedTypeArgument(interfaceType, genericInterfaceClass)) != null) {
+            return t;
+          }
+        }
+      }
+      c = c.getSuperclass();
+    }
+    return null;
+  }
+
   public static interface GenericInterface<T> {
   }
 
   public static interface StringTypedInterface extends GenericInterface<String> {
   }
 
-  public static class GenericInterfaceImpl<T> implements GenericInterface<T> {
+  public static class GenericInterfaceImpl<T extends Map<String, String>> implements GenericInterface<T> {
   }
 
   /**
@@ -44,7 +90,7 @@ public class ProtoModuleTest {
   public static class StringType2 implements StringTypedInterface {
   }
 
-  public static class StringType3 extends GenericInterfaceImpl<String> {
+  public static class StringType3 extends GenericInterfaceImpl<Map<String, String>> {
   }
 
 
@@ -53,7 +99,15 @@ public class ProtoModuleTest {
 
     Assert.assertEquals("", String.class, findTypeArgument(StringType1.class, GenericInterface.class));
     Assert.assertEquals("", String.class, findTypeArgument(StringType2.class, GenericInterface.class));
-    Assert.assertEquals("", String.class, findTypeArgument(StringType3.class, GenericInterface.class));
+
+    Type t = findTypeArgument(StringType3.class, GenericInterface.class);
+    Assert.assertTrue("instanceof ParameterizedType " + t, t instanceof ParameterizedType);
+    ParameterizedType ptype = (ParameterizedType)t;
+    Assert.assertEquals("", Map.class, ptype.getRawType());
+    Assert.assertEquals("", 2, ptype.getActualTypeArguments().length);
+    Assert.assertEquals("", String.class, ptype.getActualTypeArguments()[0]);
+    Assert.assertEquals("", String.class, ptype.getActualTypeArguments()[1]);
+
     Assert.assertEquals("", "T", ""+findTypeArgument(GenericInterfaceImpl.class, GenericInterface.class));
 
   }
@@ -103,53 +157,6 @@ public class ProtoModuleTest {
       m.invoke(module, "hello");
     }
     System.out.println(callCount + " dynamic method calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
-  }
-
-  static Type getTypeArgument(Type type, Class<?> rawType) {
-    if (type instanceof ParameterizedType) {
-      ParameterizedType ptype = (ParameterizedType)type;
-      if (rawType.isAssignableFrom((Class<?>)ptype.getRawType())) {
-        //System.out.println("   ptype: rawtype=" + ptype.getRawType() + "  " + Arrays.asList(ptype.getActualTypeArguments()));
-        return ptype.getActualTypeArguments()[0];
-      }
-    }
-    return null;
-  }
-
-
-  /**
-   * Find the type argument for a given class and parameterized interface
-   * the is implemented directly or in a super class or super interface.
-   * @param c
-   * @param genericInterfaceClass
-   * @return
-   */
-  public static Type findTypeArgument(Class<?> c, Class<?> genericInterfaceClass) {
-    while (c != null) {
-      // extends generic class?
-      Type t = getTypeArgument(c.getGenericSuperclass(), genericInterfaceClass);
-      if (t != null) {
-        return t;
-      }
-      // implemented interfaces
-      Type[] types = c.getGenericInterfaces();
-      for (Type interfaceType : types) {
-        if ((t = getTypeArgument(interfaceType, genericInterfaceClass)) != null) {
-          return t;
-        }
-      }
-      // interface that extends parameterized interface?
-      for (Class<?> ifClass : c.getInterfaces()) {
-        types = ifClass.getGenericInterfaces();
-        for (Type interfaceType : types) {
-          if ((t = getTypeArgument(interfaceType, genericInterfaceClass)) != null) {
-            return t;
-          }
-        }
-      }
-      c = c.getSuperclass();
-    }
-    return null;
   }
 
   private static <T> ProtoModule.InputPort<T> getInputPortInterface(ProtoModule module, String portName, Class<T> portTypeClazz) throws Exception {
