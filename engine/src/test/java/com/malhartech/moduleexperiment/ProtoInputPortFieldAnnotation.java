@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ProtoInputPortGetAnnotation {
+public @interface ProtoInputPortFieldAnnotation {
 
   public String name();
 }
