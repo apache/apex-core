@@ -19,7 +19,7 @@ public interface UnsafeBlockingQueue<T> extends BlockingQueue<T>
    * the checks that poll does hence you may get unreliable results if you use it without checking
    * for the presence of the head first.
    *
-   * @return the head of this queue, or null if this queue is empty
+   * @return the head of this queue.
    */
   public T pollUnsafe();
 }
