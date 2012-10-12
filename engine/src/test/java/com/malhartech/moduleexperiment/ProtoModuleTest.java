@@ -4,6 +4,7 @@
  */
 package com.malhartech.moduleexperiment;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -12,11 +13,13 @@ import java.util.Map;
 
 import junit.framework.Assert;
 
+import org.fusesource.hawtbuf.ByteArrayInputStream;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import scala.actors.threadpool.Arrays;
 
+import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.moduleexperiment.ProtoModule.InputPort;
 import com.malhartech.moduleexperiment.ProtoModule.OutputPort;
@@ -72,25 +75,25 @@ public class ProtoModuleTest {
     return null;
   }
 
-  public static interface GenericInterface<T> {
+  private static interface GenericInterface<T> {
   }
 
-  public static interface StringTypedInterface extends GenericInterface<String> {
+  private static interface StringTypedInterface extends GenericInterface<String> {
   }
 
-  public static class GenericInterfaceImpl<T extends Map<String, String>> implements GenericInterface<T> {
+  private static class GenericClass<T extends Map<String, String>> implements GenericInterface<T> {
   }
 
   /**
    * Typed input port. The type information is retained at runtime and can be used for validation by the framework.
    */
-  public static class StringType1 implements GenericInterface<String> {
+  private static class StringType1 implements GenericInterface<String> {
   }
 
-  public static class StringType2 implements StringTypedInterface {
+  private static class StringType2 implements StringTypedInterface {
   }
 
-  public static class StringType3 extends GenericInterfaceImpl<Map<String, String>> {
+  private static class MapStringStringType extends GenericClass<Map<String, String>> {
   }
 
 
@@ -100,7 +103,7 @@ public class ProtoModuleTest {
     Assert.assertEquals("", String.class, findTypeArgument(StringType1.class, GenericInterface.class));
     Assert.assertEquals("", String.class, findTypeArgument(StringType2.class, GenericInterface.class));
 
-    Type t = findTypeArgument(StringType3.class, GenericInterface.class);
+    Type t = findTypeArgument(MapStringStringType.class, GenericInterface.class);
     Assert.assertTrue("instanceof ParameterizedType " + t, t instanceof ParameterizedType);
     ParameterizedType ptype = (ParameterizedType)t;
     Assert.assertEquals("", Map.class, ptype.getRawType());
@@ -108,7 +111,7 @@ public class ProtoModuleTest {
     Assert.assertEquals("", String.class, ptype.getActualTypeArguments()[0]);
     Assert.assertEquals("", String.class, ptype.getActualTypeArguments()[1]);
 
-    Assert.assertEquals("", "T", ""+findTypeArgument(GenericInterfaceImpl.class, GenericInterface.class));
+    Assert.assertEquals("", "T", ""+findTypeArgument(GenericClass.class, GenericInterface.class));
 
   }
 
@@ -163,7 +166,7 @@ public class ProtoModuleTest {
 
     Field[] fields = module.getClass().getDeclaredFields();
     for (Field field : fields) {
-      ProtoInputPortGetAnnotation a = field.getAnnotation(ProtoInputPortGetAnnotation.class);
+      ProtoInputPortFieldAnnotation a = field.getAnnotation(ProtoInputPortFieldAnnotation.class);
       if (a != null && portName.equals(a.name())) {
         field.setAccessible(true);
 
@@ -244,5 +247,12 @@ public class ProtoModuleTest {
 
   }
 
+  @Test
+  public void testSerialization() {
+    DefaultModuleSerDe serde = new DefaultModuleSerDe();
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    serde.write(new MyProtoModule<Object>(), bos);
+    Object o = serde.read(new ByteArrayInputStream(bos.toByteArray()));
+  }
 
 }

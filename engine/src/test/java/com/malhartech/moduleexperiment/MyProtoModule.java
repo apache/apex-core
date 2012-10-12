@@ -40,8 +40,8 @@ public class MyProtoModule<T extends Object> implements ProtoModule {
    * Example for (runtime) typed input port.
    * The type information is retained at runtime and can be used for validation by the framework.
    */
-  @ProtoInputPortGetAnnotation(name="port1")
-  public InputPort<String> inport1 = new InputPort<String>() {
+  @ProtoInputPortFieldAnnotation(name="port1")
+  public transient InputPort<String> inport1 = new InputPort<String>() {
     @Override
     final public void process(String payload) {
     }
@@ -51,8 +51,8 @@ public class MyProtoModule<T extends Object> implements ProtoModule {
    * Untyped input port implemented using anonymous class
    * The port is untyped because it is using the enclosing classes type parameter.
    */
-  @ProtoInputPortGetAnnotation(name="port2")
-  public InputPort<T> inport2 = new InputPort<T>() {
+  @ProtoInputPortFieldAnnotation(name="port2")
+  public transient InputPort<T> inport2 = new InputPort<T>() {
     @Override
     final public void process(T payload) {
       if (outport1.isConnected()) {
