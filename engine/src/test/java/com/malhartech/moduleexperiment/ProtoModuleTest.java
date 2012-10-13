@@ -4,23 +4,28 @@
  */
 package com.malhartech.moduleexperiment;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.Map;
 
 import junit.framework.Assert;
 
-import org.fusesource.hawtbuf.ByteArrayInputStream;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import scala.actors.threadpool.Arrays;
 
 import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.Sink;
+import com.malhartech.dag.TestSink;
+import com.malhartech.moduleexperiment.ProtoDAG.Operator;
 import com.malhartech.moduleexperiment.ProtoModule.InputPort;
 import com.malhartech.moduleexperiment.ProtoModule.OutputPort;
 
@@ -28,6 +33,9 @@ import com.malhartech.moduleexperiment.ProtoModule.OutputPort;
  *
  */
 public class ProtoModuleTest {
+  private static Logger LOG = LoggerFactory.getLogger(ProtoModuleTest.class);
+
+
   int callCount = 100 * 1000 * 1000;
 
   public static Type getParameterizedTypeArgument(Type type, Class<?> rawType) {
@@ -153,13 +161,13 @@ public class ProtoModuleTest {
   public void testInputPortMethodAnnotation() throws Exception {
 
     String portName = "methodAnnotatedPort1";
-    MyProtoModule module = new MyProtoModule();
+    MyProtoModule<?> module = new MyProtoModule<Object>();
     Method m = getInputPortMethod(portName, module.getClass());
     long startTimeMillis = System.currentTimeMillis();
     for (int i=0; i<callCount; i++) {
       m.invoke(module, "hello");
     }
-    System.out.println(callCount + " dynamic method calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
+    LOG.debug(callCount + " dynamic method calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
   }
 
   private static <T> ProtoModule.InputPort<T> getInputPortInterface(ProtoModule module, String portName, Class<T> portTypeClazz) throws Exception {
@@ -176,7 +184,7 @@ public class ProtoModuleTest {
         }
 
         Type genericType = findTypeArgument(portObject.getClass(), InputPort.class);
-        System.out.println(portName + " type is: " + genericType);
+        LOG.debug(portName + " type is: " + genericType);
 
         return (ProtoModule.InputPort<T>)portObject;
       }
@@ -223,7 +231,7 @@ public class ProtoModuleTest {
       //port1.process("hello");
       port2.process("hello2");
     }
-    System.out.println(callCount + " port interface calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
+    LOG.debug(callCount + " port interface calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
   }
 
 
@@ -237,7 +245,7 @@ public class ProtoModuleTest {
     Sink sink = new Sink() {
       @Override
       public void process(Object payload) {
-        System.out.println("sink: " + payload);
+        LOG.debug("sink: " + payload);
       }
     };
 
@@ -252,7 +260,85 @@ public class ProtoModuleTest {
     DefaultModuleSerDe serde = new DefaultModuleSerDe();
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     serde.write(new MyProtoModule<Object>(), bos);
-    Object o = serde.read(new ByteArrayInputStream(bos.toByteArray()));
+    serde.read(new ByteArrayInputStream(bos.toByteArray()));
   }
+
+
+  @Test
+  public void testDAG() throws Exception {
+
+    ProtoDAG dag = new ProtoDAG();
+
+    MyProtoModule<Object> m1 = new MyProtoModule<Object>();
+    MyProtoModule<Object> m2 = new MyProtoModule<Object>();
+    MyProtoModule<Object> m3 = new MyProtoModule<Object>();
+
+    m1.setName("operator1");
+
+    m1.inport2.process("something");
+
+
+    m1.setMyConfigField("someField");
+
+    // module instances are added to teh DAG as ports are referenced
+    // and establish module-ports relationship
+    dag.addOperator("operator1", m1);
+    //Operator operator2 = dag.addOperator("operator2", m2);
+    //Operator operator3 = dag.addOperator("operator3", m3);
+
+    dag.addStream("stream1", m1.outport1, m2.inport1);
+    dag.addStream("stream2", m2.outport1, m3.inport1);
+    Assert.assertEquals("" + dag.getAllOperators(), 3, dag.getAllOperators().size());
+
+    dag.validate();
+
+    ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+    ProtoDAG.write(dag, outStream);
+    outStream.close();
+
+    byte[] dagBytes = outStream.toByteArray();
+    LOG.debug("dag bytes size: " + dagBytes.length);
+    ProtoDAG clonedDag = ProtoDAG.read(new ByteArrayInputStream(dagBytes));
+    Assert.assertEquals(dag.getAllOperators().size(), clonedDag.getAllOperators().size());
+    Operator clonedModule = clonedDag.getOperator("operator1");
+    Assert.assertNotNull("", clonedModule);
+    Assert.assertEquals(""+m1.getMyConfigField(), m1.getMyConfigField(), ((MyProtoModule)clonedModule.getModule()).getMyConfigField());
+    clonedDag.validate();
+  }
+
+  @Test
+  public void testProtoArithmeticQuotient() throws Exception {
+
+    ProtoArithmeticQuotient node = new ProtoArithmeticQuotient();
+    node.setMultiplyBy(2);
+
+    TestSink<HashMap<String, Number>> testSink = new TestSink<HashMap<String, Number>>();
+    node.outportQuotient.setSink(testSink);
+
+    LOG.debug("type inportNumerator: " + findTypeArgument(node.inportNumerator.getClass(), InputPort.class));
+    LOG.debug("type inportDenominator: " + findTypeArgument(node.inportDenominator.getClass(), InputPort.class));
+    LOG.debug("type outportQuotient: " + findTypeArgument(node.outportQuotient.getClass(), OutputPort.class));
+
+    HashMap<String, Number> ninput = null;
+    HashMap<String, Number> dinput = null;
+
+    int numtuples = 1000;
+    for (int i = 0; i < numtuples; i++) {
+      ninput = new HashMap<String, Number>();
+      dinput = new HashMap<String, Number>();
+      ninput.put("a", 2);
+      ninput.put("b", 20);
+      ninput.put("c", 1000);
+      node.inportNumerator.process(ninput);
+      dinput.put("a", 2);
+      dinput.put("b", 40);
+      dinput.put("c", 500);
+      node.inportDenominator.process(dinput);
+    }
+    node.endWindow();
+    LOG.debug("output tuples: " + testSink.collectedTuples);
+
+  }
+
 
 }
