@@ -27,5 +27,5 @@ public interface Component<T1 extends Configuration, T2 extends Context> extends
 
   public void teardown();
 
-  public Sink connect(String port, Sink sink); // connect to output port
+  public Sink connect(String port, Sink sink);
 }
