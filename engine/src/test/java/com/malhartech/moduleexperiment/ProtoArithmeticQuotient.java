@@ -44,7 +44,7 @@ public class ProtoArithmeticQuotient extends ProtoModule
   private static Logger LOG = LoggerFactory.getLogger(ProtoArithmeticQuotient.class);
 
   @ProtoInputPortFieldAnnotation(name="numerator")
-  public transient InputPort<HashMap<String, Number>> inportNumerator = new InputPort<HashMap<String, Number>>(this) {
+  final public transient InputPort<HashMap<String, Number>> inportNumerator = new InputPort<HashMap<String, Number>>(this) {
     @Override
     final public void process(HashMap<String, Number> payload) {
       processInternal(numerators, payload);
@@ -52,7 +52,7 @@ public class ProtoArithmeticQuotient extends ProtoModule
   };
 
   @ProtoInputPortFieldAnnotation(name="denominator")
-  public transient InputPort<HashMap<String, Number>> inportDenominator = new InputPort<HashMap<String, Number>>(this) {
+  final public transient InputPort<HashMap<String, Number>> inportDenominator = new InputPort<HashMap<String, Number>>(this) {
     @Override
     final public void process(HashMap<String, Number> payload) {
       processInternal(denominators, payload);

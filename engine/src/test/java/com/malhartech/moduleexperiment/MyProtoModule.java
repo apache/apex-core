@@ -18,7 +18,7 @@ public class MyProtoModule<T extends Object> extends ProtoModule {
    * The type information is retained at runtime and can be used for validation by the framework.
    */
   @ProtoInputPortFieldAnnotation(name="port1")
-  public transient InputPort<String> inport1 = new InputPort<String>(this) {
+  final public transient InputPort<String> inport1 = new InputPort<String>(this) {
     @Override
     final public void process(String payload) {
     }
@@ -29,7 +29,7 @@ public class MyProtoModule<T extends Object> extends ProtoModule {
    * The port is untyped because it is using the enclosing classes type parameter.
    */
   @ProtoInputPortFieldAnnotation(name="port2")
-  public transient InputPort<T> inport2 = new InputPort<T>(this) {
+  final public transient InputPort<T> inport2 = new InputPort<T>(this) {
     @Override
     final public void process(T payload) {
       /*
