@@ -8,7 +8,7 @@ import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ServerHandler;
 import com.malhartech.bufferserver.util.SerializedData;
 import io.netty.buffer.ByteBuf;
-import static io.netty.buffer.Unpooled.*;
+import static io.netty.buffer.Unpooled.wrappedBuffer;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -20,8 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 
- * 
+ *
+ *
  */
 public class ServerInitializer extends ChannelInitializer<SocketChannel>
 {
@@ -31,7 +31,7 @@ public class ServerInitializer extends ChannelInitializer<SocketChannel>
     private final MessageToMessageEncoder<SerializedData, ByteBuf> encoder;
 
     /**
-     * 
+     *
      */
     public ServerInitializer()
     {
@@ -48,9 +48,9 @@ public class ServerInitializer extends ChannelInitializer<SocketChannel>
     }
 
     /**
-     * 
+     *
      * @param channel
-     * @throws Exception 
+     * @throws Exception
      */
     @Override
     public void initChannel(SocketChannel channel) throws Exception
