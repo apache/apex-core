@@ -4,22 +4,39 @@
  */
 package com.malhartech.moduleexperiment;
 
+import com.malhartech.dag.FailedOperationException;
+import com.malhartech.dag.ModuleConfiguration;
 import com.malhartech.dag.Sink;
 
 /**
- *
+ * The base class for all module implementations
  */
-public interface ProtoModule {
+public abstract class ProtoModule {
 
   /**
-   * Input ports are declared as annotated factory methods and return a port
-   * object that the execution engine will call to pass the tuples.
+   * A user friendly name that is available to identify the module in the system.
+   */
+  private String name;
+
+  /**
+   * Input ports are declared as annotated fields.
+   * The execution engine will call the port object to pass the tuples.
    * Since the interface is implemented by the user, the type parameters are available at runtime for validation.
    *
    * @param <T>
    */
-  public static interface InputPort<T extends Object> {
-    public void process(T payload);
+  public abstract static class InputPort<T extends Object> {
+    final ProtoModule module;
+
+    public InputPort(ProtoModule module) {
+      this.module = module;
+    }
+
+    /**
+     * Defines the processing logic.
+     * @param payload
+     */
+    abstract public void process(T payload);
   }
 
   /**
@@ -29,7 +46,13 @@ public interface ProtoModule {
    * @param <T>
    */
   public static class OutputPort<T extends Object> {
+    final ProtoModule module;
     private transient Sink sink;
+
+    public OutputPort(ProtoModule module) {
+      this.module = module;
+    }
+
 
     final public void emit(T payload) {
       sink.process(payload);
@@ -59,10 +82,26 @@ public interface ProtoModule {
 
   }
 
+  public String getName() {
+    return name;
+  }
 
-  void beginWindow();
-  void endWindow();
+  public void setName(String name) {
+    this.name = name;
+  }
 
-  public void processGeneric(Object payload);
+  public void beginWindow()
+  {
+  }
+
+  public void endWindow()
+  {
+  }
+
+  public void setup(ModuleConfiguration config) throws FailedOperationException
+  {
+  }
+
+  public void processGeneric(Object payload) {};
 
 }
