@@ -10,8 +10,8 @@ import com.malhartech.bufferserver.Buffer.ResetWindow;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.nio.ByteBuffer;
-import java.util.*;
 import java.util.Map.Entry;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
@@ -279,85 +279,90 @@ public class DataList
       }
     }
 
+    public final void addUnsafe(Data d)
+    {
+      int size = d.getSerializedSize();
+      if (offset + 5 /* for max varint size */ + size > data.length
+              && /* this is a fast check */ offset + Codec.getSizeOfRawVarint32(size) + size > data.length) {
+        int i = 1;
+        while (i < Codec.getSizeOfRawVarint32(data.length - offset - i)) {
+          i++;
+        }
+
+        if (i + offset <= data.length) {
+          offset = Codec.writeRawVarint32(data.length - offset, data, offset, i);
+          if (offset < data.length) {
+            Data.Builder db = Data.newBuilder();
+            db.setType(DataType.NO_DATA);
+            db.setWindowId(0);
+
+            Data noData = db.build();
+            int writeSize = data.length - offset;
+            if (writeSize > noData.getSerializedSize()) {
+              writeSize = noData.getSerializedSize();
+            }
+            System.arraycopy(db.build().toByteArray(), 0, data, offset, writeSize);
+            offset = data.length;
+          }
+        }
+
+        int newblockSize = BLOCKSIZE;
+        while (newblockSize < size + 5) {
+          newblockSize += BLOCKSIZE;
+        }
+
+        DataList.this.last = next = getDataArray(newblockSize);
+        logger.debug("added a new data array {}", next);
+
+        /**
+         * Add reset window at the beginning of each new block.
+         */
+        if (d.getType() != DataType.RESET_WINDOW) {
+          Data.Builder db = Data.newBuilder();
+          db.setType(DataType.RESET_WINDOW);
+          db.setWindowId(baseSeconds);
+
+          ResetWindow.Builder rwb = ResetWindow.newBuilder();
+          rwb.setWidth(intervalMillis);
+          db.setResetWindow(rwb);
+          next.add(db.build());
+        }
+
+        next.add(d);
+      }
+      else {
+        offset = Codec.writeRawVarint32(size, data, offset);
+        System.arraycopy(d.toByteArray(), 0, data, offset, size);
+        offset += size;
+
+        switch (d.getType()) {
+          case BEGIN_WINDOW:
+            long long_window_id = ((long)baseSeconds << 32 | d.getWindowId());
+//            logger.debug("baseSeconds = {}, windowId = {}, long_window_id = {}",
+//                         new Object[] {Integer.toHexString(baseSeconds), Integer.toHexString(d.getWindowId()), Long.toHexString(long_window_id)});
+            if (starting_window == 0) {
+              starting_window = long_window_id;
+            }
+            ending_window = long_window_id;
+            break;
+
+          case RESET_WINDOW:
+            baseSeconds = d.getWindowId();
+            intervalMillis = d.getResetWindow().getWidth();
+            if (starting_window == 0) {
+              starting_window = (long)baseSeconds << 32;
+            }
+            ending_window = (long)baseSeconds << 32;
+            break;
+        }
+      }
+    }
+
     public void add(Data d)
     {
       w.lock();
-
       try {
-        int size = d.getSerializedSize();
-        if (offset + 5 /* for max varint size */ + size > data.length && /* this is a fast check */
-              offset + Codec.getSizeOfRawVarint32(size) + size > data.length) {
-          int i = 1;
-          while (i < Codec.getSizeOfRawVarint32(data.length - offset - i)) {
-            i++;
-          }
-
-          if (i + offset <= data.length) {
-            offset = Codec.writeRawVarint32(data.length - offset, data, offset, i);
-            if (offset < data.length) {
-              Data.Builder db = Data.newBuilder();
-              db.setType(DataType.NO_DATA);
-              db.setWindowId(0);
-
-              Data noData = db.build();
-              int writeSize = data.length - offset;
-              if (writeSize > noData.getSerializedSize()) {
-                writeSize = noData.getSerializedSize();
-              }
-              System.arraycopy(db.build().toByteArray(), 0, data, offset, writeSize);
-              offset = data.length;
-            }
-          }
-
-          int newblockSize = BLOCKSIZE;
-          while (newblockSize < size + 5) {
-            newblockSize += BLOCKSIZE;
-          }
-
-          DataList.this.last = next = getDataArray(newblockSize);
-
-          /**
-           * Add reset window at the beginning of each new block.
-           */
-          if (d.getType() != DataType.RESET_WINDOW) {
-            Data.Builder db = Data.newBuilder();
-            db.setType(DataType.RESET_WINDOW);
-            db.setWindowId(baseSeconds);
-
-            ResetWindow.Builder rwb = ResetWindow.newBuilder();
-            rwb.setWidth(intervalMillis);
-            db.setResetWindow(rwb);
-            next.add(db.build());
-          }
-
-          next.add(d);
-        }
-        else {
-          offset = Codec.writeRawVarint32(size, data, offset);
-          System.arraycopy(d.toByteArray(), 0, data, offset, size);
-          offset += size;
-
-          switch (d.getType()) {
-            case BEGIN_WINDOW:
-              long long_window_id = ((long)baseSeconds << 32 | d.getWindowId());
-//            logger.debug("baseSeconds = {}, windowId = {}, long_window_id = {}",
-//                         new Object[] {Integer.toHexString(baseSeconds), Integer.toHexString(d.getWindowId()), Long.toHexString(long_window_id)});
-              if (starting_window == 0) {
-                starting_window = long_window_id;
-              }
-              ending_window = long_window_id;
-              break;
-
-            case RESET_WINDOW:
-              baseSeconds = d.getWindowId();
-              intervalMillis = d.getResetWindow().getWidth();
-              if (starting_window == 0) {
-                starting_window = (long)baseSeconds << 32;
-              }
-              ending_window = (long)baseSeconds << 32;
-              break;
-          }
-        }
+        addUnsafe(d);
       }
       finally {
         w.unlock();
@@ -399,7 +404,14 @@ public class DataList
     this(identifier, type, BLOCKSIZE);
   }
 
-  public void add(Data d)
+  public final void flush()
+  {
+    for (DataListener dl: all_listeners) {
+      dl.dataAdded(DataListener.NULL_PARTITION);
+    }
+  }
+
+  public final void add(Data d)
   {
     last.add(d);
 
@@ -407,51 +419,40 @@ public class DataList
     // to write w/o writing all the data since that comes with the danger
     // of getting blocked. May be it's enough for us to write just one byte
     // of data.
+    // netty 4alpha5 provides it.
 
-    ByteBuffer bytebuffer = null;
-    switch (d.getType()) {
-      case PARTITIONED_DATA:
-        bytebuffer = d.getPartitionedData().getPartition().asReadOnlyByteBuffer();
-        if (listeners.containsKey(bytebuffer)) {
-          Set<DataListener> interested = listeners.get(bytebuffer);
-          for (DataListener dl: interested) {
-            dl.dataAdded(bytebuffer);
-          }
-        }
-      /*
-       * fall through here since we also want to give data to all the listeners who do not have preference for the partition.
-       */
-      case SIMPLE_DATA:
-        if (listeners.containsKey(DataListener.NULL_PARTITION)) {
-          if (bytebuffer == null) {
-            bytebuffer = DataListener.NULL_PARTITION;
-          }
-          Set<DataListener> interested = listeners.get(DataListener.NULL_PARTITION);
-          for (DataListener dl: interested) {
-            dl.dataAdded(bytebuffer);
-          }
-        }
-        break;
-
-      default:
-        for (DataListener dl: all_listeners) {
-          dl.dataAdded(DataListener.NULL_PARTITION);
-        }
-        break;
-    }
+//    ByteBuffer bytebuffer = null;
+//    switch (d.getType()) {
+//      case PARTITIONED_DATA:
+//        bytebuffer = d.getPartitionedData().getPartition().asReadOnlyByteBuffer();
+//        if (listeners.containsKey(bytebuffer)) {
+//          Set<DataListener> interested = listeners.get(bytebuffer);
+//          for (DataListener dl: interested) {
+//            dl.dataAdded(bytebuffer);
+//          }
+//        }
+//      /*
+//       * fall through here since we also want to give data to all the listeners who do not have preference for the partition.
+//       */
+//      case SIMPLE_DATA:
+//        if (listeners.containsKey(DataListener.NULL_PARTITION)) {
+//          if (bytebuffer == null) {
+//            bytebuffer = DataListener.NULL_PARTITION;
+//          }
+//          Set<DataListener> interested = listeners.get(DataListener.NULL_PARTITION);
+//          for (DataListener dl: interested) {
+//            dl.dataAdded(bytebuffer);
+//          }
+//        }
+//        break;
+//
+//      default:
+//        for (DataListener dl: all_listeners) {
+//          dl.dataAdded(DataListener.NULL_PARTITION);
+//        }
+//        break;
+//    }
   }
-
-  /*
-   * public void purge(int ending_id) { first.lockWrite(); try { while (first != last && ending_id > first.ending_window) { DataArray temp = first; first =
-   * first.next; first.lockWrite(); temp.unlockWrite(); }
-   *
-   * if (ending_id <= first.ending_window) { int offset_2_delete = 0; while (offset_2_delete < capacity) { Data d = first.data[offset_2_delete++]; if
-   * (d.getType() == DataType.END_WINDOW && d.getWindowId() == ending_id) { break; } } first.offset_2_delete = offset_2_delete; first.currentOffset -=
-   * offset_2_delete; while (offset_2_delete < capacity) { Data d = first.data[offset_2_delete++]; if (d.getType() == DataType.BEGIN_WINDOW) {
-   * first.starting_window = d.getWindowId(); } } } else { first.offset_2_delete = 0; first.currentOffset = 0; first.ending_window = 0; first.starting_window =
-   * 0; } } finally { first.unlockWrite(); } }
-   *
-   */
 
   /*
    * Iterator related functions.
