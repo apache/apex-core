@@ -4,7 +4,6 @@
  */
 package com.malhartech.util;
 
-import java.util.concurrent.BlockingQueue;
 import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
