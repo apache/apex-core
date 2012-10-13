@@ -118,7 +118,7 @@ public class LogicalNode implements DataListener
   public synchronized void catchUp(long longWindowId)
   {
     long baseSeconds = 0;
-    int intervalMillis = 0;
+    int intervalMillis;
     /*
      * fast forward to catch up with the windowId without consuming
      */
