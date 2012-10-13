@@ -59,7 +59,7 @@ public abstract class AbstractSocketSubscriber<T> extends ChannelInboundMessageH
 
   public void deactivate()
   {
-    channel.close().awaitUninterruptibly();
+    channel.close();
   }
 
 }
