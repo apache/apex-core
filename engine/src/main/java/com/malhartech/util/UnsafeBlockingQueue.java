@@ -22,4 +22,6 @@ public interface UnsafeBlockingQueue<T> extends BlockingQueue<T>
    * @return the head of this queue.
    */
   public T pollUnsafe();
+
+  public T peekUnsafe();
 }

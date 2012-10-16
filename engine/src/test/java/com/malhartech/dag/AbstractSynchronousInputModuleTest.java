@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import junit.framework.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -54,6 +56,7 @@ public class AbstractSynchronousInputModuleTest
   })
   public static class CollectorModule extends AbstractModule
   {
+    private static final Logger logger = LoggerFactory.getLogger(CollectorModule.class);
     public static final String INPUT1 = "INPUT1";
     public static final String INPUT2 = "INPUT2";
 
@@ -78,6 +81,12 @@ public class AbstractSynchronousInputModuleTest
     {
       return collections.get(id);
     }
+
+    @Override
+    public void handleIdleTimeout()
+    {
+      logger.debug("idling!!!");
+    }
   }
 
   @Test
@@ -89,11 +98,11 @@ public class AbstractSynchronousInputModuleTest
 
     dag.addStream("EvenIntegers")
             .setSource(generator.getOutput(SynchronousInputModule.OUTPUT1))
-            .addSink(collector.getInput(CollectorModule.INPUT1));
+            .addSink(collector.getInput(CollectorModule.INPUT1)).setInline(true);
 
     dag.addStream("OddIntegers")
             .setSource(generator.getOutput(SynchronousInputModule.OUTPUT2))
-            .addSink(collector.getInput(CollectorModule.INPUT2));
+            .addSink(collector.getInput(CollectorModule.INPUT2)).setInline(true);
 
     final StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
