@@ -54,7 +54,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       switch (data.getType()) {
         case PUBLISHER_REQUEST:
           logger.info("Received publisher request: {}", data);
-          handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
+          dl = handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
           break;
 
         case SUBSCRIBER_REQUEST:
@@ -89,7 +89,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @param windowId
    */
-  public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
+  public DataList handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -116,6 +116,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
 
     dl.rewind(request.getBaseSeconds(), windowId, new ProtobufDataInspector());
     ctx.attr(DATALIST).set(dl);
+    return dl;
   }
 
   /**
@@ -124,7 +125,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @param windowId
    */
-  public void handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
+  public LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -180,6 +181,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     }
 
     ctx.attr(LOGICALNODE).set(ln);
+    return ln;
   }
 
   /**
@@ -287,7 +289,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
   {
     if (!(cause instanceof java.nio.channels.ClosedChannelException)) {
-      logger.info("Error on ctx = {} because of {}", ctx, cause);
+    logger.info("Error on ctx = {} because of {}", ctx, cause);
     }
 
     try {
