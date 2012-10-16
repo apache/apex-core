@@ -6,7 +6,8 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.util.CircularBuffer;
-import java.nio.BufferOverflowException;
+import com.malhartech.util.SynchronizedCircularBuffer;
+import com.malhartech.util.UnsafeBlockingQueue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -65,6 +66,23 @@ public abstract class AbstractModule extends AbstractBaseModule
       catch (InterruptedException ex) {
         logger.warn("Abandoning processing of the payload {} due to an interrupt", payload);
       }
+    }
+
+    final Tuple sweep()
+    {
+      for (int i = size(); i-- > 0;) {
+        if (peekUnsafe() instanceof Tuple) {
+          return (Tuple)peekUnsafe();
+        }
+        processTuple(pollUnsafe());
+      }
+
+      return null;
+    }
+
+    public void processTuple(Object payload)
+    {
+      AbstractModule.this.process(payload);
     }
 
     @Override
@@ -197,137 +215,44 @@ public abstract class AbstractModule extends AbstractBaseModule
     int receivedResetTuples = 0;
     int receivedEndWindow = 0;
 
-    boolean shouldWait;
     long currentWindowId = 0;
     Object lastEndWindow = null;
 
     do {
-      shouldWait = true;
-
       Iterator<CompoundSink> buffers = activeQueues.iterator();
       activequeue:
       while (buffers.hasNext()) {
         activePort = buffers.next();
-
-        Object payload;
-        activeport:
-        while ((payload = activePort.peek()) != null) {
-          if (payload instanceof Tuple) {
-            final Tuple t = (Tuple)payload;
-            switch (t.getType()) {
-              case BEGIN_WINDOW:
-                if (expectingBeginWindow == totalQueues) {
-                  shouldWait = false;
-                  activePort.remove();
-                  expectingBeginWindow--;
-                  currentWindowId = t.getWindowId();
-                  for (int s = sinks.length; s-- > 0;) {
-                    sinks[s].process(t);
-                  }
-                  beginWindow();
-                  receivedEndWindow = 0;
-                }
-                else if (t.getWindowId() == currentWindowId) {
-                  shouldWait = false;
-                  activePort.remove();
-                  expectingBeginWindow--;
-                }
-                else {
-                  buffers.remove();
-                  break activeport;
-                }
-                break;
-
-              case END_WINDOW:
-                if (t.getWindowId() == currentWindowId) {
-                  shouldWait = false;
-                  lastEndWindow = activePort.remove();
-                  if (++receivedEndWindow == totalQueues) {
-                    endWindow();
-                    for (final Sink output: outputs.values()) {
-                      output.process(t);
-                    }
-
-                    /*
-                     * we prefer to cater to requests at the end of the window boundary.
-                     */
-                    try {
-                      CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
-                      for (int i = requests.size(); i-- > 0;) {
-                        requests.poll().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
-                      }
-                    }
-                    catch (Exception e) {
-                      logger.warn("Exception while catering to external request {}", e);
-                    }
-
-                    /*
-                     * report window as complete after control operations are completed
-                     */
-                    ctx.report(processedTupleCount, 0L, currentWindowId);
-                    processedTupleCount = 0;
-
-                    buffers.remove();
-                    assert (activeQueues.isEmpty());
-                    activeQueues.addAll(inputs.values());
-                    expectingBeginWindow = activeQueues.size();
-                    break activequeue;
-                  }
-                  else {
-                    buffers.remove();
-                    break activeport;
-                  }
-                }
-                else {
-                  buffers.remove();
-                  break activeport;
-                }
-
-              case RESET_WINDOW:
-                /**
-                 * we will receive tuples which are equal to the number of input streams.
-                 */
-                shouldWait = false;
+        Tuple t = activePort.sweep();
+        if (t != null) {
+          switch (t.getType()) {
+            case BEGIN_WINDOW:
+              if (expectingBeginWindow == totalQueues) {
                 activePort.remove();
-
-                if (receivedResetTuples++ == 0) {
-                  for (int s = sinks.length; s-- > 0;) {
-                    sinks[s].process(t);
-                  }
-                }
-                else if (receivedResetTuples == activeQueues.size()) {
-                  receivedResetTuples = 0;
-                }
-
-                break;
-
-              case END_STREAM:
-                shouldWait = false;
-                activePort.remove();
-                /**
-                 * We are not going to receive begin window on this ever!
-                 */
                 expectingBeginWindow--;
-                /**
-                 * Since one of the operators we care about it gone, we should relook at our operators.
-                 * We need to make sure that the END_STREAM comes outside of the window.
-                 */
-                totalQueues--;
-                inputs.remove(activePort.id);
-                buffers.remove();
-                if (totalQueues == 0) {
-                  alive = false;
-                  break activequeue;
+                currentWindowId = t.getWindowId();
+                for (int s = sinks.length; s-- > 0;) {
+                  sinks[s].process(t);
                 }
-                else if (activeQueues.isEmpty()) {
-                  assert (!inputs.isEmpty());
-                  assert (lastEndWindow != null);
-                  /*
-                   * Do the same sequence as the end window since the current window is not ended.
-                   */
+                beginWindow();
+                receivedEndWindow = 0;
+              }
+              else if (t.getWindowId() == currentWindowId) {
+                activePort.remove();
+                expectingBeginWindow--;
+              }
+              else {
+                buffers.remove();
+              }
+              break;
+
+            case END_WINDOW:
+              if (t.getWindowId() == currentWindowId) {
+                lastEndWindow = activePort.remove();
+                if (++receivedEndWindow == totalQueues) {
                   endWindow();
                   for (final Sink output: outputs.values()) {
-                    output.process(lastEndWindow);
+                    output.process(t);
                   }
 
                   /*
@@ -336,7 +261,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                   try {
                     CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
                     for (int i = requests.size(); i-- > 0;) {
-                      requests.remove().execute(this, ctx.getId(), ((Tuple)payload).getWindowId());
+                      requests.pollUnsafe().execute(this, ctx.getId(), t.getWindowId());
                     }
                   }
                   catch (Exception e) {
@@ -349,51 +274,129 @@ public abstract class AbstractModule extends AbstractBaseModule
                   ctx.report(processedTupleCount, 0L, currentWindowId);
                   processedTupleCount = 0;
 
+                  buffers.remove();
                   assert (activeQueues.isEmpty());
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
                   break activequeue;
                 }
-                break activeport;
+                else {
+                  buffers.remove();
+                }
+              }
+              else {
+                buffers.remove();
+              }
+              break;
 
-              default:
-                throw new UnhandledException("Unrecognized Control Tuple", new IllegalArgumentException(t.toString()));
-            }
-          }
-          else {
-            process(activePort.remove());
-            processedTupleCount++;
-            shouldWait = false;
+            case RESET_WINDOW:
+              /**
+               * we will receive tuples which are equal to the number of input streams.
+               */
+              activePort.remove();
+
+              if (receivedResetTuples++ == 0) {
+                for (int s = sinks.length; s-- > 0;) {
+                  sinks[s].process(t);
+                }
+              }
+              else if (receivedResetTuples == activeQueues.size()) {
+                receivedResetTuples = 0;
+              }
+              break;
+
+            case END_STREAM:
+              activePort.remove();
+              /**
+               * We are not going to receive begin window on this ever!
+               */
+              expectingBeginWindow--;
+              /**
+               * Since one of the operators we care about it gone, we should relook at our operators.
+               * We need to make sure that the END_STREAM comes outside of the window.
+               */
+              totalQueues--;
+              inputs.remove(activePort.id);
+              buffers.remove();
+              if (totalQueues == 0) {
+                alive = false;
+                break activequeue;
+              }
+              else if (activeQueues.isEmpty()) {
+                assert (!inputs.isEmpty());
+                assert (lastEndWindow != null);
+                /*
+                 * Do the same sequence as the end window since the current window is not ended.
+                 */
+                endWindow();
+                for (final Sink output: outputs.values()) {
+                  output.process(lastEndWindow);
+                }
+
+                /*
+                 * we prefer to cater to requests at the end of the window boundary.
+                 */
+                try {
+                  CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
+                  for (int i = requests.size(); i-- > 0;) {
+                    requests.pollUnsafe().execute(this, ctx.getId(), t.getWindowId());
+                  }
+                }
+                catch (Exception e) {
+                  logger.warn("Exception while catering to external request {}", e);
+                }
+
+                /*
+                 * report window as complete after control operations are completed
+                 */
+                ctx.report(processedTupleCount, 0L, currentWindowId);
+                processedTupleCount = 0;
+
+                assert (activeQueues.isEmpty());
+                activeQueues.addAll(inputs.values());
+                expectingBeginWindow = activeQueues.size();
+                break activequeue;
+              }
+              break;
+
+            default:
+              throw new UnhandledException("Unrecognized Control Tuple", new IllegalArgumentException(t.toString()));
           }
         }
       }
 
-      if (shouldWait) {
-        if (activeQueues.isEmpty()) {
-          logger.error("Invalid State - the node blocked forever!!!");
-        }
-
+      if (activeQueues.isEmpty()) {
+        logger.error("Invalid State - the node blocked forever!!!");
+      }
+      else {
         int oldCount = 0;
-        for (CircularBuffer<?> cb: activeQueues) {
+        for (UnsafeBlockingQueue<?> cb: activeQueues) {
           oldCount += cb.size();
         }
-        try {
-          Thread.sleep(getSpinMillis());
-          int newCount = 0;
-          for (CircularBuffer<?> cb: activeQueues) {
-            newCount += cb.size();
-          }
 
-          if (oldCount != newCount) {
-            handleIdleTimeout();
+        if (oldCount == 0) {
+          try {
+            Thread.sleep(getSpinMillis());
+
+            boolean nodata = true;
+            for (UnsafeBlockingQueue<?> cb: activeQueues) {
+              if (cb.size() > 0) {
+                nodata = false;
+                break;
+              }
+            }
+
+            if (nodata) {
+              handleIdleTimeout();
+            }
           }
-        }
-        catch (InterruptedException ex) {
-          /*
-           * we got interrupted while we were checking if we need to call handleTimeout.
-           * This is exceptional condition since someone is in too much hurry, so we
-           * proceed further without actually giving node a chance to handle idle time.
-           */
+          catch (InterruptedException ex) {
+            /*
+             * we got interrupted while we were checking if we need to call handleTimeout.
+             * This is exceptional condition since someone is in too much hurry, so we
+             * proceed further without actually giving node a chance to handle idle time.
+             */
+          }
         }
       }
     }

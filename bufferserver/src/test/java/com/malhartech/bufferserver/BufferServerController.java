@@ -4,10 +4,9 @@
  */
 package com.malhartech.bufferserver;
 
+import com.malhartech.bufferserver.Buffer.Data;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
-
-import com.malhartech.bufferserver.Buffer.Data;
 
 /**
  *

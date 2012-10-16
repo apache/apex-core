@@ -11,7 +11,6 @@ package com.malhartech.util;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -289,8 +288,8 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
   @Override
   public Iterator<T> iterator()
   {
-    return new Iterator<T>() {
-
+    return new Iterator<T>()
+    {
       @Override
       public boolean hasNext()
       {
@@ -371,5 +370,11 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
     head = 0;
     tail = 0;
     Arrays.fill(buffer, null);
+  }
+
+  @Override
+  public T peekUnsafe()
+  {
+    return buffer[(int)(tail & buffermask)];
   }
 }

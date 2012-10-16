@@ -12,11 +12,10 @@ import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.util.SerializedData;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFutureListener;
+import io.netty.buffer.MessageBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.*;
 import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.util.AttributeKey;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -33,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 @Sharable
-public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
+public class ServerHandler extends ChannelInboundHandlerAdapter implements ChannelInboundMessageHandler<Data>
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ServerHandler.class);
   private static final AttributeKey<DataList> DATALIST = new AttributeKey<DataList>("ServerHandler.datalist");
@@ -43,37 +42,44 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
   final ConcurrentHashMap<String, Channel> publisher_channels = new ConcurrentHashMap<String, Channel>();
   final ConcurrentHashMap<String, Channel> subscriber_channels = new ConcurrentHashMap<String, Channel>();
 
-  /**
-   *
-   * @param ctx
-   * @param data
-   * @throws Exception
-   */
   @Override
-  public void messageReceived(ChannelHandlerContext ctx, Data data) throws Exception
+  public final void inboundBufferUpdated(ChannelHandlerContext ctx) throws Exception
   {
-    switch (data.getType()) {
-      case PUBLISHER_REQUEST:
-        handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
-        break;
+    DataList dl = ctx.attr(DATALIST).get();
 
-      case SUBSCRIBER_REQUEST:
-        handleSubscriberRequest(data.getSubscribeRequest(), ctx, data.getWindowId());
-        break;
+    MessageBuf<Data> in = ctx.inboundMessageBuffer();
+//    logger.debug("InboundBuffer updated with {} messages", in.size());
+    for (int i = in.size(); i-- > 0;) {
+      Data data = in.poll();
+      switch (data.getType()) {
+        case PUBLISHER_REQUEST:
+          logger.info("Received publisher request: {}", data);
+          dl = handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
+          break;
 
-      case PURGE_REQUEST:
-        handlePurgeRequest(data.getPurgeRequest(), ctx, data.getWindowId());
-        break;
+        case SUBSCRIBER_REQUEST:
+          logger.info("Received subscriber request: {}", data);
+          handleSubscriberRequest(data.getSubscribeRequest(), ctx, data.getWindowId());
+          break;
 
-      default:
-        DataList dl = ctx.attr(DATALIST).get();
-        if (dl == null) {
-          logger.warn("Attempt to send data w/o talking protocol {}", ctx.channel());
-        }
-        else {
-          dl.add(data);
-        }
-        break;
+        case PURGE_REQUEST:
+          logger.info("Received purge request: {}", data);
+          handlePurgeRequest(data.getPurgeRequest(), ctx, data.getWindowId());
+          break;
+
+        default:
+          if (dl == null) {
+            logger.error("Received packet {} when there is no datalist defined", data);
+          }
+          else {
+            dl.add(data);
+          }
+          break;
+      }
+    }
+
+    if (dl != null) {
+      dl.flush();
     }
   }
 
@@ -83,11 +89,10 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
    * @param ctx
    * @param windowId
    */
-  public void handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
+  public DataList handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
-    logger.info("received publisher request: {} windowId: {}", request, windowId);
 
     DataList dl;
 
@@ -111,6 +116,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
 
     dl.rewind(request.getBaseSeconds(), windowId, new ProtobufDataInspector());
     ctx.attr(DATALIST).set(dl);
+    return dl;
   }
 
   /**
@@ -119,13 +125,12 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
    * @param ctx
    * @param windowId
    */
-  public void handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
+  public LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
     String upstream_identifier = request.getUpstreamIdentifier();
     //String upstream_type = request.getUpstreamType();
-    logger.info("received subscriber request: {} windowId: {}", request, windowId);
 
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;
@@ -176,6 +181,7 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
     }
 
     ctx.attr(LOGICALNODE).set(ln);
+    return ln;
   }
 
   /**
@@ -225,12 +231,6 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
     return p;
   }
 
-  /*
-   * @Override public void writeRequested(ChannelHandlerContext ctx, MessageEvent e) throws Exception { // when the control comes here, we are in a worker
-   * thread which is supposed // to be writing. We have only written one unit of data on the socket, // take this opportunity to continue to write lots of data,
-   * we do not care // if this is a worker thread that gets blocked. or should we worry? System.err.println("writeRequested from thread " +
-   * Thread.currentThread()); super.writeRequested(ctx, e); }
-   */
   @Override
   public void channelInactive(ChannelHandlerContext ctx) throws Exception
   {
@@ -288,9 +288,8 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
   {
-    // reduce noise on shutdown
-    if (! (cause instanceof java.nio.channels.ClosedChannelException)) {
-      logger.info("Exception with ctx = " + ctx.toString(), cause);
+    if (!(cause instanceof java.nio.channels.ClosedChannelException)) {
+    logger.info("Error on ctx = {} because of {}", ctx, cause);
     }
 
     try {
@@ -303,8 +302,6 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
 
   private void handlePurgeRequest(PurgeRequest request, ChannelHandlerContext ctx, int windowId)
   {
-    logger.info("Received purge request: {} window: {}", request, windowId);
-
     DataList dl;
     synchronized (publisher_bufffers) {
       dl = publisher_bufffers.get(request.getIdentifier());
@@ -326,5 +323,10 @@ public class ServerHandler extends ChannelInboundMessageHandlerAdapter<Data>
 
     ctx.write(SerializedData.getInstanceFrom(db.build()))
             .addListener(ChannelFutureListener.CLOSE);
+  }
+
+  public MessageBuf<Data> newInboundBuffer(ChannelHandlerContext ctx) throws Exception
+  {
+    return Unpooled.messageBuffer();
   }
 }

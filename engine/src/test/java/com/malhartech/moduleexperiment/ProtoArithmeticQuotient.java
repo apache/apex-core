@@ -95,7 +95,7 @@ public class ProtoArithmeticQuotient extends ProtoModule
     LOG.debug(String.format("Set mult_by(%d), and dokey(%s)", mult_by, dokey ? "true" : "false"));
   }
 
-  final private void processInternal(Map<String, Number> active, HashMap<String, Number> payload)
+  private void processInternal(Map<String, Number> active, HashMap<String, Number> payload)
   {
     for (Map.Entry<String, Number> e: payload.entrySet()) {
       Number val = active.get(e.getKey());

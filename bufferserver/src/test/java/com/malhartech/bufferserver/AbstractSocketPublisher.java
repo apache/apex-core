@@ -55,6 +55,7 @@ public abstract class AbstractSocketPublisher extends ChannelOutboundMessageHand
 
   public void deactivate()
   {
-    channel.close().awaitUninterruptibly();
+    channel.flush().awaitUninterruptibly();
+    channel.close();
   }
 }

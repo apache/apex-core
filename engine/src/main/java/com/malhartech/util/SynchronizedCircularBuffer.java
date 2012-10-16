@@ -10,8 +10,9 @@ package com.malhartech.util;
  */
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Provides a non-premium implementation of circular buffer<p>
@@ -20,10 +21,35 @@ import java.util.concurrent.TimeUnit;
  */
 public class SynchronizedCircularBuffer<T> implements UnsafeBlockingQueue<T>
 {
+  private static final Logger logger = LoggerFactory.getLogger(SynchronizedCircularBuffer.class);
   private final T[] buffer;
   private final int buffermask;
   private int tail;
   private int head;
+  private final int spinMillis;
+
+  /**
+   *
+   * Constructing a circular buffer of 'n' integers<p>
+   * <br>
+   *
+   * @param n size of the buffer to be constructed
+   * @param spin time in milliseconds for which to wait before checking for expected value if it's missing
+   * <br>
+   */
+  @SuppressWarnings("unchecked")
+  public SynchronizedCircularBuffer(int n, int spin)
+  {
+    int i = 1;
+    while (i < n) {
+      i = i << 1;
+    }
+
+    buffer = (T[])new Object[i];
+    buffermask = i - 1;
+
+    spinMillis = spin;
+  }
 
   /**
    *
@@ -33,16 +59,9 @@ public class SynchronizedCircularBuffer<T> implements UnsafeBlockingQueue<T>
    * @param n size of the buffer to be constructed
    * <br>
    */
-  @SuppressWarnings("unchecked")
   public SynchronizedCircularBuffer(int n)
   {
-    int i = 1;
-    while (i < n) {
-      i = i << 1;
-    }
-
-    buffer = (T[])new Object[i];
-    buffermask = i - 1;
+    this(n, 10);
   }
 
   /**
@@ -166,9 +185,17 @@ public class SynchronizedCircularBuffer<T> implements UnsafeBlockingQueue<T>
   }
 
   @Override
-  public void put(T e) throws InterruptedException
+  public final synchronized void put(T e) throws InterruptedException
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    do {
+      if (head - tail < buffermask) {
+        buffer[(int)(head++ & buffermask)] = e;
+        return;
+      }
+
+      wait(spinMillis);
+    }
+    while (true);
   }
 
   @Override
@@ -287,5 +314,11 @@ public class SynchronizedCircularBuffer<T> implements UnsafeBlockingQueue<T>
   public final synchronized T pollUnsafe()
   {
     return buffer[tail++ & buffermask];
+  }
+
+  @Override
+  public final synchronized T peekUnsafe()
+  {
+    return buffer[tail & buffermask];
   }
 }
