@@ -99,9 +99,6 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <!-- Enforce java 1.7 as minimum for compiling -->
-                  <!-- This is needed because of the Unsafe detection code
-                       and java.util.zip.Deflater.deflate(). -->
                   <version>[1.6.0,)</version>
                 </requireJavaVersion>
                 <requireMavenVersion>
