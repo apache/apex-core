@@ -42,5 +42,40 @@
     <module>library</module>
     <module>demos</module>
     <!-- module>examples/wordcount</module -->
+    <module>dist</module>
   </modules>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>2.3</version>
+          <configuration>
+            <descriptors>
+              <descriptor>src/assemble/bin.xml</descriptor>
+            </descriptors>
+          </configuration>
+
+      <!--executions>
+        <execution>
+          <id>distro-assembly</id>
+          <phase>package</phase>
+          <goals>
+            <goal>single</goal>
+          </goals>
+          <configuration>
+            <descriptors>
+              <descriptor>src/assemble/bin.xml</descriptor>
+            </descriptors>
+          </configuration>
+        </execution>
+      </executions-->
+
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+  </build>
+
 </project>
