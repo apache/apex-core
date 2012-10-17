@@ -124,7 +124,7 @@ public abstract class AbstractModule extends AbstractBaseModule
         else {
           outputs.put(pa.name(), dagpart);
         }
-        if (sinks != NO_SINKS) {
+        if (sinks != Sink.NO_SINKS) {
           activateSinks();
         }
 
@@ -160,7 +160,7 @@ public abstract class AbstractModule extends AbstractBaseModule
         else {
           outputs.put(pa.name(), dagpart);
         }
-        if (sinks != NO_SINKS) {
+        if (sinks != Sink.NO_SINKS) {
           activateSinks();
         }
         s = null;

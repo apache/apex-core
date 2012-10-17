@@ -27,7 +27,7 @@ public class ModuleContext implements Context
      * Command to be executed at subsequent end of window.
      * Current used for module state saving, but applicable more widely.
      */
-    public void execute(Module module, String id, long windowId) throws IOException;
+    public void execute(Operator module, String id, long windowId) throws IOException;
   }
   private long lastProcessedWindowId;
   private final String id;

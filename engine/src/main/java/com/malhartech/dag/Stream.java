@@ -14,7 +14,7 @@ package com.malhartech.dag;
 /*
  * Provides basic interface for a stream object. Stram, StramChild work via this interface
  */
-public interface Stream extends Component<StreamConfiguration, StreamContext>
+public interface Stream extends Component<StreamConfiguration, StreamContext>, Sink
 {
   public boolean isMultiSinkCapable();
 }

@@ -6,9 +6,9 @@ package com.malhartech.stram;
 
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.DAG;
-import com.malhartech.dag.Module;
+import com.malhartech.dag.Operator;
 import com.malhartech.dag.ModuleContext;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
@@ -163,12 +163,12 @@ public class StramLocalCluster implements Runnable {
       return activeNodes.get(id);
     }
 
-    Module getNode(String id)
+    Operator getNode(String id)
     {
       return nodes.get(id);
     }
 
-    Map<String, Module> getNodes()
+    Map<String, Operator> getNodes()
     {
       return nodes;
     }
@@ -258,7 +258,7 @@ public class StramLocalCluster implements Runnable {
     this.childContainers.remove(c.getContainerId());
   }
 
-  PTOperator findByLogicalNode(Operator logicalNode) {
+  PTOperator findByLogicalNode(OperatorInstance logicalNode) {
     List<PTOperator> nodes = dnmgr.getPhysicalPlan().getOperators(logicalNode);
     if (nodes.isEmpty()) {
       return null;

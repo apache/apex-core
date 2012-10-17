@@ -7,7 +7,7 @@ package com.malhartech.dag;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.stram.StramLocalCluster;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,7 +54,7 @@ public class AbstractSynchronousInputModuleTest
     @PortAnnotation(name = CollectorModule.INPUT1, type = PortType.INPUT),
     @PortAnnotation(name = CollectorModule.INPUT2, type = PortType.INPUT)
   })
-  public static class CollectorModule extends AbstractModule
+  public static class CollectorModule extends AbstractModule implements Sink
   {
     private static final Logger logger = LoggerFactory.getLogger(CollectorModule.class);
     public static final String INPUT1 = "INPUT1";
@@ -93,8 +93,8 @@ public class AbstractSynchronousInputModuleTest
   public void testSomeMethod() throws Exception
   {
     DAG dag = new DAG();
-    Operator generator = dag.addOperator("NumberGenerator", SynchronousInputModule.class);
-    Operator collector = dag.addOperator("NumberCollector", CollectorModule.class);
+    OperatorInstance generator = dag.addOperator("NumberGenerator", SynchronousInputModule.class);
+    OperatorInstance collector = dag.addOperator("NumberCollector", CollectorModule.class);
 
     dag.addStream("EvenIntegers")
             .setSource(generator.getOutput(SynchronousInputModule.OUTPUT1))

@@ -100,7 +100,7 @@ public class InlineStreamTest
 
     stream.activate(streamContext);
 
-    Map<String, Module> activeNodes = new ConcurrentHashMap<String, Module>();
+    Map<String, Operator> activeNodes = new ConcurrentHashMap<String, Operator>();
     launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
 
     for (int i = 0; i < totalTupleCount; i++) {
@@ -132,7 +132,7 @@ public class InlineStreamTest
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
 
-  private void launchNodeThreads(Collection<? extends AbstractModule> nodes, final Map<String, Module> activeNodes)
+  private void launchNodeThreads(Collection<? extends AbstractModule> nodes, final Map<String, Operator> activeNodes)
   {
     final AtomicInteger i = new AtomicInteger(0);
     for (final AbstractModule node: nodes) {
@@ -148,20 +148,20 @@ public class InlineStreamTest
           activeNodes.remove(ctx.getId());
         }
       };
-      
+
       Thread launchThread = new Thread(nodeRunnable);
       launchThread.start();
     }
   }
 
   /**
-   * Module implementation that simply passes on any tuple received
+   * Operator implementation that simply passes on any tuple received
    */
   @ModuleAnnotation(ports = {
     @PortAnnotation(name = Component.INPUT, type = PortType.INPUT),
     @PortAnnotation(name = Component.OUTPUT, type = PortType.OUTPUT)
   })
-  public static class PassThroughNode extends AbstractModule
+  public static class PassThroughNode extends AbstractModule implements Sink
   {
     private boolean logMessages = false;
 

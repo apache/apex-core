@@ -11,7 +11,7 @@ package com.malhartech.dag;
  *
  * @author chetan
  */
-public interface Sink
+public interface Sink<T>
 {
   public static final Sink[] NO_SINKS = new Sink[0];
 
@@ -29,5 +29,5 @@ public interface Sink
    *
    * @param payload payload to be processed by this sink.
    */
-  public void process(Object payload);
+  public void process(T payload);
 }

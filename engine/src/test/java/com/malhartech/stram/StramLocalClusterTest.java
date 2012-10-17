@@ -22,10 +22,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.DAG;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.Module;
+import com.malhartech.dag.Operator;
 import com.malhartech.dag.ModuleContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
@@ -64,16 +64,16 @@ public class StramLocalClusterTest
   {
     DAG dag = new DAG();
 
-    Operator genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
+    OperatorInstance genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
     genNode.setProperty("maxTuples", "1");
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
     node1.setProperty("emitFormat", "%s >> node1");
 
     File outFile = new File("./target/" + StramLocalClusterTest.class.getName() + "-testLocalClusterInitShutdown.out");
     outFile.delete();
 
-    Operator outNode = dag.addOperator("outNode", TestOutputModule.class);
+    OperatorInstance outNode = dag.addOperator("outNode", TestOutputModule.class);
     outNode.setProperty(TestOutputModule.P_FILEPATH, outFile.toURI().toString());
 
     dag.addStream("fromGenNode")
@@ -143,10 +143,10 @@ public class StramLocalClusterTest
   {
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
     // data will be added externally from test
     node1.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "0");
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2").
       setSource(node1.getOutput(TestGeneratorInputModule.OUTPUT_PORT)).
@@ -174,13 +174,13 @@ public class StramLocalClusterTest
     PTOperator ptNode2 = localCluster.findByLogicalNode(node2);
 
     LocalStramChild c0 = waitForActivation(localCluster, ptNode1);
-    Map<String, Module> nodeMap = c0.getNodes();
+    Map<String, Operator> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
     TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForActivation(localCluster, ptNode2);
-    Map<String, Module> c2NodeMap = c2.getNodes();
+    Map<String, Operator> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
     GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);

@@ -3,9 +3,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.DAG;
-import com.malhartech.dag.TestGeneratorInputModule;
-import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.*;
 import static org.junit.Assert.assertEquals;
 
 import java.io.BufferedReader;
@@ -42,8 +40,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.AbstractModule;
-import com.malhartech.dag.HeartbeatCounters;
 import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -339,7 +335,7 @@ public class StramMiniClusterTest
   }
 
   @SuppressWarnings("PublicInnerClass")
-  public static class TestDNode extends AbstractModule
+  public static class TestDNode extends AbstractModule implements Sink
   {
     @SuppressWarnings("PackageVisibleField")
     int getResetCount = 0;

@@ -12,7 +12,7 @@ package com.malhartech.dag;
  *
  * @author chetan
  */
-public interface Module extends Component<ModuleConfiguration, ModuleContext>
+public interface Operator extends Component<ModuleConfiguration, ModuleContext>
 {
   /**
    * This method gets called at the beginning of each window.

@@ -44,12 +44,12 @@ public class DAG implements Serializable, DAGConstants {
   private static final Logger LOG = LoggerFactory.getLogger(DAG.class);
 
   private final Map<String, StreamDecl> streams = new HashMap<String, StreamDecl>();
-  private final Map<String, Operator> nodes = new HashMap<String, Operator>();
-  private final List<Operator> rootNodes = new ArrayList<Operator>();
+  private final Map<String, OperatorInstance> nodes = new HashMap<String, OperatorInstance>();
+  private final List<OperatorInstance> rootNodes = new ArrayList<OperatorInstance>();
   private final ExternalizableConf confHolder;
 
   private transient int nodeIndex = 0; // used for cycle validation
-  private transient Stack<Operator> stack = new Stack<Operator>(); // used for cycle validation
+  private transient Stack<OperatorInstance> stack = new Stack<OperatorInstance>(); // used for cycle validation
 
   public static class ExternalizableConf implements Externalizable {
     private final Configuration conf;
@@ -84,10 +84,10 @@ public class DAG implements Serializable, DAGConstants {
   public final class InputPort implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Operator node;
+    private OperatorInstance node;
     private PortAnnotation portAnnotation;
 
-    public Operator getNode() {
+    public OperatorInstance getNode() {
       return node;
     }
 
@@ -103,10 +103,10 @@ public class DAG implements Serializable, DAGConstants {
   public final class OutputPort implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Operator node;
+    private OperatorInstance node;
     private PortAnnotation portAnnotation;
 
-    public Operator getNode() {
+    public OperatorInstance getNode() {
       return node;
     }
 
@@ -193,19 +193,19 @@ public class DAG implements Serializable, DAGConstants {
 
   }
 
-  public final class Operator implements Serializable {
+  public final class OperatorInstance implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final Map<String, StreamDecl> inputStreams = new HashMap<String, StreamDecl>();
     private final Map<String, StreamDecl> outputStreams = new HashMap<String, StreamDecl>();
     private final Map<String, String> properties = new HashMap<String, String>();
-    private final Class<? extends Module> nodeClass;
+    private final Class<? extends Operator> nodeClass;
     private final String id;
 
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
-    private Operator(String id, Class<? extends Module> nodeClass) {
+    private OperatorInstance(String id, Class<? extends Operator> nodeClass) {
       this.nodeClass = nodeClass;
       this.id = id;
     }
@@ -238,7 +238,7 @@ public class DAG implements Serializable, DAGConstants {
       return this.outputStreams;
     }
 
-    public Class<? extends Module> getNodeClass() {
+    public Class<? extends Operator> getNodeClass() {
       return this.nodeClass;
     }
 
@@ -250,7 +250,7 @@ public class DAG implements Serializable, DAGConstants {
       return properties;
     }
 
-    public Operator setProperty(String name, String value) {
+    public OperatorInstance setProperty(String name, String value) {
       properties.put(name, value);
       return this;
     }
@@ -280,12 +280,12 @@ public class DAG implements Serializable, DAGConstants {
 
   }
 
-  public Operator addOperator(String id, Class<? extends Module> moduleClass) {
+  public OperatorInstance addOperator(String id, Class<? extends Operator> moduleClass) {
     if (nodes.containsKey(id)) {
       throw new IllegalArgumentException("duplicate node id: " + nodes.get(id));
     }
 
-    Operator decl = new Operator(id, moduleClass);
+    OperatorInstance decl = new OperatorInstance(id, moduleClass);
     rootNodes.add(decl);
     nodes.put(id, decl);
 
@@ -321,15 +321,15 @@ public class DAG implements Serializable, DAGConstants {
     return this.streams.get(id);
   }
 
-  public List<Operator> getRootOperators() {
+  public List<OperatorInstance> getRootOperators() {
      return Collections.unmodifiableList(this.rootNodes);
   }
 
-  public Collection<Operator> getAllOperators() {
+  public Collection<OperatorInstance> getAllOperators() {
     return Collections.unmodifiableCollection(this.nodes.values());
   }
 
-  public Operator getOperator(String nodeId) {
+  public OperatorInstance getOperator(String nodeId) {
     return this.nodes.get(nodeId);
   }
 
@@ -367,7 +367,7 @@ public class DAG implements Serializable, DAGConstants {
    */
   public Set<String> getClassNames() {
     Set<String> classNames = new HashSet<String>();
-    for (Operator n : this.nodes.values()) {
+    for (OperatorInstance n : this.nodes.values()) {
       String className = n.nodeClass.getName();
       if (className != null) {
         classNames.add(className);
@@ -387,13 +387,13 @@ public class DAG implements Serializable, DAGConstants {
    */
   public void validate() {
     // clear visited on all operators
-    for (Operator n : nodes.values()) {
+    for (OperatorInstance n : nodes.values()) {
       n.nindex = null;
       n.lowlink = null;
     }
 
     List<List<String>> cycles = new ArrayList<List<String>>();
-    for (Operator n : nodes.values()) {
+    for (OperatorInstance n : nodes.values()) {
       if (n.nindex == null) {
         findStronglyConnected(n, cycles);
       }
@@ -418,7 +418,7 @@ public class DAG implements Serializable, DAGConstants {
    * @param n
    * @param cycles
    */
-  public void findStronglyConnected(Operator n, List<List<String>> cycles) {
+  public void findStronglyConnected(OperatorInstance n, List<List<String>> cycles) {
     n.nindex = nodeIndex;
     n.lowlink = nodeIndex;
     nodeIndex++;
@@ -427,7 +427,7 @@ public class DAG implements Serializable, DAGConstants {
     // depth first successors traversal
     for (StreamDecl downStream : n.outputStreams.values()) {
       for (InputPort sink : downStream.sinks) {
-        Operator successor = sink.node;
+        OperatorInstance successor = sink.node;
         if (successor == null) {
           continue;
         }
@@ -449,7 +449,7 @@ public class DAG implements Serializable, DAGConstants {
     if (n.lowlink.equals(n.nindex)) {
       List<String> connectedIds = new ArrayList<String>();
       while (!stack.isEmpty()) {
-        Operator n2 = stack.pop();
+        OperatorInstance n2 = stack.pop();
         connectedIds.add(n2.id);
         if (n2 == n) {
           break; // collected all connected operators

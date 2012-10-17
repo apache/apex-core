@@ -20,7 +20,7 @@ import org.junit.Test;
 import com.malhartech.dag.DAG;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.Tuple;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
@@ -75,9 +75,9 @@ public class StreamingContainerManagerTest {
 
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
-    Operator node3 = dag.addOperator("node3", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance node3 = dag.addOperator("node3", GenericTestModule.class);
 
     dag.addStream("n1n2")
       .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
@@ -148,9 +148,9 @@ public class StreamingContainerManagerTest {
   public void testStaticPartitioning() {
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
-    Operator mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
     DAG.StreamDecl n1n2 = dag.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
@@ -217,9 +217,9 @@ public class StreamingContainerManagerTest {
   public void testBufferServerAssignment() {
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
-    Operator node3 = dag.addOperator("node3", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance node3 = dag.addOperator("node3", GenericTestModule.class);
 
     dag.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
@@ -260,11 +260,11 @@ public class StreamingContainerManagerTest {
 
   }
 
-  private boolean containsNodeContext(StreamingContainerContext scc, Operator nodeConf) {
+  private boolean containsNodeContext(StreamingContainerContext scc, OperatorInstance nodeConf) {
     return getNodeDeployInfo(scc, nodeConf) != null;
   }
 
-  private static ModuleDeployInfo getNodeDeployInfo(StreamingContainerContext scc, Operator nodeConf) {
+  private static ModuleDeployInfo getNodeDeployInfo(StreamingContainerContext scc, OperatorInstance nodeConf) {
     for (ModuleDeployInfo ndi : scc.nodeList) {
       if (nodeConf.getId().equals(ndi.declaredId)) {
         return ndi;

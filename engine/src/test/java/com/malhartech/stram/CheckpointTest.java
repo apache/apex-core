@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -74,7 +74,7 @@ public class CheckpointTest
     mses.tick(1); // begin window 1
 
     Assert.assertEquals("number operators", 1, container.getNodes().size());
-    Module node = container.getNode(cc.nodeList.get(0).id);
+    Operator node = container.getNode(cc.nodeList.get(0).id);
     ModuleContext context = container.getNodeContext(cc.nodeList.get(0).id);
 
     Assert.assertNotNull("node deployed " + cc.nodeList.get(0), node);
@@ -136,8 +136,8 @@ public class CheckpointTest
   {
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2")
             .setSource(node1.getOutput(GenericTestModule.OUTPUT1))

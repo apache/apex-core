@@ -5,7 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.dag.Component;
-import com.malhartech.dag.Module;
+import com.malhartech.dag.Operator;
 import com.malhartech.dag.ModuleConfiguration;
 import com.malhartech.dag.ModuleContext;
 import com.malhartech.dag.ModuleSerDe;
@@ -70,7 +70,7 @@ public class StramChild
   private final String containerId;
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
-  protected final Map<String, Module> nodes = new ConcurrentHashMap<String, Module>();
+  protected final Map<String, Operator> nodes = new ConcurrentHashMap<String, Operator>();
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
@@ -254,7 +254,7 @@ public class StramChild
 
   private synchronized void disconnectNode(String nodeid)
   {
-    Module node = nodes.get(nodeid);
+    Operator node = nodes.get(nodeid);
     disconnectWindowGenerator(nodeid, node);
 
     Set<String> removableSocketOutputStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
@@ -281,7 +281,7 @@ public class StramChild
         for (String sinkId: sinkIds) {
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-            Module n = nodes.get(nodeport[0]);
+            Operator n = nodes.get(nodeport[0]);
             n.connect(nodeport[1], null);
           }
           else if (stream.isMultiSinkCapable()) {
@@ -358,7 +358,7 @@ public class StramChild
     }
   }
 
-  private void disconnectWindowGenerator(String nodeid, Module node)
+  private void disconnectWindowGenerator(String nodeid, Operator node)
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
@@ -385,9 +385,9 @@ public class StramChild
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
-    HashMap<String, Module> toUndeploy = new HashMap<String, Module>();
+    HashMap<String, Operator> toUndeploy = new HashMap<String, Operator>();
     for (ModuleDeployInfo ndi: nodeList) {
-      Module pair = nodes.get(ndi.id);
+      Operator pair = nodes.get(ndi.id);
       if (pair == null) {
         throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
       }
@@ -452,7 +452,7 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all operators
-      for (Map.Entry<String, Module> e: nodes.entrySet()) {
+      for (Map.Entry<String, Operator> e: nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
@@ -562,7 +562,7 @@ public class StramChild
       case CHECKPOINT:
         context.request(new ModuleContext.ModuleRequest() {
           @Override
-          public void execute(Module module, String id, long windowId) throws IOException {
+          public void execute(Operator module, String id, long windowId) throws IOException {
             new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, module, StramUtils.getNodeSerDe(null));
             // record last backup window id for heartbeat
             StramChild.this.backupInfo.put(id, windowId);
@@ -609,7 +609,7 @@ public class StramChild
         else {
           foreignObject = moduleSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
-        nodes.put(ndi.id, (Module)foreignObject);
+        nodes.put(ndi.id, (Operator)foreignObject);
       }
       catch (Exception e) {
         logger.error(e.getLocalizedMessage());
@@ -628,7 +628,7 @@ public class StramChild
      * the Buffer Server port to avoid collision and at the same time keep track of these buffer streams.
      */
     for (ModuleDeployInfo ndi: nodeList) {
-      Module node = nodes.get(ndi.id);
+      Operator node = nodes.get(ndi.id);
 
       for (ModuleDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
         String sourceIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
@@ -789,7 +789,7 @@ public class StramChild
         }
       }
       else {
-        Module node = nodes.get(ndi.id);
+        Operator node = nodes.get(ndi.id);
 
         for (ModuleDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
           String sourceIdentifier = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
@@ -857,14 +857,14 @@ public class StramChild
                * Lets wire the MuxStream to upstream node.
                */
               String[] nodeport = sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR);
-              Module upstreamNode = nodes.get(nodeport[0]);
+              Operator upstreamNode = nodes.get(nodeport[0]);
               Sink muxSink = stream.connect(Component.INPUT, upstreamNode);
               upstreamNode.connect(nodeport[1], muxSink);
 
               Sink existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-                Module anotherNode = nodes.get(np[0]);
+                Operator anotherNode = nodes.get(np[0]);
                 existingSink = anotherNode.connect(np[1], stream);
 
                 /*
@@ -910,7 +910,7 @@ public class StramChild
       for (ModuleDeployInfo ndi: inputNodes) {
         generators.put(ndi.id, windowGenerator);
 
-        Module node = nodes.get(ndi.id);
+        Operator node = nodes.get(ndi.id);
         Sink s = node.connect(Component.INPUT, windowGenerator);
         windowGenerator.connect(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT),
                                 ndi.checkpointWindowId > 0
@@ -959,7 +959,7 @@ public class StramChild
 
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
     for (final ModuleDeployInfo ndi: nodeList) {
-      final Module node = nodes.get(ndi.id);
+      final Operator node = nodes.get(ndi.id);
       final String nodeInternalId = ndi.id.concat(":").concat(ndi.declaredId);
       assert (!activeNodes.containsKey(ndi.id));
       new Thread(nodeInternalId)

@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractBaseModule implements Module
+public abstract class AbstractBaseModule implements Operator
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractBaseModule.class);
   protected transient String id;
@@ -24,13 +24,13 @@ public abstract class AbstractBaseModule implements Module
   protected transient int processedTupleCount;
   protected transient int generatedTupleCount;
   @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile transient Sink[] sinks = NO_SINKS;
+  protected volatile transient Sink[] sinks = Sink.NO_SINKS;
   protected transient boolean alive;
 
   // optimize the performance of this method.
   protected PortAnnotation getPort(String id)
   {
-    Class<? extends Module> clazz = this.getClass();
+    Class<? extends Operator> clazz = this.getClass();
     ModuleAnnotation na = clazz.getAnnotation(ModuleAnnotation.class);
     if (na != null) {
       PortAnnotation[] ports = na.ports();
@@ -58,7 +58,7 @@ public abstract class AbstractBaseModule implements Module
 
   public void deactivateSinks()
   {
-    sinks = NO_SINKS;
+    sinks = Sink.NO_SINKS;
     outputs.clear();
   }
 

@@ -24,9 +24,9 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.dag.DAG;
 import com.malhartech.dag.DAG.InputPort;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.DAG.StreamDecl;
-import com.malhartech.dag.Module;
+import com.malhartech.dag.Operator;
 import com.malhartech.dag.ModuleSerDe;
 import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
@@ -53,7 +53,7 @@ import com.malhartech.util.Pair;
  * The tasks include<br>
  * Provisioning operators one container at a time. Each container gets assigned the operators, streams and its context<br>
  * Monitors run time operations including heartbeat protocol and node status<br>
- * Module recovery and restart<br>
+ * Operator recovery and restart<br>
  * <br>
  *
  */
@@ -227,13 +227,13 @@ public class StreamingContainerManager
    * @return {@link com.malhartech.stram.ModuleDeployInfo}
    *
    */
-  private ModuleDeployInfo createModuleDeployInfo(String dnodeId, Operator nodeDecl)
+  private ModuleDeployInfo createModuleDeployInfo(String dnodeId, OperatorInstance nodeDecl)
   {
     ModuleDeployInfo ndi = new ModuleDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
-      Module node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
+      Operator node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
       this.nodeSerDe.write(node, os);
       ndi.serializedNode = os.toByteArray();
       os.close();
@@ -507,7 +507,7 @@ public class StreamingContainerManager
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : operator.outputs) {
       for (InputPort targetPort : out.logicalStream.getSinks()) {
-        Operator lDownNode = targetPort.getNode();
+        OperatorInstance lDownNode = targetPort.getNode();
         if (lDownNode != null) {
           List<PTOperator> downNodes = plan.getOperators(lDownNode);
           for (PTOperator downNode : downNodes) {
@@ -550,7 +550,7 @@ public class StreamingContainerManager
    */
   private void updateCheckpoints() {
     Map<PTOperator, Long> visitedCheckpoints = new LinkedHashMap<PTOperator, Long>();
-    for (Operator logicalOperator : plan.getRootOperators()) {
+    for (OperatorInstance logicalOperator : plan.getRootOperators()) {
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator : operators) {

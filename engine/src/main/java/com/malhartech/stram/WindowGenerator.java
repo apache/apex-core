@@ -39,7 +39,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   private int windowWidthMillis; // Window size
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink[] sinks = NO_SINKS;
+  private volatile Sink[] sinks = Sink.NO_SINKS;
   private long currentWindowMillis;
   private long baseSeconds;
   private int windowId;
@@ -184,7 +184,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void deactivate()
   {
-    sinks = NO_SINKS;
+    sinks = Sink.NO_SINKS;
     ses.shutdown();
   }
 
@@ -203,16 +203,10 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
     else {
       outputs.put(id, component);
     }
-    if (sinks != NO_SINKS) {
+    if (sinks != Sink.NO_SINKS) {
       activateSinks();
     }
     return null;
-  }
-
-  @Override
-  public void process(Object payload)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @SuppressWarnings("SillyAssignment")

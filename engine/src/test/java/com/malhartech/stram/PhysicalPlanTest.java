@@ -6,7 +6,7 @@ package com.malhartech.stram;
 
 import com.malhartech.dag.DAG;
 import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -26,10 +26,10 @@ public class PhysicalPlanTest {
   public void testStaticPartitioning() {
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
 
-    Operator mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
+    OperatorInstance mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
     dag.addStream("n1n2")
       .setSerDeClass(TestStaticPartitioningSerDe.class)
@@ -45,7 +45,7 @@ public class PhysicalPlanTest {
     PhysicalPlan td = new PhysicalPlan(dag);
 
     Assert.assertEquals("number of containers", 2, td.getContainers().size());
-    Operator node2Decl = dag.getOperator(node2.getId());
+    OperatorInstance node2Decl = dag.getOperator(node2.getId());
     Assert.assertEquals("number partition instances", TestStaticPartitioningSerDe.partitions.length, td.getOperators(node2Decl).size());
   }
 
@@ -54,13 +54,13 @@ public class PhysicalPlanTest {
 
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
-    Operator node3 = dag.addOperator("node3", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    Operator notInlineNode = dag.addOperator("notInlineNode", GenericTestModule.class);
+    OperatorInstance notInlineNode = dag.addOperator("notInlineNode", GenericTestModule.class);
     // partNode has 2 inputs, inline must be ignored with partitioned input
-    Operator partNode = dag.addOperator("partNode", GenericTestModule.class);
+    OperatorInstance partNode = dag.addOperator("partNode", GenericTestModule.class);
 
     dag.addStream("n1Output1")
       .setInline(true)
@@ -86,8 +86,8 @@ public class PhysicalPlanTest {
     Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
     Assert.assertEquals("operators container 0", 3, deployer1.getContainers().get(0).operators.size());
 
-    Set<Operator> c1ExpNodes = Sets.newHashSet(dag.getOperator(node1.getId()), dag.getOperator(node2.getId()), dag.getOperator(node3.getId()));
-    Set<Operator> c1ActNodes = new HashSet<Operator>();
+    Set<OperatorInstance> c1ExpNodes = Sets.newHashSet(dag.getOperator(node1.getId()), dag.getOperator(node2.getId()), dag.getOperator(node3.getId()));
+    Set<OperatorInstance> c1ActNodes = new HashSet<OperatorInstance>();
     for (PTOperator pNode : deployer1.getContainers().get(0).operators) {
       c1ActNodes.add(pNode.getLogicalNode());
     }
@@ -109,9 +109,9 @@ public class PhysicalPlanTest {
 
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
-    Operator node3 = dag.addOperator("node3", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance node3 = dag.addOperator("node3", GenericTestModule.class);
 
     dag.addStream("n1Output1")
       .setInline(true)

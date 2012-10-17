@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.dag.DAG;
 import com.malhartech.dag.SerDe;
 import com.malhartech.dag.DAG.InputPort;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.DAG.StreamDecl;
 
 /**
@@ -167,7 +167,7 @@ public class PhysicalPlan {
    *
    */
   public static class PTOperator extends PTComponent {
-    DAG.Operator logicalNode;
+    DAG.OperatorInstance logicalNode;
     List<PTInput> inputs;
     List<PTOutput> outputs;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
@@ -176,7 +176,7 @@ public class PhysicalPlan {
      *
      * @return Operator
      */
-    public Operator getLogicalNode() {
+    public OperatorInstance getLogicalNode() {
       return this.logicalNode;
     }
 
@@ -228,7 +228,7 @@ public class PhysicalPlan {
     }
   }
 
-  private final Map<Operator, List<PTOperator>> deployedOperators = new LinkedHashMap<Operator, List<PTOperator>>();
+  private final Map<OperatorInstance, List<PTOperator>> deployedOperators = new LinkedHashMap<OperatorInstance, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
   private int maxContainers = 1;
@@ -255,15 +255,15 @@ public class PhysicalPlan {
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing for {} containers.", this.maxContainers);
 
-    Map<Operator, Set<PTOperator>> inlineGroups = new HashMap<Operator, Set<PTOperator>>();
+    Map<OperatorInstance, Set<PTOperator>> inlineGroups = new HashMap<OperatorInstance, Set<PTOperator>>();
 
-    Stack<Operator> pendingNodes = new Stack<Operator>();
-    for (Operator n : dag.getAllOperators()) {
+    Stack<OperatorInstance> pendingNodes = new Stack<OperatorInstance>();
+    for (OperatorInstance n : dag.getAllOperators()) {
       pendingNodes.push(n);
     }
 
     while (!pendingNodes.isEmpty()) {
-      Operator n = pendingNodes.pop();
+      OperatorInstance n = pendingNodes.pop();
 
       if (inlineGroups.containsKey(n)) {
         // node already processed as upstream dependency
@@ -336,7 +336,7 @@ public class PhysicalPlan {
 
     // assign operators to containers
     int groupCount = 0;
-    for (Map.Entry<Operator, List<PTOperator>> e : deployedOperators.entrySet()) {
+    for (Map.Entry<OperatorInstance, List<PTOperator>> e : deployedOperators.entrySet()) {
       for (PTOperator node : e.getValue()) {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
@@ -359,7 +359,7 @@ public class PhysicalPlan {
 
   private final AtomicInteger nodeSequence = new AtomicInteger();
 
-  private PTOperator createPTOperator(Operator nodeDecl, byte[] partition, int instanceCount) {
+  private PTOperator createPTOperator(OperatorInstance nodeDecl, byte[] partition, int instanceCount) {
 
     PTOperator pOperator = new PTOperator();
     pOperator.logicalNode = nodeDecl;
@@ -414,11 +414,11 @@ public class PhysicalPlan {
     return this.containers;
   }
 
-  protected List<PTOperator> getOperators(Operator logicalOperator) {
+  protected List<PTOperator> getOperators(OperatorInstance logicalOperator) {
     return this.deployedOperators.get(logicalOperator);
   }
 
-  protected List<Operator> getRootOperators() {
+  protected List<OperatorInstance> getRootOperators() {
     return dag.getRootOperators();
   }
 
