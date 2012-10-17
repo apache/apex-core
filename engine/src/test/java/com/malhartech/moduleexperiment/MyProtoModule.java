@@ -4,21 +4,24 @@
  */
 package com.malhartech.moduleexperiment;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
 
 /**
  * Example module with a few ports and configuration properties.
  */
-public class MyProtoModule<T extends Object> extends ProtoModule {
+public class MyProtoModule<T extends Object> extends BaseOperator {
 
   /**
    * Example for (runtime) typed input port.
    * The type information is retained at runtime and can be used for validation by the framework.
    */
   @ProtoInputPortFieldAnnotation(name="port1")
-  final public transient InputPort<String> inport1 = new InputPort<String>(this) {
+  final public transient InputPort<String> inport1 = new DefaultInputPort<String>(this) {
     @Override
     final public void process(String payload) {
     }
@@ -29,7 +32,7 @@ public class MyProtoModule<T extends Object> extends ProtoModule {
    * The port is untyped because it is using the enclosing classes type parameter.
    */
   @ProtoInputPortFieldAnnotation(name="port2")
-  final public transient InputPort<T> inport2 = new InputPort<T>(this) {
+  final public transient InputPort<T> inport2 = new DefaultInputPort<T>(this) {
     @Override
     final public void process(T payload) {
       /*
@@ -49,10 +52,10 @@ public class MyProtoModule<T extends Object> extends ProtoModule {
   };
 
   @ProtoOutputPortFieldAnnotation(name="outport1")
-  final transient OutputPort<Map<String, T>> outport1 = new OutputPort<Map<String,T>>(this);
+  final transient DefaultOutputPort<Map<String, T>> outport1 = new DefaultOutputPort<Map<String,T>>(this);
 
   @ProtoOutputPortFieldAnnotation(name="outport2")
-  final transient OutputPort<byte[]> outport2 = new OutputPort<byte[]>(this);
+  final transient DefaultOutputPort<byte[]> outport2 = new DefaultOutputPort<byte[]>(this);
 
   // just to try it out
   @ProtoInputPortProcessAnnotation(name="methodAnnotatedPort1")
@@ -60,7 +63,6 @@ public class MyProtoModule<T extends Object> extends ProtoModule {
 
   }
 
-  @Override
   public void processGeneric(Object payload) {
   }
 

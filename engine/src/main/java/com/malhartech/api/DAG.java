@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.moduleexperiment;
+package com.malhartech.api;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -35,25 +35,27 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.dag.DAGConstants;
 import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.SerDe;
+import com.malhartech.moduleexperiment.ProtoInputPortFieldAnnotation;
+import com.malhartech.moduleexperiment.ProtoOutputPortFieldAnnotation;
 import com.malhartech.stram.DAGPropertiesBuilder;
 
 /**
- * ProtoDAG contains the logical declarations of operators and streams.
+ * DAG contains the logical declarations of operators and streams.
  * It will be serialized and deployed to the cluster, where it is translated into the physical plan.
  */
-public class ProtoDAG implements Serializable, DAGConstants {
+public class DAG implements Serializable, DAGConstants {
   private static final long serialVersionUID = -2099729915606048704L;
 
-  private static final Logger LOG = LoggerFactory.getLogger(ProtoDAG.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DAG.class);
 
   private final Map<String, StreamDecl> streams = new HashMap<String, StreamDecl>();
-  private final Map<String, Operator> nodes = new HashMap<String, Operator>();
-  private final List<Operator> rootNodes = new ArrayList<Operator>();
+  private final Map<String, OperatorWrapper> nodes = new HashMap<String, OperatorWrapper>();
+  private final List<OperatorWrapper> rootNodes = new ArrayList<OperatorWrapper>();
 
   private final ExternalizableConf confHolder;
 
   private transient int nodeIndex = 0; // used for cycle validation
-  private transient Stack<Operator> stack; // used for cycle validation
+  private transient Stack<OperatorWrapper> stack; // used for cycle validation
 
   public static class ExternalizableConf implements Externalizable {
     private final Configuration conf;
@@ -78,18 +80,18 @@ public class ProtoDAG implements Serializable, DAGConstants {
   }
 
   public static class ExternalizableModule implements Externalizable {
-    private ProtoModule module;
+    private Operator module;
     // since the ports are transient, we cannot serialize them
-    private final Map<ProtoModule.InputPort<?>, InputPortMeta> inPortMap = new HashMap<ProtoModule.InputPort<?>, InputPortMeta>();
-    private final Map<ProtoModule.OutputPort<?>, OutputPortMeta> outPortMap = new HashMap<ProtoModule.OutputPort<?>, OutputPortMeta>();
+    private final Map<Operator.InputPort<?>, InputPortMeta> inPortMap = new HashMap<Operator.InputPort<?>, InputPortMeta>();
+    private final Map<Operator.OutputPort<?>, OutputPortMeta> outPortMap = new HashMap<Operator.OutputPort<?>, OutputPortMeta>();
 
-    private void set(ProtoModule module) {
+    private void set(Operator module) {
       this.module = module;
       mapInputPorts(this, inPortMap);
       mapOutputPorts(this,  outPortMap);
     }
 
-    private ProtoModule get() {
+    private Operator get() {
       return this.module;
     }
 
@@ -99,7 +101,7 @@ public class ProtoDAG implements Serializable, DAGConstants {
       byte[] bytes = new byte[len];
       in.read(bytes);
       ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-      set((ProtoModule)new DefaultModuleSerDe().read(bis));
+      set((Operator)new DefaultModuleSerDe().read(bis));
       bis.close();
     }
 
@@ -115,11 +117,11 @@ public class ProtoDAG implements Serializable, DAGConstants {
   }
 
 
-  public ProtoDAG() {
+  public DAG() {
     this.confHolder = new ExternalizableConf(new Configuration(false));
   }
 
-  public ProtoDAG(Configuration conf) {
+  public DAG(Configuration conf) {
     this.confHolder = new ExternalizableConf(conf);
   }
 
@@ -202,8 +204,8 @@ public class ProtoDAG implements Serializable, DAGConstants {
       return source;
     }
 
-    public StreamDecl setSource(ProtoModule.OutputPort<?> port) {
-      Operator op = getOperator(port.module);
+    public StreamDecl setSource(Operator.OutputPort<?> port) {
+      OperatorWrapper op = getOperatorWrapper(port.getOperator());
       OutputPortMeta portMeta = op.moduleHolder.outPortMap.get(port);
       if (portMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + port);
@@ -221,8 +223,8 @@ public class ProtoDAG implements Serializable, DAGConstants {
       return sinks;
     }
 
-    public StreamDecl addSink(ProtoModule.InputPort<?> port) {
-      Operator op = getOperator(port.module);
+    public StreamDecl addSink(Operator.InputPort<?> port) {
+      OperatorWrapper op = getOperatorWrapper(port.getOperator());
       InputPortMeta portMeta = op.moduleHolder.inPortMap.get(port);
       if (portMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + port);
@@ -239,69 +241,49 @@ public class ProtoDAG implements Serializable, DAGConstants {
 
   }
 
-  public final class Operator/*<T extends ProtoModule>*/ implements Serializable {
+  private final class OperatorWrapper implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final Map<InputPortMeta, StreamDecl> inputStreams = new HashMap<InputPortMeta, StreamDecl>();
     private final Map<OutputPortMeta, StreamDecl> outputStreams = new HashMap<OutputPortMeta, StreamDecl>();
-    private final Map<String, String> properties = new HashMap<String, String>();
+//    private final Map<String, String> properties = new HashMap<String, String>();
     private final ExternalizableModule moduleHolder;
     private final String id;
 
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
-    private Operator(String id, ProtoModule module) {
+    private OperatorWrapper(Operator module) {
       this.moduleHolder = new ExternalizableModule();
       this.moduleHolder.set(module);
-      this.id = id;
+      this.id = module.getName();
     }
 
-    public String getId() {
-      return id;
-    }
+//    public Map<InputPortMeta, StreamDecl> getInputStreams() {
+//      return this.inputStreams;
+//    }
 
-    public InputPortMeta getInput(ProtoModule.InputPort<?> port) {
-      InputPortMeta meta;
-      if ((meta = moduleHolder.inPortMap.get(port)) == null) {
-        throw new IllegalArgumentException("Invalid port reference " + port + " valid ports are " + moduleHolder.inPortMap);
-      }
-      return meta;
-    }
+//    public Map<OutputPortMeta, StreamDecl> getOutputStreams() {
+//      return this.outputStreams;
+//    }
 
-    public OutputPortMeta getOutput(ProtoModule.OutputPort<?> port) {
-      OutputPortMeta meta;
-      if ((meta = moduleHolder.outPortMap.get(port)) == null) {
-        throw new IllegalArgumentException("Invalid port reference " + port + " valid ports are " + moduleHolder.outPortMap);
-      }
-      return meta;
-    }
-
-    public Map<InputPortMeta, StreamDecl> getInputStreams() {
-      return this.inputStreams;
-    }
-
-    public Map<OutputPortMeta, StreamDecl> getOutputStreams() {
-      return this.outputStreams;
-    }
-
-    public ProtoModule getModule() {
+    public Operator getModule() {
       return this.moduleHolder.module;
     }
 
-    /**
+/*    *//**
      * Properties for the node.
      * @return Map<String, String>
-     */
+     *//*
     public Map<String, String> getProperties() {
       return properties;
     }
 
-    public Operator setProperty(String name, String value) {
+    public OperatorWrapper setProperty(String name, String value) {
       properties.put(name, value);
       return this;
     }
-
+*/
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
@@ -312,30 +294,30 @@ public class ProtoDAG implements Serializable, DAGConstants {
 
   }
 
-  public Operator addOperator(String id, ProtoModule module) {
-    if (nodes.containsKey(id)) {
-      throw new IllegalArgumentException("duplicate node id: " + nodes.get(id));
+  public OperatorWrapper addOperator(Operator module) {
+    if (nodes.containsKey(module.getName())) {
+      throw new IllegalArgumentException("duplicate node id: " + nodes.get(module.getName()));
     }
 
-    Operator decl = new Operator(id, module);
+    OperatorWrapper decl = new OperatorWrapper(module);
     rootNodes.add(decl);
-    nodes.put(id, decl);
+    nodes.put(module.getName(), decl);
 
     return decl;
   }
 
-  private Operator getOperator(ProtoModule module) {
+  private OperatorWrapper getOperatorWrapper(Operator module) {
     // TODO: cache mapping
-    for (Operator o : getAllOperators()) {
+    for (OperatorWrapper o : getAllOperators()) {
       if (o.moduleHolder.module == module) {
         return o;
       }
     }
     if (module.getName() == null) {
-      module.setName("node" + (getAllOperators().size()+1));
+      throw new IllegalArgumentException("Operator needs to have a name assigned: " + module);
     }
 
-    return addOperator(module.getName(), module);
+    return addOperator(module);
   }
 
   public StreamDecl addStream(String id) {
@@ -354,10 +336,10 @@ public class ProtoDAG implements Serializable, DAGConstants {
    * @param sinks
    * @return
    */
-  public StreamDecl addStream(String id, ProtoModule.OutputPort<?> source, ProtoModule.InputPort<?>... sinks) {
+  public StreamDecl addStream(String id, Operator.OutputPort<?> source, Operator.InputPort<?>... sinks) {
     StreamDecl s = addStream(id);
     s.setSource(source);
-    for (ProtoModule.InputPort<?> sink : sinks) {
+    for (Operator.InputPort<?> sink : sinks) {
       s.addSink(sink);
     }
     return s;
@@ -367,16 +349,16 @@ public class ProtoDAG implements Serializable, DAGConstants {
     return this.streams.get(id);
   }
 
-  public List<Operator> getRootOperators() {
+  public List<OperatorWrapper> getRootOperators() {
      return Collections.unmodifiableList(this.rootNodes);
   }
 
-  public Collection<Operator> getAllOperators() {
+  public Collection<OperatorWrapper> getAllOperators() {
     return Collections.unmodifiableCollection(this.nodes.values());
   }
 
   public Operator getOperator(String nodeId) {
-    return this.nodes.get(nodeId);
+    return this.nodes.get(nodeId).getModule();
   }
 
   public Configuration getConf() {
@@ -413,7 +395,7 @@ public class ProtoDAG implements Serializable, DAGConstants {
    */
   public Set<String> getClassNames() {
     Set<String> classNames = new HashSet<String>();
-    for (Operator n : this.nodes.values()) {
+    for (OperatorWrapper n : this.nodes.values()) {
       String className = n.getModule().getClass().getName();
       if (className != null) {
         classNames.add(className);
@@ -433,14 +415,14 @@ public class ProtoDAG implements Serializable, DAGConstants {
    */
   public void validate() {
     // clear visited on all operators
-    for (Operator n : nodes.values()) {
+    for (OperatorWrapper n : nodes.values()) {
       n.nindex = null;
       n.lowlink = null;
     }
-    stack = new Stack<Operator>();
+    stack = new Stack<OperatorWrapper>();
 
     List<List<String>> cycles = new ArrayList<List<String>>();
-    for (Operator n : nodes.values()) {
+    for (OperatorWrapper n : nodes.values()) {
       if (n.nindex == null) {
         findStronglyConnected(n, cycles);
       }
@@ -465,7 +447,7 @@ public class ProtoDAG implements Serializable, DAGConstants {
    * @param n
    * @param cycles
    */
-  public void findStronglyConnected(Operator n, List<List<String>> cycles) {
+  public void findStronglyConnected(OperatorWrapper n, List<List<String>> cycles) {
     n.nindex = nodeIndex;
     n.lowlink = nodeIndex;
     nodeIndex++;
@@ -474,7 +456,7 @@ public class ProtoDAG implements Serializable, DAGConstants {
     // depth first successors traversal
     for (StreamDecl downStream : n.outputStreams.values()) {
       for (InputPortMeta sink : downStream.sinks) {
-        Operator successor = getOperator(sink.node.get());
+        OperatorWrapper successor = getOperatorWrapper(sink.node.get());
         if (successor == null) {
           continue;
         }
@@ -496,7 +478,7 @@ public class ProtoDAG implements Serializable, DAGConstants {
     if (n.lowlink.equals(n.nindex)) {
       List<String> connectedIds = new ArrayList<String>();
       while (!stack.isEmpty()) {
-        Operator n2 = stack.pop();
+        OperatorWrapper n2 = stack.pop();
         connectedIds.add(n2.id);
         if (n2 == n) {
           break; // collected all connected operators
@@ -510,13 +492,13 @@ public class ProtoDAG implements Serializable, DAGConstants {
     }
   }
 
-  public static void write(ProtoDAG tplg, OutputStream os) throws IOException {
+  public static void write(DAG tplg, OutputStream os) throws IOException {
     ObjectOutputStream oos = new ObjectOutputStream(os);
     oos.writeObject(tplg);
   }
 
-  public static ProtoDAG read(InputStream is) throws IOException, ClassNotFoundException {
-    return (ProtoDAG)new ObjectInputStream(is).readObject();
+  public static DAG read(InputStream is) throws IOException, ClassNotFoundException {
+    return (DAG)new ObjectInputStream(is).readObject();
   }
 
   @Override
@@ -528,7 +510,7 @@ public class ProtoDAG implements Serializable, DAGConstants {
         toString();
   }
 
-  public static void mapOutputPorts(ExternalizableModule operator, Map<ProtoModule.OutputPort<?>, OutputPortMeta> metaPorts) {
+  public static void mapOutputPorts(ExternalizableModule operator, Map<Operator.OutputPort<?>, OutputPortMeta> metaPorts) {
     Field[] fields = operator.get().getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
@@ -540,15 +522,15 @@ public class ProtoDAG implements Serializable, DAGConstants {
           if (outPort == null) {
             throw new IllegalArgumentException("port is null " + field);
           }
-          if (!(outPort instanceof ProtoModule.OutputPort)) {
-            throw new IllegalArgumentException("port is not of type " + ProtoModule.OutputPort.class.getName());
+          if (!(outPort instanceof DefaultOutputPort)) {
+            throw new IllegalArgumentException("port is not of type " + DefaultOutputPort.class.getName());
           }
           OutputPortMeta metaPort = new OutputPortMeta();
           metaPort.node = operator;
           metaPort.fieldName = field.getName();
           metaPort.fieldDeclaringClass = field.getDeclaringClass();
           metaPort.portAnnotation = a;
-          metaPorts.put((ProtoModule.OutputPort<?>)outPort, metaPort);
+          metaPorts.put((DefaultOutputPort<?>)outPort, metaPort);
         } catch (IllegalAccessException e) {
           throw new RuntimeException(e);
         }
@@ -556,7 +538,7 @@ public class ProtoDAG implements Serializable, DAGConstants {
     }
   }
 
-  public static void mapInputPorts(ExternalizableModule operator, Map<ProtoModule.InputPort<?>, InputPortMeta> metaPorts) {
+  public static void mapInputPorts(ExternalizableModule operator, Map<Operator.InputPort<?>, InputPortMeta> metaPorts) {
     Field[] fields = operator.get().getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
@@ -568,15 +550,15 @@ public class ProtoDAG implements Serializable, DAGConstants {
           if (portObject == null) {
             throw new IllegalArgumentException("port is null " + field);
           }
-          if (!(portObject instanceof ProtoModule.InputPort)) {
-            throw new IllegalArgumentException("port is not of type " + ProtoModule.InputPort.class.getName());
+          if (!(portObject instanceof Operator.InputPort)) {
+            throw new IllegalArgumentException("port is not of type " + Operator.InputPort.class.getName());
           }
           InputPortMeta metaPort = new InputPortMeta();
           metaPort.node = operator;
           metaPort.fieldName = field.getName();
           metaPort.fieldDeclaringClass = field.getDeclaringClass();
           metaPort.portAnnotation = a;
-          metaPorts.put((ProtoModule.InputPort<?>)portObject, metaPort);
+          metaPorts.put((Operator.InputPort<?>)portObject, metaPort);
         } catch (IllegalAccessException e) {
           throw new RuntimeException(e);
         }
