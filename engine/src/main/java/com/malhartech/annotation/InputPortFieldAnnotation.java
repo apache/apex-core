@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.moduleexperiment;
+package com.malhartech.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -13,13 +13,13 @@ import java.lang.annotation.Target;
 
 /**
  *
- * Annotation definition for port types for Nodes<p>
+ * Annotation for input ports on streaming operators.<p>
  *
  */
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ProtoInputPortFieldAnnotation {
+public @interface InputPortFieldAnnotation {
 
   public String name();
 }

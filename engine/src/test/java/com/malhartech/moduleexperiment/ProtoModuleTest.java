@@ -22,6 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.TypeLiteral;
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
 import com.malhartech.api.DAG;
@@ -175,7 +177,7 @@ public class ProtoModuleTest {
 
     Field[] fields = module.getClass().getDeclaredFields();
     for (Field field : fields) {
-      ProtoInputPortFieldAnnotation a = field.getAnnotation(ProtoInputPortFieldAnnotation.class);
+      InputPortFieldAnnotation a = field.getAnnotation(InputPortFieldAnnotation.class);
       if (a != null && portName.equals(a.name())) {
         field.setAccessible(true);
 
@@ -197,7 +199,7 @@ public class ProtoModuleTest {
     Field[] fields = module.getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
-      ProtoOutputPortFieldAnnotation a = field.getAnnotation(ProtoOutputPortFieldAnnotation.class);
+      OutputPortFieldAnnotation a = field.getAnnotation(OutputPortFieldAnnotation.class);
       if (a != null && portName.equals(a.name())) {
         field.setAccessible(true);
         Object outPort = field.get(module);
