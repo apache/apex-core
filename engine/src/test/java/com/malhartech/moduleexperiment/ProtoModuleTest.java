@@ -22,12 +22,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.TypeLiteral;
+import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.api.Operator;
+import com.malhartech.api.DAG;
+import com.malhartech.api.Sink;
+import com.malhartech.api.Operator.InputPort;
 import com.malhartech.dag.DefaultModuleSerDe;
-import com.malhartech.dag.Sink;
 import com.malhartech.dag.TestSink;
-import com.malhartech.moduleexperiment.ProtoDAG.Operator;
-import com.malhartech.moduleexperiment.ProtoModule.InputPort;
-import com.malhartech.moduleexperiment.ProtoModule.OutputPort;
 
 /**
  *
@@ -125,7 +126,7 @@ public class ProtoModuleTest {
 
   @Test
   public void testDirectProcessCall() throws Exception {
-    ProtoModule module = MyProtoModule.class.newInstance();
+    MyProtoModule<?> module = MyProtoModule.class.newInstance();
     long startTimeMillis = System.currentTimeMillis();
     for (int i=0; i<callCount; i++) {
       module.processGeneric("hello");
@@ -170,7 +171,7 @@ public class ProtoModuleTest {
     LOG.debug(callCount + " dynamic method calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
   }
 
-  private static <T> ProtoModule.InputPort<T> getInputPortInterface(ProtoModule module, String portName, Class<T> portTypeClazz) throws Exception {
+  private static <T> Operator.InputPort<T> getInputPortInterface(Operator module, String portName, Class<T> portTypeClazz) throws Exception {
 
     Field[] fields = module.getClass().getDeclaredFields();
     for (Field field : fields) {
@@ -180,19 +181,19 @@ public class ProtoModuleTest {
 
         Object portObject = field.get(module);
         if (!(portObject instanceof InputPort)) {
-          throw new IllegalArgumentException("Port field " + field + " needs to be of type " + ProtoModule.InputPort.class + " but found " + portObject.getClass().getName());
+          throw new IllegalArgumentException("Port field " + field + " needs to be of type " + Operator.InputPort.class + " but found " + portObject.getClass().getName());
         }
 
         Type genericType = findTypeArgument(portObject.getClass(), InputPort.class);
         LOG.debug(portName + " type is: " + genericType);
 
-        return (ProtoModule.InputPort<T>)portObject;
+        return (Operator.InputPort<T>)portObject;
       }
     }
     throw new IllegalArgumentException("Port processor factory method not found in " + module + " for " + portName);
   }
 
-  private static void injectSink(ProtoModule module, String portName, Sink sink) throws Exception {
+  private static void injectSink(Operator module, String portName, Sink<Object> sink) throws Exception {
     Field[] fields = module.getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
@@ -203,10 +204,10 @@ public class ProtoModuleTest {
         if (outPort == null) {
           throw new IllegalArgumentException("port is null " + field);
         }
-        if (!(outPort instanceof OutputPort)) {
-          throw new IllegalArgumentException("port is not of type " + OutputPort.class.getName());
+        if (!(outPort instanceof DefaultOutputPort)) {
+          throw new IllegalArgumentException("port is not of type " + DefaultOutputPort.class.getName());
         }
-        ((OutputPort<?>)outPort).setSink(sink);
+        ((DefaultOutputPort<Object>)outPort).setSink(sink);
         return;
       }
     }
@@ -227,9 +228,10 @@ public class ProtoModuleTest {
     InputPort<String> port2 = getInputPortInterface(module, "port2", String.class);
 
     long startTimeMillis = System.currentTimeMillis();
+    Sink<String> s = port2.getSink();
     for (int i=0; i<callCount; i++) {
       //port1.process("hello");
-      port2.process("hello2");
+      s.process("hello2");
     }
     LOG.debug(callCount + " port interface calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
   }
@@ -242,7 +244,7 @@ public class ProtoModuleTest {
     InputPort<String> inport = getInputPortInterface(module, "port2", String.class);
 
     // inject (untyped) sink
-    Sink sink = new Sink() {
+    Sink<Object> sink = new Sink<Object>() {
       @Override
       public void process(Object payload) {
         LOG.debug("sink: " + payload);
@@ -251,7 +253,7 @@ public class ProtoModuleTest {
 
     injectSink(module, "outport1", sink);
 
-    inport.process("hello");
+    inport.getSink().process("hello");
 
   }
 
@@ -267,22 +269,23 @@ public class ProtoModuleTest {
   @Test
   public void testDAG() throws Exception {
 
-    ProtoDAG dag = new ProtoDAG();
+    DAG dag = new DAG();
 
     MyProtoModule<Object> m1 = new MyProtoModule<Object>();
-    MyProtoModule<Object> m2 = new MyProtoModule<Object>();
-    MyProtoModule<Object> m3 = new MyProtoModule<Object>();
-
     m1.setName("operator1");
-
-    m1.inport2.process("something");
-
-
     m1.setMyConfigField("someField");
+
+    m1.inport2.getSink().process("something");
+
+    MyProtoModule<Object> m2 = new MyProtoModule<Object>();
+    m2.setName("operator2");
+
+    MyProtoModule<Object> m3 = new MyProtoModule<Object>();
+    m3.setName("operator3");
 
     // module instances are added to teh DAG as ports are referenced
     // and establish module-ports relationship
-    dag.addOperator("operator1", m1);
+    dag.addOperator(m1);
     //Operator operator2 = dag.addOperator("operator2", m2);
     //Operator operator3 = dag.addOperator("operator3", m3);
 
@@ -293,16 +296,16 @@ public class ProtoModuleTest {
     dag.validate();
 
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-    ProtoDAG.write(dag, outStream);
+    DAG.write(dag, outStream);
     outStream.close();
 
     byte[] dagBytes = outStream.toByteArray();
     LOG.debug("dag bytes size: " + dagBytes.length);
-    ProtoDAG clonedDag = ProtoDAG.read(new ByteArrayInputStream(dagBytes));
+    DAG clonedDag = DAG.read(new ByteArrayInputStream(dagBytes));
     Assert.assertEquals(dag.getAllOperators().size(), clonedDag.getAllOperators().size());
     Operator clonedModule = clonedDag.getOperator("operator1");
     Assert.assertNotNull("", clonedModule);
-    Assert.assertEquals(""+m1.getMyConfigField(), m1.getMyConfigField(), ((MyProtoModule)clonedModule.getModule()).getMyConfigField());
+    Assert.assertEquals(""+m1.getMyConfigField(), m1.getMyConfigField(), ((MyProtoModule<?>)clonedModule).getMyConfigField());
     clonedDag.validate();
   }
 
@@ -313,11 +316,11 @@ public class ProtoModuleTest {
     node.setMultiplyBy(2);
 
     TestSink<HashMap<String, Number>> testSink = new TestSink<HashMap<String, Number>>();
-    node.outportQuotient.setSink(testSink);
+//    node.outportQuotient.setSink(testSink);
 
     LOG.debug("type inportNumerator: " + findTypeArgument(node.inportNumerator.getClass(), InputPort.class));
     LOG.debug("type inportDenominator: " + findTypeArgument(node.inportDenominator.getClass(), InputPort.class));
-    LOG.debug("type outportQuotient: " + findTypeArgument(node.outportQuotient.getClass(), OutputPort.class));
+    LOG.debug("type outportQuotient: " + findTypeArgument(node.outportQuotient.getClass(), DefaultOutputPort.class));
 
     HashMap<String, Number> ninput = null;
     HashMap<String, Number> dinput = null;
@@ -329,11 +332,11 @@ public class ProtoModuleTest {
       ninput.put("a", 2);
       ninput.put("b", 20);
       ninput.put("c", 1000);
-      node.inportNumerator.process(ninput);
+//      node.inportNumerator.process(ninput);
       dinput.put("a", 2);
       dinput.put("b", 40);
       dinput.put("c", 500);
-      node.inportDenominator.process(dinput);
+//      node.inportDenominator.process(dinput);
     }
     node.endWindow();
     LOG.debug("output tuples: " + testSink.collectedTuples);

@@ -4,13 +4,17 @@
  */
 package com.malhartech.moduleexperiment;
 
-import com.malhartech.dag.FailedOperationException;
-import com.malhartech.dag.ModuleConfiguration;
-
 import java.util.HashMap;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.dag.FailedOperationException;
+import com.malhartech.dag.ModuleConfiguration;
 
 /**
  *
@@ -39,12 +43,12 @@ import org.slf4j.LoggerFactory;
  * @author amol<br>
  *
  */
-public class ProtoArithmeticQuotient extends ProtoModule
+public class ProtoArithmeticQuotient extends BaseOperator
 {
   private static Logger LOG = LoggerFactory.getLogger(ProtoArithmeticQuotient.class);
 
   @ProtoInputPortFieldAnnotation(name="numerator")
-  final public transient InputPort<HashMap<String, Number>> inportNumerator = new InputPort<HashMap<String, Number>>(this) {
+  final public transient InputPort<HashMap<String, Number>> inportNumerator = new DefaultInputPort<HashMap<String, Number>>(this) {
     @Override
     final public void process(HashMap<String, Number> payload) {
       processInternal(numerators, payload);
@@ -52,16 +56,16 @@ public class ProtoArithmeticQuotient extends ProtoModule
   };
 
   @ProtoInputPortFieldAnnotation(name="denominator")
-  final public transient InputPort<HashMap<String, Number>> inportDenominator = new InputPort<HashMap<String, Number>>(this) {
+  final public transient InputPort<HashMap<String, Number>> inportDenominator = new DefaultInputPort<HashMap<String, Number>>(this) {
     @Override
     final public void process(HashMap<String, Number> payload) {
       processInternal(denominators, payload);
     }
   };
 
-  // Note that when not extending OutputPort we won't have the type info at runtime
+  // Note that when not extending DefaultOutputPort we won't have the type info at runtime
   @ProtoOutputPortFieldAnnotation(name="quotient")
-  final transient OutputPort<HashMap<String, Number> > outportQuotient = new OutputPort<HashMap<String, Number>>(this) {};
+  final transient DefaultOutputPort<HashMap<String, Number> > outportQuotient = new DefaultOutputPort<HashMap<String, Number>>(this) {};
 
   private int mult_by = 1;
   private final HashMap<String, Number> numerators = new HashMap<String, Number>();
