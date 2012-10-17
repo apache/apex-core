@@ -60,7 +60,7 @@ public interface Operator {
    * Output ports deliver data produced by a module to a stream, abstracted by
    * Sink and injected by the execution engine at deployment time. Ports are
    * declared as annotated fields in the module. The interface should be
-   * implemented by a non parameterized class to make the type parameter are
+   * implemented by a non parameterized class to make the type parameter
    * available at runtime for validation.
    *
    * @param <T>
@@ -72,6 +72,15 @@ public interface Operator {
      * @param s
      */
     public void setSink(Sink<T> s);
+
+    /**
+     * Merge tuples emitted by multiple upstream instances of the enclosing
+     * module (partitioning or load balancing).
+     *
+     * @param tuple
+     */
+    public void merge(T tuple);
+
   }
 
 }

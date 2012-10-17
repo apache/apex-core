@@ -5,27 +5,27 @@
 package com.malhartech.api;
 
 /**
- * Output ports are declared as annotated typed fields by the module. The
- * module processing logic simply calls emit on the port object. Output ports
+ * Output ports are declared as annotated typed fields by the operator. The
+ * operator processing logic simply calls emit on the port object. Output ports
  * also define how output from replicated operators is merged.
  *
  * @param <T>
  */
 public class DefaultOutputPort<T>  implements Operator.OutputPort<T> {
-  private final Operator module;
+  private final Operator operator;
   private transient Sink<T> sink;
 
   public DefaultOutputPort(Operator module) {
-    this.module = module;
+    this.operator = module;
   }
 
   @Override
   final public Operator getOperator() {
-    return module;
+    return operator;
   }
 
-  final public void emit(T payload) {
-    sink.process(payload);
+  final public void emit(T tuple) {
+    sink.process(tuple);
   }
 
   /**
@@ -51,8 +51,9 @@ public class DefaultOutputPort<T>  implements Operator.OutputPort<T> {
    *
    * @param o
    */
-  public void merge(T o) {
-    sink.process(o);
+  @Override
+  public void merge(T tuple) {
+    sink.process(tuple);
   }
 
 }
