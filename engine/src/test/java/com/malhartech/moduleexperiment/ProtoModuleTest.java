@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.inject.TypeLiteral;
 import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.Sink;
 import com.malhartech.dag.TestSink;
@@ -339,5 +340,13 @@ public class ProtoModuleTest {
 
   }
 
+  @Test
+  public void testTypeLiteral() throws Exception {
+    TypeLiteral<Map<Integer, String>> mapType
+        = new TypeLiteral<Map<Integer, String>>() {};
+    TypeLiteral<?> keySetType
+        = mapType.getReturnType(Map.class.getMethod("keySet"));
+    System.out.println(keySetType);
+  }
 
 }

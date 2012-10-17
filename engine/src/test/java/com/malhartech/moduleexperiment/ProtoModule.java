@@ -78,6 +78,7 @@ public abstract class ProtoModule {
      * @param o
      */
     public void merge(T o) {
+      sink.process(o);
     }
 
   }

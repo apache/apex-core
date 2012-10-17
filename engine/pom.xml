@@ -82,6 +82,17 @@
       <artifactId>malhar-bufferserver</artifactId>
       <version>${project.version}</version>
     </dependency>
+
+	<dependency>
+	    <groupId>org.apache.bval</groupId>
+	    <artifactId>bval-jsr303</artifactId>
+	    <version>0.5</version>
+	</dependency>
+    <dependency>
+        <groupId>javax.validation</groupId>
+        <artifactId>validation-api</artifactId>
+        <version>1.0.0.GA</version>
+    </dependency>
   </dependencies>
 
 
