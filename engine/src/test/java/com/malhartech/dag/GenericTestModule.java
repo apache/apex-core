@@ -4,30 +4,42 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.Module;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
 
 /**
  * Module for constructing unit test DAG.
  * Test should reference the ports defined using the constants.
  */
-@ModuleAnnotation(
-    ports = {
-        @PortAnnotation(name = GenericTestModule.INPUT1,  type = PortType.INPUT),
-        @PortAnnotation(name = GenericTestModule.INPUT2,  type = PortType.INPUT),
-        @PortAnnotation(name = GenericTestModule.OUTPUT1, type = PortType.OUTPUT)
-    }
-)
-public class GenericTestModule extends Module {
-  public static final String INPUT1 = "input1";
-  public static final String INPUT2 = "input2";
+public class GenericTestModule extends BaseOperator {
   public static final String OUTPUT1 = "output1";
 
   private static final Logger LOG = LoggerFactory.getLogger(GenericTestModule.class);
+
+  @InputPortFieldAnnotation(name="input1")
+  final public transient InputPort<Object> inport1 = new DefaultInputPort<Object>(this) {
+    @Override
+    final public void process(Object payload) {
+      processInternal(payload);
+    }
+  };
+
+  @InputPortFieldAnnotation(name="input2")
+  final public transient InputPort<Object> inport2 = new DefaultInputPort<Object>(this) {
+    @Override
+    final public void process(Object payload) {
+      processInternal(payload);
+    }
+  };
+
+  @OutputPortFieldAnnotation(name="outport1")
+  final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
 
   private String emitFormat;
 
@@ -59,18 +71,12 @@ public class GenericTestModule extends Module {
     this.emitFormat = emitFormat;
   }
 
-  @Override
-  public void process(Object o) {
+  private void processInternal(Object o) {
     LOG.debug("Got some work: " + o);
     if (emitFormat != null) {
       o = String.format(emitFormat, o);
     }
-    emit(o);
+    outport1.emit(o);
   }
 
-  @Override
-  public void handleIdleTimeout()
-  {
-//    deactivate();
-  }
 }

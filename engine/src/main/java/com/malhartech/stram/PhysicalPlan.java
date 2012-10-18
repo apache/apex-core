@@ -22,11 +22,10 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.DAG;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.dag.SerDe;
-import com.malhartech.dag.DAG.InputPort;
-import com.malhartech.dag.DAG.OperatorInstance;
-import com.malhartech.dag.DAG.StreamDecl;
+import com.malhartech.api.DAG.StreamDecl;
 
 /**
  *
@@ -167,7 +166,7 @@ public class PhysicalPlan {
    *
    */
   public static class PTOperator extends PTComponent {
-    DAG.OperatorInstance logicalNode;
+    DAG.OperatorWrapper logicalNode;
     List<PTInput> inputs;
     List<PTOutput> outputs;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
@@ -176,7 +175,7 @@ public class PhysicalPlan {
      *
      * @return Operator
      */
-    public OperatorInstance getLogicalNode() {
+    public OperatorWrapper getLogicalNode() {
       return this.logicalNode;
     }
 
@@ -228,7 +227,7 @@ public class PhysicalPlan {
     }
   }
 
-  private final Map<OperatorInstance, List<PTOperator>> deployedOperators = new LinkedHashMap<OperatorInstance, List<PTOperator>>();
+  private final Map<OperatorWrapper, List<PTOperator>> deployedOperators = new LinkedHashMap<OperatorWrapper, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
   private int maxContainers = 1;
@@ -255,15 +254,15 @@ public class PhysicalPlan {
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing for {} containers.", this.maxContainers);
 
-    Map<OperatorInstance, Set<PTOperator>> inlineGroups = new HashMap<OperatorInstance, Set<PTOperator>>();
+    Map<OperatorWrapper, Set<PTOperator>> inlineGroups = new HashMap<OperatorWrapper, Set<PTOperator>>();
 
-    Stack<OperatorInstance> pendingNodes = new Stack<OperatorInstance>();
-    for (OperatorInstance n : dag.getAllOperators()) {
+    Stack<OperatorWrapper> pendingNodes = new Stack<OperatorWrapper>();
+    for (OperatorWrapper n : dag.getAllOperators()) {
       pendingNodes.push(n);
     }
 
     while (!pendingNodes.isEmpty()) {
-      OperatorInstance n = pendingNodes.pop();
+      OperatorWrapper n = pendingNodes.pop();
 
       if (inlineGroups.containsKey(n)) {
         // node already processed as upstream dependency
@@ -275,9 +274,9 @@ public class PhysicalPlan {
       boolean upstreamDeployed = true;
       boolean isSingleNodeInstance = true;
       for (StreamDecl s : n.getInputStreams().values()) {
-        if (s.getSource() != null && !inlineGroups.containsKey(s.getSource().getNode())) {
+        if (s.getSource() != null && !inlineGroups.containsKey(s.getSource().getOperator())) {
           pendingNodes.push(n);
-          pendingNodes.push(s.getSource().getNode());
+          pendingNodes.push(s.getSource().getOperator());
           upstreamDeployed = false;
           break;
         }
@@ -301,7 +300,7 @@ public class PhysicalPlan {
           for (StreamDecl s : n.getInputStreams().values()) {
             if (s.isInline()) {
               // if stream is marked inline, join the upstream operators
-              Set<PTOperator> inlineNodes = inlineGroups.get(s.getSource().getNode());
+              Set<PTOperator> inlineNodes = inlineGroups.get(s.getSource().getOperator());
               // empty set for partitioned upstream node
               if (!inlineNodes.isEmpty()) {
                 // update group index for each of the member operators
@@ -336,7 +335,7 @@ public class PhysicalPlan {
 
     // assign operators to containers
     int groupCount = 0;
-    for (Map.Entry<OperatorInstance, List<PTOperator>> e : deployedOperators.entrySet()) {
+    for (Map.Entry<OperatorWrapper, List<PTOperator>> e : deployedOperators.entrySet()) {
       for (PTOperator node : e.getValue()) {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
@@ -359,7 +358,7 @@ public class PhysicalPlan {
 
   private final AtomicInteger nodeSequence = new AtomicInteger();
 
-  private PTOperator createPTOperator(OperatorInstance nodeDecl, byte[] partition, int instanceCount) {
+  private PTOperator createPTOperator(OperatorWrapper nodeDecl, byte[] partition, int instanceCount) {
 
     PTOperator pOperator = new PTOperator();
     pOperator.logicalNode = nodeDecl;
@@ -367,17 +366,17 @@ public class PhysicalPlan {
     pOperator.outputs = new ArrayList<PTOutput>();
     pOperator.id = ""+nodeSequence.incrementAndGet();
 
-    for (Map.Entry<String, StreamDecl> inputEntry : nodeDecl.getInputStreams().entrySet()) {
+    for (Map.Entry<DAG.InputPortMeta, StreamDecl> inputEntry : nodeDecl.getInputStreams().entrySet()) {
       // find upstream node(s),
       // (can be multiple with partitioning or load balancing)
       StreamDecl streamDecl = inputEntry.getValue();
       if (streamDecl.getSource() != null) {
-        List<PTOperator> upstreamNodes = deployedOperators.get(streamDecl.getSource().getNode());
+        List<PTOperator> upstreamNodes = deployedOperators.get(streamDecl.getSource().getOperator());
         for (PTOperator upNode : upstreamNodes) {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
             if (upstreamOut.logicalStream == streamDecl) {
-              PTInput input = new PTInput(inputEntry.getKey(), streamDecl, pOperator, partition, upNode);
+              PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, partition, upNode);
               pOperator.inputs.add(input);
             }
           }
@@ -385,8 +384,8 @@ public class PhysicalPlan {
       }
     }
 
-    for (Map.Entry<String, StreamDecl> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
-      pOperator.outputs.add(new PTOutput(outputEntry.getKey(), outputEntry.getValue(), pOperator));
+    for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
+      pOperator.outputs.add(new PTOutput(outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator));
     }
 
     return pOperator;
@@ -414,11 +413,11 @@ public class PhysicalPlan {
     return this.containers;
   }
 
-  protected List<PTOperator> getOperators(OperatorInstance logicalOperator) {
+  protected List<PTOperator> getOperators(OperatorWrapper logicalOperator) {
     return this.deployedOperators.get(logicalOperator);
   }
 
-  protected List<OperatorInstance> getRootOperators() {
+  protected List<OperatorWrapper> getRootOperators() {
     return dag.getRootOperators();
   }
 
@@ -429,8 +428,8 @@ public class PhysicalPlan {
    */
   protected boolean isDownStreamInline(PTOutput output) {
     StreamDecl logicalStream = output.logicalStream;
-    for (InputPort downStreamPort : logicalStream.getSinks()) {
-      for (PTOperator downStreamNode : getOperators(downStreamPort.getNode())) {
+    for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
+      for (PTOperator downStreamNode : getOperators(downStreamPort.getOperator())) {
         if (output.source.container != downStreamNode.container) {
             return false;
         }
