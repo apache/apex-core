@@ -71,24 +71,22 @@ public class MuxStream implements Stream
    * @return Sink
    */
   @Override
-  public Sink connect(String id, Sink sink)
+  public Sink setSink(String id, Sink sink)
   {
-    if (INPUT.equals(id)) {
-      return this;
+    if (sink == null) {
+      sink = outputs.remove(id);
+      if (outputs.isEmpty()) {
+        sinks = NO_SINKS;
+      }
     }
     else {
-      if (sink == null) {
-        outputs.remove(id);
-      }
-      else {
-        outputs.put(id, sink);
-      }
+      sink = outputs.put(id, sink);
       if (sinks != NO_SINKS) {
         activate(null);
       }
     }
 
-    return null;
+    return sink;
   }
 
   /**

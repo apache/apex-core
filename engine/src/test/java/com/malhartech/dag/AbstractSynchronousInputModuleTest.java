@@ -7,6 +7,8 @@ package com.malhartech.dag;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.stram.StramLocalCluster;
 import java.util.ArrayList;
@@ -24,10 +26,10 @@ import org.slf4j.LoggerFactory;
 public class AbstractSynchronousInputModuleTest
 {
   @ModuleAnnotation(ports = {
-    @PortAnnotation(name = SynchronousInputModule.OUTPUT1, type = PortType.OUTPUT),
-    @PortAnnotation(name = SynchronousInputModule.OUTPUT2, type = PortType.OUTPUT)
+    @PortAnnotation(name = SynchronousInputOperator.OUTPUT1, type = PortType.OUTPUT),
+    @PortAnnotation(name = SynchronousInputOperator.OUTPUT2, type = PortType.OUTPUT)
   })
-  public static class SynchronousInputModule extends SynchronousInputModule
+  public static class SynchronousInputOperator extends AbstractSynchronousInputOperator
   {
     public static final String OUTPUT1 = "OUTPUT1";
     public static final String OUTPUT2 = "OUTPUT2";
@@ -45,6 +47,48 @@ public class AbstractSynchronousInputModuleTest
           break;
         }
       }
+    }
+
+    @Override
+    public void beginWindow()
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void endWindow()
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void setup(OperatorConfiguration config) throws FailedOperationException
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public Sink connect(String port, Sink sink)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void activate(OperatorContext context)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void deactivate()
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void teardown()
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
     }
   }
 
@@ -93,15 +137,15 @@ public class AbstractSynchronousInputModuleTest
   public void testSomeMethod() throws Exception
   {
     DAG dag = new DAG();
-    OperatorInstance generator = dag.addOperator("NumberGenerator", SynchronousInputModule.class);
+    OperatorInstance generator = dag.addOperator("NumberGenerator", SynchronousInputOperator.class);
     OperatorInstance collector = dag.addOperator("NumberCollector", CollectorModule.class);
 
     dag.addStream("EvenIntegers")
-            .setSource(generator.getOutput(SynchronousInputModule.OUTPUT1))
+            .setSource(generator.getOutput(SynchronousInputOperator.OUTPUT1))
             .addSink(collector.getInput(CollectorModule.INPUT1)).setInline(true);
 
     dag.addStream("OddIntegers")
-            .setSource(generator.getOutput(SynchronousInputModule.OUTPUT2))
+            .setSource(generator.getOutput(SynchronousInputOperator.OUTPUT2))
             .addSink(collector.getInput(CollectorModule.INPUT2)).setInline(true);
 
     final StramLocalCluster lc = new StramLocalCluster(dag);

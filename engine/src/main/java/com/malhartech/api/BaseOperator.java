@@ -6,6 +6,7 @@ package com.malhartech.api;
 
 import com.malhartech.dag.FailedOperationException;
 import com.malhartech.dag.OperatorConfiguration;
+import com.malhartech.dag.OperatorContext;
 
 /**
  * Base class for operator implementations that provides empty implementations
@@ -43,6 +44,16 @@ public class BaseOperator implements Operator
 
   @Override
   public void teardown()
+  {
+  }
+
+  @Override
+  public void activate(OperatorContext context)
+  {
+  }
+
+  @Override
+  public void deactivate()
   {
   }
 }

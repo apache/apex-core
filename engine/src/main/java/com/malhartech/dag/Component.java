@@ -10,7 +10,7 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface Component<T1 extends Configuration>
+public interface Component<T1 extends Configuration, T2 extends Context>
 {
   /*
    * if the Component is capable of taking only 1 input, call it INPUT.
@@ -20,6 +20,10 @@ public interface Component<T1 extends Configuration>
   public static final String OUTPUT = "output";
 
   public void setup(T1 config) throws FailedOperationException;
+
+  void activate(T2 context);
+
+  void deactivate();
 
   public void teardown();
 }

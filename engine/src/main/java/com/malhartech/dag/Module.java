@@ -5,9 +5,9 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
-import com.malhartech.util.SynchronizedCircularBuffer;
 import com.malhartech.util.UnsafeBlockingQueue;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,8 +33,13 @@ import org.slf4j.LoggerFactory;
 public abstract class Module extends BaseModule
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(Module.class);
-  private transient CompoundSink activePort;
-  private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
+  private CompoundSink activePort;
+  private final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
+
+  public Module(Operator operator)
+  {
+    super(operator);
+  }
 
   public final String getActivePort()
   {
@@ -48,13 +53,11 @@ public abstract class Module extends BaseModule
   class CompoundSink extends CircularBuffer<Object> implements Sink
   {
     final String id;
-    Sink dagpart;
 
-    public CompoundSink(String id, Sink dagpart)
+    public CompoundSink(String id)
     {
       super(getBufferCapacity());
       this.id = id;
-      this.dagpart = dagpart;
     }
 
     @Override
@@ -91,24 +94,18 @@ public abstract class Module extends BaseModule
     {
       return id;
     }
-
-    public final Sink getSink()
-    {
-      return dagpart;
-    }
   }
 
   /**
    *
-   * Connect a dagpart to this node on a port identified by id.
+   * Connect a sink to this node on a port identified by id.
    *
    * @return if the port is input port, Sink object is returned.
    *
    * @param id the value of id
-   * @param dagpart the value of stream
+   * @param sink the value of stream
    */
-  @Override
-  public Sink connect(String id, Sink dagpart)
+  public Sink connect(String id, Sink sink)
   {
     PortAnnotation pa = getPort(id);
     if (pa == null) {
@@ -119,11 +116,11 @@ public abstract class Module extends BaseModule
     switch (pa.type()) {
       case BIDI:
         logger.info("stream is connected to a bidi port, can we have a bidi stream?");
-        if (dagpart == null) {
+        if (sink == null) {
           outputs.remove(pa.name());
         }
         else {
-          outputs.put(pa.name(), dagpart);
+          outputs.put(pa.name(), sink);
         }
         if (sinks != Sink.NO_SINKS) {
           activateSinks();
@@ -131,7 +128,7 @@ public abstract class Module extends BaseModule
 
       case INPUT:
         CompoundSink cs = inputs.get(pa.name());
-        if (dagpart == null) {
+        if (sink == null) {
           /**
            * since there are tuples which are not yet processed downstream, rather than just removing
            * the sink, it makes sense to wait for all the data to be processed on this sink and then
@@ -144,22 +141,19 @@ public abstract class Module extends BaseModule
         }
         else {
           if (cs == null) {
-            cs = new CompoundSink(pa.name(), dagpart);
+            cs = new CompoundSink(pa.name());
             inputs.put(pa.name(), cs);
-          }
-          else {
-            cs.dagpart = dagpart;
           }
           s = cs;
         }
         break;
 
       case OUTPUT:
-        if (dagpart == null) {
+        if (sink == null) {
           outputs.remove(pa.name());
         }
         else {
-          outputs.put(pa.name(), dagpart);
+          outputs.put(pa.name(), sink);
         }
         if (sinks != Sink.NO_SINKS) {
           activateSinks();
@@ -174,22 +168,7 @@ public abstract class Module extends BaseModule
         break;
     }
 
-    connected(pa.name(), dagpart);
     return s;
-  }
-
-  /**
-   *
-   * A hook for user to do specific checking on a given configuration<p>
-   * Basic checking like port connectivity, properties that have to be specified, their ranges etc. would be checked
-   * by basic checker<br>
-   *
-   * @param config
-   * @return boolean
-   */
-  public boolean checkConfiguration(OperatorConfiguration config)
-  {
-    return true;
   }
 
   /**
@@ -201,12 +180,8 @@ public abstract class Module extends BaseModule
    */
   @Override
   @SuppressWarnings({"SleepWhileInLoop"})
-  public final void activate(OperatorContext ctx)
+  public final void run()
   {
-    activateSinks();
-    alive = true;
-    activated(ctx);
-
     int totalQueues = inputs.size();
 
     ArrayList<CompoundSink> activeQueues = new ArrayList<CompoundSink>();
@@ -235,7 +210,7 @@ public abstract class Module extends BaseModule
                 for (int s = sinks.length; s-- > 0;) {
                   sinks[s].process(t);
                 }
-                beginWindow();
+                operator.beginWindow();
                 receivedEndWindow = 0;
               }
               else if (t.getWindowId() == currentWindowId) {
@@ -251,34 +226,17 @@ public abstract class Module extends BaseModule
               if (t.getWindowId() == currentWindowId) {
                 lastEndWindow = activePort.remove();
                 if (++receivedEndWindow == totalQueues) {
-                  endWindow();
+                  operator.endWindow();
                   for (final Sink output: outputs.values()) {
                     output.process(t);
                   }
-
-                  /*
-                   * we prefer to cater to requests at the end of the window boundary.
-                   */
-                  try {
-                    CircularBuffer<OperatorContext.ModuleRequest> requests = ctx.getRequests();
-                    for (int i = requests.size(); i-- > 0;) {
-                      requests.pollUnsafe().execute(this, ctx.getId(), t.getWindowId());
-                    }
-                  }
-                  catch (Exception e) {
-                    logger.warn("Exception while catering to external request {}", e);
-                  }
-
-                  /*
-                   * report window as complete after control operations are completed
-                   */
-                  ctx.report(processedTupleCount, 0L, currentWindowId);
-                  processedTupleCount = 0;
 
                   buffers.remove();
                   assert (activeQueues.isEmpty());
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
+
+                  handleRequests(currentWindowId);
                   break activequeue;
                 }
                 else {
@@ -329,33 +287,16 @@ public abstract class Module extends BaseModule
                 /*
                  * Do the same sequence as the end window since the current window is not ended.
                  */
-                endWindow();
+                operator.endWindow();
                 for (final Sink output: outputs.values()) {
                   output.process(lastEndWindow);
                 }
 
-                /*
-                 * we prefer to cater to requests at the end of the window boundary.
-                 */
-                try {
-                  CircularBuffer<OperatorContext.ModuleRequest> requests = ctx.getRequests();
-                  for (int i = requests.size(); i-- > 0;) {
-                    requests.pollUnsafe().execute(this, ctx.getId(), t.getWindowId());
-                  }
-                }
-                catch (Exception e) {
-                  logger.warn("Exception while catering to external request {}", e);
-                }
-
-                /*
-                 * report window as complete after control operations are completed
-                 */
-                ctx.report(processedTupleCount, 0L, currentWindowId);
-                processedTupleCount = 0;
-
                 assert (activeQueues.isEmpty());
                 activeQueues.addAll(inputs.values());
                 expectingBeginWindow = activeQueues.size();
+
+                handleRequests(currentWindowId);
                 break activequeue;
               }
               break;
@@ -402,9 +343,5 @@ public abstract class Module extends BaseModule
       }
     }
     while (alive);
-
-    deactivated(ctx);
-    emitEndStream();
-    deactivateSinks();
   }
 }

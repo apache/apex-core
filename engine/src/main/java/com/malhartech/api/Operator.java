@@ -8,7 +8,7 @@ import com.malhartech.dag.Component;
 import com.malhartech.dag.OperatorConfiguration;
 import com.malhartech.dag.OperatorContext;
 
-public interface Operator extends Component<OperatorConfiguration>
+public interface Operator extends Component<OperatorConfiguration, OperatorContext>
 {
   /**
    * A user friendly name that is available to identify the instance throughout

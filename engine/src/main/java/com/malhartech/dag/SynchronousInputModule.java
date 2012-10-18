@@ -5,6 +5,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
 import java.util.HashMap;
@@ -18,20 +19,25 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class SynchronousInputModule extends InputModule implements Runnable, Sink
+public abstract class SynchronousInputModule extends InputModule implements Sink
 {
   private static final Logger logger = LoggerFactory.getLogger(SynchronousInputModule.class);
   protected transient HashMap<String, CircularBuffer<Object>> handoverBuffers = new HashMap<String, CircularBuffer<Object>>();
   protected transient Thread syncThread;
 
+  public SynchronousInputModule(Operator operator)
+  {
+    super(operator);
+  }
+
   @Override
   @SuppressWarnings("SleepWhileInLoop")
-  public void connected(String id, Sink dagpart)
+  public void connected(String id, Sink sink)
   {
     PortAnnotation port = getPort(id);
     if (port != null && (port.type() == PortAnnotation.PortType.OUTPUT || port.type() == PortAnnotation.PortType.BIDI)) {
       CircularBuffer<?> cb = handoverBuffers.get(port.name());
-      if (dagpart == null) {
+      if (sink == null) {
         /* this is remove request */
         if (cb != null) {
           try {

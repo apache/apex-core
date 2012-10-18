@@ -4,10 +4,13 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.api.Operator;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.api.Operator.Port;
 import com.malhartech.api.Sink;
+import com.malhartech.util.CircularBuffer;
+import java.util.Collection;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,33 +19,53 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class BaseModule implements DAGComponent<OperatorContext>
+public abstract class BaseModule implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(BaseModule.class);
-  protected transient String id;
-  protected final transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  protected transient int spinMillis = 10;
-  protected transient int bufferCapacity = 1024 * 1024;
-  protected transient int processedTupleCount;
-  protected transient int generatedTupleCount;
+  protected String id;
+  protected final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  protected int spinMillis = 10;
+  protected int bufferCapacity = 1024 * 1024;
+  protected int processedTupleCount;
+  protected int generatedTupleCount;
   @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile transient Sink[] sinks = Sink.NO_SINKS;
-  protected transient boolean alive;
+  protected volatile Sink[] sinks = Sink.NO_SINKS;
+  protected boolean alive;
+  protected final Operator operator;
 
-  // optimize the performance of this method.
-  protected PortAnnotation getPort(String id)
+  public BaseModule(Operator operator)
   {
-    Class<? extends Operator> clazz = this.getClass();
-    ModuleAnnotation na = clazz.getAnnotation(ModuleAnnotation.class);
-    if (na != null) {
-      PortAnnotation[] ports = na.ports();
-      for (PortAnnotation pa: ports) {
-        if (id.equals(pa.name())) {
-          return pa;
-        }
-      }
-    }
+    this.operator = operator;
+  }
 
+  public Operator getOperator()
+  {
+    return operator;
+  }
+
+  // The following 3 get*Port methods are just a placeholder.
+  static <T extends Port> T getPort(Operator operator, String portname)
+  {
+    try {
+      return (T)null;
+    }
+    catch (ClassCastException cce) {
+      return null;
+    }
+  }
+
+  static InputPort getInputPort(Operator operator, String portname)
+  {
+    return getPort(operator, portname);
+  }
+
+  static OutputPort getOutputPort(Operator operator, String portname)
+  {
+    return getPort(operator, portname);
+  }
+
+  static Collection<InputPort> getInputPorts(Operator operator)
+  {
     return null;
   }
 
@@ -64,33 +87,25 @@ public abstract class BaseModule implements DAGComponent<OperatorContext>
     outputs.clear();
   }
 
-  @Override
+  OperatorContext context;
+  public final void activate(OperatorContext context)
+  {
+    activateSinks();
+    alive = true;
+    operator.activate(context);
+
+    this.context = context;
+    run();
+    this.context = null;
+
+    operator.deactivate();
+    emitEndStream();
+    deactivateSinks();
+  }
+
   public final void deactivate()
   {
     alive = false;
-  }
-
-  /**
-   * An opportunity for the derived node to use the connected dagcomponents.
-   *
-   * Motivation is that the derived node can tie the dagparts to class fields and use them for efficiency reasons instead of asking this class to do lookup.
-   *
-   * @param id
-   * @param dagpart
-   */
-  public void connected(String id, Sink dagpart)
-  {
-    /* implementation to be optionally overridden by the user */
-  }
-
-  public void activated(OperatorContext context)
-  {
-    /* implementation to be optionally overridden by the user */
-  }
-
-  public void deactivated(OperatorContext context)
-  {
-    /* implementation to be optionally overridden by the user */
   }
 
   /**
@@ -211,5 +226,25 @@ public abstract class BaseModule implements DAGComponent<OperatorContext>
     for (final Sink output: outputs.values()) {
       output.process(est);
     }
+  }
+
+  protected void handleRequests(long windowId)
+  {
+    /*
+     * we prefer to cater to requests at the end of the window boundary.
+     */
+    try {
+      CircularBuffer<OperatorContext.ModuleRequest> requests = context.getRequests();
+      for (int i = requests.size(); i-- > 0;) {
+        //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
+        requests.remove().execute(operator, context.getId(), windowId);
+      }
+    }
+    catch (Exception e) {
+      logger.warn("Exception while catering to external request {}", e);
+    }
+
+    context.report(generatedTupleCount, 0L, windowId);
+    generatedTupleCount = 0;
   }
 }

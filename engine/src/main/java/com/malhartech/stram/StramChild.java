@@ -4,28 +4,17 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.Component;
 import com.malhartech.api.Operator;
-import com.malhartech.dag.OperatorConfiguration;
-import com.malhartech.dag.OperatorContext;
-import com.malhartech.dag.OperatorSerDe;
+import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.WindowIdActivatedSink;
+import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stream.BufferServerInputStream;
-import com.malhartech.stream.BufferServerOutputStream;
-import com.malhartech.stream.InlineStream;
-import com.malhartech.stream.MuxStream;
-import com.malhartech.stream.PartitionAwareSink;
-import com.malhartech.stream.SocketInputStream;
+import com.malhartech.stream.*;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -33,13 +22,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.conf.Configuration;
@@ -225,7 +209,6 @@ public class StramChild
     }
   }
 
-  @SuppressWarnings( {"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void deactivate()
   {
     for (String nodeid: activeNodes.keySet()) {
@@ -234,7 +217,7 @@ public class StramChild
 
     try {
       while (!activeNodes.isEmpty()) {
-        Thread.sleep(SPIN_MILLIS);
+        wait(SPIN_MILLIS);
       }
     }
     catch (InterruptedException ex) {
@@ -281,8 +264,9 @@ public class StramChild
         for (String sinkId: sinkIds) {
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-            Operator n = nodes.get(nodeport[0]);
-            n.connect(nodeport[1], null);
+            getOutputPort(nodes.get(nodeport[0]), nodeport[1]).setSink(null);
+//            Operator n = nodes.get(nodeport[0]);
+//            n.connect(nodeport[1], null);
           }
           else if (stream.isMultiSinkCapable()) {
             ComponentContextPair<Stream, StreamContext> spair = streams.get(sinkId);
@@ -298,13 +282,13 @@ public class StramChild
                 activeStreams.remove(spair.component);
               }
 
-              spair.component.connect(Component.INPUT, null);
+//              spair.component.connect(Component.INPUT, null);
               removableSocketOutputStreams.add(sinkId);
             }
           }
         }
 
-        stream.connect(Component.INPUT, null);
+//        stream.connect(Component.INPUT, null);
       }
       else {
         /**
@@ -314,8 +298,10 @@ public class StramChild
         for (int i = sinkIds.length; i-- > 0;) {
           String[] nodeport = sinkIds[i].split(NODE_PORT_SPLIT_SEPARATOR);
           if (nodeid.equals(nodeport[0])) {
-            stream.connect(sinkIds[i], null);
-            node.connect(nodeport[1], null);
+            getInputPort(node, nodeport[1]).setConnected(false);
+            stream.setSink(sinkIds[i], null);
+//            stream.connect(sinkIds[i], null);
+//            node.connect(nodeport[1], null);
             sinkIds[i] = null;
           }
         }
@@ -362,8 +348,10 @@ public class StramChild
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
-      chosen1.connect(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), null);
-      node.connect(Component.INPUT, null);
+      chosen1.setSink(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), null);
+      getInputPort(node, Component.INPUT).setConnected(false);
+//      chosen1.connect(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), null);
+//      node.connect(Component.INPUT, null);
 
       int count = 0;
       for (WindowGenerator wg: generators.values()) {
@@ -560,9 +548,11 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        context.request(new OperatorContext.ModuleRequest() {
+        context.request(new OperatorContext.ModuleRequest()
+        {
           @Override
-          public void execute(Operator module, String id, long windowId) throws IOException {
+          public void execute(Operator module, String id, long windowId) throws IOException
+          {
             new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, module, StramUtils.getNodeSerDe(null));
             // record last backup window id for heartbeat
             StramChild.this.backupInfo.put(id, windowId);
@@ -684,7 +674,7 @@ public class StramChild
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
-            bssc.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
+            bssc.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
             streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
 
@@ -692,8 +682,9 @@ public class StramChild
             stream = new MuxStream();
             stream.setup(new StreamConfiguration());
 
-            Sink s = bsos.connect(Component.INPUT, stream);
-            stream.connect(sinkIdentifier, s);
+            stream.setSink(sinkIdentifier, bsos);
+//            Sink s = bsos.connect(Component.INPUT, stream);
+//            stream.connect(sinkIdentifier, s);
 
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
           }
@@ -733,10 +724,11 @@ public class StramChild
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
-            bssc.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
+            bssc.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
-            Sink s = bsos.connect(Component.INPUT, stream);
-            stream.connect(sinkIdentifier, s);
+            stream.setSink(sinkIdentifier, bsos);
+//            Sink s = bsos.connect(Component.INPUT, stream);
+//            stream.connect(sinkIdentifier, s);
 
             streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
@@ -744,13 +736,14 @@ public class StramChild
         }
 
         if (!streams.containsKey(sourceIdentifier)) {
-          Sink s = stream.connect(Component.INPUT, node);
-          node.connect(nodi.portName, s);
+          getOutputPort(node, nodi.portName).setSink(stream);
+//          Sink s = stream.connect(Component.INPUT, node);
+//          node.connect(nodi.portName, s);
 
           StreamContext context = new StreamContext(nodi.declaredStreamId);
           context.setSourceId(sourceIdentifier);
           context.setSinkId(sinkIdentifier);
-          context.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
+          context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
           streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
           logger.debug("stored stream {} against key {}", stream, sourceIdentifier);
@@ -815,10 +808,14 @@ public class StramChild
             context.setPartitions(nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
-            context.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
+            context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
-            Sink s = node.connect(nidi.portName, stream);
-            stream.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(stream, sinkIdentifier, s, ndi.checkpointWindowId) : s);
+            InputPort ip = getInputPort(node, nidi.portName);
+            stream.setSink(sinkIdentifier,
+                           ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(stream, sinkIdentifier, ip.getSink(), ndi.checkpointWindowId) : ip.getSink());
+            ip.setConnected(true);
+//            Sink s = node.connect(nidi.portName, stream);
+//            stream.connect(sinkIdentifier, ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(stream, sinkIdentifier, s, ndi.checkpointWindowId) : s);
 
             streams.put(sinkIdentifier,
                         new ComponentContextPair<Stream, StreamContext>(stream, context));
@@ -826,14 +823,16 @@ public class StramChild
           }
           else {
             String streamSinkId = pair.context.getSinkId();
-            Sink s;
+            InputPort ip;
 
             if (streamSinkId == null) {
-              s = node.connect(nidi.portName, pair.component);
+              ip = getInputPort(node, nidi.portName);
+//              s = node.connect(nidi.portName, pair.component);
               pair.context.setSinkId(sinkIdentifier);
             }
             else if (pair.component.isMultiSinkCapable()) {
-              s = node.connect(nidi.portName, pair.component);
+              ip = getInputPort(node, nidi.portName);
+//              s = node.connect(nidi.portName, pair.component);
               pair.context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
             }
             else {
@@ -844,12 +843,13 @@ public class StramChild
               StreamContext context = new StreamContext(nidi.declaredStreamId);
               context.setSourceId(sourceIdentifier);
               context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
-              context.setStartingWindowId(ndi.checkpointWindowId+1); // TODO: next window after checkpoint
+              context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
               Stream stream = new MuxStream();
               stream.setup(new StreamConfiguration());
               logger.debug("deployed input mux stream {}", stream);
-              s = node.connect(nidi.portName, stream);
+              ip = getInputPort(node, nidi.portName);
+//              s = node.connect(nidi.portName, stream);
               streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
               logger.debug("stored input stream {} against key {}", stream, sourceIdentifier);
 
@@ -858,14 +858,17 @@ public class StramChild
                */
               String[] nodeport = sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR);
               Operator upstreamNode = nodes.get(nodeport[0]);
-              Sink muxSink = stream.connect(Component.INPUT, upstreamNode);
-              upstreamNode.connect(nodeport[1], muxSink);
+
+              getOutputPort(upstreamNode, nodeport[1]).setSink(stream);
+//              Sink muxSink = stream.connect(Component.INPUT, upstreamNode);
+//              upstreamNode.connect(nodeport[1], muxSink);
 
               Sink existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
                 Operator anotherNode = nodes.get(np[0]);
-                existingSink = anotherNode.connect(np[1], stream);
+                existingSink = getInputPort(anotherNode, np[1]).getSink();
+//                existingSink = anotherNode.connect(np[1], stream);
 
                 /*
                  * we do not need to do this but looks bad if leave it in limbo.
@@ -874,7 +877,8 @@ public class StramChild
                 pair.component.teardown();
               }
               else {
-                existingSink = pair.component.connect(Component.INPUT, stream);
+                existingSink = pair.component; // !!!! highly suspicious. Recheck this if things do not work. - Chetan chetan
+//                existingSink = pair.component.connect(Component.INPUT, stream);
 
                 /*
                  * we got this stream since it was mapped against sourceId, but since
@@ -884,22 +888,30 @@ public class StramChild
                 logger.debug("relocated stream {} against key {}", pair.context.getSinkId());
               }
 
-              stream.connect(streamSinkId, existingSink);
+              stream.setSink(streamSinkId, existingSink);
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              pair.component.connect(sinkIdentifier,
-                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
+              pair.component.setSink(sinkIdentifier,
+                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, ip.getSink(), ndi.checkpointWindowId) : ip.getSink());
+
+//              pair.component.connect(sinkIdentifier,
+//                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
             }
             else {
               /*
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink pas = new PartitionAwareSink(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, s);
-              pair.component.connect(sinkIdentifier,
+              PartitionAwareSink pas = new PartitionAwareSink(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, ip.getSink());
+              pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);
+//              PartitionAwareSink pas = new PartitionAwareSink(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, s);
+//              pair.component.connect(sinkIdentifier,
+//                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);
             }
+
+            ip.setConnected(true);
           }
         }
       }
@@ -911,11 +923,16 @@ public class StramChild
         generators.put(ndi.id, windowGenerator);
 
         Operator node = nodes.get(ndi.id);
-        Sink s = node.connect(Component.INPUT, windowGenerator);
-        windowGenerator.connect(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT),
-                                ndi.checkpointWindowId > 0
-                                ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), s, ndi.checkpointWindowId)
-                                : s);
+        InputPort ip = getInputPort(node, Component.INPUT);
+
+//        Sink s = node.connect(Component.INPUT, windowGenerator);
+        windowGenerator.setSink(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT),
+                                ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), ip.getSink(), ndi.checkpointWindowId) : ip.getSink());
+//        windowGenerator.connect(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT),
+//                                ndi.checkpointWindowId > 0
+//                                ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), s, ndi.checkpointWindowId)
+//                                : s);
+        ip.setConnected(true);
       }
     }
   }
@@ -934,7 +951,7 @@ public class StramChild
      * let's make sure that we send the same window Ids with the same reset windows.
      */
     // let's see if we want to send the exact same window id even the second time.
-    OperatorConfiguration config = new OperatorConfiguration("doesn't matter", null);
+    StreamConfiguration config = new StreamConfiguration();
     config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, firstWindowMillis);
     if (smallestWindowId > firstWindowMillis) {
       config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID));

@@ -27,7 +27,7 @@ public final class OutputSocketStreamTest
     }
 
     @Override
-    public Sink connect(String port, Sink sink)
+    public Sink setSink(String port, Sink sink)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }

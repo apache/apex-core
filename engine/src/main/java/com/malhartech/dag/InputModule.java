@@ -5,6 +5,8 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.util.CircularBuffer;
 import java.nio.BufferOverflowException;
@@ -22,24 +24,21 @@ import org.slf4j.LoggerFactory;
 public abstract class InputModule extends BaseModule
 {
   private static final Logger logger = LoggerFactory.getLogger(InputModule.class);
-  private transient final Tuple NO_DATA = new Tuple(DataType.NO_DATA);
-  private transient CircularBuffer<Tuple> controlTuples;
-  private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
+  private final Tuple NO_DATA = new Tuple(DataType.NO_DATA);
+  private CircularBuffer<Tuple> controlTuples;
+  private HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
 
-  public InputModule()
+  public InputModule(Operator operator)
   {
+    super(operator);
     controlTuples = new CircularBuffer<Tuple>(1024);
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
   }
 
   @Override
   @SuppressWarnings("SleepWhileInLoop")
-  public final void activate(OperatorContext context)
+  public final void run()
   {
-    activateSinks();
-    alive = true;
-    activated(context);
-
     boolean inWindow = false;
     Tuple t = null;
     while (alive) {
@@ -55,33 +54,18 @@ public abstract class InputModule extends BaseModule
                 }
                 inWindow = true;
                 NO_DATA.setWindowId(t.getWindowId());
-                beginWindow();
+                operator.beginWindow();
                 break;
 
               case END_WINDOW:
-                endWindow();
+                operator.endWindow();
                 inWindow = false;
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].process(t);
                 }
 
-                /*
-                 * we prefer to cater to requests at the end of the window boundary.
-                 */
-                try {
-                  CircularBuffer<OperatorContext.ModuleRequest> requests = context.getRequests();
-                  for (int i = requests.size(); i-- > 0;) {
-                    //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
-                    requests.remove().execute(this, context.getId(), t.getWindowId());
-                  }
-                }
-                catch (Exception e) {
-                  logger.warn("Exception while catering to external request {}", e);
-                }
-
-                context.report(generatedTupleCount, 0L, t.getWindowId());
-                generatedTupleCount = 0;
-
+                handleRequests(t.getWindowId());
+                
                 // i think there should be just one queue instead of one per port - lets defer till we find an example.
                 for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
                   final Sink s = outputs.get(e.getKey());
@@ -105,7 +89,7 @@ public abstract class InputModule extends BaseModule
         else {
           if (inWindow) {
             int oldg = generatedTupleCount;
-            process(NO_DATA);
+            operator.process(NO_DATA);
             if (generatedTupleCount == oldg) {
               Thread.sleep(spinMillis);
             }
@@ -127,13 +111,9 @@ public abstract class InputModule extends BaseModule
       }
     }
 
-    deactivated(context);
-    emitEndStream();
-    deactivateSinks();
   }
 
-  @Override
-  public final Sink connect(String port, Sink component)
+  public final Sink connect(String port, Sink sink)
   {
     Sink retvalue;
     if (Component.INPUT.equals(port)) {
@@ -160,22 +140,21 @@ public abstract class InputModule extends BaseModule
       }
 
       port = pa.name();
-      if (component == null) {
+      if (sink == null) {
         outputs.remove(port);
         afterEndWindows.remove(port);
       }
       else {
-        outputs.put(port, component);
+        outputs.put(port, sink);
         afterEndWindows.put(port, new CircularBuffer<Tuple>(bufferCapacity));
       }
 
-      if (sinks != NO_SINKS) {
+      if (sinks != Sink.NO_SINKS) {
         activateSinks();
       }
       retvalue = null;
     }
 
-    connected(port, component);
     return retvalue;
   }
 }

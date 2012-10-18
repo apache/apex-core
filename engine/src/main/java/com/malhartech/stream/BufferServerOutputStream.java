@@ -108,9 +108,9 @@ public class BufferServerOutputStream extends SocketOutputStream
   }
 
   @Override
-  public Sink connect(String id, Sink sink)
+  public Sink setSink(String id, Sink sink)
   {
-    return this;
+    throw new IllegalAccessError("Attempt to set destination other than buffer server on " + this + " stream!");
   }
 
   @Override
