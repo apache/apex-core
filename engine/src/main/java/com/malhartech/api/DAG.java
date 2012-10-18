@@ -4,40 +4,20 @@
  */
 package com.malhartech.api;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.dag.DAGConstants;
 import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.DAGPropertiesBuilder;
+import java.io.*;
+import java.lang.reflect.Field;
+import java.util.*;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.hadoop.conf.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -200,7 +180,7 @@ public class DAG implements Serializable, DAGConstants {
       return this;
     }
 
-    public OutputPortMeta getSource() {
+    OutputPortMeta getSource() {
       return source;
     }
 

@@ -1,29 +1,36 @@
-/**
- * Copyright (c) 2012-2012 Malhar, Inc.
- * All rights reserved.
+/*
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
  */
 package com.malhartech.api;
 
-/**
- * The common interface for all stream operator implementations.
- *
- */
-public interface Operator {
+import com.malhartech.dag.Component;
+import com.malhartech.dag.OperatorConfiguration;
+import com.malhartech.dag.OperatorContext;
+
+public interface Operator extends Component<OperatorConfiguration>
+{
+  /**
+   * This method gets called at the beginning of each window.
+   *
+   */
+  public void beginWindow();
 
   /**
-   * A user friendly name that is available to identify the instance throughout
-   * the lifecycle in the system.
+   * This method gets called at the end of each window.
+   *
    */
-  public String getName();
+  public void endWindow();
 
   /**
    * A module provides ports as a means to consume and produce data tuples.
    * Concrete ports implement derived interfaces. The common characteristic is
    * that ports provide a reference to the module instance they belong to.
    */
-  public interface Port {
+  public interface Port
+  {
     /**
-     * Reference to owning module.
+     * Reference to the operator to which this port belongs.
      *
      * @return
      */
@@ -39,7 +46,8 @@ public interface Operator {
    *
    * @param <T>
    */
-  public interface InputPort<T> extends Port {
+  public interface InputPort<T> extends Port
+  {
     /**
      * Provide the sink that will process incoming data. Sink would typically be
      * the port itself but can also be implemented by the enclosing module or
@@ -51,6 +59,7 @@ public interface Operator {
 
     /**
      * Informs the port that it is active, i.e. connected to an incoming stream.
+     *
      * @param connected
      */
     public void setConnected(boolean connected);
@@ -65,7 +74,8 @@ public interface Operator {
    *
    * @param <T>
    */
-  public interface OutputPort<T> extends Port {
+  public interface OutputPort<T> extends Port
+  {
     /**
      * Called by execution engine to inject sink at deployment time.
      *
@@ -80,7 +90,5 @@ public interface Operator {
      * @param tuple
      */
     public void merge(T tuple);
-
   }
-
 }
