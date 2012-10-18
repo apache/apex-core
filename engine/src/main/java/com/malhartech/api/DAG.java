@@ -32,11 +32,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.dag.DAGConstants;
 import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.SerDe;
-import com.malhartech.moduleexperiment.ProtoInputPortFieldAnnotation;
-import com.malhartech.moduleexperiment.ProtoOutputPortFieldAnnotation;
 import com.malhartech.stram.DAGPropertiesBuilder;
 
 /**
@@ -131,7 +131,7 @@ public class DAG implements Serializable, DAGConstants {
     private ExternalizableModule node;
     private Class<?> fieldDeclaringClass;
     private String fieldName;
-    private ProtoInputPortFieldAnnotation portAnnotation;
+    private InputPortFieldAnnotation portAnnotation;
 
     @Override
     public String toString() {
@@ -149,7 +149,7 @@ public class DAG implements Serializable, DAGConstants {
     private ExternalizableModule node;
     private Class<?> fieldDeclaringClass;
     private String fieldName;
-    private ProtoOutputPortFieldAnnotation portAnnotation;
+    private OutputPortFieldAnnotation portAnnotation;
 
     @Override
     public String toString() {
@@ -514,7 +514,7 @@ public class DAG implements Serializable, DAGConstants {
     Field[] fields = operator.get().getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
-      ProtoOutputPortFieldAnnotation a = field.getAnnotation(ProtoOutputPortFieldAnnotation.class);
+      OutputPortFieldAnnotation a = field.getAnnotation(OutputPortFieldAnnotation.class);
       if (a != null) {
         field.setAccessible(true);
         try {
@@ -542,7 +542,7 @@ public class DAG implements Serializable, DAGConstants {
     Field[] fields = operator.get().getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
-      ProtoInputPortFieldAnnotation a = field.getAnnotation(ProtoInputPortFieldAnnotation.class);
+      InputPortFieldAnnotation a = field.getAnnotation(InputPortFieldAnnotation.class);
       if (a != null) {
         field.setAccessible(true);
         try {

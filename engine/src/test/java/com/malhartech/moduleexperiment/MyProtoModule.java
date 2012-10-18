@@ -7,6 +7,8 @@ package com.malhartech.moduleexperiment;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
@@ -20,7 +22,7 @@ public class MyProtoModule<T extends Object> extends BaseOperator {
    * Example for (runtime) typed input port.
    * The type information is retained at runtime and can be used for validation by the framework.
    */
-  @ProtoInputPortFieldAnnotation(name="port1")
+  @InputPortFieldAnnotation(name="port1")
   final public transient InputPort<String> inport1 = new DefaultInputPort<String>(this) {
     @Override
     final public void process(String payload) {
@@ -31,7 +33,7 @@ public class MyProtoModule<T extends Object> extends BaseOperator {
    * Untyped input port implemented using anonymous class
    * The port is untyped because it is using the enclosing classes type parameter.
    */
-  @ProtoInputPortFieldAnnotation(name="port2")
+  @InputPortFieldAnnotation(name="port2")
   final public transient InputPort<T> inport2 = new DefaultInputPort<T>(this) {
     @Override
     final public void process(T payload) {
@@ -51,10 +53,10 @@ public class MyProtoModule<T extends Object> extends BaseOperator {
     }
   };
 
-  @ProtoOutputPortFieldAnnotation(name="outport1")
+  @OutputPortFieldAnnotation(name="outport1")
   final transient DefaultOutputPort<Map<String, T>> outport1 = new DefaultOutputPort<Map<String,T>>(this);
 
-  @ProtoOutputPortFieldAnnotation(name="outport2")
+  @OutputPortFieldAnnotation(name="outport2")
   final transient DefaultOutputPort<byte[]> outport2 = new DefaultOutputPort<byte[]>(this);
 
   // just to try it out

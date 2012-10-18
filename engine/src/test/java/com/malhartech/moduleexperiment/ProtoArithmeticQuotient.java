@@ -10,6 +10,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
@@ -47,7 +49,7 @@ public class ProtoArithmeticQuotient extends BaseOperator
 {
   private static Logger LOG = LoggerFactory.getLogger(ProtoArithmeticQuotient.class);
 
-  @ProtoInputPortFieldAnnotation(name="numerator")
+  @InputPortFieldAnnotation(name="numerator")
   final public transient InputPort<HashMap<String, Number>> inportNumerator = new DefaultInputPort<HashMap<String, Number>>(this) {
     @Override
     final public void process(HashMap<String, Number> payload) {
@@ -55,7 +57,7 @@ public class ProtoArithmeticQuotient extends BaseOperator
     }
   };
 
-  @ProtoInputPortFieldAnnotation(name="denominator")
+  @InputPortFieldAnnotation(name="denominator")
   final public transient InputPort<HashMap<String, Number>> inportDenominator = new DefaultInputPort<HashMap<String, Number>>(this) {
     @Override
     final public void process(HashMap<String, Number> payload) {
@@ -64,7 +66,7 @@ public class ProtoArithmeticQuotient extends BaseOperator
   };
 
   // Note that when not extending DefaultOutputPort we won't have the type info at runtime
-  @ProtoOutputPortFieldAnnotation(name="quotient")
+  @OutputPortFieldAnnotation(name="quotient")
   final transient DefaultOutputPort<HashMap<String, Number> > outportQuotient = new DefaultOutputPort<HashMap<String, Number>>(this) {};
 
   private int mult_by = 1;
