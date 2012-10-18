@@ -4,8 +4,8 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.api.Sink;
 import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Sink;
 import com.malhartech.dag.Tuple;
 import java.nio.ByteBuffer;
 import java.util.HashSet;

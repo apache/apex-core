@@ -5,6 +5,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -12,14 +13,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This module bridges the gap between the synchronous data sources and AbstractInputModule which
+ * This module bridges the gap between the synchronous data sources and InputModule which
  * requires that the tuples be emitted in the process method as quickly as possible and return.
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractSynchronousInputModule extends AbstractInputModule implements Runnable
+public abstract class SynchronousInputModule extends InputModule implements Runnable, Sink
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractSynchronousInputModule.class);
+  private static final Logger logger = LoggerFactory.getLogger(SynchronousInputModule.class);
   protected transient HashMap<String, CircularBuffer<Object>> handoverBuffers = new HashMap<String, CircularBuffer<Object>>();
   protected transient Thread syncThread;
 
@@ -51,14 +52,14 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
   }
 
   @Override
-  public void activated(ModuleContext context)
+  public void activated(OperatorContext context)
   {
     syncThread = new Thread(this, this + "-sync");
     syncThread.start();
   }
 
   @Override
-  public void deactivated(ModuleContext context)
+  public void deactivated(OperatorContext context)
   {
     syncThread.interrupt();
     syncThread = null;

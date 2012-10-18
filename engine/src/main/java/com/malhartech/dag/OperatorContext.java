@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Operator;
 import com.malhartech.util.CircularBuffer;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -17,9 +18,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class ModuleContext implements Context
+public class OperatorContext implements Context
 {
-  private static final Logger LOG = LoggerFactory.getLogger(ModuleContext.class);
+  private static final Logger LOG = LoggerFactory.getLogger(OperatorContext.class);
 
   public interface ModuleRequest
   {
@@ -61,7 +62,7 @@ public class ModuleContext implements Context
     this.idleTimeout = idleTimeout;
   }
 
-  public ModuleContext(String id, Thread t)
+  public OperatorContext(String id, Thread t)
   {
     this.id = id;
   }

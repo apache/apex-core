@@ -5,6 +5,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
 import com.malhartech.util.SynchronizedCircularBuffer;
 import com.malhartech.util.UnsafeBlockingQueue;
@@ -29,9 +30,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractModule extends AbstractBaseModule
+public abstract class Module extends BaseModule
 {
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractModule.class);
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(Module.class);
   private transient CompoundSink activePort;
   private transient final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
 
@@ -82,7 +83,7 @@ public abstract class AbstractModule extends AbstractBaseModule
 
     public void processTuple(Object payload)
     {
-      AbstractModule.this.process(payload);
+      Module.this.process(payload);
     }
 
     @Override
@@ -186,7 +187,7 @@ public abstract class AbstractModule extends AbstractBaseModule
    * @param config
    * @return boolean
    */
-  public boolean checkConfiguration(ModuleConfiguration config)
+  public boolean checkConfiguration(OperatorConfiguration config)
   {
     return true;
   }
@@ -195,12 +196,12 @@ public abstract class AbstractModule extends AbstractBaseModule
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
    * Although it seems that it's called from another thread which implements Runnable, so we take this
-   * opportunity to pass the ModuleContext through the run method. Note that activate does not return as
+   * opportunity to pass the OperatorContext through the run method. Note that activate does not return as
    * long as there is useful workload for the node.
    */
   @Override
   @SuppressWarnings({"SleepWhileInLoop"})
-  public final void activate(ModuleContext ctx)
+  public final void activate(OperatorContext ctx)
   {
     activateSinks();
     alive = true;
@@ -259,7 +260,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                    * we prefer to cater to requests at the end of the window boundary.
                    */
                   try {
-                    CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
+                    CircularBuffer<OperatorContext.ModuleRequest> requests = ctx.getRequests();
                     for (int i = requests.size(); i-- > 0;) {
                       requests.pollUnsafe().execute(this, ctx.getId(), t.getWindowId());
                     }
@@ -337,7 +338,7 @@ public abstract class AbstractModule extends AbstractBaseModule
                  * we prefer to cater to requests at the end of the window boundary.
                  */
                 try {
-                  CircularBuffer<ModuleContext.ModuleRequest> requests = ctx.getRequests();
+                  CircularBuffer<OperatorContext.ModuleRequest> requests = ctx.getRequests();
                   for (int i = requests.size(); i-- > 0;) {
                     requests.pollUnsafe().execute(this, ctx.getId(), t.getWindowId());
                   }

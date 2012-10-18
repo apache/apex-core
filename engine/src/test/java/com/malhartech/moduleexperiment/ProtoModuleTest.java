@@ -25,10 +25,10 @@ import com.google.inject.TypeLiteral;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.Operator;
+import com.malhartech.api.NewOperator;
 import com.malhartech.api.DAG;
 import com.malhartech.api.Sink;
-import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.NewOperator.InputPort;
 import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.TestSink;
 
@@ -173,7 +173,7 @@ public class ProtoModuleTest {
     LOG.debug(callCount + " dynamic method calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
   }
 
-  private static <T> Operator.InputPort<T> getInputPortInterface(Operator module, String portName, Class<T> portTypeClazz) throws Exception {
+  private static <T> NewOperator.InputPort<T> getInputPortInterface(NewOperator module, String portName, Class<T> portTypeClazz) throws Exception {
 
     Field[] fields = module.getClass().getDeclaredFields();
     for (Field field : fields) {
@@ -183,19 +183,19 @@ public class ProtoModuleTest {
 
         Object portObject = field.get(module);
         if (!(portObject instanceof InputPort)) {
-          throw new IllegalArgumentException("Port field " + field + " needs to be of type " + Operator.InputPort.class + " but found " + portObject.getClass().getName());
+          throw new IllegalArgumentException("Port field " + field + " needs to be of type " + NewOperator.InputPort.class + " but found " + portObject.getClass().getName());
         }
 
         Type genericType = findTypeArgument(portObject.getClass(), InputPort.class);
         LOG.debug(portName + " type is: " + genericType);
 
-        return (Operator.InputPort<T>)portObject;
+        return (NewOperator.InputPort<T>)portObject;
       }
     }
     throw new IllegalArgumentException("Port processor factory method not found in " + module + " for " + portName);
   }
 
-  private static void injectSink(Operator module, String portName, Sink<Object> sink) throws Exception {
+  private static void injectSink(NewOperator module, String portName, Sink<Object> sink) throws Exception {
     Field[] fields = module.getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
@@ -305,7 +305,7 @@ public class ProtoModuleTest {
     LOG.debug("dag bytes size: " + dagBytes.length);
     DAG clonedDag = DAG.read(new ByteArrayInputStream(dagBytes));
     Assert.assertEquals(dag.getAllOperators().size(), clonedDag.getAllOperators().size());
-    Operator clonedModule = clonedDag.getOperator("operator1");
+    NewOperator clonedModule = clonedDag.getOperator("operator1");
     Assert.assertNotNull("", clonedModule);
     Assert.assertEquals(""+m1.getMyConfigField(), m1.getMyConfigField(), ((MyProtoModule<?>)clonedModule).getMyConfigField());
     clonedDag.validate();

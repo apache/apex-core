@@ -4,19 +4,12 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.Operator;
+import com.malhartech.dag.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
-
 import org.apache.commons.beanutils.BeanUtils;
-
-import com.malhartech.dag.AbstractInputModule;
-import com.malhartech.dag.AbstractModule;
-import com.malhartech.dag.DefaultModuleSerDe;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.Operator;
-import com.malhartech.dag.ModuleSerDe;
-import com.malhartech.dag.SerDe;
 
 /**
  *
@@ -93,16 +86,16 @@ public abstract class StramUtils {
    */
   public static void internalSetupNode(Operator node, String id) {
     // TODO: what we really need is a common node interface for internal setup
-    if (node instanceof AbstractModule) {
-      ((AbstractModule)node).setId(id);
-    } else if (node instanceof AbstractInputModule) {
-      ((AbstractInputModule)node).setId(id);
+    if (node instanceof Module) {
+      ((Module)node).setId(id);
+    } else if (node instanceof InputModule) {
+      ((InputModule)node).setId(id);
     }
   }
 
-  public static ModuleSerDe getNodeSerDe(String className) {
+  public static OperatorSerDe getNodeSerDe(String className) {
     if (className != null) {
-      return newInstance(classForName(className, ModuleSerDe.class));
+      return newInstance(classForName(className, OperatorSerDe.class));
     }
     return new DefaultModuleSerDe();
   }

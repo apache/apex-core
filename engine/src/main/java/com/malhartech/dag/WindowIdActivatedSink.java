@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 
 /**

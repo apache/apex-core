@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Sink;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;

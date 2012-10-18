@@ -5,7 +5,7 @@ package com.malhartech.stram;
 
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ResetWindowTuple;
-import com.malhartech.dag.Sink;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.Tuple;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;

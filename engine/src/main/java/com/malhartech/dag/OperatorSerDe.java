@@ -12,7 +12,7 @@ import java.io.OutputStream;
  * Interface to control node serialization. Nodes state
  * is externalized for redundancy or transfer in general.
  */
-public interface ModuleSerDe
+public interface OperatorSerDe
 {
   /**
    * Read POJO from stream.

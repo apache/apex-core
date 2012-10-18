@@ -14,11 +14,11 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class ModuleConfiguration extends Configuration
+public class OperatorConfiguration extends Configuration
 {
   private final Map<String, String> properties;
 
-  public ModuleConfiguration(String id, Map<String, String> properties)
+  public OperatorConfiguration(String id, Map<String, String> properties)
   {
     set("Id", id);
     this.properties = properties;

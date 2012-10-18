@@ -10,7 +10,7 @@ import com.malhartech.dag.Component;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class ComponentComplementPair<COMPONENT extends Component<?,?>, COMPLEMENT>
+public abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
 {
   public final COMPONENT component;
 

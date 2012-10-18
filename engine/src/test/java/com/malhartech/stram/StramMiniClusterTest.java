@@ -335,7 +335,7 @@ public class StramMiniClusterTest
   }
 
   @SuppressWarnings("PublicInnerClass")
-  public static class TestDNode extends AbstractModule implements Sink
+  public static class TestDNode extends Module implements Sink
   {
     @SuppressWarnings("PackageVisibleField")
     int getResetCount = 0;

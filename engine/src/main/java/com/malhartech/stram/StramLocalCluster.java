@@ -6,8 +6,8 @@ package com.malhartech.stram;
 
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.DAG;
-import com.malhartech.dag.Operator;
-import com.malhartech.dag.ModuleContext;
+import com.malhartech.api.Operator;
+import com.malhartech.dag.OperatorContext;
 import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -158,7 +158,7 @@ public class StramLocalCluster implements Runnable {
       return super.setupWindowGenerator(smallestWindowId);
     }
 
-    ModuleContext getNodeContext(String id)
+    OperatorContext getNodeContext(String id)
     {
       return activeNodes.get(id);
     }

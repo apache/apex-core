@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.Operator;
 import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -75,7 +76,7 @@ public class CheckpointTest
 
     Assert.assertEquals("number operators", 1, container.getNodes().size());
     Operator node = container.getNode(cc.nodeList.get(0).id);
-    ModuleContext context = container.getNodeContext(cc.nodeList.get(0).id);
+    OperatorContext context = container.getNodeContext(cc.nodeList.get(0).id);
 
     Assert.assertNotNull("node deployed " + cc.nodeList.get(0), node);
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());

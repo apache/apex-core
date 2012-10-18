@@ -41,7 +41,7 @@
  * <b>{@link com.malhartech.dag.NodeSerDe}</b>: <b>TBD</b><br>
  * <b>{@link com.malhartech.dag.ResetWindowTuple}</b>: Resets window id<br>
  * <b>{@link com.malhartech.dag.SerDe}</b>: Serializing and Deserializing the data tuples and controlling the partitioning<<br>
- * <b>{@link com.malhartech.dag.Sink}</b>:
+ * <b>{@link com.malhartech.api.Sink}</b>:
  * <b>{@link com.malhartech.dag.Stream}</b>: Base interface for all streaming in the streaming platform<br>
  * <b>{@link com.malhartech.dag.StreamConfiguration}</b>: Configuration object provided per stream object<br>
  * <b>{@link com.malhartech.dag.StreamContext}</b>: Defines the destination for tuples processed<br>

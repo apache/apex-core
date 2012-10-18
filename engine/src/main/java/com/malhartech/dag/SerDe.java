@@ -8,6 +8,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Operator;
 import java.util.Collection;
 
 /**

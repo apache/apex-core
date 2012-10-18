@@ -6,6 +6,8 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Sink;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,9 +16,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractBaseModule implements Operator
+public abstract class BaseModule implements DAGComponent<OperatorContext>
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractBaseModule.class);
+  private static final Logger logger = LoggerFactory.getLogger(BaseModule.class);
   protected transient String id;
   protected final transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   protected transient int spinMillis = 10;
@@ -68,11 +70,6 @@ public abstract class AbstractBaseModule implements Operator
     alive = false;
   }
 
-  @Override
-  public void beginWindow()
-  {
-  }
-
   /**
    * An opportunity for the derived node to use the connected dagcomponents.
    *
@@ -86,12 +83,12 @@ public abstract class AbstractBaseModule implements Operator
     /* implementation to be optionally overridden by the user */
   }
 
-  public void activated(ModuleContext context)
+  public void activated(OperatorContext context)
   {
     /* implementation to be optionally overridden by the user */
   }
 
-  public void deactivated(ModuleContext context)
+  public void deactivated(OperatorContext context)
   {
     /* implementation to be optionally overridden by the user */
   }
@@ -126,11 +123,6 @@ public abstract class AbstractBaseModule implements Operator
   }
 
   @Override
-  public void endWindow()
-  {
-  }
-
-  @Override
   public boolean equals(Object obj)
   {
     if (obj == null) {
@@ -139,7 +131,7 @@ public abstract class AbstractBaseModule implements Operator
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final AbstractBaseModule other = (AbstractBaseModule)obj;
+    final BaseModule other = (BaseModule)obj;
     if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
       return false;
     }
@@ -192,16 +184,6 @@ public abstract class AbstractBaseModule implements Operator
   public void setSpinMillis(int spinMillis)
   {
     this.spinMillis = spinMillis;
-  }
-
-  @Override
-  public void setup(ModuleConfiguration config) throws FailedOperationException
-  {
-  }
-
-  @Override
-  public void teardown()
-  {
   }
 
   @Override

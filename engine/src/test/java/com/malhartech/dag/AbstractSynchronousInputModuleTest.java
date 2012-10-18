@@ -27,7 +27,7 @@ public class AbstractSynchronousInputModuleTest
     @PortAnnotation(name = SynchronousInputModule.OUTPUT1, type = PortType.OUTPUT),
     @PortAnnotation(name = SynchronousInputModule.OUTPUT2, type = PortType.OUTPUT)
   })
-  public static class SynchronousInputModule extends AbstractSynchronousInputModule
+  public static class SynchronousInputModule extends SynchronousInputModule
   {
     public static final String OUTPUT1 = "OUTPUT1";
     public static final String OUTPUT2 = "OUTPUT2";
@@ -54,7 +54,7 @@ public class AbstractSynchronousInputModuleTest
     @PortAnnotation(name = CollectorModule.INPUT1, type = PortType.INPUT),
     @PortAnnotation(name = CollectorModule.INPUT2, type = PortType.INPUT)
   })
-  public static class CollectorModule extends AbstractModule implements Sink
+  public static class CollectorModule extends Module implements Sink
   {
     private static final Logger logger = LoggerFactory.getLogger(CollectorModule.class);
     public static final String INPUT1 = "INPUT1";

@@ -10,7 +10,7 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface Component<T1 extends Configuration, T2 extends Context>
+public interface Component<T1 extends Configuration>
 {
   /*
    * if the Component is capable of taking only 1 input, call it INPUT.
@@ -21,11 +21,5 @@ public interface Component<T1 extends Configuration, T2 extends Context>
 
   public void setup(T1 config) throws FailedOperationException;
 
-  public void activate(T2 context);
-
-  public void deactivate();
-
   public void teardown();
-
-  public Sink connect(String port, Sink sink);
 }

@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Maps;
 import com.malhartech.dag.ApplicationFactory;
 import com.malhartech.dag.DAG;
-import com.malhartech.dag.Operator;
+import com.malhartech.api.Operator;
 import com.malhartech.dag.SerDe;
 import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.DAG.StreamDecl;

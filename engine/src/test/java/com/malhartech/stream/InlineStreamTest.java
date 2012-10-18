@@ -3,6 +3,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.api.Operator;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
@@ -32,11 +33,11 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
     prev = null;
 
-    final AbstractModule node1 = new PassThroughNode();
-    node1.setup(new ModuleConfiguration("node1", null));
+    final Module node1 = new PassThroughNode();
+    node1.setup(new OperatorConfiguration("node1", null));
 
-    final AbstractModule node2 = new PassThroughNode();
-    node2.setup(new ModuleConfiguration("node2", null));
+    final Module node2 = new PassThroughNode();
+    node2.setup(new OperatorConfiguration("node2", null));
 
     InlineStream stream = new InlineStream();
     stream.setup(new StreamConfiguration());
@@ -132,17 +133,17 @@ public class InlineStreamTest
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
 
-  private void launchNodeThreads(Collection<? extends AbstractModule> nodes, final Map<String, Operator> activeNodes)
+  private void launchNodeThreads(Collection<? extends Module> nodes, final Map<String, Operator> activeNodes)
   {
     final AtomicInteger i = new AtomicInteger(0);
-    for (final AbstractModule node: nodes) {
+    for (final Module node: nodes) {
       // launch operators
       Runnable nodeRunnable = new Runnable()
       {
         @Override
         public void run()
         {
-          ModuleContext ctx = new ModuleContext(String.valueOf(i.incrementAndGet()), Thread.currentThread());
+          OperatorContext ctx = new OperatorContext(String.valueOf(i.incrementAndGet()), Thread.currentThread());
           activeNodes.put(ctx.getId(), node);
           node.activate(ctx);
           activeNodes.remove(ctx.getId());
@@ -161,7 +162,7 @@ public class InlineStreamTest
     @PortAnnotation(name = Component.INPUT, type = PortType.INPUT),
     @PortAnnotation(name = Component.OUTPUT, type = PortType.OUTPUT)
   })
-  public static class PassThroughNode extends AbstractModule implements Sink
+  public static class PassThroughNode extends Module implements Sink
   {
     private boolean logMessages = false;
 

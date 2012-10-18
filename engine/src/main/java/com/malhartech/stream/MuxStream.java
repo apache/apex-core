@@ -4,6 +4,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.api.Sink;
 import com.malhartech.dag.*;
 import java.util.HashMap;
 

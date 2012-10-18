@@ -7,9 +7,10 @@ package com.malhartech.dag;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractModule;
+import com.malhartech.api.Sink;
+import com.malhartech.dag.Module;
 import com.malhartech.dag.FailedOperationException;
-import com.malhartech.dag.ModuleConfiguration;
+import com.malhartech.dag.OperatorConfiguration;
 import com.malhartech.dag.Tuple;
 import java.io.IOException;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -26,7 +27,7 @@ import org.slf4j.LoggerFactory;
     ports = {
   @PortAnnotation(name = TestOutputModule.PORT_INPUT, type = PortType.INPUT)
 })
-public class TestOutputModule extends AbstractModule
+public class TestOutputModule extends Module implements Sink
 {
   private static final Logger logger = LoggerFactory.getLogger(TestOutputModule.class);
   /**
@@ -40,7 +41,7 @@ public class TestOutputModule extends AbstractModule
   private boolean append;
 
   @Override
-  public void setup(ModuleConfiguration config) throws FailedOperationException
+  public void setup(OperatorConfiguration config) throws FailedOperationException
   {
     try {
       fs = FileSystem.get(config);

@@ -8,7 +8,6 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.netty.ClientInitializer;
-import com.malhartech.dag.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;

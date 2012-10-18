@@ -4,14 +4,10 @@
 package com.malhartech.stream;
 
 import com.google.protobuf.ByteString;
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.EndWindowTuple;
-import com.malhartech.dag.ResetWindowTuple;
-import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

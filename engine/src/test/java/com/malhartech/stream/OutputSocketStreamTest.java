@@ -4,7 +4,7 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.dag.Sink;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import io.netty.channel.ChannelFuture;

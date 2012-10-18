@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.*;
 import com.malhartech.util.ScheduledExecutorService;
@@ -23,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
  */
-public class WindowGenerator implements Component<Configuration, Context>, Runnable
+public class WindowGenerator implements Component<Configuration>, DAGComponent<Context>, Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
   public static final String FIRST_WINDOW_MILLIS = "FirstWindowMillis";

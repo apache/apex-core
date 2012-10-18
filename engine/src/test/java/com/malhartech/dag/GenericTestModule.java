@@ -7,7 +7,7 @@ package com.malhartech.dag;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.AbstractModule;
+import com.malhartech.dag.Module;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
         @PortAnnotation(name = GenericTestModule.OUTPUT1, type = PortType.OUTPUT)
     }
 )
-public class GenericTestModule extends AbstractModule {
+public class GenericTestModule extends Module {
   public static final String INPUT1 = "input1";
   public static final String INPUT2 = "input2";
   public static final String OUTPUT1 = "output1";

@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Operator;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.InputStream;

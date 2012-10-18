@@ -26,8 +26,8 @@ import com.malhartech.dag.DAG;
 import com.malhartech.dag.DAG.InputPort;
 import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.DAG.StreamDecl;
-import com.malhartech.dag.Operator;
-import com.malhartech.dag.ModuleSerDe;
+import com.malhartech.api.Operator;
+import com.malhartech.dag.OperatorSerDe;
 import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTComponent;
@@ -65,7 +65,7 @@ public class StreamingContainerManager
   private int windowSizeMillis = 500;
   private final int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
-  private final ModuleSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
+  private final OperatorSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
 
   private class NodeStatus
   {

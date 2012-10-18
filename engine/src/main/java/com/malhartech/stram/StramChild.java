@@ -5,11 +5,11 @@
 package com.malhartech.stram;
 
 import com.malhartech.dag.Component;
-import com.malhartech.dag.Operator;
-import com.malhartech.dag.ModuleConfiguration;
-import com.malhartech.dag.ModuleContext;
-import com.malhartech.dag.ModuleSerDe;
-import com.malhartech.dag.Sink;
+import com.malhartech.api.Operator;
+import com.malhartech.dag.OperatorConfiguration;
+import com.malhartech.dag.OperatorContext;
+import com.malhartech.dag.OperatorSerDe;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
@@ -76,7 +76,7 @@ public class StramChild
   /**
    * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
    */
-  protected final Map<String, ModuleContext> activeNodes = new ConcurrentHashMap<String, ModuleContext>();
+  protected final Map<String, OperatorContext> activeNodes = new ConcurrentHashMap<String, OperatorContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
@@ -534,7 +534,7 @@ public class StramChild
     if (rsp.nodeRequests != null) {
       // extended processing per node
       for (StramToNodeRequest req: rsp.nodeRequests) {
-        ModuleContext nc = activeNodes.get(req.getNodeId());
+        OperatorContext nc = activeNodes.get(req.getNodeId());
         if (nc == null) {
           logger.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
@@ -552,7 +552,7 @@ public class StramChild
    * @param n
    * @param snr
    */
-  private void processStramRequest(ModuleContext context, StramToNodeRequest snr)
+  private void processStramRequest(OperatorContext context, StramToNodeRequest snr)
   {
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
@@ -560,7 +560,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        context.request(new ModuleContext.ModuleRequest() {
+        context.request(new OperatorContext.ModuleRequest() {
           @Override
           public void execute(Operator module, String id, long windowId) throws IOException {
             new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, module, StramUtils.getNodeSerDe(null));
@@ -597,7 +597,7 @@ public class StramChild
 
   private void deployNodes(List<ModuleDeployInfo> nodeList) throws Exception
   {
-    ModuleSerDe moduleSerDe = StramUtils.getNodeSerDe(null);
+    OperatorSerDe moduleSerDe = StramUtils.getNodeSerDe(null);
     HdfsBackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
     for (ModuleDeployInfo ndi: nodeList) {
       try {
@@ -934,7 +934,7 @@ public class StramChild
      * let's make sure that we send the same window Ids with the same reset windows.
      */
     // let's see if we want to send the exact same window id even the second time.
-    ModuleConfiguration config = new ModuleConfiguration("doesn't matter", null);
+    OperatorConfiguration config = new OperatorConfiguration("doesn't matter", null);
     config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, firstWindowMillis);
     if (smallestWindowId > firstWindowMillis) {
       config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID));
@@ -968,11 +968,11 @@ public class StramChild
         public void run()
         {
           try {
-            ModuleConfiguration config = new ModuleConfiguration(ndi.id, ndi.properties);
+            OperatorConfiguration config = new OperatorConfiguration(ndi.id, ndi.properties);
             StramUtils.internalSetupNode(node, nodeInternalId);
             node.setup(config);
 
-            ModuleContext nc = new ModuleContext(ndi.id, this);
+            OperatorContext nc = new OperatorContext(ndi.id, this);
             activeNodes.put(ndi.id, nc);
 
             activatedNodeCount.incrementAndGet();

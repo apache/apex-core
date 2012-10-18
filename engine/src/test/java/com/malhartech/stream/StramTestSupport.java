@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.EndWindowTuple;
-import com.malhartech.dag.ModuleContext;
+import com.malhartech.dag.OperatorContext;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.ManualScheduledExecutorService;
 import com.malhartech.stram.WindowGenerator;
@@ -61,7 +61,7 @@ abstract public class StramTestSupport {
   }
 
   @SuppressWarnings("SleepWhileInLoop")
-  public static void waitForWindowComplete(ModuleContext nodeCtx, long windowId) throws InterruptedException
+  public static void waitForWindowComplete(OperatorContext nodeCtx, long windowId) throws InterruptedException
   {
     while (nodeCtx.getLastProcessedWindowId() < windowId) {
       LOG.debug("Waiting for end of window {} at node {}", windowId, nodeCtx.getId());

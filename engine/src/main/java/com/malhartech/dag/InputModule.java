@@ -19,14 +19,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractInputModule extends AbstractBaseModule
+public abstract class InputModule extends BaseModule
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractInputModule.class);
+  private static final Logger logger = LoggerFactory.getLogger(InputModule.class);
   private transient final Tuple NO_DATA = new Tuple(DataType.NO_DATA);
   private transient CircularBuffer<Tuple> controlTuples;
   private transient HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
 
-  public AbstractInputModule()
+  public InputModule()
   {
     controlTuples = new CircularBuffer<Tuple>(1024);
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
@@ -34,7 +34,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
 
   @Override
   @SuppressWarnings("SleepWhileInLoop")
-  public final void activate(ModuleContext context)
+  public final void activate(OperatorContext context)
   {
     activateSinks();
     alive = true;
@@ -69,7 +69,7 @@ public abstract class AbstractInputModule extends AbstractBaseModule
                  * we prefer to cater to requests at the end of the window boundary.
                  */
                 try {
-                  CircularBuffer<ModuleContext.ModuleRequest> requests = context.getRequests();
+                  CircularBuffer<OperatorContext.ModuleRequest> requests = context.getRequests();
                   for (int i = requests.size(); i-- > 0;) {
                     //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
                     requests.remove().execute(this, context.getId(), t.getWindowId());
