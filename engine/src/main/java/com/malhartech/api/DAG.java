@@ -36,8 +36,10 @@ import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.dag.DAGConstants;
 import com.malhartech.dag.DefaultModuleSerDe;
+import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.DAGPropertiesBuilder;
+import com.malhartech.stram.StramUtils;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -81,14 +83,9 @@ public class DAG implements Serializable, DAGConstants {
 
   public static class ExternalizableModule implements Externalizable {
     private Operator module;
-    // since the ports are transient, we cannot serialize them
-    private final Map<Operator.InputPort<?>, InputPortMeta> inPortMap = new HashMap<Operator.InputPort<?>, InputPortMeta>();
-    private final Map<Operator.OutputPort<?>, OutputPortMeta> outPortMap = new HashMap<Operator.OutputPort<?>, OutputPortMeta>();
 
     private void set(Operator module) {
       this.module = module;
-      mapInputPorts(this, inPortMap);
-      mapOutputPorts(this,  outPortMap);
     }
 
     private Operator get() {
@@ -125,13 +122,21 @@ public class DAG implements Serializable, DAGConstants {
     this.confHolder = new ExternalizableConf(conf);
   }
 
-  private final static class InputPortMeta implements Serializable {
+  public final class InputPortMeta implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private ExternalizableModule node;
+    private OperatorWrapper node;
     private Class<?> fieldDeclaringClass;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
+
+    public OperatorWrapper getOperator() {
+      return node;
+    }
+
+    public String getPortName() {
+      return fieldName;
+    }
 
     @Override
     public String toString() {
@@ -143,13 +148,21 @@ public class DAG implements Serializable, DAGConstants {
     }
   }
 
-  private final static class OutputPortMeta implements Serializable {
+  public final class OutputPortMeta implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private ExternalizableModule node;
+    private OperatorWrapper node;
     private Class<?> fieldDeclaringClass;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
+
+    public OperatorWrapper getOperator() {
+      return node;
+    }
+
+    public String getPortName() {
+      return fieldName;
+    }
 
     @Override
     public String toString() {
@@ -206,7 +219,7 @@ public class DAG implements Serializable, DAGConstants {
 
     public StreamDecl setSource(Operator.OutputPort<?> port) {
       OperatorWrapper op = getOperatorWrapper(port.getOperator());
-      OutputPortMeta portMeta = op.moduleHolder.outPortMap.get(port);
+      OutputPortMeta portMeta = op.getOutputPortMeta(port);
       if (portMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + port);
       }
@@ -225,7 +238,7 @@ public class DAG implements Serializable, DAGConstants {
 
     public StreamDecl addSink(Operator.InputPort<?> port) {
       OperatorWrapper op = getOperatorWrapper(port.getOperator());
-      InputPortMeta portMeta = op.moduleHolder.inPortMap.get(port);
+      InputPortMeta portMeta = op.getInputPortMeta(port);
       if (portMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + port);
       }
@@ -241,12 +254,16 @@ public class DAG implements Serializable, DAGConstants {
 
   }
 
-  private final class OperatorWrapper implements Serializable {
+  public final class OperatorWrapper implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final Map<InputPortMeta, StreamDecl> inputStreams = new HashMap<InputPortMeta, StreamDecl>();
     private final Map<OutputPortMeta, StreamDecl> outputStreams = new HashMap<OutputPortMeta, StreamDecl>();
-//    private final Map<String, String> properties = new HashMap<String, String>();
+
+    // Ports are transient, we cannot serialize them, instead, keep a lazy initialized mapping
+    private transient Map<Operator.InputPort<?>, InputPortMeta> inPortMap;
+    private transient Map<Operator.OutputPort<?>, OutputPortMeta> outPortMap;
+    //    private final Map<String, String> properties = new HashMap<String, String>();
     private final ExternalizableModule moduleHolder;
     private final String id;
 
@@ -259,13 +276,33 @@ public class DAG implements Serializable, DAGConstants {
       this.id = module.getName();
     }
 
-//    public Map<InputPortMeta, StreamDecl> getInputStreams() {
-//      return this.inputStreams;
-//    }
+    public String getId() {
+      return id;
+    }
 
-//    public Map<OutputPortMeta, StreamDecl> getOutputStreams() {
-//      return this.outputStreams;
-//    }
+    private OutputPortMeta getOutputPortMeta(Operator.OutputPort<?> port) {
+      if (this.outPortMap ==  null) {
+        this.outPortMap = new HashMap<Operator.OutputPort<?>, OutputPortMeta>();
+        mapOutputPorts(this, outPortMap);
+      }
+      return this.outPortMap.get(port);
+    }
+
+    private InputPortMeta getInputPortMeta(Operator.InputPort<?> port) {
+      if (this.inPortMap ==  null) {
+        this.inPortMap = new HashMap<Operator.InputPort<?>, InputPortMeta>();
+        mapInputPorts(this, inPortMap);
+      }
+      return this.inPortMap.get(port);
+    }
+
+    public Map<InputPortMeta, StreamDecl> getInputStreams() {
+      return this.inputStreams;
+    }
+
+    public Map<OutputPortMeta, StreamDecl> getOutputStreams() {
+      return this.outputStreams;
+    }
 
     public Operator getModule() {
       return this.moduleHolder.module;
@@ -294,19 +331,32 @@ public class DAG implements Serializable, DAGConstants {
 
   }
 
-  public OperatorWrapper addOperator(Operator module) {
-    if (nodes.containsKey(module.getName())) {
-      throw new IllegalArgumentException("duplicate node id: " + nodes.get(module.getName()));
+  public <T extends Operator> T addOperator(String name, Class<T> clazz) {
+    T instance = StramUtils.newInstance(clazz);
+    addOperator(name, instance);
+    if (instance instanceof BaseOperator) {
+      ((BaseOperator)instance).setName(name);
+    }
+    return instance;
+  }
+
+  public OperatorWrapper addOperator(Operator instance) {
+    return addOperator(instance.getName(), instance);
+  }
+
+  private OperatorWrapper addOperator(String name, Operator module) {
+    if (nodes.containsKey(name)) {
+      throw new IllegalArgumentException("duplicate node id: " + nodes.get(name));
     }
 
     OperatorWrapper decl = new OperatorWrapper(module);
     rootNodes.add(decl);
-    nodes.put(module.getName(), decl);
+    nodes.put(name, decl);
 
     return decl;
   }
 
-  private OperatorWrapper getOperatorWrapper(Operator module) {
+  public OperatorWrapper getOperatorWrapper(Operator module) {
     // TODO: cache mapping
     for (OperatorWrapper o : getAllOperators()) {
       if (o.moduleHolder.module == module) {
@@ -357,8 +407,8 @@ public class DAG implements Serializable, DAGConstants {
     return Collections.unmodifiableCollection(this.nodes.values());
   }
 
-  public Operator getOperator(String nodeId) {
-    return this.nodes.get(nodeId).getModule();
+  public OperatorWrapper getOperatorWrapper(String nodeId) {
+    return this.nodes.get(nodeId);
   }
 
   public Configuration getConf() {
@@ -456,7 +506,7 @@ public class DAG implements Serializable, DAGConstants {
     // depth first successors traversal
     for (StreamDecl downStream : n.outputStreams.values()) {
       for (InputPortMeta sink : downStream.sinks) {
-        OperatorWrapper successor = getOperatorWrapper(sink.node.get());
+        OperatorWrapper successor = sink.node;
         if (successor == null) {
           continue;
         }
@@ -510,15 +560,15 @@ public class DAG implements Serializable, DAGConstants {
         toString();
   }
 
-  public static void mapOutputPorts(ExternalizableModule operator, Map<Operator.OutputPort<?>, OutputPortMeta> metaPorts) {
-    Field[] fields = operator.get().getClass().getDeclaredFields();
+  public void mapOutputPorts(OperatorWrapper operator, Map<Operator.OutputPort<?>, OutputPortMeta> metaPorts) {
+    Field[] fields = operator.moduleHolder.get().getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
       OutputPortFieldAnnotation a = field.getAnnotation(OutputPortFieldAnnotation.class);
       if (a != null) {
         field.setAccessible(true);
         try {
-          Object outPort = field.get(operator.get());
+          Object outPort = field.get(operator.moduleHolder.get());
           if (outPort == null) {
             throw new IllegalArgumentException("port is null " + field);
           }
@@ -538,15 +588,15 @@ public class DAG implements Serializable, DAGConstants {
     }
   }
 
-  public static void mapInputPorts(ExternalizableModule operator, Map<Operator.InputPort<?>, InputPortMeta> metaPorts) {
-    Field[] fields = operator.get().getClass().getDeclaredFields();
+  public void mapInputPorts(OperatorWrapper operator, Map<Operator.InputPort<?>, InputPortMeta> metaPorts) {
+    Field[] fields = operator.moduleHolder.get().getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];
       InputPortFieldAnnotation a = field.getAnnotation(InputPortFieldAnnotation.class);
       if (a != null) {
         field.setAccessible(true);
         try {
-          Object portObject = field.get(operator.get());
+          Object portObject = field.get(operator.moduleHolder.get());
           if (portObject == null) {
             throw new IllegalArgumentException("port is null " + field);
           }

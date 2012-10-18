@@ -24,13 +24,13 @@ import org.slf4j.LoggerFactory;
 import com.google.inject.TypeLiteral;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
-import com.malhartech.api.DAG;
-import com.malhartech.api.Sink;
 import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.DefaultModuleSerDe;
-import com.malhartech.dag.TestSink;
+//import com.malhartech.dag.TestSink;
 
 /**
  *
@@ -305,7 +305,7 @@ public class ProtoModuleTest {
     LOG.debug("dag bytes size: " + dagBytes.length);
     DAG clonedDag = DAG.read(new ByteArrayInputStream(dagBytes));
     Assert.assertEquals(dag.getAllOperators().size(), clonedDag.getAllOperators().size());
-    Operator clonedModule = clonedDag.getOperator("operator1");
+    Operator clonedModule = clonedDag.getOperatorWrapper("operator1").getModule();
     Assert.assertNotNull("", clonedModule);
     Assert.assertEquals(""+m1.getMyConfigField(), m1.getMyConfigField(), ((MyProtoModule<?>)clonedModule).getMyConfigField());
     clonedDag.validate();
@@ -317,7 +317,7 @@ public class ProtoModuleTest {
     ProtoArithmeticQuotient node = new ProtoArithmeticQuotient();
     node.setMultiplyBy(2);
 
-    TestSink<HashMap<String, Number>> testSink = new TestSink<HashMap<String, Number>>();
+//    TestSink<HashMap<String, Number>> testSink = new TestSink<HashMap<String, Number>>();
 //    node.outportQuotient.setSink(testSink);
 
     LOG.debug("type inportNumerator: " + findTypeArgument(node.inportNumerator.getClass(), InputPort.class));
@@ -341,7 +341,7 @@ public class ProtoModuleTest {
 //      node.inportDenominator.process(dinput);
     }
     node.endWindow();
-    LOG.debug("output tuples: " + testSink.collectedTuples);
+//    LOG.debug("output tuples: " + testSink.collectedTuples);
 
   }
 
