@@ -77,40 +77,10 @@ public class AbstractSynchronousInputModuleTest
     }
   }
 
-  public static class CollectorModule implements Operator
+  public static class CollectorModule<T> extends BaseOperator
   {
-    public final transient CollectorInputPort even = new CollectorInputPort("even", this);
-    public final transient CollectorInputPort odd = new CollectorInputPort("odd", this);
-
-    @Override
-    public void beginWindow()
-    {
-    }
-
-    @Override
-    public void endWindow()
-    {
-    }
-
-    @Override
-    public void setup(OperatorConfiguration config) throws FailedOperationException
-    {
-    }
-
-    @Override
-    public void activated(OperatorContext context)
-    {
-    }
-
-    @Override
-    public void deactivated()
-    {
-    }
-
-    @Override
-    public void teardown()
-    {
-    }
+    public final transient CollectorInputPort<T> even = new CollectorInputPort<T>("even", this);
+    public final transient CollectorInputPort<T> odd = new CollectorInputPort<T>("odd", this);
   }
 
   @Test
@@ -118,7 +88,7 @@ public class AbstractSynchronousInputModuleTest
   {
     DAG dag = new DAG();
     SynchronousInputOperator generator = dag.addOperator("NumberGenerator", SynchronousInputOperator.class);
-    CollectorModule collector = dag.addOperator("NumberCollector", CollectorModule.class);
+    CollectorModule<Number> collector = dag.addOperator("NumberCollector", new CollectorModule<Number>());
 
     dag.addStream("EvenIntegers", generator.even, collector.even).setInline(true);
     dag.addStream("OddIntegers", generator.odd, collector.odd).setInline(true);
@@ -148,9 +118,9 @@ public class AbstractSynchronousInputModuleTest
     Assert.assertTrue("tuple count", collections.get(collector.even.id).size() - collections.get(collector.odd.id).size() <= 1);
   }
 
-  public static class CollectorInputPort extends DefaultInputPort<Integer>
+  public static class CollectorInputPort<T> extends DefaultInputPort<T>
   {
-    ArrayList<Integer> list;
+    ArrayList<T> list;
     final String id;
 
     public CollectorInputPort(String id, Operator module)
@@ -160,7 +130,7 @@ public class AbstractSynchronousInputModuleTest
     }
 
     @Override
-    public void process(Integer tuple)
+    public void process(T tuple)
     {
       list.add(tuple);
     }
@@ -169,7 +139,7 @@ public class AbstractSynchronousInputModuleTest
     public void setConnected(boolean flag)
     {
       if (flag) {
-        collections.put(id, list = new ArrayList<Integer>());
+        collections.put(id, list = new ArrayList<T>());
       }
     }
   }
