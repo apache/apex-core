@@ -186,6 +186,7 @@ public class StramLocalClusterTest
     StramTestSupport.waitForWindowComplete(n1Context, 2);
 
     OperatorContext n2Context = c2.getNodeContext(ptNode2.id);
+    Assert.assertNotNull("context " + ptNode2);
 
     wclock.tick(1); // end window 3
 

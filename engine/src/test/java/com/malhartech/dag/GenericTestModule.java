@@ -78,7 +78,9 @@ public class GenericTestModule extends BaseOperator {
     if (emitFormat != null) {
       o = String.format(emitFormat, o);
     }
-    outport1.emit(o);
+    if (outport1.isConnected()) {
+      outport1.emit(o);
+    }
   }
 
 }
