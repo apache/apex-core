@@ -4,8 +4,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.DAG;
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DAG;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.TestGeneratorInputModule;
 import java.io.IOException;

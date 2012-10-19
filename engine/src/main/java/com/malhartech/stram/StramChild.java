@@ -954,7 +954,7 @@ public class StramChild
         public void run()
         {
           try {
-            OperatorConfiguration config = new OperatorConfiguration(ndi.id, ndi.properties);
+            OperatorConfiguration config = new OperatorConfiguration();
             node.getOperator().setup(config);
 
             OperatorContext nc = new OperatorContext(ndi.id, this);

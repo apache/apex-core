@@ -9,6 +9,7 @@ import com.malhartech.dag.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.dag.OperatorContext;
 import com.malhartech.dag.DAG.OperatorInstance;
+import com.malhartech.dag.Node;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
@@ -165,10 +166,10 @@ public class StramLocalCluster implements Runnable {
 
     Operator getNode(String id)
     {
-      return nodes.get(id);
+      return nodes.get(id).getOperator();
     }
 
-    Map<String, Operator> getNodes()
+    Map<String, Node> getNodes()
     {
       return nodes;
     }

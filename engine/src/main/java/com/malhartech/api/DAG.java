@@ -4,6 +4,7 @@
  */
 package com.malhartech.api;
 
+import com.malhartech.dag.Operators;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.dag.DAGConstants;

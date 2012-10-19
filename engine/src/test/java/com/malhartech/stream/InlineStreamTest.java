@@ -3,10 +3,11 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.api.Operator;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.*;
 import java.util.Arrays;
 import java.util.Collection;
@@ -33,11 +34,11 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
     prev = null;
 
-    final GenericNode node1 = new PassThroughNode();
-    node1.setup(new OperatorConfiguration("node1", null));
+    final Operator node1 = new PassThroughNode();
+    node1.setup(new OperatorConfiguration());
 
-    final GenericNode node2 = new PassThroughNode();
-    node2.setup(new OperatorConfiguration("node2", null));
+    final Operator node2 = new PassThroughNode();
+    node2.setup(new OperatorConfiguration());
 
     InlineStream stream = new InlineStream();
     stream.setup(new StreamConfiguration());

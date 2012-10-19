@@ -53,4 +53,15 @@ public class BaseOperator implements Operator
     return this.getClass().getSimpleName() + "{name=" + name + '}';
   }
 
+  @Override
+  public void activate(OperatorContext context)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void deactivate()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }

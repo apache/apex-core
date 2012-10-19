@@ -13,29 +13,19 @@ import org.apache.hadoop.conf.Configuration;
 /**
  * Configuration object provided per stream object<p>
  * <br>
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class StreamConfiguration extends Configuration
 {
   public static final String SERVER_ADDRESS = "bufferserver";
-  final Map<String, String> properties;
 
-  public StreamConfiguration(Map<String, String> properties) {
-    this.properties = properties;
-    OperatorConfiguration.addAll(this, properties);
-  }
-
-  public StreamConfiguration() {
-    this(Collections.<String, String>emptyMap());
-  }
-
-  public Map<String, String> getDagProperties() {
-    return properties;
+  public StreamConfiguration()
+  {
   }
 
   public InetSocketAddress getBufferServerAddress()
   {
     return this.getSocketAddr(SERVER_ADDRESS, "localhost", Server.DEFAULT_PORT);
   }
-
 }
