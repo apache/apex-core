@@ -36,9 +36,9 @@ public class GenericNode extends Node<Operator>
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
   private final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
 
-  public GenericNode(Operator operator)
+  public GenericNode(String id, Operator operator)
   {
-    super(operator);
+    super(id, operator);
   }
 
   public void handleIdleTimeout()

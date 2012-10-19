@@ -70,7 +70,6 @@ public abstract class StramUtils {
     }
   }
 
-
   public static OperatorSerDe getNodeSerDe(String className) {
     if (className != null) {
       return newInstance(classForName(className, OperatorSerDe.class));

@@ -593,10 +593,10 @@ public class StramChild
         }
 
         if (foreignObject instanceof InputOperator) {
-          nodes.put(ndi.id, new InputNode((InputOperator)foreignObject));
+          nodes.put(ndi.id, new InputNode(ndi.id, (InputOperator)foreignObject));
         }
         else {
-          nodes.put(ndi.id, new GenericNode((Operator)foreignObject));
+          nodes.put(ndi.id, new GenericNode(ndi.id, (Operator)foreignObject));
         }
       }
       catch (Exception e) {
@@ -947,7 +947,7 @@ public class StramChild
       final Node node = nodes.get(ndi.id);
       final String nodeInternalId = ndi.id.concat(":").concat(ndi.declaredId);
       assert (!activeNodes.containsKey(ndi.id));
-      new Thread(nodeInternalId) // should be node.toString()
+      new Thread(node.id.concat("/").concat(ndi.declaredId))
       {
         @Override
         public void run()

@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.DAG;
+import com.malhartech.api.DAG;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -67,7 +67,7 @@ public class LaunchContainerRunnable implements Runnable
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
     StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
-    for (String c : yarnClient.getConf().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
+    for (String c: yarnClient.getConf().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
     }
@@ -80,7 +80,7 @@ public class LaunchContainerRunnable implements Runnable
   public static void addLibJarsToLocalResources(String libJars, Map<String, LocalResource> localResources, FileSystem fs) throws IOException
   {
     String[] jarPathList = StringUtils.splitByWholeSeparator(libJars, ",");
-    for (String jarPath : jarPathList) {
+    for (String jarPath: jarPathList) {
       Path dst = new Path(jarPath);
       // Create a local resource to point to the destination jar path
       FileStatus destStatus = fs.getFileStatus(dst);
@@ -122,7 +122,7 @@ public class LaunchContainerRunnable implements Runnable
     }
     catch (IOException e) {
       LOG.info("Getting current user info failed when trying to launch the container"
-               + e.getMessage());
+              + e.getMessage());
     }
 
     setClasspath(containerEnv);
@@ -149,7 +149,7 @@ public class LaunchContainerRunnable implements Runnable
 
     // Get final commmand
     StringBuilder command = new StringBuilder();
-    for (CharSequence str : vargs) {
+    for (CharSequence str: vargs) {
       command.append(str).append(" ");
     }
     LOG.info("Launching on node: {} command: {}", container.getNodeId(), command);
@@ -165,7 +165,7 @@ public class LaunchContainerRunnable implements Runnable
     }
     catch (YarnRemoteException e) {
       LOG.error("Start container failed for :"
-                + ", containerId=" + container.getId());
+              + ", containerId=" + container.getId());
       e.printStackTrace();
       // TODO do we need to release this container?
     }
@@ -193,8 +193,7 @@ public class LaunchContainerRunnable implements Runnable
    * @param jvmID
    * @return List<CharSequence>
    */
-  public List<CharSequence> getChildVMCommand(
-    String jvmID)
+  public List<CharSequence> getChildVMCommand(String jvmID)
   {
 
     List<CharSequence> vargs = new ArrayList<CharSequence>(8);
@@ -213,10 +212,11 @@ public class LaunchContainerRunnable implements Runnable
 
     if (dag.getConf().get(DAG.STRAM_CONTAINER_JVM_OPTS) != null) {
       vargs.add(dag.getConf().get(DAG.STRAM_CONTAINER_JVM_OPTS));
-    } else {
+    }
+    else {
       // default Xmx based on total allocated memory size
       // default heap size 75% of total memory
-      vargs.add("-Xmx" + (container.getResource().getMemory()*3/4) + "m");
+      vargs.add("-Xmx" + (container.getResource().getMemory() * 3 / 4) + "m");
     }
 
     Path childTmpDir = new Path(Environment.PWD.$(),
@@ -236,7 +236,7 @@ public class LaunchContainerRunnable implements Runnable
 
     // Final commmand
     StringBuilder mergedCommand = new StringBuilder();
-    for (CharSequence str : vargs) {
+    for (CharSequence str: vargs) {
       mergedCommand.append(str).append(" ");
     }
     List<CharSequence> vargsFinal = new ArrayList<CharSequence>(1);
