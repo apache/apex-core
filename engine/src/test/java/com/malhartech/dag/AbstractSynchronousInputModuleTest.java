@@ -121,13 +121,8 @@ public class AbstractSynchronousInputModuleTest
     SynchronousInputOperator generator = dag.addOperator("NumberGenerator", SynchronousInputOperator.class);
     CollectorModule collector = dag.addOperator("NumberCollector", CollectorModule.class);
 
-    dag.addStream("EvenIntegers")
-            .setSource(generator.even)
-            .addSink(collector.even).setInline(true);
-
-    dag.addStream("OddIntegers")
-            .setSource(generator.odd)
-            .addSink(collector.odd).setInline(true);
+    dag.addStream("EvenIntegers", generator.even, collector.even).setInline(true);
+    dag.addStream("OddIntegers", generator.odd, collector.odd).setInline(true);
 
     final StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
@@ -166,7 +161,7 @@ public class AbstractSynchronousInputModuleTest
     @Override
     public void process(Integer tuple)
     {
-      list.add(tuple);
+      //list.add(tuple);
     }
 
     @Override

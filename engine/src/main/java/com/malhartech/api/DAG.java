@@ -398,7 +398,7 @@ public class DAG implements Serializable, DAGConstants {
    * @param sinks
    * @return
    */
-  public StreamDecl addStream(String id, Operator.OutputPort<?> source, Operator.InputPort<?>... sinks) {
+  public <T> StreamDecl addStream(String id, Operator.OutputPort<T> source, Operator.InputPort<T>... sinks) {
     StreamDecl s = addStream(id);
     s.setSource(source);
     for (Operator.InputPort<?> sink : sinks) {
