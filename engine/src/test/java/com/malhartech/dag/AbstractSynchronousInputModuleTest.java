@@ -19,10 +19,12 @@ import org.junit.Test;
  */
 public class AbstractSynchronousInputModuleTest
 {
-  public class SynchronousInputOperator implements SyncInputOperator, Runnable
+  static HashMap<Port, List> collections = new HashMap<Port, List>();
+
+  public static class SynchronousInputOperator implements SyncInputOperator, Runnable
   {
-    public final DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>(this);
-    public final DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>(this);
+    public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>(this);
+    public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>(this);
 
     @Override
     public Runnable getDataPoller()
@@ -75,12 +77,11 @@ public class AbstractSynchronousInputModuleTest
     {
     }
   }
-  static HashMap<Port, List> collections = new HashMap<Port, List>();
 
-  public class CollectorModule implements Operator
+  public static class CollectorModule implements Operator
   {
-    public final CollectorInputPort even = new CollectorInputPort(this);
-    public final CollectorInputPort odd = new CollectorInputPort(this);
+    public final transient CollectorInputPort even = new CollectorInputPort(this);
+    public final transient CollectorInputPort odd = new CollectorInputPort(this);
 
     @Override
     public void beginWindow()
@@ -153,7 +154,7 @@ public class AbstractSynchronousInputModuleTest
     Assert.assertTrue("tuple count", collections.get(collector.even).size() - collections.get(collector.odd).size() <= 1);
   }
 
-  public class CollectorInputPort extends DefaultInputPort<Integer>
+  public static class CollectorInputPort extends DefaultInputPort<Integer>
   {
     ArrayList<Integer> list;
 
