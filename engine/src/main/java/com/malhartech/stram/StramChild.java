@@ -593,14 +593,15 @@ public class StramChild
           foreignObject = moduleSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
 
+        String nodeid = ndi.id.concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
         if (foreignObject instanceof AsyncInputOperator) {
-          nodes.put(ndi.id, new AsyncInputNode(ndi.id, (AsyncInputOperator)foreignObject));
+          nodes.put(ndi.id, new AsyncInputNode(nodeid, (AsyncInputOperator)foreignObject));
         }
         else if (foreignObject instanceof SyncInputOperator) {
-          nodes.put(ndi.id, new SyncInputNode(ndi.id, (SyncInputOperator)foreignObject));
+          nodes.put(ndi.id, new SyncInputNode(nodeid, (SyncInputOperator)foreignObject));
         }
         else {
-          nodes.put(ndi.id, new GenericNode(ndi.id, (Operator)foreignObject));
+          nodes.put(ndi.id, new GenericNode(nodeid, (Operator)foreignObject));
         }
       }
       catch (Exception e) {
@@ -949,9 +950,8 @@ public class StramChild
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
     for (final ModuleDeployInfo ndi: nodeList) {
       final Node node = nodes.get(ndi.id);
-      final String nodeInternalId = ndi.id.concat(":").concat(ndi.declaredId);
       assert (!activeNodes.containsKey(ndi.id));
-      new Thread(node.id.concat("/").concat(ndi.declaredId))
+      new Thread(node.id)
       {
         @Override
         public void run()
@@ -964,7 +964,7 @@ public class StramChild
             activeNodes.put(ndi.id, nc);
 
             activatedNodeCount.incrementAndGet();
-            logger.debug("activating {} in container {}", node.toString(), containerId);
+            logger.debug("activating {} in container {}", node, containerId);
             node.activate(nc);
           }
           catch (Exception ex) {

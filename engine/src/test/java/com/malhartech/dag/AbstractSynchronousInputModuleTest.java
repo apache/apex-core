@@ -19,7 +19,7 @@ import org.junit.Test;
  */
 public class AbstractSynchronousInputModuleTest
 {
-  static HashMap<Port, List> collections = new HashMap<Port, List>();
+  static HashMap<String, List> collections = new HashMap<String, List>();
 
   public static class SynchronousInputOperator implements SyncInputOperator, Runnable
   {
@@ -80,8 +80,8 @@ public class AbstractSynchronousInputModuleTest
 
   public static class CollectorModule implements Operator
   {
-    public final transient CollectorInputPort even = new CollectorInputPort(this);
-    public final transient CollectorInputPort odd = new CollectorInputPort(this);
+    public final transient CollectorInputPort even = new CollectorInputPort("even", this);
+    public final transient CollectorInputPort odd = new CollectorInputPort("odd", this);
 
     @Override
     public void beginWindow()
@@ -133,7 +133,7 @@ public class AbstractSynchronousInputModuleTest
       public void run()
       {
         try {
-          Thread.sleep(1000);
+          Thread.sleep(5000);
         }
         catch (InterruptedException ex) {
         }
@@ -145,30 +145,32 @@ public class AbstractSynchronousInputModuleTest
     lc.run();
 
     Assert.assertEquals("collections size", 2, collections.size());
-    Assert.assertFalse("non zero tuple count", collections.get(collector.even).isEmpty() && collections.get(collector.odd).isEmpty());
-    Assert.assertTrue("tuple count", collections.get(collector.even).size() - collections.get(collector.odd).size() <= 1);
+    Assert.assertFalse("non zero tuple count", collections.get(collector.even.id).isEmpty() && collections.get(collector.odd.id).isEmpty());
+    Assert.assertTrue("tuple count", collections.get(collector.even.id).size() - collections.get(collector.odd.id).size() <= 1);
   }
 
   public static class CollectorInputPort extends DefaultInputPort<Integer>
   {
     ArrayList<Integer> list;
+    final String id;
 
-    public CollectorInputPort(Operator module)
+    public CollectorInputPort(String id, Operator module)
     {
       super(module);
+      this.id = id;
     }
 
     @Override
     public void process(Integer tuple)
     {
-      //list.add(tuple);
+      list.add(tuple);
     }
 
     @Override
     public void setConnected(boolean flag)
     {
       if (flag) {
-        collections.put(this, list = new ArrayList<Integer>());
+        collections.put(id, list = new ArrayList<Integer>());
       }
     }
   }

@@ -94,27 +94,10 @@ public class GenericNode extends Node<Operator, Sink>
   @Override
   public Sink connect(String port, Sink sink)
   {
+    Sink retvalue = null;
+
     InputPort inputport = descriptor.inputPorts.get(port);
-    if (inputport == null) {
-      OutputPort outputPort = descriptor.outputPorts.get(port);
-      if (outputPort == null) {
-        throw new IllegalArgumentException("Unrecognized Port " + port + " for " + this);
-      }
-      else {
-        outputPort.setSink(sink);
-
-        if (sink == null) {
-          outputs.remove(port);
-        }
-        else {
-          outputs.put(port, sink);
-        }
-        return null;
-      }
-    }
-    else {
-      Sink s;
-
+    if (inputport != null) {
       Reservoir cs = inputs.get(port);
       if (sink == null) {
         /**
@@ -125,18 +108,31 @@ public class GenericNode extends Node<Operator, Sink>
         if (cs != null) {
           cs.process(new EndStreamTuple());
         }
-        s = null;
+        retvalue = null;
       }
       else {
+        inputport.setConnected(true);
         if (cs == null) {
           cs = new Reservoir(port, inputport.getSink());
           inputs.put(port, cs);
         }
-        s = cs;
+        retvalue = cs;
       }
-
-      return s;
     }
+
+    OutputPort outputPort = descriptor.outputPorts.get(port);
+    if (outputPort != null) {
+      outputPort.setSink(sink);
+
+      if (sink == null) {
+        outputs.remove(port);
+      }
+      else {
+        outputs.put(port, sink);
+      }
+    }
+
+    return retvalue;
   }
 
   /**
@@ -243,6 +239,7 @@ public class GenericNode extends Node<Operator, Sink>
                */
               totalQueues--;
               inputs.remove(activePort.id);
+              descriptor.inputPorts.get(activePort.id).setConnected(false);
               buffers.remove();
               if (totalQueues == 0) {
                 alive = false;
