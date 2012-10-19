@@ -97,12 +97,12 @@ public class SocketStreamTest
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
 
-    StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
+    StreamConfiguration sconf = new StreamConfiguration();
     sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
     BufferServerInputStream iss = new BufferServerInputStream(serde);
     iss.setup(sconf);
-    iss.connect("testSink", sink);
+    iss.setSink("testSink", sink);
 
     StreamContext ossContext = new StreamContext(streamName);
     ossContext.setSourceId(upstreamNodeId);

@@ -11,11 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.dag.EndWindowTuple;
-import com.malhartech.dag.OperatorContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import com.malhartech.stram.ManualScheduledExecutorService;
-import com.malhartech.dag.WindowGenerator;
 
 /**
  * Bunch of utilities shared between tests.
@@ -53,7 +50,7 @@ abstract public class StramTestSupport {
 
   public static WindowGenerator setupWindowGenerator(ManualScheduledExecutorService mses) {
     WindowGenerator gen = new WindowGenerator(mses);
-    Configuration config = new Configuration();
+    StreamConfiguration config = new StreamConfiguration();
     config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0);
     config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
     gen.setup(config);

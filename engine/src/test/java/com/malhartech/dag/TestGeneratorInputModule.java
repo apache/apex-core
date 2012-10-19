@@ -3,15 +3,13 @@
  */
 package com.malhartech.dag;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.AsyncInputOperator;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.AsyncInputOperator;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestGeneratorInputModule extends BaseOperator implements AsyncInputOperator
 {
@@ -24,8 +22,7 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
   private int remainingSleepTime;
   private final int spinMillis = 50;
   private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
-
-  @OutputPortFieldAnnotation(name="outputPort")
+  @OutputPortFieldAnnotation(name = "outputPort")
   final public transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>(this);
 
   public int getMaxTuples()
@@ -73,7 +70,8 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
         deactivate();
       }
       remainingSleepTime = 1000;
-    } else {
+    }
+    else {
       remainingSleepTime = 1000;
     }
   }
@@ -81,9 +79,8 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
   /**
    * Manually add a tuple to emit.
    */
-  public void addTuple(String s) {
+  public void addTuple(String s)
+  {
     externallyAddedTuples.add(s);
   }
-
-
 }

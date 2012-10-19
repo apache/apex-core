@@ -292,10 +292,10 @@ public class DAGBuilderTest {
 
     DAG dag = new DAG();
 
-    OperatorWrapper validationNode = dag.addOperator("validationNode", ValidationModule.class);
-    OperatorWrapper countGoodNode = dag.addOperator("countGoodNode", CounterModule.class);
-    OperatorWrapper countBadNode = dag.addOperator("countBadNode", CounterModule.class);
-    OperatorWrapper echoBadNode = dag.addOperator("echoBadNode", ConsoleOutputModule.class);
+    ValidationModule validationNode = dag.addOperator("validationNode", ValidationModule.class);
+    CounterModule countGoodNode = dag.addOperator("countGoodNode", CounterModule.class);
+    CounterModule countBadNode = dag.addOperator("countBadNode", CounterModule.class);
+    ConsoleOutputModule echoBadNode = dag.addOperator("echoBadNode", ConsoleOutputModule.class);
 
     // good tuples to counter module
     dag.addStream("goodTuplesStream")

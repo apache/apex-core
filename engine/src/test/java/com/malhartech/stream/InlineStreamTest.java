@@ -6,8 +6,7 @@ package com.malhartech.stream;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Sink;
+import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,22 +33,21 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
     prev = null;
 
-    final Operator node1 = new PassThroughNode();
+    final PassThroughNode node1 = new PassThroughNode();
     node1.setup(new OperatorConfiguration());
 
-    final Operator node2 = new PassThroughNode();
+    final PassThroughNode node2 = new PassThroughNode();
     node2.setup(new OperatorConfiguration());
 
     InlineStream stream = new InlineStream();
     stream.setup(new StreamConfiguration());
 
-    Sink sink = stream.connect(Component.INPUT, node1);
-    node1.connect(Component.OUTPUT, sink);
+    node1.output.setSink(stream);
 
-    sink = node2.connect(Component.INPUT, stream);
-    stream.connect("node2.input", sink);
+    stream.setSink("node2.input", node2.input);
+    node2.input.setConnected(true);
 
-    sink = new Sink()
+    Sink sink = new Sink()
     {
       /**
        *
@@ -86,17 +84,10 @@ public class InlineStreamTest
         }
       }
     };
-    node2.connect(Component.OUTPUT, sink);
+    node2.output.setSink(sink);
 
-    sink = node1.connect(Component.INPUT, new Sink()
-    {
-      // we just needed some random sink
-      @Override
-      public void process(Object payload)
-      {
-        throw new UnsupportedOperationException("Not supported yet.");
-      }
-    });
+    sink = node1.input.getSink();
+    node1.input.setConnected(true);
 
     StreamContext streamContext = new StreamContext("node1->node2");
 
@@ -134,19 +125,31 @@ public class InlineStreamTest
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
 
-  private void launchNodeThreads(Collection<? extends GenericNode> nodes, final Map<String, Operator> activeNodes)
+  private void launchNodeThreads(Collection<? extends Operator> nodes, final Map<String, Operator> activeNodes)
   {
     final AtomicInteger i = new AtomicInteger(0);
-    for (final GenericNode node: nodes) {
+    for (final Operator node: nodes) {
       // launch operators
       Runnable nodeRunnable = new Runnable()
       {
         @Override
         public void run()
         {
+          Node n;
+          String id = String.valueOf(i.incrementAndGet());
+          if (node instanceof SyncInputOperator) {
+            n = new SyncInputNode(id, (SyncInputOperator)node);
+          }
+          else if (node instanceof AsyncInputOperator) {
+            n = new AsyncInputNode(id, (AsyncInputOperator)node);
+          }
+          else {
+            n = new GenericNode(id, node);
+          }
+
           OperatorContext ctx = new OperatorContext(String.valueOf(i.incrementAndGet()), Thread.currentThread());
           activeNodes.put(ctx.getId(), node);
-          node.activate(ctx);
+          n.activate(ctx);
           activeNodes.remove(ctx.getId());
         }
       };
@@ -159,12 +162,17 @@ public class InlineStreamTest
   /**
    * Operator implementation that simply passes on any tuple received
    */
-  @ModuleAnnotation(ports = {
-    @PortAnnotation(name = Component.INPUT, type = PortType.INPUT),
-    @PortAnnotation(name = Component.OUTPUT, type = PortType.OUTPUT)
-  })
-  public static class PassThroughNode extends GenericNode implements Sink
+  public static class PassThroughNode<T> extends BaseOperator
   {
+    public final DefaultInputPort<T> input = new DefaultInputPort<T>(this)
+    {
+      @Override
+      public void process(T tuple)
+      {
+        output.emit(tuple);
+      }
+    };
+    public final DefaultOutputPort<T> output = new DefaultOutputPort(this);
     private boolean logMessages = false;
 
     public boolean isLogMessages()
@@ -175,12 +183,6 @@ public class InlineStreamTest
     public void setLogMessages(boolean logMessages)
     {
       this.logMessages = logMessages;
-    }
-
-    @Override
-    public void process(Object o)
-    {
-      emit(Component.OUTPUT, o);
     }
   }
 }

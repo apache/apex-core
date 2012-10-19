@@ -4,20 +4,14 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Sink;
-import com.malhartech.dag.DAG.OperatorInstance;
+import com.malhartech.api.Operator.Port;
+import com.malhartech.api.*;
 import com.malhartech.stram.StramLocalCluster;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import junit.framework.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -25,21 +19,23 @@ import org.slf4j.LoggerFactory;
  */
 public class AbstractSynchronousInputModuleTest
 {
-  @ModuleAnnotation(ports = {
-    @PortAnnotation(name = SynchronousInputOperator.OUTPUT1, type = PortType.OUTPUT),
-    @PortAnnotation(name = SynchronousInputOperator.OUTPUT2, type = PortType.OUTPUT)
-  })
-  public static class SynchronousInputOperator extends AbstractSynchronousInputOperator
+  public class SynchronousInputOperator implements SyncInputOperator, Runnable
   {
-    public static final String OUTPUT1 = "OUTPUT1";
-    public static final String OUTPUT2 = "OUTPUT2";
+    public final DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>(this);
+    public final DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>(this);
+
+    @Override
+    public Runnable getDataPoller()
+    {
+      return this;
+    }
 
     @Override
     @SuppressWarnings("SleepWhileInLoop")
     public void run()
     {
       for (int i = 0; i < Integer.MAX_VALUE; i++) {
-        emit(i % 2 == 0 ? OUTPUT1 : OUTPUT2, new Integer(i));
+        (i % 2 == 0 ? even : odd).emit(i);
         try {
           Thread.sleep(20);
         }
@@ -52,84 +48,68 @@ public class AbstractSynchronousInputModuleTest
     @Override
     public void beginWindow()
     {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
     public void endWindow()
     {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
     public void setup(OperatorConfiguration config) throws FailedOperationException
     {
-      throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public Sink connect(String port, Sink sink)
-    {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
     public void activate(OperatorContext context)
     {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
     public void deactivate()
     {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
     public void teardown()
     {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
   }
+  static HashMap<Port, List> collections = new HashMap<Port, List>();
 
-  static HashMap<String, List> collections = new HashMap<String, List>();
-
-  @ModuleAnnotation(ports = {
-    @PortAnnotation(name = CollectorModule.INPUT1, type = PortType.INPUT),
-    @PortAnnotation(name = CollectorModule.INPUT2, type = PortType.INPUT)
-  })
-  public static class CollectorModule extends GenericNode implements Sink
+  public class CollectorModule implements Operator
   {
-    private static final Logger logger = LoggerFactory.getLogger(CollectorModule.class);
-    public static final String INPUT1 = "INPUT1";
-    public static final String INPUT2 = "INPUT2";
+    public final CollectorInputPort even = new CollectorInputPort(this);
+    public final CollectorInputPort odd = new CollectorInputPort(this);
 
     @Override
-    public void connected(String id, Sink dagpart)
+    public void beginWindow()
     {
-      if (dagpart != null) {
-        if (!collections.containsKey(id)) {
-          collections.put(id, new ArrayList());
-        }
-      }
     }
 
     @Override
-    public void process(Object payload)
+    public void endWindow()
     {
-      List l = collections.get(getActivePort());
-      l.add(payload);
-    }
-
-    public List getTuples(String id)
-    {
-      return collections.get(id);
     }
 
     @Override
-    public void handleIdleTimeout()
+    public void setup(OperatorConfiguration config) throws FailedOperationException
     {
-      logger.debug("idling!!!");
+    }
+
+    @Override
+    public void activate(OperatorContext context)
+    {
+    }
+
+    @Override
+    public void deactivate()
+    {
+    }
+
+    @Override
+    public void teardown()
+    {
     }
   }
 
@@ -137,16 +117,16 @@ public class AbstractSynchronousInputModuleTest
   public void testSomeMethod() throws Exception
   {
     DAG dag = new DAG();
-    OperatorInstance generator = dag.addOperator("NumberGenerator", SynchronousInputOperator.class);
-    OperatorInstance collector = dag.addOperator("NumberCollector", CollectorModule.class);
+    SynchronousInputOperator generator = dag.addOperator("NumberGenerator", SynchronousInputOperator.class);
+    CollectorModule collector = dag.addOperator("NumberCollector", CollectorModule.class);
 
     dag.addStream("EvenIntegers")
-            .setSource(generator.getOutput(SynchronousInputOperator.OUTPUT1))
-            .addSink(collector.getInput(CollectorModule.INPUT1)).setInline(true);
+            .setSource(generator.even)
+            .addSink(collector.even).setInline(true);
 
     dag.addStream("OddIntegers")
-            .setSource(generator.getOutput(SynchronousInputOperator.OUTPUT2))
-            .addSink(collector.getInput(CollectorModule.INPUT2)).setInline(true);
+            .setSource(generator.odd)
+            .addSink(collector.odd).setInline(true);
 
     final StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
@@ -169,7 +149,31 @@ public class AbstractSynchronousInputModuleTest
     lc.run();
 
     Assert.assertEquals("collections size", 2, collections.size());
-    Assert.assertFalse("non zero tuple count", collections.get(CollectorModule.INPUT1).isEmpty() && collections.get(CollectorModule.INPUT2).isEmpty());
-    Assert.assertTrue("tuple count", collections.get(CollectorModule.INPUT1).size() - collections.get(CollectorModule.INPUT2).size() <= 1);
+    Assert.assertFalse("non zero tuple count", collections.get(collector.even).isEmpty() && collections.get(collector.odd).isEmpty());
+    Assert.assertTrue("tuple count", collections.get(collector.even).size() - collections.get(collector.odd).size() <= 1);
+  }
+
+  public class CollectorInputPort extends DefaultInputPort<Integer>
+  {
+    ArrayList<Integer> list;
+
+    public CollectorInputPort(Operator module)
+    {
+      super(module);
+    }
+
+    @Override
+    public void process(Integer tuple)
+    {
+      list.add(tuple);
+    }
+
+    @Override
+    public void setConnected(boolean flag)
+    {
+      if (flag) {
+        collections.put(this, list = new ArrayList<Integer>());
+      }
+    }
   }
 }

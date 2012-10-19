@@ -3,6 +3,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.DAG;
 import com.malhartech.dag.*;
 import static org.junit.Assert.assertEquals;
 
@@ -335,7 +337,7 @@ public class StramMiniClusterTest
   }
 
   @SuppressWarnings("PublicInnerClass")
-  public static class TestDNode extends GenericNode implements Sink
+  public static class TestDNode extends BaseOperator
   {
     @SuppressWarnings("PackageVisibleField")
     int getResetCount = 0;
@@ -375,7 +377,6 @@ public class StramMiniClusterTest
       this.tupleCounts = counts;
     }
 
-    @Override
     public void process(Object payload)
     {
       LOG.info("Designed to do nothing!");
@@ -384,7 +385,6 @@ public class StramMiniClusterTest
     /**
      * Exit processing loop immediately and report not processing in heartbeat.
      */
-    @Override
     public void handleIdleTimeout()
     {
       deactivate();
