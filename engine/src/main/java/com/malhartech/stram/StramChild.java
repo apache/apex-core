@@ -55,7 +55,7 @@ public class StramChild
   private final String containerId;
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
-  protected final Map<String, Node<?>> nodes = new ConcurrentHashMap<String, Node<?>>();
+  protected final Map<String, Node<?,?>> nodes = new ConcurrentHashMap<String, Node<?,?>>();
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   /**
@@ -339,7 +339,7 @@ public class StramChild
     }
   }
 
-  private void disconnectWindowGenerator(String nodeid, Node<?> node)
+  private void disconnectWindowGenerator(String nodeid, Node node)
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
@@ -433,7 +433,7 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all operators
-      for (Map.Entry<String, Node<?>> e: nodes.entrySet()) {
+      for (Map.Entry<String, Node<?,?>> e: nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
