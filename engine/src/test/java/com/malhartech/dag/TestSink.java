@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * A sink implementation to collect expected test results.
  */
-public class TestSink<T> implements Sink
+public class TestSink<T> implements Sink<T>
 {
   final public List<T> collectedTuples = new ArrayList<T>();
 
@@ -20,13 +20,13 @@ public class TestSink<T> implements Sink
    * @param payload
    */
   @Override
-  public void process(Object payload)
+  public void process(T payload)
   {
     if (payload instanceof Tuple) {
     }
     else {
       synchronized (collectedTuples) {
-        collectedTuples.add((T)payload);
+        collectedTuples.add(payload);
         collectedTuples.notifyAll();
       }
     }

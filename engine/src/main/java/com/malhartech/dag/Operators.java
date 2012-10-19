@@ -6,11 +6,9 @@ package com.malhartech.dag;
 
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.Operator.Port;
 import java.lang.reflect.Field;
 import java.util.LinkedHashMap;
 

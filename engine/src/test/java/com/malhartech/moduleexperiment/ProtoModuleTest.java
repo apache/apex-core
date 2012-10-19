@@ -24,13 +24,15 @@ import org.slf4j.LoggerFactory;
 import com.google.inject.TypeLiteral;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
+import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.dag.DefaultModuleSerDe;
-//import com.malhartech.dag.TestSink;
+import com.malhartech.dag.TestSink;
 
 /**
  *
@@ -302,14 +304,72 @@ public class ProtoModuleTest {
     clonedDag.validate();
   }
 
+
+  public static class Quotient extends BaseOperator
+  {
+    @InputPortFieldAnnotation(name="numerator")
+    final public transient InputPort<HashMap<String, Number>> inportNumerator = new DefaultInputPort<HashMap<String, Number>>(this) {
+      @Override
+      final public void process(HashMap<String, Number> payload) {
+      }
+    };
+
+    @InputPortFieldAnnotation(name="denominator")
+    final public transient InputPort<HashMap<String, Number>> inportDenominator = new DefaultInputPort<HashMap<String, Number>>(this) {
+      @Override
+      final public void process(HashMap<String, Number> payload) {
+      }
+    };
+
+    // Note that when not extending DefaultOutputPort we won't have the type info at runtime
+    @OutputPortFieldAnnotation(name="quotient")
+    final transient DefaultOutputPort<HashMap<String, Number> > outportQuotient = new DefaultOutputPort<HashMap<String, Number>>(this) {};
+
+    /**
+     * Multiplies the quotient by this number. Ease of use for percentage (*
+     * 100) or CPM (* 1000)
+     *
+     */
+    public void setMultiplyBy(int val) {
+    }
+
+
+  }
+
+  public static class Sum extends BaseOperator
+  {
+
+    @InputPortFieldAnnotation(name="data")
+    final public transient InputPort<HashMap<String, Number>> inportData = new DefaultInputPort<HashMap<String, Number>>(this) {
+      @Override
+      final public void process(HashMap<String, Number> payload) {
+      }
+    };
+
+    @OutputPortFieldAnnotation(name="sum")
+    final transient DefaultOutputPort<HashMap<String, Number> > outportSum = new DefaultOutputPort<HashMap<String, Number>>(this) {};
+  }
+
+
   @Test
   public void testProtoArithmeticQuotient() throws Exception {
+
+    DAG dag = new DAG();
+
+    Sum views = dag.addOperator("views", Sum.class);
+
+    Sum clicks = dag.addOperator("clicks", Sum.class);
+    Quotient ctr = dag.addOperator("ctr", Quotient.class);
+    ctr.setMultiplyBy(100); // multiply by 100 to get percentage
+
+    dag.addStream("viewCount", views.outportSum, ctr.inportDenominator);
+    dag.addStream("clickCount", clicks.outportSum, ctr.inportNumerator);
 
     ProtoArithmeticQuotient node = new ProtoArithmeticQuotient();
     node.setMultiplyBy(2);
 
-//    TestSink<HashMap<String, Number>> testSink = new TestSink<HashMap<String, Number>>();
-//    node.outportQuotient.setSink(testSink);
+    TestSink<HashMap<String, Number>> testSink = new TestSink<HashMap<String, Number>>();
+    node.outportQuotient.setSink(testSink);
 
     LOG.debug("type inportNumerator: " + findTypeArgument(node.inportNumerator.getClass(), InputPort.class));
     LOG.debug("type inportDenominator: " + findTypeArgument(node.inportDenominator.getClass(), InputPort.class));
@@ -325,15 +385,15 @@ public class ProtoModuleTest {
       ninput.put("a", 2);
       ninput.put("b", 20);
       ninput.put("c", 1000);
-//      node.inportNumerator.process(ninput);
+      node.inportNumerator.getSink().process(ninput);
       dinput.put("a", 2);
       dinput.put("b", 40);
       dinput.put("c", 500);
-//      node.inportDenominator.process(dinput);
+      node.inportDenominator.getSink().process(dinput);
     }
     node.endWindow();
-//    LOG.debug("output tuples: " + testSink.collectedTuples);
-
+    LOG.debug("output tuples: " + testSink.collectedTuples);
+    Assert.assertEquals("result count", 1, testSink.collectedTuples.size());
   }
 
   @Test
