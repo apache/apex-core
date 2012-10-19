@@ -27,10 +27,15 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
+import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.ModuleAnnotation;
+import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
+import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator;
@@ -81,14 +86,14 @@ public class DAGBuilderTest {
     // check links
     assertEquals("module1 inputs", 0, module1.getInputStreams().size());
     assertEquals("module1 outputs", 1, module1.getOutputStreams().size());
-    StreamDecl n1n2 = module2.getInputStreams().get(GenericTestNode.INPUT1);
+    StreamDecl n1n2 = module2.getInputStreams().get(module2.getInputPortMeta(((GenericTestModule)module2.getModule()).inport1));
     assertNotNull("n1n2", n1n2);
 
     // output/input stream object same
-    assertEquals("rootNode out is module2 in", n1n2, module1.getOutputStreams().get(GenericTestNode.OUTPUT1));
-    assertEquals("n1n2 source", module1, n1n2.getSource().getNode());
+    assertEquals("rootNode out is module2 in", n1n2, module1.getOutputStreams().get(module1.getOutputPortMeta(((GenericTestModule)module1.getModule()).outport1)));
+    assertEquals("n1n2 source", module1, n1n2.getSource().getOperator());
     Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
-    Assert.assertEquals("n1n2 target", module2, n1n2.getSinks().get(0).getNode());
+    Assert.assertEquals("n1n2 target", module2, n1n2.getSinks().get(0).getOperator());
 
     assertEquals("stream name", "n1n2", n1n2.getId());
     Assert.assertFalse("n1n2 not inline (default)", n1n2.isInline());
@@ -98,8 +103,8 @@ public class DAGBuilderTest {
     StreamDecl fromNode2 = module2.getOutputStreams().values().iterator().next();
 
     Set<OperatorWrapper> targetNodes = new HashSet<OperatorWrapper>();
-    for (InputPort ip : fromNode2.getSinks()) {
-      targetNodes.add(ip.getNode());
+    for (DAG.InputPortMeta ip : fromNode2.getSinks()) {
+      targetNodes.add(ip.getOperator());
     }
     Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(module3, module4), targetNodes);
 
@@ -116,11 +121,6 @@ public class DAGBuilderTest {
 
   }
 
-  @SuppressWarnings("unchecked")
-  private <T extends GenericNode> T initOperator(OperatorWrapper moduleConf) {
-    return (T)StramUtils.initNode(moduleConf.getNodeClass(), moduleConf.getId(), moduleConf.getProperties());
-  }
-
   public void printTopology(OperatorWrapper module, DAG tplg, int level) {
       String prefix = "";
       if (level > 0) {
@@ -129,8 +129,8 @@ public class DAGBuilderTest {
       System.out.println(prefix + module.getId());
       for (StreamDecl downStream : module.getOutputStreams().values()) {
           if (!downStream.getSinks().isEmpty()) {
-            for (InputPort targetNode : downStream.getSinks()) {
-              printTopology(targetNode.getNode(), tplg, level+1);
+            for (DAG.InputPortMeta targetNode : downStream.getSinks()) {
+              printTopology(targetNode.getOperator(), tplg, level+1);
             }
           }
       }
@@ -159,18 +159,14 @@ public class DAGBuilderTest {
       assertTrue("n1n2 inline", s1.isInline());
 
       OperatorWrapper module3 = dag.getOperatorWrapper("module3");
-      Map<String, String> module3Props = module3.getProperties();
+      assertEquals("module3.classname", GenericTestModule.class.getName(), module3.getModule().getClass());
 
-      assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", module3Props.get("myStringProperty"));
-      assertEquals("module3.classname", GenericTestModule.class.getName(), module3Props.get(DAGPropertiesBuilder.OPERATOR_CLASSNAME));
-
-      GenericTestModule dmodule3 = initOperator(module3);
+      GenericTestModule dmodule3 = (GenericTestModule)module3.getModule();
       assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());
       assertFalse("module3.booleanProperty", dmodule3.booleanProperty);
 
       OperatorWrapper module4 = dag.getOperatorWrapper("module4");
-      assertEquals("module4.myStringProperty", "overrideModule4", module4.getProperties().get("myStringProperty"));
-      GenericTestModule dmodule4 = (GenericTestModule)initOperator(module4);
+      GenericTestModule dmodule4 = (GenericTestModule)module4.getModule();
       assertEquals("module4.myStringProperty", "overrideModule4", dmodule4.getMyStringProperty());
       assertTrue("module4.booleanProperty", dmodule4.booleanProperty);
 
@@ -178,8 +174,8 @@ public class DAGBuilderTest {
       assertNotNull(input1);
       Assert.assertEquals("input1 source", dag.getOperatorWrapper("inputModule"), input1.getSource().getOperator());
       Set<OperatorWrapper> targetNodes = new HashSet<OperatorWrapper>();
-      for (InputPort targetPort : input1.getSinks()) {
-        targetNodes.add(targetPort.getNode());
+      for (DAG.InputPortMeta targetPort : input1.getSinks()) {
+        targetNodes.add(targetPort.getOperator());
       }
 
       Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorWrapper("module1"), module3, module4), targetNodes);
@@ -191,51 +187,51 @@ public class DAGBuilderTest {
      DAG dag = new DAG();
 
      //NodeConf module1 = b.getOrAddNode("module1");
-     OperatorWrapper module2 = dag.addOperator("module2", GenericTestModule.class);
-     OperatorWrapper module3 = dag.addOperator("module3", GenericTestModule.class);
-     OperatorWrapper module4 = dag.addOperator("module4", GenericTestModule.class);
+     GenericTestModule module2 = dag.addOperator("module2", GenericTestModule.class);
+     GenericTestModule module3 = dag.addOperator("module3", GenericTestModule.class);
+     GenericTestModule module4 = dag.addOperator("module4", GenericTestModule.class);
      //NodeConf module5 = b.getOrAddNode("module5");
      //NodeConf module6 = b.getOrAddNode("module6");
-     OperatorWrapper module7 = dag.addOperator("module7", GenericTestModule.class);
+     GenericTestModule module7 = dag.addOperator("module7", GenericTestModule.class);
 
      // strongly connect n2-n3-n4-n2
      dag.addStream("n2n3")
-       .setSource(module2.getOutput(GenericTestModule.OUTPUT1))
-       .addSink(module3.getInput(GenericTestModule.INPUT1));
+       .setSource(module2.outport1)
+       .addSink(module3.inport1);
 
      dag.addStream("n3n4")
-       .setSource(module3.getOutput(GenericTestModule.OUTPUT1))
-       .addSink(module4.getInput(GenericTestModule.INPUT1));
+       .setSource(module3.outport1)
+       .addSink(module4.inport1);
 
      dag.addStream("n4n2")
-       .setSource(module4.getOutput(GenericTestModule.OUTPUT1))
-       .addSink(module2.getInput(GenericTestModule.INPUT1));
+       .setSource(module4.outport1)
+       .addSink(module2.inport1);
 
      // self referencing module cycle
      StreamDecl n7n7 = dag.addStream("n7n7")
-         .setSource(module7.getOutput(GenericTestModule.OUTPUT1))
-         .addSink(module7.getInput(GenericTestModule.INPUT1));
+         .setSource(module7.outport1)
+         .addSink(module7.inport1);
      try {
-       n7n7.addSink(module7.getInput(GenericTestModule.INPUT1));
+       n7n7.addSink(module7.inport1);
        fail("cannot add to stream again");
      } catch (Exception e) {
        // expected, stream can have single input/output only
      }
 
      List<List<String>> cycles = new ArrayList<List<String>>();
-     dag.findStronglyConnected(module7, cycles);
+     dag.findStronglyConnected(dag.getOperatorWrapper(module7), cycles);
      assertEquals("module self reference", 1, cycles.size());
      assertEquals("module self reference", 1, cycles.get(0).size());
-     assertEquals("module self reference", module7.getId(), cycles.get(0).get(0));
+     assertEquals("module self reference", module7.getName(), cycles.get(0).get(0));
 
      // 3 module cycle
      cycles.clear();
-     dag.findStronglyConnected(module4, cycles);
+     dag.findStronglyConnected(dag.getOperatorWrapper(module4), cycles);
      assertEquals("3 module cycle", 1, cycles.size());
      assertEquals("3 module cycle", 3, cycles.get(0).size());
-     assertTrue("module2", cycles.get(0).contains(module2.getId()));
-     assertTrue("module3", cycles.get(0).contains(module3.getId()));
-     assertTrue("module4", cycles.get(0).contains(module4.getId()));
+     assertTrue("module2", cycles.get(0).contains(module2.getName()));
+     assertTrue("module3", cycles.get(0).contains(module3.getName()));
+     assertTrue("module4", cycles.get(0).contains(module4.getName()));
 
      try {
        dag.validate();
@@ -250,41 +246,30 @@ public class DAGBuilderTest {
 
   }
 
-  @ModuleAnnotation(
-      ports = {
-          @PortAnnotation(name = "goodOutputPort",  type = PortType.OUTPUT),
-          @PortAnnotation(name = "badOutputPort",  type = PortType.OUTPUT)
-      }
-  )
-  static class ValidationModule extends GenericNode implements Sink {
-    @Override
-    public void process(Object payload) {
-      // classify tuples
-    }
+  static class ValidationModule extends BaseOperator {
+    @OutputPortFieldAnnotation(name="goodOutputPort")
+    final public transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>(this);
+
+    @OutputPortFieldAnnotation(name="badOutputPort")
+    final public transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>(this);
   }
 
-  @ModuleAnnotation(
-      ports = {
-          @PortAnnotation(name = "countInputPort",  type = PortType.INPUT)
+  static class CounterModule extends BaseOperator {
+    @InputPortFieldAnnotation(name="countInputPort")
+    final public transient InputPort<Object> countInputPort = new DefaultInputPort<Object>(this) {
+      @Override
+      final public void process(Object payload) {
       }
-  )
-  static class CounterModule extends GenericNode implements Sink {
-    @Override
-    public void process(Object payload) {
-      // count tuples
-    }
+    };
   }
 
-  @ModuleAnnotation(
-      ports = {
-          @PortAnnotation(name = "echoInputPort",  type = PortType.INPUT)
+  static class ConsoleOutputModule extends BaseOperator {
+    @InputPortFieldAnnotation(name="echoInputPort")
+    final public transient InputPort<Object> echoInputPort = new DefaultInputPort<Object>(this) {
+      @Override
+      final public void process(Object payload) {
       }
-  )
-  static class ConsoleOutputModule extends GenericNode implements Sink{
-    @Override
-    public void process(Object payload) {
-      // print tuples
-    }
+    };
   }
 
   @Test
@@ -299,15 +284,15 @@ public class DAGBuilderTest {
 
     // good tuples to counter module
     dag.addStream("goodTuplesStream")
-      .setSource(validationNode.getOutput("goodOutputPort"))
-      .addSink(countGoodNode.getInput("countInputPort"));
+      .setSource(validationNode.goodOutputPort)
+      .addSink(countGoodNode.countInputPort);
 
     // bad tuples to separate stream and echo module
     // (stream with 2 outputs)
     dag.addStream("badTuplesStream")
-      .setSource(validationNode.getOutput("badOutputPort"))
-      .addSink(countBadNode.getInput("countInputPort"))
-      .addSink(echoBadNode.getInput("echoInputPort"));
+      .setSource(validationNode.badOutputPort)
+      .addSink(countBadNode.countInputPort)
+      .addSink(echoBadNode.echoInputPort);
 
     Assert.assertEquals("number root modules", 1, dag.getRootOperators().size());
     Assert.assertEquals("root module id", "validationNode", dag.getRootOperators().get(0).getId());

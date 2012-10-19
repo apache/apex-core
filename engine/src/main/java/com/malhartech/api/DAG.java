@@ -59,7 +59,7 @@ public class DAG implements Serializable, DAGConstants {
   private final ExternalizableConf confHolder;
 
   private transient int nodeIndex = 0; // used for cycle validation
-  private transient Stack<OperatorWrapper> stack; // used for cycle validation
+  private transient Stack<OperatorWrapper> stack = new Stack<OperatorWrapper>(); // used for cycle validation
 
   public static class ExternalizableConf implements Externalizable {
     private final Configuration conf;

@@ -59,6 +59,9 @@ public class MyProtoModule<T extends Object> extends BaseOperator {
   @OutputPortFieldAnnotation(name="outport2")
   final transient DefaultOutputPort<byte[]> outport2 = new DefaultOutputPort<byte[]>(this);
 
+  @OutputPortFieldAnnotation(name="outport3")
+  final transient DefaultOutputPort<String> outport3 = new DefaultOutputPort<String>(this);
+
   // just to try it out
   @ProtoInputPortProcessAnnotation(name="methodAnnotatedPort1")
   public void processPort1(String s) {

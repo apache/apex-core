@@ -282,8 +282,8 @@ public class ProtoModuleTest {
 
     MyProtoModule<Object> m3 = dag.addOperator("operator3", new MyProtoModule<Object>());
 
-    dag.addStream("stream1", m1.outport1, m2.inport1);
-    dag.addStream("stream2", m2.outport1, m3.inport1);
+    dag.addStream("stream1", m1.outport3, m2.inport1);
+    dag.addStream("stream2", m2.outport3, m3.inport1);
     Assert.assertEquals("" + dag.getAllOperators(), 3, dag.getAllOperators().size());
 
     dag.validate();
