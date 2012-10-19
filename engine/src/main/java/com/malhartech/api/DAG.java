@@ -445,6 +445,28 @@ public class DAG implements Serializable, DAGConstants
     return s;
   }
 
+  /**
+   * Overload the varargs version to avoid generic array for varargs type safety warnings in calling code.
+   * "Type safety: A generic array of Operator.InputPort<> is created for a varargs parameter"
+   * @see http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300
+   * @param id
+   * @param source
+   * @param sink1
+   * @param sink2
+   * @return
+   */
+  @SuppressWarnings("unchecked")
+  public <T> StreamDecl addStream(String id, Operator.OutputPort<T> source, Operator.InputPort<T> sink1)
+  {
+    return addStream(id, source, new Operator.InputPort[] {sink1});
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T> StreamDecl addStream(String id, Operator.OutputPort<T> source, Operator.InputPort<T> sink1, Operator.InputPort<T> sink2)
+  {
+    return addStream(id, source, new Operator.InputPort[] {sink1, sink2});
+  }
+
   public StreamDecl getStream(String id)
   {
     return this.streams.get(id);
