@@ -133,7 +133,7 @@ public class AbstractSynchronousInputModuleTest
       public void run()
       {
         try {
-          Thread.sleep(5000);
+          Thread.sleep(1000);
         }
         catch (InterruptedException ex) {
         }

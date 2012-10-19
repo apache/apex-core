@@ -47,9 +47,9 @@ public class SyncInputNode extends InputNode<SyncInputOperator, SyncSink>
   @Override
   public void activate(OperatorContext context)
   {
-    super.activate(context);
     syncThread = new Thread(operator.getDataPoller(), operator.toString());
     syncThread.start();
+    super.activate(context);
   }
 
   @Override
@@ -65,7 +65,7 @@ public class SyncInputNode extends InputNode<SyncInputOperator, SyncSink>
   {
     int oldg = generatedTupleCount;
 
-    for (SyncSink s : outputs.values()) {
+    for (SyncSink s: outputs.values()) {
       s.sweep();
     }
 
