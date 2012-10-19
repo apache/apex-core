@@ -58,7 +58,6 @@ public abstract class StramUtils {
       Operator node = c.newInstance();
       // populate custom properties
       BeanUtils.populate(node, properties);
-      internalSetupNode(node, id);
       return node;
     }
     catch (IllegalAccessException e) {
@@ -75,21 +74,6 @@ public abstract class StramUtils {
     }
     catch (InstantiationException e) {
       throw new IllegalArgumentException("Failed to instantiate: " + nodeClass, e);
-    }
-  }
-
-  /**
-   * Initialize internal field(s) on node base class.
-   * To be called along with {@link Operator#setup}
-   * @param node
-   * @param id
-   */
-  public static void internalSetupNode(Operator node, String id) {
-    // TODO: what we really need is a common node interface for internal setup
-    if (node instanceof GenericNode) {
-      ((GenericNode)node).setId(id);
-    } else if (node instanceof InputNode) {
-      ((InputNode)node).setId(id);
     }
   }
 

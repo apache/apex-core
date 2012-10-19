@@ -29,7 +29,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
    */
   public static final String INPUT = "input";
   public static final String OUTPUT = "output";
-  protected String id;
+  public final String id;
   protected final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   protected int spinMillis = 10;
   protected int bufferCapacity = 1024 * 1024;
@@ -42,8 +42,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected final PortMappingDescriptor descriptor;
   protected long currentWindowId;
 
-  public Node(OPERATOR operator)
+  public Node(String id, OPERATOR operator)
   {
+    this.id = id;
     this.operator = operator;
 
     descriptor = new PortMappingDescriptor();
@@ -175,11 +176,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return bufferCapacity;
   }
 
-  public String getId()
-  {
-    return id;
-  }
-
   /**
    * @return the spinMillis
    */
@@ -202,11 +198,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     this.bufferCapacity = bufferCapacity;
   }
 
-  public void setId(String id)
-  {
-    this.id = id;
-  }
-
   /**
    * @param spinMillis the spinMillis to set
    */
@@ -218,7 +209,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   @Override
   public String toString()
   {
-    return operator.getName() + "/" + id + ":" + operator.getClass().getSimpleName();
+    return id + ":" + operator.getClass().getSimpleName();
   }
 
   /**

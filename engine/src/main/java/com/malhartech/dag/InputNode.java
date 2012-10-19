@@ -24,9 +24,9 @@ public class InputNode extends Node<InputOperator>
   private CircularBuffer<Tuple> controlTuples;
   private HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
 
-  public InputNode(InputOperator operator)
+  public InputNode(String id, InputOperator operator)
   {
-    super(operator);
+    super(id, operator);
     bufferCapacity = 1024;
     controlTuples = new CircularBuffer<Tuple>(1024);
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();

@@ -4,17 +4,17 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.WindowGenerator;
-import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DAG;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.Operator;
-import com.malhartech.dag.OperatorContext;
-import com.malhartech.dag.DAG.OperatorInstance;
+import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.Node;
+import com.malhartech.dag.OperatorContext;
+import com.malhartech.dag.WindowGenerator;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -260,7 +260,7 @@ public class StramLocalCluster implements Runnable {
     this.childContainers.remove(c.getContainerId());
   }
 
-  PTOperator findByLogicalNode(OperatorInstance logicalNode) {
+  PTOperator findByLogicalNode(OperatorWrapper logicalNode) {
     List<PTOperator> nodes = dnmgr.getPhysicalPlan().getOperators(logicalNode);
     if (nodes.isEmpty()) {
       return null;
