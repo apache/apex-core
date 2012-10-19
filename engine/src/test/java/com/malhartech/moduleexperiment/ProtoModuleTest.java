@@ -173,7 +173,7 @@ public class ProtoModuleTest {
     LOG.debug(callCount + " dynamic method calls took " + (System.currentTimeMillis() - startTimeMillis) + " ms");
   }
 
-  private static <T> NewOperator.InputPort<T> getInputPortInterface(NewOperator module, String portName, Class<T> portTypeClazz) throws Exception {
+  private static <T> Operator.InputPort<T> getInputPortInterface(Operator module, String portName, Class<T> portTypeClazz) throws Exception {
 
     Field[] fields = module.getClass().getDeclaredFields();
     for (Field field : fields) {
@@ -183,19 +183,19 @@ public class ProtoModuleTest {
 
         Object portObject = field.get(module);
         if (!(portObject instanceof InputPort)) {
-          throw new IllegalArgumentException("Port field " + field + " needs to be of type " + NewOperator.InputPort.class + " but found " + portObject.getClass().getName());
+          throw new IllegalArgumentException("Port field " + field + " needs to be of type " + Operator.InputPort.class + " but found " + portObject.getClass().getName());
         }
 
         Type genericType = findTypeArgument(portObject.getClass(), InputPort.class);
         LOG.debug(portName + " type is: " + genericType);
 
-        return (NewOperator.InputPort<T>)portObject;
+        return (Operator.InputPort<T>)portObject;
       }
     }
     throw new IllegalArgumentException("Port processor factory method not found in " + module + " for " + portName);
   }
 
-  private static void injectSink(NewOperator module, String portName, Sink<Object> sink) throws Exception {
+  private static void injectSink(Operator module, String portName, Sink<Object> sink) throws Exception {
     Field[] fields = module.getClass().getDeclaredFields();
     for (int i = 0; i < fields.length; i++) {
       Field field = fields[i];

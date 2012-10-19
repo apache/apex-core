@@ -23,11 +23,11 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
 import com.malhartech.dag.ApplicationFactory;
-import com.malhartech.dag.DAG;
+import com.malhartech.dag.Operators;
+import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.dag.SerDe;
-import com.malhartech.dag.DAG.OperatorInstance;
-import com.malhartech.dag.DAG.StreamDecl;
+import com.malhartech.api.DAG.StreamDecl;
 
 /**
  *
@@ -386,22 +386,23 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       conf.setIfUnset(propertyName, propertyValue);
     }
 
-    DAG tplg = new DAG(conf);
+    DAG dag = new DAG(conf);
 
-    Map<NodeConf, OperatorInstance> nodeMap = new HashMap<NodeConf, OperatorInstance>(this.nodes.size());
+    Map<NodeConf, Operator> nodeMap = new HashMap<NodeConf, Operator>(this.nodes.size());
     // add all operators first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
       Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getModuleClassNameReqd(), Operator.class);
-      OperatorInstance nd = tplg.addOperator(nodeConfEntry.getKey(), nodeClass);
-      nd.getProperties().putAll(nodeConf.getProperties());
+      Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
+      StramUtils.setOperatorProperties(nd, nodeConf.getProperties());
+      //nd.getProperties().putAll(nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
     }
 
     // wire operators
     for (Map.Entry<String, StreamConf> streamConfEntry : this.streams.entrySet()) {
       StreamConf streamConf = streamConfEntry.getValue();
-      StreamDecl sd = tplg.addStream(streamConfEntry.getKey());
+      StreamDecl sd = dag.addStream(streamConfEntry.getKey());
       sd.setInline(streamConf.isInline());
 
       String serdeClassName = streamConf.getProperty(DAGPropertiesBuilder.STREAM_SERDE_CLASSNAME);
@@ -416,8 +417,10 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
             portName = e.getKey();
           }
         }
-        OperatorInstance sourceDecl = nodeMap.get(streamConf.sourceNode);
-        sd.setSource(sourceDecl.getOutput(portName));
+        Operator sourceDecl = nodeMap.get(streamConf.sourceNode);
+        Operators.PortMappingDescriptor sourcePortMap = new Operators.PortMappingDescriptor();
+        Operators.describe(sourceDecl, sourcePortMap);
+        sd.setSource(sourcePortMap.outputPorts.get(portName));
       }
 
       for (NodeConf targetNode : streamConf.targetNodes) {
@@ -427,12 +430,14 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
             portName = e.getKey();
           }
         }
-        OperatorInstance targetDecl = nodeMap.get(targetNode);
-        sd.addSink(targetDecl.getInput(portName));
+        Operator targetDecl = nodeMap.get(targetNode);
+        Operators.PortMappingDescriptor targetPortMap = new Operators.PortMappingDescriptor();
+        Operators.describe(targetDecl, targetPortMap);
+        sd.addSink(targetPortMap.inputPorts.get(portName));
       }
     }
 
-    return tplg;
+    return dag;
   }
 
   public static DAG create(Configuration conf, String tplgPropsFile) throws IOException {

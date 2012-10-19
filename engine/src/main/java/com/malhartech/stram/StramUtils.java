@@ -4,12 +4,16 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.Operator;
-import com.malhartech.dag.*;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
+
 import org.apache.commons.beanutils.BeanUtils;
+
+import com.malhartech.api.Operator;
+import com.malhartech.dag.DefaultModuleSerDe;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.OperatorSerDe;
+import com.malhartech.dag.SerDe;
 
 /**
  *
@@ -51,15 +55,12 @@ public abstract class StramUtils {
    * @param nodeClass
    * @param properties
    */
-  public static Operator initNode(Class<? extends Operator> nodeClass, String id, Map<String, String> properties)
+  public static Operator setOperatorProperties(Operator operator, Map<String, String> properties)
   {
     try {
-      Constructor<? extends Operator> c = nodeClass.getConstructor();
-      Operator node = c.newInstance();
       // populate custom properties
-      BeanUtils.populate(node, properties);
-      internalSetupNode(node, id);
-      return node;
+      BeanUtils.populate(operator, properties);
+      return operator;
     }
     catch (IllegalAccessException e) {
       throw new IllegalArgumentException("Error setting node properties", e);
@@ -67,31 +68,8 @@ public abstract class StramUtils {
     catch (InvocationTargetException e) {
       throw new IllegalArgumentException("Error setting node properties", e);
     }
-    catch (SecurityException e) {
-      throw new IllegalArgumentException("Error creating instance of class: " + nodeClass, e);
-    }
-    catch (NoSuchMethodException e) {
-      throw new IllegalArgumentException("Constructor not found: " + nodeClass, e);
-    }
-    catch (InstantiationException e) {
-      throw new IllegalArgumentException("Failed to instantiate: " + nodeClass, e);
-    }
   }
 
-  /**
-   * Initialize internal field(s) on node base class.
-   * To be called along with {@link Operator#setup}
-   * @param node
-   * @param id
-   */
-  public static void internalSetupNode(Operator node, String id) {
-    // TODO: what we really need is a common node interface for internal setup
-    if (node instanceof GenericNode) {
-      ((GenericNode)node).setId(id);
-    } else if (node instanceof InputNode) {
-      ((InputNode)node).setId(id);
-    }
-  }
 
   public static OperatorSerDe getNodeSerDe(String className) {
     if (className != null) {
