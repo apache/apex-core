@@ -156,45 +156,106 @@ public class GenericNode extends Node<Operator, Sink>
     int receivedEndWindow = 0;
 
     Object lastEndWindow = null;
-
-    do {
-      Iterator<Reservoir> buffers = activeQueues.iterator();
-      activequeue:
-      while (buffers.hasNext()) {
-        Reservoir activePort = buffers.next();
-        Tuple t = activePort.sweep();
-        if (t != null) {
-          switch (t.getType()) {
-            case BEGIN_WINDOW:
-              if (expectingBeginWindow == totalQueues) {
-                activePort.remove();
-                expectingBeginWindow--;
-                currentWindowId = t.getWindowId();
-                for (int s = sinks.length; s-- > 0;) {
-                  sinks[s].process(t);
+    try {
+      do {
+        Iterator<Reservoir> buffers = activeQueues.iterator();
+        activequeue:
+        while (buffers.hasNext()) {
+          Reservoir activePort = buffers.next();
+          Tuple t = activePort.sweep();
+          if (t != null) {
+            switch (t.getType()) {
+              case BEGIN_WINDOW:
+                if (expectingBeginWindow == totalQueues) {
+                  activePort.remove();
+                  expectingBeginWindow--;
+                  currentWindowId = t.getWindowId();
+                  for (int s = sinks.length; s-- > 0;) {
+                    sinks[s].process(t);
+                  }
+                  operator.beginWindow();
+                  receivedEndWindow = 0;
                 }
-                operator.beginWindow();
-                receivedEndWindow = 0;
-              }
-              else if (t.getWindowId() == currentWindowId) {
-                activePort.remove();
-                expectingBeginWindow--;
-              }
-              else {
-                buffers.remove();
-              }
-              break;
+                else if (t.getWindowId() == currentWindowId) {
+                  activePort.remove();
+                  expectingBeginWindow--;
+                }
+                else {
+                  buffers.remove();
+                }
+                break;
 
-            case END_WINDOW:
-              if (t.getWindowId() == currentWindowId) {
-                lastEndWindow = activePort.remove();
-                if (++receivedEndWindow == totalQueues) {
+              case END_WINDOW:
+                if (t.getWindowId() == currentWindowId) {
+                  lastEndWindow = activePort.remove();
+                  if (++receivedEndWindow == totalQueues) {
+                    operator.endWindow();
+                    for (final Sink output: outputs.values()) {
+                      output.process(t);
+                    }
+
+                    buffers.remove();
+                    assert (activeQueues.isEmpty());
+                    activeQueues.addAll(inputs.values());
+                    expectingBeginWindow = activeQueues.size();
+
+                    handleRequests(currentWindowId);
+                    break activequeue;
+                  }
+                  else {
+                    buffers.remove();
+                  }
+                }
+                else {
+                  buffers.remove();
+                }
+                break;
+
+              case RESET_WINDOW:
+                /**
+                 * we will receive tuples which are equal to the number of input streams.
+                 */
+                activePort.remove();
+
+                if (receivedResetTuples++ == 0) {
+                  for (int s = sinks.length; s-- > 0;) {
+                    sinks[s].process(t);
+                  }
+                }
+                else if (receivedResetTuples == activeQueues.size()) {
+                  receivedResetTuples = 0;
+                }
+                break;
+
+              case END_STREAM:
+                activePort.remove();
+                /**
+                 * We are not going to receive begin window on this ever!
+                 */
+                expectingBeginWindow--;
+                /**
+                 * Since one of the operators we care about it gone, we should relook at our operators.
+                 * We need to make sure that the END_STREAM comes outside of the window.
+                 */
+                totalQueues--;
+                inputs.remove(activePort.id);
+                descriptor.inputPorts.get(activePort.id).setConnected(false);
+                buffers.remove();
+                if (totalQueues == 0) {
+                  alive = false;
+                  break activequeue;
+                }
+                else if (activeQueues.isEmpty()) {
+                  assert (!inputs.isEmpty());
+                  assert (lastEndWindow != null);
+                  /*
+                   * Do the same sequence as the end window since the current window is not ended.
+                   */
                   operator.endWindow();
                   for (final Sink output: outputs.values()) {
-                    output.process(t);
+                    output.process(lastEndWindow);
                   }
 
-                  buffers.remove();
                   assert (activeQueues.isEmpty());
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
@@ -202,86 +263,24 @@ public class GenericNode extends Node<Operator, Sink>
                   handleRequests(currentWindowId);
                   break activequeue;
                 }
-                else {
-                  buffers.remove();
-                }
-              }
-              else {
-                buffers.remove();
-              }
-              break;
+                break;
 
-            case RESET_WINDOW:
-              /**
-               * we will receive tuples which are equal to the number of input streams.
-               */
-              activePort.remove();
-
-              if (receivedResetTuples++ == 0) {
-                for (int s = sinks.length; s-- > 0;) {
-                  sinks[s].process(t);
-                }
-              }
-              else if (receivedResetTuples == activeQueues.size()) {
-                receivedResetTuples = 0;
-              }
-              break;
-
-            case END_STREAM:
-              activePort.remove();
-              /**
-               * We are not going to receive begin window on this ever!
-               */
-              expectingBeginWindow--;
-              /**
-               * Since one of the operators we care about it gone, we should relook at our operators.
-               * We need to make sure that the END_STREAM comes outside of the window.
-               */
-              totalQueues--;
-              inputs.remove(activePort.id);
-              descriptor.inputPorts.get(activePort.id).setConnected(false);
-              buffers.remove();
-              if (totalQueues == 0) {
-                alive = false;
-                break activequeue;
-              }
-              else if (activeQueues.isEmpty()) {
-                assert (!inputs.isEmpty());
-                assert (lastEndWindow != null);
-                /*
-                 * Do the same sequence as the end window since the current window is not ended.
-                 */
-                operator.endWindow();
-                for (final Sink output: outputs.values()) {
-                  output.process(lastEndWindow);
-                }
-
-                assert (activeQueues.isEmpty());
-                activeQueues.addAll(inputs.values());
-                expectingBeginWindow = activeQueues.size();
-
-                handleRequests(currentWindowId);
-                break activequeue;
-              }
-              break;
-
-            default:
-              throw new UnhandledException("Unrecognized Control Tuple", new IllegalArgumentException(t.toString()));
+              default:
+                throw new UnhandledException("Unrecognized Control Tuple", new IllegalArgumentException(t.toString()));
+            }
           }
         }
-      }
 
-      if (activeQueues.isEmpty()) {
-        logger.error("Invalid State - the node blocked forever!!!");
-      }
-      else {
-        int oldCount = 0;
-        for (UnsafeBlockingQueue<?> cb: activeQueues) {
-          oldCount += cb.size();
+        if (activeQueues.isEmpty()) {
+          logger.error("Invalid State - the node blocked forever!!!");
         }
+        else {
+          int oldCount = 0;
+          for (UnsafeBlockingQueue<?> cb: activeQueues) {
+            oldCount += cb.size();
+          }
 
-        if (oldCount == 0) {
-          try {
+          if (oldCount == 0) {
             Thread.sleep(getSpinMillis());
 
             boolean nodata = true;
@@ -296,16 +295,11 @@ public class GenericNode extends Node<Operator, Sink>
               handleIdleTimeout();
             }
           }
-          catch (InterruptedException ex) {
-            /*
-             * we got interrupted while we were checking if we need to call handleTimeout.
-             * This is exceptional condition since someone is in too much hurry, so we
-             * proceed further without actually giving node a chance to handle idle time.
-             */
-          }
         }
       }
+      while (alive);
     }
-    while (alive);
+    catch (InterruptedException ex) {
+    }
   }
 }

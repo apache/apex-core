@@ -37,6 +37,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.StramTestSupport;
+import org.junit.Ignore;
 
 public class StramLocalClusterTest
 {
@@ -106,19 +107,18 @@ public class StramLocalClusterTest
 
 
     List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException {
-      bsi.activate(streamContext);
+      bsi.activated(streamContext);
       //LOG.debug("test sink activated");
       sink.waitForResultCount(1, 3000);
       Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
       List<Object> result = new ArrayList<Object>(sink.collectedTuples);
 
-      bsi.deactivate();
+      bsi.deactivated();
       sink.collectedTuples.clear();
       return result;
     }
 
   }
-
 
 
 
@@ -209,7 +209,7 @@ public class StramLocalClusterTest
     c2.waitForHeartbeat(5000);
     Assert.assertEquals("checkpoint propagated " + ptNode2, 4, ptNode2.getRecentCheckpoint());
 
-    // activate test sink, verify tuple stored at buffer server
+    // activated test sink, verify tuple stored at buffer server
     List<Object> tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());
     Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));

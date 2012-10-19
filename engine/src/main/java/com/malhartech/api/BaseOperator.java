@@ -52,12 +52,12 @@ public class BaseOperator implements Operator
   }
 
   @Override
-  public void activate(OperatorContext context)
+  public void activated(OperatorContext context)
   {
   }
 
   @Override
-  public void deactivate()
+  public void deactivated()
   {
   }
 }

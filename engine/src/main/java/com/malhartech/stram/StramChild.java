@@ -117,7 +117,7 @@ public class StramChild
    * process through the callback address provided on the command line. Deploys
    * initial modules, then enters the heartbeat loop, which will only terminate
    * once container receives shutdown request from the master. On shutdown,
-   * after exiting heartbeat loop, deactivate all modules and terminate
+   * after exiting heartbeat loop, deactivated all modules and terminate
    * processing threads.
    *
    */
@@ -204,7 +204,7 @@ public class StramChild
       RPC.stopProxy(umbilical);
       DefaultMetricsSystem.shutdown();
       // Shutting down log4j of the child-vm...
-      // This assumes that on return from Task.activate()
+      // This assumes that on return from Task.activated()
       // there is no more logging done.
       LogManager.shutdown();
     }
@@ -226,12 +226,12 @@ public class StramChild
     }
 
     for (WindowGenerator wg: activeGenerators.keySet()) {
-      wg.deactivate();
+      wg.deactivated();
     }
     activeGenerators.clear();
 
     for (Stream stream: activeStreams.keySet()) {
-      stream.deactivate();
+      stream.deactivated();
     }
     activeStreams.clear();
   }
@@ -256,7 +256,7 @@ public class StramChild
          */
         if (activeStreams.containsKey(stream)) {
           logger.debug("deactivating {}", stream);
-          stream.deactivate();
+          stream.deactivated();
           activeStreams.remove(stream);
         }
         removableSocketOutputStreams.add(sourceIdentifier);
@@ -278,7 +278,7 @@ public class StramChild
               assert (sinkId.startsWith("tcp://"));
               if (activeStreams.containsKey(spair.component)) {
                 logger.debug("deactivating {} for sink {}", spair.component, sinkId);
-                spair.component.deactivate();
+                spair.component.deactivated();
                 activeStreams.remove(spair.component);
               }
 
@@ -316,7 +316,7 @@ public class StramChild
         if (sinkId == null) {
           if (activeStreams.containsKey(stream)) {
             logger.debug("deactivating {}", stream);
-            stream.deactivate();
+            stream.deactivated();
             activeStreams.remove(stream);
           }
 
@@ -355,7 +355,7 @@ public class StramChild
 
       if (count == 0) {
         activeGenerators.remove(chosen1);
-        chosen1.deactivate();
+        chosen1.deactivated();
         chosen1.teardown();
       }
     }
@@ -386,7 +386,7 @@ public class StramChild
         activeNodes.remove(ndi.id);
       }
       // must remove from list to reach defined state before next heartbeat,
-      // subsequent response may request deploy, which would fail if deactivate node is still tracked
+      // subsequent response may request deploy, which would fail if deactivated node is still tracked
       nodes.remove(ndi.id);
     }
   }
@@ -771,7 +771,7 @@ public class StramChild
          */
         inputNodes.add(ndi);
         /**
-         * When we activate the window Generator, we plan to activate it only from required windowId.
+         * When we activated the window Generator, we plan to activated it only from required windowId.
          */
         if (ndi.checkpointWindowId < smallestWindowId) {
           smallestWindowId = ndi.checkpointWindowId;
@@ -859,7 +859,7 @@ public class StramChild
                 /*
                  * we do not need to do this but looks bad if leave it in limbo.
                  */
-                pair.component.deactivate();
+                pair.component.deactivated();
                 pair.component.teardown();
               }
               else {
@@ -943,7 +943,7 @@ public class StramChild
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
         activeStreams.put(pair.component, pair.context);
-        pair.component.activate(pair.context);
+        pair.component.activated(pair.context);
       }
     }
 
@@ -995,14 +995,14 @@ public class StramChild
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (pair.component instanceof SocketInputStream && !activeStreams.containsKey(pair.component)) {
         activeStreams.put(pair.component, pair.context);
-        pair.component.activate(pair.context);
+        pair.component.activated(pair.context);
       }
     }
 
     for (WindowGenerator wg: generators.values()) {
       if (!activeGenerators.containsKey(wg)) {
         activeGenerators.put(wg, generators);
-        wg.activate(null);
+        wg.activated(null);
       }
     }
   }

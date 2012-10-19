@@ -387,7 +387,7 @@ public class StramMiniClusterTest
      */
     public void handleIdleTimeout()
     {
-      deactivate();
+      deactivated();
     }
   }
 

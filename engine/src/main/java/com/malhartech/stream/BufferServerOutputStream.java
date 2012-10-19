@@ -100,9 +100,9 @@ public class BufferServerOutputStream extends SocketOutputStream
    *
    */
   @Override
-  public void activate(StreamContext context)
+  public void activated(StreamContext context)
   {
-    super.activate(context);
+    super.activated(context);
     logger.debug("registering publisher: {} {} windowId={}", new Object[]{context.getSourceId(), context.getId(), context.getStartingWindowId()});
     ClientHandler.publish(channel, context.getSourceId(), context.getId(), context.getStartingWindowId());
   }

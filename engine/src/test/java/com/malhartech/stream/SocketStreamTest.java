@@ -111,10 +111,10 @@ public class SocketStreamTest
     BufferServerOutputStream oss = new BufferServerOutputStream(serde);
     oss.setup(sconf);
 
-    iss.activate(issContext);
+    iss.activated(issContext);
     LOG.debug("input stream activated");
 
-    oss.activate(ossContext);
+    oss.activated(ossContext);
     LOG.debug("output stream activated");
 
     LOG.debug("Sending hello message");

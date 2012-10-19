@@ -67,7 +67,7 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
       LOG.info("sending tuple " + generatedTuples);
       outport.emit(String.valueOf(generatedTuples));
       if (maxTuples > 0 && maxTuples < generatedTuples) {
-        deactivate();
+        Thread.currentThread().interrupt();
       }
       remainingSleepTime = 1000;
     }

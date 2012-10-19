@@ -63,12 +63,12 @@ public class AbstractSynchronousInputModuleTest
     }
 
     @Override
-    public void activate(OperatorContext context)
+    public void activated(OperatorContext context)
     {
     }
 
     @Override
-    public void deactivate()
+    public void deactivated()
     {
     }
 
@@ -99,12 +99,12 @@ public class AbstractSynchronousInputModuleTest
     }
 
     @Override
-    public void activate(OperatorContext context)
+    public void activated(OperatorContext context)
     {
     }
 
     @Override
-    public void deactivate()
+    public void deactivated()
     {
     }
 

@@ -107,13 +107,13 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
   {
     activateSinks();
     alive = true;
-    operator.activate(context);
+    operator.activated(context);
 
     this.context = context;
     run();
     this.context = null;
 
-    operator.deactivate();
+    operator.deactivated();
     emitEndStream();
     deactivateSinks();
   }

@@ -14,9 +14,9 @@ public interface Component<T1 extends Configuration, T2 extends Context>
 {
   public void setup(T1 config) throws FailedOperationException;
 
-  void activate(T2 context);
+  void activated(T2 context);
 
-  void deactivate();
+  void deactivated();
 
   public void teardown();
 }

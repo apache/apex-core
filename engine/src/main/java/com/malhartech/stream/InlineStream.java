@@ -53,7 +53,7 @@ public class InlineStream implements Stream
    * @param context
    */
   @Override
-  public void activate(StreamContext context)
+  public void activated(StreamContext context)
   {
     current = output;
   }
@@ -62,7 +62,7 @@ public class InlineStream implements Stream
    *
    */
   @Override
-  public void deactivate()
+  public void deactivated()
   {
     current = shunted;
   }

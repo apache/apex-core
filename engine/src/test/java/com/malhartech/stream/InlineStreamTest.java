@@ -91,7 +91,7 @@ public class InlineStreamTest
 
     StreamContext streamContext = new StreamContext("node1->node2");
 
-    stream.activate(streamContext);
+    stream.activated(streamContext);
 
     Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
     launchNodeThread(node1, activeNodes);
@@ -111,7 +111,7 @@ public class InlineStreamTest
     for (Node node: activeNodes.values()) {
       node.deactivate();
     }
-    stream.deactivate();
+    stream.deactivated();
 
     for (int i = 0; i < 10; i++) {
       Thread.sleep(20);

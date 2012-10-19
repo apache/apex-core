@@ -62,7 +62,7 @@ public class WindowGeneratorTest
       }
     });
 
-    generator.activate(null);
+    generator.activated(null);
 
     msse.tick(1);
     msse.tick(1);
@@ -117,7 +117,7 @@ public class WindowGeneratorTest
       }
     });
 
-    generator.activate(null);
+    generator.activated(null);
     msse.tick(1);
   }
 
@@ -176,9 +176,9 @@ public class WindowGeneratorTest
     wg.setup(config);
     wg.setSink("GeneratorTester", s);
 
-    wg.activate(null);
+    wg.activated(null);
     Thread.sleep(200);
-    wg.deactivate();
+    wg.deactivated();
     long lastWindowMillis = System.currentTimeMillis();
 
 

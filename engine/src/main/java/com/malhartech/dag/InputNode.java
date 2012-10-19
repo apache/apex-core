@@ -78,8 +78,8 @@ public abstract class InputNode<OPERATOR extends Operator, SINK extends Sink> ex
   {
     boolean inWindow = false;
     Tuple t = null;
-    while (alive) {
-      try {
+    try {
+      while (alive) {
         int size;
         if ((size = controlTuples.size()) > 0) {
           while (size-- > 0) {
@@ -128,9 +128,10 @@ public abstract class InputNode<OPERATOR extends Operator, SINK extends Sink> ex
           }
         }
       }
-      catch (InterruptedException ex) {
-      }
     }
+    catch (InterruptedException ex) {
+    }
+    
     if (inWindow) {
       EndWindowTuple ewt = new EndWindowTuple();
       ewt.setWindowId(t.getWindowId());
