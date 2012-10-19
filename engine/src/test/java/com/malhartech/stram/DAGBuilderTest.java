@@ -30,17 +30,21 @@ import com.google.common.collect.Sets;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.*;
-import com.malhartech.dag.DAG.InputPort;
-import com.malhartech.dag.DAG.OperatorInstance;
-import com.malhartech.dag.DAG.StreamDecl;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Sink;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.GenericTestModule;
 import com.malhartech.stram.cli.StramClientUtils;
 
 public class DAGBuilderTest {
 
-  public static OperatorInstance assertNode(DAG tplg, String id) {
-      OperatorInstance n = tplg.getOperator(id);
-      assertNotNull("module exists id=" + id, n);
+  public static OperatorWrapper assertNode(DAG tplg, String id) {
+      OperatorWrapper n = tplg.getOperatorWrapper(id);
+      assertNotNull("operator exists id=" + id, n);
       return n;
   }
 
@@ -61,19 +65,17 @@ public class DAGBuilderTest {
 //    Map<String, NodeConf> moduleConfs = tb.getAllOperators();
     assertEquals("number of module confs", 6, dag.getAllOperators().size());
 
-    OperatorInstance module1 = assertNode(dag, "module1");
-    OperatorInstance module2 = assertNode(dag, "module2");
-    OperatorInstance module3 = assertNode(dag, "module3");
-    OperatorInstance module4 = assertNode(dag, "module4");
+    OperatorWrapper module1 = assertNode(dag, "module1");
+    OperatorWrapper module2 = assertNode(dag, "module2");
+    OperatorWrapper module3 = assertNode(dag, "module3");
+    OperatorWrapper module4 = assertNode(dag, "module4");
 
     assertNotNull("moduleConf for root", module1);
     assertEquals("moduleId set", "module1", module1.getId());
 
     // verify module instantiation
-    GenericNode dNode = initOperator(module1);
-    assertNotNull(dNode);
-    assertEquals(dNode.getClass(), GenericTestModule.class);
-    GenericTestModule GenericTestNode = (GenericTestModule)dNode;
+    assertEquals(module1.getModule().getClass(), GenericTestModule.class);
+    GenericTestModule GenericTestNode = (GenericTestModule)module1.getModule();
     assertEquals("myStringPropertyValue", GenericTestNode.getMyStringProperty());
 
     // check links
@@ -95,31 +97,31 @@ public class DAGBuilderTest {
     assertEquals("module 2 number of outputs", 1, module2.getOutputStreams().size());
     StreamDecl fromNode2 = module2.getOutputStreams().values().iterator().next();
 
-    Set<OperatorInstance> targetNodes = new HashSet<OperatorInstance>();
+    Set<OperatorWrapper> targetNodes = new HashSet<OperatorWrapper>();
     for (InputPort ip : fromNode2.getSinks()) {
       targetNodes.add(ip.getNode());
     }
     Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(module3, module4), targetNodes);
 
-    OperatorInstance module6 = assertNode(dag, "module6");
+    OperatorWrapper module6 = assertNode(dag, "module6");
 
-    List<OperatorInstance> rootNodes = dag.getRootOperators();
+    List<OperatorWrapper> rootNodes = dag.getRootOperators();
     assertEquals("number root modules", 2, rootNodes.size());
     assertTrue("root module2", rootNodes.contains(module1));
     assertTrue("root module6", rootNodes.contains(module6));
 
-    for (OperatorInstance n : rootNodes) {
+    for (OperatorWrapper n : rootNodes) {
       printTopology(n, dag, 0);
     }
 
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends GenericNode> T initOperator(OperatorInstance moduleConf) {
+  private <T extends GenericNode> T initOperator(OperatorWrapper moduleConf) {
     return (T)StramUtils.initNode(moduleConf.getNodeClass(), moduleConf.getId(), moduleConf.getProperties());
   }
 
-  public void printTopology(OperatorInstance module, DAG tplg, int level) {
+  public void printTopology(OperatorWrapper module, DAG tplg, int level) {
       String prefix = "";
       if (level > 0) {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17);
@@ -156,7 +158,7 @@ public class DAGBuilderTest {
       assertNotNull(s1);
       assertTrue("n1n2 inline", s1.isInline());
 
-      OperatorInstance module3 = dag.getOperator("module3");
+      OperatorWrapper module3 = dag.getOperatorWrapper("module3");
       Map<String, String> module3Props = module3.getProperties();
 
       assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", module3Props.get("myStringProperty"));
@@ -166,7 +168,7 @@ public class DAGBuilderTest {
       assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());
       assertFalse("module3.booleanProperty", dmodule3.booleanProperty);
 
-      OperatorInstance module4 = dag.getOperator("module4");
+      OperatorWrapper module4 = dag.getOperatorWrapper("module4");
       assertEquals("module4.myStringProperty", "overrideModule4", module4.getProperties().get("myStringProperty"));
       GenericTestModule dmodule4 = (GenericTestModule)initOperator(module4);
       assertEquals("module4.myStringProperty", "overrideModule4", dmodule4.getMyStringProperty());
@@ -174,13 +176,13 @@ public class DAGBuilderTest {
 
       StreamDecl input1 = dag.getStream("inputStream");
       assertNotNull(input1);
-      Assert.assertEquals("input1 source", dag.getOperator("inputModule"), input1.getSource().getNode());
-      Set<OperatorInstance> targetNodes = new HashSet<OperatorInstance>();
+      Assert.assertEquals("input1 source", dag.getOperatorWrapper("inputModule"), input1.getSource().getOperator());
+      Set<OperatorWrapper> targetNodes = new HashSet<OperatorWrapper>();
       for (InputPort targetPort : input1.getSinks()) {
         targetNodes.add(targetPort.getNode());
       }
 
-      Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperator("module1"), module3, module4), targetNodes);
+      Assert.assertEquals("input1 target ", Sets.newHashSet(dag.getOperatorWrapper("module1"), module3, module4), targetNodes);
 
   }
 
@@ -189,12 +191,12 @@ public class DAGBuilderTest {
      DAG dag = new DAG();
 
      //NodeConf module1 = b.getOrAddNode("module1");
-     OperatorInstance module2 = dag.addOperator("module2", GenericTestModule.class);
-     OperatorInstance module3 = dag.addOperator("module3", GenericTestModule.class);
-     OperatorInstance module4 = dag.addOperator("module4", GenericTestModule.class);
+     OperatorWrapper module2 = dag.addOperator("module2", GenericTestModule.class);
+     OperatorWrapper module3 = dag.addOperator("module3", GenericTestModule.class);
+     OperatorWrapper module4 = dag.addOperator("module4", GenericTestModule.class);
      //NodeConf module5 = b.getOrAddNode("module5");
      //NodeConf module6 = b.getOrAddNode("module6");
-     OperatorInstance module7 = dag.addOperator("module7", GenericTestModule.class);
+     OperatorWrapper module7 = dag.addOperator("module7", GenericTestModule.class);
 
      // strongly connect n2-n3-n4-n2
      dag.addStream("n2n3")
@@ -290,10 +292,10 @@ public class DAGBuilderTest {
 
     DAG dag = new DAG();
 
-    OperatorInstance validationNode = dag.addOperator("validationNode", ValidationModule.class);
-    OperatorInstance countGoodNode = dag.addOperator("countGoodNode", CounterModule.class);
-    OperatorInstance countBadNode = dag.addOperator("countBadNode", CounterModule.class);
-    OperatorInstance echoBadNode = dag.addOperator("echoBadNode", ConsoleOutputModule.class);
+    OperatorWrapper validationNode = dag.addOperator("validationNode", ValidationModule.class);
+    OperatorWrapper countGoodNode = dag.addOperator("countGoodNode", CounterModule.class);
+    OperatorWrapper countBadNode = dag.addOperator("countBadNode", CounterModule.class);
+    OperatorWrapper echoBadNode = dag.addOperator("echoBadNode", ConsoleOutputModule.class);
 
     // good tuples to counter module
     dag.addStream("goodTuplesStream")
