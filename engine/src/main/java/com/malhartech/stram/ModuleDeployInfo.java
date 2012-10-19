@@ -135,7 +135,7 @@ public class ModuleDeployInfo implements Serializable
   }
 
 
-  public Map<String, String> properties;
+//  public Map<String, String> properties;
 
   /**
    * Serialized state of the node. Either by serializing the declared node object or checkpoint state.

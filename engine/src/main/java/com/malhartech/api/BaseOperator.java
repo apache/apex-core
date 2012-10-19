@@ -36,4 +36,10 @@ public class BaseOperator implements Operator {
   {
   }
 
+  @Override
+  public String toString()
+  {
+    return this.getClass().getSimpleName() + "{name=" + name + '}';
+  }
+
 }

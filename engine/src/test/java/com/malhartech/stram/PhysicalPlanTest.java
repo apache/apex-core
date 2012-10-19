@@ -41,11 +41,11 @@ public class PhysicalPlanTest {
 
     dag.setMaxContainerCount(2);
 
-    PhysicalPlan td = new PhysicalPlan(dag);
+    PhysicalPlan plan = new PhysicalPlan(dag);
 
-    Assert.assertEquals("number of containers", 2, td.getContainers().size());
+    Assert.assertEquals("number of containers", 2, plan.getContainers().size());
     OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
-    Assert.assertEquals("number partition instances", TestStaticPartitioningSerDe.partitions.length, td.getOperators(node2Decl).size());
+    Assert.assertEquals("number partition instances", TestStaticPartitioningSerDe.partitions.length, plan.getOperators(node2Decl).size());
   }
 
   @Test
