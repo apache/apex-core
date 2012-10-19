@@ -127,7 +127,7 @@ public class PhysicalPlan {
    *
    */
   public static class PTOutput {
-    final DAG.StreamDecl<?> logicalStream;
+    final DAG.StreamDecl logicalStream;
     final PTComponent source;
     final String portName;
 
@@ -136,7 +136,7 @@ public class PhysicalPlan {
      * @param logicalStream
      * @param source
      */
-    protected PTOutput(String portName, StreamDecl<?> logicalStream, PTComponent source) {
+    protected PTOutput(String portName, StreamDecl logicalStream, PTComponent source) {
       this.logicalStream = logicalStream;
       this.source = source;
       this.portName = portName;
@@ -391,7 +391,7 @@ public class PhysicalPlan {
     return pOperator;
   }
 
-  private byte[][] getStreamPartitions(StreamDecl<?> streamConf)
+  private byte[][] getStreamPartitions(StreamDecl streamConf)
   {
     if (streamConf.getSerDeClass() != null) {
       try {
@@ -427,7 +427,7 @@ public class PhysicalPlan {
    * @param output
    */
   protected boolean isDownStreamInline(PTOutput output) {
-    StreamDecl<?> logicalStream = output.logicalStream;
+    StreamDecl logicalStream = output.logicalStream;
     for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
       for (PTOperator downStreamNode : getOperators(downStreamPort.getOperator())) {
         if (output.source.container != downStreamNode.container) {

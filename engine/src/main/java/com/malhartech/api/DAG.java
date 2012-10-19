@@ -183,7 +183,7 @@ public class DAG implements Serializable, DAGConstants
     }
   }
 
-  public final class StreamDecl<T> implements Serializable
+  public final class StreamDecl implements Serializable
   {
     private static final long serialVersionUID = 1L;
     private boolean inline;
@@ -212,7 +212,7 @@ public class DAG implements Serializable, DAGConstants
       return inline;
     }
 
-    public StreamDecl<T> setInline(boolean inline)
+    public StreamDecl setInline(boolean inline)
     {
       this.inline = inline;
       return this;
@@ -223,7 +223,7 @@ public class DAG implements Serializable, DAGConstants
       return serDeClass;
     }
 
-    public StreamDecl<T> setSerDeClass(Class<? extends SerDe> serDeClass)
+    public StreamDecl setSerDeClass(Class<? extends SerDe> serDeClass)
     {
       this.serDeClass = serDeClass;
       return this;
@@ -234,7 +234,7 @@ public class DAG implements Serializable, DAGConstants
       return source;
     }
 
-    public StreamDecl<T> setSource(Operator.OutputPort<T> port)
+    public StreamDecl setSource(Operator.OutputPort<?> port)
     {
       OperatorWrapper op = getOperatorWrapper(port.getOperator());
       OutputPortMeta portMeta = op.getOutputPortMeta(port);
@@ -255,7 +255,7 @@ public class DAG implements Serializable, DAGConstants
       return sinks;
     }
 
-    public StreamDecl<T> addSink(Operator.InputPort<T> port)
+    public StreamDecl addSink(Operator.InputPort<?> port)
     {
       OperatorWrapper op = getOperatorWrapper(port.getOperator());
       InputPortMeta portMeta = op.getInputPortMeta(port);
@@ -569,7 +569,7 @@ public class DAG implements Serializable, DAGConstants
     stack.push(n);
 
     // depth first successors traversal
-    for (StreamDecl<?> downStream: n.outputStreams.values()) {
+    for (StreamDecl downStream: n.outputStreams.values()) {
       for (InputPortMeta sink: downStream.sinks) {
         OperatorWrapper successor = sink.node;
         if (successor == null) {

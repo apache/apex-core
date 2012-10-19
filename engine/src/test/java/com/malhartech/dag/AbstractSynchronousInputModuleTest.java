@@ -4,7 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.api.Operator.Port;
 import com.malhartech.api.*;
 import com.malhartech.stram.StramLocalCluster;
 import java.util.ArrayList;

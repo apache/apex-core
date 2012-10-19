@@ -17,7 +17,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -28,19 +27,13 @@ import org.junit.Test;
 
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.InputPortFieldAnnotation;
-import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Sink;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.stram.cli.StramClientUtils;
@@ -86,7 +79,7 @@ public class DAGBuilderTest {
     // check links
     assertEquals("module1 inputs", 0, module1.getInputStreams().size());
     assertEquals("module1 outputs", 1, module1.getOutputStreams().size());
-    StreamDecl<?> n1n2 = module2.getInputStreams().get(module2.getInputPortMeta(((GenericTestModule)module2.getModule()).inport1));
+    StreamDecl n1n2 = module2.getInputStreams().get(module2.getInputPortMeta(((GenericTestModule)module2.getModule()).inport1));
     assertNotNull("n1n2", n1n2);
 
     // output/input stream object same
@@ -100,7 +93,7 @@ public class DAGBuilderTest {
 
     // module 2 streams to module 3 and module 4
     assertEquals("module 2 number of outputs", 1, module2.getOutputStreams().size());
-    StreamDecl<?> fromNode2 = module2.getOutputStreams().values().iterator().next();
+    StreamDecl fromNode2 = module2.getOutputStreams().values().iterator().next();
 
     Set<OperatorWrapper> targetNodes = new HashSet<OperatorWrapper>();
     for (DAG.InputPortMeta ip : fromNode2.getSinks()) {
@@ -127,7 +120,7 @@ public class DAGBuilderTest {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17);
       }
       System.out.println(prefix + module.getId());
-      for (StreamDecl<?> downStream : module.getOutputStreams().values()) {
+      for (StreamDecl downStream : module.getOutputStreams().values()) {
           if (!downStream.getSinks().isEmpty()) {
             for (DAG.InputPortMeta targetNode : downStream.getSinks()) {
               printTopology(targetNode.getOperator(), tplg, level+1);
@@ -170,7 +163,7 @@ public class DAGBuilderTest {
       assertEquals("module4.myStringProperty", "overrideModule4", dmodule4.getMyStringProperty());
       assertTrue("module4.booleanProperty", dmodule4.booleanProperty);
 
-      StreamDecl<?> input1 = dag.getStream("inputStream");
+      StreamDecl input1 = dag.getStream("inputStream");
       assertNotNull(input1);
       Assert.assertEquals("input1 source", dag.getOperatorWrapper("inputModule"), input1.getSource().getOperator());
       Set<OperatorWrapper> targetNodes = new HashSet<OperatorWrapper>();
