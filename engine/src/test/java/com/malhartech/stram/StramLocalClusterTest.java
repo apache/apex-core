@@ -156,13 +156,13 @@ public class StramLocalClusterTest
     PTOperator ptNode2 = localCluster.findByLogicalNode(dag.getOperatorWrapper(node2));
 
     LocalStramChild c0 = waitForActivation(localCluster, ptNode1);
-    Map<String, Node<?>> nodeMap = c0.getNodes();
+    Map<String, Node<?,?>> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
     TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.id).getOperator();
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForActivation(localCluster, ptNode2);
-    Map<String, Node<?>> c2NodeMap = c2.getNodes();
+    Map<String, Node<?,?>> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
     GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorWrapper(node2)).id).getOperator();
     Assert.assertNotNull(n2);
