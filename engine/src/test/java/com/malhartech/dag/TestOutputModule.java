@@ -4,50 +4,48 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.api.Sink;
-import com.malhartech.dag.GenericNode;
-import com.malhartech.dag.FailedOperationException;
-import com.malhartech.dag.OperatorConfiguration;
-import com.malhartech.dag.Tuple;
 import java.io.IOException;
+
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.DefaultInputPort;
+
 /**
  * Writes stringified tuple to a file stream.
  * Used to verify data flow in test.
  */
-@ModuleAnnotation(
-    ports = {
-  @PortAnnotation(name = TestOutputModule.PORT_INPUT, type = PortType.INPUT)
-})
-public class TestOutputModule extends GenericNode implements Sink
+public class TestOutputModule extends BaseOperator
 {
   private static final Logger logger = LoggerFactory.getLogger(TestOutputModule.class);
-  /**
-   * The path name for the output file.
-   */
-  public static final String P_FILEPATH = "filepath";
-  public static final String PORT_INPUT = "inputPort";
+
+  private boolean append;
+  public String pathSpec;
+
   private transient FSDataOutputStream output;
   private transient FileSystem fs;
   private transient Path filepath;
-  private boolean append;
+
+  @InputPortFieldAnnotation(name="inputPort")
+  final public transient InputPort<Object> inport = new DefaultInputPort<Object>(this) {
+    @Override
+    final public void process(Object payload) {
+      processInternal(payload);
+    }
+  };
 
   @Override
   public void setup(OperatorConfiguration config) throws FailedOperationException
   {
     try {
       fs = FileSystem.get(config);
-      String pathSpec = config.get(P_FILEPATH);
       if (pathSpec == null) {
-        throw new IllegalArgumentException(P_FILEPATH + " not specified.");
+        throw new IllegalArgumentException("pathSpec not specified.");
       }
       filepath = new Path(pathSpec);
       append = config.getBoolean("append", false);
@@ -97,8 +95,7 @@ public class TestOutputModule extends GenericNode implements Sink
    *
    * @param t the value of t
    */
-  @Override
-  public void process(Object t)
+  private void processInternal(Object t)
   {
     logger.debug("received: " + t);
     if (t instanceof Tuple) {

@@ -4,10 +4,8 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.WindowGenerator;
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,24 +13,22 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
-import com.malhartech.api.Operator;
+import com.malhartech.dag.Node;
 import com.malhartech.dag.OperatorContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.dag.TestOutputModule;
 import com.malhartech.dag.TestSink;
+import com.malhartech.dag.WindowGenerator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
@@ -56,25 +52,21 @@ public class StramLocalClusterTest
   {
     DAG dag = new DAG();
 
-    OperatorInstance genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
-    genNode.setProperty("maxTuples", "1");
+    TestGeneratorInputModule genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
+    genNode.setMaxTuples(1);
 
-    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
-    node1.setProperty("emitFormat", "%s >> node1");
+    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    node1.setEmitFormat("%s >> node1");
 
     File outFile = new File("./target/" + StramLocalClusterTest.class.getName() + "-testLocalClusterInitShutdown.out");
     outFile.delete();
 
-    OperatorInstance outNode = dag.addOperator("outNode", TestOutputModule.class);
-    outNode.setProperty(TestOutputModule.P_FILEPATH, outFile.toURI().toString());
+    TestOutputModule outNode = dag.addOperator("outNode", TestOutputModule.class);
+    outNode.pathSpec = outFile.toURI().toString();
 
-    dag.addStream("fromGenNode")
-      .setSource(genNode.getOutput(TestGeneratorInputModule.OUTPUT_PORT))
-      .addSink(node1.getInput(GenericTestModule.INPUT1));
+    dag.addStream("fromGenNode", genNode.outport, node1.inport1);
 
-    dag.addStream("fromNode1")
-      .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
-      .addSink(outNode.getInput(TestOutputModule.PORT_INPUT));
+    dag.addStream("fromNode1", node1.outport1, outNode.inport);
 
     dag.setMaxContainerCount(2);
 
@@ -105,11 +97,11 @@ public class StramLocalClusterTest
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
-      StreamConfiguration sconf = new StreamConfiguration(Collections.<String, String>emptyMap());
+      StreamConfiguration sconf = new StreamConfiguration();
       sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, publisherOperator.container.bufferServerAddress);
       bsi = new BufferServerInputStream(new DefaultSerDe());
       bsi.setup(sconf);
-      bsi.connect("testSink", sink);
+      bsi.setSink("testSink", sink);
     }
 
 
@@ -135,14 +127,12 @@ public class StramLocalClusterTest
   {
     DAG dag = new DAG();
 
-    OperatorInstance node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
+    TestGeneratorInputModule node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
     // data will be added externally from test
-    node1.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "0");
-    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
+    node1.setMaxTuples(0);
+    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
 
-    dag.addStream("n1n2").
-      setSource(node1.getOutput(TestGeneratorInputModule.OUTPUT_PORT)).
-      addSink(node2.getInput(GenericTestModule.INPUT1));
+    dag.addStream("n1n2", node1.outport, node2.inport1);
 
     dag.validate();
 
@@ -162,19 +152,19 @@ public class StramLocalClusterTest
     localCluster.runAsync();
 
 
-    PTOperator ptNode1 = localCluster.findByLogicalNode(node1);
-    PTOperator ptNode2 = localCluster.findByLogicalNode(node2);
+    PTOperator ptNode1 = localCluster.findByLogicalNode(dag.getOperatorWrapper(node1));
+    PTOperator ptNode2 = localCluster.findByLogicalNode(dag.getOperatorWrapper(node2));
 
     LocalStramChild c0 = waitForActivation(localCluster, ptNode1);
-    Map<String, Operator> nodeMap = c0.getNodes();
+    Map<String, Node<?>> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
-    TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
+    TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.id).getOperator();
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForActivation(localCluster, ptNode2);
-    Map<String, Operator> c2NodeMap = c2.getNodes();
+    Map<String, Node<?>> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
-    GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorWrapper(node2)).id).getOperator();
     Assert.assertNotNull(n2);
 
     // sink to collect tuples emitted by the input module
@@ -250,12 +240,12 @@ public class StramLocalClusterTest
     Assert.assertEquals("downstream operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify downstream node was replaced in same container
     Assert.assertEquals("active " + ptNode2, c2, waitForActivation(localCluster, ptNode2));
-    GenericTestModule n2Replaced = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
+    GenericTestModule n2Replaced = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorWrapper(node2)).id).getOperator();
     Assert.assertNotNull("redeployed " + ptNode2, n2Replaced);
     Assert.assertNotSame("new instance " + ptNode2, n2, n2Replaced);
     Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());
 
-    TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
+    TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)nodeMap.get(ptNode1.id).getOperator();
     Assert.assertNotNull(n1Replaced);
 
     OperatorContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);

@@ -4,17 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.WindowGenerator;
-import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DAG;
-import com.malhartech.api.Operator;
-import com.malhartech.dag.OperatorContext;
-import com.malhartech.dag.DAG.OperatorInstance;
-import com.malhartech.dag.Node;
-import com.malhartech.stram.StramChildAgent.DeployRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -23,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -30,6 +20,18 @@ import org.apache.hadoop.ipc.ProtocolSignature;
 import org.apache.hadoop.net.NetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.Operator;
+import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.Node;
+import com.malhartech.dag.OperatorContext;
+import com.malhartech.dag.WindowGenerator;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.StramChildAgent.DeployRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 
 /**
  * Launcher for topologies in local mode within a single process.
@@ -170,7 +172,7 @@ public class StramLocalCluster implements Runnable {
       return nodes.get(id).getOperator();
     }
 
-    Map<String, Node> getNodes()
+    Map<String, Node<?>> getNodes()
     {
       return nodes;
     }
@@ -260,7 +262,7 @@ public class StramLocalCluster implements Runnable {
     this.childContainers.remove(c.getContainerId());
   }
 
-  PTOperator findByLogicalNode(OperatorInstance logicalNode) {
+  PTOperator findByLogicalNode(OperatorWrapper logicalNode) {
     List<PTOperator> nodes = dnmgr.getPhysicalPlan().getOperators(logicalNode);
     if (nodes.isEmpty()) {
       return null;
