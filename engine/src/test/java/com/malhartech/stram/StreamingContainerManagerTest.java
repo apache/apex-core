@@ -18,7 +18,6 @@ import org.junit.Test;
 
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.api.Operator;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Tuple;
@@ -80,14 +79,10 @@ public class StreamingContainerManagerTest {
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
     GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    dag.addStream("n1n2")
-      .setSource(node1.outport1)
-      .addSink(node2.inport1);
+    dag.addStream("n1n2", node1.outport1, node2.inport1);
 
-    dag.addStream("n2n3")
-      .setInline(true)
-      .setSource(node2.outport1)
-      .addSink(node3.inport1);
+    dag.addStream("n2n3", node2.outport1, node3.inport1)
+      .setInline(true);
 
     dag.setMaxContainerCount(2);
 
@@ -153,14 +148,10 @@ public class StreamingContainerManagerTest {
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
     GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
-    DAG.StreamDecl n1n2 = dag.addStream("n1n2")
-      .setSerDeClass(TestStaticPartitioningSerDe.class)
-      .setSource(node1.outport1)
-      .addSink(node2.inport1);
+    DAG.StreamDecl n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1)
+      .setSerDeClass(TestStaticPartitioningSerDe.class);
 
-    DAG.StreamDecl mergeStream = dag.addStream("mergeStream")
-        .setSource(node2.outport1)
-        .addSink(mergeNode.inport1);
+    DAG.StreamDecl mergeStream = dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
     dag.setMaxContainerCount(5);
 
@@ -222,14 +213,10 @@ public class StreamingContainerManagerTest {
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
     GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    dag.addStream("n1n2")
-      .setSerDeClass(TestStaticPartitioningSerDe.class)
-      .setSource(node1.outport1)
-      .addSink(node2.inport1);
+    dag.addStream("n1n2", node1.outport1, node2.inport1)
+      .setSerDeClass(TestStaticPartitioningSerDe.class);
 
-    dag.addStream("n2n3")
-        .setSource(node2.outport1)
-        .addSink(node3.inport1);
+    dag.addStream("n2n3", node2.outport1, node3.inport1);
 
     dag.setMaxContainerCount(2);
 

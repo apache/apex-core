@@ -188,22 +188,14 @@ public class DAGBuilderTest {
      GenericTestModule module7 = dag.addOperator("module7", GenericTestModule.class);
 
      // strongly connect n2-n3-n4-n2
-     dag.addStream("n2n3")
-       .setSource(module2.outport1)
-       .addSink(module3.inport1);
+     dag.addStream("n2n3", module2.outport1, module3.inport1);
 
-     dag.addStream("n3n4")
-       .setSource(module3.outport1)
-       .addSink(module4.inport1);
+     dag.addStream("n3n4", module3.outport1, module4.inport1);
 
-     dag.addStream("n4n2")
-       .setSource(module4.outport1)
-       .addSink(module2.inport1);
+     dag.addStream("n4n2", module4.outport1, module2.inport1);
 
      // self referencing module cycle
-     StreamDecl n7n7 = dag.addStream("n7n7")
-         .setSource(module7.outport1)
-         .addSink(module7.inport1);
+     StreamDecl n7n7 = dag.addStream("n7n7", module7.outport1, module7.inport1);
      try {
        n7n7.addSink(module7.inport1);
        fail("cannot add to stream again");
@@ -273,19 +265,14 @@ public class DAGBuilderTest {
     ValidationModule validationNode = dag.addOperator("validationNode", ValidationModule.class);
     CounterModule countGoodNode = dag.addOperator("countGoodNode", CounterModule.class);
     CounterModule countBadNode = dag.addOperator("countBadNode", CounterModule.class);
-    ConsoleOutputModule echoBadNode = dag.addOperator("echoBadNode", ConsoleOutputModule.class);
+    //ConsoleOutputModule echoBadNode = dag.addOperator("echoBadNode", ConsoleOutputModule.class);
 
     // good tuples to counter module
-    dag.addStream("goodTuplesStream")
-      .setSource(validationNode.goodOutputPort)
-      .addSink(countGoodNode.countInputPort);
+    dag.addStream("goodTuplesStream", validationNode.goodOutputPort, countGoodNode.countInputPort);
 
     // bad tuples to separate stream and echo module
     // (stream with 2 outputs)
-    dag.addStream("badTuplesStream")
-      .setSource(validationNode.badOutputPort)
-      .addSink(countBadNode.countInputPort)
-      .addSink(echoBadNode.echoInputPort);
+    dag.addStream("badTuplesStream", validationNode.badOutputPort, countBadNode.countInputPort);
 
     Assert.assertEquals("number root modules", 1, dag.getRootOperators().size());
     Assert.assertEquals("root module id", "validationNode", dag.getRootOperators().get(0).getId());

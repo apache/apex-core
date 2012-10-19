@@ -446,7 +446,7 @@ public class DAG implements Serializable, DAGConstants
   }
 
   /**
-   * Overload the varargs version to avoid generic array for varargs type safety warnings in calling code.
+   * Overload varargs version to avoid generic array type safety warnings in calling code.
    * "Type safety: A generic array of Operator.InputPort<> is created for a varargs parameter"
    * @see http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300
    * @param id

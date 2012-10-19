@@ -62,10 +62,8 @@ public class StramChildTest
     TestGeneratorInputModule generator = dag.addOperator("StramChildTest.generator", TestGeneratorInputModule.class);
     GenericTestModule operator1 = dag.addOperator("operator1", GenericTestModule.class);
 
-    DAG.StreamDecl generatorOutput = dag.addStream("generatorOutput");
-    generatorOutput.setSource(generator.outport)
-            .addSink(operator1.inport1)
-            .setSerDeClass(StreamingContainerManagerTest.TestStaticPartitioningSerDe.class);
+    dag.addStream("generatorOutput", generator.outport, operator1.inport1)
+       .setSerDeClass(StreamingContainerManagerTest.TestStaticPartitioningSerDe.class);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     int expectedContainerCount = StreamingContainerManagerTest.TestStaticPartitioningSerDe.partitions.length;

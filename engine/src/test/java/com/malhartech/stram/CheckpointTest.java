@@ -140,9 +140,7 @@ public class CheckpointTest
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
 
-    dag.addStream("n1n2")
-            .setSource(node1.outport1)
-            .addSink(node2.inport1);
+    dag.addStream("n1n2", node1.outport1, node2.inport1);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();

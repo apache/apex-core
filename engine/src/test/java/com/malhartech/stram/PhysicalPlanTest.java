@@ -30,14 +30,10 @@ public class PhysicalPlanTest {
 
     GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
-    dag.addStream("n1n2")
-      .setSerDeClass(TestStaticPartitioningSerDe.class)
-      .setSource(node1.outport1)
-      .addSink(node2.inport1);
+    dag.addStream("n1n2", node1.outport1, node2.inport1)
+      .setSerDeClass(TestStaticPartitioningSerDe.class);
 
-    dag.addStream("mergeStream")
-      .setSource(node2.outport1)
-      .addSink(mergeNode.inport1);
+    dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
     dag.setMaxContainerCount(2);
 
@@ -103,15 +99,11 @@ public class PhysicalPlanTest {
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
     GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    dag.addStream("n1Output1")
-      .setInline(true)
-      .setSource(node1.outport1)
-      .addSink(node3.inport1);
+    dag.addStream("n1Output1", node1.outport1, node3.inport1)
+      .setInline(true);
 
-    dag.addStream("n2Output1")
-      .setInline(true)
-      .setSource(node2.outport1)
-      .addSink(node3.inport2);
+    dag.addStream("n2Output1", node2.outport1, node3.inport2)
+      .setInline(true);
 
     int maxContainers = 5;
     dag.setMaxContainerCount(maxContainers);
