@@ -15,7 +15,7 @@ import com.malhartech.dag.EndWindowTuple;
 import com.malhartech.dag.OperatorContext;
 import com.malhartech.dag.Tuple;
 import com.malhartech.stram.ManualScheduledExecutorService;
-import com.malhartech.stram.WindowGenerator;
+import com.malhartech.dag.WindowGenerator;
 
 /**
  * Bunch of utilities shared between tests.

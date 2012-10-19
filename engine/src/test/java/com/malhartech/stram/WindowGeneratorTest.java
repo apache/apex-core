@@ -3,6 +3,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.WindowGenerator;
 import com.malhartech.api.Sink;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ResetWindowTuple;

@@ -6,7 +6,6 @@ package com.malhartech.stram;
 
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -343,8 +342,8 @@ public class StramChild
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
-      chosen1.setSink(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), null);
-      node.connect(Component.INPUT, null);
+      chosen1.setSink(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), null);
+      node.connect(Node.INPUT, null);
 
       int count = 0;
       for (WindowGenerator wg: generators.values()) {
@@ -899,9 +898,9 @@ public class StramChild
         generators.put(ndi.id, windowGenerator);
 
         Node node = nodes.get(ndi.id);
-        Sink s = node.connect(Component.INPUT, windowGenerator);
-        windowGenerator.setSink(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT),
-                                ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Component.INPUT), s, ndi.checkpointWindowId) : s);
+        Sink s = node.connect(Node.INPUT, windowGenerator);
+        windowGenerator.setSink(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT),
+                                ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), s, ndi.checkpointWindowId) : s);
       }
     }
   }
