@@ -4,16 +4,12 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.api.InputOperator;
-import com.malhartech.api.Operator;
+import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.util.CircularBuffer;
-import java.nio.BufferOverflowException;
 import java.util.HashMap;
 import java.util.Map.Entry;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,12 +114,10 @@ public class InputNode extends Node<InputOperator>
   public final Sink connect(String port, Sink sink)
   {
     Sink retvalue;
-    if (Component.INPUT.equals(port)) {
-      port = Component.INPUT;
+    if (Node.INPUT.equals(port)) {
       retvalue = new Sink()
       {
         @Override
-        @SuppressWarnings("SleepWhileInLoop")
         public void process(Object payload)
         {
           try {
@@ -136,12 +130,13 @@ public class InputNode extends Node<InputOperator>
       };
     }
     else {
-      PortAnnotation pa = getPort(port);
-      if (pa == null) {
+      OutputPort outputPort = descriptor.outputPorts.get(port);
+      outputPort.setSink(sink);
+
+      if (outputPort == null) {
         throw new IllegalArgumentException("Unrecognized Port " + port + " for " + this);
       }
 
-      port = pa.name();
       if (sink == null) {
         outputs.remove(port);
         afterEndWindows.remove(port);

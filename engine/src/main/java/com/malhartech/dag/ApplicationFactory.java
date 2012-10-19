@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.DAG;
 import org.apache.hadoop.conf.Configuration;
 
 /**

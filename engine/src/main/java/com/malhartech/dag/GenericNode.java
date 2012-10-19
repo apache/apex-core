@@ -4,8 +4,9 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.api.Operator;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
 import com.malhartech.util.UnsafeBlockingQueue;
@@ -33,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public class GenericNode extends Node<Operator>
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
-  private final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
+  private final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
 
   public GenericNode(Operator operator)
   {
@@ -44,18 +45,19 @@ public class GenericNode extends Node<Operator>
   {
   }
 
-  class CompoundSink extends CircularBuffer<Object> implements Sink
+  class Reservoir extends CircularBuffer<Object> implements Sink
   {
+    final Sink sink;
     final String id;
 
-    public CompoundSink(String id)
+    public Reservoir(String id, Sink sink)
     {
       super(getBufferCapacity());
       this.id = id;
+      this.sink = sink;
     }
 
     @Override
-    @SuppressWarnings("SleepWhileInLoop")
     public final void process(Object payload)
     {
       try {
@@ -72,98 +74,69 @@ public class GenericNode extends Node<Operator>
         if (peekUnsafe() instanceof Tuple) {
           return (Tuple)peekUnsafe();
         }
-        processTuple(pollUnsafe());
+
+        sink.process(pollUnsafe());
       }
 
       return null;
-    }
-
-    public void processTuple(Object payload)
-    {
-      GenericNode.this.process(payload);
-    }
-
-    @Override
-    public final String toString()
-    {
-      return id;
     }
   }
 
   /**
    *
-   * Connect a sink to this node on a port identified by id.
+   * Connect a sink to this node on a port identified by port.
    *
    * @return if the port is input port, Sink object is returned.
    *
-   * @param id the value of id
+   * @param port the value of port
    * @param sink the value of stream
    */
   @Override
-  public Sink connect(String id, Sink sink)
+  public Sink connect(String port, Sink sink)
   {
-    PortAnnotation pa = getPort(id);
-    if (pa == null) {
-      throw new IllegalArgumentException("Unrecognized Port " + id + " for " + this);
+    InputPort inputport = descriptor.inputPorts.get(port);
+    if (inputport == null) {
+      OutputPort outputPort = descriptor.outputPorts.get(port);
+      if (outputPort == null) {
+        throw new IllegalArgumentException("Unrecognized Port " + port + " for " + this);
+      }
+      else {
+        outputPort.setSink(sink);
+
+        if (sink == null) {
+          outputs.remove(port);
+        }
+        else {
+          outputs.put(port, sink);
+        }
+        return null;
+      }
     }
+    else {
+      Sink s;
 
-    Sink s;
-    switch (pa.type()) {
-      case BIDI:
-        logger.info("stream is connected to a bidi port, can we have a bidi stream?");
-        if (sink == null) {
-          outputs.remove(pa.name());
-        }
-        else {
-          outputs.put(pa.name(), sink);
-        }
-        if (sinks != Sink.NO_SINKS) {
-          activateSinks();
-        }
-
-      case INPUT:
-        CompoundSink cs = inputs.get(pa.name());
-        if (sink == null) {
-          /**
-           * since there are tuples which are not yet processed downstream, rather than just removing
-           * the sink, it makes sense to wait for all the data to be processed on this sink and then
-           * remove it.
-           */
-          if (cs != null) {
-            cs.process(new EndStreamTuple());
-          }
-          s = null;
-        }
-        else {
-          if (cs == null) {
-            cs = new CompoundSink(pa.name());
-            inputs.put(pa.name(), cs);
-          }
-          s = cs;
-        }
-        break;
-
-      case OUTPUT:
-        if (sink == null) {
-          outputs.remove(pa.name());
-        }
-        else {
-          outputs.put(pa.name(), sink);
-        }
-        if (sinks != Sink.NO_SINKS) {
-          activateSinks();
+      Reservoir cs = inputs.get(port);
+      if (sink == null) {
+        /**
+         * since there are tuples which are not yet processed downstream, rather than just removing
+         * the sink, it makes sense to wait for all the data to be processed on this sink and then
+         * remove it.
+         */
+        if (cs != null) {
+          cs.process(new EndStreamTuple());
         }
         s = null;
-        break;
+      }
+      else {
+        if (cs == null) {
+          cs = new Reservoir(port, inputport.getSink());
+          inputs.put(port, cs);
+        }
+        s = cs;
+      }
 
-      case DEAD:
-      default:
-        logger.warn("stream is connected to a dead port!");
-        s = null;
-        break;
+      return s;
     }
-
-    return s;
   }
 
   /**
@@ -179,7 +152,7 @@ public class GenericNode extends Node<Operator>
   {
     int totalQueues = inputs.size();
 
-    ArrayList<CompoundSink> activeQueues = new ArrayList<CompoundSink>();
+    ArrayList<Reservoir> activeQueues = new ArrayList<Reservoir>();
     activeQueues.addAll(inputs.values());
 
     int expectingBeginWindow = activeQueues.size();
@@ -189,10 +162,10 @@ public class GenericNode extends Node<Operator>
     Object lastEndWindow = null;
 
     do {
-      Iterator<CompoundSink> buffers = activeQueues.iterator();
+      Iterator<Reservoir> buffers = activeQueues.iterator();
       activequeue:
       while (buffers.hasNext()) {
-        CompoundSink activePort = buffers.next();
+        Reservoir activePort = buffers.next();
         Tuple t = activePort.sweep();
         if (t != null) {
           switch (t.getType()) {

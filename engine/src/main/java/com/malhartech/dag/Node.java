@@ -9,6 +9,7 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Port;
 import com.malhartech.api.Sink;
+import com.malhartech.dag.Operators.PortMappingDescriptor;
 import com.malhartech.util.CircularBuffer;
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,11 +39,15 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected volatile Sink[] sinks = Sink.NO_SINKS;
   protected boolean alive;
   protected final OPERATOR operator;
+  protected final PortMappingDescriptor descriptor;
   protected long currentWindowId;
 
   public Node(OPERATOR operator)
   {
     this.operator = operator;
+
+    descriptor = new PortMappingDescriptor();
+    Operators.describe(operator, descriptor);
   }
 
   public Operator getOperator()
