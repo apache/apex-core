@@ -22,8 +22,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.DAG;
-import com.malhartech.dag.DAG.OperatorInstance;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.api.Operator;
@@ -45,15 +45,6 @@ import com.malhartech.stream.StramTestSupport;
 public class StramLocalClusterTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
-
-  @Ignore
-  @Test
-  public void testTplg() throws IOException, Exception {
-    String tplgFile = "src/test/resources/clusterTest.tplg.properties";
-    StramLocalCluster lc = new StramLocalCluster(DAGPropertiesBuilder.create(new Configuration(false), tplgFile));
-    lc.setHeartbeatMonitoringEnabled(false);
-    lc.run();
-  }
 
   /**
    * Verify test configuration launches and stops after input terminates.

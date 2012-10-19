@@ -265,10 +265,10 @@ public class DAG implements Serializable, DAGConstants {
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
-    private OperatorWrapper(Operator module) {
+    private OperatorWrapper(String id, Operator module) {
       this.moduleHolder = new ExternalizableModule();
       this.moduleHolder.set(module);
-      this.id = module.getName();
+      this.id = id;
     }
 
     public String getId() {
@@ -341,8 +341,18 @@ public class DAG implements Serializable, DAGConstants {
 
   }
 
+  /**
+   * Add new instance of operator under give name to the DAG.
+   * The operator class must have a default constructor.
+   * If the class extends {@link BaseOperator}, the name is passed on to the instance.
+   * Throws exception if the name is already linked to another operator instance.
+   * @param name
+   * @param clazz
+   * @return
+   */
   public <T extends Operator> T addOperator(String name, Class<T> clazz) {
     T instance = StramUtils.newInstance(clazz);
+    // TODO: optional operator interface to provide contextual information to instance
     if (instance instanceof BaseOperator) {
       ((BaseOperator)instance).setName(name);
     }
@@ -350,34 +360,28 @@ public class DAG implements Serializable, DAGConstants {
     return instance;
   }
 
-  public OperatorWrapper addOperator(Operator instance) {
-    return addOperator(instance.getName(), instance);
-  }
-
-  private OperatorWrapper addOperator(String name, Operator module) {
+  public <T extends Operator> T addOperator(String name, T operator) {
     if (nodes.containsKey(name)) {
-      throw new IllegalArgumentException("duplicate node id: " + nodes.get(name));
+      if (nodes.get(name) == (Object)operator) {
+        return operator;
+      }
+      throw new IllegalArgumentException("duplicate operator id: " + nodes.get(name));
     }
 
-    OperatorWrapper decl = new OperatorWrapper(module);
+    OperatorWrapper decl = new OperatorWrapper(name, operator);
     rootNodes.add(decl);
     nodes.put(name, decl);
-
-    return decl;
+    return operator;
   }
 
-  public OperatorWrapper getOperatorWrapper(Operator module) {
+  public OperatorWrapper getOperatorWrapper(Operator operator) {
     // TODO: cache mapping
     for (OperatorWrapper o : getAllOperators()) {
-      if (o.moduleHolder.module == module) {
+      if (o.moduleHolder.module == operator) {
         return o;
       }
     }
-    if (module.getName() == null) {
-      throw new IllegalArgumentException("Operator needs to have a name assigned: " + module);
-    }
-
-    return addOperator(module);
+    throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
   }
 
   public StreamDecl addStream(String id) {

@@ -11,12 +11,6 @@ import com.malhartech.dag.OperatorContext;
 public interface Operator extends Component<OperatorConfiguration, OperatorContext>
 {
   /**
-   * A user friendly name that is available to identify the instance throughout
-   * the lifecycle in the system.
-   */
-  public String getName();
-
-  /**
    * This method gets called at the beginning of each window.
    *
    */

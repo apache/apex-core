@@ -16,9 +16,7 @@ public class BaseOperator implements Operator
 {
   private String name;
 
-  @Override
-  public String getName()
-  {
+  public String getName() {
     return name;
   }
 

@@ -5,19 +5,15 @@ package com.malhartech.dag;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.InputNode;
-import com.malhartech.api.Sink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ModuleAnnotation(
-    ports = {
-  @PortAnnotation(name = TestGeneratorInputModule.OUTPUT_PORT, type = PortType.OUTPUT)
-})
-public class TestGeneratorInputModule extends InputNode
+import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.api.InputOperator;
+
+public class TestGeneratorInputModule extends BaseOperator implements InputOperator
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputModule.class);
   public static final String OUTPUT_PORT = "outputPort";
@@ -25,9 +21,12 @@ public class TestGeneratorInputModule extends InputNode
   private String myConfigProperty;
   private int maxTuples = -1;
   private int generatedTuples = 0;
-  private boolean outputConnected = false;
   private int remainingSleepTime;
+  private final int spinMillis = 50;
   private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
+
+  @OutputPortFieldAnnotation(name="outputPort")
+  final public transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>(this);
 
   public int getMaxTuples()
   {
@@ -51,19 +50,11 @@ public class TestGeneratorInputModule extends InputNode
   }
 
   @Override
-  public void connected(String id, Sink dagpart)
-  {
-    if (OUTPUT_PORT.equals(id)) {
-      this.outputConnected = true;
-    }
-  }
-
-  @Override
-  public void process(Object payload)
+  public void injectTuples(long windowId)
   {
     Object tuple;
     while ((tuple = this.externallyAddedTuples.poll()) != null) {
-      emit(OUTPUT_PORT, tuple);
+      outport.emit(tuple);
     }
 
     if (remainingSleepTime > 0) {
@@ -74,10 +65,10 @@ public class TestGeneratorInputModule extends InputNode
       catch (InterruptedException ie) {
       }
     }
-    else if (outputConnected && maxTuples != 0) {
+    else if (outport.isConnected() && maxTuples != 0) {
       generatedTuples++;
       LOG.info("sending tuple " + generatedTuples);
-      emit(OUTPUT_PORT, String.valueOf(generatedTuples));
+      outport.emit(String.valueOf(generatedTuples));
       if (maxTuples > 0 && maxTuples < generatedTuples) {
         deactivate();
       }
