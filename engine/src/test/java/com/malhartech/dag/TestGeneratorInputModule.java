@@ -11,9 +11,9 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.InputOperator;
+import com.malhartech.api.AsyncInputOperator;
 
-public class TestGeneratorInputModule extends BaseOperator implements InputOperator
+public class TestGeneratorInputModule extends BaseOperator implements AsyncInputOperator
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputModule.class);
   public static final String OUTPUT_PORT = "outputPort";

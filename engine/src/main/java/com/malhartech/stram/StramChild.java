@@ -4,9 +4,10 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.InputOperator;
+import com.malhartech.api.AsyncInputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
+import com.malhartech.api.SyncInputOperator;
 import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -592,8 +593,11 @@ public class StramChild
           foreignObject = moduleSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
 
-        if (foreignObject instanceof InputOperator) {
-          nodes.put(ndi.id, new InputNode(ndi.id, (InputOperator)foreignObject));
+        if (foreignObject instanceof AsyncInputOperator) {
+          nodes.put(ndi.id, new AsyncInputNode(ndi.id, (AsyncInputOperator)foreignObject));
+        }
+        else if (foreignObject instanceof SyncInputOperator) {
+          nodes.put(ndi.id, new SyncInputNode(ndi.id, (SyncInputOperator)foreignObject));
         }
         else {
           nodes.put(ndi.id, new GenericNode(ndi.id, (Operator)foreignObject));

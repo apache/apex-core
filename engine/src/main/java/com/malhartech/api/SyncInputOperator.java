@@ -8,7 +8,7 @@ package com.malhartech.api;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface InputOperator extends Operator
+public interface SyncInputOperator extends Operator
 {
-  public void injectTuples(long windowId);
+  public Runnable getDataPoller();
 }

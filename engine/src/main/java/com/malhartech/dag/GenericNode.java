@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class GenericNode extends Node<Operator>
+public class GenericNode extends Node<Operator, Sink>
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
   private final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();

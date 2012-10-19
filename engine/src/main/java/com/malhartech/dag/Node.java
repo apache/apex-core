@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class Node<OPERATOR extends Operator> implements Runnable
+public abstract class Node<OPERATOR extends Operator, SINK extends Sink> implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(Node.class);
   /*
@@ -30,13 +30,13 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public static final String INPUT = "input";
   public static final String OUTPUT = "output";
   public final String id;
-  protected final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  protected final HashMap<String, SINK> outputs = new HashMap<String, SINK>();
   protected int spinMillis = 10;
   protected int bufferCapacity = 1024 * 1024;
   protected int processedTupleCount;
   protected int generatedTupleCount;
   @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile Sink[] sinks = Sink.NO_SINKS;
+  protected volatile SINK[] sinks = (SINK[])Sink.NO_SINKS;
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
@@ -84,26 +84,26 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   public abstract Sink connect(String id, Sink sink);
 
-  @SuppressWarnings("SillyAssignment")
   protected void activateSinks()
   {
-    sinks = new Sink[outputs.size()];
+    SINK[] newSinks = (SINK[])new Sink[outputs.size()];
 
     int i = 0;
-    for (Sink s: outputs.values()) {
-      sinks[i++] = s;
+    for (SINK s: outputs.values()) {
+      newSinks[i++] = s;
     }
-    sinks = sinks;
+
+    this.sinks = newSinks;
   }
 
   public void deactivateSinks()
   {
-    sinks = Sink.NO_SINKS;
+    sinks = (SINK[])Sink.NO_SINKS;
     outputs.clear();
   }
   OperatorContext context;
 
-  public final void activate(OperatorContext context)
+  public void activate(OperatorContext context)
   {
     activateSinks();
     alive = true;
@@ -118,7 +118,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     deactivateSinks();
   }
 
-  public final void deactivate()
+  public void deactivate()
   {
     alive = false;
   }
