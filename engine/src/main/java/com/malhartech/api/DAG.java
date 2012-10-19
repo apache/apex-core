@@ -435,7 +435,7 @@ public class DAG implements Serializable, DAGConstants
    * @param sinks
    * @return
    */
-  public <T> StreamDecl addStream(String id, Operator.OutputPort<T> source, Operator.InputPort<T>... sinks)
+  public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
     StreamDecl s = addStream(id);
     s.setSource(source);
@@ -456,13 +456,13 @@ public class DAG implements Serializable, DAGConstants
    * @return
    */
   @SuppressWarnings("unchecked")
-  public <T> StreamDecl addStream(String id, Operator.OutputPort<T> source, Operator.InputPort<T> sink1)
+  public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
   {
     return addStream(id, source, new Operator.InputPort[] {sink1});
   }
 
   @SuppressWarnings("unchecked")
-  public <T> StreamDecl addStream(String id, Operator.OutputPort<T> source, Operator.InputPort<T> sink1, Operator.InputPort<T> sink2)
+  public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2)
   {
     return addStream(id, source, new Operator.InputPort[] {sink1, sink2});
   }
