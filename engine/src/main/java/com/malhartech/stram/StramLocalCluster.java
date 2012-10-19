@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.WindowGenerator;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.DAG;
 import com.malhartech.api.Operator;

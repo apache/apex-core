@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.WindowGenerator;
 import com.malhartech.api.Operator;
 import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.*;

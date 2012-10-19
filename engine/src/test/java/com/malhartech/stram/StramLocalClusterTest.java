@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.dag.WindowGenerator;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;

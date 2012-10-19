@@ -22,6 +22,12 @@ import org.slf4j.LoggerFactory;
 public abstract class Node<OPERATOR extends Operator> implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(Node.class);
+  /*
+   * if the Component is capable of taking only 1 input, call it INPUT.
+   * if the Component is capable of providing only 1 output, call it OUTPUT.
+   */
+  public static final String INPUT = "input";
+  public static final String OUTPUT = "output";
   protected String id;
   protected final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   protected int spinMillis = 10;
