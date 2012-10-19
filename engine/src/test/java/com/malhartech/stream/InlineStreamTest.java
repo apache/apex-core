@@ -3,13 +3,8 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
-import com.malhartech.annotation.PortAnnotation.PortType;
 import com.malhartech.api.*;
 import com.malhartech.dag.*;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,7 +42,7 @@ public class InlineStreamTest
     stream.setSink("node2.input", node2.input);
     node2.input.setConnected(true);
 
-    Sink sink = new Sink()
+    Sink<Object> sink = new Sink<Object>()
     {
       /**
        *
@@ -126,7 +121,7 @@ public class InlineStreamTest
 
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
-  final AtomicInteger i = new AtomicInteger(0);
+  final AtomicInteger counter = new AtomicInteger(0);
 
   private void launchNodeThread(final Operator operator, final Map<String, Node> activeNodes)
   {
@@ -136,7 +131,7 @@ public class InlineStreamTest
       public void run()
       {
         Node n;
-        String id = String.valueOf(i.incrementAndGet());
+        String id = String.valueOf(counter.incrementAndGet());
         if (operator instanceof SyncInputOperator) {
           n = new SyncInputNode(id, (SyncInputOperator)operator);
         }
@@ -147,7 +142,7 @@ public class InlineStreamTest
           n = new GenericNode(id, operator);
         }
 
-        OperatorContext ctx = new OperatorContext(String.valueOf(i.incrementAndGet()), Thread.currentThread());
+        OperatorContext ctx = new OperatorContext(id, Thread.currentThread());
         activeNodes.put(ctx.getId(), n);
         n.activate(ctx);
         activeNodes.remove(ctx.getId());
