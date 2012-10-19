@@ -22,12 +22,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.DAG;
-import com.malhartech.dag.DAG.InputPort;
-import com.malhartech.dag.DAG.OperatorInstance;
-import com.malhartech.dag.DAG.StreamDecl;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator;
-import com.malhartech.dag.OperatorSerDe;
+import com.malhartech.dag.ModuleSerDe;
 import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
 import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTComponent;
@@ -227,21 +226,21 @@ public class StreamingContainerManager
    * @return {@link com.malhartech.stram.ModuleDeployInfo}
    *
    */
-  private ModuleDeployInfo createModuleDeployInfo(String dnodeId, OperatorInstance nodeDecl)
+  private ModuleDeployInfo createModuleDeployInfo(String dnodeId, OperatorWrapper operator)
   {
     ModuleDeployInfo ndi = new ModuleDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
-      Operator node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
-      this.nodeSerDe.write(node, os);
+      //Module node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
+      this.nodeSerDe.write(operator.getModule(), os);
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize " + nodeDecl + "(" + nodeDecl.getNodeClass() + ")", e);
+      throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getModule().getClass() + ")", e);
     }
-    ndi.properties = nodeDecl.getProperties();
-    ndi.declaredId = nodeDecl.getId();
+//    ndi.properties = operator.getnodeDecl.getProperties();
+    ndi.declaredId = operator.getId();
     ndi.id = dnodeId;
     return ndi;
   }
@@ -506,8 +505,8 @@ public class StreamingContainerManager
     long maxCheckpoint = operator.getRecentCheckpoint();
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : operator.outputs) {
-      for (InputPort targetPort : out.logicalStream.getSinks()) {
-        OperatorInstance lDownNode = targetPort.getNode();
+      for (DAG.InputPortMeta targetPort : out.logicalStream.getSinks()) {
+        OperatorWrapper lDownNode = targetPort.getOperator();
         if (lDownNode != null) {
           List<PTOperator> downNodes = plan.getOperators(lDownNode);
           for (PTOperator downNode : downNodes) {
@@ -550,7 +549,7 @@ public class StreamingContainerManager
    */
   private void updateCheckpoints() {
     Map<PTOperator, Long> visitedCheckpoints = new LinkedHashMap<PTOperator, Long>();
-    for (OperatorInstance logicalOperator : plan.getRootOperators()) {
+    for (OperatorWrapper logicalOperator : plan.getRootOperators()) {
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator : operators) {

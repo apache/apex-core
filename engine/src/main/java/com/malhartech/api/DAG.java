@@ -13,12 +13,32 @@ import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramUtils;
 import java.io.*;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.dag.DAGConstants;
+import com.malhartech.dag.DefaultModuleSerDe;
+import com.malhartech.dag.SerDe;
+import com.malhartech.stram.DAGPropertiesBuilder;
+import com.malhartech.stram.StramUtils;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -105,7 +125,6 @@ public class DAG implements Serializable, DAGConstants {
     private static final long serialVersionUID = 1L;
 
     private OperatorWrapper node;
-    private Class<?> fieldDeclaringClass;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
 
@@ -114,7 +133,7 @@ public class DAG implements Serializable, DAGConstants {
     }
 
     public String getPortName() {
-      return fieldName;
+      return portAnnotation.name() != null ? portAnnotation.name() : fieldName;
     }
 
     @Override
@@ -131,7 +150,6 @@ public class DAG implements Serializable, DAGConstants {
     private static final long serialVersionUID = 1L;
 
     private OperatorWrapper node;
-    private Class<?> fieldDeclaringClass;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
 
@@ -140,7 +158,7 @@ public class DAG implements Serializable, DAGConstants {
     }
 
     public String getPortName() {
-      return fieldName;
+      return portAnnotation.name() != null ? portAnnotation.name() : fieldName;
     }
 
     @Override
@@ -239,9 +257,6 @@ public class DAG implements Serializable, DAGConstants {
     private final Map<InputPortMeta, StreamDecl> inputStreams = new HashMap<InputPortMeta, StreamDecl>();
     private final Map<OutputPortMeta, StreamDecl> outputStreams = new HashMap<OutputPortMeta, StreamDecl>();
 
-    // Ports are transient, we cannot serialize them, instead, keep a lazy initialized mapping
-    private transient Map<Operator.InputPort<?>, InputPortMeta> inPortMap;
-    private transient Map<Operator.OutputPort<?>, OutputPortMeta> outPortMap;
     //    private final Map<String, String> properties = new HashMap<String, String>();
     private final ExternalizableModule moduleHolder;
     private final String id;
@@ -259,20 +274,48 @@ public class DAG implements Serializable, DAGConstants {
       return id;
     }
 
-    private OutputPortMeta getOutputPortMeta(Operator.OutputPort<?> port) {
-      if (this.outPortMap ==  null) {
-        this.outPortMap = new HashMap<Operator.OutputPort<?>, OutputPortMeta>();
-        mapOutputPorts(this, outPortMap);
+    private class PortMapping implements Operators.OperatorDescriptor {
+      private final Map<Operator.InputPort<?>, InputPortMeta> inPortMap = new HashMap<Operator.InputPort<?>, InputPortMeta>();
+      private final Map<Operator.OutputPort<?>, OutputPortMeta> outPortMap = new HashMap<Operator.OutputPort<?>, OutputPortMeta>();
+
+      @Override
+      public void addInputPort(InputPort<?> portObject, Field field, InputPortFieldAnnotation a) {
+        InputPortMeta metaPort = new InputPortMeta();
+        metaPort.node = OperatorWrapper.this;
+        metaPort.fieldName = field.getName();
+        metaPort.portAnnotation = a;
+        inPortMap.put(portObject, metaPort);
       }
-      return this.outPortMap.get(port);
+
+      @Override
+      public void addOutputPort(OutputPort<?> portObject, Field field, OutputPortFieldAnnotation a) {
+        OutputPortMeta metaPort = new OutputPortMeta();
+        metaPort.node = OperatorWrapper.this;
+        metaPort.fieldName = field.getName();
+        metaPort.portAnnotation = a;
+        outPortMap.put(portObject, metaPort);
+      }
     }
 
-    private InputPortMeta getInputPortMeta(Operator.InputPort<?> port) {
-      if (this.inPortMap ==  null) {
-        this.inPortMap = new HashMap<Operator.InputPort<?>, InputPortMeta>();
-        mapInputPorts(this, inPortMap);
+    /**
+     * Ports objects are transient, we keep a lazy initialized mapping
+     */
+    private transient PortMapping portMapping = null;
+
+    private PortMapping getPortMapping() {
+      if (this.portMapping == null) {
+        this.portMapping = new PortMapping();
+        Operators.describe(this.getModule(), portMapping);
       }
-      return this.inPortMap.get(port);
+      return portMapping;
+    }
+
+    public OutputPortMeta getOutputPortMeta(Operator.OutputPort<?> port) {
+      return getPortMapping().outPortMap.get(port);
+    }
+
+    public InputPortMeta getInputPortMeta(Operator.InputPort<?> port) {
+      return getPortMapping().inPortMap.get(port);
     }
 
     public Map<InputPortMeta, StreamDecl> getInputStreams() {
@@ -287,19 +330,6 @@ public class DAG implements Serializable, DAGConstants {
       return this.moduleHolder.module;
     }
 
-/*    *//**
-     * Properties for the node.
-     * @return Map<String, String>
-     *//*
-    public Map<String, String> getProperties() {
-      return properties;
-    }
-
-    public OperatorWrapper setProperty(String name, String value) {
-      properties.put(name, value);
-      return this;
-    }
-*/
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
@@ -312,10 +342,10 @@ public class DAG implements Serializable, DAGConstants {
 
   public <T extends Operator> T addOperator(String name, Class<T> clazz) {
     T instance = StramUtils.newInstance(clazz);
-    addOperator(name, instance);
     if (instance instanceof BaseOperator) {
       ((BaseOperator)instance).setName(name);
     }
+    addOperator(name, instance);
     return instance;
   }
 
@@ -537,62 +567,6 @@ public class DAG implements Serializable, DAGConstants {
         append("streams", this.streams).
         append("properties", DAGPropertiesBuilder.toProperties(this.confHolder.conf)).
         toString();
-  }
-
-  public void mapOutputPorts(OperatorWrapper operator, Map<Operator.OutputPort<?>, OutputPortMeta> metaPorts) {
-    Field[] fields = operator.moduleHolder.get().getClass().getDeclaredFields();
-    for (int i = 0; i < fields.length; i++) {
-      Field field = fields[i];
-      OutputPortFieldAnnotation a = field.getAnnotation(OutputPortFieldAnnotation.class);
-      if (a != null) {
-        field.setAccessible(true);
-        try {
-          Object outPort = field.get(operator.moduleHolder.get());
-          if (outPort == null) {
-            throw new IllegalArgumentException("port is null " + field);
-          }
-          if (!(outPort instanceof DefaultOutputPort)) {
-            throw new IllegalArgumentException("port is not of type " + DefaultOutputPort.class.getName());
-          }
-          OutputPortMeta metaPort = new OutputPortMeta();
-          metaPort.node = operator;
-          metaPort.fieldName = field.getName();
-          metaPort.fieldDeclaringClass = field.getDeclaringClass();
-          metaPort.portAnnotation = a;
-          metaPorts.put((DefaultOutputPort<?>)outPort, metaPort);
-        } catch (IllegalAccessException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
-  }
-
-  public void mapInputPorts(OperatorWrapper operator, Map<Operator.InputPort<?>, InputPortMeta> metaPorts) {
-    Field[] fields = operator.moduleHolder.get().getClass().getDeclaredFields();
-    for (int i = 0; i < fields.length; i++) {
-      Field field = fields[i];
-      InputPortFieldAnnotation a = field.getAnnotation(InputPortFieldAnnotation.class);
-      if (a != null) {
-        field.setAccessible(true);
-        try {
-          Object portObject = field.get(operator.moduleHolder.get());
-          if (portObject == null) {
-            throw new IllegalArgumentException("port is null " + field);
-          }
-          if (!(portObject instanceof Operator.InputPort)) {
-            throw new IllegalArgumentException("port is not of type " + Operator.InputPort.class.getName());
-          }
-          InputPortMeta metaPort = new InputPortMeta();
-          metaPort.node = operator;
-          metaPort.fieldName = field.getName();
-          metaPort.fieldDeclaringClass = field.getDeclaringClass();
-          metaPort.portAnnotation = a;
-          metaPorts.put((Operator.InputPort<?>)portObject, metaPort);
-        } catch (IllegalAccessException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
   }
 
 }

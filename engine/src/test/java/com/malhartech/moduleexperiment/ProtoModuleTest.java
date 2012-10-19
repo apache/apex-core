@@ -209,7 +209,7 @@ public class ProtoModuleTest {
         if (!(outPort instanceof DefaultOutputPort)) {
           throw new IllegalArgumentException("port is not of type " + DefaultOutputPort.class.getName());
         }
-        ((DefaultOutputPort<Object>)outPort).setSink(sink);
+        ((Operator.OutputPort<Object>)outPort).setSink(sink);
         return;
       }
     }

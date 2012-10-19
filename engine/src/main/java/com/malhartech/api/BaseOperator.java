@@ -48,12 +48,9 @@ public class BaseOperator implements Operator
   }
 
   @Override
-  public void activate(OperatorContext context)
+  public String toString()
   {
+    return this.getClass().getSimpleName() + "{name=" + name + '}';
   }
 
-  @Override
-  public void deactivate()
-  {
-  }
 }
