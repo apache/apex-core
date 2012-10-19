@@ -5,6 +5,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
@@ -21,16 +22,16 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class InputModule extends BaseModule
+public class InputNode extends Node<InputOperator>
 {
-  private static final Logger logger = LoggerFactory.getLogger(InputModule.class);
-  private final Tuple NO_DATA = new Tuple(DataType.NO_DATA);
+  private static final Logger logger = LoggerFactory.getLogger(InputNode.class);
   private CircularBuffer<Tuple> controlTuples;
   private HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
 
-  public InputModule(Operator operator)
+  public InputNode(InputOperator operator)
   {
     super(operator);
+    bufferCapacity = 1024;
     controlTuples = new CircularBuffer<Tuple>(1024);
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
   }
@@ -53,7 +54,7 @@ public abstract class InputModule extends BaseModule
                   sinks[i].process(t);
                 }
                 inWindow = true;
-                NO_DATA.setWindowId(t.getWindowId());
+                currentWindowId = t.getWindowId();
                 operator.beginWindow();
                 break;
 
@@ -64,8 +65,8 @@ public abstract class InputModule extends BaseModule
                   sinks[i].process(t);
                 }
 
-                handleRequests(t.getWindowId());
-                
+                handleRequests(currentWindowId);
+
                 // i think there should be just one queue instead of one per port - lets defer till we find an example.
                 for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
                   final Sink s = outputs.get(e.getKey());
@@ -89,7 +90,7 @@ public abstract class InputModule extends BaseModule
         else {
           if (inWindow) {
             int oldg = generatedTupleCount;
-            operator.process(NO_DATA);
+            operator.injectTuples(currentWindowId);
             if (generatedTupleCount == oldg) {
               Thread.sleep(spinMillis);
             }
@@ -113,6 +114,7 @@ public abstract class InputModule extends BaseModule
 
   }
 
+  @Override
   public final Sink connect(String port, Sink sink)
   {
     Sink retvalue;

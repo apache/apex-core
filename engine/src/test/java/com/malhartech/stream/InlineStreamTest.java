@@ -33,10 +33,10 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
     prev = null;
 
-    final Module node1 = new PassThroughNode();
+    final GenericNode node1 = new PassThroughNode();
     node1.setup(new OperatorConfiguration("node1", null));
 
-    final Module node2 = new PassThroughNode();
+    final GenericNode node2 = new PassThroughNode();
     node2.setup(new OperatorConfiguration("node2", null));
 
     InlineStream stream = new InlineStream();
@@ -133,10 +133,10 @@ public class InlineStreamTest
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
 
-  private void launchNodeThreads(Collection<? extends Module> nodes, final Map<String, Operator> activeNodes)
+  private void launchNodeThreads(Collection<? extends GenericNode> nodes, final Map<String, Operator> activeNodes)
   {
     final AtomicInteger i = new AtomicInteger(0);
-    for (final Module node: nodes) {
+    for (final GenericNode node: nodes) {
       // launch operators
       Runnable nodeRunnable = new Runnable()
       {
@@ -162,7 +162,7 @@ public class InlineStreamTest
     @PortAnnotation(name = Component.INPUT, type = PortType.INPUT),
     @PortAnnotation(name = Component.OUTPUT, type = PortType.OUTPUT)
   })
-  public static class PassThroughNode extends Module implements Sink
+  public static class PassThroughNode extends GenericNode implements Sink
   {
     private boolean logMessages = false;
 

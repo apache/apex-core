@@ -14,12 +14,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This module bridges the gap between the synchronous data sources and InputModule which
+ * This module bridges the gap between the synchronous data sources and InputNode which
  * requires that the tuples be emitted in the process method as quickly as possible and return.
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class SynchronousInputModule extends InputModule implements Sink
+public abstract class SynchronousInputModule extends InputNode implements Sink
 {
   private static final Logger logger = LoggerFactory.getLogger(SynchronousInputModule.class);
   protected transient HashMap<String, CircularBuffer<Object>> handoverBuffers = new HashMap<String, CircularBuffer<Object>>();

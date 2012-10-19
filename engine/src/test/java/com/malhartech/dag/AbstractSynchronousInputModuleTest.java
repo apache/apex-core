@@ -98,7 +98,7 @@ public class AbstractSynchronousInputModuleTest
     @PortAnnotation(name = CollectorModule.INPUT1, type = PortType.INPUT),
     @PortAnnotation(name = CollectorModule.INPUT2, type = PortType.INPUT)
   })
-  public static class CollectorModule extends Module implements Sink
+  public static class CollectorModule extends GenericNode implements Sink
   {
     private static final Logger logger = LoggerFactory.getLogger(CollectorModule.class);
     public static final String INPUT1 = "INPUT1";

@@ -30,20 +30,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class Module extends BaseModule
+public class GenericNode extends Node<Operator>
 {
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(Module.class);
-  private CompoundSink activePort;
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
   private final HashMap<String, CompoundSink> inputs = new HashMap<String, CompoundSink>();
 
-  public Module(Operator operator)
+  public GenericNode(Operator operator)
   {
     super(operator);
-  }
-
-  public final String getActivePort()
-  {
-    return activePort.id;
   }
 
   public void handleIdleTimeout()
@@ -86,7 +80,7 @@ public abstract class Module extends BaseModule
 
     public void processTuple(Object payload)
     {
-      Module.this.process(payload);
+      GenericNode.this.process(payload);
     }
 
     @Override
@@ -105,6 +99,7 @@ public abstract class Module extends BaseModule
    * @param id the value of id
    * @param sink the value of stream
    */
+  @Override
   public Sink connect(String id, Sink sink)
   {
     PortAnnotation pa = getPort(id);
@@ -191,14 +186,13 @@ public abstract class Module extends BaseModule
     int receivedResetTuples = 0;
     int receivedEndWindow = 0;
 
-    long currentWindowId = 0;
     Object lastEndWindow = null;
 
     do {
       Iterator<CompoundSink> buffers = activeQueues.iterator();
       activequeue:
       while (buffers.hasNext()) {
-        activePort = buffers.next();
+        CompoundSink activePort = buffers.next();
         Tuple t = activePort.sweep();
         if (t != null) {
           switch (t.getType()) {

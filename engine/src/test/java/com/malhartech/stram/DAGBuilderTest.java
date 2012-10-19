@@ -70,7 +70,7 @@ public class DAGBuilderTest {
     assertEquals("moduleId set", "module1", module1.getId());
 
     // verify module instantiation
-    Module dNode = initOperator(module1);
+    GenericNode dNode = initOperator(module1);
     assertNotNull(dNode);
     assertEquals(dNode.getClass(), GenericTestModule.class);
     GenericTestModule GenericTestNode = (GenericTestModule)dNode;
@@ -115,7 +115,7 @@ public class DAGBuilderTest {
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends Module> T initOperator(OperatorInstance moduleConf) {
+  private <T extends GenericNode> T initOperator(OperatorInstance moduleConf) {
     return (T)StramUtils.initNode(moduleConf.getNodeClass(), moduleConf.getId(), moduleConf.getProperties());
   }
 
@@ -254,7 +254,7 @@ public class DAGBuilderTest {
           @PortAnnotation(name = "badOutputPort",  type = PortType.OUTPUT)
       }
   )
-  static class ValidationModule extends Module implements Sink {
+  static class ValidationModule extends GenericNode implements Sink {
     @Override
     public void process(Object payload) {
       // classify tuples
@@ -266,7 +266,7 @@ public class DAGBuilderTest {
           @PortAnnotation(name = "countInputPort",  type = PortType.INPUT)
       }
   )
-  static class CounterModule extends Module implements Sink {
+  static class CounterModule extends GenericNode implements Sink {
     @Override
     public void process(Object payload) {
       // count tuples
@@ -278,7 +278,7 @@ public class DAGBuilderTest {
           @PortAnnotation(name = "echoInputPort",  type = PortType.INPUT)
       }
   )
-  static class ConsoleOutputModule extends Module implements Sink{
+  static class ConsoleOutputModule extends GenericNode implements Sink{
     @Override
     public void process(Object payload) {
       // print tuples

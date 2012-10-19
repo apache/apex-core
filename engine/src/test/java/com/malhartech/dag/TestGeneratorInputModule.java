@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.malhartech.annotation.ModuleAnnotation;
 import com.malhartech.annotation.PortAnnotation;
 import com.malhartech.annotation.PortAnnotation.PortType;
-import com.malhartech.dag.InputModule;
+import com.malhartech.dag.InputNode;
 import com.malhartech.api.Sink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
     ports = {
   @PortAnnotation(name = TestGeneratorInputModule.OUTPUT_PORT, type = PortType.OUTPUT)
 })
-public class TestGeneratorInputModule extends InputModule
+public class TestGeneratorInputModule extends InputNode
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputModule.class);
   public static final String OUTPUT_PORT = "outputPort";

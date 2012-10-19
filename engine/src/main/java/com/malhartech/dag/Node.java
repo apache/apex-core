@@ -19,9 +19,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class BaseModule implements Runnable
+public abstract class Node<OPERATOR extends Operator> implements Runnable
 {
-  private static final Logger logger = LoggerFactory.getLogger(BaseModule.class);
+  private static final Logger logger = LoggerFactory.getLogger(Node.class);
   protected String id;
   protected final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   protected int spinMillis = 10;
@@ -31,9 +31,10 @@ public abstract class BaseModule implements Runnable
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile Sink[] sinks = Sink.NO_SINKS;
   protected boolean alive;
-  protected final Operator operator;
+  protected final OPERATOR operator;
+  protected long currentWindowId;
 
-  public BaseModule(Operator operator)
+  public Node(OPERATOR operator)
   {
     this.operator = operator;
   }
@@ -69,6 +70,8 @@ public abstract class BaseModule implements Runnable
     return null;
   }
 
+  public abstract Sink connect(String id, Sink sink);
+
   @SuppressWarnings("SillyAssignment")
   protected void activateSinks()
   {
@@ -86,8 +89,8 @@ public abstract class BaseModule implements Runnable
     sinks = Sink.NO_SINKS;
     outputs.clear();
   }
-
   OperatorContext context;
+
   public final void activate(OperatorContext context)
   {
     activateSinks();
@@ -146,7 +149,7 @@ public abstract class BaseModule implements Runnable
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final BaseModule other = (BaseModule)obj;
+    final Node other = (Node)obj;
     if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
       return false;
     }
@@ -204,7 +207,7 @@ public abstract class BaseModule implements Runnable
   @Override
   public String toString()
   {
-    return this.getClass().getSimpleName() + "{id=" + id + '}';
+    return operator.getName() + "/" + id + ":" + operator.getClass().getSimpleName();
   }
 
   /**

@@ -86,10 +86,10 @@ public abstract class StramUtils {
    */
   public static void internalSetupNode(Operator node, String id) {
     // TODO: what we really need is a common node interface for internal setup
-    if (node instanceof Module) {
-      ((Module)node).setId(id);
-    } else if (node instanceof InputModule) {
-      ((InputModule)node).setId(id);
+    if (node instanceof GenericNode) {
+      ((GenericNode)node).setId(id);
+    } else if (node instanceof InputNode) {
+      ((InputNode)node).setId(id);
     }
   }
 

@@ -8,10 +8,17 @@ import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.dag.DAGConstants;
 import com.malhartech.dag.DefaultModuleSerDe;
-import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramUtils;
+import java.io.*;
+import java.lang.reflect.Field;
+import java.util.*;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.hadoop.conf.Configuration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -185,7 +192,7 @@ public class DAG implements Serializable, DAGConstants {
       return this;
     }
 
-    OutputPortMeta getSource() {
+    public OutputPortMeta getSource() {
       return source;
     }
 
