@@ -54,7 +54,7 @@
  * 
  * <br><b>Inline Stream (Within a Hadoop Container)</b><br>
  * <b>{@link com.malhartech.stream.InlineStream}</b>: Streams data between two operators in inline mode. This implementation of
- * {@link com.malhartech.dag.Stream} and {{@link com.malhartech.dag.Sink}
+ * {@link com.malhartech.dag.Stream} and {{@link com.malhartech.api.Sink}
  * interface does not have connection to BufferServer and cannot be persisted.<br>
  * 
  * <b>{@link com.malhartech.stream.MuxStream}</b>: <br>

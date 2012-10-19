@@ -5,6 +5,8 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -12,25 +14,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This module bridges the gap between the synchronous data sources and AbstractInputModule which
+ * This module bridges the gap between the synchronous data sources and InputNode which
  * requires that the tuples be emitted in the process method as quickly as possible and return.
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractSynchronousInputModule extends AbstractInputModule implements Runnable
+public abstract class SynchronousInputModule extends InputNode implements Sink
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractSynchronousInputModule.class);
+  private static final Logger logger = LoggerFactory.getLogger(SynchronousInputModule.class);
   protected transient HashMap<String, CircularBuffer<Object>> handoverBuffers = new HashMap<String, CircularBuffer<Object>>();
   protected transient Thread syncThread;
 
+  public SynchronousInputModule(Operator operator)
+  {
+    super(operator);
+  }
+
   @Override
   @SuppressWarnings("SleepWhileInLoop")
-  public void connected(String id, Sink dagpart)
+  public void connected(String id, Sink sink)
   {
     PortAnnotation port = getPort(id);
     if (port != null && (port.type() == PortAnnotation.PortType.OUTPUT || port.type() == PortAnnotation.PortType.BIDI)) {
       CircularBuffer<?> cb = handoverBuffers.get(port.name());
-      if (dagpart == null) {
+      if (sink == null) {
         /* this is remove request */
         if (cb != null) {
           try {
@@ -51,14 +58,14 @@ public abstract class AbstractSynchronousInputModule extends AbstractInputModule
   }
 
   @Override
-  public void activated(ModuleContext context)
+  public void activated(OperatorContext context)
   {
     syncThread = new Thread(this, this + "-sync");
     syncThread.start();
   }
 
   @Override
-  public void deactivated(ModuleContext context)
+  public void deactivated(OperatorContext context)
   {
     syncThread.interrupt();
     syncThread = null;

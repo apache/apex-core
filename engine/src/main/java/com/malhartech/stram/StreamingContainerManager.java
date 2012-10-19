@@ -52,7 +52,7 @@ import com.malhartech.util.Pair;
  * The tasks include<br>
  * Provisioning operators one container at a time. Each container gets assigned the operators, streams and its context<br>
  * Monitors run time operations including heartbeat protocol and node status<br>
- * Module recovery and restart<br>
+ * Operator recovery and restart<br>
  * <br>
  *
  */
@@ -64,7 +64,7 @@ public class StreamingContainerManager
   private int windowSizeMillis = 500;
   private final int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
-  private final ModuleSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
+  private final OperatorSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
 
   private class NodeStatus
   {

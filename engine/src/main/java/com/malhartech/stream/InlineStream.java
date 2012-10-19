@@ -4,7 +4,7 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.dag.Sink;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.Stream;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
@@ -83,18 +83,15 @@ public class InlineStream implements Stream
    * @return Sink
    */
   @Override
-  public Sink connect(String port, Sink sink)
+  public Sink setSink(String port, Sink sink)
   {
-    if (INPUT.equals(port)) {
-      return this;
+    Sink previous;
+    if (current == output) {
+      current = sink;
     }
-    else {
-      if (current == output) {
-        current = sink;
-      }
-      output = sink;
-    }
-    return null;
+    previous = output;
+    output = sink;
+    return previous;
   }
 
   /**

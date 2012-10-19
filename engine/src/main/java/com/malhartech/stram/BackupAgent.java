@@ -6,7 +6,7 @@ package com.malhartech.stram;
 
 import java.io.IOException;
 
-import com.malhartech.dag.ModuleSerDe;
+import com.malhartech.dag.OperatorSerDe;
 
 /**
  *
@@ -19,9 +19,9 @@ import com.malhartech.dag.ModuleSerDe;
  */
 public interface BackupAgent
 {
-  public void backup(String operatorId, long windowId, Object o, ModuleSerDe serDe) throws IOException;
+  public void backup(String operatorId, long windowId, Object o, OperatorSerDe serDe) throws IOException;
 
-  public Object restore(String operatorId, long windowId, ModuleSerDe serDe) throws IOException;
+  public Object restore(String operatorId, long windowId, OperatorSerDe serDe) throws IOException;
 
   public void delete(String operatorId, long windowId) throws IOException;
 }

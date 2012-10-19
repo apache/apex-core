@@ -24,9 +24,9 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Maps;
 import com.malhartech.dag.ApplicationFactory;
 import com.malhartech.dag.DAG;
-import com.malhartech.dag.Module;
+import com.malhartech.api.Operator;
 import com.malhartech.dag.SerDe;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.dag.DAG.OperatorInstance;
 import com.malhartech.dag.DAG.StreamDecl;
 
 /**
@@ -388,12 +388,12 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
     DAG tplg = new DAG(conf);
 
-    Map<NodeConf, Operator> nodeMap = new HashMap<NodeConf, Operator>(this.nodes.size());
+    Map<NodeConf, OperatorInstance> nodeMap = new HashMap<NodeConf, OperatorInstance>(this.nodes.size());
     // add all operators first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
-      Class<? extends Module> nodeClass = StramUtils.classForName(nodeConf.getModuleClassNameReqd(), Module.class);
-      Operator nd = tplg.addOperator(nodeConfEntry.getKey(), nodeClass);
+      Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getModuleClassNameReqd(), Operator.class);
+      OperatorInstance nd = tplg.addOperator(nodeConfEntry.getKey(), nodeClass);
       nd.getProperties().putAll(nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
     }
@@ -416,7 +416,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
             portName = e.getKey();
           }
         }
-        Operator sourceDecl = nodeMap.get(streamConf.sourceNode);
+        OperatorInstance sourceDecl = nodeMap.get(streamConf.sourceNode);
         sd.setSource(sourceDecl.getOutput(portName));
       }
 
@@ -427,7 +427,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
             portName = e.getKey();
           }
         }
-        Operator targetDecl = nodeMap.get(targetNode);
+        OperatorInstance targetDecl = nodeMap.get(targetNode);
         sd.addSink(targetDecl.getInput(portName));
       }
     }

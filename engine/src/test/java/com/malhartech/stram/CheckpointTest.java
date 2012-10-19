@@ -4,7 +4,8 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.api.DAG;
+import com.malhartech.api.Operator;
 import com.malhartech.dag.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -56,8 +57,8 @@ public class CheckpointTest
   {
     DAG dag = new DAG();
     // node with no inputs will be connected to window generator
-    dag.addOperator("node1", TestGeneratorInputModule.class)
-            .setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "1");
+    TestGeneratorInputModule m1 = dag.addOperator("node1", TestGeneratorInputModule.class);
+    m1.setMaxTuples(1);
     dag.getConf().set(DAG.STRAM_CHECKPOINT_DIR, testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
@@ -74,8 +75,8 @@ public class CheckpointTest
     mses.tick(1); // begin window 1
 
     Assert.assertEquals("number operators", 1, container.getNodes().size());
-    Module node = container.getNode(cc.nodeList.get(0).id);
-    ModuleContext context = container.getNodeContext(cc.nodeList.get(0).id);
+    Operator node = container.getNode(cc.nodeList.get(0).id);
+    OperatorContext context = container.getNodeContext(cc.nodeList.get(0).id);
 
     Assert.assertNotNull("node deployed " + cc.nodeList.get(0), node);
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());
@@ -136,21 +137,21 @@ public class CheckpointTest
   {
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
+    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2")
-            .setSource(node1.getOutput(GenericTestModule.OUTPUT1))
-            .addSink(node2.getInput(GenericTestModule.INPUT1));
+            .setSource(node1.outport1)
+            .addSink(node2.inport1);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    PhysicalPlan deployer = dnm.getPhysicalPlan();
-    List<PTOperator> nodes1 = deployer.getOperators(node1);
+    PhysicalPlan plan = dnm.getPhysicalPlan();
+    List<PTOperator> nodes1 = plan.getOperators(dag.getOperatorWrapper(node1));
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());
     PTOperator pnode1 = nodes1.get(0);
 
-    List<PTOperator> nodes2 = deployer.getOperators(node2);
+    List<PTOperator> nodes2 = plan.getOperators(dag.getOperatorWrapper(node2));
     Assert.assertNotNull(nodes2);
     Assert.assertEquals(1, nodes2.size());
     PTOperator pnode2 = nodes2.get(0);

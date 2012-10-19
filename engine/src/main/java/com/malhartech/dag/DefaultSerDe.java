@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Operator;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
@@ -56,7 +57,7 @@ public class DefaultSerDe implements SerDe
   }
 
   @Override
-  public boolean transferState(Module destination, Module source, Collection<byte[]> partitions)
+  public boolean transferState(Operator destination, Operator source, Collection<byte[]> partitions)
   {
     return false;
   }

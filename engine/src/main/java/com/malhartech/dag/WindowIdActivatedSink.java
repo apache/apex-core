@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 
 /**
@@ -14,13 +15,13 @@ public class WindowIdActivatedSink implements Sink
 {
   private final Sink sink;
   private final long windowId;
-  private final String port;
-  private final Component source;
+  private final Stream stream;
+  private final String identifier;
 
-  public WindowIdActivatedSink(Component source, String port, final Sink sink, final long windowId)
+  public WindowIdActivatedSink(Stream stream, String identifier, final Sink sink, final long windowId)
   {
-    this.source = source;
-    this.port = port;
+    this.stream = stream;
+    this.identifier = identifier;
     this.sink = sink;
     this.windowId = windowId;
   }
@@ -32,7 +33,7 @@ public class WindowIdActivatedSink implements Sink
             && ((Tuple)payload).getType() == Buffer.Data.DataType.BEGIN_WINDOW
             && ((Tuple)payload).getWindowId() >= windowId) {
       sink.process(payload);
-      source.connect(port, sink);
+      stream.setSink(identifier, sink);
     }
   }
 }

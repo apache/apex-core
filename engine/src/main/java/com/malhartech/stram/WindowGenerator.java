@@ -4,13 +4,12 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.*;
 import com.malhartech.util.ScheduledExecutorService;
 import java.util.HashMap;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
  */
-public class WindowGenerator implements Component<Configuration, Context>, Runnable
+public class WindowGenerator implements Stream, Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
   public static final String FIRST_WINDOW_MILLIS = "FirstWindowMillis";
@@ -39,7 +38,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   private int windowWidthMillis; // Window size
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink[] sinks = NO_SINKS;
+  private volatile Sink[] sinks = Sink.NO_SINKS;
   private long currentWindowMillis;
   private long baseSeconds;
   private int windowId;
@@ -128,7 +127,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   }
 
   @Override
-  public void setup(Configuration config)
+  public void setup(StreamConfiguration config)
   {
     firstWindowMillis = config.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis());
     windowWidthMillis = config.getInt(WINDOW_WIDTH_MILLIS, 500);
@@ -140,7 +139,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   }
 
   @Override
-  public void activate(Context context)
+  public void activate(StreamContext context)
   {
     activateSinks();
 
@@ -184,7 +183,7 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   @Override
   public void deactivate()
   {
-    sinks = NO_SINKS;
+    sinks = Sink.NO_SINKS;
     ses.shutdown();
   }
 
@@ -195,24 +194,22 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
   }
 
   @Override
-  public Sink connect(String id, Sink component)
+  public Sink setSink(String id, Sink sink)
   {
-    if (component == null) {
-      outputs.remove(id);
+    if (sink == null) {
+      sink = outputs.remove(id);
+      if (outputs.isEmpty()) {
+        sinks = Sink.NO_SINKS;
+      }
     }
     else {
-      outputs.put(id, component);
+      sink = outputs.put(id, sink);
+      if (sinks != Sink.NO_SINKS) {
+        activateSinks();
+      }
     }
-    if (sinks != NO_SINKS) {
-      activateSinks();
-    }
-    return null;
-  }
 
-  @Override
-  public void process(Object payload)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return sink;
   }
 
   @SuppressWarnings("SillyAssignment")
@@ -224,5 +221,17 @@ public class WindowGenerator implements Component<Configuration, Context>, Runna
       sinks[i++] = s;
     }
     sinks = sinks;
+  }
+
+  @Override
+  public boolean isMultiSinkCapable()
+  {
+    return true;
+  }
+
+  @Override
+  public void process(Object tuple)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }

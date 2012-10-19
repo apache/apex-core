@@ -4,14 +4,10 @@
 package com.malhartech.stream;
 
 import com.google.protobuf.ByteString;
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.dag.EndWindowTuple;
-import com.malhartech.dag.ResetWindowTuple;
-import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Sink;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.dag.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,9 +108,9 @@ public class BufferServerOutputStream extends SocketOutputStream
   }
 
   @Override
-  public Sink connect(String id, Sink sink)
+  public Sink setSink(String id, Sink sink)
   {
-    return this;
+    throw new IllegalAccessError("Attempt to set destination other than buffer server on " + this + " stream!");
   }
 
   @Override

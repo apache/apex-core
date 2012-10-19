@@ -3,12 +3,12 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.dag.*;
 import java.util.HashMap;
-import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,10 +41,10 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     String type = "unused";
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId()});
     ClientHandler.subscribe(channel,
-                                     context.getSinkId(),
-                                     context.getId() + '/' + context.getSinkId(),
-                                     context.getSourceId(), type,
-                                     context.getPartitions(), context.getStartingWindowId());
+                            context.getSinkId(),
+                            context.getId() + '/' + context.getSinkId(),
+                            context.getSourceId(), type,
+                            context.getPartitions(), context.getStartingWindowId());
   }
 
   @Override
@@ -94,24 +94,28 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   }
 
   @Override
-  public Sink connect(String id, Sink sink)
+  public Sink setSink(String id, Sink sink)
   {
     if (sink == null) {
-      outputs.remove(id);
+      sink = outputs.remove(id);
+      if (outputs.isEmpty()) {
+        sinks = NO_SINKS;
+      }
     }
     else {
-      outputs.put(id, sink);
+      sink = outputs.put(id, sink);
+      if (sinks != NO_SINKS) {
+        activateSinks();
+      }
     }
-    if (sinks != NO_SINKS) {
-      activateSinks();
-    }
-    return null;
+
+    return sink;
   }
 
   @Override
   public final void process(Object payload)
   {
-    throw new IllegalAccessError("Attempt to pass payload from source other than buffer server!");
+    throw new IllegalAccessError("Attempt to pass payload to " + this + " from source other than buffer server!");
   }
 
   @Override

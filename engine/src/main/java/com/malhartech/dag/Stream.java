@@ -4,6 +4,8 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Sink;
+
 /**
  *
  * Base interface for all streams in the streaming platform<p>
@@ -14,7 +16,8 @@ package com.malhartech.dag;
 /*
  * Provides basic interface for a stream object. Stram, StramChild work via this interface
  */
-public interface Stream extends Component<StreamConfiguration, StreamContext>
+public interface Stream extends Component<StreamConfiguration, StreamContext>, Sink
 {
   public boolean isMultiSinkCapable();
+  public Sink setSink(String sinkId, Sink sink);
 }

@@ -4,8 +4,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.DAG;
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DAG;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.TestGeneratorInputModule;
 import java.io.IOException;
@@ -59,8 +59,8 @@ public class StramChildTest
   {
     DAG dag = new DAG();
 
-    DAG.Operator generator = dag.addOperator("StramChildTest.generator", TestGeneratorInputModule.class);
-    DAG.Operator operator1 = dag.addOperator("operator1", GenericTestModule.class);
+    DAG.OperatorInstance generator = dag.addOperator("StramChildTest.generator", TestGeneratorInputModule.class);
+    DAG.OperatorInstance operator1 = dag.addOperator("operator1", GenericTestModule.class);
 
     DAG.StreamDecl generatorOutput = dag.addStream("generatorOutput");
     generatorOutput.setSource(generator.getOutput(TestGeneratorInputModule.OUTPUT_PORT))

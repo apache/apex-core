@@ -3,9 +3,10 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.Sink;
 import com.malhartech.dag.Component;
 import com.malhartech.dag.ResetWindowTuple;
-import com.malhartech.dag.Sink;
+import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.Tuple;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,7 +29,7 @@ public class WindowGeneratorTest
     ManualScheduledExecutorService msse = new ManualScheduledExecutorService(1);
     WindowGenerator generator = new WindowGenerator(msse);
 
-    final Configuration config = new Configuration();
+    final StreamConfiguration config = new StreamConfiguration();
     config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0L);
     config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
 
@@ -39,7 +40,7 @@ public class WindowGeneratorTest
     final AtomicInteger resetWindowCount = new AtomicInteger(0);
     final AtomicBoolean loggingEnabled = new AtomicBoolean(true);
 
-    generator.connect(Component.OUTPUT, new Sink() {
+    generator.setSink(Component.OUTPUT, new Sink() {
       @Override
       public void process(Object payload)
       {
@@ -92,12 +93,12 @@ public class WindowGeneratorTest
     msse.setCurrentTimeMillis(0xcafebabe * 1000L);
     WindowGenerator generator = new WindowGenerator(msse);
 
-    final Configuration config = new Configuration();
+    final StreamConfiguration config = new StreamConfiguration();
     config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, msse.getCurrentTimeMillis());
     config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0x1234abcd);
 
     generator.setup(config);
-    generator.connect(Component.OUTPUT, new Sink()
+    generator.setSink(Component.OUTPUT, new Sink()
     {
       boolean firsttime = true;
 
@@ -162,7 +163,7 @@ public class WindowGeneratorTest
       }
     };
 
-    Configuration config = new Configuration();
+    StreamConfiguration config = new StreamConfiguration();
 
     ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1, "WindowGenerator");
     long firstWindowMillis = stpe.getCurrentTimeMillis();
@@ -175,7 +176,7 @@ public class WindowGeneratorTest
 
     WindowGenerator wg = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"));
     wg.setup(config);
-    wg.connect("GeneratorTester", s);
+    wg.setSink("GeneratorTester", s);
 
     wg.activate(null);
     Thread.sleep(200);

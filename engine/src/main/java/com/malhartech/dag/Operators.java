@@ -2,13 +2,14 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.api;
-
-import java.lang.reflect.Field;
-import java.util.LinkedHashMap;
+package com.malhartech.dag;
 
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.api.Operator;
+import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
 
 /**
  * Utilities for dealing with {@link Operator} instances.

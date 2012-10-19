@@ -4,19 +4,12 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.Operator;
+import com.malhartech.dag.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
-
 import org.apache.commons.beanutils.BeanUtils;
-
-import com.malhartech.dag.AbstractInputModule;
-import com.malhartech.dag.AbstractModule;
-import com.malhartech.dag.DefaultModuleSerDe;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.Module;
-import com.malhartech.dag.ModuleSerDe;
-import com.malhartech.dag.SerDe;
 
 /**
  *
@@ -58,11 +51,11 @@ public abstract class StramUtils {
    * @param nodeClass
    * @param properties
    */
-  public static Module initNode(Class<? extends Module> nodeClass, String id, Map<String, String> properties)
+  public static Operator initNode(Class<? extends Operator> nodeClass, String id, Map<String, String> properties)
   {
     try {
-      Constructor<? extends Module> c = nodeClass.getConstructor();
-      Module node = c.newInstance();
+      Constructor<? extends Operator> c = nodeClass.getConstructor();
+      Operator node = c.newInstance();
       // populate custom properties
       BeanUtils.populate(node, properties);
       internalSetupNode(node, id);
@@ -87,22 +80,22 @@ public abstract class StramUtils {
 
   /**
    * Initialize internal field(s) on node base class.
-   * To be called along with {@link Module#setup}
+   * To be called along with {@link Operator#setup}
    * @param node
    * @param id
    */
-  public static void internalSetupNode(Module node, String id) {
+  public static void internalSetupNode(Operator node, String id) {
     // TODO: what we really need is a common node interface for internal setup
-    if (node instanceof AbstractModule) {
-      ((AbstractModule)node).setId(id);
-    } else if (node instanceof AbstractInputModule) {
-      ((AbstractInputModule)node).setId(id);
+    if (node instanceof GenericNode) {
+      ((GenericNode)node).setId(id);
+    } else if (node instanceof InputNode) {
+      ((InputNode)node).setId(id);
     }
   }
 
-  public static ModuleSerDe getNodeSerDe(String className) {
+  public static OperatorSerDe getNodeSerDe(String className) {
     if (className != null) {
-      return newInstance(classForName(className, ModuleSerDe.class));
+      return newInstance(classForName(className, OperatorSerDe.class));
     }
     return new DefaultModuleSerDe();
   }

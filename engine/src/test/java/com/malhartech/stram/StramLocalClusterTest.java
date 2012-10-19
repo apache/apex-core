@@ -21,12 +21,12 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.dag.DAG;
-import com.malhartech.dag.DAG.Operator;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.Module;
-import com.malhartech.dag.ModuleContext;
+import com.malhartech.api.Operator;
+import com.malhartech.dag.OperatorContext;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.TestGeneratorInputModule;
@@ -45,15 +45,6 @@ public class StramLocalClusterTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
 
-  @Ignore
-  @Test
-  public void testTplg() throws IOException, Exception {
-    String tplgFile = "src/test/resources/clusterTest.tplg.properties";
-    StramLocalCluster lc = new StramLocalCluster(DAGPropertiesBuilder.create(new Configuration(false), tplgFile));
-    lc.setHeartbeatMonitoringEnabled(false);
-    lc.run();
-  }
-
   /**
    * Verify test configuration launches and stops after input terminates.
    * Test validates expected output end to end.
@@ -64,16 +55,16 @@ public class StramLocalClusterTest
   {
     DAG dag = new DAG();
 
-    Operator genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
+    OperatorInstance genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
     genNode.setProperty("maxTuples", "1");
 
-    Operator node1 = dag.addOperator("node1", GenericTestModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", GenericTestModule.class);
     node1.setProperty("emitFormat", "%s >> node1");
 
     File outFile = new File("./target/" + StramLocalClusterTest.class.getName() + "-testLocalClusterInitShutdown.out");
     outFile.delete();
 
-    Operator outNode = dag.addOperator("outNode", TestOutputModule.class);
+    OperatorInstance outNode = dag.addOperator("outNode", TestOutputModule.class);
     outNode.setProperty(TestOutputModule.P_FILEPATH, outFile.toURI().toString());
 
     dag.addStream("fromGenNode")
@@ -143,10 +134,10 @@ public class StramLocalClusterTest
   {
     DAG dag = new DAG();
 
-    Operator node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
+    OperatorInstance node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
     // data will be added externally from test
     node1.setProperty(TestGeneratorInputModule.KEY_MAX_TUPLES, "0");
-    Operator node2 = dag.addOperator("node2", GenericTestModule.class);
+    OperatorInstance node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2").
       setSource(node1.getOutput(TestGeneratorInputModule.OUTPUT_PORT)).
@@ -174,13 +165,13 @@ public class StramLocalClusterTest
     PTOperator ptNode2 = localCluster.findByLogicalNode(node2);
 
     LocalStramChild c0 = waitForActivation(localCluster, ptNode1);
-    Map<String, Module> nodeMap = c0.getNodes();
+    Map<String, Operator> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
     TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = waitForActivation(localCluster, ptNode2);
-    Map<String, Module> c2NodeMap = c2.getNodes();
+    Map<String, Operator> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
     GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(node2).id);
     Assert.assertNotNull(n2);
@@ -192,7 +183,7 @@ public class StramLocalClusterTest
     String window0Tuple = "window0Tuple";
     n1.addTuple(window0Tuple);
 
-    ModuleContext n1Context = c0.getNodeContext(ptNode1.id);
+    OperatorContext n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
     wclock.tick(1); // begin window 1
     wclock.tick(1); // begin window 2
@@ -203,7 +194,7 @@ public class StramLocalClusterTest
     wclock.tick(1); // end window 2
     StramTestSupport.waitForWindowComplete(n1Context, 2);
 
-    ModuleContext n2Context = c2.getNodeContext(ptNode2.id);
+    OperatorContext n2Context = c2.getNodeContext(ptNode2.id);
 
     wclock.tick(1); // end window 3
 
@@ -266,7 +257,7 @@ public class StramLocalClusterTest
     TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)nodeMap.get(ptNode1.id);
     Assert.assertNotNull(n1Replaced);
 
-    ModuleContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
+    OperatorContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
     Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
     // should node context should reflect last processed window (the backup window)?
     //Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
@@ -339,7 +330,7 @@ public class StramLocalClusterTest
     }
   }
 
-  private void backupNode(StramChild c, ModuleContext nodeCtx)
+  private void backupNode(StramChild c, OperatorContext nodeCtx)
   {
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(nodeCtx.getId());

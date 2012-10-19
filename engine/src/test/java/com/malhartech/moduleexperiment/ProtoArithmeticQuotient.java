@@ -16,7 +16,7 @@ import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.dag.FailedOperationException;
-import com.malhartech.dag.ModuleConfiguration;
+import com.malhartech.dag.OperatorConfiguration;
 
 /**
  *
@@ -96,7 +96,7 @@ public class ProtoArithmeticQuotient extends BaseOperator
    * @param config
    */
   @Override
-  public void setup(ModuleConfiguration config) throws FailedOperationException
+  public void setup(OperatorConfiguration config) throws FailedOperationException
   {
     LOG.debug(String.format("Set mult_by(%d), and dokey(%s)", mult_by, dokey ? "true" : "false"));
   }

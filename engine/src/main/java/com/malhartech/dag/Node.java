@@ -4,8 +4,13 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.annotation.ModuleAnnotation;
-import com.malhartech.annotation.PortAnnotation;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.api.Operator.Port;
+import com.malhartech.api.Sink;
+import com.malhartech.util.CircularBuffer;
+import java.util.Collection;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,35 +19,58 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractBaseModule implements Module
+public abstract class Node<OPERATOR extends Operator> implements Runnable
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractBaseModule.class);
-  protected transient String id;
-  protected final transient HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  protected transient int spinMillis = 10;
-  protected transient int bufferCapacity = 1024 * 1024;
-  protected transient int processedTupleCount;
-  protected transient int generatedTupleCount;
+  private static final Logger logger = LoggerFactory.getLogger(Node.class);
+  protected String id;
+  protected final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  protected int spinMillis = 10;
+  protected int bufferCapacity = 1024 * 1024;
+  protected int processedTupleCount;
+  protected int generatedTupleCount;
   @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile transient Sink[] sinks = NO_SINKS;
-  protected transient boolean alive;
+  protected volatile Sink[] sinks = Sink.NO_SINKS;
+  protected boolean alive;
+  protected final OPERATOR operator;
+  protected long currentWindowId;
 
-  // optimize the performance of this method.
-  protected PortAnnotation getPort(String id)
+  public Node(OPERATOR operator)
   {
-    Class<? extends Module> clazz = this.getClass();
-    ModuleAnnotation na = clazz.getAnnotation(ModuleAnnotation.class);
-    if (na != null) {
-      PortAnnotation[] ports = na.ports();
-      for (PortAnnotation pa: ports) {
-        if (id.equals(pa.name())) {
-          return pa;
-        }
-      }
-    }
+    this.operator = operator;
+  }
 
+  public Operator getOperator()
+  {
+    return operator;
+  }
+
+  // The following 3 get*Port methods are just a placeholder.
+  static <T extends Port> T getPort(Operator operator, String portname)
+  {
+    try {
+      return (T)null;
+    }
+    catch (ClassCastException cce) {
+      return null;
+    }
+  }
+
+  static InputPort getInputPort(Operator operator, String portname)
+  {
+    return getPort(operator, portname);
+  }
+
+  static OutputPort getOutputPort(Operator operator, String portname)
+  {
+    return getPort(operator, portname);
+  }
+
+  static Collection<InputPort> getInputPorts(Operator operator)
+  {
     return null;
   }
+
+  public abstract Sink connect(String id, Sink sink);
 
   @SuppressWarnings("SillyAssignment")
   protected void activateSinks()
@@ -58,42 +86,29 @@ public abstract class AbstractBaseModule implements Module
 
   public void deactivateSinks()
   {
-    sinks = NO_SINKS;
+    sinks = Sink.NO_SINKS;
     outputs.clear();
   }
+  OperatorContext context;
 
-  @Override
+  public final void activate(OperatorContext context)
+  {
+    activateSinks();
+    alive = true;
+    operator.activate(context);
+
+    this.context = context;
+    run();
+    this.context = null;
+
+    operator.deactivate();
+    emitEndStream();
+    deactivateSinks();
+  }
+
   public final void deactivate()
   {
     alive = false;
-  }
-
-  @Override
-  public void beginWindow()
-  {
-  }
-
-  /**
-   * An opportunity for the derived node to use the connected dagcomponents.
-   *
-   * Motivation is that the derived node can tie the dagparts to class fields and use them for efficiency reasons instead of asking this class to do lookup.
-   *
-   * @param id
-   * @param dagpart
-   */
-  public void connected(String id, Sink dagpart)
-  {
-    /* implementation to be optionally overridden by the user */
-  }
-
-  public void activated(ModuleContext context)
-  {
-    /* implementation to be optionally overridden by the user */
-  }
-
-  public void deactivated(ModuleContext context)
-  {
-    /* implementation to be optionally overridden by the user */
   }
 
   /**
@@ -126,11 +141,6 @@ public abstract class AbstractBaseModule implements Module
   }
 
   @Override
-  public void endWindow()
-  {
-  }
-
-  @Override
   public boolean equals(Object obj)
   {
     if (obj == null) {
@@ -139,7 +149,7 @@ public abstract class AbstractBaseModule implements Module
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final AbstractBaseModule other = (AbstractBaseModule)obj;
+    final Node other = (Node)obj;
     if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
       return false;
     }
@@ -195,19 +205,9 @@ public abstract class AbstractBaseModule implements Module
   }
 
   @Override
-  public void setup(ModuleConfiguration config) throws FailedOperationException
-  {
-  }
-
-  @Override
-  public void teardown()
-  {
-  }
-
-  @Override
   public String toString()
   {
-    return this.getClass().getSimpleName() + "{id=" + id + '}';
+    return operator.getName() + "/" + id + ":" + operator.getClass().getSimpleName();
   }
 
   /**
@@ -229,5 +229,25 @@ public abstract class AbstractBaseModule implements Module
     for (final Sink output: outputs.values()) {
       output.process(est);
     }
+  }
+
+  protected void handleRequests(long windowId)
+  {
+    /*
+     * we prefer to cater to requests at the end of the window boundary.
+     */
+    try {
+      CircularBuffer<OperatorContext.ModuleRequest> requests = context.getRequests();
+      for (int i = requests.size(); i-- > 0;) {
+        //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
+        requests.remove().execute(operator, context.getId(), windowId);
+      }
+    }
+    catch (Exception e) {
+      logger.warn("Exception while catering to external request {}", e);
+    }
+
+    context.report(generatedTupleCount, 0L, windowId);
+    generatedTupleCount = 0;
   }
 }

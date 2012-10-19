@@ -8,13 +8,14 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Operator;
 import java.util.Collection;
 
 /**
  *
  * Serializing and Deserializing the data tuples and controlling the partitioning<p>
  * <br>
- * Data flows from one Module to another Module through a stream. For load balancing the
+ * Data flows from one Operator to another Operator through a stream. For load balancing the
  * downstream operators, we can use sticky partitions. Since the framework has no knowledge
  * about the internals of the data flowing between the node, it has to ask the
  * application if payload can be partitioned and appropriately creates downstream
@@ -83,6 +84,6 @@ public interface SerDe
    *
    * Note that after this operation both the Nodes may have their states altered.
    */
-  boolean transferState(Module destination, Module source, Collection<byte[]> partitions);
+  boolean transferState(Operator destination, Operator source, Collection<byte[]> partitions);
 
 }

@@ -4,7 +4,7 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.dag.Sink;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import io.netty.channel.ChannelFuture;
@@ -27,7 +27,7 @@ public final class OutputSocketStreamTest
     }
 
     @Override
-    public Sink connect(String port, Sink sink)
+    public Sink setSink(String port, Sink sink)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
