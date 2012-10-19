@@ -200,7 +200,7 @@ public class StreamingContainerManagerTest {
     List<String> sourceNodeIds = new ArrayList<String>();
     for (NodeInputDeployInfo nidi : mergeNodeDI.inputs) {
       Assert.assertEquals("streamName " + nidi, mergeStream.getId(), nidi.declaredStreamId);
-      Assert.assertEquals("portName " + nidi, dag.getOperatorWrapper(mergeNode).getInputPortMeta(mergeNode.inport1), nidi.portName);
+      Assert.assertEquals("portName " + nidi, dag.getOperatorWrapper(mergeNode).getInputPortMeta(mergeNode.inport1).getPortName(), nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       sourceNodeIds.add(nidi.sourceNodeId);
     }

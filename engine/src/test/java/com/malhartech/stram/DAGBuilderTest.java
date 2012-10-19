@@ -159,7 +159,7 @@ public class DAGBuilderTest {
       assertTrue("n1n2 inline", s1.isInline());
 
       OperatorWrapper module3 = dag.getOperatorWrapper("module3");
-      assertEquals("module3.classname", GenericTestModule.class.getName(), module3.getModule().getClass());
+      assertEquals("module3.classname", GenericTestModule.class, module3.getModule().getClass());
 
       GenericTestModule dmodule3 = (GenericTestModule)module3.getModule();
       assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());

@@ -93,8 +93,9 @@ public class InlineStreamTest
 
     stream.activate(streamContext);
 
-    Map<String, Operator> activeNodes = new ConcurrentHashMap<String, Operator>();
-    launchNodeThreads(Arrays.asList(node1, node2), activeNodes);
+    Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
+    launchNodeThread(node1, activeNodes);
+    launchNodeThread(node2, activeNodes);
 
     for (int i = 0; i < totalTupleCount; i++) {
       sink.process(i);
@@ -107,8 +108,9 @@ public class InlineStreamTest
     Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
     Assert.assertEquals("active operators", 2, activeNodes.size());
 
-    node2.deactivate();
-    node1.deactivate();
+    for (Node node: activeNodes.values()) {
+      node.deactivate();
+    }
     stream.deactivate();
 
     for (int i = 0; i < 10; i++) {
@@ -124,39 +126,36 @@ public class InlineStreamTest
 
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
+  final AtomicInteger i = new AtomicInteger(0);
 
-  private void launchNodeThreads(Collection<? extends Operator> nodes, final Map<String, Operator> activeNodes)
+  private void launchNodeThread(final Operator operator, final Map<String, Node> activeNodes)
   {
-    final AtomicInteger i = new AtomicInteger(0);
-    for (final Operator node: nodes) {
-      // launch operators
-      Runnable nodeRunnable = new Runnable()
+    Runnable nodeRunnable = new Runnable()
+    {
+      @Override
+      public void run()
       {
-        @Override
-        public void run()
-        {
-          Node n;
-          String id = String.valueOf(i.incrementAndGet());
-          if (node instanceof SyncInputOperator) {
-            n = new SyncInputNode(id, (SyncInputOperator)node);
-          }
-          else if (node instanceof AsyncInputOperator) {
-            n = new AsyncInputNode(id, (AsyncInputOperator)node);
-          }
-          else {
-            n = new GenericNode(id, node);
-          }
-
-          OperatorContext ctx = new OperatorContext(String.valueOf(i.incrementAndGet()), Thread.currentThread());
-          activeNodes.put(ctx.getId(), node);
-          n.activate(ctx);
-          activeNodes.remove(ctx.getId());
+        Node n;
+        String id = String.valueOf(i.incrementAndGet());
+        if (operator instanceof SyncInputOperator) {
+          n = new SyncInputNode(id, (SyncInputOperator)operator);
         }
-      };
+        else if (operator instanceof AsyncInputOperator) {
+          n = new AsyncInputNode(id, (AsyncInputOperator)operator);
+        }
+        else {
+          n = new GenericNode(id, operator);
+        }
 
-      Thread launchThread = new Thread(nodeRunnable);
-      launchThread.start();
-    }
+        OperatorContext ctx = new OperatorContext(String.valueOf(i.incrementAndGet()), Thread.currentThread());
+        activeNodes.put(ctx.getId(), n);
+        n.activate(ctx);
+        activeNodes.remove(ctx.getId());
+      }
+    };
+
+    Thread launchThread = new Thread(nodeRunnable);
+    launchThread.start();
   }
 
   /**
