@@ -11,12 +11,6 @@ package com.malhartech.api;
 public interface Operator {
 
   /**
-   * A user friendly name that is available to identify the instance throughout
-   * the lifecycle in the system.
-   */
-  public String getName();
-
-  /**
    * A module provides ports as a means to consume and produce data tuples.
    * Concrete ports implement derived interfaces. The common characteristic is
    * that ports provide a reference to the module instance they belong to.

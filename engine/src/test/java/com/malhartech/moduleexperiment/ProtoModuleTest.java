@@ -273,23 +273,14 @@ public class ProtoModuleTest {
 
     DAG dag = new DAG();
 
-    MyProtoModule<Object> m1 = new MyProtoModule<Object>();
-    m1.setName("operator1");
+    MyProtoModule<Object> m1 = dag.addOperator("operator1", new MyProtoModule<Object>());
     m1.setMyConfigField("someField");
 
     m1.inport2.getSink().process("something");
 
-    MyProtoModule<Object> m2 = new MyProtoModule<Object>();
-    m2.setName("operator2");
+    MyProtoModule<Object> m2 = dag.addOperator("operator2", new MyProtoModule<Object>());
 
-    MyProtoModule<Object> m3 = new MyProtoModule<Object>();
-    m3.setName("operator3");
-
-    // module instances are added to teh DAG as ports are referenced
-    // and establish module-ports relationship
-    dag.addOperator(m1);
-    //Operator operator2 = dag.addOperator("operator2", m2);
-    //Operator operator3 = dag.addOperator("operator3", m3);
+    MyProtoModule<Object> m3 = dag.addOperator("operator3", new MyProtoModule<Object>());
 
     dag.addStream("stream1", m1.outport1, m2.inport1);
     dag.addStream("stream2", m2.outport1, m3.inport1);
