@@ -4,8 +4,6 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.dag.FailedOperationException;
-import com.malhartech.dag.OperatorConfiguration;
 import com.malhartech.dag.OperatorContext;
 
 /**

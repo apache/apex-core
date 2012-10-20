@@ -4,6 +4,8 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.OperatorConfiguration;
+import com.malhartech.api.FailedOperationException;
 import java.io.IOException;
 
 import org.apache.hadoop.fs.FSDataOutputStream;

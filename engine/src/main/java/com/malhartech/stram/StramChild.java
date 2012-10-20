@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.OperatorConfiguration;
 import com.malhartech.api.AsyncInputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
