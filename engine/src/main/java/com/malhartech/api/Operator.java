@@ -5,7 +5,6 @@
 package com.malhartech.api;
 
 import com.malhartech.dag.Component;
-import com.malhartech.dag.OperatorConfiguration;
 import com.malhartech.dag.OperatorContext;
 
 public interface Operator extends Component<OperatorConfiguration, OperatorContext>

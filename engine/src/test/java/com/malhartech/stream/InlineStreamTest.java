@@ -3,6 +3,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.api.OperatorConfiguration;
 import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import java.util.Map;

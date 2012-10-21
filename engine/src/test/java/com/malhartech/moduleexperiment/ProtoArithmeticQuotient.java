@@ -15,8 +15,8 @@ import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.dag.FailedOperationException;
-import com.malhartech.dag.OperatorConfiguration;
+import com.malhartech.api.FailedOperationException;
+import com.malhartech.api.OperatorConfiguration;
 
 /**
  *

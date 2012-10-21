@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.FailedOperationException;
 import org.apache.hadoop.conf.Configuration;
 
 /**

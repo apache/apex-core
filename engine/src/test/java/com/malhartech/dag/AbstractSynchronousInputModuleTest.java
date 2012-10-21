@@ -4,6 +4,8 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.OperatorConfiguration;
+import com.malhartech.api.FailedOperationException;
 import com.malhartech.api.*;
 import com.malhartech.stram.StramLocalCluster;
 import java.util.ArrayList;
