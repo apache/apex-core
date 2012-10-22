@@ -42,7 +42,6 @@ import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.dag.DAGConstants;
 import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.Operators;
 import com.malhartech.dag.SerDe;

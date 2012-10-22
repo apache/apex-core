@@ -4,8 +4,8 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.Component;
-import com.malhartech.dag.Context;
+import com.malhartech.api.Component;
+import com.malhartech.api.Context;
 
 
 /**

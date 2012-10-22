@@ -4,10 +4,8 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.dag.Component;
-import com.malhartech.dag.OperatorContext;
 
-public interface Operator extends Component<OperatorConfiguration, OperatorContext>
+public interface Operator extends Component<OperatorConfiguration, Context>
 {
   /**
    * This method gets called at the beginning of each window.

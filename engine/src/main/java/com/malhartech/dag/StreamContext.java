@@ -9,6 +9,8 @@ import java.util.HashSet;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
+import com.malhartech.api.Context;
+
 /**
  * Defines the destination for tuples processed<p>
  * <br>
