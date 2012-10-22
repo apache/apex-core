@@ -566,13 +566,15 @@ public class DAG implements Serializable, DAGConstants
       n.lowlink = null;
       // validate configuration
       Set<ConstraintViolation<Operator>> constraintViolations = validator.validate(n.getModule());
-      Set<ConstraintViolation<?>> copySet = new HashSet<ConstraintViolation<?>>(constraintViolations.size());
-      // workaround bug in ConstraintViolationException constructor
-      // (should be public <T> ConstraintViolationException(String message, Set<ConstraintViolation<T>> constraintViolations) { ... })
-      for (ConstraintViolation<Operator> cv : constraintViolations) {
-        copySet.add(cv);
+      if (!constraintViolations.isEmpty()) {
+        Set<ConstraintViolation<?>> copySet = new HashSet<ConstraintViolation<?>>(constraintViolations.size());
+        // workaround bug in ConstraintViolationException constructor
+        // (should be public <T> ConstraintViolationException(String message, Set<ConstraintViolation<T>> constraintViolations) { ... })
+        for (ConstraintViolation<Operator> cv : constraintViolations) {
+          copySet.add(cv);
+        }
+        throw new ConstraintViolationException("Operator " + n.getId() + " violates constraints", copySet);
       }
-      throw new ConstraintViolationException("Operator " + n.getId() + " violates constraints", copySet);
     }
     stack = new Stack<OperatorWrapper>();
 

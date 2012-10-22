@@ -333,9 +333,9 @@ public class DAGBuilderTest {
     Validator validator = factory.getValidator();
     Set<ConstraintViolation<ValidationTestOperator>> constraintViolations =
              validator.validate(bean);
-    for (ConstraintViolation<ValidationTestOperator> cv : constraintViolations) {
-      System.out.println("validation error: " + cv);
-    }
+    //for (ConstraintViolation<ValidationTestOperator> cv : constraintViolations) {
+    //  System.out.println("validation error: " + cv);
+    //}
     Assert.assertEquals("",1, constraintViolations.size());
     ConstraintViolation<ValidationTestOperator> cv = constraintViolations.iterator().next();
     Assert.assertEquals("", bean.y, cv.getInvalidValue());
@@ -351,6 +351,9 @@ public class DAGBuilderTest {
     } catch (ConstraintViolationException e) {
       Assert.assertEquals("", constraintViolations, e.getConstraintViolations());
     }
+
+    bean.y = 2;
+    dag.validate();
 
   }
 
