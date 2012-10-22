@@ -20,12 +20,22 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
+import com.malhartech.annotation.Configurable;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
@@ -290,6 +300,58 @@ public class DAGBuilderTest {
     Assert.assertEquals("number modules in clone", dag.getAllOperators().size(), dagClone.getAllOperators().size());
     Assert.assertEquals("number root modules in clone", 1, dagClone.getRootOperators().size());
     Assert.assertTrue("root module in modules", dagClone.getAllOperators().contains(dagClone.getRootOperators().get(0)));
+  }
+
+  private class ValidationTestOperator extends BaseOperator {
+    @NotNull
+    @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
+    String x;
+
+    @Min(2)
+    int y;
+
+    @Configurable(key="stringKey")
+    private String stringField;
+
+    @Configurable(key="urlKey")
+    private java.net.URL urlField;
+
+    @Configurable(key="stringArrayKey")
+    private String[] stringArrayField;
+  }
+
+  @Test
+  public void testOperatorValidation() {
+
+    ValidationTestOperator bean = new ValidationTestOperator();
+    bean.x = "malharxxx";
+    bean.y = 1;
+
+    // ensure validation standalone produces expected results
+    ValidatorFactory factory =
+        Validation.buildDefaultValidatorFactory();
+    Validator validator = factory.getValidator();
+    Set<ConstraintViolation<ValidationTestOperator>> constraintViolations =
+             validator.validate(bean);
+    for (ConstraintViolation<ValidationTestOperator> cv : constraintViolations) {
+      System.out.println("validation error: " + cv);
+    }
+    Assert.assertEquals("",1, constraintViolations.size());
+    ConstraintViolation<ValidationTestOperator> cv = constraintViolations.iterator().next();
+    Assert.assertEquals("", bean.y, cv.getInvalidValue());
+    Assert.assertEquals("", "y", cv.getPropertyPath().toString());
+
+    // ensure DAG validation produces matching results
+    DAG dag = new DAG();
+    bean = dag.addOperator("testOperator", bean);
+
+    try {
+      dag.validate();
+      Assert.fail("should throw ConstraintViolationException");
+    } catch (ConstraintViolationException e) {
+      Assert.assertEquals("", constraintViolations, e.getConstraintViolations());
+    }
+
   }
 
 }

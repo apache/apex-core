@@ -57,27 +57,6 @@ public class ValidationTest {
 
   }
 
-  @Test
-  public void testValidator() {
-
-    MyBean bean = new MyBean();
-    bean.x = "malharxxx";
-    bean.y = 1;
-
-    ValidatorFactory factory =
-        Validation.buildDefaultValidatorFactory();
-    Validator validator = factory.getValidator();
-    Set<ConstraintViolation<MyBean>> constraintViolations =
-             validator.validate(bean);
-    for (ConstraintViolation<MyBean> cv : constraintViolations) {
-      System.out.println("validation error: " + cv);
-    }
-    Assert.assertEquals("",1, constraintViolations.size());
-    ConstraintViolation<MyBean> cv = constraintViolations.iterator().next();
-    Assert.assertEquals("", bean.y, cv.getInvalidValue());
-    Assert.assertEquals("", "y", cv.getPropertyPath().toString());
-  }
-
 
   public class TestGuiceModule extends AbstractModule {
     final Configuration conf;

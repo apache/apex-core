@@ -26,6 +26,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
@@ -383,16 +389,16 @@ public class DAG implements Serializable, DAGConstants
   public <T extends Operator> T addOperator(String name, Class<T> clazz)
   {
     T instance = StramUtils.newInstance(clazz);
-    // TODO: optional operator interface to provide contextual information to instance
-    if (instance instanceof BaseOperator) {
-      ((BaseOperator)instance).setName(name);
-    }
     addOperator(name, instance);
     return instance;
   }
 
   public <T extends Operator> T addOperator(String name, T operator)
   {
+    // TODO: optional operator interface to provide contextual information to instance
+    if (operator instanceof BaseOperator) {
+      ((BaseOperator)operator).setName(name);
+    }
     if (nodes.containsKey(name)) {
       if (nodes.get(name) == (Object)operator) {
         return operator;
@@ -548,12 +554,25 @@ public class DAG implements Serializable, DAGConstants
    * Validate the topology. Includes checks that required ports are connected (TBD),
    * required configuration parameters specified, graph free of cycles etc.
    */
-  public void validate()
+  public void validate() throws ConstraintViolationException
   {
+    ValidatorFactory factory =
+        Validation.buildDefaultValidatorFactory();
+    Validator validator = factory.getValidator();
+
     // clear visited on all operators
     for (OperatorWrapper n: nodes.values()) {
       n.nindex = null;
       n.lowlink = null;
+      // validate configuration
+      Set<ConstraintViolation<Operator>> constraintViolations = validator.validate(n.getModule());
+      Set<ConstraintViolation<?>> copySet = new HashSet<ConstraintViolation<?>>(constraintViolations.size());
+      // workaround bug in ConstraintViolationException constructor
+      // (should be public <T> ConstraintViolationException(String message, Set<ConstraintViolation<T>> constraintViolations) { ... })
+      for (ConstraintViolation<Operator> cv : constraintViolations) {
+        copySet.add(cv);
+      }
+      throw new ConstraintViolationException("Operator " + n.getId() + " violates constraints", copySet);
     }
     stack = new Stack<OperatorWrapper>();
 
