@@ -24,7 +24,7 @@ public class BaseOperator implements Operator
   }
 
   @Override
-  public void setup(OperatorConfiguration config) throws FailedOperationException
+  public void setup(OperatorConfiguration config)
   {
   }
 

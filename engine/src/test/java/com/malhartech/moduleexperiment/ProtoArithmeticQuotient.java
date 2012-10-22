@@ -15,7 +15,6 @@ import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.FailedOperationException;
 import com.malhartech.api.OperatorConfiguration;
 
 /**
@@ -96,7 +95,7 @@ public class ProtoArithmeticQuotient extends BaseOperator
    * @param config
    */
   @Override
-  public void setup(OperatorConfiguration config) throws FailedOperationException
+  public void setup(OperatorConfiguration config)
   {
     LOG.debug(String.format("Set mult_by(%d), and dokey(%s)", mult_by, dokey ? "true" : "false"));
   }

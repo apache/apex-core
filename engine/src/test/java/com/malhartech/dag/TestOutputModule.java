@@ -5,7 +5,6 @@
 package com.malhartech.dag;
 
 import com.malhartech.api.OperatorConfiguration;
-import com.malhartech.api.FailedOperationException;
 import java.io.IOException;
 
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -42,7 +41,7 @@ public class TestOutputModule extends BaseOperator
   };
 
   @Override
-  public void setup(OperatorConfiguration config) throws FailedOperationException
+  public void setup(OperatorConfiguration config)
   {
     try {
       fs = FileSystem.get(config);
@@ -68,11 +67,11 @@ public class TestOutputModule extends BaseOperator
     }
     catch (IOException iOException) {
       logger.debug(iOException.getLocalizedMessage());
-      throw new FailedOperationException(iOException.getCause());
+      throw new RuntimeException(iOException.getCause());
     }
     catch (IllegalArgumentException illegalArgumentException) {
       logger.debug(illegalArgumentException.getLocalizedMessage());
-      throw new FailedOperationException(illegalArgumentException);
+      throw new RuntimeException(illegalArgumentException);
     }
   }
 

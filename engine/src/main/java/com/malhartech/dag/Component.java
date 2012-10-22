@@ -4,7 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.api.FailedOperationException;
 import org.apache.hadoop.conf.Configuration;
 
 /**
@@ -13,7 +12,7 @@ import org.apache.hadoop.conf.Configuration;
  */
 public interface Component<T1 extends Configuration, T2 extends Context>
 {
-  public void setup(T1 config) throws FailedOperationException;
+  public void setup(T1 config);
 
   void activated(T2 context);
 
