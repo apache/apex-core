@@ -2,18 +2,19 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.api;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
  * Default serializer that uses Kryo.
  */
-public class DefaultModuleSerDe implements OperatorSerDe {
+public class DefaultOperatorSerDe implements OperatorSerDe {
 
   @Override
   public Object read(InputStream is)

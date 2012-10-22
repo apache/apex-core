@@ -42,7 +42,6 @@ import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.Operators;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.DAGPropertiesBuilder;
@@ -106,7 +105,7 @@ public class DAG implements Serializable, DAGConstants
       byte[] bytes = new byte[len];
       in.read(bytes);
       ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-      set((Operator)new DefaultModuleSerDe().read(bis));
+      set((Operator)new DefaultOperatorSerDe().read(bis));
       bis.close();
     }
 
@@ -114,7 +113,7 @@ public class DAG implements Serializable, DAGConstants
     public void writeExternal(ObjectOutput out) throws IOException
     {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      new DefaultModuleSerDe().write(module, bos);
+      new DefaultOperatorSerDe().write(module, bos);
       bos.close();
       byte[] bytes = bos.toByteArray();
       out.writeInt(bytes.length);

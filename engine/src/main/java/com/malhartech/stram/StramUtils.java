@@ -9,10 +9,10 @@ import java.util.Map;
 
 import org.apache.commons.beanutils.BeanUtils;
 
+import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.Operator;
-import com.malhartech.dag.DefaultModuleSerDe;
+import com.malhartech.api.OperatorSerDe;
 import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.OperatorSerDe;
 import com.malhartech.dag.SerDe;
 
 /**
@@ -74,7 +74,7 @@ public abstract class StramUtils {
     if (className != null) {
       return newInstance(classForName(className, OperatorSerDe.class));
     }
-    return new DefaultModuleSerDe();
+    return new DefaultOperatorSerDe();
   }
 
 }

@@ -27,11 +27,11 @@ import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.dag.DefaultModuleSerDe;
 import com.malhartech.dag.TestSink;
 
 /**
@@ -263,7 +263,7 @@ public class ProtoModuleTest {
 
   @Test
   public void testSerialization() {
-    DefaultModuleSerDe serde = new DefaultModuleSerDe();
+    DefaultOperatorSerDe serde = new DefaultOperatorSerDe();
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     serde.write(new MyProtoModule<Object>(), bos);
     serde.read(new ByteArrayInputStream(bos.toByteArray()));
