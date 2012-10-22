@@ -6,7 +6,7 @@ package com.malhartech.stram;
 
 import java.io.IOException;
 
-import com.malhartech.dag.OperatorSerDe;
+import com.malhartech.api.OperatorSerDe;
 
 /**
  *

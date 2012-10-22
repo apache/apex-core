@@ -4,7 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.api.OperatorConfiguration;
 import com.malhartech.api.*;
 import com.malhartech.stram.StramLocalCluster;
 import java.util.ArrayList;
@@ -19,9 +18,9 @@ import org.junit.Test;
  */
 public class AbstractSynchronousInputModuleTest
 {
-  static HashMap<String, List> collections = new HashMap<String, List>();
+  static HashMap<String, List<?>> collections = new HashMap<String, List<?>>();
 
-  public static class SynchronousInputOperator implements SyncInputOperator, Runnable
+  public static class SynchronousInputOperator extends BaseOperator implements SyncInputOperator, Runnable
   {
     public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>(this);
     public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>(this);
@@ -45,36 +44,6 @@ public class AbstractSynchronousInputModuleTest
           break;
         }
       }
-    }
-
-    @Override
-    public void beginWindow()
-    {
-    }
-
-    @Override
-    public void endWindow()
-    {
-    }
-
-    @Override
-    public void setup(OperatorConfiguration config)
-    {
-    }
-
-    @Override
-    public void activated(OperatorContext context)
-    {
-    }
-
-    @Override
-    public void deactivated()
-    {
-    }
-
-    @Override
-    public void teardown()
-    {
     }
   }
 

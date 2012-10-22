@@ -4,7 +4,6 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.dag.OperatorContext;
 
 /**
  * Base class for operator implementations that provides empty implementations
@@ -50,7 +49,7 @@ public class BaseOperator implements Operator
   }
 
   @Override
-  public void activated(OperatorContext context)
+  public void activated(Context context)
   {
   }
 

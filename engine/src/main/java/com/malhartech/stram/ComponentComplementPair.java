@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.Component;
+import com.malhartech.api.Component;
 
 /**
  *
