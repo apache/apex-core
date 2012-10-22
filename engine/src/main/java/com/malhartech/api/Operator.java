@@ -88,6 +88,6 @@ public interface Operator extends Component<OperatorConfiguration, OperatorConte
      *
      * @param tuple
      */
-    public void merge(T tuple);
+    public Operator getUnifier();
   }
 }

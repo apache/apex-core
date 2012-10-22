@@ -4,6 +4,8 @@
  */
 package com.malhartech.api;
 
+import com.malhartech.dag.OperatorContext;
+
 /**
  * Output ports are declared as annotated typed fields by the operator. The
  * operator processing logic simply calls emit on the port object. Output ports
@@ -47,13 +49,16 @@ public class DefaultOutputPort<T>  implements Operator.OutputPort<T> {
   }
 
   /**
-   * Module developer can override for merge functionality
+   * Module developer can override for getUnifier functionality
    *
    * @param o
    */
   @Override
-  public void merge(T tuple) {
-    sink.process(tuple);
+  public Operator getUnifier() {
+//    return new BaseOperator() {
+//    };
+//    sink.process(tuple);
+    return null;
   }
 
 }
