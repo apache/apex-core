@@ -15,8 +15,8 @@ public class DefaultOutputPort<T>  implements Operator.OutputPort<T> {
   private final Operator operator;
   private transient Sink<T> sink;
 
-  public DefaultOutputPort(Operator module) {
-    this.operator = module;
+  public DefaultOutputPort(Operator operator) {
+    this.operator = operator;
   }
 
   @Override
