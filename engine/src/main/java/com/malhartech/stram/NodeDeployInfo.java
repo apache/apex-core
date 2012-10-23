@@ -14,7 +14,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
  * Node deployment info passed from master to container as part of initialization
  * or incremental undeploy/deploy during topology recovery, balancing or other modification.
  */
-public class ModuleDeployInfo implements Serializable
+public class NodeDeployInfo implements Serializable
 {
   private static final long serialVersionUID = 201208271956L;
 

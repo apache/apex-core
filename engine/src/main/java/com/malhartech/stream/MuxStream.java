@@ -5,7 +5,9 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.dag.*;
+import com.malhartech.dag.Stream;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
 import java.util.HashMap;
 
 /**
@@ -45,7 +47,7 @@ public class MuxStream implements Stream<Object>
    */
   @Override
   @SuppressWarnings("SillyAssignment")
-  public void activated(StreamContext context)
+  public void postActivate(StreamContext context)
   {
     sinks = new Sink[outputs.size()];
 
@@ -60,7 +62,7 @@ public class MuxStream implements Stream<Object>
    *
    */
   @Override
-  public void deactivated()
+  public void preDeactivate()
   {
     sinks = NO_SINKS;
   }
@@ -83,7 +85,7 @@ public class MuxStream implements Stream<Object>
     else {
       sink = outputs.put(id, sink);
       if (sinks != NO_SINKS) {
-        activated(null);
+        postActivate(null);
       }
     }
 

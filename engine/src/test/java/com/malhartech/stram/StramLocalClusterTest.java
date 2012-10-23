@@ -107,13 +107,13 @@ public class StramLocalClusterTest
 
 
     List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException {
-      bsi.activated(streamContext);
+      bsi.postActivate(streamContext);
       //LOG.debug("test sink activated");
       sink.waitForResultCount(1, 3000);
       Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
       List<Object> result = new ArrayList<Object>(sink.collectedTuples);
 
-      bsi.deactivated();
+      bsi.preDeactivate();
       sink.collectedTuples.clear();
       return result;
     }
@@ -123,6 +123,7 @@ public class StramLocalClusterTest
 
 
   @Test
+  @SuppressWarnings("SleepWhileInLoop")
   public void testChildRecovery() throws Exception
   {
     DAG dag = new DAG();
@@ -205,7 +206,7 @@ public class StramLocalClusterTest
     c0.waitForHeartbeat(5000);
     Assert.assertEquals("checkpoint propagated " + ptNode1, 2, ptNode1.getRecentCheckpoint());
     c2.triggerHeartbeat();
-    Thread.yield();
+//    Thread.yield();
     Thread.sleep(50); // the heartbeat trigger cycle does not seem to work here
     c2.waitForHeartbeat(5000);
     Assert.assertEquals("checkpoint propagated " + ptNode2, 4, ptNode2.getRecentCheckpoint());

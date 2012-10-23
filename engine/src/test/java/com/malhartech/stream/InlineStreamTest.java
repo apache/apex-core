@@ -3,7 +3,6 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.api.OperatorConfiguration;
 import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import java.util.Map;
@@ -87,7 +86,7 @@ public class InlineStreamTest
 
     StreamContext streamContext = new StreamContext("node1->node2");
 
-    stream.activated(streamContext);
+    stream.postActivate(streamContext);
 
     Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
     launchNodeThread(node1, activeNodes);
@@ -107,7 +106,7 @@ public class InlineStreamTest
     for (Node node: activeNodes.values()) {
       node.deactivate();
     }
-    stream.deactivated();
+    stream.preDeactivate();
 
     for (int i = 0; i < 10; i++) {
       Thread.sleep(20);

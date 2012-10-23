@@ -55,7 +55,7 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   }
 
   @Override
-  public void activated(StreamContext context)
+  public void postActivate(StreamContext context)
   {
     channel = bootstrap.connect().syncUninterruptibly().channel();
   }
@@ -75,7 +75,7 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   }
 
   @Override
-  public void deactivated()
+  public void preDeactivate()
   {
     channel.flush().awaitUninterruptibly();
     channel.close().awaitUninterruptibly();

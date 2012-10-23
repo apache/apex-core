@@ -4,15 +4,13 @@
  */
 package com.malhartech.api;
 
-import org.apache.hadoop.conf.Configuration;
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface Component<T1 extends Configuration>
+public interface ActivationListener<CONTEXT extends Context>
 {
-  public void setup(T1 config);
+  public void postActivate(CONTEXT ctx);
 
-  public void teardown();
+  public void preDeactivate();
 }

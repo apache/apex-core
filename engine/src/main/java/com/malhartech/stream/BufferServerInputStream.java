@@ -34,9 +34,9 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   }
 
   @Override
-  public void activated(StreamContext context)
+  public void postActivate(StreamContext context)
   {
-    super.activated(context);
+    super.postActivate(context);
     activateSinks();
 
     String type = "unused";

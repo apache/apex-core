@@ -46,6 +46,7 @@ import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import java.util.Currency;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment
@@ -387,7 +388,7 @@ public class StramMiniClusterTest
      */
     public void handleIdleTimeout()
     {
-      deactivated();
+      Thread.currentThread().interrupt();
     }
   }
 

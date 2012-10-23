@@ -31,7 +31,7 @@ public class StramChildAgent {
     final AtomicInteger ackCountdown;
     final PTContainer container;
     final AtomicInteger executeWhenZero;
-    private List<ModuleDeployInfo> nodes;
+    private List<NodeDeployInfo> nodes;
     Map<PTOperator, Long> checkpoints;
 
     public DeployRequest(PTContainer container, AtomicInteger ackCountdown) {
@@ -55,7 +55,7 @@ public class StramChildAgent {
       ackCountdown.decrementAndGet();
     }
 
-    void setNodes(List<ModuleDeployInfo> nodes) {
+    void setNodes(List<NodeDeployInfo> nodes) {
       this.nodes = nodes;
     }
 

@@ -114,7 +114,7 @@ public class StramChild
    * process through the callback address provided on the command line. Deploys
    * initial modules, then enters the heartbeat loop, which will only terminate
    * once container receives shutdown request from the master. On shutdown,
-   * after exiting heartbeat loop, deactivated all modules and terminate
+   * after exiting heartbeat loop, preDeactivate all modules and terminate
    * processing threads.
    *
    */
@@ -201,7 +201,7 @@ public class StramChild
       RPC.stopProxy(umbilical);
       DefaultMetricsSystem.shutdown();
       // Shutting down log4j of the child-vm...
-      // This assumes that on return from Task.activated()
+      // This assumes that on return from Task.postActivate()
       // there is no more logging done.
       LogManager.shutdown();
     }
@@ -223,12 +223,12 @@ public class StramChild
     }
 
     for (WindowGenerator wg: activeGenerators.keySet()) {
-      wg.deactivated();
+      wg.preDeactivate();
     }
     activeGenerators.clear();
 
     for (Stream stream: activeStreams.keySet()) {
-      stream.deactivated();
+      stream.preDeactivate();
     }
     activeStreams.clear();
   }
@@ -253,7 +253,7 @@ public class StramChild
          */
         if (activeStreams.containsKey(stream)) {
           logger.debug("deactivating {}", stream);
-          stream.deactivated();
+          stream.preDeactivate();
           activeStreams.remove(stream);
         }
         removableSocketOutputStreams.add(sourceIdentifier);
@@ -275,7 +275,7 @@ public class StramChild
               assert (sinkId.startsWith("tcp://"));
               if (activeStreams.containsKey(spair.component)) {
                 logger.debug("deactivating {} for sink {}", spair.component, sinkId);
-                spair.component.deactivated();
+                spair.component.preDeactivate();
                 activeStreams.remove(spair.component);
               }
 
@@ -313,7 +313,7 @@ public class StramChild
         if (sinkId == null) {
           if (activeStreams.containsKey(stream)) {
             logger.debug("deactivating {}", stream);
-            stream.deactivated();
+            stream.preDeactivate();
             activeStreams.remove(stream);
           }
 
@@ -352,19 +352,19 @@ public class StramChild
 
       if (count == 0) {
         activeGenerators.remove(chosen1);
-        chosen1.deactivated();
+        chosen1.preDeactivate();
         chosen1.teardown();
       }
     }
   }
 
-  private synchronized void undeploy(List<ModuleDeployInfo> nodeList)
+  private synchronized void undeploy(List<NodeDeployInfo> nodeList)
   {
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
     HashMap<String, Node> toUndeploy = new HashMap<String, Node>();
-    for (ModuleDeployInfo ndi: nodeList) {
+    for (NodeDeployInfo ndi: nodeList) {
       Node node = nodes.get(ndi.id);
       if (node == null) {
         throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
@@ -377,13 +377,13 @@ public class StramChild
       }
     }
 
-    for (ModuleDeployInfo ndi: nodeList) {
+    for (NodeDeployInfo ndi: nodeList) {
       if (activeNodes.containsKey(ndi.id)) {
         nodes.get(ndi.id).deactivate();
         activeNodes.remove(ndi.id);
       }
       // must remove from list to reach defined state before next heartbeat,
-      // subsequent response may request deploy, which would fail if deactivated node is still tracked
+      // subsequent response may request deploy, which would fail if preDeactivate node is still tracked
       nodes.remove(ndi.id);
     }
   }
@@ -555,13 +555,13 @@ public class StramChild
     }
   }
 
-  private synchronized void deploy(List<ModuleDeployInfo> nodeList) throws Exception
+  private synchronized void deploy(List<NodeDeployInfo> nodeList) throws Exception
   {
     /**
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
      */
     HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
-    for (ModuleDeployInfo ndi: nodeList) {
+    for (NodeDeployInfo ndi: nodeList) {
       if (nodes.containsKey(ndi.id)) {
         throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
       }
@@ -575,11 +575,11 @@ public class StramChild
     activate(nodeList);
   }
 
-  private void deployNodes(List<ModuleDeployInfo> nodeList) throws Exception
+  private void deployNodes(List<NodeDeployInfo> nodeList) throws Exception
   {
     OperatorSerDe moduleSerDe = StramUtils.getNodeSerDe(null);
     HdfsBackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
-    for (ModuleDeployInfo ndi: nodeList) {
+    for (NodeDeployInfo ndi: nodeList) {
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
@@ -608,7 +608,7 @@ public class StramChild
     }
   }
 
-  private void deployOutputStreams(List<ModuleDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams) throws Exception
+  private void deployOutputStreams(List<NodeDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams) throws Exception
   {
     /**
      * We proceed to deploy all the output streams.
@@ -617,10 +617,10 @@ public class StramChild
      * But the BufferOutputStreams which share the output port with other inline streams are mapped against
      * the Buffer Server port to avoid collision and at the same time keep track of these buffer streams.
      */
-    for (ModuleDeployInfo ndi: nodeList) {
+    for (NodeDeployInfo ndi: nodeList) {
       Node node = nodes.get(ndi.id);
 
-      for (ModuleDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
+      for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
         String sourceIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
         String sinkIdentifier;
 
@@ -745,11 +745,11 @@ public class StramChild
     }
   }
 
-  private void deployInputStreams(List<ModuleDeployInfo> nodeList) throws Exception
+  private void deployInputStreams(List<NodeDeployInfo> nodeList) throws Exception
   {
     // collect any input operators along with their smallest window id,
     // those are subsequently used to setup the window generator
-    ArrayList<ModuleDeployInfo> inputNodes = new ArrayList<ModuleDeployInfo>();
+    ArrayList<NodeDeployInfo> inputNodes = new ArrayList<NodeDeployInfo>();
     long smallestWindowId = Long.MAX_VALUE;
 
     /**
@@ -759,7 +759,7 @@ public class StramChild
      * to create the stream. We need to track this stream along with other streams, and many such streams may exist,
      * we hash them against buffer server info as we did for outputs but throw in the sinkid in the mix as well.
      */
-    for (ModuleDeployInfo ndi: nodeList) {
+    for (NodeDeployInfo ndi: nodeList) {
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         /**
          * This has to be AbstractInputNode, so let's hook the WindowGenerator to it.
@@ -768,7 +768,7 @@ public class StramChild
          */
         inputNodes.add(ndi);
         /**
-         * When we activated the window Generator, we plan to activated it only from required windowId.
+         * When we postActivate the window Generator, we plan to postActivate it only from required windowId.
          */
         if (ndi.checkpointWindowId < smallestWindowId) {
           smallestWindowId = ndi.checkpointWindowId;
@@ -777,7 +777,7 @@ public class StramChild
       else {
         Node node = nodes.get(ndi.id);
 
-        for (ModuleDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
+        for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
           String sourceIdentifier = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
@@ -856,7 +856,7 @@ public class StramChild
                 /*
                  * we do not need to do this but looks bad if leave it in limbo.
                  */
-                pair.component.deactivated();
+                pair.component.preDeactivate();
                 pair.component.teardown();
               }
               else {
@@ -896,7 +896,7 @@ public class StramChild
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestWindowId);
-      for (ModuleDeployInfo ndi: inputNodes) {
+      for (NodeDeployInfo ndi: inputNodes) {
         generators.put(ndi.id, windowGenerator);
 
         Node node = nodes.get(ndi.id);
@@ -935,17 +935,17 @@ public class StramChild
   }
 
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
-  public synchronized void activate(List<ModuleDeployInfo> nodeList)
+  public synchronized void activate(List<NodeDeployInfo> nodeList)
   {
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
         activeStreams.put(pair.component, pair.context);
-        pair.component.activated(pair.context);
+        pair.component.postActivate(pair.context);
       }
     }
 
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
-    for (final ModuleDeployInfo ndi: nodeList) {
+    for (final NodeDeployInfo ndi: nodeList) {
       final Node node = nodes.get(ndi.id);
       assert (!activeNodes.containsKey(ndi.id));
       new Thread(node.id)
@@ -977,7 +977,7 @@ public class StramChild
     }
 
     /**
-     * we need to make sure that before any of the operators gets the first message, it's activated.
+     * we need to make sure that before any of the operators gets the first message, it's postActivate.
      */
     try {
       do {
@@ -992,21 +992,21 @@ public class StramChild
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (pair.component instanceof SocketInputStream && !activeStreams.containsKey(pair.component)) {
         activeStreams.put(pair.component, pair.context);
-        pair.component.activated(pair.context);
+        pair.component.postActivate(pair.context);
       }
     }
 
     for (WindowGenerator wg: generators.values()) {
       if (!activeGenerators.containsKey(wg)) {
         activeGenerators.put(wg, generators);
-        wg.activated(null);
+        wg.postActivate(null);
       }
     }
   }
 
-  private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, ModuleDeployInfo ndi)
+  private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, NodeDeployInfo ndi)
   {
-    for (ModuleDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
+    for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
       String source = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
       /**
