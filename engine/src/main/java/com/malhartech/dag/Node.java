@@ -32,10 +32,8 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
   public static final String OUTPUT = "output";
   public final String id;
   protected final HashMap<String, SINK> outputs = new HashMap<String, SINK>();
-  protected int spinMillis = 10;
-  protected int bufferCapacity = 1024 * 1024;
-  protected int processedTupleCount;
-  protected int generatedTupleCount;
+  protected final int spinMillis = 10;
+  protected final int bufferCapacity = 1024 * 1024;
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile SINK[] sinks = (SINK[])Sink.NO_SINKS;
   protected boolean alive;
@@ -132,35 +130,6 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
     alive = false;
   }
 
-  /**
-   * Emit the payload to all active output ports
-   *
-   * @param payload
-   */
-  public void emit(final Object payload)
-  {
-    for (int i = sinks.length; i-- > 0;) {
-      sinks[i].process(payload);
-    }
-
-    generatedTupleCount++;
-  }
-
-  /**
-   * Emit the payload to the specified output port.
-   *
-   * It's expected that the output port is active, otherwise NullPointerException is thrown.
-   *
-   * @param id
-   * @param payload
-   */
-  public void emit(String id, Object payload)
-  {
-    final Sink s = outputs.get(id);
-    outputs.get(id).process(payload);
-    generatedTupleCount++;
-  }
-
   @Override
   public boolean equals(Object obj)
   {
@@ -177,56 +146,16 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
     return true;
   }
 
-  /**
-   * @return the bufferCapacity
-   */
-  public int getBufferCapacity()
-  {
-    return bufferCapacity;
-  }
-
-  /**
-   * @return the spinMillis
-   */
-  public int getSpinMillis()
-  {
-    return spinMillis;
-  }
-
   @Override
   public int hashCode()
   {
     return id == null ? super.hashCode() : id.hashCode();
   }
 
-  /**
-   * @param bufferCapacity the bufferCapacity to set
-   */
-  public void setBufferCapacity(int bufferCapacity)
-  {
-    this.bufferCapacity = bufferCapacity;
-  }
-
-  /**
-   * @param spinMillis the spinMillis to set
-   */
-  public void setSpinMillis(int spinMillis)
-  {
-    this.spinMillis = spinMillis;
-  }
-
   @Override
   public String toString()
   {
     return id + ":" + operator.getClass().getSimpleName();
-  }
-
-  /**
-   * @return the processedTupleCount
-   */
-  public int getProcessedTupleCount()
-  {
-    return processedTupleCount;
   }
 
   protected void emitEndStream()
@@ -258,7 +187,7 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
       logger.warn("Exception while catering to external request {}", e);
     }
 
-    context.report(generatedTupleCount, 0L, windowId);
-    generatedTupleCount = 0;
+//    context.report(generatedTupleCount, 0L, windowId);
+//    generatedTupleCount = 0;
   }
 }

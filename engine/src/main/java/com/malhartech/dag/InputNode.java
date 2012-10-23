@@ -26,7 +26,6 @@ public abstract class InputNode<OPERATOR extends Operator, SINK extends Sink> ex
   public InputNode(String id, OPERATOR operator)
   {
     super(id, operator);
-    bufferCapacity = 1024;
     controlTuples = new CircularBuffer<Tuple>(1024);
     afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
   }
@@ -131,7 +130,7 @@ public abstract class InputNode<OPERATOR extends Operator, SINK extends Sink> ex
     }
     catch (InterruptedException ex) {
     }
-    
+
     if (inWindow) {
       EndWindowTuple ewt = new EndWindowTuple();
       ewt.setWindowId(t.getWindowId());

@@ -54,7 +54,7 @@ public class GenericNode extends Node<Operator, Sink>
 
     public Reservoir(String id, Sink sink)
     {
-      super(getBufferCapacity());
+      super(bufferCapacity);
       this.id = id;
       this.sink = sink;
     }
@@ -151,6 +151,7 @@ public class GenericNode extends Node<Operator, Sink>
   @SuppressWarnings({"SleepWhileInLoop"})
   public final void run()
   {
+    final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     int totalQueues = inputs.size();
 
     ArrayList<Reservoir> activeQueues = new ArrayList<Reservoir>();
@@ -290,20 +291,21 @@ public class GenericNode extends Node<Operator, Sink>
           }
 
           if (need2sleep) {
-            Thread.sleep(getSpinMillis());
-
-            for (Reservoir cb: activeQueues) {
-              if (cb.size() > 0) {
-                need2sleep = false;
-                break;
+            Thread.sleep(spinMillis);
+            if (handleIdleTime) {
+              for (Reservoir cb: activeQueues) {
+                if (cb.size() > 0) {
+                  need2sleep = false;
+                  break;
+                }
               }
-            }
 
-            /*
-             * there is still no work scheduled for the operator, so lets give a chance to the operator to handle timeout.
-             */
-            if (need2sleep && operator instanceof IdleTimeHandler) {
-              ((IdleTimeHandler)operator).handleIdleTime();
+              /*
+               * there is still no work scheduled for the operator, so lets give a chance to the operator to handle timeout.
+               */
+              if (need2sleep) {
+                ((IdleTimeHandler)operator).handleIdleTime();
+              }
             }
           }
         }

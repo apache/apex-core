@@ -7,6 +7,7 @@ package com.malhartech.dag;
 import com.malhartech.api.Context;
 import com.malhartech.api.Operator;
 import com.malhartech.util.CircularBuffer;
+import io.netty.util.DefaultAttributeMap;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.util.Collection;
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class OperatorContext implements Context
+public class OperatorContext extends DefaultAttributeMap implements Context
 {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorContext.class);
 

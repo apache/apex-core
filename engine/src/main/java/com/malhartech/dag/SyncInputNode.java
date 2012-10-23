@@ -61,16 +61,10 @@ public class SyncInputNode extends InputNode<SyncInputOperator, SyncSink>
   }
 
   @Override
-  protected void injectTuples() throws InterruptedException
+  protected final void injectTuples() throws InterruptedException
   {
-    int oldg = generatedTupleCount;
-
     for (SyncSink s: outputs.values()) {
       s.sweep();
-    }
-
-    if (generatedTupleCount == oldg) {
-      Thread.sleep(spinMillis);
     }
   }
 

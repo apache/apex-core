@@ -4,12 +4,12 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.Context;
+import io.netty.util.DefaultAttributeMap;
 import java.util.Collection;
 import java.util.HashSet;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
-
-import com.malhartech.api.Context;
 
 /**
  * Defines the destination for tuples processed<p>
@@ -17,7 +17,7 @@ import com.malhartech.api.Context;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class StreamContext implements Context
+public class StreamContext extends DefaultAttributeMap implements Context
 {
   public static enum State
   {
