@@ -266,16 +266,16 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
    * @param conf
    */
   public void addFromConfiguration(Configuration conf) {
-    addFromProperties(toProperties(conf));
+    addFromProperties(toProperties(conf, "stram."));
   }
 
-  public static Properties toProperties(Configuration conf) {
+  public static Properties toProperties(Configuration conf, String prefix) {
     Iterator<Entry<String, String>> it = conf.iterator();
     Properties props = new Properties();
     while (it.hasNext()) {
       Entry<String, String> e = it.next();
       // filter relevant entries
-      if (e.getKey().startsWith("stram.")) {
+      if (e.getKey().startsWith(prefix)) {
          props.put(e.getKey(), e.getValue());
       }
     }

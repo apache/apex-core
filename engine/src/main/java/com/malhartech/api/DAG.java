@@ -666,7 +666,7 @@ public class DAG implements Serializable, DAGConstants
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
             append("operators", this.nodes).
             append("streams", this.streams).
-            append("properties", DAGPropertiesBuilder.toProperties(this.confHolder.conf)).
+            append("properties", DAGPropertiesBuilder.toProperties(this.confHolder.conf, "")).
             toString();
   }
 }
