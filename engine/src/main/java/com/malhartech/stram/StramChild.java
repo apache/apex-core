@@ -4,12 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.OperatorConfiguration;
-import com.malhartech.api.AsyncInputOperator;
-import com.malhartech.api.Operator;
-import com.malhartech.api.OperatorSerDe;
-import com.malhartech.api.Sink;
-import com.malhartech.api.SyncInputOperator;
+import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
