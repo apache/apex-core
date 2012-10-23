@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 @Sharable
-public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerAdapter<T> implements Stream
+public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerAdapter<T> implements Stream<T>
 {
   private static final Logger logger = LoggerFactory.getLogger(SocketInputStream.class);
   protected Channel channel;

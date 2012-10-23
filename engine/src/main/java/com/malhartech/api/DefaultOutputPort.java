@@ -4,8 +4,6 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.dag.OperatorContext;
-
 /**
  * Output ports are declared as annotated typed fields by the operator. The
  * operator processing logic simply calls emit on the port object. Output ports

@@ -24,6 +24,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   private static final Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   SerDe serde;
   int windowId;
+  private long count;
 
   // see if you can do this in setup instead of in constructor.
   public BufferServerOutputStream(SerDe serde) {
@@ -36,6 +37,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   @Override
   public void process(Object payload)
   {
+    count++;
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
     if (payload instanceof Tuple) {
       final Tuple t = (Tuple)payload;
@@ -117,5 +119,11 @@ public class BufferServerOutputStream extends SocketOutputStream
   public boolean isMultiSinkCapable()
   {
     return false;
+  }
+
+  @Override
+  public long getProcessedCount()
+  {
+    return count;
   }
 }

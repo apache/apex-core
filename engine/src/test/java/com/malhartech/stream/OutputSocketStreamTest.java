@@ -43,6 +43,12 @@ public final class OutputSocketStreamTest
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
+
+    @Override
+    public long getProcessedCount()
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
   }
   static SocketOutputStream oss;
   static StreamConfiguration sc;

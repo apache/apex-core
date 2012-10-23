@@ -6,7 +6,6 @@ package com.malhartech.dag;
 
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.dag.*;
 import com.malhartech.util.ScheduledExecutorService;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
  */
-public class WindowGenerator implements Stream, Runnable
+public class WindowGenerator implements Stream<Object>, Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
   public static final String FIRST_WINDOW_MILLIS = "FirstWindowMillis";
@@ -43,6 +42,7 @@ public class WindowGenerator implements Stream, Runnable
   private long baseSeconds;
   private int windowId;
   private long resetWindowMillis;
+  private long count;
 
   public WindowGenerator(ScheduledExecutorService service)
   {
@@ -79,10 +79,12 @@ public class WindowGenerator implements Stream, Runnable
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(rwt);
     }
+    count++;
 //    logger.debug("generating begin {}", Long.toHexString(windowId));
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(bwt);
     }
+    count ++;
   }
 
   /**
@@ -97,6 +99,7 @@ public class WindowGenerator implements Stream, Runnable
       for (Sink s: sinks) {
         s.process(t);
       }
+      count++;
 
       advanceWindow();
 
@@ -109,7 +112,7 @@ public class WindowGenerator implements Stream, Runnable
       for (int i = sinks.length; i-- > 0;) {
         sinks[i].process(ewt);
       }
-
+      count++;
       advanceWindow();
 
       Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
@@ -117,6 +120,7 @@ public class WindowGenerator implements Stream, Runnable
       for (int i = sinks.length; i-- > 0;) {
         sinks[i].process(bwt);
       }
+      count++;
     }
   }
 
@@ -233,5 +237,11 @@ public class WindowGenerator implements Stream, Runnable
   public void process(Object tuple)
   {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public long getProcessedCount()
+  {
+    return count;
   }
 }

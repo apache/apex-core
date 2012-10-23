@@ -26,6 +26,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
   private final SerDe serde;
+  private long count;
 
   public BufferServerInputStream(SerDe serde)
   {
@@ -50,6 +51,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   @Override
   public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
   {
+    count++;
     Tuple t;
     switch (data.getType()) {
       case SIMPLE_DATA:
@@ -113,12 +115,6 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   }
 
   @Override
-  public final void process(Object payload)
-  {
-    throw new IllegalAccessError("Attempt to pass payload to " + this + " from source other than buffer server!");
-  }
-
-  @Override
   public boolean isMultiSinkCapable()
   {
     return true;
@@ -133,5 +129,17 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
       sinks[i++] = s;
     }
     sinks = sinks;
+  }
+
+  @Override
+  public long getProcessedCount()
+  {
+    return count;
+  }
+
+  @Override
+  public void process(Data tuple)
+  {
+    throw new IllegalAccessError("Attempt to pass payload " + tuple + " to " + this + " from source other than buffer server!");
   }
 }

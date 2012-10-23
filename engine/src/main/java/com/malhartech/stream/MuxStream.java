@@ -12,11 +12,12 @@ import java.util.HashMap;
  *
  * @author chetan
  */
-public class MuxStream implements Stream
+public class MuxStream implements Stream<Object>
 {
   private HashMap<String, Sink> outputs;
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
+  private long count;
 
   /**
    *
@@ -96,6 +97,7 @@ public class MuxStream implements Stream
   @Override
   public void process(Object payload)
   {
+    count++;
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(payload);
     }
@@ -105,5 +107,11 @@ public class MuxStream implements Stream
   public boolean isMultiSinkCapable()
   {
     return true;
+  }
+
+  @Override
+  public long getProcessedCount()
+  {
+    return count;
   }
 }

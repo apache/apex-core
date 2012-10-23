@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  * @author chetan
  */
 @Sharable
-public abstract class SocketOutputStream extends ChannelOutboundMessageHandlerAdapter<Object> implements Stream
+public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandlerAdapter<Object> implements Stream<Object>
 {
   private static final Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
   protected Bootstrap bootstrap;
