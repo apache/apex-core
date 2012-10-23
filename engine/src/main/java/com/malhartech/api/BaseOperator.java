@@ -47,14 +47,4 @@ public class BaseOperator implements Operator
   {
     return this.getClass().getSimpleName() + "{name=" + name + '}';
   }
-
-  @Override
-  public void activated(Context context)
-  {
-  }
-
-  @Override
-  public void deactivated()
-  {
-  }
 }

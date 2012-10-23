@@ -37,7 +37,6 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.StramTestSupport;
-import org.junit.Ignore;
 
 public class StramLocalClusterTest
 {
@@ -107,13 +106,13 @@ public class StramLocalClusterTest
 
 
     List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException {
-      bsi.activated(streamContext);
+      bsi.postActivate(streamContext);
       //LOG.debug("test sink activated");
       sink.waitForResultCount(1, 3000);
       Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
       List<Object> result = new ArrayList<Object>(sink.collectedTuples);
 
-      bsi.deactivated();
+      bsi.preDeactivate();
       sink.collectedTuples.clear();
       return result;
     }
@@ -123,6 +122,7 @@ public class StramLocalClusterTest
 
 
   @Test
+  @SuppressWarnings("SleepWhileInLoop")
   public void testChildRecovery() throws Exception
   {
     DAG dag = new DAG();

@@ -4,12 +4,12 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
-import com.malhartech.util.UnsafeBlockingQueue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -35,6 +35,7 @@ public class GenericNode extends Node<Operator, Sink>
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
   private final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
+  private long oldProcessedCount;
 
   public GenericNode(String id, Operator operator)
   {
@@ -49,6 +50,7 @@ public class GenericNode extends Node<Operator, Sink>
   {
     final Sink sink;
     final String id;
+    long count;
 
     public Reservoir(String id, Sink sink)
     {
@@ -70,14 +72,17 @@ public class GenericNode extends Node<Operator, Sink>
 
     final Tuple sweep()
     {
-      for (int i = size(); i-- > 0;) {
+      int size = size();
+      for (int i = 1; i <= size; i++) {
         if (peekUnsafe() instanceof Tuple) {
+          count += i;
           return (Tuple)peekUnsafe();
         }
 
         sink.process(pollUnsafe());
       }
 
+      count += size;
       return null;
     }
   }
@@ -158,6 +163,7 @@ public class GenericNode extends Node<Operator, Sink>
     Object lastEndWindow = null;
     try {
       do {
+        oldProcessedCount = 0L;
         Iterator<Reservoir> buffers = activeQueues.iterator();
         activequeue:
         while (buffers.hasNext()) {
@@ -275,24 +281,29 @@ public class GenericNode extends Node<Operator, Sink>
           logger.error("Invalid State - the node blocked forever!!!");
         }
         else {
-          int oldCount = 0;
-          for (UnsafeBlockingQueue<?> cb: activeQueues) {
-            oldCount += cb.size();
+          boolean need2sleep = true;
+          for (Reservoir cb: activeQueues) {
+            if (cb.size() > 0) {
+              need2sleep = false;
+              break;
+            }
           }
 
-          if (oldCount == 0) {
+          if (need2sleep) {
             Thread.sleep(getSpinMillis());
 
-            boolean nodata = true;
-            for (UnsafeBlockingQueue<?> cb: activeQueues) {
+            for (Reservoir cb: activeQueues) {
               if (cb.size() > 0) {
-                nodata = false;
+                need2sleep = false;
                 break;
               }
             }
 
-            if (nodata) {
-              handleIdleTimeout();
+            /*
+             * there is still no work scheduled for the operator, so lets give a chance to the operator to handle timeout.
+             */
+            if (need2sleep && operator instanceof IdleTimeHandler) {
+              ((IdleTimeHandler)operator).handleIdleTime();
             }
           }
         }

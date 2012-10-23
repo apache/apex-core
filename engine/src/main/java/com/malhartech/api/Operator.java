@@ -5,7 +5,7 @@
 package com.malhartech.api;
 
 
-public interface Operator extends Component<OperatorConfiguration, Context>
+public interface Operator extends Component<OperatorConfiguration>
 {
   /**
    * This method gets called at the beginning of each window.

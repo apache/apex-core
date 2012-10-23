@@ -26,8 +26,8 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.OperatorSerDe;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
-import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
-import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
+import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
+import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTComponent;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
@@ -222,12 +222,12 @@ public class StreamingContainerManager
    * <br>
    * @param dnodeId
    * @param nodeDecl
-   * @return {@link com.malhartech.stram.ModuleDeployInfo}
+   * @return {@link com.malhartech.stram.NodeDeployInfo}
    *
    */
-  private ModuleDeployInfo createModuleDeployInfo(String dnodeId, OperatorWrapper operator)
+  private NodeDeployInfo createModuleDeployInfo(String dnodeId, OperatorWrapper operator)
   {
-    ModuleDeployInfo ndi = new ModuleDeployInfo();
+    NodeDeployInfo ndi = new NodeDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
@@ -282,7 +282,7 @@ public class StreamingContainerManager
     }
     StreamingContainerContext initCtx = createStramChildInitContext(container.operators, container, checkpoints);
     cdr.setNodes(initCtx.nodeList);
-    initCtx.nodeList = new ArrayList<ModuleDeployInfo>(0);
+    initCtx.nodeList = new ArrayList<NodeDeployInfo>(0);
 
     StramChildAgent sca = new StramChildAgent(container, initCtx);
     containers.put(containerId, sca);
@@ -303,11 +303,11 @@ public class StreamingContainerManager
     scc.setCheckpointDfsPath(this.checkpointFsPath);
 
 //    List<StreamPConf> streams = new ArrayList<StreamPConf>();
-    Map<ModuleDeployInfo, PTOperator> nodes = new LinkedHashMap<ModuleDeployInfo, PTOperator>();
+    Map<NodeDeployInfo, PTOperator> nodes = new LinkedHashMap<NodeDeployInfo, PTOperator>();
     Map<String, NodeOutputDeployInfo> publishers = new LinkedHashMap<String, NodeOutputDeployInfo>();
 
     for (PTOperator node : deployNodes) {
-      ModuleDeployInfo ndi = createModuleDeployInfo(node.id, node.getLogicalNode());
+      NodeDeployInfo ndi = createModuleDeployInfo(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
       if (checkpointWindowId != null) {
         LOG.debug("Node {} has checkpoint state {}", node.id, checkpointWindowId);
@@ -342,8 +342,8 @@ public class StreamingContainerManager
 
     // after we know all publishers within container, determine subscribers
 
-    for (Map.Entry<ModuleDeployInfo, PTOperator> nodeEntry : nodes.entrySet()) {
-      ModuleDeployInfo ndi = nodeEntry.getKey();
+    for (Map.Entry<NodeDeployInfo, PTOperator> nodeEntry : nodes.entrySet()) {
+      NodeDeployInfo ndi = nodeEntry.getKey();
       PTOperator node = nodeEntry.getValue();
       for (PTInput in : node.inputs) {
         final StreamDecl streamDecl = in.logicalStream;
@@ -386,9 +386,9 @@ public class StreamingContainerManager
       }
     }
 
-    scc.nodeList = new ArrayList<ModuleDeployInfo>(nodes.keySet());
+    scc.nodeList = new ArrayList<NodeDeployInfo>(nodes.keySet());
 
-    for (Map.Entry<ModuleDeployInfo, PTOperator> e : nodes.entrySet()) {
+    for (Map.Entry<NodeDeployInfo, PTOperator> e : nodes.entrySet()) {
       this.nodeStatusMap.put(e.getKey().id, new NodeStatus(container, e.getValue()));
     }
 

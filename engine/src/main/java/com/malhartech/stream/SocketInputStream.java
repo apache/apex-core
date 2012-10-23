@@ -53,7 +53,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
   }
 
   @Override
-  public void activated(StreamContext context)
+  public void postActivate(StreamContext context)
   {
     // Make a new connection.
     channel = bootstrap.connect().syncUninterruptibly().channel();
@@ -70,7 +70,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
   }
 
   @Override
-  public void deactivated()
+  public void preDeactivate()
   {
     channel.close().awaitUninterruptibly();
   }

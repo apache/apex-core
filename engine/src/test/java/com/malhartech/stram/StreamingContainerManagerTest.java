@@ -21,8 +21,8 @@ import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Tuple;
-import com.malhartech.stram.ModuleDeployInfo.NodeInputDeployInfo;
-import com.malhartech.stram.ModuleDeployInfo.NodeOutputDeployInfo;
+import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
+import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 
@@ -30,23 +30,23 @@ public class StreamingContainerManagerTest {
 
   @Test
   public void testNodeDeployInfoSerialization() throws Exception {
-    ModuleDeployInfo ndi = new ModuleDeployInfo();
+    NodeDeployInfo ndi = new NodeDeployInfo();
     ndi.declaredId = "node1";
     ndi.id ="1";
 
-    ModuleDeployInfo.NodeInputDeployInfo input = new ModuleDeployInfo.NodeInputDeployInfo();
+    NodeDeployInfo.NodeInputDeployInfo input = new NodeDeployInfo.NodeInputDeployInfo();
     input.declaredStreamId = "streamToNode";
     input.portName = "inputPortNameOnNode";
     input.sourceNodeId = "sourceNodeId";
 
-    ndi.inputs = new ArrayList<ModuleDeployInfo.NodeInputDeployInfo>();
+    ndi.inputs = new ArrayList<NodeDeployInfo.NodeInputDeployInfo>();
     ndi.inputs.add(input);
 
-    ModuleDeployInfo.NodeOutputDeployInfo output = new ModuleDeployInfo.NodeOutputDeployInfo();
+    NodeDeployInfo.NodeOutputDeployInfo output = new NodeDeployInfo.NodeOutputDeployInfo();
     output.declaredStreamId = "streamFromNode";
     output.portName = "outputPortNameOnNode";
 
-    ndi.outputs = new ArrayList<ModuleDeployInfo.NodeOutputDeployInfo>();
+    ndi.outputs = new ArrayList<NodeDeployInfo.NodeOutputDeployInfo>();
     ndi.outputs.add(output);
 
     StreamingContainerContext scc = new StreamingContainerContext();
@@ -98,7 +98,7 @@ public class StreamingContainerManagerTest {
     // node1 needs to be deployed first, regardless in which order they were given
     StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("number operators assigned to c1", 1, c1.nodeList.size());
-    ModuleDeployInfo node1DI = getNodeDeployInfo(c1, dag.getOperatorWrapper(node1));
+    NodeDeployInfo node1DI = getNodeDeployInfo(c1, dag.getOperatorWrapper(node1));
     Assert.assertNotNull(node1.getName() + " assigned to " + container1Id, node1DI);
     Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
     Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
@@ -113,8 +113,8 @@ public class StreamingContainerManagerTest {
 
     StreamingContainerContext c2 = dnm.assignContainerForTest(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
     Assert.assertEquals("number operators assigned to container", 2, c2.nodeList.size());
-    ModuleDeployInfo node2DI = getNodeDeployInfo(c2, dag.getOperatorWrapper(node2));
-    ModuleDeployInfo node3DI = getNodeDeployInfo(c2, dag.getOperatorWrapper(node3));
+    NodeDeployInfo node2DI = getNodeDeployInfo(c2, dag.getOperatorWrapper(node2));
+    NodeDeployInfo node3DI = getNodeDeployInfo(c2, dag.getOperatorWrapper(node3));
     Assert.assertNotNull(node2.getName() + " assigned to " + container2Id, node2DI);
     Assert.assertNotNull(node3.getName() + " assigned to " + container2Id, node3DI);
 
@@ -170,7 +170,7 @@ public class StreamingContainerManagerTest {
       Assert.assertTrue(node2.getName() + " assigned to " + containerId, containsNodeContext(cc, dag.getOperatorWrapper(node2)));
 
       // n1n2 in, mergeStream out
-      ModuleDeployInfo ndi = cc.nodeList.get(0);
+      NodeDeployInfo ndi = cc.nodeList.get(0);
       Assert.assertEquals("inputs " + ndi, 1, ndi.inputs.size());
       Assert.assertEquals("outputs " + ndi, 1, ndi.outputs.size());
 
@@ -185,7 +185,7 @@ public class StreamingContainerManagerTest {
     StreamingContainerContext cmerge = dnm.assignContainerForTest(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
     Assert.assertEquals("number operators assigned to " + mergeContainerId, 1, cmerge.nodeList.size());
 
-    ModuleDeployInfo mergeNodeDI = getNodeDeployInfo(cmerge,  dag.getOperatorWrapper(mergeNode));
+    NodeDeployInfo mergeNodeDI = getNodeDeployInfo(cmerge,  dag.getOperatorWrapper(mergeNode));
     Assert.assertNotNull(mergeNode.getName() + " assigned to " + container1Id, mergeNodeDI);
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
     List<String> sourceNodeIds = new ArrayList<String>();
@@ -252,8 +252,8 @@ public class StreamingContainerManagerTest {
     return getNodeDeployInfo(scc, nodeConf) != null;
   }
 
-  private static ModuleDeployInfo getNodeDeployInfo(StreamingContainerContext scc, OperatorWrapper nodeConf) {
-    for (ModuleDeployInfo ndi : scc.nodeList) {
+  private static NodeDeployInfo getNodeDeployInfo(StreamingContainerContext scc, OperatorWrapper nodeConf) {
+    for (NodeDeployInfo ndi : scc.nodeList) {
       if (nodeConf.getId().equals(ndi.declaredId)) {
         return ndi;
       }
@@ -261,7 +261,7 @@ public class StreamingContainerManagerTest {
     return null;
   }
 
-  private static NodeInputDeployInfo getInputDeployInfo(ModuleDeployInfo ndi, String streamId) {
+  private static NodeInputDeployInfo getInputDeployInfo(NodeDeployInfo ndi, String streamId) {
     for (NodeInputDeployInfo in : ndi.inputs) {
       if (streamId.equals(in.declaredStreamId)) {
         return in;

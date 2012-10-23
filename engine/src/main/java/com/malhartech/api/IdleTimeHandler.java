@@ -4,15 +4,11 @@
  */
 package com.malhartech.api;
 
-import org.apache.hadoop.conf.Configuration;
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface Component<T1 extends Configuration>
+public interface IdleTimeHandler
 {
-  public void setup(T1 config);
-
-  public void teardown();
+  public void handleIdleTime();
 }

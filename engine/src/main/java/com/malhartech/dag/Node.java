@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.ActivationListener;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
@@ -105,15 +106,23 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
 
   public void activate(OperatorContext context)
   {
+    boolean activationListener = operator instanceof ActivationListener;
+
     activateSinks();
     alive = true;
-    operator.activated(context);
-
     this.context = context;
-    run();
-    this.context = null;
 
-    operator.deactivated();
+    if (activationListener) {
+      ((ActivationListener)operator).postActivate(context);
+    }
+
+    run();
+
+    if (activationListener) {
+      ((ActivationListener)operator).preDeactivate();
+    }
+
+    this.context = null;
     emitEndStream();
     deactivateSinks();
   }
