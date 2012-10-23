@@ -66,8 +66,7 @@ public interface Operator extends Component<OperatorConfiguration, Context>
    * Output ports deliver data produced by a module to a stream, abstracted by
    * Sink and injected by the execution engine at deployment time. Ports are
    * declared as annotated fields in the module. The interface should be
-   * implemented by a non parameterized class to make the type parameter
-   * available at runtime for validation.
+   * implemented with a bounded type parameter for introspection and validation.
    *
    * @param <T>
    */

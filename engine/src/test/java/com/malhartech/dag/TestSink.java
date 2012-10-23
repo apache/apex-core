@@ -33,12 +33,14 @@ public class TestSink<T> implements Sink<T>
   }
 
   public void waitForResultCount(int count, long timeoutMillis) throws InterruptedException {
-    synchronized (collectedTuples) {
-      if (collectedTuples.size() < count) {
-        collectedTuples.wait(timeoutMillis);
+    while (collectedTuples.size() < count && timeoutMillis > 0) {
+      timeoutMillis -= 20;
+      synchronized (collectedTuples) {
+        if (collectedTuples.size() < count) {
+          collectedTuples.wait(20);
+        }
       }
     }
   }
-
 
 }
