@@ -205,8 +205,8 @@ public class StramLocalClusterTest
     c0.waitForHeartbeat(5000);
     Assert.assertEquals("checkpoint propagated " + ptNode1, 2, ptNode1.getRecentCheckpoint());
     c2.triggerHeartbeat();
-    Thread.yield();
-    Thread.sleep(50); // the heartbeat trigger cycle does not seem to work here
+    //Thread.yield();
+    Thread.sleep(1); // yield without using yield to heartbeat trigger cycle
     c2.waitForHeartbeat(5000);
     Assert.assertEquals("checkpoint propagated " + ptNode2, 4, ptNode2.getRecentCheckpoint());
 
