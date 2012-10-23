@@ -316,11 +316,6 @@ public class ProtoModuleTest {
     TypeLiteral<?> keySetType
         = mapType.getReturnType(Map.class.getMethod("keySet"));
     System.out.println(keySetType);
-
-//    TypeLiteral<GenericClass<?>> genericClassType
-//    = new TypeLiteral<GenericClass<?>>() {};
-//    System.out.println(genericClassType);
-
   }
 
 }
