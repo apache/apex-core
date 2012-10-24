@@ -25,6 +25,7 @@ import javax.validation.ConstraintViolationException;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
+import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
@@ -35,7 +36,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
-import com.malhartech.annotation.Configurable;
+import com.malhartech.annotation.InjectConfig;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
@@ -50,8 +51,8 @@ import com.malhartech.stram.cli.StramClientUtils;
 
 public class DAGBuilderTest {
 
-  public static OperatorWrapper assertNode(DAG tplg, String id) {
-      OperatorWrapper n = tplg.getOperatorWrapper(id);
+  public static OperatorWrapper assertNode(DAG dag, String id) {
+      OperatorWrapper n = dag.getOperatorWrapper(id);
       assertNotNull("operator exists id=" + id, n);
       return n;
   }
@@ -64,10 +65,10 @@ public class DAGBuilderTest {
     Configuration conf = StramClientUtils.addStramResources(new Configuration());
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
-    DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
-    tb.addFromConfiguration(conf);
+    DAGPropertiesBuilder builder = new DAGPropertiesBuilder();
+    builder.addFromConfiguration(conf);
 
-    DAG dag = tb.getApplication(new Configuration(false));
+    DAG dag = builder.getApplication(new Configuration(false));
     dag.validate();
 
 //    Map<String, NodeConf> moduleConfs = tb.getAllOperators();
@@ -165,13 +166,14 @@ public class DAGBuilderTest {
       assertEquals("module3.classname", GenericTestModule.class, module3.getModule().getClass());
 
       GenericTestModule dmodule3 = (GenericTestModule)module3.getModule();
-      assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());
-      assertFalse("module3.booleanProperty", dmodule3.booleanProperty);
+      assertEquals("myStringProperty " + dmodule3, "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());
+      assertFalse("booleanProperty " + dmodule3, dmodule3.booleanProperty);
 
       OperatorWrapper module4 = dag.getOperatorWrapper("module4");
       GenericTestModule dmodule4 = (GenericTestModule)module4.getModule();
-      assertEquals("module4.myStringProperty", "overrideModule4", dmodule4.getMyStringProperty());
-      assertTrue("module4.booleanProperty", dmodule4.booleanProperty);
+      assertEquals("myStringProperty " + dmodule4, "overrideModule4", dmodule4.getMyStringProperty());
+      assertEquals("setterOnlyModule4 " + dmodule4, "setterOnlyModule4", dmodule4.propertySetterOnly);
+      assertTrue("booleanProperty " + dmodule4, dmodule4.booleanProperty);
 
       StreamDecl input1 = dag.getStream("inputStream");
       assertNotNull(input1);
@@ -305,18 +307,23 @@ public class DAGBuilderTest {
   private class ValidationTestOperator extends BaseOperator {
     @NotNull
     @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
-    String x;
+    String stringField1;
 
     @Min(2)
-    int y;
+    int intField1;
 
-    @Configurable(key="stringKey")
+    @AssertTrue(message="stringField1 should end with intField1")
+    private boolean isValidConfiguration() {
+      return stringField1.endsWith(String.valueOf(intField1));
+    }
+
+    @InjectConfig(key="stringKey")
     private String stringField;
 
-    @Configurable(key="urlKey")
+    @InjectConfig(key="urlKey")
     private java.net.URL urlField;
 
-    @Configurable(key="stringArrayKey")
+    @InjectConfig(key="stringArrayKey")
     private String[] stringArrayField;
   }
 
@@ -324,8 +331,8 @@ public class DAGBuilderTest {
   public void testOperatorValidation() {
 
     ValidationTestOperator bean = new ValidationTestOperator();
-    bean.x = "malharxxx";
-    bean.y = 1;
+    bean.stringField1 = "malhar1";
+    bean.intField1 = 1;
 
     // ensure validation standalone produces expected results
     ValidatorFactory factory =
@@ -338,8 +345,8 @@ public class DAGBuilderTest {
     //}
     Assert.assertEquals("",1, constraintViolations.size());
     ConstraintViolation<ValidationTestOperator> cv = constraintViolations.iterator().next();
-    Assert.assertEquals("", bean.y, cv.getInvalidValue());
-    Assert.assertEquals("", "y", cv.getPropertyPath().toString());
+    Assert.assertEquals("", bean.intField1, cv.getInvalidValue());
+    Assert.assertEquals("", "intField1", cv.getPropertyPath().toString());
 
     // ensure DAG validation produces matching results
     DAG dag = new DAG();
@@ -352,7 +359,18 @@ public class DAGBuilderTest {
       Assert.assertEquals("", constraintViolations, e.getConstraintViolations());
     }
 
-    bean.y = 2;
+    try {
+      bean.intField1 = 3;
+      dag.validate();
+      Assert.fail("should throw ConstraintViolationException for isValidConfiguration");
+    } catch (ConstraintViolationException e) {
+      ConstraintViolation<?> cv2 = e.getConstraintViolations().iterator().next();
+      Assert.assertEquals("", false, cv2.getInvalidValue());
+      Assert.assertEquals("", "validConfiguration", cv2.getPropertyPath().toString());
+    }
+
+    bean.intField1 = 2;
+    bean.stringField1 = "malhar2";
     dag.validate();
 
   }
