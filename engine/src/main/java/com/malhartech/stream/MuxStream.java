@@ -19,7 +19,6 @@ public class MuxStream implements Stream<Object>
   private HashMap<String, Sink> outputs;
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
-  private long count;
 
   /**
    *
@@ -99,7 +98,6 @@ public class MuxStream implements Stream<Object>
   @Override
   public void process(Object payload)
   {
-    count++;
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(payload);
     }
@@ -111,9 +109,4 @@ public class MuxStream implements Stream<Object>
     return true;
   }
 
-  @Override
-  public long getProcessedCount()
-  {
-    return count;
-  }
 }

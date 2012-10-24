@@ -9,10 +9,11 @@ import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
+import com.malhartech.api.Stats;
+import com.malhartech.api.Stats.StatsReporter;
 import com.malhartech.util.CircularBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
+import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
 import org.slf4j.LoggerFactory;
 
@@ -31,11 +32,10 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class GenericNode extends Node<Operator, Sink>
+public class GenericNode extends Node<Operator>
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
   private final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
-  private long oldProcessedCount;
 
   public GenericNode(String id, Operator operator)
   {
@@ -46,16 +46,14 @@ public class GenericNode extends Node<Operator, Sink>
   {
   }
 
-  class Reservoir extends CircularBuffer<Object> implements Sink
+  class Reservoir extends CircularBuffer<Object> implements Sink, StatsReporter
   {
     final Sink sink;
-    final String id;
-    long count;
+    private int count;
 
-    public Reservoir(String id, Sink sink)
+    public Reservoir(Sink sink)
     {
       super(bufferCapacity);
-      this.id = id;
       this.sink = sink;
     }
 
@@ -85,6 +83,14 @@ public class GenericNode extends Node<Operator, Sink>
       count += size;
       return null;
     }
+
+    @Override
+    public Stats getStats(String id)
+    {
+      PortStats ps = new PortStats(id, count);
+      count = 0;
+      return ps;
+    }
   }
 
   /**
@@ -97,7 +103,7 @@ public class GenericNode extends Node<Operator, Sink>
    * @param sink the value of stream
    */
   @Override
-  public Sink connect(String port, Sink sink)
+  public Sink connect(String port, final Sink sink)
   {
     Sink retvalue = null;
 
@@ -118,24 +124,14 @@ public class GenericNode extends Node<Operator, Sink>
       else {
         inputport.setConnected(true);
         if (cs == null) {
-          cs = new Reservoir(port, inputport.getSink());
+          cs = new Reservoir(inputport.getSink());
           inputs.put(port, cs);
         }
         retvalue = cs;
       }
     }
 
-    OutputPort outputPort = descriptor.outputPorts.get(port);
-    if (outputPort != null) {
-      outputPort.setSink(sink);
-
-      if (sink == null) {
-        outputs.remove(port);
-      }
-      else {
-        outputs.put(port, sink);
-      }
-    }
+    connectOutputPort(port, sink);
 
     return retvalue;
   }
@@ -164,7 +160,6 @@ public class GenericNode extends Node<Operator, Sink>
     Object lastEndWindow = null;
     try {
       do {
-        oldProcessedCount = 0L;
         Iterator<Reservoir> buffers = activeQueues.iterator();
         activequeue:
         while (buffers.hasNext()) {
@@ -245,8 +240,16 @@ public class GenericNode extends Node<Operator, Sink>
                  * We need to make sure that the END_STREAM comes outside of the window.
                  */
                 totalQueues--;
-                inputs.remove(activePort.id);
-                descriptor.inputPorts.get(activePort.id).setConnected(false);
+
+                for (Iterator<Entry<String, Reservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
+                  Entry<String, Reservoir> e = it.next();
+                  if (e.getValue() == activePort) {
+                    descriptor.inputPorts.get(e.getKey()).setConnected(false);
+                    it.remove();
+                    break;
+                  }
+                }
+
                 buffers.remove();
                 if (totalQueues == 0) {
                   alive = false;
@@ -278,7 +281,7 @@ public class GenericNode extends Node<Operator, Sink>
           }
         }
 
-        if (activeQueues.isEmpty()) {
+        if (activeQueues.isEmpty() && alive) {
           logger.error("Invalid State - the node blocked forever!!!");
         }
         else {
@@ -314,5 +317,17 @@ public class GenericNode extends Node<Operator, Sink>
     }
     catch (InterruptedException ex) {
     }
+  }
+
+  @Override
+  protected void reportStats(Map<String, Collection<Stats>> stats)
+  {
+    super.reportStats(stats);
+    ArrayList<Stats> ipstats = new ArrayList<Stats>();
+    for (Entry<String, Reservoir> e: inputs.entrySet()) {
+      ipstats.add(e.getValue().getStats(e.getKey()));
+    }
+
+    stats.put("Input Ports", ipstats);
   }
 }

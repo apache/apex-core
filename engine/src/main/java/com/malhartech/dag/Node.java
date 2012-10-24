@@ -10,10 +10,12 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Port;
 import com.malhartech.api.Sink;
+import com.malhartech.api.Stats;
+import com.malhartech.api.Stats.StatsReporter;
 import com.malhartech.dag.Operators.PortMappingDescriptor;
 import com.malhartech.util.CircularBuffer;
-import java.util.Collection;
-import java.util.HashMap;
+import java.util.*;
+import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +23,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class Node<OPERATOR extends Operator, SINK extends Sink> implements Runnable
+public abstract class Node<OPERATOR extends Operator> implements Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(Node.class);
   /*
@@ -31,11 +33,11 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
   public static final String INPUT = "input";
   public static final String OUTPUT = "output";
   public final String id;
-  protected final HashMap<String, SINK> outputs = new HashMap<String, SINK>();
+  protected final HashMap<String, StatsReporterSink<?>> outputs = new HashMap<String, StatsReporterSink<?>>();
   protected final int spinMillis = 10;
   protected final int bufferCapacity = 1024 * 1024;
   @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile SINK[] sinks = (SINK[])Sink.NO_SINKS;
+  protected volatile StatsReporterSink[] sinks = StatsReporterSink.NO_SINKS;
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
@@ -55,40 +57,50 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
     return operator;
   }
 
-  // The following 3 get*Port methods are just a placeholder.
-  static <T extends Port> T getPort(Operator operator, String portname)
+  protected void connectOutputPort(String port, final Sink sink)
   {
-    try {
-      return (T)null;
+    OutputPort outputPort = descriptor.outputPorts.get(port);
+    if (outputPort != null) {
+      outputPort.setSink(sink);
+
+      if (sink instanceof StatsReporter) {
+        outputs.put(port, (StatsReporterSink<?>)sink);
+      }
+      else if (sink == null) {
+        outputs.remove(port);
+      }
+      else {
+        outputs.put(port, new StatsReporterSink()
+        {
+          int count;
+
+          @Override
+          public void process(Object tuple)
+          {
+            count++;
+            sink.process(tuple);
+          }
+
+          @Override
+          public Stats getStats(String id)
+          {
+            PortStats ps = new PortStats(id, count);
+            count = 0;
+            return ps;
+          }
+        });
+      }
     }
-    catch (ClassCastException cce) {
-      return null;
-    }
-  }
-
-  static InputPort getInputPort(Operator operator, String portname)
-  {
-    return getPort(operator, portname);
-  }
-
-  static OutputPort getOutputPort(Operator operator, String portname)
-  {
-    return getPort(operator, portname);
-  }
-
-  static Collection<InputPort> getInputPorts(Operator operator)
-  {
-    return null;
   }
 
   public abstract Sink connect(String id, Sink sink);
 
   protected void activateSinks()
   {
-    SINK[] newSinks = (SINK[])new Sink[outputs.size()];
+    StatsReporterSink[] newSinks = new StatsReporterSink[outputs.size()];
 
     int i = 0;
-    for (SINK s: outputs.values()) {
+    for (StatsReporterSink s: outputs.values()) {
       newSinks[i++] = s;
     }
 
@@ -97,7 +109,7 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
 
   public void deactivateSinks()
   {
-    sinks = (SINK[])Sink.NO_SINKS;
+    sinks = StatsReporterSink.NO_SINKS;
     outputs.clear();
   }
   OperatorContext context;
@@ -187,7 +199,23 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
       logger.warn("Exception while catering to external request {}", e);
     }
 
+    HashMap<String, Collection<Stats>> stats = new HashMap<String, Collection<Stats>>();
+    reportStats(stats);
+
+    Stats operatorStats = new Stats()
+    {
+    };
     context.report(0, 0L, windowId);
 //    generatedTupleCount = 0;
+  }
+
+  protected void reportStats(Map<String, Collection<Stats>> stats)
+  {
+    ArrayList<Stats> opstats = new ArrayList<Stats>();
+    for (Entry<String, StatsReporterSink<?>> e: outputs.entrySet()) {
+      opstats.add(e.getValue().getStats(e.getKey()));
+    }
+
+    stats.put("Output Ports", opstats);
   }
 }

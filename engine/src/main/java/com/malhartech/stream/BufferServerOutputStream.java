@@ -24,12 +24,13 @@ public class BufferServerOutputStream extends SocketOutputStream
   private static final Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   SerDe serde;
   int windowId;
-  private long count;
 
   // see if you can do this in setup instead of in constructor.
-  public BufferServerOutputStream(SerDe serde) {
+  public BufferServerOutputStream(SerDe serde)
+  {
     this.serde = serde;
   }
+
   /**
    *
    * @param payload
@@ -37,7 +38,6 @@ public class BufferServerOutputStream extends SocketOutputStream
   @Override
   public void process(Object payload)
   {
-    count++;
     Buffer.Data.Builder db = Buffer.Data.newBuilder();
     if (payload instanceof Tuple) {
       final Tuple t = (Tuple)payload;
@@ -105,7 +105,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   public void postActivate(StreamContext context)
   {
     super.postActivate(context);
-    logger.debug("registering publisher: {} {} windowId={}", new Object[]{context.getSourceId(), context.getId(), context.getStartingWindowId()});
+    logger.debug("registering publisher: {} {} windowId={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId()});
     ClientHandler.publish(channel, context.getSourceId(), context.getId(), context.getStartingWindowId());
   }
 
@@ -119,11 +119,5 @@ public class BufferServerOutputStream extends SocketOutputStream
   public boolean isMultiSinkCapable()
   {
     return false;
-  }
-
-  @Override
-  public long getProcessedCount()
-  {
-    return count;
   }
 }

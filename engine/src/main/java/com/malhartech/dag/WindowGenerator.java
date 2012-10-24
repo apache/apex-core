@@ -37,12 +37,11 @@ public class WindowGenerator implements Stream<Object>, Runnable
   private int windowWidthMillis; // Window size
   HashMap<String, Sink> outputs = new HashMap<String, Sink>();
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink[] sinks = Sink.NO_SINKS;
+  private volatile Sink[] sinks = NO_SINKS;
   private long currentWindowMillis;
   private long baseSeconds;
   private int windowId;
   private long resetWindowMillis;
-  private long count;
 
   public WindowGenerator(ScheduledExecutorService service)
   {
@@ -79,12 +78,10 @@ public class WindowGenerator implements Stream<Object>, Runnable
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(rwt);
     }
-    count++;
 //    logger.debug("generating begin {}", Long.toHexString(windowId));
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(bwt);
     }
-    count ++;
   }
 
   /**
@@ -99,7 +96,6 @@ public class WindowGenerator implements Stream<Object>, Runnable
       for (Sink s: sinks) {
         s.process(t);
       }
-      count++;
 
       advanceWindow();
 
@@ -112,7 +108,6 @@ public class WindowGenerator implements Stream<Object>, Runnable
       for (int i = sinks.length; i-- > 0;) {
         sinks[i].process(ewt);
       }
-      count++;
       advanceWindow();
 
       Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
@@ -120,7 +115,6 @@ public class WindowGenerator implements Stream<Object>, Runnable
       for (int i = sinks.length; i-- > 0;) {
         sinks[i].process(bwt);
       }
-      count++;
     }
   }
 
@@ -188,7 +182,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
   public void preDeactivate()
   {
     ses.shutdown();
-    sinks = Sink.NO_SINKS;
+    sinks = NO_SINKS;
   }
 
   @Override
@@ -203,12 +197,12 @@ public class WindowGenerator implements Stream<Object>, Runnable
     if (sink == null) {
       sink = outputs.remove(id);
       if (outputs.isEmpty()) {
-        sinks = Sink.NO_SINKS;
+        sinks = NO_SINKS;
       }
     }
     else {
       sink = outputs.put(id, sink);
-      if (sinks != Sink.NO_SINKS) {
+      if (sinks != NO_SINKS) {
         activateSinks();
       }
     }
@@ -237,11 +231,5 @@ public class WindowGenerator implements Stream<Object>, Runnable
   public void process(Object tuple)
   {
     throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public long getProcessedCount()
-  {
-    return count;
   }
 }

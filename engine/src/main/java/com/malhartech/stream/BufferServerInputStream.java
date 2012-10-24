@@ -26,7 +26,6 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
   private final SerDe serde;
-  private long count;
 
   public BufferServerInputStream(SerDe serde)
   {
@@ -51,7 +50,6 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   @Override
   public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
   {
-    count++;
     Tuple t;
     switch (data.getType()) {
       case SIMPLE_DATA:
@@ -129,12 +127,6 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
       sinks[i++] = s;
     }
     sinks = sinks;
-  }
-
-  @Override
-  public long getProcessedCount()
-  {
-    return count;
   }
 
   @Override

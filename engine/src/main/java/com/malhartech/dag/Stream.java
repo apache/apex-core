@@ -23,6 +23,4 @@ public interface Stream<T> extends Component<StreamConfiguration>, ActivationLis
   public boolean isMultiSinkCapable();
 
   public Sink setSink(String sinkId, Sink<T> sink);
-
-  public long getProcessedCount();
 }

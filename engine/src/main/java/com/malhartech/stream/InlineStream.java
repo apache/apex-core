@@ -27,7 +27,6 @@ import com.malhartech.dag.StreamContext;
  */
 public class InlineStream implements Stream<Object>
 {
-  private long count;
   private volatile Sink current, output, shunted = new Sink()
   {
     @Override
@@ -99,7 +98,6 @@ public class InlineStream implements Stream<Object>
   @Override
   public final void process(Object payload)
   {
-    count++;
     current.process(payload);
   }
 
@@ -112,11 +110,5 @@ public class InlineStream implements Stream<Object>
   public boolean isMultiSinkCapable()
   {
     return false;
-  }
-
-  @Override
-  public final long getProcessedCount()
-  {
-    return count;
   }
 }

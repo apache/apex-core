@@ -172,7 +172,7 @@ public class StramLocalCluster implements Runnable {
       return nodes.get(id).getOperator();
     }
 
-    Map<String, Node<?,?>> getNodes()
+    Map<String, Node<?>> getNodes()
     {
       return nodes;
     }

@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class AsyncInputNode extends InputNode<AsyncInputOperator, Sink>
+public class AsyncInputNode extends InputNode<AsyncInputOperator>
 {
   private static final Logger logger = LoggerFactory.getLogger(AsyncInputNode.class);
 

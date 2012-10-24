@@ -7,6 +7,8 @@ package com.malhartech.dag;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
+import com.malhartech.api.Stats;
+import com.malhartech.api.Stats.StatsReporter;
 import com.malhartech.util.CircularBuffer;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -17,7 +19,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class InputNode<OPERATOR extends Operator, SINK extends Sink> extends Node<OPERATOR, SINK>
+public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR>
 {
   private static final Logger logger = LoggerFactory.getLogger(InputNode.class);
   protected HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
@@ -31,7 +33,7 @@ public abstract class InputNode<OPERATOR extends Operator, SINK extends Sink> ex
   }
 
   @Override
-  public Sink connect(String port, Sink sink)
+  public Sink connect(String port, final Sink sink)
   {
     Sink retvalue;
     if (Node.INPUT.equals(port)) {
@@ -50,24 +52,10 @@ public abstract class InputNode<OPERATOR extends Operator, SINK extends Sink> ex
       };
     }
     else {
-      OutputPort outputPort = descriptor.outputPorts.get(port);
-      outputPort.setSink(sink);
-      if (outputPort == null) {
-        throw new IllegalArgumentException("Unrecognized Port " + port + " for " + this);
-      }
-      if (sink == null) {
-        outputs.remove(port);
-        afterEndWindows.remove(port);
-      }
-      else {
-        outputs.put(port, (SINK)sink);
-        afterEndWindows.put(port, new CircularBuffer<Tuple>(bufferCapacity));
-      }
-      if (sinks != Sink.NO_SINKS) {
-        activateSinks();
-      }
+      connectOutputPort(port, sink);
       retvalue = null;
     }
+
     return retvalue;
   }
 
