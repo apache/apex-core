@@ -50,8 +50,8 @@ import com.malhartech.stram.cli.StramClientUtils;
 
 public class DAGBuilderTest {
 
-  public static OperatorWrapper assertNode(DAG tplg, String id) {
-      OperatorWrapper n = tplg.getOperatorWrapper(id);
+  public static OperatorWrapper assertNode(DAG dag, String id) {
+      OperatorWrapper n = dag.getOperatorWrapper(id);
       assertNotNull("operator exists id=" + id, n);
       return n;
   }
@@ -64,10 +64,10 @@ public class DAGBuilderTest {
     Configuration conf = StramClientUtils.addStramResources(new Configuration());
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
-    DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
-    tb.addFromConfiguration(conf);
+    DAGPropertiesBuilder builder = new DAGPropertiesBuilder();
+    builder.addFromConfiguration(conf);
 
-    DAG dag = tb.getApplication(new Configuration(false));
+    DAG dag = builder.getApplication(new Configuration(false));
     dag.validate();
 
 //    Map<String, NodeConf> moduleConfs = tb.getAllOperators();
@@ -165,13 +165,14 @@ public class DAGBuilderTest {
       assertEquals("module3.classname", GenericTestModule.class, module3.getModule().getClass());
 
       GenericTestModule dmodule3 = (GenericTestModule)module3.getModule();
-      assertEquals("module3.myStringProperty", "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());
-      assertFalse("module3.booleanProperty", dmodule3.booleanProperty);
+      assertEquals("myStringProperty " + dmodule3, "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());
+      assertFalse("booleanProperty " + dmodule3, dmodule3.booleanProperty);
 
       OperatorWrapper module4 = dag.getOperatorWrapper("module4");
       GenericTestModule dmodule4 = (GenericTestModule)module4.getModule();
-      assertEquals("module4.myStringProperty", "overrideModule4", dmodule4.getMyStringProperty());
-      assertTrue("module4.booleanProperty", dmodule4.booleanProperty);
+      assertEquals("myStringProperty " + dmodule4, "overrideModule4", dmodule4.getMyStringProperty());
+      assertEquals("setterOnlyModule4 " + dmodule4, "setterOnlyModule4", dmodule4.propertySetterOnly);
+      assertTrue("booleanProperty " + dmodule4, dmodule4.booleanProperty);
 
       StreamDecl input1 = dag.getStream("inputStream");
       assertNotNull(input1);

@@ -65,6 +65,16 @@ public class GenericTestModule extends BaseOperator {
     this.booleanProperty = booleanProperty;
   }
 
+  public String propertySetterOnly;
+
+  /**
+   * setter w/o getter defined
+   * @param v
+   */
+  public void setStringPropertySetterOnly(String v) {
+    this.propertySetterOnly = v;
+  }
+
   public String getEmitFormat() {
     return emitFormat;
   }
