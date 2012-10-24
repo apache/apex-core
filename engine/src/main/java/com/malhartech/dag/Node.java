@@ -187,7 +187,7 @@ public abstract class Node<OPERATOR extends Operator, SINK extends Sink> impleme
       logger.warn("Exception while catering to external request {}", e);
     }
 
-//    context.report(generatedTupleCount, 0L, windowId);
+    context.report(0, 0L, windowId);
 //    generatedTupleCount = 0;
   }
 }

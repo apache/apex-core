@@ -27,5 +27,6 @@ public class AsyncInputNode extends InputNode<AsyncInputOperator, Sink>
   protected final void injectTuples() throws InterruptedException
   {
     operator.injectTuples(currentWindowId);
+    Thread.sleep(spinMillis); // should be removed.
   }
 }

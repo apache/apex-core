@@ -187,8 +187,8 @@ public class WindowGenerator implements Stream<Object>, Runnable
   @Override
   public void preDeactivate()
   {
-    sinks = Sink.NO_SINKS;
     ses.shutdown();
+    sinks = Sink.NO_SINKS;
   }
 
   @Override

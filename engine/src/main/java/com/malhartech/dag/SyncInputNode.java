@@ -66,6 +66,7 @@ public class SyncInputNode extends InputNode<SyncInputOperator, SyncSink>
     for (SyncSink s: outputs.values()) {
       s.sweep();
     }
+    Thread.sleep(spinMillis); // should be removed
   }
 
   class SyncSink extends CircularBuffer<Object> implements Sink
