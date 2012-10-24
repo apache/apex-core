@@ -69,10 +69,11 @@ public class SyncInputNode extends InputNode<SyncInputOperator, SyncSink>
     Thread.sleep(spinMillis); // should be removed
   }
 
-  class SyncSink extends CircularBuffer<Object> implements Sink
+  class SyncSink extends CircularBuffer<Object> implements Stream<Object>
   {
     final String id;
     final Sink sink;
+    long count;
 
     public SyncSink(String id, Sink sink, int buffersize)
     {
@@ -96,6 +97,81 @@ public class SyncInputNode extends InputNode<SyncInputOperator, SyncSink>
     {
       for (int i = size(); i-- > 0;) {
         sink.process(pollUnsafe());
+      }
+    }
+
+    @Override
+    public boolean isMultiSinkCapable()
+    {
+      if (sink instanceof Stream) {
+        return ((Stream)sink).isMultiSinkCapable();
+      }
+
+      return false;
+    }
+
+    @Override
+    public Sink setSink(String sinkId, Sink<Object> sink)
+    {
+      if (sink instanceof Stream) {
+        return ((Stream)sink).setSink(sinkId, sink);
+      }
+
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public long getProcessedCount()
+    {
+      if (sink instanceof Stream) {
+        return ((Stream)sink).getProcessedCount();
+      }
+      else {
+        throw new UnsupportedOperationException("Not supported yet.");
+      }
+    }
+
+    @Override
+    public void setup(StreamConfiguration config)
+    {
+      if (sink instanceof Stream) {
+        ((Stream)sink).setup(config);
+      }
+      else {
+        throw new UnsupportedOperationException("Not supported yet.");
+      }
+    }
+
+    @Override
+    public void teardown()
+    {
+      if (sink instanceof Stream) {
+        ((Stream)sink).teardown();
+      }
+      else {
+        throw new UnsupportedOperationException("Not supported yet.");
+      }
+    }
+
+    @Override
+    public void postActivate(StreamContext ctx)
+    {
+      if (sink instanceof Stream) {
+        ((Stream)sink).postActivate(ctx);
+      }
+      else {
+        throw new UnsupportedOperationException("Not supported yet.");
+      }
+    }
+
+    @Override
+    public void preDeactivate()
+    {
+      if (sink instanceof Stream) {
+        ((Stream)sink).preDeactivate();
+      }
+      else {
+        throw new UnsupportedOperationException("Not supported yet.");
       }
     }
   }
