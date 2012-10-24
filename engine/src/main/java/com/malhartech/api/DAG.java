@@ -393,7 +393,7 @@ public class DAG implements Serializable, DAGConstants
 
   public <T extends Operator> T addOperator(String name, T operator)
   {
-    // TODO: optional operator interface to provide contextual information to instance
+    // TODO: optional interface to provide contextual information to instance
     if (operator instanceof BaseOperator) {
       ((BaseOperator)operator).setName(name);
     }
@@ -408,17 +408,6 @@ public class DAG implements Serializable, DAGConstants
     rootNodes.add(decl);
     nodes.put(name, decl);
     return operator;
-  }
-
-  public OperatorWrapper getOperatorWrapper(Operator operator)
-  {
-    // TODO: cache mapping
-    for (OperatorWrapper o: getAllOperators()) {
-      if (o.moduleHolder.module == operator) {
-        return o;
-      }
-    }
-    throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
   }
 
   public StreamDecl addStream(String id)
@@ -489,6 +478,17 @@ public class DAG implements Serializable, DAGConstants
   public OperatorWrapper getOperatorWrapper(String nodeId)
   {
     return this.nodes.get(nodeId);
+  }
+
+  public OperatorWrapper getOperatorWrapper(Operator operator)
+  {
+    // TODO: cache mapping
+    for (OperatorWrapper o: getAllOperators()) {
+      if (o.moduleHolder.module == operator) {
+        return o;
+      }
+    }
+    throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
   }
 
   public Configuration getConf()
@@ -572,6 +572,23 @@ public class DAG implements Serializable, DAGConstants
           copySet.add(cv);
         }
         throw new ConstraintViolationException("Operator " + n.getId() + " violates constraints", copySet);
+      }
+
+      // check that non-optional ports are connected
+      OperatorWrapper.PortMapping portMapping = n.getPortMapping();
+      for (InputPortMeta pm : portMapping.inPortMap.values()) {
+        if (!n.inputStreams.containsKey(pm)) {
+          if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
+            throw new IllegalArgumentException("Input port connection required: " + n.id + "." + pm.getPortName());
+          }
+        }
+      }
+      for (OutputPortMeta pm : portMapping.outPortMap.values()) {
+        if (!n.outputStreams.containsKey(pm)) {
+          if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
+            throw new IllegalArgumentException("Output port connection required: " + n.id + "." + pm.getPortName());
+          }
+        }
       }
     }
     stack = new Stack<OperatorWrapper>();

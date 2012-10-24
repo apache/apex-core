@@ -4,7 +4,7 @@
 
 <configuration>
 
-  <!-- sample for defining Stram topology as Hadoop configuration -->
+  <!-- sample for defining DAG in Hadoop configuration format -->
 
   <!--  Module 1 -->
 
@@ -14,7 +14,7 @@
     <description>The root module</description>
   </property>
 
-  <!-- dmodule subclass specific property -->
+  <!-- operator subclass specific property -->
   <property>
     <name>stram.operator.module1.myStringProperty</name>
     <value>myStringPropertyValue</value>
@@ -82,7 +82,6 @@
   <property>
     <name>stram.operator.module5.classname</name>
     <value>com.malhartech.dag.GenericTestModule</value>
-    <description>Another module, which gets input from root</description>
   </property>
 
   <property>
@@ -98,7 +97,7 @@
   </property>
 
 
-  <!-- Module 6, single module w/o links -->
+  <!-- Module 6, single operator w/o links -->
 
   <property>
     <name>stram.operator.module6.classname</name>

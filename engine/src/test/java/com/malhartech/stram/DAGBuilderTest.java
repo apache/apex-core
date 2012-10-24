@@ -47,6 +47,7 @@ import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.TestGeneratorInputModule;
 import com.malhartech.stram.cli.StramClientUtils;
 
 public class DAGBuilderTest {
@@ -371,6 +372,25 @@ public class DAGBuilderTest {
 
     bean.intField1 = 2;
     bean.stringField1 = "malhar2";
+    dag.validate();
+
+  }
+
+  @Test
+  public void testPortConnectionValidation() {
+
+    DAG dag = new DAG();
+    TestGeneratorInputModule input = dag.addOperator("input1", TestGeneratorInputModule.class);
+
+    try {
+    dag.validate();
+    Assert.fail("should raise port not connected for o1.input1");
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals("", "Output port connection required: input1.outputPort", e.getMessage());
+    }
+
+    GenericTestModule o1 = dag.addOperator("o1", GenericTestModule.class);
+    dag.addStream("stream1", input.outport, o1.inport1);
     dag.validate();
 
   }

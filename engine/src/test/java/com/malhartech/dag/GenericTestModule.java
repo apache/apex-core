@@ -18,13 +18,14 @@ import com.malhartech.api.DefaultOutputPort;
  * Test should reference the ports defined using the constants.
  */
 public class GenericTestModule extends BaseOperator {
+
+  private static final Logger LOG = LoggerFactory.getLogger(GenericTestModule.class);
+
   public static final String IPORT1 = "input1";
   public static final String IPORT2 = "input2";
   public static final String OPORT1 = "output1";
 
-  private static final Logger LOG = LoggerFactory.getLogger(GenericTestModule.class);
-
-  @InputPortFieldAnnotation(name=IPORT1)
+  @InputPortFieldAnnotation(name=IPORT1, optional=true)
   final public transient InputPort<Object> inport1 = new DefaultInputPort<Object>(this) {
     @Override
     final public void process(Object payload) {
@@ -32,7 +33,7 @@ public class GenericTestModule extends BaseOperator {
     }
   };
 
-  @InputPortFieldAnnotation(name=IPORT2)
+  @InputPortFieldAnnotation(name=IPORT2, optional=true)
   final public transient InputPort<Object> inport2 = new DefaultInputPort<Object>(this) {
     @Override
     final public void process(Object payload) {
@@ -40,7 +41,7 @@ public class GenericTestModule extends BaseOperator {
     }
   };
 
-  @OutputPortFieldAnnotation(name=OPORT1)
+  @OutputPortFieldAnnotation(name=OPORT1, optional=true)
   final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
 
   private String emitFormat;

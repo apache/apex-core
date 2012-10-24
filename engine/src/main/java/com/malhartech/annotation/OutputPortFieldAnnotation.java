@@ -22,4 +22,6 @@ import java.lang.annotation.Target;
 public @interface OutputPortFieldAnnotation {
 
   public String name();
+  public boolean optional() default false;
+
 }
