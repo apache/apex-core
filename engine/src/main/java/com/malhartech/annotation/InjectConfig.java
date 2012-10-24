@@ -12,12 +12,12 @@ import java.lang.annotation.Target;
 
 /**
  * Indicates that the element value can be injected from configuration.
- * The injector will be provided a configuration accessor for the name.
+ * The injector will be provided a configuration accessor for the given key.
  */
 @Documented
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Configurable {
+public @interface InjectConfig {
   /**
    * The configuration key
    * @return

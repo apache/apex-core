@@ -32,7 +32,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.spi.TypeEncounter;
 import com.google.inject.spi.TypeListener;
-import com.malhartech.annotation.Configurable;
+import com.malhartech.annotation.InjectConfig;
 
 public class ValidationTest {
 
@@ -46,13 +46,13 @@ public class ValidationTest {
     @Min(2)
     int y;
 
-    @Configurable(key="stringKey")
+    @InjectConfig(key="stringKey")
     private String stringField;
 
-    @Configurable(key="urlKey")
+    @InjectConfig(key="urlKey")
     private java.net.URL urlField;
 
-    @Configurable(key="stringArrayKey")
+    @InjectConfig(key="stringArrayKey")
     private String[] stringArrayField;
 
   }
@@ -81,8 +81,8 @@ public class ValidationTest {
         {
           LOG.debug("Inspecting fields for " + c);
           for (Field field : c.getDeclaredFields()) {
-            if (field.isAnnotationPresent(Configurable.class)) {
-              typeEncounter.register(new ConfigurationInjector<T>(field, field.getAnnotation(Configurable.class)));
+            if (field.isAnnotationPresent(InjectConfig.class)) {
+              typeEncounter.register(new ConfigurationInjector<T>(field, field.getAnnotation(InjectConfig.class)));
             }
           }
         }
@@ -95,9 +95,9 @@ public class ValidationTest {
      */
     private class ConfigurationInjector<T> implements MembersInjector<T> {
       private final Field field;
-      private final Configurable annotation;
+      private final InjectConfig annotation;
 
-      ConfigurationInjector(Field field, Configurable annotation) {
+      ConfigurationInjector(Field field, InjectConfig annotation) {
         this.field = field;
         this.annotation = annotation;
         field.setAccessible(true);
@@ -134,7 +134,7 @@ public class ValidationTest {
 
 
   public class MyBeanExt extends MyBean {
-    @Configurable(key="anotherStringKey")
+    @InjectConfig(key="anotherStringKey")
     private String anotherInjectableField;
   }
 

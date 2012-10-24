@@ -36,7 +36,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
-import com.malhartech.annotation.Configurable;
+import com.malhartech.annotation.InjectConfig;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
@@ -317,13 +317,13 @@ public class DAGBuilderTest {
       return stringField1.endsWith(String.valueOf(intField1));
     }
 
-    @Configurable(key="stringKey")
+    @InjectConfig(key="stringKey")
     private String stringField;
 
-    @Configurable(key="urlKey")
+    @InjectConfig(key="urlKey")
     private java.net.URL urlField;
 
-    @Configurable(key="stringArrayKey")
+    @InjectConfig(key="stringArrayKey")
     private String[] stringArrayField;
   }
 
