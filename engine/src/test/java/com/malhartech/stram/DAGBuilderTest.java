@@ -25,6 +25,7 @@ import javax.validation.ConstraintViolationException;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
+import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
@@ -306,10 +307,15 @@ public class DAGBuilderTest {
   private class ValidationTestOperator extends BaseOperator {
     @NotNull
     @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
-    String x;
+    String stringField1;
 
     @Min(2)
-    int y;
+    int intField1;
+
+    @AssertTrue(message="stringField1 should end with intField1")
+    private boolean isValidConfiguration() {
+      return stringField1.endsWith(String.valueOf(intField1));
+    }
 
     @Configurable(key="stringKey")
     private String stringField;
@@ -325,8 +331,8 @@ public class DAGBuilderTest {
   public void testOperatorValidation() {
 
     ValidationTestOperator bean = new ValidationTestOperator();
-    bean.x = "malharxxx";
-    bean.y = 1;
+    bean.stringField1 = "malhar1";
+    bean.intField1 = 1;
 
     // ensure validation standalone produces expected results
     ValidatorFactory factory =
@@ -339,8 +345,8 @@ public class DAGBuilderTest {
     //}
     Assert.assertEquals("",1, constraintViolations.size());
     ConstraintViolation<ValidationTestOperator> cv = constraintViolations.iterator().next();
-    Assert.assertEquals("", bean.y, cv.getInvalidValue());
-    Assert.assertEquals("", "y", cv.getPropertyPath().toString());
+    Assert.assertEquals("", bean.intField1, cv.getInvalidValue());
+    Assert.assertEquals("", "intField1", cv.getPropertyPath().toString());
 
     // ensure DAG validation produces matching results
     DAG dag = new DAG();
@@ -353,7 +359,18 @@ public class DAGBuilderTest {
       Assert.assertEquals("", constraintViolations, e.getConstraintViolations());
     }
 
-    bean.y = 2;
+    try {
+      bean.intField1 = 3;
+      dag.validate();
+      Assert.fail("should throw ConstraintViolationException for isValidConfiguration");
+    } catch (ConstraintViolationException e) {
+      ConstraintViolation<?> cv2 = e.getConstraintViolations().iterator().next();
+      Assert.assertEquals("", false, cv2.getInvalidValue());
+      Assert.assertEquals("", "validConfiguration", cv2.getPropertyPath().toString());
+    }
+
+    bean.intField1 = 2;
+    bean.stringField1 = "malhar2";
     dag.validate();
 
   }
