@@ -47,7 +47,7 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
   }
 
   @Override
-  public void injectTuples(long windowId)
+  public void emitTuples(long windowId)
   {
     Object tuple;
     while ((tuple = this.externallyAddedTuples.poll()) != null) {
