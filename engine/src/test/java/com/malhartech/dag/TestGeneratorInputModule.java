@@ -60,6 +60,7 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
         remainingSleepTime -= spinMillis;
       }
       catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
       }
     }
     else if (outport.isConnected() && maxTuples != 0) {
