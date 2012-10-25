@@ -13,7 +13,7 @@ import java.util.List;
  */
 public class TestCountSink<T> extends TestSink<T>
 {
-  Integer numTuples = new Integer(0);
+  public  Integer numTuples = new Integer(0);
 
   /**
    *
