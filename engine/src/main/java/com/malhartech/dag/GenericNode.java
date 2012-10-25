@@ -7,10 +7,8 @@ package com.malhartech.dag;
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.api.Stats;
-import com.malhartech.api.Stats.StatsReporter;
 import com.malhartech.util.CircularBuffer;
 import java.util.*;
 import java.util.Map.Entry;
@@ -46,7 +44,7 @@ public class GenericNode extends Node<Operator>
   {
   }
 
-  class Reservoir extends CircularBuffer<Object> implements Sink, StatsReporter
+  class Reservoir extends CircularBuffer<Object> implements Sink
   {
     final Sink sink;
     private int count;
@@ -82,14 +80,6 @@ public class GenericNode extends Node<Operator>
 
       count += size;
       return null;
-    }
-
-    @Override
-    public Stats getStats(String id)
-    {
-      PortStats ps = new PortStats(id, count);
-      count = 0;
-      return ps;
     }
   }
 
@@ -325,9 +315,10 @@ public class GenericNode extends Node<Operator>
     super.reportStats(stats);
     ArrayList<Stats> ipstats = new ArrayList<Stats>();
     for (Entry<String, Reservoir> e: inputs.entrySet()) {
-      ipstats.add(e.getValue().getStats(e.getKey()));
+      ipstats.add(new PortStats(e.getKey(), e.getValue().count));
+      e.getValue().count = 0;
     }
 
-    stats.put("Input Ports", ipstats);
+    stats.put("INPUT_PORTS", ipstats);
   }
 }

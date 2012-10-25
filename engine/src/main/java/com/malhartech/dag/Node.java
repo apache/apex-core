@@ -33,11 +33,11 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public static final String INPUT = "input";
   public static final String OUTPUT = "output";
   public final String id;
-  protected final HashMap<String, StatsReporterSink<?>> outputs = new HashMap<String, StatsReporterSink<?>>();
+  protected final HashMap<String, CounterSink<?>> outputs = new HashMap<String, CounterSink<?>>();
   protected final int spinMillis = 10;
   protected final int bufferCapacity = 1024 * 1024;
   @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile StatsReporterSink[] sinks = StatsReporterSink.NO_SINKS;
+  protected volatile CounterSink[] sinks = CounterSink.NO_SINKS;
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
@@ -63,14 +63,17 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     if (outputPort != null) {
       outputPort.setSink(sink);
 
-      if (sink instanceof StatsReporter) {
-        outputs.put(port, (StatsReporterSink<?>)sink);
+      if (sink instanceof CounterSink) {
+        outputs.put(port, (CounterSink<?>)sink);
       }
       else if (sink == null) {
         outputs.remove(port);
       }
       else {
-        outputs.put(port, new StatsReporterSink()
+        /*
+         * if streams implemented CounterSink, this would not get called.
+         */
+        outputs.put(port, new CounterSink()
         {
           int count;
 
@@ -82,11 +85,17 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
           }
 
           @Override
-          public Stats getStats(String id)
+          public int getCount()
           {
-            PortStats ps = new PortStats(id, count);
+            return count;
+          }
+
+          @Override
+          public int resetCount()
+          {
+            int ret = count;
             count = 0;
-            return ps;
+            return ret;
           }
         });
       }
@@ -97,10 +106,10 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected void activateSinks()
   {
-    StatsReporterSink[] newSinks = new StatsReporterSink[outputs.size()];
+    CounterSink[] newSinks = new CounterSink[outputs.size()];
 
     int i = 0;
-    for (StatsReporterSink s: outputs.values()) {
+    for (CounterSink s: outputs.values()) {
       newSinks[i++] = s;
     }
 
@@ -109,7 +118,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   public void deactivateSinks()
   {
-    sinks = StatsReporterSink.NO_SINKS;
+    sinks = CounterSink.NO_SINKS;
     outputs.clear();
   }
   OperatorContext context;
@@ -202,20 +211,16 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     HashMap<String, Collection<Stats>> stats = new HashMap<String, Collection<Stats>>();
     reportStats(stats);
 
-    Stats operatorStats = new Stats()
-    {
-    };
-    context.report(0, 0L, windowId);
-//    generatedTupleCount = 0;
+    context.report(stats, windowId);
   }
 
   protected void reportStats(Map<String, Collection<Stats>> stats)
   {
     ArrayList<Stats> opstats = new ArrayList<Stats>();
-    for (Entry<String, StatsReporterSink<?>> e: outputs.entrySet()) {
-      opstats.add(e.getValue().getStats(e.getKey()));
+    for (Entry<String, CounterSink<?>> e: outputs.entrySet()) {
+      opstats.add(new PortStats(e.getKey(), e.getValue().resetCount()));
     }
 
-    stats.put("Output Ports", opstats);
+    stats.put("OUTPUT_PORTS", opstats);
   }
 }

@@ -10,5 +10,9 @@ package com.malhartech.api;
  */
 public interface AsyncInputOperator extends Operator
 {
+  /**
+   * Emit the tuples on output ports so that they are part of the stream for the window identified by windowId.
+   * @param windowId
+   */
   public void injectTuples(long windowId);
 }

@@ -6,12 +6,9 @@ package com.malhartech.dag;
 
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.api.Stats;
-import com.malhartech.api.Stats.StatsReporter;
 import com.malhartech.api.SyncInputOperator;
 import com.malhartech.dag.SyncInputNode.SyncSink;
 import com.malhartech.util.CircularBuffer;
-import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +40,7 @@ public class SyncInputNode extends InputNode<SyncInputOperator>
       retvalue = super.connect(id, sink);
     }
     else {
-      retvalue = super.connect(id, sink == null ? null : new SyncSink(id, sink, bufferCapacity));
+      retvalue = super.connect(id, sink == null ? null : new SyncSink(sink, bufferCapacity));
     }
 
     return retvalue;
@@ -64,7 +61,7 @@ public class SyncInputNode extends InputNode<SyncInputOperator>
     /*
      * Casting is costly, so do it on rare occassions and save the performant regions.
      */
-    if (sinks == StatsReporterSink.NO_SINKS) {
+    if (sinks == CounterSink.NO_SINKS) {
       syncsinks = new SyncSink[0];
     }
     else {
@@ -79,6 +76,7 @@ public class SyncInputNode extends InputNode<SyncInputOperator>
   @Override
   public void deactivate()
   {
+    logger.debug("interrupting {}", syncThread);
     syncThread.interrupt();
     syncThread = null;
     super.deactivate();
@@ -90,15 +88,14 @@ public class SyncInputNode extends InputNode<SyncInputOperator>
     for (int i = syncsinks.length; i-- > 0;) {
       syncsinks[i].sweep();
     }
-    Thread.sleep(spinMillis); // should be removed
   }
 
-  class SyncSink extends CircularBuffer<Object> implements StatsReporterSink<Object>
+  class SyncSink extends CircularBuffer<Object> implements CounterSink<Object>
   {
     final Sink sink;
     int count;
 
-    public SyncSink(String id, Sink sink, int buffersize)
+    public SyncSink(Sink sink, int buffersize)
     {
       super(buffersize);
       this.sink = sink;
@@ -125,11 +122,18 @@ public class SyncInputNode extends InputNode<SyncInputOperator>
     }
 
     @Override
-    public Stats getStats(String id)
+    public int getCount()
     {
-      PortStats ps = new PortStats(id, count);
-      count = 0;
-      return ps;
+      return count;
     }
+
+    @Override
+    public int resetCount()
+    {
+      int ret = count;
+      count = 0;
+      return ret;
+    }
+
   }
 }
