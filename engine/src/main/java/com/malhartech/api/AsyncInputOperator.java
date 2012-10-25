@@ -10,5 +10,9 @@ package com.malhartech.api;
  */
 public interface AsyncInputOperator extends Operator
 {
+  /**
+   * Called by the container to allow the operator to emit collected input to the output port(s).
+   * @param windowId
+   */
   public void injectTuples(long windowId);
 }
