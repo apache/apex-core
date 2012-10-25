@@ -111,7 +111,7 @@ public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR
               generatedTuples -= cs.getCount();
             }
 
-            injectTuples();
+            emitTuples();
 
             for (CounterSink cs: sinks) {
               generatedTuples += cs.getCount();
@@ -139,5 +139,5 @@ public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR
     }
   }
 
-  protected abstract void injectTuples() throws InterruptedException;
+  protected abstract void emitTuples() throws InterruptedException;
 }

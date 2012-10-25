@@ -83,7 +83,7 @@ public class SyncInputNode extends InputNode<SyncInputOperator>
   }
 
   @Override
-  protected final void injectTuples() throws InterruptedException
+  protected final void emitTuples() throws InterruptedException
   {
     for (int i = syncsinks.length; i-- > 0;) {
       syncsinks[i].sweep();
