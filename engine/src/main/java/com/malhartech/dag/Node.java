@@ -61,19 +61,19 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     OutputPort outputPort = descriptor.outputPorts.get(port);
     if (outputPort != null) {
-      outputPort.setSink(sink);
-
       if (sink instanceof CounterSink) {
+        outputPort.setSink(sink);
         outputs.put(port, (CounterSink<?>)sink);
       }
       else if (sink == null) {
+        outputPort.setSink(null);
         outputs.remove(port);
       }
       else {
         /*
          * if streams implemented CounterSink, this would not get called.
          */
-        outputs.put(port, new CounterSink()
+        CounterSink cs =  new CounterSink()
         {
           int count;
 
@@ -97,7 +97,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
             count = 0;
             return ret;
           }
-        });
+        };
+        outputPort.setSink(cs);
+        outputs.put(port, cs);
       }
     }
   }
