@@ -11,22 +11,20 @@ import java.util.List;
 /**
  * A sink implementation to collect expected test results.
  */
-public class TestCountSink<T> extends TestSink<T>
+public class TestCountAndLastTupleSink<T> extends TestCountSink<T>
 {
-  public  int count = 0;
-
-
-
+  public  Object tuple = null;
   /**
    *
    * @param payload
    */
   @Override
-  public void process(T payload)
+  public void process(T tuple)
   {
-    if (payload instanceof Tuple) {
+    if (tuple instanceof Tuple) {
     }
     else {
+      this.tuple = tuple;
       count++;
     }
   }
