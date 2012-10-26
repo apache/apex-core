@@ -274,9 +274,9 @@ public class PhysicalPlan {
       boolean upstreamDeployed = true;
       boolean isSingleNodeInstance = true;
       for (StreamDecl s : n.getInputStreams().values()) {
-        if (s.getSource() != null && !inlineGroups.containsKey(s.getSource().getOperator())) {
+        if (s.getSource() != null && !inlineGroups.containsKey(s.getSource().getOperatorWrapper())) {
           pendingNodes.push(n);
-          pendingNodes.push(s.getSource().getOperator());
+          pendingNodes.push(s.getSource().getOperatorWrapper());
           upstreamDeployed = false;
           break;
         }
@@ -300,7 +300,7 @@ public class PhysicalPlan {
           for (StreamDecl s : n.getInputStreams().values()) {
             if (s.isInline()) {
               // if stream is marked inline, join the upstream operators
-              Set<PTOperator> inlineNodes = inlineGroups.get(s.getSource().getOperator());
+              Set<PTOperator> inlineNodes = inlineGroups.get(s.getSource().getOperatorWrapper());
               // empty set for partitioned upstream node
               if (!inlineNodes.isEmpty()) {
                 // update group index for each of the member operators
@@ -371,7 +371,7 @@ public class PhysicalPlan {
       // (can be multiple with partitioning or load balancing)
       StreamDecl streamDecl = inputEntry.getValue();
       if (streamDecl.getSource() != null) {
-        List<PTOperator> upstreamNodes = deployedOperators.get(streamDecl.getSource().getOperator());
+        List<PTOperator> upstreamNodes = deployedOperators.get(streamDecl.getSource().getOperatorWrapper());
         for (PTOperator upNode : upstreamNodes) {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
@@ -429,7 +429,7 @@ public class PhysicalPlan {
   protected boolean isDownStreamInline(PTOutput output) {
     StreamDecl logicalStream = output.logicalStream;
     for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
-      for (PTOperator downStreamNode : getOperators(downStreamPort.getOperator())) {
+      for (PTOperator downStreamNode : getOperators(downStreamPort.getOperatorWrapper())) {
         if (output.source.container != downStreamNode.container) {
             return false;
         }

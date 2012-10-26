@@ -16,37 +16,41 @@ import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
+import com.malhartech.api.Context;
+import com.malhartech.api.Context.SerializableAttributeMap;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Tuple;
-import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
-import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
+import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
+import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 
 public class StreamingContainerManagerTest {
 
   @Test
-  public void testNodeDeployInfoSerialization() throws Exception {
-    NodeDeployInfo ndi = new NodeDeployInfo();
+  public void testOperatorDeployInfoSerialization() throws Exception {
+    OperatorDeployInfo ndi = new OperatorDeployInfo();
     ndi.declaredId = "node1";
     ndi.id ="1";
+    ndi.contextAttributes = new SerializableAttributeMap();
+    ndi.contextAttributes.attr(Context.INPUT_PORT_BUFFER_SIZE).set(100);
 
-    NodeDeployInfo.NodeInputDeployInfo input = new NodeDeployInfo.NodeInputDeployInfo();
+    OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();
     input.declaredStreamId = "streamToNode";
     input.portName = "inputPortNameOnNode";
     input.sourceNodeId = "sourceNodeId";
 
-    ndi.inputs = new ArrayList<NodeDeployInfo.NodeInputDeployInfo>();
+    ndi.inputs = new ArrayList<OperatorDeployInfo.InputDeployInfo>();
     ndi.inputs.add(input);
 
-    NodeDeployInfo.NodeOutputDeployInfo output = new NodeDeployInfo.NodeOutputDeployInfo();
+    OperatorDeployInfo.OutputDeployInfo output = new OperatorDeployInfo.OutputDeployInfo();
     output.declaredStreamId = "streamFromNode";
     output.portName = "outputPortNameOnNode";
 
-    ndi.outputs = new ArrayList<NodeDeployInfo.NodeOutputDeployInfo>();
+    ndi.outputs = new ArrayList<OperatorDeployInfo.OutputDeployInfo>();
     ndi.outputs.add(output);
 
     StreamingContainerContext scc = new StreamingContainerContext();
@@ -63,11 +67,15 @@ public class StreamingContainerManagerTest {
 
     Assert.assertNotNull(clone.nodeList);
     Assert.assertEquals(1, clone.nodeList.size());
-    Assert.assertEquals("node1", clone.nodeList.get(0).declaredId);
+    OperatorDeployInfo ndiClone = clone.nodeList.get(0);
+    Assert.assertEquals(ndi.declaredId, ndiClone.declaredId);
 
     String nodeToString = ndi.toString();
     Assert.assertTrue(nodeToString.contains(input.portName));
     Assert.assertTrue(nodeToString.contains(output.portName));
+
+    Assert.assertEquals("contextAttributes " + ndiClone.contextAttributes, Integer.valueOf(100), ndiClone.contextAttributes.attr(Context.INPUT_PORT_BUFFER_SIZE).get());
+
   }
 
   @Test
@@ -98,13 +106,13 @@ public class StreamingContainerManagerTest {
     // node1 needs to be deployed first, regardless in which order they were given
     StreamingContainerContext c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("number operators assigned to c1", 1, c1.nodeList.size());
-    NodeDeployInfo node1DI = getNodeDeployInfo(c1, dag.getOperatorWrapper(node1));
+    OperatorDeployInfo node1DI = getNodeDeployInfo(c1, dag.getOperatorWrapper(node1));
     Assert.assertNotNull(node1.getName() + " assigned to " + container1Id, node1DI);
     Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
     Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
     Assert.assertNotNull("serializedNode " + node1DI.declaredId, node1DI.serializedNode);
 
-    NodeOutputDeployInfo c1n1n2 = node1DI.outputs.get(0);
+    OutputDeployInfo c1n1n2 = node1DI.outputs.get(0);
     Assert.assertNotNull("stream connection for container1", c1n1n2);
     Assert.assertEquals("stream connection for container1", "n1n2", c1n1n2.declaredStreamId);
     Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1n1n2.bufferServerHost);
@@ -113,13 +121,13 @@ public class StreamingContainerManagerTest {
 
     StreamingContainerContext c2 = dnm.assignContainerForTest(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002));
     Assert.assertEquals("number operators assigned to container", 2, c2.nodeList.size());
-    NodeDeployInfo node2DI = getNodeDeployInfo(c2, dag.getOperatorWrapper(node2));
-    NodeDeployInfo node3DI = getNodeDeployInfo(c2, dag.getOperatorWrapper(node3));
+    OperatorDeployInfo node2DI = getNodeDeployInfo(c2, dag.getOperatorWrapper(node2));
+    OperatorDeployInfo node3DI = getNodeDeployInfo(c2, dag.getOperatorWrapper(node3));
     Assert.assertNotNull(node2.getName() + " assigned to " + container2Id, node2DI);
     Assert.assertNotNull(node3.getName() + " assigned to " + container2Id, node3DI);
 
     // buffer server input node2 from node1
-    NodeInputDeployInfo c2n1n2 = getInputDeployInfo(node2DI, "n1n2");
+    InputDeployInfo c2n1n2 = getInputDeployInfo(node2DI, "n1n2");
     Assert.assertNotNull("stream connection for container2", c2n1n2);
     Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c2n1n2.bufferServerHost);
     Assert.assertEquals("stream connects to upstream port", 9001, c2n1n2.bufferServerPort);
@@ -129,7 +137,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("sourcePortName " + c2n1n2, GenericTestModule.OPORT1, c2n1n2.sourcePortName);
 
     // inline input node3 from node2
-    NodeInputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");
+    InputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");
     Assert.assertNotNull("input " + c2n3In, node2DI);
     Assert.assertEquals("portName " + c2n3In, GenericTestModule.IPORT1, c2n3In.portName);
     Assert.assertNotNull("stream connection for container2", c2n3In);
@@ -170,11 +178,11 @@ public class StreamingContainerManagerTest {
       Assert.assertTrue(node2.getName() + " assigned to " + containerId, containsNodeContext(cc, dag.getOperatorWrapper(node2)));
 
       // n1n2 in, mergeStream out
-      NodeDeployInfo ndi = cc.nodeList.get(0);
+      OperatorDeployInfo ndi = cc.nodeList.get(0);
       Assert.assertEquals("inputs " + ndi, 1, ndi.inputs.size());
       Assert.assertEquals("outputs " + ndi, 1, ndi.outputs.size());
 
-      NodeInputDeployInfo nidi = ndi.inputs.get(0);
+      InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
       Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], nidi.partitionKeys.get(0)));
       Assert.assertEquals("serde " + nidi, TestStaticPartitioningSerDe.class.getName(), nidi.serDeClassName);
@@ -185,11 +193,11 @@ public class StreamingContainerManagerTest {
     StreamingContainerContext cmerge = dnm.assignContainerForTest(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001));
     Assert.assertEquals("number operators assigned to " + mergeContainerId, 1, cmerge.nodeList.size());
 
-    NodeDeployInfo mergeNodeDI = getNodeDeployInfo(cmerge,  dag.getOperatorWrapper(mergeNode));
+    OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cmerge,  dag.getOperatorWrapper(mergeNode));
     Assert.assertNotNull(mergeNode.getName() + " assigned to " + container1Id, mergeNodeDI);
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
     List<String> sourceNodeIds = new ArrayList<String>();
-    for (NodeInputDeployInfo nidi : mergeNodeDI.inputs) {
+    for (InputDeployInfo nidi : mergeNodeDI.inputs) {
       Assert.assertEquals("streamName " + nidi, mergeStream.getId(), nidi.declaredStreamId);
       Assert.assertEquals("portName " + nidi, dag.getOperatorWrapper(mergeNode).getInputPortMeta(mergeNode.inport1).getPortName(), nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
@@ -252,8 +260,8 @@ public class StreamingContainerManagerTest {
     return getNodeDeployInfo(scc, nodeConf) != null;
   }
 
-  private static NodeDeployInfo getNodeDeployInfo(StreamingContainerContext scc, OperatorWrapper nodeConf) {
-    for (NodeDeployInfo ndi : scc.nodeList) {
+  private static OperatorDeployInfo getNodeDeployInfo(StreamingContainerContext scc, OperatorWrapper nodeConf) {
+    for (OperatorDeployInfo ndi : scc.nodeList) {
       if (nodeConf.getId().equals(ndi.declaredId)) {
         return ndi;
       }
@@ -261,8 +269,8 @@ public class StreamingContainerManagerTest {
     return null;
   }
 
-  private static NodeInputDeployInfo getInputDeployInfo(NodeDeployInfo ndi, String streamId) {
-    for (NodeInputDeployInfo in : ndi.inputs) {
+  private static InputDeployInfo getInputDeployInfo(OperatorDeployInfo ndi, String streamId) {
+    for (InputDeployInfo in : ndi.inputs) {
       if (streamId.equals(in.declaredStreamId)) {
         return in;
       }

@@ -358,13 +358,13 @@ public class StramChild
     }
   }
 
-  private synchronized void undeploy(List<NodeDeployInfo> nodeList)
+  private synchronized void undeploy(List<OperatorDeployInfo> nodeList)
   {
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
     HashMap<String, Node> toUndeploy = new HashMap<String, Node>();
-    for (NodeDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi: nodeList) {
       Node node = nodes.get(ndi.id);
       if (node == null) {
         throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
@@ -377,7 +377,7 @@ public class StramChild
       }
     }
 
-    for (NodeDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi: nodeList) {
       if (activeNodes.containsKey(ndi.id)) {
         nodes.get(ndi.id).deactivate();
         activeNodes.remove(ndi.id);
@@ -555,13 +555,13 @@ public class StramChild
     }
   }
 
-  private synchronized void deploy(List<NodeDeployInfo> nodeList) throws Exception
+  private synchronized void deploy(List<OperatorDeployInfo> nodeList) throws Exception
   {
     /**
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
      */
     HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
-    for (NodeDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi: nodeList) {
       if (nodes.containsKey(ndi.id)) {
         throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
       }
@@ -575,11 +575,11 @@ public class StramChild
     activate(nodeList);
   }
 
-  private void deployNodes(List<NodeDeployInfo> nodeList) throws Exception
+  private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
     OperatorSerDe moduleSerDe = StramUtils.getNodeSerDe(null);
     HdfsBackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
-    for (NodeDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi: nodeList) {
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
@@ -608,7 +608,7 @@ public class StramChild
     }
   }
 
-  private void deployOutputStreams(List<NodeDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams) throws Exception
+  private void deployOutputStreams(List<OperatorDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams) throws Exception
   {
     /**
      * We proceed to deploy all the output streams.
@@ -617,10 +617,10 @@ public class StramChild
      * But the BufferOutputStreams which share the output port with other inline streams are mapped against
      * the Buffer Server port to avoid collision and at the same time keep track of these buffer streams.
      */
-    for (NodeDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi: nodeList) {
       Node node = nodes.get(ndi.id);
 
-      for (NodeDeployInfo.NodeOutputDeployInfo nodi: ndi.outputs) {
+      for (OperatorDeployInfo.OutputDeployInfo nodi: ndi.outputs) {
         String sourceIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
         String sinkIdentifier;
 
@@ -745,11 +745,11 @@ public class StramChild
     }
   }
 
-  private void deployInputStreams(List<NodeDeployInfo> nodeList) throws Exception
+  private void deployInputStreams(List<OperatorDeployInfo> nodeList) throws Exception
   {
     // collect any input operators along with their smallest window id,
     // those are subsequently used to setup the window generator
-    ArrayList<NodeDeployInfo> inputNodes = new ArrayList<NodeDeployInfo>();
+    ArrayList<OperatorDeployInfo> inputNodes = new ArrayList<OperatorDeployInfo>();
     long smallestWindowId = Long.MAX_VALUE;
 
     /**
@@ -759,7 +759,7 @@ public class StramChild
      * to create the stream. We need to track this stream along with other streams, and many such streams may exist,
      * we hash them against buffer server info as we did for outputs but throw in the sinkid in the mix as well.
      */
-    for (NodeDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi: nodeList) {
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         /**
          * This has to be AbstractInputNode, so let's hook the WindowGenerator to it.
@@ -777,7 +777,7 @@ public class StramChild
       else {
         Node node = nodes.get(ndi.id);
 
-        for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
+        for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
           String sourceIdentifier = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
@@ -896,7 +896,7 @@ public class StramChild
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestWindowId);
-      for (NodeDeployInfo ndi: inputNodes) {
+      for (OperatorDeployInfo ndi: inputNodes) {
         generators.put(ndi.id, windowGenerator);
 
         Node node = nodes.get(ndi.id);
@@ -935,7 +935,7 @@ public class StramChild
   }
 
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
-  public synchronized void activate(List<NodeDeployInfo> nodeList)
+  public synchronized void activate(List<OperatorDeployInfo> nodeList)
   {
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
@@ -945,7 +945,7 @@ public class StramChild
     }
 
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
-    for (final NodeDeployInfo ndi: nodeList) {
+    for (final OperatorDeployInfo ndi: nodeList) {
       final Node node = nodes.get(ndi.id);
       assert (!activeNodes.containsKey(ndi.id));
       new Thread(node.id)
@@ -1004,9 +1004,9 @@ public class StramChild
     }
   }
 
-  private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, NodeDeployInfo ndi)
+  private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, OperatorDeployInfo ndi)
   {
-    for (NodeDeployInfo.NodeInputDeployInfo nidi: ndi.inputs) {
+    for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
       String source = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
       /**

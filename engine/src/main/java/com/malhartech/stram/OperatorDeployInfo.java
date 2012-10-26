@@ -6,22 +6,23 @@ package com.malhartech.stram;
 
 import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
+import com.malhartech.api.Context;
+
 /**
- * Node deployment info passed from master to container as part of initialization
- * or incremental undeploy/deploy during topology recovery, balancing or other modification.
+ * Operator deployment info passed from master to container as part of initialization
+ * or incremental undeploy/deploy during recovery, balancing or other modification.
  */
-public class NodeDeployInfo implements Serializable
+public class OperatorDeployInfo implements Serializable
 {
   private static final long serialVersionUID = 201208271956L;
 
   /**
    * Input to node, either inline or from socket stream.
    */
-  public static class NodeInputDeployInfo implements Serializable
+  public static class InputDeployInfo implements Serializable
   {
     private static final long serialVersionUID = 201208271957L;
 
@@ -74,6 +75,11 @@ public class NodeDeployInfo implements Serializable
      */
     public List<byte[]> partitionKeys;
 
+    /**
+     * Context attributes for input port
+     */
+    public Context.SerializableAttributeMap contextAttributes;
+
     @Override
     public String toString()
     {
@@ -92,7 +98,7 @@ public class NodeDeployInfo implements Serializable
    * For inline streams, input info will have source node for wiring.
    * For buffer server output, node id/port will be used as publisher id and referenced by subscribers.
    */
-  public static class NodeOutputDeployInfo implements Serializable
+  public static class OutputDeployInfo implements Serializable
   {
     private static final long serialVersionUID = 201208271958L;
 
@@ -122,6 +128,11 @@ public class NodeDeployInfo implements Serializable
      */
     public String serDeClassName;
 
+    /**
+     * Context attributes for output port
+     */
+    public Context.SerializableAttributeMap contextAttributes;
+
     @Override
     public String toString()
     {
@@ -133,9 +144,6 @@ public class NodeDeployInfo implements Serializable
     }
 
   }
-
-
-//  public Map<String, String> properties;
 
   /**
    * Serialized state of the node. Either by serializing the declared node object or checkpoint state.
@@ -162,12 +170,18 @@ public class NodeDeployInfo implements Serializable
   /**
    * Inputs to node, either from socket stream or inline from other node(s).
    */
-  public List<NodeInputDeployInfo> inputs;
+  public List<InputDeployInfo> inputs;
 
   /**
    * Outputs from node, either to socket stream or inline to other node(s).
    */
-  public List<NodeOutputDeployInfo> outputs;
+  public List<OutputDeployInfo> outputs;
+
+  /**
+   * Context attributes for operator
+   */
+  public Context.SerializableAttributeMap contextAttributes;
+
 
   /**
    *

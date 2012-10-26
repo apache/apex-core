@@ -26,8 +26,8 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.OperatorSerDe;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
-import com.malhartech.stram.NodeDeployInfo.NodeInputDeployInfo;
-import com.malhartech.stram.NodeDeployInfo.NodeOutputDeployInfo;
+import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
+import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTComponent;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
@@ -222,21 +222,21 @@ public class StreamingContainerManager
    * <br>
    * @param dnodeId
    * @param nodeDecl
-   * @return {@link com.malhartech.stram.NodeDeployInfo}
+   * @return {@link com.malhartech.stram.OperatorDeployInfo}
    *
    */
-  private NodeDeployInfo createModuleDeployInfo(String dnodeId, OperatorWrapper operator)
+  private OperatorDeployInfo createModuleDeployInfo(String dnodeId, OperatorWrapper operator)
   {
-    NodeDeployInfo ndi = new NodeDeployInfo();
+    OperatorDeployInfo ndi = new OperatorDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       // populate custom properties
       //Module node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
-      this.nodeSerDe.write(operator.getModule(), os);
+      this.nodeSerDe.write(operator.getOperator(), os);
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getModule().getClass() + ")", e);
+      throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getOperator().getClass() + ")", e);
     }
 //    ndi.properties = operator.getnodeDecl.getProperties();
     ndi.declaredId = operator.getId();
@@ -282,7 +282,7 @@ public class StreamingContainerManager
     }
     StreamingContainerContext initCtx = createStramChildInitContext(container.operators, container, checkpoints);
     cdr.setNodes(initCtx.nodeList);
-    initCtx.nodeList = new ArrayList<NodeDeployInfo>(0);
+    initCtx.nodeList = new ArrayList<OperatorDeployInfo>(0);
 
     StramChildAgent sca = new StramChildAgent(container, initCtx);
     containers.put(containerId, sca);
@@ -303,24 +303,24 @@ public class StreamingContainerManager
     scc.setCheckpointDfsPath(this.checkpointFsPath);
 
 //    List<StreamPConf> streams = new ArrayList<StreamPConf>();
-    Map<NodeDeployInfo, PTOperator> nodes = new LinkedHashMap<NodeDeployInfo, PTOperator>();
-    Map<String, NodeOutputDeployInfo> publishers = new LinkedHashMap<String, NodeOutputDeployInfo>();
+    Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
+    Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
 
     for (PTOperator node : deployNodes) {
-      NodeDeployInfo ndi = createModuleDeployInfo(node.id, node.getLogicalNode());
+      OperatorDeployInfo ndi = createModuleDeployInfo(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
       if (checkpointWindowId != null) {
         LOG.debug("Node {} has checkpoint state {}", node.id, checkpointWindowId);
         ndi.checkpointWindowId = checkpointWindowId;
       }
       nodes.put(ndi, node);
-      ndi.inputs = new ArrayList<NodeInputDeployInfo>(node.inputs.size());
-      ndi.outputs = new ArrayList<NodeOutputDeployInfo>(node.outputs.size());
+      ndi.inputs = new ArrayList<InputDeployInfo>(node.inputs.size());
+      ndi.outputs = new ArrayList<OutputDeployInfo>(node.outputs.size());
 
       for (PTOutput out : node.outputs) {
         final StreamDecl streamDecl = out.logicalStream;
         // buffer server or inline publisher
-        NodeOutputDeployInfo portInfo = new NodeOutputDeployInfo();
+        OutputDeployInfo portInfo = new OutputDeployInfo();
         portInfo.declaredStreamId = streamDecl.getId();
         portInfo.portName = out.portName;
 
@@ -342,8 +342,8 @@ public class StreamingContainerManager
 
     // after we know all publishers within container, determine subscribers
 
-    for (Map.Entry<NodeDeployInfo, PTOperator> nodeEntry : nodes.entrySet()) {
-      NodeDeployInfo ndi = nodeEntry.getKey();
+    for (Map.Entry<OperatorDeployInfo, PTOperator> nodeEntry : nodes.entrySet()) {
+      OperatorDeployInfo ndi = nodeEntry.getKey();
       PTOperator node = nodeEntry.getValue();
       for (PTInput in : node.inputs) {
         final StreamDecl streamDecl = in.logicalStream;
@@ -353,7 +353,7 @@ public class StreamingContainerManager
         }
         PTComponent sourceNode = in.source;
 
-        NodeInputDeployInfo inputInfo = new NodeInputDeployInfo();
+        InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamDecl.getId();
         inputInfo.portName = in.portName;
         inputInfo.sourceNodeId = sourceNode.id;
@@ -364,7 +364,7 @@ public class StreamingContainerManager
 
         if (streamDecl.isInline() && sourceNode.container == node.container) {
           // inline input (both operators in same container and inline hint set)
-          NodeOutputDeployInfo outputInfo = publishers.get(sourceNode.id + "/" + streamDecl.getId());
+          OutputDeployInfo outputInfo = publishers.get(sourceNode.id + "/" + streamDecl.getId());
           if (outputInfo == null) {
             throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
           }
@@ -386,9 +386,9 @@ public class StreamingContainerManager
       }
     }
 
-    scc.nodeList = new ArrayList<NodeDeployInfo>(nodes.keySet());
+    scc.nodeList = new ArrayList<OperatorDeployInfo>(nodes.keySet());
 
-    for (Map.Entry<NodeDeployInfo, PTOperator> e : nodes.entrySet()) {
+    for (Map.Entry<OperatorDeployInfo, PTOperator> e : nodes.entrySet()) {
       this.nodeStatusMap.put(e.getKey().id, new NodeStatus(container, e.getValue()));
     }
 
@@ -505,7 +505,7 @@ public class StreamingContainerManager
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : operator.outputs) {
       for (DAG.InputPortMeta targetPort : out.logicalStream.getSinks()) {
-        OperatorWrapper lDownNode = targetPort.getOperator();
+        OperatorWrapper lDownNode = targetPort.getOperatorWrapper();
         if (lDownNode != null) {
           List<PTOperator> downNodes = plan.getOperators(lDownNode);
           for (PTOperator downNode : downNodes) {

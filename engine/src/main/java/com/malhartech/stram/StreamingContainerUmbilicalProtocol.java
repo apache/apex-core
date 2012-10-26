@@ -118,7 +118,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * The list of operators to initially deploy in the container.
      */
-    public List<NodeDeployInfo> nodeList;
+    public List<OperatorDeployInfo> nodeList;
 
     /**
      * How frequently should operators heartbeat to stram. Recommended setting is
@@ -419,12 +419,12 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * Set when operators need to be removed
      */
-    public List<NodeDeployInfo> undeployRequest;
+    public List<OperatorDeployInfo> undeployRequest;
 
     /**
      * Set when new operators need to be deployed
      */
-    public List<NodeDeployInfo> deployRequest;
+    public List<OperatorDeployInfo> deployRequest;
 
   }
 

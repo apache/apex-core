@@ -4,6 +4,8 @@
  */
 package com.malhartech.api;
 
+import io.netty.util.AttributeKey;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Externalizable;
@@ -40,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.Context.SerializableAttributeMap;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.dag.Operators;
@@ -134,13 +137,14 @@ public class DAG implements Serializable, DAGConstants
   public final class InputPortMeta implements Serializable
   {
     private static final long serialVersionUID = 1L;
-    private OperatorWrapper node;
+    private OperatorWrapper operatorWrapper;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
+    private final SerializableAttributeMap attributes = new SerializableAttributeMap();
 
-    public OperatorWrapper getOperator()
+    public OperatorWrapper getOperatorWrapper()
     {
-      return node;
+      return operatorWrapper;
     }
 
     public String getPortName()
@@ -152,7 +156,7 @@ public class DAG implements Serializable, DAGConstants
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("node", this.node).
+              append("operator", this.operatorWrapper).
               append("portAnnotation", this.portAnnotation).
               append("field", this.fieldName).
               toString();
@@ -162,13 +166,14 @@ public class DAG implements Serializable, DAGConstants
   public final class OutputPortMeta implements Serializable
   {
     private static final long serialVersionUID = 1L;
-    private OperatorWrapper node;
+    private OperatorWrapper operatorWrapper;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
+    private final SerializableAttributeMap attributes = new SerializableAttributeMap();
 
-    public OperatorWrapper getOperator()
+    public OperatorWrapper getOperatorWrapper()
     {
-      return node;
+      return operatorWrapper;
     }
 
     public String getPortName()
@@ -180,7 +185,7 @@ public class DAG implements Serializable, DAGConstants
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("node", this.node).
+              append("operator", this.operatorWrapper).
               append("portAnnotation", this.portAnnotation).
               append("field", this.fieldName).
               toString();
@@ -272,17 +277,20 @@ public class DAG implements Serializable, DAGConstants
       }
       sinks.add(portMeta);
       op.inputStreams.put(portMeta, this);
-      rootNodes.remove(portMeta.node);
+      rootNodes.remove(portMeta.operatorWrapper);
       return this;
     }
   }
 
+  /**
+   * Operator meta object. Intended for internal use.
+   */
   public final class OperatorWrapper implements Serializable
   {
     private static final long serialVersionUID = 1L;
     private final Map<InputPortMeta, StreamDecl> inputStreams = new HashMap<InputPortMeta, StreamDecl>();
     private final Map<OutputPortMeta, StreamDecl> outputStreams = new HashMap<OutputPortMeta, StreamDecl>();
-    //    private final Map<String, String> properties = new HashMap<String, String>();
+    private final SerializableAttributeMap attributes = new SerializableAttributeMap();
     private final ExternalizableModule moduleHolder;
     private final String id;
     private transient Integer nindex; // for cycle detection
@@ -309,7 +317,7 @@ public class DAG implements Serializable, DAGConstants
       public void addInputPort(InputPort<?> portObject, Field field, InputPortFieldAnnotation a)
       {
         InputPortMeta metaPort = new InputPortMeta();
-        metaPort.node = OperatorWrapper.this;
+        metaPort.operatorWrapper = OperatorWrapper.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
         inPortMap.put(portObject, metaPort);
@@ -319,7 +327,7 @@ public class DAG implements Serializable, DAGConstants
       public void addOutputPort(OutputPort<?> portObject, Field field, OutputPortFieldAnnotation a)
       {
         OutputPortMeta metaPort = new OutputPortMeta();
-        metaPort.node = OperatorWrapper.this;
+        metaPort.operatorWrapper = OperatorWrapper.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
         outPortMap.put(portObject, metaPort);
@@ -334,7 +342,7 @@ public class DAG implements Serializable, DAGConstants
     {
       if (this.portMapping == null) {
         this.portMapping = new PortMapping();
-        Operators.describe(this.getModule(), portMapping);
+        Operators.describe(this.getOperator(), portMapping);
       }
       return portMapping;
     }
@@ -359,7 +367,7 @@ public class DAG implements Serializable, DAGConstants
       return this.outputStreams;
     }
 
-    public Operator getModule()
+    public Operator getOperator()
     {
       return this.moduleHolder.module;
     }
@@ -369,7 +377,7 @@ public class DAG implements Serializable, DAGConstants
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
               append("id", this.id).
-              append("module", this.getModule().getClass().getName()).
+              append("operator", this.getOperator().getClass().getSimpleName()).
               toString();
     }
   }
@@ -465,6 +473,22 @@ public class DAG implements Serializable, DAGConstants
     return this.streams.get(id);
   }
 
+  /**
+   * Set attribute for the operator. For valid attributes, see {@ link Context}
+   * @param operator
+   */
+  public SerializableAttributeMap getContextAttributes(Operator operator) {
+    return getOperatorWrapper(operator).attributes;
+  }
+
+  public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, AttributeKey<T> key, T value) {
+    getOperatorWrapper(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
+  }
+
+  public <T> void setInputPortAttribute(Operator.InputPort<?> port, AttributeKey<T> key, T value) {
+    getOperatorWrapper(port.getOperator()).getPortMapping().inPortMap.get(port).attributes.attr(key).set(value);
+  }
+
   public List<OperatorWrapper> getRootOperators()
   {
     return Collections.unmodifiableList(this.rootNodes);
@@ -535,7 +559,7 @@ public class DAG implements Serializable, DAGConstants
   {
     Set<String> classNames = new HashSet<String>();
     for (OperatorWrapper n: this.nodes.values()) {
-      String className = n.getModule().getClass().getName();
+      String className = n.getOperator().getClass().getName();
       if (className != null) {
         classNames.add(className);
       }
@@ -563,7 +587,7 @@ public class DAG implements Serializable, DAGConstants
       n.nindex = null;
       n.lowlink = null;
       // validate configuration
-      Set<ConstraintViolation<Operator>> constraintViolations = validator.validate(n.getModule());
+      Set<ConstraintViolation<Operator>> constraintViolations = validator.validate(n.getOperator());
       if (!constraintViolations.isEmpty()) {
         Set<ConstraintViolation<?>> copySet = new HashSet<ConstraintViolation<?>>(constraintViolations.size());
         // workaround bug in ConstraintViolationException constructor
@@ -629,7 +653,7 @@ public class DAG implements Serializable, DAGConstants
     // depth first successors traversal
     for (StreamDecl downStream: n.outputStreams.values()) {
       for (InputPortMeta sink: downStream.sinks) {
-        OperatorWrapper successor = sink.node;
+        OperatorWrapper successor = sink.getOperatorWrapper();
         if (successor == null) {
           continue;
         }

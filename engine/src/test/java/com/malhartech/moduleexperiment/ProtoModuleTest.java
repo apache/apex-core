@@ -211,103 +211,12 @@ public class ProtoModuleTest {
     LOG.debug("dag bytes size: " + dagBytes.length);
     DAG clonedDag = DAG.read(new ByteArrayInputStream(dagBytes));
     Assert.assertEquals(dag.getAllOperators().size(), clonedDag.getAllOperators().size());
-    Operator clonedModule = clonedDag.getOperatorWrapper("operator1").getModule();
+    Operator clonedModule = clonedDag.getOperatorWrapper("operator1").getOperator();
     Assert.assertNotNull("", clonedModule);
     Assert.assertEquals(""+m1.getMyConfigField(), m1.getMyConfigField(), ((MyProtoModule<?>)clonedModule).getMyConfigField());
     clonedDag.validate();
   }
 
-
-  public static class Quotient extends BaseOperator
-  {
-    @InputPortFieldAnnotation(name="numerator")
-    final public transient InputPort<HashMap<String, Number>> inportNumerator = new DefaultInputPort<HashMap<String, Number>>(this) {
-      @Override
-      final public void process(HashMap<String, Number> payload) {
-      }
-    };
-
-    @InputPortFieldAnnotation(name="denominator")
-    final public transient InputPort<HashMap<String, Number>> inportDenominator = new DefaultInputPort<HashMap<String, Number>>(this) {
-      @Override
-      final public void process(HashMap<String, Number> payload) {
-      }
-    };
-
-    // Note that when not extending DefaultOutputPort we won't have the type info at runtime
-    @OutputPortFieldAnnotation(name="quotient")
-    final transient DefaultOutputPort<HashMap<String, Number> > outportQuotient = new DefaultOutputPort<HashMap<String, Number>>(this) {};
-
-    /**
-     * Multiplies the quotient by this number. Ease of use for percentage (*
-     * 100) or CPM (* 1000)
-     *
-     */
-    public void setMultiplyBy(int val) {
-    }
-
-
-  }
-
-  public static class Sum extends BaseOperator
-  {
-
-    @InputPortFieldAnnotation(name="data")
-    final public transient InputPort<HashMap<String, Number>> inportData = new DefaultInputPort<HashMap<String, Number>>(this) {
-      @Override
-      final public void process(HashMap<String, Number> payload) {
-      }
-    };
-
-    @OutputPortFieldAnnotation(name="sum")
-    final transient DefaultOutputPort<HashMap<String, Number> > outportSum = new DefaultOutputPort<HashMap<String, Number>>(this) {};
-  }
-
-
-  @Test
-  public void testProtoArithmeticQuotient() throws Exception {
-
-    DAG dag = new DAG();
-
-    Sum views = dag.addOperator("views", Sum.class);
-
-    Sum clicks = dag.addOperator("clicks", Sum.class);
-    Quotient ctr = dag.addOperator("ctr", Quotient.class);
-    ctr.setMultiplyBy(100); // multiply by 100 to get percentage
-
-    dag.addStream("viewCount", views.outportSum, ctr.inportDenominator);
-    dag.addStream("clickCount", clicks.outportSum, ctr.inportNumerator);
-
-    ProtoArithmeticQuotient node = new ProtoArithmeticQuotient();
-    node.setMultiplyBy(2);
-
-    TestSink<HashMap<String, Number>> testSink = new TestSink<HashMap<String, Number>>();
-    node.outportQuotient.setSink(testSink);
-
-    LOG.debug("type inportNumerator: " + findTypeArgument(node.inportNumerator.getClass(), InputPort.class));
-    LOG.debug("type inportDenominator: " + findTypeArgument(node.inportDenominator.getClass(), InputPort.class));
-    LOG.debug("type outportQuotient: " + findTypeArgument(node.outportQuotient.getClass(), DefaultOutputPort.class));
-
-    HashMap<String, Number> ninput = null;
-    HashMap<String, Number> dinput = null;
-
-    int numtuples = 1000;
-    for (int i = 0; i < numtuples; i++) {
-      ninput = new HashMap<String, Number>();
-      dinput = new HashMap<String, Number>();
-      ninput.put("a", 2);
-      ninput.put("b", 20);
-      ninput.put("c", 1000);
-      node.inportNumerator.getSink().process(ninput);
-      dinput.put("a", 2);
-      dinput.put("b", 40);
-      dinput.put("c", 500);
-      node.inportDenominator.getSink().process(dinput);
-    }
-    node.endWindow();
-    LOG.debug("output tuples: " + testSink.collectedTuples);
-    Assert.assertEquals("result count", 1, testSink.collectedTuples.size());
-  }
 
   @Test
   public void testTypeLiteral() throws Exception {
