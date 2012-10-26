@@ -17,5 +17,4 @@ import io.netty.util.AttributeMap;
 public interface Context extends AttributeMap
 {
   public static final AttributeKey<Integer> INPUT_PORT_BUFFER_SIZE = new AttributeKey<Integer>("INPUT_PORT_BUFFER_SIZE");
-  public static final AttributeKey<Integer> OPERATOR_SPIN_MILLIS = new AttributeKey<Integer>("OPERATOR_SPIN_MILLIS");
 }

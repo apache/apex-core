@@ -2,12 +2,15 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.deprecated.dag;
 
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.api.SyncInputOperator;
-import com.malhartech.dag.SyncInputNode.SyncSink;
+import com.malhartech.dag.CounterSink;
+import com.malhartech.dag.InputNode;
+import com.malhartech.dag.OperatorContext;
+import com.malhartech.deprecated.api.SyncInputOperator;
+import com.malhartech.deprecated.dag.SyncInputNode.SyncSink;
 import com.malhartech.util.CircularBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

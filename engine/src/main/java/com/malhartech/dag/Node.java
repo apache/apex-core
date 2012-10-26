@@ -6,15 +6,15 @@ package com.malhartech.dag;
 
 import com.malhartech.api.ActivationListener;
 import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.Operator.Port;
 import com.malhartech.api.Sink;
 import com.malhartech.api.Stats;
-import com.malhartech.api.Stats.StatsReporter;
 import com.malhartech.dag.Operators.PortMappingDescriptor;
 import com.malhartech.util.CircularBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,7 +200,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      CircularBuffer<OperatorContext.ModuleRequest> requests = context.getRequests();
+      CircularBuffer<OperatorContext.NodeRequest> requests = context.getRequests();
       for (int i = requests.size(); i-- > 0;) {
         //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
         requests.remove().execute(operator, context.getId(), windowId);

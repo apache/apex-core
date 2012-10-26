@@ -4,6 +4,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.deprecated.api.SyncInputOperator;
+import com.malhartech.deprecated.dag.SyncInputNode;
 import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -538,7 +540,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        context.request(new OperatorContext.ModuleRequest()
+        context.request(new OperatorContext.NodeRequest()
         {
           @Override
           public void execute(Operator module, String id, long windowId) throws IOException

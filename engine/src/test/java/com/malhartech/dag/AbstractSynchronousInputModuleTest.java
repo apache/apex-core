@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.deprecated.api.SyncInputOperator;
 import com.malhartech.api.*;
 import com.malhartech.stram.StramLocalCluster;
 import java.util.ArrayList;
