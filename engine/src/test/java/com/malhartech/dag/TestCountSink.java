@@ -15,7 +15,12 @@ public class TestCountSink<T> extends TestSink<T>
 {
   public  int count = 0;
 
-
+  @Override
+  public void clear()
+  {
+    count = 0;
+    super.clear();
+  }
 
   /**
    *
