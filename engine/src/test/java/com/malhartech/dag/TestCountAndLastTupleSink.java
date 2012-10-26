@@ -22,6 +22,8 @@ public class TestCountAndLastTupleSink<T> extends TestCountSink<T>
   public void process(T tuple)
   {
     if (tuple instanceof Tuple) {
+      tuple = null;
+      count = 0;
     }
     else {
       this.tuple = tuple;
