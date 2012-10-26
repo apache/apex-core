@@ -3,6 +3,8 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.deprecated.api.SyncInputOperator;
+import com.malhartech.deprecated.dag.SyncInputNode;
 import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import java.util.Map;

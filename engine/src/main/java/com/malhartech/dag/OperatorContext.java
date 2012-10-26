@@ -10,7 +10,6 @@ import com.malhartech.api.Stats;
 import com.malhartech.util.CircularBuffer;
 import io.netty.util.DefaultAttributeMap;
 import java.io.IOException;
-import java.nio.BufferOverflowException;
 import java.util.Collection;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -26,7 +25,7 @@ public class OperatorContext extends DefaultAttributeMap implements Context
 {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorContext.class);
 
-  public interface ModuleRequest
+  public interface NodeRequest
   {
     /**
      * Command to be executed at subsequent end of window.
@@ -38,14 +37,14 @@ public class OperatorContext extends DefaultAttributeMap implements Context
   private final String id;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
-  private final CircularBuffer<ModuleRequest> requests = new CircularBuffer<ModuleRequest>(4);
+  private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
   /**
    * The AbstractModule to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
    */
   // we should make it configurable somehow.
   private long idleTimeout = 1000L;
 
-  public CircularBuffer<ModuleRequest> getRequests()
+  public CircularBuffer<NodeRequest> getRequests()
   {
     return requests;
   }
@@ -99,14 +98,14 @@ public class OperatorContext extends DefaultAttributeMap implements Context
     HeartbeatCounters newWindow = new HeartbeatCounters();
     newWindow.windowId = windowId;
 
-    Collection<PortStats> ports = (Collection<PortStats>)(Collection)stats.get("INPUT_PORTS");
+    Collection<PortStats> ports = (Collection)stats.get("INPUT_PORTS");
     if (ports != null) {
       for (PortStats s: ports) {
         newWindow.tuplesProcessed += s.processedCount;
       }
     }
 
-    ports = (Collection<PortStats>)(Collection)stats.get("OUTPUT_PORTS");
+    ports = (Collection)stats.get("OUTPUT_PORTS");
     if (ports != null) {
       for (PortStats s: ports) {
         newWindow.tuplesProduced += s.processedCount;
@@ -119,7 +118,7 @@ public class OperatorContext extends DefaultAttributeMap implements Context
     }
   }
 
-  public void request(ModuleRequest request)
+  public void request(NodeRequest request)
   {
     LOG.debug("Received request {} for (node={})", request, id);
     requests.add(request);
