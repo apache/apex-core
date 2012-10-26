@@ -15,4 +15,10 @@ public interface Stats
     public Stats getStats(String id);
   }
 
+  public interface Counter
+  {
+    public int getCount();
+
+    public int resetCount();
+  }
 }

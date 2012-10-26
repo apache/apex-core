@@ -297,7 +297,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       int numberBytesProcessed = 0;
 
       for (HeartbeatCounters hc : heartbeatsContainer) {
-        numberBytesProcessed += hc.bytesProcessed;
+        numberBytesProcessed += hc.tuplesProduced;
       }
 
       return numberBytesProcessed;

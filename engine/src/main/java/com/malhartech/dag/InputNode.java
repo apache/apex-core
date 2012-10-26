@@ -5,10 +5,7 @@
 package com.malhartech.dag;
 
 import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.api.Stats;
-import com.malhartech.api.Stats.StatsReporter;
 import com.malhartech.util.CircularBuffer;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -108,10 +105,24 @@ public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR
         }
         else {
           if (inWindow) {
-            injectTuples();
+            int generatedTuples = 0;
+
+            for (CounterSink cs: sinks) {
+              generatedTuples -= cs.getCount();
+            }
+
+            emitTuples();
+
+            for (CounterSink cs: sinks) {
+              generatedTuples += cs.getCount();
+            }
+
+            if (generatedTuples == 0) {
+              Thread.sleep(spinMillis);
+            }
           }
           else {
-            Thread.sleep(spinMillis);
+            Thread.sleep(0);
           }
         }
       }
@@ -128,5 +139,5 @@ public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR
     }
   }
 
-  protected abstract void injectTuples() throws InterruptedException;
+  protected abstract void emitTuples() throws InterruptedException;
 }

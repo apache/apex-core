@@ -47,7 +47,7 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
   }
 
   @Override
-  public void injectTuples(long windowId)
+  public void emitTuples(long windowId)
   {
     Object tuple;
     while ((tuple = this.externallyAddedTuples.poll()) != null) {
@@ -60,6 +60,7 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
         remainingSleepTime -= spinMillis;
       }
       catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
       }
     }
     else if (outport.isConnected() && maxTuples != 0) {

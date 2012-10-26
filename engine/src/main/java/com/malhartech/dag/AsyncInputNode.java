@@ -24,9 +24,8 @@ public class AsyncInputNode extends InputNode<AsyncInputOperator>
   }
 
   @Override
-  protected final void injectTuples() throws InterruptedException
+  protected final void emitTuples() throws InterruptedException
   {
-    operator.injectTuples(currentWindowId);
-    Thread.sleep(spinMillis); // should be removed.
+    operator.emitTuples(currentWindowId);
   }
 }

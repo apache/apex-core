@@ -6,11 +6,13 @@ package com.malhartech.dag;
 
 import com.malhartech.api.Context;
 import com.malhartech.api.Operator;
+import com.malhartech.api.Stats;
 import com.malhartech.util.CircularBuffer;
 import io.netty.util.DefaultAttributeMap;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.util.Collection;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,14 +91,27 @@ public class OperatorContext extends DefaultAttributeMap implements Context
     return lastProcessedWindowId;
   }
 
-  synchronized void report(int consumedTupleCount, long processedBytes, long windowId)
+  // stats should have tree like structure
+  synchronized void report(Map<String, Collection<Stats>> stats, long windowId)
   {
     lastProcessedWindowId = windowId;
 
     HeartbeatCounters newWindow = new HeartbeatCounters();
     newWindow.windowId = windowId;
-    newWindow.tuplesProcessed = consumedTupleCount;
-    newWindow.bytesProcessed = processedBytes;
+
+    Collection<PortStats> ports = (Collection<PortStats>)(Collection)stats.get("INPUT_PORTS");
+    if (ports != null) {
+      for (PortStats s: ports) {
+        newWindow.tuplesProcessed += s.processedCount;
+      }
+    }
+
+    ports = (Collection<PortStats>)(Collection)stats.get("OUTPUT_PORTS");
+    if (ports != null) {
+      for (PortStats s: ports) {
+        newWindow.tuplesProduced += s.processedCount;
+      }
+    }
 
     if (!heartbeatCounters.offer(newWindow)) {
       heartbeatCounters.poll();
