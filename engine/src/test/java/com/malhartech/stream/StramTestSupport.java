@@ -50,10 +50,9 @@ abstract public class StramTestSupport {
 
   public static WindowGenerator setupWindowGenerator(ManualScheduledExecutorService mses) {
     WindowGenerator gen = new WindowGenerator(mses);
-    StreamConfiguration config = new StreamConfiguration();
-    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0);
-    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
-    gen.setup(config);
+    gen.setResetWindow(0);
+    gen.setFirstWindow(0);
+    gen.setWindowWidth(1);
     return gen;
   }
 

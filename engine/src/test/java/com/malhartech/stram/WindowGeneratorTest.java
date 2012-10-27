@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 public class WindowGeneratorTest
 {
   public static final Logger logger = LoggerFactory.getLogger(WindowGeneratorTest.class);
+
   @Test
   public void test2ndResetWindow() throws InterruptedException
   {
@@ -27,18 +28,17 @@ public class WindowGeneratorTest
     ManualScheduledExecutorService msse = new ManualScheduledExecutorService(1);
     WindowGenerator generator = new WindowGenerator(msse);
 
-    final StreamConfiguration config = new StreamConfiguration();
-    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0L);
-    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 1);
-
-    generator.setup(config);
+    generator.setFirstWindow(0L);
+    generator.setResetWindow(0L);
+    generator.setWindowWidth(1);
 
     final AtomicInteger beginWindowCount = new AtomicInteger(0);
     final AtomicInteger endWindowCount = new AtomicInteger(0);
     final AtomicInteger resetWindowCount = new AtomicInteger(0);
     final AtomicBoolean loggingEnabled = new AtomicBoolean(true);
 
-    generator.setSink(Node.OUTPUT, new Sink() {
+    generator.setSink(Node.OUTPUT, new Sink()
+    {
       @Override
       public void process(Object payload)
       {
@@ -79,6 +79,7 @@ public class WindowGeneratorTest
     Assert.assertEquals("end windows", WindowGenerator.MAX_WINDOW_ID + 1, endWindowCount.get());
     Assert.assertEquals("reset windows", 2, resetWindowCount.get());
   }
+
   /**
    * Test of resetWindow functionality of WindowGenerator.
    */
@@ -91,11 +92,11 @@ public class WindowGeneratorTest
     msse.setCurrentTimeMillis(0xcafebabe * 1000L);
     WindowGenerator generator = new WindowGenerator(msse);
 
-    final StreamConfiguration config = new StreamConfiguration();
-    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, msse.getCurrentTimeMillis());
-    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0x1234abcd);
-
-    generator.setup(config);
+    final long currentTIme = msse.getCurrentTimeMillis();
+    final int windowWidth = 0x1234abcd;
+    generator.setFirstWindow(currentTIme);
+    generator.setResetWindow(currentTIme);
+    generator.setWindowWidth(windowWidth);
     generator.setSink(Node.OUTPUT, new Sink()
     {
       boolean firsttime = true;
@@ -106,8 +107,8 @@ public class WindowGeneratorTest
         if (firsttime) {
           assert (payload instanceof ResetWindowTuple);
           assert (((ResetWindowTuple)payload).getWindowId() == 0xcafebabe00000000L);
-          assert (((ResetWindowTuple)payload).getBaseSeconds() * 1000L == config.getLong(WindowGenerator.FIRST_WINDOW_MILLIS, 0));
-          assert (((ResetWindowTuple)payload).getIntervalMillis() == config.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 0));
+          assert (((ResetWindowTuple)payload).getBaseSeconds() * 1000L == currentTIme);
+          assert (((ResetWindowTuple)payload).getIntervalMillis() == windowWidth);
           firsttime = false;
         }
         else {
@@ -161,19 +162,15 @@ public class WindowGeneratorTest
       }
     };
 
-    StreamConfiguration config = new StreamConfiguration();
-
     ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1, "WindowGenerator");
+    int windowWidth = 200;
     long firstWindowMillis = stpe.getCurrentTimeMillis();
     firstWindowMillis = firstWindowMillis - firstWindowMillis % 1000L;
 
-    config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, firstWindowMillis);
-    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 200);
-    // even if you do not set it, it defaults to the value we are trying to set here.
-    // config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, config.getLog(WindowGenerator.FIRST_WINDOW_MILLIS));
-
     WindowGenerator wg = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"));
-    wg.setup(config);
+    wg.setResetWindow(firstWindowMillis);
+    wg.setFirstWindow(firstWindowMillis);
+    wg.setWindowWidth(windowWidth);
     wg.setSink("GeneratorTester", s);
 
     wg.postActivate(null);
@@ -185,7 +182,7 @@ public class WindowGeneratorTest
     System.out.println("firstWindowMillis: " + firstWindowMillis + " lastWindowMillis: " + lastWindowMillis + " completed windows: " + endWindowCount.get());
     Assert.assertEquals("only last window open", currentWindow.get(), windowXor.get());
 
-    long expectedCnt = (lastWindowMillis - firstWindowMillis) / config.getInt(WindowGenerator.WINDOW_WIDTH_MILLIS, 200);
+    long expectedCnt = (lastWindowMillis - firstWindowMillis) / windowWidth;
 
     Assert.assertTrue("Minimum begin window count", expectedCnt + 1 <= beginWindowCount.get());
     Assert.assertEquals("end window count", beginWindowCount.get() - 1, endWindowCount.get());

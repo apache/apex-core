@@ -19,6 +19,11 @@ public class TestSink<T> implements Sink<T>
    *
    * @param payload
    */
+  public void clear()
+  {
+    this.collectedTuples.clear();
+  }
+
   @Override
   public void process(T payload)
   {
@@ -32,7 +37,8 @@ public class TestSink<T> implements Sink<T>
     }
   }
 
-  public void waitForResultCount(int count, long timeoutMillis) throws InterruptedException {
+  public void waitForResultCount(int count, long timeoutMillis) throws InterruptedException
+  {
     while (collectedTuples.size() < count && timeoutMillis > 0) {
       timeoutMillis -= 20;
       synchronized (collectedTuples) {
@@ -42,5 +48,4 @@ public class TestSink<T> implements Sink<T>
       }
     }
   }
-
 }

@@ -923,16 +923,11 @@ public class StramChild
      * let's make sure that we send the same window Ids with the same reset windows.
      */
     // let's see if we want to send the exact same window id even the second time.
-    StreamConfiguration config = new StreamConfiguration();
-    config.setLong(WindowGenerator.RESET_WINDOW_MILLIS, firstWindowMillis);
-    if (smallestWindowId > firstWindowMillis) {
-      config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID));
-    }
-    else {
-      config.setLong(WindowGenerator.FIRST_WINDOW_MILLIS, firstWindowMillis);
-    }
-    config.setInt(WindowGenerator.WINDOW_WIDTH_MILLIS, windowWidthMillis);
-    windowGenerator.setup(config);
+    windowGenerator.setResetWindow(firstWindowMillis);
+    windowGenerator.setFirstWindow(smallestWindowId > firstWindowMillis
+                                   ? (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID)
+                                   : firstWindowMillis);
+    windowGenerator.setWindowWidth(windowWidthMillis);
     return windowGenerator;
   }
 
