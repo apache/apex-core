@@ -26,7 +26,7 @@ import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.util.ContextAttributes;
+import com.malhartech.util.AttributeMap;
 
 public class StreamingContainerManagerTest {
 
@@ -35,7 +35,7 @@ public class StreamingContainerManagerTest {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ndi.declaredId = "node1";
     ndi.id ="1";
-    ndi.contextAttributes = new ContextAttributes.DefaultAttributeMap<OperatorContext>();
+    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap<OperatorContext>();
     ndi.contextAttributes.attr(OperatorContext.SPIN_MILLIS).set(100);
 
     OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();

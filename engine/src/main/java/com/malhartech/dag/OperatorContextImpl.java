@@ -4,8 +4,6 @@
  */
 package com.malhartech.dag;
 
-import io.netty.util.Attribute;
-
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
@@ -16,8 +14,8 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.Context;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Stats;
+import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
-import com.malhartech.util.ContextAttributes.AttributeMap;
 
 /**
  * The for context for all of the operators<p>

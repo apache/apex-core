@@ -12,7 +12,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.util.ContextAttributes.AttributeMap;
+import com.malhartech.util.AttributeMap;
 
 /**
  * Operator deployment info passed from master to container as part of initialization

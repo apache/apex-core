@@ -29,7 +29,7 @@ import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 import com.malhartech.deprecated.api.SyncInputOperator;
 import com.malhartech.deprecated.dag.SyncInputNode;
-import com.malhartech.util.ContextAttributes;
+import com.malhartech.util.AttributeMap;
 
 /**
  * Test for message flow through DAG
@@ -160,7 +160,7 @@ public class InlineStreamTest
           n = new GenericNode(id, operator);
         }
 
-        OperatorContextImpl ctx = new OperatorContextImpl(id, Thread.currentThread(), new ContextAttributes.DefaultAttributeMap<OperatorContext>());
+        OperatorContextImpl ctx = new OperatorContextImpl(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<OperatorContext>());
         activeNodes.put(ctx.getId(), n);
         n.activate(ctx);
         activeNodes.remove(ctx.getId());

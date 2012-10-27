@@ -15,12 +15,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Parameterized and scoped context attribute map that supports serialization.
- * Derived from {@link io.netty.util.AttributeKey}
+ * Derived from {@link io.netty.util.AttributeMap}
  */
-public interface ContextAttributes {
+public interface AttributeMap<CONTEXT> {
+
+  <T> Attribute<T> attr(AttributeKey<CONTEXT, T> key);
 
   /**
-   * Scoped attribute key.
+   * Scoped attribute key. Subclasses define scope.
    */
   abstract public static class AttributeKey<CONTEXT, T> {
     private static final ConcurrentMap<String, AttributeKey<?, ?>> keys = new ConcurrentHashMap<String, AttributeKey<?, ?>>();
@@ -46,10 +48,6 @@ public interface ContextAttributes {
     private static <CONTEXT, T> AttributeKey<CONTEXT, T> getKey(Class<CONTEXT> scope, String key) {
       return (AttributeKey)keys.get(stringKey(scope, key));
     }
-  }
-
-  public interface AttributeMap<CONTEXT> {
-    <T> Attribute<T> attr(AttributeKey<CONTEXT, T> key);
   }
 
   /**

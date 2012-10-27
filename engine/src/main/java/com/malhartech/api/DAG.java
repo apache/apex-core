@@ -48,8 +48,8 @@ import com.malhartech.dag.Operators;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramUtils;
-import com.malhartech.util.ContextAttributes.AttributeMap;
-import com.malhartech.util.ContextAttributes.DefaultAttributeMap;
+import com.malhartech.util.AttributeMap;
+import com.malhartech.util.AttributeMap.DefaultAttributeMap;
 
 /**
  * DAG contains the logical declarations of operators and streams.
