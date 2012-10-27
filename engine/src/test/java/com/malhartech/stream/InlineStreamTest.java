@@ -46,19 +46,21 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
     prev = null;
 
-    final PassThroughNode node1 = new PassThroughNode();
-    node1.setup(new OperatorConfiguration());
+    final PassThroughNode operator1 = new PassThroughNode();
+    final GenericNode node1 = new GenericNode("node1", operator1);
+    operator1.setup(new OperatorConfiguration());
 
-    final PassThroughNode node2 = new PassThroughNode();
-    node2.setup(new OperatorConfiguration());
+    final PassThroughNode operator2 = new PassThroughNode();
+    final GenericNode node2 = new GenericNode("node2", operator2);
+    operator2.setup(new OperatorConfiguration());
 
     InlineStream stream = new InlineStream();
     stream.setup(new StreamConfiguration());
 
-    node1.output.setSink(stream);
+    node1.connect("output", stream);
 
-    stream.setSink("node2.input", node2.input);
-    node2.input.setConnected(true);
+    Sink s = node2.connect("input", stream);
+    stream.setSink("node2.input", s);
 
     Sink<Object> sink = new Sink<Object>()
     {
@@ -78,8 +80,6 @@ public class InlineStreamTest
           }
           else {
             if (Integer.valueOf(payload.toString()) - Integer.valueOf(prev.toString()) != 1) {
-              LOG.info("Got the tuples out of order!");
-              LOG.info(prev + " followed by " + payload);
               synchronized (InlineStreamTest.this) {
                 InlineStreamTest.this.notify();
               }
@@ -89,7 +89,6 @@ public class InlineStreamTest
           }
 
           if (Integer.valueOf(prev.toString()) == totalTupleCount - 1) {
-            LOG.info("last tuple received.");
             synchronized (InlineStreamTest.this) {
               InlineStreamTest.this.notify();
             }
@@ -97,22 +96,29 @@ public class InlineStreamTest
         }
       }
     };
-    node2.output.setSink(sink);
+    node2.connect("output", sink);
 
-    sink = node1.input.getSink();
-    node1.input.setConnected(true);
+    sink = node1.connect("input", new Sink() {
+
+      @Override
+      public void process(Object tuple)
+      {
+        throw new UnsupportedOperationException("Not supported yet.");
+      }
+    });
+
+    sink.process(StramTestSupport.generateBeginWindowTuple("irrelevant", 0));
+    for (int i = 0; i < totalTupleCount; i++) {
+      sink.process(i);
+    }
+    sink.process(StramTestSupport.generateEndWindowTuple("irrelevant", 0, totalTupleCount));
 
     StreamContext streamContext = new StreamContext("node1->node2");
-
     stream.postActivate(streamContext);
 
     Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
     launchNodeThread(node1, activeNodes);
     launchNodeThread(node2, activeNodes);
-
-    for (int i = 0; i < totalTupleCount; i++) {
-      sink.process(i);
-    }
 
     synchronized (this) {
       this.wait(100);
@@ -133,36 +139,25 @@ public class InlineStreamTest
       }
     }
 
-    node2.teardown();
-    node1.teardown();
+    operator2.teardown();
+    operator1.teardown();
     stream.teardown();
 
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
   final AtomicInteger counter = new AtomicInteger(0);
 
-  private void launchNodeThread(final Operator operator, final Map<String, Node> activeNodes)
+  private void launchNodeThread(final Node node, final Map<String, Node> activeNodes)
   {
     Runnable nodeRunnable = new Runnable()
     {
       @Override
       public void run()
       {
-        Node n;
         String id = String.valueOf(counter.incrementAndGet());
-        if (operator instanceof SyncInputOperator) {
-          n = new SyncInputNode(id, (SyncInputOperator)operator);
-        }
-        else if (operator instanceof AsyncInputOperator) {
-          n = new AsyncInputNode(id, (AsyncInputOperator)operator);
-        }
-        else {
-          n = new GenericNode(id, operator);
-        }
-
         OperatorContextImpl ctx = new OperatorContextImpl(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<OperatorContext>());
-        activeNodes.put(ctx.getId(), n);
-        n.activate(ctx);
+        activeNodes.put(ctx.getId(), node);
+        node.activate(ctx);
         activeNodes.remove(ctx.getId());
       }
     };
