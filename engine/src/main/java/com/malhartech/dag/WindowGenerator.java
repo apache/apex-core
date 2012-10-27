@@ -124,15 +124,40 @@ public class WindowGenerator implements Stream<Object>, Runnable
     resetBeginNewWindow();
   }
 
+  public void setFirstWindow(long millis)
+  {
+    firstWindowMillis = millis;
+  }
+
+  public void setResetWindow(long millis)
+  {
+    resetWindowMillis = millis;
+  }
+
+  public void setWindowWidth(int millis)
+  {
+    if (millis > MAX_WINDOW_WIDTH || millis < 1) {
+      throw new IllegalArgumentException(String.format("Window width %d is invalid as it's not in the range 1 to %d", millis, MAX_WINDOW_WIDTH));
+    }
+    windowWidthMillis = millis;
+  }
+
+  @Deprecated
   @Override
   public void setup(StreamConfiguration config)
   {
-    firstWindowMillis = config.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis());
-    windowWidthMillis = config.getInt(WINDOW_WIDTH_MILLIS, 500);
-    if (windowWidthMillis > MAX_WINDOW_WIDTH || windowWidthMillis < 1) {
-      throw new IllegalArgumentException(String.format("Window width %d is invalid as it's not in the range 1 to %d", windowWidthMillis, MAX_WINDOW_WIDTH));
+    logger.info("WindowGenerator::setup does not do anything useful, please use setFirstWindow/setResetWindow/setWindowWidth if were using this.");
+    if (config != null) {
+      if (config.getRaw(FIRST_WINDOW_MILLIS) != null) {
+        setFirstWindow(config.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis()));
+      }
+      if (config.getRaw(WINDOW_WIDTH_MILLIS) != null) {
+        setWindowWidth(config.getInt(WINDOW_WIDTH_MILLIS, 500));
+      }
+      if (config.getRaw(RESET_WINDOW_MILLIS) != null) {
+        setResetWindow(config.getLong(RESET_WINDOW_MILLIS, firstWindowMillis));
+      }
     }
-    resetWindowMillis = config.getLong(RESET_WINDOW_MILLIS, firstWindowMillis);
 //    logger.debug("firstWindowMillis {} resetwindowmillis = {}", firstWindowMillis, resetWindowMillis);
   }
 
