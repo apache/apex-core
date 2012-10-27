@@ -73,7 +73,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         /*
          * if streams implemented CounterSink, this would not get called.
          */
-        CounterSink cs =  new CounterSink()
+        CounterSink cs = new CounterSink()
         {
           int count;
 
@@ -183,7 +183,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected void emitEndStream()
   {
-    logger.debug("{} sending EndOfStream", this);
+//    logger.debug("{} sending EndOfStream", this);
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
