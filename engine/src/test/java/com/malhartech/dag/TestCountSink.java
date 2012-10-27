@@ -15,7 +15,12 @@ public class TestCountSink<T> extends TestSink<T>
 {
   public  int count = 0;
 
-
+  @Override
+  public void clear()
+  {
+    count = 0;
+    super.clear();
+  }
 
   /**
    *
@@ -25,6 +30,7 @@ public class TestCountSink<T> extends TestSink<T>
   public void process(T payload)
   {
     if (payload instanceof Tuple) {
+      count = 0;
     }
     else {
       count++;

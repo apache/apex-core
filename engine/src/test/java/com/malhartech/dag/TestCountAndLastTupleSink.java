@@ -18,10 +18,19 @@ public class TestCountAndLastTupleSink<T> extends TestCountSink<T>
    *
    * @param payload
    */
+
+  @Override
+  public void clear()
+  {
+    this.tuple = null;
+    super.clear();
+  }
+
   @Override
   public void process(T tuple)
   {
     if (tuple instanceof Tuple) {
+
     }
     else {
       this.tuple = tuple;
