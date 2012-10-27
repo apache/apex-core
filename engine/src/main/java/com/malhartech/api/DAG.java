@@ -4,8 +4,6 @@
  */
 package com.malhartech.api;
 
-import io.netty.util.AttributeKey;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Externalizable;
@@ -42,13 +40,16 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.Context.SerializableAttributeMap;
+import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.dag.Operators;
 import com.malhartech.dag.SerDe;
 import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramUtils;
+import com.malhartech.util.ContextAttributes.AttributeMap;
+import com.malhartech.util.ContextAttributes.DefaultAttributeMap;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -140,7 +141,7 @@ public class DAG implements Serializable, DAGConstants
     private OperatorWrapper operatorWrapper;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
-    private final SerializableAttributeMap attributes = new SerializableAttributeMap();
+    private final AttributeMap<PortContext> attributes = new DefaultAttributeMap<PortContext>();
 
     public OperatorWrapper getOperatorWrapper()
     {
@@ -169,7 +170,7 @@ public class DAG implements Serializable, DAGConstants
     private OperatorWrapper operatorWrapper;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
-    private final SerializableAttributeMap attributes = new SerializableAttributeMap();
+    private final DefaultAttributeMap<PortContext> attributes = new DefaultAttributeMap<PortContext>();
 
     public OperatorWrapper getOperatorWrapper()
     {
@@ -290,7 +291,7 @@ public class DAG implements Serializable, DAGConstants
     private static final long serialVersionUID = 1L;
     private final Map<InputPortMeta, StreamDecl> inputStreams = new HashMap<InputPortMeta, StreamDecl>();
     private final Map<OutputPortMeta, StreamDecl> outputStreams = new HashMap<OutputPortMeta, StreamDecl>();
-    private final SerializableAttributeMap attributes = new SerializableAttributeMap();
+    private final AttributeMap<OperatorContext> attributes = new DefaultAttributeMap<OperatorContext>();
     private final ExternalizableModule moduleHolder;
     private final String id;
     private transient Integer nindex; // for cycle detection
@@ -477,15 +478,15 @@ public class DAG implements Serializable, DAGConstants
    * Set attribute for the operator. For valid attributes, see {@ link Context}
    * @param operator
    */
-  public SerializableAttributeMap getContextAttributes(Operator operator) {
+  public AttributeMap<OperatorContext> getContextAttributes(Operator operator) {
     return getOperatorWrapper(operator).attributes;
   }
 
-  public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, AttributeKey<T> key, T value) {
+  public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value) {
     getOperatorWrapper(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
   }
 
-  public <T> void setInputPortAttribute(Operator.InputPort<?> port, AttributeKey<T> key, T value) {
+  public <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value) {
     getOperatorWrapper(port.getOperator()).getPortMapping().inPortMap.get(port).attributes.attr(key).set(value);
   }
 

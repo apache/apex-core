@@ -16,8 +16,7 @@ import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
-import com.malhartech.api.Context;
-import com.malhartech.api.Context.SerializableAttributeMap;
+import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.dag.DefaultSerDe;
@@ -27,6 +26,7 @@ import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.util.ContextAttributes;
 
 public class StreamingContainerManagerTest {
 
@@ -35,8 +35,8 @@ public class StreamingContainerManagerTest {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ndi.declaredId = "node1";
     ndi.id ="1";
-    ndi.contextAttributes = new SerializableAttributeMap();
-    ndi.contextAttributes.attr(Context.INPUT_PORT_BUFFER_SIZE).set(100);
+    ndi.contextAttributes = new ContextAttributes.DefaultAttributeMap<OperatorContext>();
+    ndi.contextAttributes.attr(OperatorContext.SPIN_MILLIS).set(100);
 
     OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();
     input.declaredStreamId = "streamToNode";
@@ -74,7 +74,7 @@ public class StreamingContainerManagerTest {
     Assert.assertTrue(nodeToString.contains(input.portName));
     Assert.assertTrue(nodeToString.contains(output.portName));
 
-    Assert.assertEquals("contextAttributes " + ndiClone.contextAttributes, Integer.valueOf(100), ndiClone.contextAttributes.attr(Context.INPUT_PORT_BUFFER_SIZE).get());
+    Assert.assertEquals("contextAttributes " + ndiClone.contextAttributes, Integer.valueOf(100), ndiClone.contextAttributes.attr(OperatorContext.SPIN_MILLIS).get());
 
   }
 

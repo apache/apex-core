@@ -4,16 +4,20 @@
  */
 package com.malhartech.dag;
 
+import io.netty.util.Attribute;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.api.Context;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Stats;
 import com.malhartech.util.CircularBuffer;
-import io.netty.util.DefaultAttributeMap;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.malhartech.util.ContextAttributes.AttributeMap;
 
 /**
  * The for context for all of the operators<p>
@@ -21,7 +25,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class OperatorContext extends DefaultAttributeMap implements Context
+public class OperatorContextImpl implements Context.OperatorContext
 {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorContext.class);
 
@@ -35,6 +39,7 @@ public class OperatorContext extends DefaultAttributeMap implements Context
   }
   private long lastProcessedWindowId;
   private final String id;
+  private final AttributeMap<OperatorContext> attributes;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
@@ -65,11 +70,13 @@ public class OperatorContext extends DefaultAttributeMap implements Context
     this.idleTimeout = idleTimeout;
   }
 
-  public OperatorContext(String id, Thread t)
+  public OperatorContextImpl(String id, Thread t, AttributeMap<OperatorContext> attributes)
   {
     this.id = id;
+    this.attributes = attributes;
   }
 
+  @Override
   public String getId()
   {
     return id;
@@ -123,4 +130,10 @@ public class OperatorContext extends DefaultAttributeMap implements Context
     LOG.debug("Received request {} for (node={})", request, id);
     requests.add(request);
   }
+
+  @Override
+  public AttributeMap<OperatorContext> getAttributes() {
+    return this.attributes;
+  }
+
 }

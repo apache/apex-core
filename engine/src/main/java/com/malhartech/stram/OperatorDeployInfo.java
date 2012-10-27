@@ -6,10 +6,13 @@ package com.malhartech.stram;
 
 import java.io.Serializable;
 import java.util.List;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.malhartech.api.Context;
+import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.Context.PortContext;
+import com.malhartech.util.ContextAttributes.AttributeMap;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -78,7 +81,7 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Context attributes for input port
      */
-    public Context.SerializableAttributeMap contextAttributes;
+    public AttributeMap<PortContext> contextAttributes;
 
     @Override
     public String toString()
@@ -131,7 +134,7 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Context attributes for output port
      */
-    public Context.SerializableAttributeMap contextAttributes;
+    public AttributeMap<PortContext> contextAttributes;
 
     @Override
     public String toString()
@@ -180,7 +183,7 @@ public class OperatorDeployInfo implements Serializable
   /**
    * Context attributes for operator
    */
-  public Context.SerializableAttributeMap contextAttributes;
+  public AttributeMap<OperatorContext> contextAttributes;
 
 
   /**

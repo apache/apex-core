@@ -130,7 +130,7 @@ public class GenericNode extends Node<Operator>
    * Originally this method was defined in an attempt to implement the interface Runnable.
    *
    * Although it seems that it's called from another thread which implements Runnable, so we take this
-   * opportunity to pass the OperatorContext through the run method. Note that activate does not return as
+   * opportunity to pass the OperatorContextImpl through the run method. Note that activate does not return as
    * long as there is useful workload for the node.
    */
   @Override

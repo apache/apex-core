@@ -26,7 +26,7 @@ import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.Operator;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.Node;
-import com.malhartech.dag.OperatorContext;
+import com.malhartech.dag.OperatorContextImpl;
 import com.malhartech.dag.WindowGenerator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
@@ -162,7 +162,7 @@ public class StramLocalCluster implements Runnable {
       return super.setupWindowGenerator(smallestWindowId);
     }
 
-    OperatorContext getNodeContext(String id)
+    OperatorContextImpl getNodeContext(String id)
     {
       return activeNodes.get(id);
     }

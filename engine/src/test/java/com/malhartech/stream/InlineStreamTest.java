@@ -3,17 +3,33 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.deprecated.api.SyncInputOperator;
-import com.malhartech.deprecated.dag.SyncInputNode;
-import com.malhartech.api.*;
-import com.malhartech.dag.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.AsyncInputOperator;
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.api.Operator;
+import com.malhartech.api.OperatorConfiguration;
+import com.malhartech.api.Sink;
+import com.malhartech.dag.AsyncInputNode;
+import com.malhartech.dag.GenericNode;
+import com.malhartech.dag.Node;
+import com.malhartech.dag.OperatorContextImpl;
+import com.malhartech.dag.StreamConfiguration;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
+import com.malhartech.deprecated.api.SyncInputOperator;
+import com.malhartech.deprecated.dag.SyncInputNode;
+import com.malhartech.util.ContextAttributes;
 
 /**
  * Test for message flow through DAG
@@ -144,7 +160,7 @@ public class InlineStreamTest
           n = new GenericNode(id, operator);
         }
 
-        OperatorContext ctx = new OperatorContext(id, Thread.currentThread());
+        OperatorContextImpl ctx = new OperatorContextImpl(id, Thread.currentThread(), new ContextAttributes.DefaultAttributeMap<OperatorContext>());
         activeNodes.put(ctx.getId(), n);
         n.activate(ctx);
         activeNodes.remove(ctx.getId());

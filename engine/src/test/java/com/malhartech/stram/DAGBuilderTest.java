@@ -9,14 +9,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import io.netty.util.AttributeMap;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -43,8 +40,7 @@ import com.malhartech.annotation.InjectConfig;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
-import com.malhartech.api.Context;
-import com.malhartech.api.Context.SerializableAttributeMap;
+import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
@@ -296,7 +292,7 @@ public class DAGBuilderTest {
     Assert.assertEquals("number root modules", 1, dag.getRootOperators().size());
     Assert.assertEquals("root module id", "validationNode", dag.getRootOperators().get(0).getId());
 
-    dag.getContextAttributes(countGoodNode).attr(Context.INPUT_PORT_BUFFER_SIZE).set(10);
+    dag.getContextAttributes(countGoodNode).attr(OperatorContext.SPIN_MILLIS).set(10);
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     DAG.write(dag, bos);
@@ -312,7 +308,7 @@ public class DAGBuilderTest {
 
 
     Operator countGoodNodeClone = dagClone.getOperatorWrapper("countGoodNode").getOperator();
-    Assert.assertEquals("", new Integer(10), dagClone.getContextAttributes(countGoodNodeClone).attr(Context.INPUT_PORT_BUFFER_SIZE).get());
+    Assert.assertEquals("", new Integer(10), dagClone.getContextAttributes(countGoodNodeClone).attr(OperatorContext.SPIN_MILLIS).get());
 
   }
 

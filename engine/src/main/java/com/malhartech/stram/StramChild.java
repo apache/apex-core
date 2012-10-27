@@ -60,7 +60,7 @@ public class StramChild
   /**
    * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
    */
-  protected final Map<String, OperatorContext> activeNodes = new ConcurrentHashMap<String, OperatorContext>();
+  protected final Map<String, OperatorContextImpl> activeNodes = new ConcurrentHashMap<String, OperatorContextImpl>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
@@ -514,7 +514,7 @@ public class StramChild
     if (rsp.nodeRequests != null) {
       // extended processing per node
       for (StramToNodeRequest req: rsp.nodeRequests) {
-        OperatorContext nc = activeNodes.get(req.getNodeId());
+        OperatorContextImpl nc = activeNodes.get(req.getNodeId());
         if (nc == null) {
           logger.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
@@ -532,7 +532,7 @@ public class StramChild
    * @param n
    * @param snr
    */
-  private void processStramRequest(OperatorContext context, StramToNodeRequest snr)
+  private void processStramRequest(OperatorContextImpl context, StramToNodeRequest snr)
   {
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
@@ -540,7 +540,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        context.request(new OperatorContext.NodeRequest()
+        context.request(new OperatorContextImpl.NodeRequest()
         {
           @Override
           public void execute(Operator module, String id, long windowId) throws IOException
@@ -959,7 +959,7 @@ public class StramChild
             OperatorConfiguration config = new OperatorConfiguration();
             node.getOperator().setup(config);
 
-            OperatorContext nc = new OperatorContext(ndi.id, this);
+            OperatorContextImpl nc = new OperatorContextImpl(ndi.id, this, ndi.contextAttributes);
             activeNodes.put(ndi.id, nc);
 
             activatedNodeCount.incrementAndGet();

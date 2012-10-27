@@ -8,7 +8,7 @@ import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.dag.CounterSink;
 import com.malhartech.dag.InputNode;
-import com.malhartech.dag.OperatorContext;
+import com.malhartech.dag.OperatorContextImpl;
 import com.malhartech.deprecated.api.SyncInputOperator;
 import com.malhartech.deprecated.dag.SyncInputNode.SyncSink;
 import com.malhartech.util.CircularBuffer;
@@ -50,7 +50,7 @@ public class SyncInputNode extends InputNode<SyncInputOperator>
   }
 
   @Override
-  public void activate(OperatorContext context)
+  public void activate(OperatorContextImpl context)
   {
     syncThread = new Thread(operator.getDataPoller(), operator.toString());
     syncThread.start();

@@ -22,7 +22,7 @@ import com.malhartech.api.DAG;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
 import com.malhartech.dag.Node;
-import com.malhartech.dag.OperatorContext;
+import com.malhartech.dag.OperatorContextImpl;
 import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.TestGeneratorInputModule;
@@ -174,7 +174,7 @@ public class StramLocalClusterTest
     String window0Tuple = "window0Tuple";
     n1.addTuple(window0Tuple);
 
-    OperatorContext n1Context = c0.getNodeContext(ptNode1.id);
+    OperatorContextImpl n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
     wclock.tick(1); // begin window 1
     wclock.tick(1); // begin window 2
@@ -185,7 +185,7 @@ public class StramLocalClusterTest
     wclock.tick(1); // end window 2
     StramTestSupport.waitForWindowComplete(n1Context, 2);
 
-    OperatorContext n2Context = c2.getNodeContext(ptNode2.id);
+    OperatorContextImpl n2Context = c2.getNodeContext(ptNode2.id);
     Assert.assertNotNull("context " + ptNode2);
 
     wclock.tick(1); // end window 3
@@ -249,7 +249,7 @@ public class StramLocalClusterTest
     TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)nodeMap.get(ptNode1.id).getOperator();
     Assert.assertNotNull(n1Replaced);
 
-    OperatorContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
+    OperatorContextImpl n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
     Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
     // should node context should reflect last processed window (the backup window)?
     //Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
@@ -322,7 +322,7 @@ public class StramLocalClusterTest
     }
   }
 
-  private void backupNode(StramChild c, OperatorContext nodeCtx)
+  private void backupNode(StramChild c, OperatorContextImpl nodeCtx)
   {
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(nodeCtx.getId());
