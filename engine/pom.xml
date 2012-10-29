@@ -111,7 +111,7 @@
       <properties>
         <hadoop.version>2.0.1-alpha</hadoop.version>
         <slf4j.version>1.6.1</slf4j.version>
-        <test.excludedGroups>com.malhartech.PerformanceTestCategory</test.excludedGroups>
+        <test.excludedGroups>com.malhartech.annotation.PerformanceTestCategory</test.excludedGroups>
       </properties>
       <dependencies>
         <dependency>

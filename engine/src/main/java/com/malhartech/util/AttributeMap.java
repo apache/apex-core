@@ -30,6 +30,7 @@ public interface AttributeMap<CONTEXT> {
     private final Class<CONTEXT> scope;
     private final String name;
 
+    @SuppressWarnings("LeakingThisInConstructor")
     protected AttributeKey(Class<CONTEXT> scope, String name) {
       this.scope = scope;
       this.name = name;
