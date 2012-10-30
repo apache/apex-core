@@ -37,6 +37,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.StramTestSupport;
+import org.junit.Ignore;
 
 public class StramLocalClusterTest
 {
@@ -45,6 +46,7 @@ public class StramLocalClusterTest
   /**
    * Verify test configuration launches and stops after input terminates.
    * Test validates expected output end to end.
+   *
    * @throws Exception
    */
   @Test
@@ -53,7 +55,8 @@ public class StramLocalClusterTest
     DAG dag = new DAG();
 
     TestGeneratorInputModule genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
-    genNode.setMaxTuples(1);
+    genNode.setMaxTuples(2);
+    genNode.setAutogenerate(true);
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
     node1.setEmitFormat("%s >> node1");
@@ -84,12 +87,14 @@ public class StramLocalClusterTest
     lnr.close();
   }
 
-  private static class TestBufferServerSubscriber {
+  private static class TestBufferServerSubscriber
+  {
     final BufferServerInputStream bsi;
     final StreamContext streamContext;
     final TestSink<Object> sink;
 
-    TestBufferServerSubscriber(PTOperator publisherOperator, String publisherPortName) {
+    TestBufferServerSubscriber(PTOperator publisherOperator, String publisherPortName)
+    {
       // sink to collect tuples emitted by the input module
       sink = new TestSink<Object>();
       String streamName = "testSinkStream";
@@ -104,8 +109,8 @@ public class StramLocalClusterTest
       bsi.setSink("testSink", sink);
     }
 
-
-    List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException {
+    List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException
+    {
       bsi.postActivate(streamContext);
       //LOG.debug("test sink activated");
       sink.waitForResultCount(1, 3000);
@@ -116,10 +121,7 @@ public class StramLocalClusterTest
       sink.collectedTuples.clear();
       return result;
     }
-
   }
-
-
 
   @Test
   @SuppressWarnings("SleepWhileInLoop")
@@ -130,6 +132,8 @@ public class StramLocalClusterTest
     TestGeneratorInputModule node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
     // data will be added externally from test
     node1.setMaxTuples(0);
+    node1.setAutogenerate(false);
+
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
 
     dag.addStream("n1n2", node1.outport, node2.inport1);
@@ -140,9 +144,11 @@ public class StramLocalClusterTest
 
     final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
 
-    MockComponentFactory mcf = new MockComponentFactory() {
+    MockComponentFactory mcf = new MockComponentFactory()
+    {
       @Override
-      public WindowGenerator setupWindowGenerator() {
+      public WindowGenerator setupWindowGenerator()
+      {
         WindowGenerator wingen = StramTestSupport.setupWindowGenerator(wclock);
         return wingen;
       }
@@ -172,7 +178,7 @@ public class StramLocalClusterTest
 
     // input data
     String window0Tuple = "window0Tuple";
-    n1.addTuple(window0Tuple);
+    n1.emitTuple(window0Tuple);
 
     OperatorContextImpl n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
@@ -332,5 +338,4 @@ public class StramLocalClusterTest
     LOG.debug("Requesting backup {} node {}", c.getContainerId(), nodeCtx.getId());
     c.processHeartbeatResponse(rsp);
   }
-
 }

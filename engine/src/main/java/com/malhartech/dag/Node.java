@@ -36,8 +36,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected final HashMap<String, CounterSink<?>> outputs = new HashMap<String, CounterSink<?>>();
   protected final int spinMillis = 10;
   protected final int bufferCapacity = 1024 * 1024;
-  @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile CounterSink[] sinks = CounterSink.NO_SINKS;
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
@@ -57,9 +55,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return operator;
   }
 
-  protected void connectOutputPort(String port, final Sink sink)
+  protected OutputPort<?> connectOutputPort(String port, final Sink sink)
   {
-    OutputPort outputPort = descriptor.outputPorts.get(port);
+    OutputPort<?> outputPort = descriptor.outputPorts.get(port);
     if (outputPort != null) {
       if (sink instanceof CounterSink) {
         outputPort.setSink(sink);
@@ -102,27 +100,12 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         outputs.put(port, cs);
       }
     }
+
+    return outputPort;
   }
 
   public abstract Sink connect(String id, Sink sink);
 
-  protected void activateSinks()
-  {
-    CounterSink[] newSinks = new CounterSink[outputs.size()];
-
-    int i = 0;
-    for (CounterSink s: outputs.values()) {
-      newSinks[i++] = s;
-    }
-
-    this.sinks = newSinks;
-  }
-
-  public void deactivateSinks()
-  {
-    sinks = CounterSink.NO_SINKS;
-    outputs.clear();
-  }
   OperatorContextImpl context;
 
   public void activate(OperatorContextImpl context)
@@ -187,9 +170,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
-    // we need to think about this as well.
     EndStreamTuple est = new EndStreamTuple();
-    for (final Sink output: outputs.values()) {
+    for (final CounterSink output: outputs.values()) {
       output.process(est);
     }
   }
@@ -225,4 +207,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
     stats.put("OUTPUT_PORTS", opstats);
   }
+
+  protected abstract void activateSinks();
+
+  protected abstract void deactivateSinks();
 }

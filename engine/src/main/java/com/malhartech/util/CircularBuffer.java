@@ -285,6 +285,33 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
     return head == tail;
   }
 
+  public Iterator<T> getFrozenIterator()
+  {
+    return new Iterator<T>()
+    {
+      private final long head = CircularBuffer.this.head;
+      private long tail = CircularBuffer.this.tail;
+
+      @Override
+      public boolean hasNext()
+      {
+        return tail < head;
+      }
+
+      @Override
+      public T next()
+      {
+        return buffer[(int)tail++ & buffermask];
+      }
+
+      @Override
+      public void remove()
+      {
+        buffer[(int)(tail - 1) & buffermask] = null;
+      }
+    };
+  }
+
   @Override
   public Iterator<T> iterator()
   {
