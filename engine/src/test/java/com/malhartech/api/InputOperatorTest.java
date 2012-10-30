@@ -2,13 +2,13 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.dag;
+package com.malhartech.api;
 
-import com.malhartech.deprecated.api.SyncInputOperator;
-import com.malhartech.api.*;
+import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.stram.StramLocalCluster;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import junit.framework.Assert;
 import org.junit.Test;
@@ -17,34 +17,74 @@ import org.junit.Test;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class AbstractSynchronousInputModuleTest
+public class InputOperatorTest
 {
   static HashMap<String, List<?>> collections = new HashMap<String, List<?>>();
 
-  public static class SynchronousInputOperator extends BaseOperator implements SyncInputOperator, Runnable
+  public static class EvenOddIntegerGeneratorInputOperator implements InputOperator, ActivationListener<OperatorContext>
   {
     public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>(this);
     public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>(this);
+    private volatile Thread dataGeneratorThread;
 
     @Override
-    public Runnable getDataPoller()
+    public void replayEmitTuples(long windowId)
     {
-      return this;
     }
 
     @Override
-    @SuppressWarnings("SleepWhileInLoop")
-    public void run()
+    public void postEmitTuples(long windowId, OutputPort<?> outputPort, Iterator<?> tuples)
     {
-      for (int i = 0; i < Integer.MAX_VALUE; i++) {
-        (i % 2 == 0 ? even : odd).emit(i);
-        try {
-          Thread.sleep(20);
+    }
+
+    @Override
+    public void beginWindow()
+    {
+    }
+
+    @Override
+    public void endWindow()
+    {
+    }
+
+    @Override
+    public void setup(OperatorConfiguration config)
+    {
+    }
+
+    @Override
+    public void teardown()
+    {
+    }
+
+    @Override
+    public void postActivate(OperatorContext ctx)
+    {
+      dataGeneratorThread = new Thread("Integer Emitter")
+      {
+        @Override
+        @SuppressWarnings("SleepWhileInLoop")
+        public void run()
+        {
+          int i = 0;
+          while (dataGeneratorThread != null) {
+            (i % 2 == 0 ? even : odd).emit(i++);
+            try {
+              Thread.sleep(20);
+            }
+            catch (InterruptedException ie) {
+              break;
+            }
+          }
         }
-        catch (InterruptedException ie) {
-          break;
-        }
-      }
+      };
+      dataGeneratorThread.start();
+    }
+
+    @Override
+    public void preDeactivate()
+    {
+      dataGeneratorThread = null;
     }
   }
 
@@ -58,7 +98,7 @@ public class AbstractSynchronousInputModuleTest
   public void testSomeMethod() throws Exception
   {
     DAG dag = new DAG();
-    SynchronousInputOperator generator = dag.addOperator("NumberGenerator", SynchronousInputOperator.class);
+    EvenOddIntegerGeneratorInputOperator generator = dag.addOperator("NumberGenerator", EvenOddIntegerGeneratorInputOperator.class);
     CollectorModule<Number> collector = dag.addOperator("NumberCollector", new CollectorModule<Number>());
 
     dag.addStream("EvenIntegers", generator.even, collector.even).setInline(true);
@@ -84,9 +124,9 @@ public class AbstractSynchronousInputModuleTest
 
     lc.run();
 
-    Assert.assertEquals("collections size", 2, collections.size());
-    Assert.assertFalse("non zero tuple count", collections.get(collector.even.id).isEmpty() && collections.get(collector.odd.id).isEmpty());
-    Assert.assertTrue("tuple count", collections.get(collector.even.id).size() - collections.get(collector.odd.id).size() <= 1);
+    Assert.assertEquals("Collections size", 2, collections.size());
+    Assert.assertFalse("Zero tuple count", collections.get(collector.even.id).isEmpty() && collections.get(collector.odd.id).isEmpty());
+    Assert.assertTrue("Tuple count", collections.get(collector.even.id).size() - collections.get(collector.odd.id).size() <= 1);
   }
 
   public static class CollectorInputPort<T> extends DefaultInputPort<T>

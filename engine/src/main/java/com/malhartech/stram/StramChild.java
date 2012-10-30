@@ -4,8 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.deprecated.api.SyncInputOperator;
-import com.malhartech.deprecated.dag.SyncInputNode;
 import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -593,11 +591,8 @@ public class StramChild
         }
 
         String nodeid = ndi.id.concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
-        if (foreignObject instanceof AsyncInputOperator) {
-          nodes.put(ndi.id, new AsyncInputNode(nodeid, (AsyncInputOperator)foreignObject));
-        }
-        else if (foreignObject instanceof SyncInputOperator) {
-          nodes.put(ndi.id, new SyncInputNode(nodeid, (SyncInputOperator)foreignObject));
+        if (foreignObject instanceof InputOperator) {
+          nodes.put(ndi.id, new InputNode(nodeid, (InputOperator)foreignObject));
         }
         else {
           nodes.put(ndi.id, new GenericNode(nodeid, (Operator)foreignObject));
