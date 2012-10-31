@@ -17,11 +17,13 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
+import javax.validation.Valid;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
@@ -312,13 +314,13 @@ public class DAGBuilderTest {
 
   }
 
-  private class ValidationTestOperator extends BaseOperator {
+  static class ValidationTestOperator extends BaseOperator {
     @NotNull
     @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
-    String stringField1;
+    private String stringField1;
 
     @Min(2)
-    int intField1;
+    private int intField1;
 
     @AssertTrue(message="stringField1 should end with intField1")
     private boolean isValidConfiguration() {
@@ -333,6 +335,46 @@ public class DAGBuilderTest {
 
     @InjectConfig(key="stringArrayKey")
     private String[] stringArrayField;
+
+    private String getterProperty2 = "";
+
+    @NotNull
+    public String getProperty2() {
+      return getterProperty2;
+    }
+
+    public void setProperty2(String s) {
+      // annotations need to be on the getter
+      getterProperty2 = s;
+    }
+
+    public class Nested {
+      @NotNull
+      private String property = "";
+
+      public String getProperty() {
+        return property;
+      }
+
+      public void setProperty(String property) {
+        this.property = property;
+      }
+
+    }
+
+    @Valid
+    private final Nested nestedBean = new Nested();
+
+    private String stringProperty2;
+
+    public String getStringProperty2() {
+      return stringProperty2;
+    }
+
+    public void setStringProperty2(String stringProperty2) {
+      this.stringProperty2 = stringProperty2;
+    }
+
   }
 
   @Test
@@ -351,7 +393,7 @@ public class DAGBuilderTest {
     //for (ConstraintViolation<ValidationTestOperator> cv : constraintViolations) {
     //  System.out.println("validation error: " + cv);
     //}
-    Assert.assertEquals("",1, constraintViolations.size());
+    Assert.assertEquals("" + constraintViolations,1, constraintViolations.size());
     ConstraintViolation<ValidationTestOperator> cv = constraintViolations.iterator().next();
     Assert.assertEquals("", bean.intField1, cv.getInvalidValue());
     Assert.assertEquals("", "intField1", cv.getPropertyPath().toString());
@@ -370,15 +412,42 @@ public class DAGBuilderTest {
     try {
       bean.intField1 = 3;
       dag.validate();
-      Assert.fail("should throw ConstraintViolationException for isValidConfiguration");
+      Assert.fail("should throw ConstraintViolationException");
     } catch (ConstraintViolationException e) {
       ConstraintViolation<?> cv2 = e.getConstraintViolations().iterator().next();
+      Assert.assertEquals("" + e.getConstraintViolations(), 1, constraintViolations.size());
       Assert.assertEquals("", false, cv2.getInvalidValue());
       Assert.assertEquals("", "validConfiguration", cv2.getPropertyPath().toString());
     }
+    bean.stringField1 = "malhar3";
 
-    bean.intField1 = 2;
-    bean.stringField1 = "malhar2";
+    // annotated getter
+    try {
+      bean.getterProperty2 = null;
+      dag.validate();
+      Assert.fail("should throw ConstraintViolationException");
+    } catch (ConstraintViolationException e) {
+      ConstraintViolation<?> cv2 = e.getConstraintViolations().iterator().next();
+      Assert.assertEquals("" + e.getConstraintViolations(), 1, constraintViolations.size());
+      Assert.assertEquals("", null, cv2.getInvalidValue());
+      Assert.assertEquals("", "property2", cv2.getPropertyPath().toString());
+    }
+    bean.getterProperty2 = "";
+
+    // nested property
+    try {
+      bean.nestedBean.property = null;
+      dag.validate();
+      Assert.fail("should throw ConstraintViolationException");
+    } catch (ConstraintViolationException e) {
+      ConstraintViolation<?> cv2 = e.getConstraintViolations().iterator().next();
+      Assert.assertEquals("" + e.getConstraintViolations(), 1, constraintViolations.size());
+      Assert.assertEquals("", null, cv2.getInvalidValue());
+      Assert.assertEquals("", "nestedBean.property", cv2.getPropertyPath().toString());
+    }
+    bean.nestedBean.property = "";
+
+    // all valid
     dag.validate();
 
   }
@@ -399,6 +468,50 @@ public class DAGBuilderTest {
     GenericTestModule o1 = dag.addOperator("o1", GenericTestModule.class);
     dag.addStream("stream1", input.outport, o1.inport1);
     dag.validate();
+
+  }
+
+  @Test
+  public void testOperatorConfigurationLookup() {
+
+    Properties props = new Properties();
+
+    // settings that match operator by name
+    props.put("stram.template.matchId1.matchIdRegExp", ".*operator1.*");
+    props.put("stram.template.matchId1.stringProperty2", "stringProperty2Value-matchId1");
+    props.put("stram.template.matchId1.nested.property", "nested.propertyValue-matchId1");
+
+    props.put("stram.template.matchClass1.matchClassNameRegExp", ".*" + ValidationTestOperator.class.getSimpleName());
+    props.put("stram.template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
+
+    // match class name
+    props.put("stram.template.t2.matchClassNameRegExp", ".*"+GenericTestModule.class.getSimpleName());
+    props.put("stram.template.t2.myStringProperty", "myStringPropertyValue");
+
+    // match named
+    props.put("stram.operator.operator3.emitFormat", "emitFormatValue");
+
+    DAG dag = new DAG();
+    Operator operator1 = dag.addOperator("operator1", new ValidationTestOperator());
+    Operator operator2 = dag.addOperator("operator2", new ValidationTestOperator());
+    Operator operator3 = dag.addOperator("operator3", new GenericTestModule());
+
+    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
+    pb.addFromProperties(props);
+
+    Map<String, String> configProps = pb.getProperties(dag.getOperatorWrapper(operator1), "appName");
+    Assert.assertEquals("" + configProps, 2, configProps.size());
+    Assert.assertEquals("" + configProps, "stringProperty2Value-matchId1", configProps.get("stringProperty2"));
+    Assert.assertEquals("" + configProps, "nested.propertyValue-matchId1", configProps.get("nested.property"));
+
+    configProps = pb.getProperties(dag.getOperatorWrapper(operator2), "appName");
+    Assert.assertEquals("" + configProps, 1, configProps.size());
+    Assert.assertEquals("" + configProps, "stringProperty2Value-matchClass1", configProps.get("stringProperty2"));
+
+    configProps = pb.getProperties(dag.getOperatorWrapper(operator3), "appName");
+    Assert.assertEquals("" + configProps, 2, configProps.size());
+    Assert.assertEquals("" + configProps, "myStringPropertyValue", configProps.get("myStringProperty"));
+    Assert.assertEquals("" + configProps, "emitFormatValue", configProps.get("emitFormat"));
 
   }
 

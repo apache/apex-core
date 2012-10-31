@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -22,12 +23,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.Operator;
 import com.malhartech.dag.ApplicationFactory;
 import com.malhartech.dag.Operators;
-import com.malhartech.api.DAG;
-import com.malhartech.api.Operator;
 import com.malhartech.dag.SerDe;
-import com.malhartech.api.DAG.StreamDecl;
 
 /**
  *
@@ -49,15 +51,15 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   public static final String STREAM_INLINE = "inline";
   public static final String STREAM_SERDE_CLASSNAME = "serdeClassname";
 
-  public static final String OPERATOR_PREFIX = "stram.operator";
+  public static final String OPERATOR_PREFIX = "stram.operator.";
   public static final String OPERATOR_CLASSNAME = "classname";
   public static final String OPERATOR_TEMPLATE = "template";
 
-  public static final String OPERATOR_LB_TUPLECOUNT_MIN = "lb.tuplecount.min";
-  public static final String OPERATOR_LB_TUPLECOUNT_MAX = "lb.tuplecount.max";
+  public static final String TEMPLATE_PREFIX = "stram.template.";
 
-  public static final String TEMPLATE_PREFIX = "stram.template";
-
+  public static final String TEMPLATE_idRegExp = "matchIdRegExp";
+  public static final String TEMPLATE_appNameRegExp = "matchAppNameRegExp";
+  public static final String TEMPLATE_classNameRegExp = "matchClassNameRegExp";
 
   /**
    * Named set of properties that can be used to instantiate streams or operators
@@ -72,6 +74,11 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
      */
     private TemplateConf(String id) {
     }
+
+    private String idRegExp;
+    private String appNameRegExp;
+    private String classNameRegExp;
+
   }
 
   /**
@@ -118,7 +125,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       }
       node.outputs.put(portName, this);
       this.sourceNode = node;
-      rootNodes.removeAll(this.targetNodes);
       return this;
     }
 
@@ -129,10 +135,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       //LOG.debug("Adding {} to {}", targetNode, this);
       targetNode.inputs.put(portName, this);
       targetNodes.add(targetNode);
-      // root operators don't receive input from other node(s)
-      if (sourceNode != null) {
-        rootNodes.remove(targetNode);
-      }
       return this;
     }
 
@@ -152,7 +154,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     private static final long serialVersionUID = -4675421720308249982L;
 
     /**
-     * Hint to manager that adjacent operators should be deployed in same container.
      * @param defaults
      */
     void setDefaultProperties(Properties defaults) {
@@ -224,13 +225,11 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   private final Map<String, NodeConf> nodes;
   private final Map<String, StreamConf> streams;
   private final Map<String, TemplateConf> templates;
-  private final Set<NodeConf> rootNodes; // root operators (operators that don't have input from another node)
 
   public DAGPropertiesBuilder() {
     this.nodes = new HashMap<String, NodeConf>();
     this.streams = new HashMap<String, StreamConf>();
     this.templates = new HashMap<String,TemplateConf>();
-    this.rootNodes = new HashSet<NodeConf>();
   }
 
   private NodeConf getOrAddNode(String nodeId) {
@@ -238,7 +237,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     if (nc == null) {
       nc = new NodeConf(nodeId);
       nodes.put(nodeId, nc);
-      rootNodes.add(nc);
     }
     return nc;
   }
@@ -354,15 +352,23 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
            nc.properties.put(propertyKey, propertyValue);
          }
       } else if (propertyName.startsWith(TEMPLATE_PREFIX)) {
-        String[] keyComps = propertyName.split("\\.");
+        String[] keyComps = propertyName.split("\\.", 4);
         // must have at least id and single component property
         if (keyComps.length < 4) {
           LOG.warn("Invalid configuration key: {}", propertyName);
           continue;
         }
-        String propertyKey = keyComps[3];
         TemplateConf tc = getOrAddTemplate(keyComps[2]);
-        tc.properties.setProperty(propertyKey, propertyValue);
+        String propertyKey = keyComps[3];
+        if (propertyKey.equals(TEMPLATE_appNameRegExp)) {
+          tc.appNameRegExp = propertyValue;
+        } else if (propertyKey.equals(TEMPLATE_idRegExp)) {
+          tc.idRegExp = propertyValue;
+        } else if (propertyKey.equals(TEMPLATE_classNameRegExp)) {
+          tc.classNameRegExp = propertyValue;
+        } else {
+          tc.properties.setProperty(propertyKey, propertyValue);
+        }
       }
     }
     return this;
@@ -456,4 +462,62 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     return props;
   }
 
+  /**
+   * Get the configuration properties for the given operator.
+   * These can be operator specific settings or settings from matching templates.
+   * @param ow
+   * @param appName
+   */
+  public Map<String, String> getProperties(OperatorWrapper ow, String appName) {
+    // if there are properties set directly, an entry exists
+    // else it will be created so we can evaluate the templates against it
+    NodeConf n = getOrAddNode(ow.getId());
+    n.properties.put(OPERATOR_CLASSNAME, ow.getOperator().getClass().getName());
+
+    Map<String, String> properties = new HashMap<String, String>();
+    // list of all templates that match operator, ordered by priority
+    if (!this.templates.isEmpty()) {
+      TreeMap<Integer, TemplateConf> matchingTemplates = getMatchingTemplates(n, appName);
+      if (matchingTemplates != null && !matchingTemplates.isEmpty()) {
+        // combined map of prioritized template settings
+        for (TemplateConf t : matchingTemplates.descendingMap().values()) {
+          properties.putAll(Maps.fromProperties(t.properties));
+        }
+      }
+    }
+    // direct settings
+    properties.putAll(n.getProperties());
+    properties.remove(OPERATOR_CLASSNAME);
+    return properties;
+  }
+
+  /**
+   * Produce the collections of templates that apply for the given id.
+   * @param id
+   * @param appName
+   * @param assignedTemplate
+   * @return
+   */
+  public TreeMap<Integer, TemplateConf> getMatchingTemplates(NodeConf nodeConf, String appName) {
+    TreeMap<Integer, TemplateConf> tm = new TreeMap<Integer, TemplateConf>();
+    for (TemplateConf t : this.templates.values()) {
+      if (t == nodeConf.template) {
+        // directly assigned applies last
+        tm.put(1, t);
+        continue;
+      } else if ((t.idRegExp != null && nodeConf.id.matches(t.idRegExp))) {
+        tm.put(2, t);
+        continue;
+      } else if (appName != null && t.appNameRegExp != null
+          && appName.matches(t.appNameRegExp)) {
+        tm.put(3, t);
+        continue;
+      } else if (t.classNameRegExp != null
+          && nodeConf.getModuleClassNameReqd().matches(t.classNameRegExp)) {
+        tm.put(4, t);
+        continue;
+      }
+    }
+    return tm;
+  }
 }
