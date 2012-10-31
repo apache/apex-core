@@ -58,7 +58,7 @@ abstract public class StramTestSupport
   }
 
   @SuppressWarnings("SleepWhileInLoop")
-  public static void waitForWindowComplete(OperatorContextImpl nodeCtx, long windowId) throws InterruptedException
+  public static void waitForWindowComplete(OperatorContext nodeCtx, long windowId) throws InterruptedException
   {
     LOG.debug("Waiting for end of window {} at node {}", windowId, nodeCtx.getId());
     while (nodeCtx.getLastProcessedWindowId() < windowId) {

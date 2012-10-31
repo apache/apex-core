@@ -107,9 +107,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   }
 
   public abstract Sink connect(String id, Sink sink);
-  OperatorContextImpl context;
+  OperatorContext context;
 
-  public void activate(OperatorContextImpl context)
+  public void activate(OperatorContext context)
   {
     boolean activationListener = operator instanceof ActivationListener;
 
@@ -183,7 +183,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      CircularBuffer<OperatorContextImpl.NodeRequest> requests = context.getRequests();
+      CircularBuffer<OperatorContext.NodeRequest> requests = context.getRequests();
       for (int i = requests.size(); i-- > 0;) {
         //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
         requests.remove().execute(operator, context.getId(), windowId);

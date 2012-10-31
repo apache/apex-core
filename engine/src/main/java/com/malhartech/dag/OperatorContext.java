@@ -23,7 +23,7 @@ import com.malhartech.util.CircularBuffer;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class OperatorContextImpl implements Context.OperatorContext
+public class OperatorContext implements Context.OperatorContext
 {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorContext.class);
 
@@ -68,7 +68,7 @@ public class OperatorContextImpl implements Context.OperatorContext
     this.idleTimeout = idleTimeout;
   }
 
-  public OperatorContextImpl(String id, Thread t, AttributeMap<OperatorContext> attributes)
+  public OperatorContext(String id, Thread t, AttributeMap<OperatorContext> attributes)
   {
     this.id = id;
     this.attributes = attributes;
