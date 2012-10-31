@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -16,6 +17,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.conf.Configuration;
@@ -400,8 +402,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       NodeConf nodeConf = nodeConfEntry.getValue();
       Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getModuleClassNameReqd(), Operator.class);
       Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
-      StramUtils.setOperatorProperties(nd, nodeConf.getProperties());
-      //nd.getProperties().putAll(nodeConf.getProperties());
+      setOperatorProperties(nd, nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
     }
 
@@ -520,4 +521,40 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     }
     return tm;
   }
+
+  /**
+   * Inject the configuration properties into the operator instance.
+   * @param operator
+   * @param properties
+   * @return
+   */
+  public static Operator setOperatorProperties(Operator operator, Map<String, String> properties)
+  {
+    try {
+      // populate custom properties
+      BeanUtils.populate(operator, properties);
+      return operator;
+    }
+    catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    }
+    catch (InvocationTargetException e) {
+      throw new IllegalArgumentException("Error setting node properties", e);
+    }
+  }
+
+  /**
+   * Set any properties from configuration on the operators in the DAG. This
+   * method may throw unchecked exception if the configuration contains
+   * properties that are invalid for an operator.
+   *
+   * @param dag
+   */
+  public void setOperatorProperties(DAG dag, String applicationName) {
+    for (OperatorWrapper ow : dag.getAllOperators()) {
+      Map<String, String> properties = getProperties(ow, applicationName);
+      setOperatorProperties(ow.getOperator(), properties);
+    }
+  }
+
 }

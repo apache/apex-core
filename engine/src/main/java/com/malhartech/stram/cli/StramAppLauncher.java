@@ -287,6 +287,16 @@ public class StramAppLauncher {
     return conf;
   }
 
+  private static DAG prepareDAG(AppConfig appConfig, String launchMode) {
+    DAG dag = appConfig.createApp(getConfig(launchMode));
+    dag.getConf().setIfUnset(DAG.STRAM_APPNAME, appConfig.getName());
+    // inject configuration
+    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
+    pb.addFromConfiguration(dag.getConf());
+    pb.setOperatorProperties(dag, dag.getConf().get(DAG.STRAM_APPNAME));
+    return dag;
+  }
+
   /**
    * Run application in-process. Returns only once application completes.
    * @param appConfig
@@ -296,7 +306,7 @@ public class StramAppLauncher {
     // local mode requires custom classes to be resolved through the context class loader
     URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
     Thread.currentThread().setContextClassLoader(cl);
-    StramLocalCluster lc = new StramLocalCluster(appConfig.createApp(getConfig(ApplicationFactory.LAUNCHMODE_LOCAL)));
+    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_LOCAL));
     lc.run();
   }
 
@@ -325,8 +335,7 @@ public class StramAppLauncher {
   public static String runApp(AppConfig appConfig) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
 
-    DAG dag = appConfig.createApp(getConfig(ApplicationFactory.LAUNCHMODE_YARN));
-    dag.getConf().setIfUnset(DAG.STRAM_APPNAME, appConfig.getName());
+    DAG dag = prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
     StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();

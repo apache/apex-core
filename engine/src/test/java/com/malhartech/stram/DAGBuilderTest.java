@@ -476,11 +476,12 @@ public class DAGBuilderTest {
 
     Properties props = new Properties();
 
-    // settings that match operator by name
+    // match operator by name
     props.put("stram.template.matchId1.matchIdRegExp", ".*operator1.*");
     props.put("stram.template.matchId1.stringProperty2", "stringProperty2Value-matchId1");
     props.put("stram.template.matchId1.nested.property", "nested.propertyValue-matchId1");
 
+    // match class name, lower priority
     props.put("stram.template.matchClass1.matchClassNameRegExp", ".*" + ValidationTestOperator.class.getSimpleName());
     props.put("stram.template.matchClass1.stringProperty2", "stringProperty2Value-matchClass1");
 
@@ -488,7 +489,7 @@ public class DAGBuilderTest {
     props.put("stram.template.t2.matchClassNameRegExp", ".*"+GenericTestModule.class.getSimpleName());
     props.put("stram.template.t2.myStringProperty", "myStringPropertyValue");
 
-    // match named
+    // direct setting
     props.put("stram.operator.operator3.emitFormat", "emitFormatValue");
 
     DAG dag = new DAG();
@@ -512,6 +513,23 @@ public class DAGBuilderTest {
     Assert.assertEquals("" + configProps, 2, configProps.size());
     Assert.assertEquals("" + configProps, "myStringPropertyValue", configProps.get("myStringProperty"));
     Assert.assertEquals("" + configProps, "emitFormatValue", configProps.get("emitFormat"));
+
+  }
+
+  @Test
+  public void testSetOperatorProperties() {
+
+    Configuration conf = new Configuration(false);
+    conf.set("stram.operator.o1.myStringProperty", "myStringPropertyValue");
+
+    DAG dag = new DAG();
+    GenericTestModule o1 = dag.addOperator("o1", new GenericTestModule());
+
+    DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
+    pb.addFromConfiguration(conf);
+
+    pb.setOperatorProperties(dag, "testSetOperatorProperties");
+    Assert.assertEquals("o1.myStringProperty", "myStringPropertyValue", o1.getMyStringProperty());
 
   }
 
