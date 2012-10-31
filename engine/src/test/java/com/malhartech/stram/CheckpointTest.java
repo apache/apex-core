@@ -23,6 +23,7 @@ import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,18 +72,18 @@ public class CheckpointTest
     LocalStramChild container = new LocalStramChild(containerId, null, wingen);
     container.setup(cc);
 
-    //mses.tick(1); // begin window 0
+//    mses.tick(1); // begin window 0
     mses.tick(1); // begin window 1
 
     Assert.assertEquals("number operators", 1, container.getNodes().size());
     Operator node = container.getNode(cc.nodeList.get(0).id);
-    OperatorContextImpl context = container.getNodeContext(cc.nodeList.get(0).id);
+    OperatorContext context = container.getNodeContext(cc.nodeList.get(0).id);
 
     Assert.assertNotNull("node deployed " + cc.nodeList.get(0), node);
     Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());
     Assert.assertEquals("maxTupes", 1, ((TestGeneratorInputModule)node).getMaxTuples());
 
-    mses.tick(1); // end window 1, start window 2
+    mses.tick(1); // begin window 2
     // await end window 1 to ensure backup is executed at window 2
     StramTestSupport.waitForWindowComplete(context, 1);
 

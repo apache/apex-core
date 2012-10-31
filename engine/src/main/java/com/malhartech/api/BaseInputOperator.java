@@ -4,9 +4,10 @@
  */
 package com.malhartech.api;
 
-import java.util.ArrayList;
-
 import com.malhartech.annotation.OutputPortFieldAnnotation;
+import java.util.ArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base class for input operator with a single output port. Handles hand over
@@ -17,8 +18,9 @@ import com.malhartech.annotation.OutputPortFieldAnnotation;
  * perform synchronous IO, this class will manage the thread according
  * to the operator lifecycle.
  */
-public class BaseInputOperator<T> extends BaseOperator implements AsyncInputOperator, ActivationListener<Context>
+public class BaseInputOperator<T> extends BaseOperator implements InputOperator, ActivationListener<Context>
 {
+  private static final Logger logger = LoggerFactory.getLogger(BaseInputOperator.class);
   private transient Thread ioThread;
   private transient boolean isActive = false;
   private long currentWindowId;
@@ -55,27 +57,14 @@ public class BaseInputOperator<T> extends BaseOperator implements AsyncInputOper
   }
 
   @Override
-  final public void emitTuples(long windowId)
+  final public void replayTuples(long windowId)
   {
-    if (windowId < currentWindowId) {
-      emitPreviousWindowTuples(windowId);
-      this.outputPort.flush();
-    }
-    else {
-      this.outputPort.flush();
-      currentWindowId = windowId;
-    }
   }
 
-  /**
-   * Callback on replay of previous window (during recovery).
-   * If subclass has the ability to recover the input, emit to port.
-   *
-   * @param windowId
-   * @param sink
-   */
-  public void emitPreviousWindowTuples(long windowId)
+  @Override
+  public void emitTuples(long windowId)
   {
+    outputPort.flush();
   }
 
   public static class CollectorSink<T> implements Sink<T>

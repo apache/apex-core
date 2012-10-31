@@ -17,11 +17,12 @@ import com.malhartech.stram.ManualScheduledExecutorService;
 /**
  * Bunch of utilities shared between tests.
  */
-abstract public class StramTestSupport {
+abstract public class StramTestSupport
+{
+  private static final Logger LOG = LoggerFactory.getLogger(StramTestSupport.class);
 
-  private static final Logger LOG = LoggerFactory.getLogger( StramTestSupport.class);
-
-  public static Object generateTuple(Object payload, int windowId) {
+  public static Object generateTuple(Object payload, int windowId)
+  {
     return payload;
   }
 
@@ -32,7 +33,6 @@ abstract public class StramTestSupport {
     return bwt;
   }
 
-
   public static Tuple generateEndWindowTuple(String nodeid, int windowId, int tupleCount)
   {
     EndWindowTuple t = new EndWindowTuple();
@@ -41,14 +41,15 @@ abstract public class StramTestSupport {
     return t;
   }
 
-
-  public static void checkStringMatch(String print, String expected, String got) {
+  public static void checkStringMatch(String print, String expected, String got)
+  {
     assertTrue(
-        print + " doesn't match, got: " + got + " expected: " + expected,
-        got.matches(expected));
+            print + " doesn't match, got: " + got + " expected: " + expected,
+            got.matches(expected));
   }
 
-  public static WindowGenerator setupWindowGenerator(ManualScheduledExecutorService mses) {
+  public static WindowGenerator setupWindowGenerator(ManualScheduledExecutorService mses)
+  {
     WindowGenerator gen = new WindowGenerator(mses);
     gen.setResetWindow(0);
     gen.setFirstWindow(0);
@@ -57,13 +58,11 @@ abstract public class StramTestSupport {
   }
 
   @SuppressWarnings("SleepWhileInLoop")
-  public static void waitForWindowComplete(OperatorContextImpl nodeCtx, long windowId) throws InterruptedException
+  public static void waitForWindowComplete(OperatorContext nodeCtx, long windowId) throws InterruptedException
   {
+    LOG.debug("Waiting for end of window {} at node {}", windowId, nodeCtx.getId());
     while (nodeCtx.getLastProcessedWindowId() < windowId) {
-      LOG.debug("Waiting for end of window {} at node {}", windowId, nodeCtx.getId());
-      Thread.sleep(100);
+      Thread.sleep(20);
     }
   }
-
-
 }

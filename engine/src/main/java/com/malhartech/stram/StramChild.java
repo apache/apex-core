@@ -4,8 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.deprecated.api.SyncInputOperator;
-import com.malhartech.deprecated.dag.SyncInputNode;
 import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -60,7 +58,7 @@ public class StramChild
   /**
    * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
    */
-  protected final Map<String, OperatorContextImpl> activeNodes = new ConcurrentHashMap<String, OperatorContextImpl>();
+  protected final Map<String, OperatorContext> activeNodes = new ConcurrentHashMap<String, OperatorContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
@@ -514,7 +512,7 @@ public class StramChild
     if (rsp.nodeRequests != null) {
       // extended processing per node
       for (StramToNodeRequest req: rsp.nodeRequests) {
-        OperatorContextImpl nc = activeNodes.get(req.getNodeId());
+        OperatorContext nc = activeNodes.get(req.getNodeId());
         if (nc == null) {
           logger.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
         }
@@ -532,7 +530,7 @@ public class StramChild
    * @param n
    * @param snr
    */
-  private void processStramRequest(OperatorContextImpl context, StramToNodeRequest snr)
+  private void processStramRequest(OperatorContext context, StramToNodeRequest snr)
   {
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
@@ -540,7 +538,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
-        context.request(new OperatorContextImpl.NodeRequest()
+        context.request(new OperatorContext.NodeRequest()
         {
           @Override
           public void execute(Operator module, String id, long windowId) throws IOException
@@ -593,11 +591,8 @@ public class StramChild
         }
 
         String nodeid = ndi.id.concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
-        if (foreignObject instanceof AsyncInputOperator) {
-          nodes.put(ndi.id, new AsyncInputNode(nodeid, (AsyncInputOperator)foreignObject));
-        }
-        else if (foreignObject instanceof SyncInputOperator) {
-          nodes.put(ndi.id, new SyncInputNode(nodeid, (SyncInputOperator)foreignObject));
+        if (foreignObject instanceof InputOperator) {
+          nodes.put(ndi.id, new InputNode(nodeid, (InputOperator)foreignObject));
         }
         else {
           nodes.put(ndi.id, new GenericNode(nodeid, (Operator)foreignObject));
@@ -954,7 +949,7 @@ public class StramChild
             OperatorConfiguration config = new OperatorConfiguration();
             node.getOperator().setup(config);
 
-            OperatorContextImpl nc = new OperatorContextImpl(ndi.id, this, ndi.contextAttributes);
+            OperatorContext nc = new OperatorContext(ndi.id, this, ndi.contextAttributes);
             activeNodes.put(ndi.id, nc);
 
             activatedNodeCount.incrementAndGet();

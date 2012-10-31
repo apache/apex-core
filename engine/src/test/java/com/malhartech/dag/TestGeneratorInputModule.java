@@ -4,14 +4,14 @@
 package com.malhartech.dag;
 
 import com.malhartech.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.AsyncInputOperator;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.api.InputOperator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestGeneratorInputModule extends BaseOperator implements AsyncInputOperator
+public class TestGeneratorInputModule extends BaseOperator implements InputOperator
 {
   private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputModule.class);
   public static final String OUTPUT_PORT = "outputPort";
@@ -83,5 +83,10 @@ public class TestGeneratorInputModule extends BaseOperator implements AsyncInput
   public void addTuple(String s)
   {
     externallyAddedTuples.add(s);
+  }
+
+  @Override
+  public void replayTuples(long windowId)
+  {
   }
 }

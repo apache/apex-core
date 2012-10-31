@@ -34,10 +34,10 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public static final String OUTPUT = "output";
   public final String id;
   protected final HashMap<String, CounterSink<?>> outputs = new HashMap<String, CounterSink<?>>();
-  protected final int spinMillis = 10;
-  protected final int bufferCapacity = 1024 * 1024;
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile CounterSink[] sinks = CounterSink.NO_SINKS;
+  protected final int spinMillis = 10;
+  protected final int bufferCapacity = 1024 * 1024;
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
@@ -57,9 +57,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return operator;
   }
 
-  protected void connectOutputPort(String port, final Sink sink)
+  protected OutputPort<?> connectOutputPort(String port, final Sink sink)
   {
-    OutputPort outputPort = descriptor.outputPorts.get(port);
+    OutputPort<?> outputPort = descriptor.outputPorts.get(port);
     if (outputPort != null) {
       if (sink instanceof CounterSink) {
         outputPort.setSink(sink);
@@ -102,30 +102,14 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         outputs.put(port, cs);
       }
     }
+
+    return outputPort;
   }
 
   public abstract Sink connect(String id, Sink sink);
+  OperatorContext context;
 
-  protected void activateSinks()
-  {
-    CounterSink[] newSinks = new CounterSink[outputs.size()];
-
-    int i = 0;
-    for (CounterSink s: outputs.values()) {
-      newSinks[i++] = s;
-    }
-
-    this.sinks = newSinks;
-  }
-
-  public void deactivateSinks()
-  {
-    sinks = CounterSink.NO_SINKS;
-    outputs.clear();
-  }
-  OperatorContextImpl context;
-
-  public void activate(OperatorContextImpl context)
+  public void activate(OperatorContext context)
   {
     boolean activationListener = operator instanceof ActivationListener;
 
@@ -187,9 +171,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
-    // we need to think about this as well.
     EndStreamTuple est = new EndStreamTuple();
-    for (final Sink output: outputs.values()) {
+    for (final CounterSink output: outputs.values()) {
       output.process(est);
     }
   }
@@ -200,7 +183,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      CircularBuffer<OperatorContextImpl.NodeRequest> requests = context.getRequests();
+      CircularBuffer<OperatorContext.NodeRequest> requests = context.getRequests();
       for (int i = requests.size(); i-- > 0;) {
         //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
         requests.remove().execute(operator, context.getId(), windowId);
@@ -224,5 +207,26 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
 
     stats.put("OUTPUT_PORTS", opstats);
+  }
+
+  protected void activateSinks()
+  {
+    int size = outputs.size();
+    if (size == 0) {
+      sinks = CounterSink.NO_SINKS;
+    }
+    else {
+      CounterSink[] newSinks = new CounterSink[size];
+      for (CounterSink s: outputs.values()) {
+        newSinks[--size] = s;
+      }
+
+      sinks = newSinks;
+    }
+  }
+
+  protected void deactivateSinks()
+  {
+    sinks = CounterSink.NO_SINKS;
   }
 }

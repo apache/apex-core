@@ -4,6 +4,7 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
@@ -16,17 +17,15 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR>
+public class InputNode extends Node<InputOperator>
 {
   private static final Logger logger = LoggerFactory.getLogger(InputNode.class);
-  protected HashMap<String, CircularBuffer<Tuple>> afterEndWindows; // what if we did not allow user to emit control tuples.
   protected CircularBuffer<Tuple> controlTuples;
 
-  public InputNode(String id, OPERATOR operator)
+  public InputNode(String id, InputOperator operator)
   {
     super(id, operator);
     controlTuples = new CircularBuffer<Tuple>(1024);
-    afterEndWindows = new HashMap<String, CircularBuffer<Tuple>>();
   }
 
   @Override
@@ -77,6 +76,7 @@ public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR
                 currentWindowId = t.getWindowId();
                 operator.beginWindow();
                 break;
+
               case END_WINDOW:
                 operator.endWindow();
                 inWindow = false;
@@ -84,17 +84,8 @@ public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR
                   sinks[i].process(t);
                 }
                 handleRequests(currentWindowId);
-                // i think there should be just one queue instead of one per port - lets defer till we find an example.
-                for (Entry<String, CircularBuffer<Tuple>> e: afterEndWindows.entrySet()) {
-                  final Sink s = outputs.get(e.getKey());
-                  if (s != null) {
-                    CircularBuffer<?> cb = e.getValue();
-                    for (int i = cb.size(); i-- > 0;) {
-                      s.process(cb.poll());
-                    }
-                  }
-                }
                 break;
+
               default:
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].process(t);
@@ -111,7 +102,7 @@ public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR
               generatedTuples -= cs.getCount();
             }
 
-            emitTuples();
+            operator.emitTuples(currentWindowId);
 
             for (CounterSink cs: sinks) {
               generatedTuples += cs.getCount();
@@ -138,6 +129,4 @@ public abstract class InputNode<OPERATOR extends Operator> extends Node<OPERATOR
       }
     }
   }
-
-  protected abstract void emitTuples() throws InterruptedException;
 }
