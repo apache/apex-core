@@ -4,10 +4,8 @@
  */
 package com.malhartech.api;
 
-import java.util.ArrayList;
-
 import com.malhartech.annotation.OutputPortFieldAnnotation;
-import java.util.Iterator;
+import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,20 +57,14 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
   }
 
   @Override
-  final public void replayEmitTuples(long windowId)
+  final public void replayTuples(long windowId)
   {
   }
 
   @Override
-  public void postEmitTuples(long windowId, OutputPort<?> outputPort, Iterator<?> tuples)
+  public void emitTuples(long windowId)
   {
-    int count = 0;
-    while (tuples.hasNext()) {
-      tuples.next();
-      count++;
-    }
-
-    logger.info("Processed {} tuples during window {} on port {}.", new Object[]{count, windowId, outputPort});
+    outputPort.flush();
   }
 
   public static class CollectorSink<T> implements Sink<T>

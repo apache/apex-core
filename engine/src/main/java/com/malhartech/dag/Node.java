@@ -34,6 +34,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public static final String OUTPUT = "output";
   public final String id;
   protected final HashMap<String, CounterSink<?>> outputs = new HashMap<String, CounterSink<?>>();
+  @SuppressWarnings(value = "VolatileArrayField")
+  protected volatile CounterSink[] sinks = CounterSink.NO_SINKS;
   protected final int spinMillis = 10;
   protected final int bufferCapacity = 1024 * 1024;
   protected boolean alive;
@@ -105,7 +107,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   }
 
   public abstract Sink connect(String id, Sink sink);
-
   OperatorContextImpl context;
 
   public void activate(OperatorContextImpl context)
@@ -208,7 +209,24 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     stats.put("OUTPUT_PORTS", opstats);
   }
 
-  protected abstract void activateSinks();
+  protected void activateSinks()
+  {
+    int size = outputs.size();
+    if (size == 0) {
+      sinks = CounterSink.NO_SINKS;
+    }
+    else {
+      CounterSink[] newSinks = new CounterSink[size];
+      for (CounterSink s: outputs.values()) {
+        newSinks[--size] = s;
+      }
 
-  protected abstract void deactivateSinks();
+      sinks = newSinks;
+    }
+  }
+
+  protected void deactivateSinks()
+  {
+    sinks = CounterSink.NO_SINKS;
+  }
 }

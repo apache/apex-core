@@ -6,6 +6,7 @@ package com.malhartech.api;
 
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.stram.StramLocalCluster;
+import com.malhartech.util.CircularBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -25,15 +26,12 @@ public class InputOperatorTest
   {
     public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>(this);
     public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>(this);
+    private final transient CircularBuffer<Integer> evenBuffer = new CircularBuffer<Integer>(1024);
+    private final transient CircularBuffer<Integer> oddBuffer = new CircularBuffer<Integer>(1024);
     private volatile Thread dataGeneratorThread;
 
     @Override
-    public void replayEmitTuples(long windowId)
-    {
-    }
-
-    @Override
-    public void postEmitTuples(long windowId, OutputPort<?> outputPort, Iterator<?> tuples)
+    public void replayTuples(long windowId)
     {
     }
 
@@ -66,15 +64,14 @@ public class InputOperatorTest
         @SuppressWarnings("SleepWhileInLoop")
         public void run()
         {
-          int i = 0;
-          while (dataGeneratorThread != null) {
-            (i % 2 == 0 ? even : odd).emit(i++);
-            try {
+          try {
+            int i = 0;
+            while (dataGeneratorThread != null) {
+              (i % 2 == 0 ? evenBuffer : oddBuffer).put(i++);
               Thread.sleep(20);
             }
-            catch (InterruptedException ie) {
-              break;
-            }
+          }
+          catch (InterruptedException ie) {
           }
         }
       };
@@ -85,6 +82,17 @@ public class InputOperatorTest
     public void preDeactivate()
     {
       dataGeneratorThread = null;
+    }
+
+    @Override
+    public void emitTuples(long windowId)
+    {
+      for (int i = evenBuffer.size(); i-- > 0;) {
+        even.emit(evenBuffer.pollUnsafe());
+      }
+      for (int i = oddBuffer.size(); i-- > 0;) {
+        odd.emit(oddBuffer.pollUnsafe());
+      }
     }
   }
 

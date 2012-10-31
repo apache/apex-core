@@ -55,8 +55,7 @@ public class StramLocalClusterTest
     DAG dag = new DAG();
 
     TestGeneratorInputModule genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
-    genNode.setMaxTuples(2);
-    genNode.setAutogenerate(true);
+    genNode.setMaxTuples(1);
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
     node1.setEmitFormat("%s >> node1");
@@ -132,7 +131,6 @@ public class StramLocalClusterTest
     TestGeneratorInputModule node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
     // data will be added externally from test
     node1.setMaxTuples(0);
-    node1.setAutogenerate(false);
 
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
 
@@ -178,7 +176,7 @@ public class StramLocalClusterTest
 
     // input data
     String window0Tuple = "window0Tuple";
-    n1.emitTuple(window0Tuple);
+    n1.addTuple(window0Tuple);
 
     OperatorContextImpl n1Context = c0.getNodeContext(ptNode1.id);
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());

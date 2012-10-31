@@ -17,17 +17,16 @@ public interface InputOperator extends Operator
    * that they emited in the past. The association of tuples and windowIds are notified to the
    * operator through ack calls.
    *
-   * @param windowId Identifier of the window in the past.
+   * @param windowId Identifier of the window in the past during which tuples will be assumed emitted.
    */
-  public void replayEmitTuples(long windowId);
+  public void replayTuples(long windowId);
 
   /**
-   * At the time when input operator emits the tuples on various of its output ports, it does
-   * not know the window during which the tuples will be sent out. Through this call, the system
-   * notifies the operator the windowId associated with the tuples. ackT
+   * During normal operation, the input operators are given an opportunity to emit the tuples
+   * under the control of the thread which controls the operator. The tuples which are emitted
+   * during this call are sent out during the window with id equal to the argument.
    *
-   * @param windowId Identifier of the window during which the tuples were processed.
-   * @param outputPort The port on which the tuples were emitted
+   * @param windowId Identifier of the current window in which tuples will be emitted.
    */
-  public void postEmitTuples(long windowId, OutputPort<?> outputPort, Iterator<?> tuples);
+  public void emitTuples(long windowId);
 }

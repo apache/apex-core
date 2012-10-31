@@ -34,8 +34,6 @@ public class GenericNode extends Node<Operator>
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
   private final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
-  @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile CounterSink[] sinks = CounterSink.NO_SINKS;
 
   public GenericNode(String id, Operator operator)
   {
@@ -126,29 +124,6 @@ public class GenericNode extends Node<Operator>
     connectOutputPort(port, sink);
 
     return retvalue;
-  }
-
-  @Override
-  protected void activateSinks()
-  {
-    int size = outputs.size();
-    if (size == 0) {
-      sinks = CounterSink.NO_SINKS;
-    }
-    else {
-      CounterSink[] newSinks = new CounterSink[size];
-      for (CounterSink s: outputs.values()) {
-        newSinks[--size] = s;
-      }
-
-      sinks = newSinks;
-    }
-  }
-
-  @Override
-  protected void deactivateSinks()
-  {
-    sinks = CounterSink.NO_SINKS;
   }
 
   /**
