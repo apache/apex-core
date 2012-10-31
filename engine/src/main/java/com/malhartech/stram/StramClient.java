@@ -140,10 +140,10 @@ public class StramClient
     this(new Configuration());
   }
 
-  public StramClient(DAG tplg) throws Exception
+  public StramClient(DAG dag) throws Exception
   {
     this(new Configuration());
-    this.dag = tplg;
+    this.dag = dag;
     dag.validate();
   }
 

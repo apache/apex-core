@@ -574,7 +574,7 @@ public class DAG implements Serializable, DAGConstants
   }
 
   /**
-   * Validate the topology. Includes checks that required ports are connected (TBD),
+   * Validate the topology. Includes checks that required ports are connected,
    * required configuration parameters specified, graph free of cycles etc.
    */
   public void validate() throws ConstraintViolationException
@@ -587,6 +587,7 @@ public class DAG implements Serializable, DAGConstants
     for (OperatorWrapper n: nodes.values()) {
       n.nindex = null;
       n.lowlink = null;
+
       // validate configuration
       Set<ConstraintViolation<Operator>> constraintViolations = validator.validate(n.getOperator());
       if (!constraintViolations.isEmpty()) {

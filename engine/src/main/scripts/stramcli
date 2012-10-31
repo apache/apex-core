@@ -7,11 +7,11 @@ fi
 
 function addhc
 {
-  if test -z "$HADOOP_CLASSPATH"
+  if test -z "$STRAM_CLASSPATH"
   then
-    export HADOOP_CLASSPATH=~/.m2/repository/$1
+    export STRAM_CLASSPATH=~/.m2/repository/$1
   else 
-    export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:~/.m2/repository/$1
+    export STRAM_CLASSPATH=$STRAM_CLASSPATH:~/.m2/repository/$1
   fi
 }
 
@@ -27,6 +27,14 @@ addhc io/netty/netty-common/4.0.0.Alpha5/netty-common-4.0.0.Alpha5.jar
 addhc io/netty/netty-buffer/4.0.0.Alpha5/netty-buffer-4.0.0.Alpha5.jar
 addhc io/netty/netty-codec/4.0.0.Alpha5/netty-codec-4.0.0.Alpha5.jar
 
+if [ "$STRAM_CLASSPATH" != "" ]; then
+  if test -z "$HADOOP_CLASSPATH"
+  then
+    export HADOOP_CLASSPATH=$STRAM_CLASSPATH
+  else
+    export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$STRAM_CLASSPATH
+  fi
+fi
 
 if [ "$STRAM_CLIENT_OPTS" = "" ]; then
   STRAM_CLIENT_OPTS=-Xmx1024m

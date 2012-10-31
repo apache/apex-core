@@ -52,13 +52,13 @@ public interface AttributeMap<CONTEXT> {
   }
 
   /**
-   * Attribute map records values against String keys and can therfore be serialized
+   * Attribute map records values against String keys and can therefore be serialized
    * ({@link AttributeKey} cannot be serialized)
    */
   public class DefaultAttributeMap<CONTEXT> implements AttributeMap<CONTEXT>, Serializable {
     private static final long serialVersionUID = 1L;
     private final Map<String, DefaultAttribute<?>> map = new HashMap<String, DefaultAttribute<?>>();
-    // serialize scope if there is at least one attribute for lookup on reload
+    // if there is at least one attribute, serialize scope for key object lookup
     private Class<CONTEXT> scope;
 
     @Override
