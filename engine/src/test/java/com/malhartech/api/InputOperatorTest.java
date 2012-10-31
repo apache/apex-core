@@ -9,7 +9,6 @@ import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.util.CircularBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import junit.framework.Assert;
 import org.junit.Test;
@@ -46,7 +45,7 @@ public class InputOperatorTest
     }
 
     @Override
-    public void setup(OperatorConfiguration config)
+    public void setup(OperatorContext context)
     {
     }
 

@@ -4,15 +4,13 @@
  */
 package com.malhartech.api;
 
-import org.apache.hadoop.conf.Configuration;
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface Component<T1 extends Configuration>
+public interface Component<T1 extends Context>
 {
-  public void setup(T1 config);
+  public void setup(T1 context);
 
   public void teardown();
 }

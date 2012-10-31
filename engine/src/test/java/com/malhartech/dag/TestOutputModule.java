@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
+import com.malhartech.api.Context;
 import com.malhartech.api.DefaultInputPort;
+import org.apache.hadoop.conf.Configuration;
 
 /**
  * Writes stringified tuple to a file stream.
@@ -24,32 +26,36 @@ import com.malhartech.api.DefaultInputPort;
 public class TestOutputModule extends BaseOperator
 {
   private static final Logger logger = LoggerFactory.getLogger(TestOutputModule.class);
-
   private boolean append;
   public String pathSpec;
-
   private transient FSDataOutputStream output;
   private transient FileSystem fs;
   private transient Path filepath;
-
-  @InputPortFieldAnnotation(name="inputPort")
-  final public transient InputPort<Object> inport = new DefaultInputPort<Object>(this) {
+  @InputPortFieldAnnotation(name = "inputPort")
+  final public transient InputPort<Object> inport = new DefaultInputPort<Object>(this)
+  {
     @Override
-    final public void process(Object payload) {
+    final public void process(Object payload)
+    {
       processInternal(payload);
     }
   };
 
+  public void setAppend(boolean flag)
+  {
+    append = flag;
+  }
+
   @Override
-  public void setup(OperatorConfiguration config)
+  public void setup(Context.OperatorContext context)
   {
     try {
-      fs = FileSystem.get(config);
+      fs = FileSystem.get(new Configuration());
       if (pathSpec == null) {
         throw new IllegalArgumentException("pathSpec not specified.");
       }
+      
       filepath = new Path(pathSpec);
-      append = config.getBoolean("append", false);
 
       logger.info("output file: " + filepath);
       if (fs.exists(filepath)) {

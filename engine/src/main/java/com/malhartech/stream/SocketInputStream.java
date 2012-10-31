@@ -5,7 +5,6 @@ package com.malhartech.stream;
 
 import com.malhartech.bufferserver.netty.ClientInitializer;
 import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -36,25 +35,25 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
   private Bootstrap bootstrap;
 
   @Override
-  public void setup(StreamConfiguration config)
+  public void setup(StreamContext context)
   {
-    bootstrap = new Bootstrap();
-
-    bootstrap.group(new NioEventLoopGroup())
-            .channel(NioSocketChannel.class)
-            .remoteAddress(config.getBufferServerAddress())
-            .handler(new ClientInitializer(this));
   }
 
   @Override
   public void teardown()
   {
-    bootstrap.shutdown();
   }
 
   @Override
   public void postActivate(StreamContext context)
   {
+    bootstrap = new Bootstrap();
+
+    bootstrap.group(new NioEventLoopGroup())
+            .channel(NioSocketChannel.class)
+            .remoteAddress(context.getBufferServerAddress())
+            .handler(new ClientInitializer(this));
+
     // Make a new connection.
     channel = bootstrap.connect().syncUninterruptibly().channel();
 
@@ -73,5 +72,6 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
   public void preDeactivate()
   {
     channel.close().awaitUninterruptibly();
+    bootstrap.shutdown();
   }
 }

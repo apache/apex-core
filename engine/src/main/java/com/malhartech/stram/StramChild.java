@@ -4,7 +4,10 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.*;
+import com.malhartech.api.InputOperator;
+import com.malhartech.api.Operator;
+import com.malhartech.api.OperatorSerDe;
+import com.malhartech.api.Sink;
 import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -621,6 +624,7 @@ public class StramChild
         String sourceIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
         String sinkIdentifier;
 
+        StreamContext context = new StreamContext(nodi.declaredStreamId);
         Stream stream;
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
@@ -631,12 +635,10 @@ public class StramChild
            * this stream exists. That means someone outside of this container must be interested.
            */
           assert (nodi.isInline() == false);
-
-          StreamConfiguration config = new StreamConfiguration();
-          config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+          context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
           stream = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
-          stream.setup(config);
+          stream.setup(context);
           logger.debug("deployed a buffer stream {}", stream);
 
           sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
@@ -648,7 +650,7 @@ public class StramChild
              * There is only one node interested in output placed on this stream, and that node is in this container.
              */
             stream = new InlineStream();
-            stream.setup(new StreamConfiguration());
+            stream.setup(context);
 
             sinkIdentifier = null;
           }
@@ -658,26 +660,23 @@ public class StramChild
              * Although there is a node in this container interested in output placed on this stream, there
              * seems to at least one more party interested but placed in a container other than this one.
              */
-            StreamConfiguration config = new StreamConfiguration();
-            config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
-
-            BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
-            bsos.setup(config);
-            logger.debug("deployed a buffer stream {}", bsos);
-
-            // the following sinkIdentifier may not gel well with the rest of the logic
             sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
             bssc.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
+            bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+
+            BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
+            bsos.setup(bssc);
+            logger.debug("deployed a buffer stream {}", bsos);
 
             streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
 
             // should we create inline stream here or wait for the input deployments to create the inline streams?
             stream = new MuxStream();
-            stream.setup(new StreamConfiguration());
+            stream.setup(context);
             stream.setSink(sinkIdentifier, bsos);
 
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
@@ -696,7 +695,7 @@ public class StramChild
              * This container itself contains more than one parties interested.
              */
             stream = new MuxStream();
-            stream.setup(new StreamConfiguration());
+            stream.setup(context);
           }
           else {
             stream = pair.component;
@@ -706,31 +705,29 @@ public class StramChild
             sinkIdentifier = null;
           }
           else {
-            StreamConfiguration config = new StreamConfiguration();
-            config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
-
-            BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
-            bsos.setup(config);
-            logger.debug("deployed a buffer stream {}", bsos);
-
             sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
             bssc.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
+            bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
-            stream.setSink(sinkIdentifier, bsos);
+            BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
+            bsos.setup(bssc);
+            logger.debug("deployed a buffer stream {}", bsos);
 
             streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
+
+            stream.setup(context);
+            stream.setSink(sinkIdentifier, bsos);
           }
         }
 
         if (!streams.containsKey(sourceIdentifier)) {
           node.connect(nodi.portName, stream);
 
-          StreamContext context = new StreamContext(nodi.declaredStreamId);
           context.setSourceId(sourceIdentifier);
           context.setSinkId(sinkIdentifier);
           context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
@@ -787,18 +784,16 @@ public class StramChild
              */
             assert (nidi.isInline() == false);
 
-            StreamConfiguration config = new StreamConfiguration();
-            config.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
-
-            Stream stream = new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
-            stream.setup(config);
-            logger.debug("deployed buffer input stream {}", stream);
-
             StreamContext context = new StreamContext(nidi.declaredStreamId);
             context.setPartitions(nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
             context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
+            context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
+
+            Stream stream = new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
+            stream.setup(context);
+            logger.debug("deployed buffer input stream {}", stream);
 
             Sink s = node.connect(nidi.portName, stream);
             stream.setSink(sinkIdentifier,
@@ -831,7 +826,7 @@ public class StramChild
               context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
               Stream stream = new MuxStream();
-              stream.setup(new StreamConfiguration());
+              stream.setup(context);
               logger.debug("deployed input mux stream {}", stream);
               s = node.connect(nidi.portName, stream);
               streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
@@ -946,15 +941,13 @@ public class StramChild
         public void run()
         {
           try {
-            OperatorConfiguration config = new OperatorConfiguration();
-            node.getOperator().setup(config);
-
-            OperatorContext nc = new OperatorContext(ndi.id, this, ndi.contextAttributes);
-            activeNodes.put(ndi.id, nc);
+            OperatorContext context = new OperatorContext(ndi.id, ndi.contextAttributes);
+            node.getOperator().setup(context);
+            activeNodes.put(ndi.id, context);
 
             activatedNodeCount.incrementAndGet();
             logger.debug("activating {} in container {}", node, containerId);
-            node.activate(nc);
+            node.activate(context);
           }
           catch (Exception ex) {
             logger.error("Node stopped abnormally because of exception", ex);

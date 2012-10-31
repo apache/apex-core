@@ -18,7 +18,7 @@ import com.malhartech.api.Sink;
 /*
  * Provides basic interface for a stream object. Stram, StramChild work via this interface
  */
-public interface Stream<T> extends Component<StreamConfiguration>, ActivationListener<StreamContext>, Sink<T>
+public interface Stream<T> extends Component<StreamContext>, ActivationListener<StreamContext>, Sink<T>
 {
   public boolean isMultiSinkCapable();
 

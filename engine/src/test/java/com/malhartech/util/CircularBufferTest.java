@@ -47,6 +47,7 @@ public class CircularBufferTest
   @Test
   public void testAdd()
   {
+    String oldName = Thread.currentThread().getName();
     Thread.currentThread().setName("TestAdd");
 
     CircularBuffer<Integer> instance = new CircularBuffer<Integer>(0);
@@ -85,6 +86,7 @@ public class CircularBufferTest
     }
 
     assert (instance.size() == instance.capacity());
+    Thread.currentThread().setName(oldName);
   }
 
   /**
@@ -93,6 +95,7 @@ public class CircularBufferTest
   @Test
   public void testGet()
   {
+    String oldName = Thread.currentThread().getName();
     Thread.currentThread().setName("TestGet");
 
     CircularBuffer<Integer> instance = new CircularBuffer<Integer>(0);
@@ -127,6 +130,7 @@ public class CircularBufferTest
 
     assert (instance.size() == 9);
     assert (instance.remove() == 2);
+    Thread.currentThread().setName(oldName);
   }
 
   @Test

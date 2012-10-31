@@ -16,7 +16,7 @@ import com.malhartech.util.AttributeMap;
 public interface Context
 {
   public interface PortContext extends Context {
-    public static final AttributeKey<Integer> INPUT_PORT_BUFFER_SIZE = new AttributeKey<Integer>("INPUT_PORT_BUFFER_SIZE");
+    public static final AttributeKey<Integer> BUFFER_SIZE = new AttributeKey<Integer>("BUFFER_SIZE");
 
     public class AttributeKey<T> extends AttributeMap.AttributeKey<PortContext, T> {
       private AttributeKey(String name) {
