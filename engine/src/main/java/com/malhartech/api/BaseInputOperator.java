@@ -24,7 +24,7 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
   private static final Logger logger = LoggerFactory.getLogger(BaseInputOperator.class);
   private transient Thread ioThread;
   private transient boolean isActive = false;
-  private long currentWindowId;
+
   /**
    * The single output port of this input operator.
    * Collects asynchronously emitted tuples and flushes in container thread.
@@ -63,28 +63,9 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
     outputPort.flush();
   }
 
-  public static class CollectorSink<T> implements Sink<T>
-  {
-    public ArrayList<T> tuples = new ArrayList<T>();
-
-    @Override
-    public synchronized void process(T tuple)
-    {
-      tuples.add(tuple);
-    }
-
-    public synchronized void drainTo(Sink<T> sink)
-    {
-      for (T tuple: tuples) {
-        sink.process(tuple);
-      }
-      tuples.clear();
-    }
-  }
-
   public static class BufferingOutputPort<T> extends DefaultOutputPort<T>
   {
-    private transient final CollectorSink<T> bufferingSink = new CollectorSink<T>();
+    public ArrayList<T> tuples = new ArrayList<T>();
 
     /**
      * @param operator
@@ -95,14 +76,14 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
     }
 
     @Override
-    public void emit(T tuple)
+    public synchronized void emit(T tuple)
     {
-      bufferingSink.process(tuple);
+      tuples.add(tuple);
     }
 
-    public void flush()
+    public synchronized void flush()
     {
-      for (T tuple: bufferingSink.tuples) {
+      for (T tuple: tuples) {
         super.emit(tuple);
       }
     }
