@@ -4,24 +4,23 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.bufferserver.netty.ClientInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-
 import java.net.InetSocketAddress;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.bufferserver.netty.ClientInitializer;
 
 /**
  * Encapsulates buffer server control interface, used by the master for purging data.
  */
+@Sharable
 class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
   private final static Logger LOG = LoggerFactory.getLogger(BufferServerClient.class);
 

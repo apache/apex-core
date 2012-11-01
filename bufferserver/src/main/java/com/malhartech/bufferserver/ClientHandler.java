@@ -10,6 +10,7 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import java.util.Collection;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
+@Sharable
 public class ClientHandler extends ChannelInboundMessageHandlerAdapter
 {
   private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
