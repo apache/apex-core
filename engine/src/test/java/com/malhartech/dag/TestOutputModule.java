@@ -4,7 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.api.OperatorConfiguration;
 import java.io.IOException;
 
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -54,7 +53,7 @@ public class TestOutputModule extends BaseOperator
       if (pathSpec == null) {
         throw new IllegalArgumentException("pathSpec not specified.");
       }
-      
+
       filepath = new Path(pathSpec);
 
       logger.info("output file: " + filepath);
