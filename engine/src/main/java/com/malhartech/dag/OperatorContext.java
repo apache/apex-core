@@ -68,7 +68,12 @@ public class OperatorContext implements Context.OperatorContext
     this.idleTimeout = idleTimeout;
   }
 
-  public OperatorContext(String id, Thread t, AttributeMap<OperatorContext> attributes)
+  /**
+   *
+   * @param id the value of id
+   * @param attributes the value of attributes
+   */
+  public OperatorContext(String id, AttributeMap<OperatorContext> attributes)
   {
     this.id = id;
     this.attributes = attributes;

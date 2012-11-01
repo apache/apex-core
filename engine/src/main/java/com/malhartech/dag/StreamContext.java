@@ -5,7 +5,9 @@
 package com.malhartech.dag;
 
 import com.malhartech.api.Context;
-import io.netty.util.DefaultAttributeMap;
+import com.malhartech.util.AttributeMap;
+import com.malhartech.util.AttributeMap.DefaultAttributeMap;
+import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.HashSet;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -17,8 +19,29 @@ import org.apache.commons.lang.builder.ToStringStyle;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class StreamContext extends DefaultAttributeMap implements Context
+public class StreamContext extends DefaultAttributeMap<StreamContext> implements Context
 {
+  public static final AttributeKey<InetSocketAddress> BUFFER_SERVER_ADDRESS = new AttributeKey<InetSocketAddress>("BUFFER_SERVER_ADDRESS");
+
+  public static class AttributeKey<T> extends AttributeMap.AttributeKey<StreamContext, T>
+  {
+    private AttributeKey(String name)
+    {
+      super(StreamContext.class, name);
+    }
+  }
+
+  public InetSocketAddress getBufferServerAddress()
+  {
+    InetSocketAddress isa = attr(BUFFER_SERVER_ADDRESS).get();
+    return new InetSocketAddress(isa.getHostName(), isa.getPort());
+  }
+
+  public void setBufferServerAddress(InetSocketAddress isa)
+  {
+    attr(BUFFER_SERVER_ADDRESS).set(isa);
+  }
+
   public static enum State
   {
     UNDEFINED,

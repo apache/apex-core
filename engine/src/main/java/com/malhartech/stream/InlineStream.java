@@ -6,7 +6,6 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 
 /**
@@ -40,7 +39,7 @@ public class InlineStream implements Stream<Object>
    * @param config
    */
   @Override
-  public void setup(StreamConfiguration config)
+  public void setup(StreamContext context)
   {
     // nothing to be done here.
   }

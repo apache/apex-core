@@ -142,21 +142,20 @@ public class WindowGenerator implements Stream<Object>, Runnable
     windowWidthMillis = millis;
   }
 
-  @Deprecated
   @Override
-  public void setup(StreamConfiguration config)
+  public void setup(StreamContext context)
   {
     logger.info("WindowGenerator::setup does not do anything useful, please use setFirstWindow/setResetWindow/setWindowWidth if were using this.");
-    if (config != null) {
-      if (config.getRaw(FIRST_WINDOW_MILLIS) != null) {
-        setFirstWindow(config.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis()));
-      }
-      if (config.getRaw(WINDOW_WIDTH_MILLIS) != null) {
-        setWindowWidth(config.getInt(WINDOW_WIDTH_MILLIS, 500));
-      }
-      if (config.getRaw(RESET_WINDOW_MILLIS) != null) {
-        setResetWindow(config.getLong(RESET_WINDOW_MILLIS, firstWindowMillis));
-      }
+    if (context != null) {
+//      if (context.getRaw(FIRST_WINDOW_MILLIS) != null) {
+//        setFirstWindow(context.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis()));
+//      }
+//      if (context.getRaw(WINDOW_WIDTH_MILLIS) != null) {
+//        setWindowWidth(context.getInt(WINDOW_WIDTH_MILLIS, 500));
+//      }
+//      if (context.getRaw(RESET_WINDOW_MILLIS) != null) {
+//        setResetWindow(context.getLong(RESET_WINDOW_MILLIS, firstWindowMillis));
+//      }
     }
 //    logger.debug("firstWindowMillis {} resetwindowmillis = {}", firstWindowMillis, resetWindowMillis);
   }

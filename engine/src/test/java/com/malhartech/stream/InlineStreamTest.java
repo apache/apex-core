@@ -4,17 +4,15 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.*;
+import com.malhartech.dag.*;
+import com.malhartech.util.AttributeMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.dag.*;
-import com.malhartech.util.AttributeMap;
 
 /**
  * Test for message flow through DAG
@@ -33,14 +31,15 @@ public class InlineStreamTest
 
     final PassThroughNode operator1 = new PassThroughNode();
     final GenericNode node1 = new GenericNode("node1", operator1);
-    operator1.setup(new OperatorConfiguration());
+    operator1.setup(new OperatorContext(null, null));
 
     final PassThroughNode operator2 = new PassThroughNode();
     final GenericNode node2 = new GenericNode("node2", operator2);
-    operator2.setup(new OperatorConfiguration());
+    operator2.setup(new OperatorContext(null, null));
 
+    StreamContext streamContext = new StreamContext("node1->node2");
     InlineStream stream = new InlineStream();
-    stream.setup(new StreamConfiguration());
+    stream.setup(streamContext);
 
     node1.connect("output", stream);
 
@@ -83,8 +82,8 @@ public class InlineStreamTest
     };
     node2.connect("output", sink);
 
-    sink = node1.connect("input", new Sink() {
-
+    sink = node1.connect("input", new Sink()
+    {
       @Override
       public void process(Object tuple)
       {
@@ -98,7 +97,6 @@ public class InlineStreamTest
     }
     sink.process(StramTestSupport.generateEndWindowTuple("irrelevant", 0, totalTupleCount));
 
-    StreamContext streamContext = new StreamContext("node1->node2");
     stream.postActivate(streamContext);
 
     Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
@@ -140,7 +138,7 @@ public class InlineStreamTest
       public void run()
       {
         String id = String.valueOf(counter.incrementAndGet());
-        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<Context.OperatorContext>());
+        OperatorContext ctx = new OperatorContext(id, new AttributeMap.DefaultAttributeMap<Context.OperatorContext>());
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
         activeNodes.remove(ctx.getId());

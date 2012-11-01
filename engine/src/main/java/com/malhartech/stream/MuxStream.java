@@ -6,7 +6,6 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import java.util.HashMap;
 
@@ -25,7 +24,7 @@ public class MuxStream implements Stream<Object>
    * @param config
    */
   @Override
-  public void setup(StreamConfiguration config)
+  public void setup(StreamContext context)
   {
     outputs = new HashMap<String, Sink>();
   }

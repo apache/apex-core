@@ -9,7 +9,6 @@ package com.malhartech.stream;
 
 import com.malhartech.bufferserver.netty.ClientInitializer;
 import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -38,25 +37,23 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   protected Channel channel;
 
   @Override
-  public void setup(StreamConfiguration config)
+  public void setup(StreamContext context)
   {
-    bootstrap = new Bootstrap();
-
-    bootstrap.group(new NioEventLoopGroup())
-            .channel(NioSocketChannel.class)
-            .remoteAddress(config.getBufferServerAddress())
-            .handler(new ClientInitializer(this));
   }
 
   @Override
   public void teardown()
   {
-    bootstrap.shutdown();
   }
 
   @Override
   public void postActivate(StreamContext context)
   {
+    bootstrap = new Bootstrap();
+    bootstrap.group(new NioEventLoopGroup())
+            .channel(NioSocketChannel.class)
+            .remoteAddress(context.getBufferServerAddress())
+            .handler(new ClientInitializer(this));
     channel = bootstrap.connect().syncUninterruptibly().channel();
   }
 
@@ -68,8 +65,9 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   }
 
   @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-    if (! (cause instanceof java.nio.channels.ClosedChannelException) ) {
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
+  {
+    if (!(cause instanceof java.nio.channels.ClosedChannelException)) {
       super.exceptionCaught(ctx, cause);
     }
   }
@@ -77,7 +75,10 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   @Override
   public void preDeactivate()
   {
-    channel.flush().awaitUninterruptibly();
-    channel.close().awaitUninterruptibly();
+    if (channel != null) {
+      channel.flush().awaitUninterruptibly();
+      channel.close().awaitUninterruptibly();
+    }
+    bootstrap.shutdown();
   }
 }

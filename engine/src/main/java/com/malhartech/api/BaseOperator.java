@@ -4,6 +4,8 @@
  */
 package com.malhartech.api;
 
+import com.malhartech.api.Context.OperatorContext;
+
 
 /**
  * Base class for operator implementations that provides empty implementations
@@ -23,7 +25,7 @@ public class BaseOperator implements Operator
   }
 
   @Override
-  public void setup(OperatorConfiguration config)
+  public void setup(OperatorContext context)
   {
   }
 

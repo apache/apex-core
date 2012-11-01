@@ -5,7 +5,6 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -45,7 +44,6 @@ public final class OutputSocketStreamTest
     }
   }
   static SocketOutputStream oss;
-  static StreamConfiguration sc;
   static StreamContext ctx;
 
   public OutputSocketStreamTest()
@@ -56,23 +54,20 @@ public final class OutputSocketStreamTest
   public static void setUpClass() throws Exception
   {
     oss = new MyOutputSocketStream();
-    sc = new StreamConfiguration();
-    sc.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, new InetSocketAddress("localhost", 5033));
-
     ctx = new StreamContext("irrelevant_id");
+    ctx.setBufferServerAddress(new InetSocketAddress("localhost", 5033));
   }
 
   @AfterClass
   public static void tearDownClass() throws Exception
   {
     oss = null;
-    sc = null;
   }
 
   @Before
   public void setUp()
   {
-    oss.setup(sc);
+    oss.setup(ctx);
   }
 
   @After
@@ -84,12 +79,14 @@ public final class OutputSocketStreamTest
   /**
    * Test of getClientPipelineFactory method, of class SocketOutputStream.
    */
-  @Ignore
   @Test
+  @Ignore
   public void testGetClientPipelineFactory()
   {
     System.out.println("getClientPipelineFactory");
+    oss.postActivate(ctx);
     io.netty.channel.ChannelPipeline pipeline = oss.channel.pipeline();
     assert (pipeline.last() == oss);
+    oss.preDeactivate();
   }
 }

@@ -19,7 +19,6 @@ import com.malhartech.bufferserver.Server;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.SerDe;
 import com.malhartech.api.Sink;
-import com.malhartech.dag.StreamConfiguration;
 import com.malhartech.dag.StreamContext;
 import com.malhartech.dag.Tuple;
 
@@ -96,20 +95,19 @@ public class SocketStreamTest
     StreamContext issContext = new StreamContext(streamName);
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
-
-    StreamConfiguration sconf = new StreamConfiguration();
-    sconf.setSocketAddr(StreamConfiguration.SERVER_ADDRESS, InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+    issContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
     BufferServerInputStream iss = new BufferServerInputStream(serde);
-    iss.setup(sconf);
+    iss.setup(issContext);
     iss.setSink("testSink", sink);
 
     StreamContext ossContext = new StreamContext(streamName);
     ossContext.setSourceId(upstreamNodeId);
     ossContext.setSinkId(downstreamNodeId);
+    ossContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
 
     BufferServerOutputStream oss = new BufferServerOutputStream(serde);
-    oss.setup(sconf);
+    oss.setup(ossContext);
 
     iss.postActivate(issContext);
     LOG.debug("input stream activated");
