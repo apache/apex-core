@@ -58,11 +58,6 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
   }
 
   @Override
-  final public void replayTuples(long windowId)
-  {
-  }
-
-  @Override
   public void emitTuples()
   {
     outputPort.flush();
