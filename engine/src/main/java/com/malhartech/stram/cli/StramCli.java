@@ -492,7 +492,7 @@ public class StramCli
 
     }
     catch (Exception e) {
-      throw new CliException("Failed to launch " + args[1] + " :" + e.getMessage(), e);
+      throw new CliException("Failed to launch " + args[1] + ": " + e.getMessage(), e);
     }
 
   }

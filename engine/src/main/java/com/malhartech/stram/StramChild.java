@@ -414,7 +414,7 @@ public class StramChild
   protected void monitorHeartbeat() throws IOException
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
-    logger.debug("Entering hearbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
+    logger.debug("Entering heartbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
     while (!exitHeartbeatLoop) {
 
       synchronized (this.heartbeatTrigger) {
