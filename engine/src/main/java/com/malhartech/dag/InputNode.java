@@ -74,7 +74,7 @@ public class InputNode extends Node<InputOperator>
                 }
                 inWindow = true;
                 currentWindowId = t.getWindowId();
-                operator.beginWindow(0);
+                operator.beginWindow(currentWindowId);
                 break;
 
               case END_WINDOW:
@@ -119,10 +119,14 @@ public class InputNode extends Node<InputOperator>
       }
     }
     catch (InterruptedException ex) {
+      alive = false;
     }
     catch (RuntimeException ex) {
-      if (!(ex.getCause() instanceof InterruptedException)) {
-        logger.error("Unexpected exception {}", ex);
+      if (ex.getCause() instanceof InterruptedException) {
+        alive = false;
+      }
+      else {
+        throw ex;
       }
     }
 

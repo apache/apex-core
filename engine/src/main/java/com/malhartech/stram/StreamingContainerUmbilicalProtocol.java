@@ -219,7 +219,9 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public static enum DNodeState {
       NEW, // node instantiated but not processing yet
-      PROCESSING, IDLE // the node stopped processing (no more input etc.)
+      ACTIVE,
+      IDLE,// the node stopped processing (no more input etc.)
+      FAILED // problemo!
     }
 
     /**

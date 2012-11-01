@@ -440,10 +440,10 @@ public class StramChild
         hb.setIntervalMs(heartbeatIntervalMillis);
         if (activeNodes.containsKey(e.getKey())) {
           activeNodes.get(e.getKey()).drainHeartbeatCounters(hb.getHeartbeatsContainer());
-          hb.setState(DNodeState.PROCESSING.toString());
+          hb.setState(DNodeState.ACTIVE.toString());
         }
         else {
-          hb.setState(DNodeState.IDLE.toString());
+          hb.setState(e.getValue().isAlive()? DNodeState.FAILED.toString(): DNodeState.IDLE.toString());
         }
 
         // propagate the backup window, if any

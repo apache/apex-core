@@ -307,13 +307,16 @@ public class GenericNode extends Node<Operator>
       while (alive);
     }
     catch (InterruptedException ex) {
+      alive = false;
     }
     catch (RuntimeException ex) {
-      if (!(ex.getCause() instanceof InterruptedException)) {
-        logger.error("Unexpected exception {}", ex);
+      if (ex.getCause() instanceof InterruptedException) {
+        alive = false;
+      }
+      else {
+        throw ex;
       }
     }
-
   }
 
   @Override

@@ -229,4 +229,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     sinks = CounterSink.NO_SINKS;
   }
+
+  public boolean isAlive()
+  {
+    return alive;
+  }
 }
