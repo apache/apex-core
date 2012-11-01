@@ -30,11 +30,6 @@ public class InputOperatorTest
     private volatile Thread dataGeneratorThread;
 
     @Override
-    public void replayTuples(long windowId)
-    {
-    }
-
-    @Override
     public void beginWindow(long windowId)
     {
     }
