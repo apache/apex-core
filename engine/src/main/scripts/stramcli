@@ -27,7 +27,12 @@ MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
 if [ -f "$MVN_GENERATED_PATH" ]; then
   # development launch mode  
   echo "Setting classpath from: $MVN_GENERATED_PATH"
-  STRAM_CLASSPATH="$STRAM_CLASSPATH:$BUILD_DIR/malhar-stram-0.1-SNAPSHOT.jar"
+  STRAM_CORE_JAR="$BUILD_DIR/malhar-stram-0.1-SNAPSHOT.jar"
+  if [ ! -f "$STRAM_CORE_JAR" ]; then
+    echo "Error: Cannot find $STRAM_CORE_JAR";
+    exit 1;
+  fi 
+  STRAM_CLASSPATH="$STRAM_CLASSPATH:$STRAM_CORE_JAR"
   STRAM_CLASSPATH=$STRAM_CLASSPATH:`cat $MVN_GENERATED_PATH`
   #echo "$STRAM_CLASSPATH"
 else
