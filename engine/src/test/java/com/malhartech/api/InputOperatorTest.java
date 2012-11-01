@@ -35,7 +35,7 @@ public class InputOperatorTest
     }
 
     @Override
-    public void beginWindow()
+    public void beginWindow(long windowId)
     {
     }
 
@@ -84,7 +84,7 @@ public class InputOperatorTest
     }
 
     @Override
-    public void emitTuples(long windowId)
+    public void emitTuples()
     {
       for (int i = evenBuffer.size(); i-- > 0;) {
         even.emit(evenBuffer.pollUnsafe());

@@ -47,7 +47,7 @@ public class TestGeneratorInputModule extends BaseOperator implements InputOpera
   }
 
   @Override
-  public void emitTuples(long windowId)
+  public void emitTuples()
   {
     Object tuple;
     while ((tuple = this.externallyAddedTuples.poll()) != null) {
@@ -83,10 +83,5 @@ public class TestGeneratorInputModule extends BaseOperator implements InputOpera
   public void addTuple(String s)
   {
     externallyAddedTuples.add(s);
-  }
-
-  @Override
-  public void replayTuples(long windowId)
-  {
   }
 }

@@ -13,7 +13,7 @@ public interface Operator extends Component<OperatorContext>
    * This method gets called at the beginning of each window.
    *
    */
-  public void beginWindow();
+  public void beginWindow(long windowId);
 
   /**
    * This method gets called at the end of each window.

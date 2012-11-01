@@ -63,7 +63,7 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
   }
 
   @Override
-  public void emitTuples(long windowId)
+  public void emitTuples()
   {
     outputPort.flush();
   }

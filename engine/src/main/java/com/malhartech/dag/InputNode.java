@@ -74,7 +74,7 @@ public class InputNode extends Node<InputOperator>
                 }
                 inWindow = true;
                 currentWindowId = t.getWindowId();
-                operator.beginWindow();
+                operator.beginWindow(0);
                 break;
 
               case END_WINDOW:
@@ -102,7 +102,7 @@ public class InputNode extends Node<InputOperator>
               generatedTuples -= cs.getCount();
             }
 
-            operator.emitTuples(currentWindowId);
+            operator.emitTuples();
 
             for (CounterSink cs: sinks) {
               generatedTuples += cs.getCount();

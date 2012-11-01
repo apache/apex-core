@@ -30,7 +30,7 @@ public class BaseOperator implements Operator
   }
 
   @Override
-  public void beginWindow()
+  public void beginWindow(long windowId)
   {
   }
 

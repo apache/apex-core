@@ -165,7 +165,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].process(t);
                   }
-                  operator.beginWindow();
+                  operator.beginWindow(currentWindowId);
                   receivedEndWindow = 0;
                 }
                 else if (t.getWindowId() == currentWindowId) {
