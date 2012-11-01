@@ -1,9 +1,5 @@
 #!/bin/bash
-
-if [ "$HADOOP_PREFIX" = "" ]; then
-    echo "Error: HADOOP_PREFIX is not set."
-    exit 1
-fi
+unset HADOOP_PREFIX
 
 function addhc
 {
@@ -15,17 +11,30 @@ function addhc
   fi
 }
 
-addhc com/malhartech/malhar-bufferserver/0.1-SNAPSHOT/malhar-bufferserver-0.1-SNAPSHOT.jar
-addhc com/malhartech/malhar-stram/0.1-SNAPSHOT/malhar-stram-0.1-SNAPSHOT.jar
-addhc com/esotericsoftware/kryo/kryo/2.19/kryo-2.19.jar
-addhc com/esotericsoftware/reflectasm/reflectasm/1.07/reflectasm-1.07-shaded.jar
-addhc com/esotericsoftware/minlog/minlog/1.2/minlog-1.2.jar
-addhc com/sun/jersey/jersey-client/1.8/jersey-client-1.8.jar
-addhc org/objenesis/objenesis/1.2/objenesis-1.2.jar
-addhc io/netty/netty-transport/4.0.0.Alpha5/netty-transport-4.0.0.Alpha5.jar
-addhc io/netty/netty-common/4.0.0.Alpha5/netty-common-4.0.0.Alpha5.jar
-addhc io/netty/netty-buffer/4.0.0.Alpha5/netty-buffer-4.0.0.Alpha5.jar
-addhc io/netty/netty-codec/4.0.0.Alpha5/netty-codec-4.0.0.Alpha5.jar
+#addhc com/malhartech/malhar-bufferserver/0.1-SNAPSHOT/malhar-bufferserver-0.1-SNAPSHOT.jar
+#addhc com/malhartech/malhar-stram/0.1-SNAPSHOT/malhar-stram-0.1-SNAPSHOT.jar
+#addhc com/esotericsoftware/kryo/kryo/2.19/kryo-2.19.jar
+#addhc com/esotericsoftware/reflectasm/reflectasm/1.07/reflectasm-1.07-shaded.jar
+#addhc com/esotericsoftware/minlog/minlog/1.2/minlog-1.2.jar
+#addhc com/sun/jersey/jersey-client/1.8/jersey-client-1.8.jar
+#addhc org/objenesis/objenesis/1.2/objenesis-1.2.jar
+#addhc io/netty/netty-transport/4.0.0.Alpha5/netty-transport-4.0.0.Alpha5.jar
+#addhc io/netty/netty-common/4.0.0.Alpha5/netty-common-4.0.0.Alpha5.jar
+#addhc io/netty/netty-buffer/4.0.0.Alpha5/netty-buffer-4.0.0.Alpha5.jar
+#addhc io/netty/netty-codec/4.0.0.Alpha5/netty-codec-4.0.0.Alpha5.jar
+
+BUILD_DIR="$( dirname "$0" )/../../../target"
+MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
+if [ -f "$MVN_GENERATED_PATH" ]; then
+  # development launch mode  
+  echo "Setting classpath from: $MVN_GENERATED_PATH"
+  STRAM_CLASSPATH="$STRAM_CLASSPATH:$BUILD_DIR/malhar-stram-0.1-SNAPSHOT.jar"
+  STRAM_CLASSPATH=$STRAM_CLASSPATH:`cat $MVN_GENERATED_PATH`
+  #echo "$STRAM_CLASSPATH"
+else
+  echo "Error: Installer not supported yet"
+  exit 1;
+fi
 
 if [ "$STRAM_CLASSPATH" != "" ]; then
   if test -z "$HADOOP_CLASSPATH"
@@ -42,4 +51,14 @@ fi
 
 export HADOOP_CLIENT_OPTS="$STRAM_CLIENT_OPTS"
 
-$HADOOP_PREFIX/bin/hadoop com.malhartech.stram.cli.StramCli 
+if [ "$HADOOP_PREFIX" = "" ]; then
+  echo "Warning: HADOOP_PREFIX is not set, running standalone."
+  export CLASSPATH=$STRAM_CLASSPATH
+  java $STRAM_CLIENT_OPTS com.malhartech.stram.cli.StramCli 
+else
+  # mask duplicate slf4j binding
+  export HADOOP_CLASSPATH=${HADOOP_CLASSPATH/slf4j-log4j12-1.7.1.jar/slf4j-log4j12-DUPBINDING.jar}
+#  $HADOOP_PREFIX/bin/hadoop classpath
+  $HADOOP_PREFIX/bin/hadoop com.malhartech.stram.cli.StramCli
+fi
+
