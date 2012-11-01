@@ -120,6 +120,11 @@ public class InputNode extends Node<InputOperator>
     }
     catch (InterruptedException ex) {
     }
+    catch (RuntimeException ex) {
+      if (!(ex.getCause() instanceof InterruptedException)) {
+        logger.error("Unexpected exception {}", ex);
+      }
+    }
 
     if (inWindow) {
       EndWindowTuple ewt = new EndWindowTuple();

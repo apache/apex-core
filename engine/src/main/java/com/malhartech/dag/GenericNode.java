@@ -63,7 +63,7 @@ public class GenericNode extends Node<Operator>
       }
       catch (InterruptedException ex) {
         logger.warn("Abandoning processing of the payload {} due to an interrupt", payload);
-        Thread.currentThread().interrupt();
+        throw new RuntimeException(ex);
       }
     }
 
@@ -308,6 +308,12 @@ public class GenericNode extends Node<Operator>
     }
     catch (InterruptedException ex) {
     }
+    catch (RuntimeException ex) {
+      if (!(ex.getCause() instanceof InterruptedException)) {
+        logger.error("Unexpected exception {}", ex);
+      }
+    }
+
   }
 
   @Override
