@@ -63,6 +63,7 @@ public class GenericNode extends Node<Operator>
       }
       catch (InterruptedException ex) {
         logger.warn("Abandoning processing of the payload {} due to an interrupt", payload);
+        Thread.currentThread().interrupt();
       }
     }
 
