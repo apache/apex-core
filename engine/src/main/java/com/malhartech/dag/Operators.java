@@ -46,57 +46,52 @@ public class Operators
 
   public static void describe(Operator operator, OperatorDescriptor descriptor)
   {
-    Field[] fields = operator.getClass().getDeclaredFields();
-    for (int i = 0; i < fields.length; i++) {
-      Field field = fields[i];
-      field.setAccessible(true);
-      InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
-      OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
+    for (Class<?> c = operator.getClass(); c != Object.class; c = c.getSuperclass())
+    {
+      Field[] fields = c.getDeclaredFields();
+      for (int i = 0; i < fields.length; i++) {
+        Field field = fields[i];
+        field.setAccessible(true);
+        InputPortFieldAnnotation inputAnnotation = field.getAnnotation(InputPortFieldAnnotation.class);
+        OutputPortFieldAnnotation outputAnnotation = field.getAnnotation(OutputPortFieldAnnotation.class);
 
-      try {
-        Object portObject = field.get(operator);
+        try {
+          Object portObject = field.get(operator);
 
-        if (inputAnnotation == null && outputAnnotation == null) {
-          if (portObject instanceof InputPort) {
-            descriptor.addInputPort((Operator.InputPort<?>)portObject, field, inputAnnotation);
+          if (inputAnnotation == null && outputAnnotation == null) {
+            if (portObject instanceof InputPort) {
+              descriptor.addInputPort((Operator.InputPort<?>) portObject, field, inputAnnotation);
+            }
+            if (portObject instanceof OutputPort) {
+              descriptor.addOutputPort((Operator.OutputPort<?>) portObject, field, outputAnnotation);
+            }
+          } else if (inputAnnotation == null) {
+            if (portObject instanceof OutputPort) {
+              descriptor.addOutputPort((Operator.OutputPort<?>) portObject, field, outputAnnotation);
+            } else {
+              throw new IllegalArgumentException("port is not of type " + OutputPort.class.getName() + ": " + field);
+            }
+          } else if (outputAnnotation == null) {
+            if (portObject instanceof InputPort) {
+              descriptor.addInputPort((Operator.InputPort<?>) portObject, field, inputAnnotation);
+            } else {
+              throw new IllegalArgumentException("port is not of type " + InputPort.class.getName() + ": " + field);
+            }
+          } else {
+            if (portObject instanceof OutputPort) {
+              descriptor.addOutputPort((Operator.OutputPort<?>) portObject, field, outputAnnotation);
+            } else {
+              throw new IllegalArgumentException("port is not of type " + OutputPort.class.getName() + ": " + field);
+            }
+            if (portObject instanceof InputPort) {
+              descriptor.addInputPort((Operator.InputPort<?>) portObject, field, inputAnnotation);
+            } else {
+              throw new IllegalArgumentException("port is not of type " + InputPort.class.getName() + ": " + field);
+            }
           }
-          if (portObject instanceof OutputPort) {
-            descriptor.addOutputPort((Operator.OutputPort<?>)portObject, field, outputAnnotation);
-          }
+        } catch (IllegalAccessException e) {
+          throw new RuntimeException(e);
         }
-        else if (inputAnnotation == null) {
-          if (portObject instanceof OutputPort) {
-            descriptor.addOutputPort((Operator.OutputPort<?>)portObject, field, outputAnnotation);
-          }
-          else {
-            throw new IllegalArgumentException("port is not of type " + OutputPort.class.getName());
-          }
-        }
-        else if (outputAnnotation == null) {
-          if (portObject instanceof InputPort) {
-            descriptor.addInputPort((Operator.InputPort<?>)portObject, field, inputAnnotation);
-          }
-          else {
-            throw new IllegalArgumentException("port is not of type " + InputPort.class.getName());
-          }
-        }
-        else {
-          if (portObject instanceof OutputPort) {
-            descriptor.addOutputPort((Operator.OutputPort<?>)portObject, field, outputAnnotation);
-          }
-          else {
-            throw new IllegalArgumentException("port is not of type " + OutputPort.class.getName());
-          }
-          if (portObject instanceof InputPort) {
-            descriptor.addInputPort((Operator.InputPort<?>)portObject, field, inputAnnotation);
-          }
-          else {
-            throw new IllegalArgumentException("port is not of type " + InputPort.class.getName());
-          }
-        }
-      }
-      catch (IllegalAccessException e) {
-        throw new RuntimeException(e);
       }
     }
   }
