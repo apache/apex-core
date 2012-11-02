@@ -4,10 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.api.Sink;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A sink implementation to collect expected test results.
  */
@@ -30,7 +26,6 @@ public class TestCountSink<T> extends TestSink<T>
   public void process(T payload)
   {
     if (payload instanceof Tuple) {
-      count = 0;
     }
     else {
       count++;

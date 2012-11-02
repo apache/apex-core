@@ -7,7 +7,6 @@ package com.malhartech.stram;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.InputOperatorTest.CollectorInputPort;
 import com.malhartech.dag.RecoverableInputOperator;
 import java.util.HashSet;
 import org.junit.Assert;

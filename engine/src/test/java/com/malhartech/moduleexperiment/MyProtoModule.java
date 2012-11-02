@@ -4,14 +4,13 @@
  */
 package com.malhartech.moduleexperiment;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Example module with a few ports and configuration properties.

@@ -4,15 +4,12 @@
  */
 package com.malhartech.stream;
 
-import static org.junit.Assert.assertTrue;
-
-import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.dag.*;
 import com.malhartech.stram.ManualScheduledExecutorService;
+import static org.junit.Assert.assertTrue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Bunch of utilities shared between tests.

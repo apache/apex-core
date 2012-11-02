@@ -3,24 +3,21 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.api.Sink;
+import com.malhartech.bufferserver.Server;
+import com.malhartech.dag.DefaultSerDe;
+import com.malhartech.dag.SerDe;
+import com.malhartech.dag.StreamContext;
+import com.malhartech.dag.Tuple;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.SerDe;
-import com.malhartech.api.Sink;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
 
 /**
  *

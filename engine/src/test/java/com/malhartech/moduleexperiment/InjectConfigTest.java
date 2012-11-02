@@ -4,6 +4,15 @@
  */
 package com.malhartech.moduleexperiment;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.MembersInjector;
+import com.google.inject.TypeLiteral;
+import com.google.inject.matcher.Matchers;
+import com.google.inject.spi.TypeEncounter;
+import com.google.inject.spi.TypeListener;
+import com.malhartech.annotation.InjectConfig;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.net.URL;
@@ -11,11 +20,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
-
 import org.apache.commons.beanutils.BeanUtilsBean;
 import org.apache.commons.beanutils.ConvertUtilsBean;
 import org.apache.commons.beanutils.Converter;
@@ -28,16 +35,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.MembersInjector;
-import com.google.inject.TypeLiteral;
-import com.google.inject.matcher.Matchers;
-import com.google.inject.spi.TypeEncounter;
-import com.google.inject.spi.TypeListener;
-import com.malhartech.annotation.InjectConfig;
 
 public class InjectConfigTest {
 
@@ -236,7 +233,7 @@ public class InjectConfigTest {
 
     System.out.println("testBean cloned: " + mapper.convertValue(testBean2, Map.class));
 
-    
+
     PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();
     //PropertyDescriptor pd = propertyUtilsBean.getPropertyDescriptor(testBean2, "mapProperty.someKey2");
 
@@ -253,8 +250,8 @@ public class InjectConfigTest {
     	testBean.getMapProperty().put("s", "s1Val");
     	PropertyDescriptor pd = propertyUtilsBean.getPropertyDescriptor(testBean, "mapProperty");
     	Class<?> type = propertyUtilsBean.getPropertyType(testBean, "mapProperty.s");
-    	
-    	
+
+
     	propertyUtilsBean.setProperty(testBean, "mapProperty", Integer.valueOf(1));
     	Assert.fail("should throw exception");
     } catch (Exception e) {
@@ -278,7 +275,7 @@ public class InjectConfigTest {
     	Assert.assertEquals("", 1, testBean.getIntProp());
     }
   }
-  
+
   public static JsonNode merge(JsonNode mainNode, JsonNode updateNode) {
 
     Iterator<String> fieldNames = updateNode.getFieldNames();

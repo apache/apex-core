@@ -6,8 +6,10 @@ package com.malhartech.stram;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
 import com.malhartech.dag.*;
-import static org.junit.Assert.assertEquals;
-
+import com.malhartech.stram.webapp.StramWebServices;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -18,11 +20,8 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.util.List;
 import java.util.Properties;
-
 import javax.ws.rs.core.MediaType;
-
 import junit.framework.Assert;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.JarFinder;
@@ -36,17 +35,12 @@ import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
 import org.apache.hadoop.yarn.util.Records;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.AfterClass;
+import static org.junit.Assert.assertEquals;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.stram.webapp.StramWebServices;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-import java.util.Currency;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment

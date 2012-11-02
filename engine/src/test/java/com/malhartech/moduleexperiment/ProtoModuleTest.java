@@ -4,6 +4,12 @@
  */
 package com.malhartech.moduleexperiment;
 
+import com.google.inject.TypeLiteral;
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.api.Operator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
@@ -13,19 +19,10 @@ import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.Arrays;
 import java.util.Map;
-
 import junit.framework.Assert;
-
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.inject.TypeLiteral;
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.Operator;
 
 /**
  *

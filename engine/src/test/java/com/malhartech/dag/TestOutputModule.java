@@ -4,19 +4,17 @@
  */
 package com.malhartech.dag;
 
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.Context;
+import com.malhartech.api.DefaultInputPort;
 import java.io.IOException;
-
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.annotation.InputPortFieldAnnotation;
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.Context;
-import com.malhartech.api.DefaultInputPort;
-import org.apache.hadoop.conf.Configuration;
 
 /**
  * Writes stringified tuple to a file stream.

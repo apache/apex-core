@@ -4,14 +4,13 @@
  */
 package com.malhartech.dag;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Module for constructing unit test DAG.
