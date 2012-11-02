@@ -238,15 +238,17 @@ public class StramClient
   }
 
   public static LinkedHashSet<String> findJars(DAG tplg) {
-    // platform jar files - always required
+    // platform dependencies that are not part of Hadoop and need to be deployed,
+    // entry below will cause containing jar file from client to be copied to cluster
     Class<?>[] defaultClasses = new Class<?>[]{
       com.malhartech.bufferserver.Server.class,
       com.malhartech.stram.StramAppMaster.class,
       com.malhartech.dag.DefaultSerDe.class,
-      io.netty.channel.socket.nio.NioEventLoopGroup.class, // there should be another way of handling this!
+      io.netty.channel.socket.nio.NioEventLoopGroup.class,
       io.netty.util.AttributeMap.class,
       io.netty.buffer.ChannelBufType.class,
-      io.netty.handler.codec.ByteToByteCodec.class
+      io.netty.handler.codec.ByteToByteCodec.class,
+      javax.validation.ConstraintViolationException.class,
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
