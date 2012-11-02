@@ -4,10 +4,6 @@
  */
 package com.malhartech.dag;
 
-import com.malhartech.api.Sink;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * A sink implementation to collect expected test results.
  */
