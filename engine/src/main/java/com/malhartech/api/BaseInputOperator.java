@@ -86,6 +86,7 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
       for (T tuple: tuples) {
         super.emit(tuple);
       }
+      tuples.clear();
     }
   };
 }
