@@ -26,7 +26,6 @@ public class TestCountSink<T> extends TestSink<T>
   public void process(T payload)
   {
     if (payload instanceof Tuple) {
-      count = 0;
     }
     else {
       count++;
