@@ -3,7 +3,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.dag.WindowGenerator;
 import com.malhartech.api.Sink;
 import com.malhartech.dag.*;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
@@ -11,7 +10,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import junit.framework.Assert;
-import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

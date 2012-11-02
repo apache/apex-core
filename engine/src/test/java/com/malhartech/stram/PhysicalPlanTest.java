@@ -4,13 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import junit.framework.Assert;
-
-import org.junit.Test;
-
 import com.google.common.collect.Sets;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
@@ -18,6 +11,10 @@ import com.malhartech.dag.GenericTestModule;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.StreamingContainerManagerTest.TestStaticPartitioningSerDe;
+import java.util.HashSet;
+import java.util.Set;
+import junit.framework.Assert;
+import org.junit.Test;
 
 public class PhysicalPlanTest {
 

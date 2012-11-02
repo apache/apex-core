@@ -4,20 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.LineNumberReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.api.DAG;
 import com.malhartech.dag.DefaultSerDe;
 import com.malhartech.dag.GenericTestModule;
@@ -36,7 +22,19 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stream.BufferServerInputStream;
 import com.malhartech.stream.StramTestSupport;
+import java.io.File;
+import java.io.FileReader;
+import java.io.LineNumberReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.junit.Assert;
 import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StramLocalClusterTest
 {
