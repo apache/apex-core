@@ -184,13 +184,16 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      */
     try {
       CircularBuffer<OperatorContext.NodeRequest> requests = context.getRequests();
-      for (int i = requests.size(); i-- > 0;) {
-        //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
-        requests.remove().execute(operator, context.getId(), windowId);
+      int size;
+      if ((size = requests.size()) > 0 && !Thread.currentThread().isInterrupted()) {
+        while (size-- > 0) {
+          //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
+          requests.remove().execute(operator, context.getId(), windowId);
+        }
       }
     }
     catch (Exception e) {
-      logger.warn("Exception while catering to external request {}", e);
+      throw new RuntimeException(e);
     }
 
     HashMap<String, Collection<Stats>> stats = new HashMap<String, Collection<Stats>>();
