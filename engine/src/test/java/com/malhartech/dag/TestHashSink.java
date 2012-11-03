@@ -6,13 +6,26 @@ package com.malhartech.dag;
 
 import com.malhartech.api.Sink;
 import java.util.HashMap;
-import sun.java2d.xr.MutableInteger;
 
 /**
  * A sink implementation to collect expected test results in a HashMap
  */
 public class TestHashSink<T> implements Sink<T>
 {
+  public class MutableInteger
+  {
+    public int value;
+
+    public MutableInteger(int i)
+    {
+      value = i;
+    }
+
+    public void add(int i)
+    {
+      value += i;
+    }
+  }
   public HashMap<T, MutableInteger> map = new HashMap<T, MutableInteger>();
   public int count = 0;
 
@@ -36,10 +49,10 @@ public class TestHashSink<T> implements Sink<T>
       MutableInteger val = map.get(tuple);
       if (val == null) {
         val = new MutableInteger(0);
-        map.put(tuple,val);
+        map.put(tuple, val);
       }
-      val.setValue(val.getValue()+1);
-      map.put(tuple,null);
+      val.value++;
+      map.put(tuple, null);
     }
   }
 }
