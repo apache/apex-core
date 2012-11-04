@@ -6,8 +6,12 @@ package com.malhartech.stream;
 import com.google.protobuf.ByteString;
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
+import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.dag.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,10 +26,24 @@ import org.slf4j.LoggerFactory;
 public class BufferServerOutputStream extends SocketOutputStream
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
+  public static final int BUFFER_SIZE = 64 * 1024;
   SerDe serde;
   int windowId;
+  int writtenBytes;
 
-  // see if you can do this in setup instead of in constructor.
+  class WaitingChannelFutureListener implements ChannelFutureListener
+  {
+    volatile boolean added;
+
+    @Override
+    public synchronized void operationComplete(ChannelFuture future) throws Exception
+    {
+      added = false;
+      notify();
+    }
+  }
+  final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
+
   public BufferServerOutputStream(SerDe serde)
   {
     this.serde = serde;
@@ -94,8 +112,40 @@ public class BufferServerOutputStream extends SocketOutputStream
       }
     }
 
-//    logger.debug("{} channel write with data {}", getContext(), db.build());
-    channel.write(db.build());
+    Data d = db.build();
+    //
+    // we should find a place for the following code in the base class.
+    //
+    if (BUFFER_SIZE - writtenBytes > d.getSerializedSize()) {
+      channel.write(d);
+      writtenBytes += d.getSerializedSize();
+    }
+    else {
+      synchronized (wcfl) {
+        if (wcfl.added) {
+          try {
+            long t = System.currentTimeMillis();
+            wcfl.wait();
+            if (d.getSerializedSize() < BUFFER_SIZE) {
+              channel.write(d);
+            }
+            else {
+              wcfl.added = true;
+              channel.write(d).addListener(wcfl);
+            }
+          }
+          catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+        else {
+          wcfl.added = true;
+          channel.write(d).addListener(wcfl);
+        }
+
+        writtenBytes = d.getSerializedSize();
+      }
+    }
   }
 
   /**
