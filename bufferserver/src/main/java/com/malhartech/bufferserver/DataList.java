@@ -290,7 +290,7 @@ public class DataList
         }
 
         if (i + offset <= data.length) {
-          offset = Codec.writeRawVarint32(data.length - offset, data, offset, i);
+          offset = Codec.writeRawVarint32(data.length - offset - i, data, offset, i);
           if (offset < data.length) {
             Data.Builder db = Data.newBuilder();
             db.setType(DataType.NO_DATA);
