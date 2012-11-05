@@ -27,13 +27,20 @@ public class Server
   private final int port;
   private ServerBootstrap bootstrap;
   private String identity;
+  private final ServerInitializer serverInitializer;
 
   /**
    * @param port - port number to bind to or 0 to auto select a free port
    */
   public Server(int port)
   {
+    this(port, 64 * 1024 * 1024);
+  }
+
+  public Server(int port, int buffersize)
+  {
     this.port = port;
+    serverInitializer = new ServerInitializer(buffersize);
   }
 
   /**
@@ -51,7 +58,7 @@ public class Server
             .option(ChannelOption.SO_BACKLOG, 100)
             .localAddress(port)
             //.childOption(ChannelOption.TCP_NODELAY, true)
-            .childHandler(new ServerInitializer());
+            .childHandler(serverInitializer);
 
     ChannelFuture f = bootstrap.bind().syncUninterruptibly();
     identity = f.channel().localAddress().toString();

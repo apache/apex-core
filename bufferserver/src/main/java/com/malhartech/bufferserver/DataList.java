@@ -10,8 +10,8 @@ import com.malhartech.bufferserver.Buffer.ResetWindow;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.nio.ByteBuffer;
-import java.util.Map.Entry;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
@@ -27,13 +27,9 @@ import org.slf4j.LoggerFactory;
 public class DataList
 {
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
-  /**
-   * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
-   */
-  private static final Integer BLOCKSIZE = 64 * 1024 * 1024;
+  private final Integer capacity;
   HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
   HashSet<DataListener> all_listeners = new HashSet<DataListener>();
-  int capacity;
   String identifier;
   String type;
   static volatile DataArray free = null;
@@ -101,7 +97,7 @@ public class DataList
   {
     DataArray retval = null;
 
-    synchronized (BLOCKSIZE) {
+    synchronized (this.capacity) {
       if (free != null) {
         retval = free;
         free = free.next;
@@ -129,7 +125,7 @@ public class DataList
     for (DataArray temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
       if (temp.ending_window > longWindowId || temp == last) {
         if (prev != null) {
-          synchronized (BLOCKSIZE) {
+          synchronized (capacity) {
             prev.next = free;
             free = first;
             first = temp;
@@ -306,9 +302,9 @@ public class DataList
           }
         }
 
-        int newblockSize = BLOCKSIZE;
+        int newblockSize = capacity;
         while (newblockSize < size + 5) {
-          newblockSize += BLOCKSIZE;
+          newblockSize += capacity;
         }
 
         DataList.this.last = next = getDataArray(newblockSize);
@@ -401,7 +397,10 @@ public class DataList
 
   public DataList(String identifier, String type)
   {
-    this(identifier, type, BLOCKSIZE);
+    /*
+     * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
+     */
+    this(identifier, type, 64 * 1024 * 1024);
   }
 
   public final void flush()
