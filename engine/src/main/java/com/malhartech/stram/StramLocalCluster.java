@@ -32,7 +32,6 @@ import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import java.util.Map.Entry;
 
 /**
  * Launcher for topologies in local mode within a single process.

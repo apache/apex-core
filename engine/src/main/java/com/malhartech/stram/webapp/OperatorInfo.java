@@ -34,6 +34,7 @@ public class OperatorInfo {
   public long totalBytes;
   public String status;
   public long lastHeartbeat;
+  public long failureCount;
 
   public OperatorInfo() {
   }

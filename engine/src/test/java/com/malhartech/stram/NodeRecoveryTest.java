@@ -4,15 +4,18 @@
  */
 package com.malhartech.stram;
 
+import java.util.HashSet;
+
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.dag.RecoverableInputOperator;
-import java.util.HashSet;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -35,6 +38,7 @@ public class NodeRecoveryTest
     };
   }
 
+  @Ignore
   @Test
   public void testInputOperatorRecovery() throws Exception
   {

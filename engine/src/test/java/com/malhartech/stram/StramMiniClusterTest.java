@@ -3,13 +3,8 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.DAG;
-import com.malhartech.dag.*;
-import com.malhartech.stram.webapp.StramWebServices;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
+import static org.junit.Assert.assertEquals;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,14 +15,18 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.util.List;
 import java.util.Properties;
+
 import javax.ws.rs.core.MediaType;
+
 import junit.framework.Assert;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.JarFinder;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
@@ -35,12 +34,22 @@ import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
 import org.apache.hadoop.yarn.util.Records;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.AfterClass;
-import static org.junit.Assert.assertEquals;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.DAG;
+import com.malhartech.api.InputOperator;
+import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.dag.GenericTestModule;
+import com.malhartech.dag.TestGeneratorInputModule;
+import com.malhartech.stram.webapp.StramWebServices;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment
@@ -112,27 +121,9 @@ public class StramMiniClusterTest
     return tmpFile;
   }
 
-  @Ignore
-  @Test
-  public void testMiniClusterTestNode()
-  {
-    StramMiniClusterTest.TestDNode d = new StramMiniClusterTest.TestDNode();
-
-    d.setTupleCounts("100, 100, 1000");
-    Assert.assertEquals("100,100,1000", d.getTupleCounts());
-
-    Assert.assertEquals("heartbeat1", 100, d.resetHeartbeatCounters().tuplesProcessed);
-    Assert.assertEquals("heartbeat2", 100, d.resetHeartbeatCounters().tuplesProcessed);
-    Assert.assertEquals("heartbeat3", 1000, d.resetHeartbeatCounters().tuplesProcessed);
-    Assert.assertEquals("heartbeat4", 100, d.resetHeartbeatCounters().tuplesProcessed);
-
-  }
-
   @Test
   public void testSetupShutdown() throws Exception
   {
-
-
     GetClusterNodesRequest request =
             Records.newRecord(GetClusterNodesRequest.class);
     ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
@@ -152,7 +143,7 @@ public class StramMiniClusterTest
     String testJar = JarFinder.getJar(StramMiniClusterTest.class);
     LOG.info("testJar: " + testJar);
 
-    // create test topology
+    // create test application
     DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
     Properties dagProps = new Properties();
 
@@ -180,10 +171,6 @@ public class StramMiniClusterTest
     dagProps.setProperty(DAG.STRAM_DEBUG, "true");
     dagProps.setProperty(DAG.STRAM_MAX_CONTAINERS, "2");
     tb.addFromProperties(dagProps);
-
-    //StramLocalCluster lc = new StramLocalCluster(tb.getTopology());
-    //lc.run();
-    //assert(false);
 
     Properties tplgProperties = tb.getProperties();
     File tmpFile = createTmpPropFile(tplgProperties);
@@ -223,7 +210,7 @@ public class StramMiniClusterTest
     Properties props = new Properties();
     props.put("stram.stream.input.classname", TestGeneratorInputModule.class.getName());
     props.put("stram.stream.input.outputNode", "module1");
-    props.put("stram.module.module1.classname", NoTimeoutTestNode.class.getName());
+    props.put("stram.module.module1.classname", GenericTestModule.class.getName());
 
     File tmpFile = createTmpPropFile(props);
 
@@ -277,9 +264,6 @@ public class StramMiniClusterTest
       client.killApplication();
     }
 
-//    LOG.info("Client run completed. Result=" + result);
-//    Assert.assertTrue(result);
-
   }
 
   private static String getTestRuntimeClasspath()
@@ -331,68 +315,38 @@ public class StramMiniClusterTest
     return envClassPath;
   }
 
-  @SuppressWarnings("PublicInnerClass")
-  public static class TestDNode extends BaseOperator
-  {
-    @SuppressWarnings("PackageVisibleField")
-    int getResetCount = 0;
-    @SuppressWarnings("PackageVisibleField")
-    Integer[] tupleCounts = new Integer[0];
-
-    public HeartbeatCounters resetHeartbeatCounters()
-    {
-      HeartbeatCounters stats = new HeartbeatCounters();
-      if (tupleCounts.length == 0) {
-        stats.tuplesProcessed = 0;
-      }
-      else {
-        int count = getResetCount++ % (tupleCounts.length);
-        stats.tuplesProcessed = tupleCounts[count];
-      }
-      return stats;
-    }
-
-    public String getTupleCounts()
-    {
-      return StringUtils.join(tupleCounts, ",");
-    }
-
-    /**
-     * used to parameterize test module for heartbeat reporting
-     *
-     * @param tupleCounts
-     */
-    public void setTupleCounts(String tupleCounts)
-    {
-      String[] scounts = StringUtils.splitByWholeSeparator(tupleCounts, ",");
-      Integer[] counts = new Integer[scounts.length];
-      for (int i = 0; i < scounts.length; i++) {
-        counts[i] = new Integer(scounts[i].trim());
-      }
-      this.tupleCounts = counts;
-    }
-
-    public void process(Object payload)
-    {
-      LOG.info("Designed to do nothing!");
-    }
-
-    /**
-     * Exit processing loop immediately and report not processing in heartbeat.
-     */
-    public void handleIdleTimeout()
-    {
-      Thread.currentThread().interrupt();
-    }
-  }
-
-  @SuppressWarnings("PublicInnerClass")
-  public static class NoTimeoutTestNode extends TestDNode
-  {
+  public static class FailingOperator extends BaseOperator implements InputOperator {
     @Override
-    public void handleIdleTimeout()
-    {
-      // does not timeout
+    public void emitTuples() {
+      throw new RuntimeException("Operator failure");
     }
   }
+
+  @Test
+  public void testOperatorFailureRecovery() throws Exception
+  {
+
+    DAG dag = new DAG();
+    FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
+    dag.getContextAttributes(badOperator).attr(OperatorContext.RECOVERY_ATTEMPTS).set(1);
+
+    LOG.info("Initializing Client");
+    StramClient client = new StramClient(dag);
+    if (StringUtils.isBlank(System.getenv("JAVA_HOME"))) {
+      client.javaCmd = "java"; // JAVA_HOME not set in the yarn mini cluster
+    }
+
+    client.startApplication();
+
+    boolean result = client.monitorApplication();
+
+    LOG.info("Client run completed. Result=" + result);
+    Assert.assertFalse("should fail", result);
+
+    ApplicationReport ar = client.getApplicationReport();
+    Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
+    // unable to get the diagnostics message set by the AM here
+    //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
+  }
+
 }

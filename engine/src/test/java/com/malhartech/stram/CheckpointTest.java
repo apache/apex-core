@@ -103,6 +103,7 @@ public class CheckpointTest
     StreamingNodeHeartbeat hbe = new StreamingNodeHeartbeat();
     hbe.setNodeId(context.getId());
     hbe.setLastBackupWindowId(context.getLastProcessedWindowId());
+    hbe.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
     ContainerHeartbeat hb = new ContainerHeartbeat();
     hb.setContainerId(containerId);
     hb.setDnodeEntries(Collections.singletonList(hbe));

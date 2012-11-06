@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -14,10 +15,12 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 
 /**
  *
@@ -77,9 +80,35 @@ public class StramChildAgent {
     }
   }
 
+  class OperatorStatus
+  {
+    StreamingNodeHeartbeat lastHeartbeat;
+    final PTOperator operator;
+    final PTContainer container;
+    int tuplesTotal;
+    int bytesTotal;
+
+    private OperatorStatus(PTContainer container, PTOperator operator) {
+      this.operator = operator;
+      this.container = container;
+    }
+
+    public boolean isIdle()
+    {
+      if ((lastHeartbeat != null && DNodeState.IDLE.name().equals(lastHeartbeat.getState()))) {
+        return true;
+      }
+      return false;
+    }
+  }
+
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx) {
     this.container = container;
     this.initCtx = initCtx;
+    this.operators = new HashMap<String, OperatorStatus>(container.operators.size());
+    for (PTOperator operator : container.operators) {
+      this.operators.put(operator.id, new OperatorStatus(container, operator));
+    }
   }
 
   boolean shutdownRequested = false;
@@ -89,10 +118,11 @@ public class StramChildAgent {
   long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
+  final Map<String, OperatorStatus> operators;
   final StreamingContainerContext initCtx;
   DeployRequest pendingRequest = null;
 
-  private ConcurrentLinkedQueue<DeployRequest> requests = new ConcurrentLinkedQueue<DeployRequest>();
+  private final ConcurrentLinkedQueue<DeployRequest> requests = new ConcurrentLinkedQueue<DeployRequest>();
 
   public StreamingContainerContext getInitContext() {
     ContainerHeartbeatResponse rsp = pollRequest();
@@ -161,4 +191,14 @@ public class StramChildAgent {
     rsp.hasPendingRequests = (!this.requests.isEmpty());
     return rsp;
   }
+
+  boolean isIdle() {
+    for (OperatorStatus operatorStatus : this.operators.values()) {
+      if (!operatorStatus.isIdle()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
 }
