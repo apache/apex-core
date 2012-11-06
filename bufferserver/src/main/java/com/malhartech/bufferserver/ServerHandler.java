@@ -16,6 +16,7 @@ import io.netty.buffer.MessageBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.util.AttributeKey;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -97,6 +98,17 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    */
   public DataList handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
   {
+    /* we are never going to write to the publisher socket */
+//    if (ctx.channel() instanceof SocketChannel) {
+//      ((SocketChannel)ctx.channel()).shutdownOutput().addListener(new ChannelFutureListener() {
+//
+//        public void operationComplete(ChannelFuture future) throws Exception
+//        {
+//          logger.debug("future = {}", future.isSuccess());
+//        }
+//      });
+//    }
+
     String identifier = request.getIdentifier();
     String type = request.getType();
 
