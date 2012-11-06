@@ -57,7 +57,7 @@ public class Server
             .channel(NioServerSocketChannel.class)
             .option(ChannelOption.SO_BACKLOG, 100)
             .localAddress(port)
-            .childOption(ChannelOption.ALLOW_HALF_CLOSURE, true)
+//            .childOption(ChannelOption.ALLOW_HALF_CLOSURE, true)
             .childHandler(serverInitializer);
 
     ChannelFuture f = bootstrap.bind().syncUninterruptibly();
