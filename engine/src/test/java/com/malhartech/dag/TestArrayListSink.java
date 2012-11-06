@@ -5,12 +5,13 @@
 package com.malhartech.dag;
 
 import com.malhartech.api.Sink;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
  * A sink implementation to collect expected test results in a HashMap
  */
-public class TestHashSink<T> implements Sink<T>
+public class TestArrayListSink<T> implements Sink<T>
 {
   public class MutableInteger
   {
@@ -21,7 +22,7 @@ public class TestHashSink<T> implements Sink<T>
       value = i;
     }
   }
-  public HashMap<T, MutableInteger> map = new HashMap<T, MutableInteger>();
+  public HashMap<Object, MutableInteger> map = new HashMap<Object, MutableInteger>();
   public int count = 0;
 
   /**
@@ -38,8 +39,7 @@ public class TestHashSink<T> implements Sink<T>
   {
     int ret = -1;
     MutableInteger val = map.get(key);
-    if (val != null)
-    {
+    if (val != null) {
       ret = val.value;
     }
     return ret;
@@ -48,14 +48,13 @@ public class TestHashSink<T> implements Sink<T>
   @Override
   public void process(T tuple)
   {
-    if (tuple instanceof Tuple) {
-    }
-    else {
-      this.count++;
-      MutableInteger val = map.get(tuple);
+    this.count++;
+    ArrayList list = (ArrayList) tuple;
+    for (Object o: list) {
+      MutableInteger val = map.get(o);
       if (val == null) {
         val = new MutableInteger(0);
-        map.put(tuple, val);
+        map.put(o, val);
       }
       val.value++;
     }
