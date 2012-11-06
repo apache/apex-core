@@ -7,6 +7,7 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.netty.ClientInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import java.util.ArrayList;
@@ -91,6 +92,7 @@ public class Client
     Bootstrap bootstrap = new Bootstrap();
     bootstrap.group(new NioEventLoopGroup())
             .channel(NioSocketChannel.class)
+//            .option(ChannelOption.ALLOW_HALF_CLOSURE, true)
             .remoteAddress(host, port)
             .handler(new ClientInitializer(new ClientHandler()));
 

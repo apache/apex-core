@@ -13,6 +13,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
+import io.netty.channel.socket.SocketChannel;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Random;
@@ -84,7 +85,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
    * @param startingWindowId
    */
   public static void subscribe(
-          Channel channel,
+          final Channel channel,
           String id,
           String down_type,
           String node,
@@ -111,7 +112,16 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     builder.setSubscribeRequest(srb);
     builder.setWindowId((int)startingWindowId); // TODO Message missing required fields: window_id
 
-    channel.write(builder.build());
+    channel.write(builder.build()).addListener(new ChannelFutureListener()
+    {
+      public void operationComplete(ChannelFuture future) throws Exception
+      {
+//        /* subscriber never writes to the channel after initial request */
+//        if (channel instanceof SocketChannel) {
+//          ((SocketChannel)channel).shutdownOutput();
+//        }
+      }
+    });
   }
 
   public static void purge(Channel channel, String id, long windowId)

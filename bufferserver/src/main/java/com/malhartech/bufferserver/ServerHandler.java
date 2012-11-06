@@ -16,6 +16,7 @@ import io.netty.buffer.MessageBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.util.AttributeKey;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -41,6 +42,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
   final HashMap<String, LogicalNode> groups = new HashMap<String, LogicalNode>();
   final ConcurrentHashMap<String, Channel> publisher_channels = new ConcurrentHashMap<String, Channel>();
   final ConcurrentHashMap<String, Channel> subscriber_channels = new ConcurrentHashMap<String, Channel>();
+  private final int buffersize;
+
+  public ServerHandler(int buffersize)
+  {
+    this.buffersize = buffersize;
+  }
 
   @Override
   public final void inboundBufferUpdated(ChannelHandlerContext ctx) throws Exception
@@ -91,6 +98,17 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    */
   public DataList handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
   {
+    /* we are never going to write to the publisher socket */
+//    if (ctx.channel() instanceof SocketChannel) {
+//      ((SocketChannel)ctx.channel()).shutdownOutput().addListener(new ChannelFutureListener() {
+//
+//        public void operationComplete(ChannelFuture future) throws Exception
+//        {
+//          logger.debug("future = {}", future.isSuccess());
+//        }
+//      });
+//    }
+
     String identifier = request.getIdentifier();
     String type = request.getType();
 
@@ -109,7 +127,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
         dl = publisher_bufffers.get(identifier);
       }
       else {
-        dl = new DataList(identifier, type);
+        dl = new DataList(identifier, type, buffersize);
         publisher_bufffers.put(identifier, dl);
       }
     }
@@ -158,7 +176,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
           dl = publisher_bufffers.get(upstream_identifier);
         }
         else {
-          dl = new DataList(upstream_identifier, type);
+          dl = new DataList(upstream_identifier, type, buffersize);
           publisher_bufffers.put(upstream_identifier, dl);
         }
       }
