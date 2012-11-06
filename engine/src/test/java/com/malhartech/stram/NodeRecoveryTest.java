@@ -35,7 +35,6 @@ public class NodeRecoveryTest
     };
   }
 
-  @Test
   public void testInputOperatorRecovery() throws Exception
   {
     DAG dag = new DAG();
