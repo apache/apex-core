@@ -58,9 +58,6 @@ public class StramChild
   protected final Map<String, Node<?>> nodes = new ConcurrentHashMap<String, Node<?>>();
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
-  /**
-   * for the following 3 fields, my preferred type is HashSet but synchronizing access to HashSet object was resulting in very verbose code.
-   */
   protected final Map<String, OperatorContext> activeNodes = new ConcurrentHashMap<String, OperatorContext>();
   private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
@@ -210,15 +207,18 @@ public class StramChild
     }
   }
 
-  public synchronized void deactivate()
+  public void deactivate()
   {
-    for (String nodeid: activeNodes.keySet()) {
-      nodes.get(nodeid).deactivate();
+    Thread[] active = new Thread[activeNodes.size()];
+    int i = 0;
+    for (Entry<String, OperatorContext> e: activeNodes.entrySet()) {
+      active[i++] = e.getValue().getThread();
+      nodes.get(e.getKey()).deactivate();
     }
 
     try {
-      while (!activeNodes.isEmpty()) {
-        wait(SPIN_MILLIS);
+      while (i-- > 0) {
+        active[i].join();
       }
     }
     catch (InterruptedException ex) {
@@ -361,7 +361,7 @@ public class StramChild
     }
   }
 
-  private synchronized void undeploy(List<OperatorDeployInfo> nodeList)
+  private void undeploy(List<OperatorDeployInfo> nodeList)
   {
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
@@ -380,13 +380,28 @@ public class StramChild
       }
     }
 
+    // track all the ids to undeploy
+    // track the ones which are active
+
+    ArrayList<Thread> joinList = new ArrayList<Thread>();
     for (OperatorDeployInfo ndi: nodeList) {
-      if (activeNodes.containsKey(ndi.id)) {
+      OperatorContext oc = activeNodes.get(ndi.id);
+      if (oc != null) {
+        joinList.add(oc.getThread());
         nodes.get(ndi.id).deactivate();
-        activeNodes.remove(ndi.id);
       }
-      // must remove from list to reach defined state before next heartbeat,
-      // subsequent response may request deploy, which would fail if preDeactivate node is still tracked
+    }
+
+    try {
+      for (Thread t: joinList) {
+        t.join();
+      }
+    }
+    catch (InterruptedException ex) {
+      logger.debug("Aborted waiting for the deactivate to finish!");
+    }
+
+    for (OperatorDeployInfo ndi: nodeList) {
       nodes.remove(ndi.id);
     }
   }
@@ -443,7 +458,7 @@ public class StramChild
           hb.setState(DNodeState.ACTIVE.toString());
         }
         else {
-          hb.setState(e.getValue().isAlive()? DNodeState.FAILED.toString(): DNodeState.IDLE.toString());
+          hb.setState(e.getValue().isAlive() ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
         }
 
         // propagate the backup window, if any
@@ -558,7 +573,7 @@ public class StramChild
     }
   }
 
-  private synchronized void deploy(List<OperatorDeployInfo> nodeList) throws Exception
+  private void deploy(List<OperatorDeployInfo> nodeList) throws Exception
   {
     /**
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
@@ -921,8 +936,8 @@ public class StramChild
     return windowGenerator;
   }
 
-  @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
-  public synchronized void activate(List<OperatorDeployInfo> nodeList)
+  @SuppressWarnings("SleepWhileInLoop")
+  public void activate(List<OperatorDeployInfo> nodeList)
   {
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
@@ -941,7 +956,7 @@ public class StramChild
         public void run()
         {
           try {
-            OperatorContext context = new OperatorContext(ndi.id, ndi.contextAttributes);
+            OperatorContext context = new OperatorContext(ndi.id, this, ndi.contextAttributes);
             node.getOperator().setup(context);
             activeNodes.put(ndi.id, context);
 

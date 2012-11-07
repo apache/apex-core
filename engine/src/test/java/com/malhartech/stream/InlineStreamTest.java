@@ -31,11 +31,11 @@ public class InlineStreamTest
 
     final PassThroughNode operator1 = new PassThroughNode();
     final GenericNode node1 = new GenericNode("node1", operator1);
-    operator1.setup(new OperatorContext(null, null));
+    operator1.setup(new OperatorContext(null, null, null));
 
     final PassThroughNode operator2 = new PassThroughNode();
     final GenericNode node2 = new GenericNode("node2", operator2);
-    operator2.setup(new OperatorContext(null, null));
+    operator2.setup(new OperatorContext(null, null, null));
 
     StreamContext streamContext = new StreamContext("node1->node2");
     InlineStream stream = new InlineStream();
@@ -138,7 +138,7 @@ public class InlineStreamTest
       public void run()
       {
         String id = String.valueOf(counter.incrementAndGet());
-        OperatorContext ctx = new OperatorContext(id, new AttributeMap.DefaultAttributeMap<Context.OperatorContext>());
+        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<Context.OperatorContext>());
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
         activeNodes.remove(ctx.getId());

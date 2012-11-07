@@ -26,6 +26,15 @@ import com.malhartech.util.CircularBuffer;
 public class OperatorContext implements Context.OperatorContext
 {
   private static final Logger LOG = LoggerFactory.getLogger(OperatorContext.class);
+  private final Thread thread;
+
+  /**
+   * @return the thread
+   */
+  public Thread getThread()
+  {
+    return thread;
+  }
 
   public interface NodeRequest
   {
@@ -73,10 +82,11 @@ public class OperatorContext implements Context.OperatorContext
    * @param id the value of id
    * @param attributes the value of attributes
    */
-  public OperatorContext(String id, AttributeMap<OperatorContext> attributes)
+  public OperatorContext(String id, Thread worker, AttributeMap<OperatorContext> attributes)
   {
     this.id = id;
     this.attributes = attributes;
+    this.thread = worker;
   }
 
   @Override
@@ -135,8 +145,8 @@ public class OperatorContext implements Context.OperatorContext
   }
 
   @Override
-  public AttributeMap<OperatorContext> getAttributes() {
+  public AttributeMap<OperatorContext> getAttributes()
+  {
     return this.attributes;
   }
-
 }
