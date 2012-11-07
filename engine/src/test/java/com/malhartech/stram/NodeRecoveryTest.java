@@ -4,18 +4,15 @@
  */
 package com.malhartech.stram;
 
-import java.util.HashSet;
-
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.dag.RecoverableInputOperator;
+import java.util.HashSet;
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -33,6 +30,7 @@ public class NodeRecoveryTest
       @Override
       public void process(Long tuple)
       {
+//        logger.debug("adding the tuple {}", Long.toHexString(tuple));
         collection.add(tuple);
       }
     };
@@ -52,7 +50,7 @@ public class NodeRecoveryTest
     lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
-    logger.debug("Collected Tuples = {}", collection);
+//    logger.debug("Collected Tuples = {}", collection);
     Assert.assertEquals("Generated Outputs", 30, collection.size());
   }
 }

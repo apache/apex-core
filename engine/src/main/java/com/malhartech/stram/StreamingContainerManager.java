@@ -291,7 +291,7 @@ public class StreamingContainerManager
       OperatorDeployInfo ndi = createModuleDeployInfo(node.id, node.getLogicalNode());
       Long checkpointWindowId = checkpoints.get(node);
       if (checkpointWindowId != null) {
-        LOG.debug("Node {} has checkpoint state {}", node.id, checkpointWindowId);
+        LOG.debug("Node {} has checkpoint state {}", node.id, Long.toHexString(checkpointWindowId));
         ndi.checkpointWindowId = checkpointWindowId;
       }
       nodes.put(ndi, node);

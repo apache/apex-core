@@ -7,6 +7,8 @@ package com.malhartech.dag;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.InputOperator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -14,6 +16,7 @@ import com.malhartech.api.InputOperator;
  */
 public class RecoverableInputOperator implements InputOperator
 {
+  private static final Logger logger = LoggerFactory.getLogger(RecoverableInputOperator.class);
   public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>(this);
   transient boolean first;
   transient long windowId;
@@ -25,7 +28,8 @@ public class RecoverableInputOperator implements InputOperator
   public void emitTuples()
   {
     if (first) {
-      output.emit((long)count);
+//      logger.debug("generating tuple {}", Long.toHexString(windowId));
+      output.emit(windowId);
       first = false;
       if (++count == 30) {
         Thread.currentThread().interrupt();

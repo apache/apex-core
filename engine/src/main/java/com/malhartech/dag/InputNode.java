@@ -75,6 +75,7 @@ public class InputNode extends Node<InputOperator>
                 inWindow = true;
                 currentWindowId = t.getWindowId();
                 operator.beginWindow(currentWindowId);
+                operator.emitTuples(); /* give at least one change to emit the tuples */
                 break;
 
               case END_WINDOW:

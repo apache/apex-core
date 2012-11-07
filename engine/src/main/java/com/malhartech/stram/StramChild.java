@@ -586,7 +586,7 @@ public class StramChild
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
-          logger.debug("Restoring node {} to checkpoint {}", ndi.id, ndi.checkpointWindowId);
+          logger.debug("Restoring node {} to checkpoint {}", ndi.id, Long.toHexString(ndi.checkpointWindowId));
           foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId, moduleSerDe);
         }
         else {
@@ -744,7 +744,7 @@ public class StramChild
     // collect any input operators along with their smallest window id,
     // those are subsequently used to setup the window generator
     ArrayList<OperatorDeployInfo> inputNodes = new ArrayList<OperatorDeployInfo>();
-    long smallestWindowId = Long.MAX_VALUE;
+    long smallestCheckpointedWindowId = Long.MAX_VALUE;
 
     /**
      * Hook up all the downstream sinks.
@@ -764,8 +764,8 @@ public class StramChild
         /**
          * When we postActivate the window Generator, we plan to postActivate it only from required windowId.
          */
-        if (ndi.checkpointWindowId < smallestWindowId) {
-          smallestWindowId = ndi.checkpointWindowId;
+        if (ndi.checkpointWindowId < smallestCheckpointedWindowId) {
+          smallestCheckpointedWindowId = ndi.checkpointWindowId;
         }
       }
       else {
@@ -887,7 +887,7 @@ public class StramChild
     }
 
     if (!inputNodes.isEmpty()) {
-      WindowGenerator windowGenerator = setupWindowGenerator(smallestWindowId);
+      WindowGenerator windowGenerator = setupWindowGenerator(smallestCheckpointedWindowId);
       for (OperatorDeployInfo ndi: inputNodes) {
         generators.put(ndi.id, windowGenerator);
 

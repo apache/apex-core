@@ -31,7 +31,7 @@ public class WindowIdActivatedSink implements Sink
   {
     if (payload instanceof Tuple
             && ((Tuple)payload).getType() == Buffer.Data.DataType.BEGIN_WINDOW
-            && ((Tuple)payload).getWindowId() >= windowId) {
+            && ((Tuple)payload).getWindowId() > windowId) {
       sink.process(payload);
       stream.setSink(identifier, sink);
     }
