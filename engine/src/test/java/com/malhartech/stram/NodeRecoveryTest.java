@@ -53,6 +53,6 @@ public class NodeRecoveryTest
     lc.run();
 
     logger.debug("Collected Tuples = {}", collection);
-    Assert.assertEquals("Generated Outputs", 20, collection.size());
+    Assert.assertEquals("Generated Outputs", 30, collection.size());
   }
 }
