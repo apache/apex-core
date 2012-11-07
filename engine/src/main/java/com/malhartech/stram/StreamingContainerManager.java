@@ -154,7 +154,7 @@ public class StreamingContainerManager
         nodes.add(node);
     }
 
-    // stop affected downstream dependency operators (all except failed container)
+    // stop affected downstream operators (all except failed container)
     AtomicInteger undeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
@@ -392,6 +392,7 @@ public class StreamingContainerManager
       LOG.error("Unknown container " + heartbeat.getContainerId());
       ContainerHeartbeatResponse response = new ContainerHeartbeatResponse();
       response.shutdown = true;
+      return response;
     }
     Map<String, OperatorStatus> statusMap = sca.operators;
 

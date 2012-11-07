@@ -324,6 +324,8 @@ public class StramLocalCluster implements Runnable
           c.processHeartbeatResponse(r);
         }
         dnmgr.containerStopRequests.remove(containerIdStr);
+        LOG.info("Container {} failed, launching new container.", containerIdStr);
+        dnmgr.scheduleContainerRestart(containerIdStr);
       }
 
       // start containers

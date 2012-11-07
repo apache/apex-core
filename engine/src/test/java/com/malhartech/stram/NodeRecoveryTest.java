@@ -38,12 +38,13 @@ public class NodeRecoveryTest
     };
   }
 
-  @Ignore
   @Test
   public void testInputOperatorRecovery() throws Exception
   {
     DAG dag = new DAG();
+    dag.setMaxContainerCount(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
+
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     dag.addStream("connection", rip.output, cm.input);
 
@@ -52,6 +53,6 @@ public class NodeRecoveryTest
     lc.run();
 
     logger.debug("Collected Tuples = {}", collection);
-    Assert.assertEquals("Generated Outputs", collection.size(), 20);
+    Assert.assertEquals("Generated Outputs", 20, collection.size());
   }
 }

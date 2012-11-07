@@ -556,7 +556,7 @@ public class StramAppMaster
         int exitStatus = containerStatus.getExitStatus();
         LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
         if (0 != exitStatus) {
-          // StramChild failure or process killed
+          // StramChild failure or process killed (externally or via stop request by AM)
           numFailedContainers.incrementAndGet();
           LOG.info("Container {} failed, launching new container.", containerStatus.getContainerId());
           dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
