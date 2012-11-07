@@ -373,7 +373,8 @@ public class DAG implements Serializable, DAGConstants
       return this.moduleHolder.module;
     }
 
-    public AttributeMap<OperatorContext> getAttributes() {
+    public AttributeMap<OperatorContext> getAttributes()
+    {
       return this.attributes;
     }
 
@@ -425,12 +426,13 @@ public class DAG implements Serializable, DAGConstants
 
   public StreamDecl addStream(String id)
   {
-    StreamDecl s = this.streams.get(id);
-    if (s == null) {
-      s = new StreamDecl(id);
-      this.streams.put(id, s);
+    StreamDecl s = new StreamDecl(id);
+    StreamDecl o = streams.put(id, s);
+    if (o == null) {
+      return s;
     }
-    return s;
+
+    throw new IllegalArgumentException("duplicate stream id: " + o);
   }
 
   /**
@@ -454,6 +456,7 @@ public class DAG implements Serializable, DAGConstants
   /**
    * Overload varargs version to avoid generic array type safety warnings in calling code.
    * "Type safety: A generic array of Operator.InputPort<> is created for a varargs parameter"
+   *
    * @see http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300
    * @param id
    * @param source
@@ -479,18 +482,23 @@ public class DAG implements Serializable, DAGConstants
   }
 
   /**
-   * Set attribute for the operator. For valid attributes, see {@ link Context}
+   * Set attribute for the operator. For valid attributes, see {
+   *
+   * @ link Context}
    * @param operator
    */
-  public AttributeMap<OperatorContext> getContextAttributes(Operator operator) {
+  public AttributeMap<OperatorContext> getContextAttributes(Operator operator)
+  {
     return getOperatorWrapper(operator).attributes;
   }
 
-  public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value) {
+  public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value)
+  {
     getOperatorWrapper(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
   }
 
-  public <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value) {
+  public <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value)
+  {
     getOperatorWrapper(port.getOperator()).getPortMapping().inPortMap.get(port).attributes.attr(key).set(value);
   }
 
@@ -584,7 +592,7 @@ public class DAG implements Serializable, DAGConstants
   public void validate() throws ConstraintViolationException
   {
     ValidatorFactory factory =
-        Validation.buildDefaultValidatorFactory();
+            Validation.buildDefaultValidatorFactory();
     Validator validator = factory.getValidator();
 
     // clear visited on all operators
@@ -598,7 +606,7 @@ public class DAG implements Serializable, DAGConstants
         Set<ConstraintViolation<?>> copySet = new HashSet<ConstraintViolation<?>>(constraintViolations.size());
         // workaround bug in ConstraintViolationException constructor
         // (should be public <T> ConstraintViolationException(String message, Set<ConstraintViolation<T>> constraintViolations) { ... })
-        for (ConstraintViolation<Operator> cv : constraintViolations) {
+        for (ConstraintViolation<Operator> cv: constraintViolations) {
           copySet.add(cv);
         }
         throw new ConstraintViolationException("Operator " + n.getId() + " violates constraints", copySet);
@@ -606,14 +614,14 @@ public class DAG implements Serializable, DAGConstants
 
       // check that non-optional ports are connected
       OperatorWrapper.PortMapping portMapping = n.getPortMapping();
-      for (InputPortMeta pm : portMapping.inPortMap.values()) {
+      for (InputPortMeta pm: portMapping.inPortMap.values()) {
         if (!n.inputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
             throw new IllegalArgumentException("Input port connection required: " + n.id + "." + pm.getPortName());
           }
         }
       }
-      for (OutputPortMeta pm : portMapping.outPortMap.values()) {
+      for (OutputPortMeta pm: portMapping.outPortMap.values()) {
         if (!n.outputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
             throw new IllegalArgumentException("Output port connection required: " + n.id + "." + pm.getPortName());
