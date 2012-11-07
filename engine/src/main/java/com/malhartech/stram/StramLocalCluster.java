@@ -32,7 +32,6 @@ import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import java.util.Map.Entry;
 
 /**
  * Launcher for topologies in local mode within a single process.
@@ -325,6 +324,8 @@ public class StramLocalCluster implements Runnable
           c.processHeartbeatResponse(r);
         }
         dnmgr.containerStopRequests.remove(containerIdStr);
+        LOG.info("Container {} failed, launching new container.", containerIdStr);
+        dnmgr.scheduleContainerRestart(containerIdStr);
       }
 
       // start containers

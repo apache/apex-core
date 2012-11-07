@@ -170,6 +170,7 @@ public class PhysicalPlan {
     List<PTInput> inputs;
     List<PTOutput> outputs;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
+    int failureCount = 0;
 
     /**
      *
@@ -214,6 +215,7 @@ public class PhysicalPlan {
     String containerId; // assigned to yarn container id
     String host;
     InetSocketAddress bufferServerAddress;
+    int restartAttempts;
 
     /**
      *

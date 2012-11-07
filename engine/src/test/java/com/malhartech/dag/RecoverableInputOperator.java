@@ -25,7 +25,7 @@ public class RecoverableInputOperator implements InputOperator
   public void emitTuples()
   {
     if (first) {
-      output.emit(windowId);
+      output.emit((long)count);
       first = false;
       if (++count == 30) {
         Thread.currentThread().interrupt();

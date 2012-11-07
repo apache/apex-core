@@ -22,10 +22,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
-import com.malhartech.api.OperatorSerDe;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.OperatorSerDe;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTComponent;
@@ -34,6 +35,7 @@ import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
+import com.malhartech.stram.StramChildAgent.OperatorStatus;
 import com.malhartech.stram.StramChildAgent.UndeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -63,38 +65,19 @@ public class StreamingContainerManager
   private int windowSizeMillis = 500;
   private final int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
+  private final int operatorMaxAttemptCount = 5;
   private final OperatorSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
-
-  private class NodeStatus
-  {
-    StreamingNodeHeartbeat lastHeartbeat;
-    final PTComponent node;
-    final PTContainer container;
-    int tuplesTotal;
-    int bytesTotal;
-
-    private NodeStatus(PTContainer container, PTComponent node) {
-      this.node = node;
-      this.container = container;
-    }
-
-    boolean canShutdown()
-    {
-      // idle or output adapter
-      if ((lastHeartbeat != null && DNodeState.IDLE.name().equals(lastHeartbeat.getState()))) {
-        return true;
-      }
-      return false;
-    }
-  }
 
   protected final  Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final  ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
+  protected String shutdownDiagnosticsMessage = "";
+
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
-  private final Map<String, NodeStatus> nodeStatusMap = new ConcurrentHashMap<String, NodeStatus>();
   private final PhysicalPlan plan;
   private final String checkpointFsPath;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
+  private final Map<InetSocketAddress, BufferServerClient> bufferServers = new HashMap<InetSocketAddress, BufferServerClient>();
+
 
   public StreamingContainerManager(DAG dag) {
     this.plan = new PhysicalPlan(dag);
@@ -109,7 +92,6 @@ public class StreamingContainerManager
     for (PTContainer container : plan.getContainers()) {
       this.containerStartRequests.add(new DeployRequest(container, null));
     }
-
   }
 
   public int getNumRequiredContainers()
@@ -133,10 +115,9 @@ public class StreamingContainerManager
        if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
          // TODO: separate startup timeout handling
          if (cs.createdMillis + heartbeatTimeoutMillis < currentTms) {
-           // issue stop as probably process is still hanging around (would have been detected by Yarn otherwise)
+           // issue stop as process may still be hanging around (would have been detected by Yarn otherwise)
            LOG.info("Triggering restart for container {} after heartbeat timeout.", containerId);
            containerStopRequests.put(containerId, containerId);
-           //restartContainer(containerId);
          }
        }
     }
@@ -173,7 +154,7 @@ public class StreamingContainerManager
         nodes.add(node);
     }
 
-    // stop affected downstream dependency operators (all except failed container)
+    // stop affected downstream operators (all except failed container)
     AtomicInteger undeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
@@ -190,7 +171,7 @@ public class StreamingContainerManager
     AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
     DeployRequest dr = new DeployRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
     dr.checkpoints = checkpoints;
-    // launch replacement container, the deploy request will be queued with new container agent in assignContainer
+    // launch replacement container, deploy request will be queued with new container agent in assignContainer
     containerStartRequests.add(dr);
 
     // (re)deploy affected downstream operators
@@ -388,10 +369,6 @@ public class StreamingContainerManager
 
     scc.nodeList = new ArrayList<OperatorDeployInfo>(nodes.keySet());
 
-    for (Map.Entry<OperatorDeployInfo, PTOperator> e : nodes.entrySet()) {
-      this.nodeStatusMap.put(e.getKey().id, new NodeStatus(container, e.getValue()));
-    }
-
     return scc;
 
   }
@@ -409,11 +386,21 @@ public class StreamingContainerManager
     boolean containerIdle = true;
     long currentTimeMillis = System.currentTimeMillis();
 
+    StramChildAgent sca = this.containers.get(heartbeat.getContainerId());
+    if (sca == null) {
+      // could be orphaned container that was replaced and needs to terminate
+      LOG.error("Unknown container " + heartbeat.getContainerId());
+      ContainerHeartbeatResponse response = new ContainerHeartbeatResponse();
+      response.shutdown = true;
+      return response;
+    }
+    Map<String, OperatorStatus> statusMap = sca.operators;
+
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
 
-      NodeStatus status = nodeStatusMap.get(shb.getNodeId());
+      OperatorStatus status = statusMap.get(shb.getNodeId());
       if (status == null) {
-        LOG.error("Heartbeat for unknown node {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
+        LOG.error("Heartbeat for unknown operator {} (container {})", shb.getNodeId(), heartbeat.getContainerId());
         continue;
       }
 
@@ -421,15 +408,39 @@ public class StreamingContainerManager
       //LOG.info("node {} ({}) heartbeat: {}, totalTuples: {}, totalBytes: {} - {}",
       //         new Object[]{shb.getNodeId(), status.node.getLogicalId(), b.toString(), status.tuplesTotal, status.bytesTotal, heartbeat.getContainerId()});
 
+      StreamingNodeHeartbeat previousHeartbeat = status.lastHeartbeat;
       status.lastHeartbeat = shb;
-      if (!status.canShutdown()) {
+
+      if (shb.getState().compareTo(DNodeState.FAILED.name()) == 0) {
+        // count failure transitions *->FAILED, applies to initialization as well as intermittent failures
+        if (previousHeartbeat == null || DNodeState.FAILED.name().compareTo(previousHeartbeat.getState()) != 0) {
+          status.operator.failureCount++;
+          LOG.warn("Operator failure: {} count: {}", status.operator, status.operator.failureCount);
+          Integer maxAttempts = status.operator.logicalNode.getAttributes().attrValue(OperatorContext.RECOVERY_ATTEMPTS, this.operatorMaxAttemptCount);
+          if (status.operator.failureCount <= maxAttempts) {
+            // restart entire container in attempt to recover operator
+            // in the future a more sophisticated recovery strategy could
+            // involve initial redeploy attempt(s) of affected operator in
+            // existing container or sandbox container for just the operator
+            LOG.error("Issuing container stop to restart after operator failure {}", status.operator);
+            containerStopRequests.put(sca.container.containerId, sca.container.containerId);
+          } else {
+            this.shutdownDiagnosticsMessage = String.format("Shutting down application after reaching failure threshold for %s", status.operator);
+            LOG.error(this.shutdownDiagnosticsMessage);
+            // TODO: propagate exit code / shutdown message to master
+            shutdownAllContainers();
+          }
+        }
+      }
+
+      if (!status.isIdle()) {
         containerIdle = false;
         status.bytesTotal += shb.getNumberBytesProcessed();
         status.tuplesTotal += shb.getNumberTuplesProcessed();
 
         // checkpoint tracking
-        PTOperator node = (PTOperator)status.node;
-        if (shb.getLastBackupWindowId() != 0) {
+        PTOperator node = status.operator;
+        if (shb.getLastBackupWindowId() != 0 && shb.getState() == DNodeState.ACTIVE.name()) {
           synchronized (node.checkpointWindows) {
             if (!node.checkpointWindows.isEmpty()) {
               Long lastCheckpoint = node.checkpointWindows.getLast();
@@ -446,10 +457,9 @@ public class StreamingContainerManager
       }
     }
 
-    StramChildAgent cs = getContainerAgent(heartbeat.getContainerId());
-    cs.lastHeartbeatMillis = currentTimeMillis;
+    sca.lastHeartbeatMillis = currentTimeMillis;
 
-    ContainerHeartbeatResponse rsp = cs.pollRequest();
+    ContainerHeartbeatResponse rsp = sca.pollRequest();
     if (rsp == null) {
       rsp = new ContainerHeartbeatResponse();
     }
@@ -459,7 +469,7 @@ public class StreamingContainerManager
       LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
       rsp.shutdown = true;
     } else {
-      if (cs != null && cs.shutdownRequested) {
+      if (sca.shutdownRequested) {
         LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
         rsp.shutdown = true;
       }
@@ -467,15 +477,17 @@ public class StreamingContainerManager
 
     List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
     if (checkpointIntervalMillis > 0) {
-      if (cs.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
+      if (sca.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
         //System.out.println("\n\n*** sending checkpoint to " + cs.container.containerId + " at " + currentTimeMillis);
-        for (PTOperator node : cs.container.operators) {
-          StramToNodeRequest backupRequest = new StramToNodeRequest();
-          backupRequest.setNodeId(node.id);
-          backupRequest.setRequestType(RequestType.CHECKPOINT);
-          requests.add(backupRequest);
+        for (OperatorStatus os : sca.operators.values()) {
+          if (os.lastHeartbeat != null && os.lastHeartbeat.getState().compareTo(DNodeState.ACTIVE.name()) == 0) {
+            StramToNodeRequest backupRequest = new StramToNodeRequest();
+            backupRequest.setNodeId(os.operator.id);
+            backupRequest.setRequestType(RequestType.CHECKPOINT);
+            requests.add(backupRequest);
+          }
         }
-        cs.lastCheckpointRequestMillis = currentTimeMillis;
+        sca.lastCheckpointRequestMillis = currentTimeMillis;
       }
     }
     rsp.nodeRequests = requests;
@@ -484,8 +496,8 @@ public class StreamingContainerManager
 
   private boolean isApplicationIdle()
   {
-    for (NodeStatus nodeStatus : this.nodeStatusMap.values()) {
-      if (!nodeStatus.canShutdown()) {
+    for (StramChildAgent csa : this.containers.values()) {
+      if (!csa.isIdle()) {
         return false;
       }
     }
@@ -588,8 +600,6 @@ public class StreamingContainerManager
     purgeCheckpoints.clear();
   }
 
-  private final Map<InetSocketAddress, BufferServerClient> bufferServers = new HashMap<InetSocketAddress, BufferServerClient>();
-
   /**
    * Mark all containers for shutdown, next container heartbeat response
    * will propagate the shutdown request. This is controlled soft shutdown.
@@ -602,32 +612,31 @@ public class StreamingContainerManager
     }
   }
 
-  public void addContainerStopRequest(String containerId) {
-    containerStopRequests.put(containerId, containerId);
-  }
-
   public ArrayList<OperatorInfo> getNodeInfoList() {
-    ArrayList<OperatorInfo> nodeInfoList = new ArrayList<OperatorInfo>(this.nodeStatusMap.size());
-    for (NodeStatus ns : this.nodeStatusMap.values()) {
-      OperatorInfo ni = new OperatorInfo();
-      ni.container = ns.container.containerId + "@" + ns.container.host;
-      ni.id = ns.node.id;
-      ni.name = ns.node.getLogicalId();
-      StreamingNodeHeartbeat hb = ns.lastHeartbeat;
-      if (hb != null) {
-        // initial heartbeat not yet received
-        ni.status = hb.getState();
-        ni.totalBytes = ns.bytesTotal;
-        ni.totalTuples = ns.tuplesTotal;
-        ni.lastHeartbeat = ns.lastHeartbeat.getGeneratedTms();
-      } else {
-        // TODO: proper node status tracking
-        StramChildAgent cs = containers.get(ns.container.containerId);
-        if (cs != null) {
-          ni.status = cs.isComplete ? "CONTAINER_COMPLETE" : "CONTAINER_NEW";
+    ArrayList<OperatorInfo> nodeInfoList = new ArrayList<OperatorInfo>();
+    for (StramChildAgent container : this.containers.values()) {
+      for (OperatorStatus os : container.operators.values()) {
+        OperatorInfo ni = new OperatorInfo();
+        ni.container = os.container.containerId + "@" + os.container.host;
+        ni.id = os.operator.id;
+        ni.name = os.operator.getLogicalId();
+        StreamingNodeHeartbeat hb = os.lastHeartbeat;
+        if (hb != null) {
+          // initial heartbeat not yet received
+          ni.status = hb.getState();
+          ni.totalBytes = os.bytesTotal;
+          ni.totalTuples = os.tuplesTotal;
+          ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
+          ni.failureCount = os.operator.failureCount;
+        } else {
+          // TODO: proper node status tracking
+          StramChildAgent cs = containers.get(os.container.containerId);
+          if (cs != null) {
+            ni.status = cs.isComplete ? "CONTAINER_COMPLETE" : "CONTAINER_NEW";
+          }
         }
+        nodeInfoList.add(ni);
       }
-      nodeInfoList.add(ni);
     }
     return nodeInfoList;
   }

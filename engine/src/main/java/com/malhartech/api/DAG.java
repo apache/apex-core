@@ -373,6 +373,10 @@ public class DAG implements Serializable, DAGConstants
       return this.moduleHolder.module;
     }
 
+    public AttributeMap<OperatorContext> getAttributes() {
+      return this.attributes;
+    }
+
     @Override
     public String toString()
     {

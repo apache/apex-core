@@ -4,15 +4,18 @@
  */
 package com.malhartech.stram;
 
+import java.util.HashSet;
+
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.dag.RecoverableInputOperator;
-import java.util.HashSet;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -35,10 +38,13 @@ public class NodeRecoveryTest
     };
   }
 
+  @Test
   public void testInputOperatorRecovery() throws Exception
   {
     DAG dag = new DAG();
+    dag.setMaxContainerCount(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
+
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     dag.addStream("connection", rip.output, cm.input);
 
@@ -47,6 +53,6 @@ public class NodeRecoveryTest
     lc.run();
 
     logger.debug("Collected Tuples = {}", collection);
-    Assert.assertEquals("Generated Outputs", collection.size(), 20);
+    Assert.assertEquals("Generated Outputs", 30, collection.size());
   }
 }

@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +45,6 @@ public class StramLocalClusterTest
    *
    * @throws Exception
    */
-  @Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {

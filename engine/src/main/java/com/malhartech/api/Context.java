@@ -30,6 +30,7 @@ public interface Context
 
   public interface OperatorContext extends Context {
     public static final AttributeKey<Integer> SPIN_MILLIS = new AttributeKey<Integer>("SPIN_MILLIS");
+    public static final AttributeKey<Integer> RECOVERY_ATTEMPTS = new AttributeKey<Integer>("RECOVERY_ATTEMPTS");
 
     public class AttributeKey<T> extends AttributeMap.AttributeKey<OperatorContext, T> {
       private AttributeKey(String name) {

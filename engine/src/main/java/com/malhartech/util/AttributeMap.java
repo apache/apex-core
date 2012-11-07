@@ -13,13 +13,34 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.malhartech.util.AttributeMap.AttributeKey;
+
 /**
  * Parameterized and scoped context attribute map that supports serialization.
  * Derived from {@link io.netty.util.AttributeMap}
  */
 public interface AttributeMap<CONTEXT> {
 
+  /**
+   * Return the attribute value for the given key. If the map does not have an
+   * entry for the key, a default attribute value will be returned.
+   *
+   * @param key
+   * @return
+   */
   <T> Attribute<T> attr(AttributeKey<CONTEXT, T> key);
+
+  /**
+   * Return the value of the attribute (instead of the attribute object) or the
+   * default, if no value exists or value is null. This allows to retrieve the
+   * default without creating empty default attributes when asked for a key that
+   * is not mapped.
+   *
+   * @param key
+   * @param defaultValue
+   * @return
+   */
+  <T>  T attrValue(AttributeKey<CONTEXT, T> key, T defaultValue);
 
   /**
    * Scoped attribute key. Subclasses define scope.
@@ -62,7 +83,7 @@ public interface AttributeMap<CONTEXT> {
     private Class<CONTEXT> scope;
 
     @Override
-    public <T> Attribute<T> attr(AttributeKey<CONTEXT, T> key) {
+    public synchronized <T> Attribute<T> attr(AttributeKey<CONTEXT, T> key) {
       @SuppressWarnings("unchecked")
       DefaultAttribute<T> attr = (DefaultAttribute<T>) map.get(key.name());
       if (attr == null) {
@@ -77,6 +98,16 @@ public interface AttributeMap<CONTEXT> {
           map.put(key.name(), attr);
       }
       return attr;
+    }
+
+    @Override
+    public synchronized <T> T attrValue(AttributeKey<CONTEXT, T> key, T defaultValue) {
+      if (!this.map.containsKey(key.name)) {
+        return defaultValue;
+      }
+      Attribute<T> attr = this.attr(key);
+      T val = attr.get();
+      return val != null ? val : defaultValue;
     }
 
     private class DefaultAttribute<T> extends AtomicReference<T> implements Attribute<T>, Serializable {
