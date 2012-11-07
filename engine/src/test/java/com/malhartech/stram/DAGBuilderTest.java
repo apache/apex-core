@@ -5,7 +5,6 @@
 package com.malhartech.stram;
 
 import com.google.common.collect.Sets;
-import com.malhartech.annotation.InjectConfig;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
@@ -322,15 +321,6 @@ public class DAGBuilderTest {
     private boolean isValidConfiguration() {
       return stringField1.endsWith(String.valueOf(intField1));
     }
-
-    @InjectConfig(key="stringKey")
-    private String stringField;
-
-    @InjectConfig(key="urlKey")
-    private java.net.URL urlField;
-
-    @InjectConfig(key="stringArrayKey")
-    private String[] stringArrayField;
 
     private String getterProperty2 = "";
 

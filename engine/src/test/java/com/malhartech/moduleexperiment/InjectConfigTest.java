@@ -12,7 +12,6 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.spi.TypeEncounter;
 import com.google.inject.spi.TypeListener;
-import com.malhartech.annotation.InjectConfig;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.net.URL;
