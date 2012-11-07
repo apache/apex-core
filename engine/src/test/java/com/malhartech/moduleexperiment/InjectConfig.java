@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.annotation;
+package com.malhartech.moduleexperiment;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
