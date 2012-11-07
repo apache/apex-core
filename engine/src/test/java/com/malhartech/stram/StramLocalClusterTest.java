@@ -245,7 +245,7 @@ public class StramLocalClusterTest
     Assert.assertNotSame("new instance " + ptNode2, n2, n2Replaced);
     Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());
 
-    TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)nodeMap.get(ptNode1.id).getOperator();
+    TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)c0Replaced.getNodes().get(ptNode1.id).getOperator();
     Assert.assertNotNull(n1Replaced);
 
     OperatorContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);

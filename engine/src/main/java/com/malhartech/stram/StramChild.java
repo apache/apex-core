@@ -207,19 +207,30 @@ public class StramChild
     }
   }
 
-  public void deactivate()
+  public synchronized void deactivate()
   {
-    Thread[] active = new Thread[activeNodes.size()];
-    int i = 0;
-    for (Entry<String, OperatorContext> e: activeNodes.entrySet()) {
-      active[i++] = e.getValue().getThread();
-      nodes.get(e.getKey()).deactivate();
+    ArrayList<Thread> activeThreads = new ArrayList<Thread>();
+    ArrayList<String> activeOperators = new ArrayList<String>();
+
+    for (Entry<String, Node<?>> e: nodes.entrySet()) {
+      OperatorContext oc = activeNodes.get(e.getKey());
+      if (oc == null) {
+        disconnectNode(e.getKey());
+      }
+      else {
+        activeThreads.add(oc.getThread());
+        activeOperators.add(e.getKey());
+        e.getValue().deactivate();
+      }
     }
 
     try {
-      while (i-- > 0) {
-        active[i].join();
+      Iterator<String> iterator = activeOperators.iterator();
+      for (Thread t: activeThreads) {
+        t.join();
+        disconnectNode(iterator.next());
       }
+      assert (activeNodes.isEmpty());
     }
     catch (InterruptedException ex) {
       logger.info("Aborting wait for for operators to get deactivated as got interrupted with {}", ex);
@@ -236,12 +247,12 @@ public class StramChild
     activeStreams.clear();
   }
 
-  private synchronized void disconnectNode(String nodeid)
+  private void disconnectNode(String nodeid)
   {
     Node node = nodes.get(nodeid);
     disconnectWindowGenerator(nodeid, node);
 
-    Set<String> removableSocketOutputStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
+    Set<String> removableStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
     // with the logic i have in here, the list should not contain repeated streams. but it does and that causes problem.
     for (Entry<String, ComponentContextPair<Stream, StreamContext>> entry: streams.entrySet()) {
       String indexingKey = entry.getKey();
@@ -259,7 +270,7 @@ public class StramChild
           stream.preDeactivate();
           activeStreams.remove(stream);
         }
-        removableSocketOutputStreams.add(sourceIdentifier);
+        removableStreams.add(sourceIdentifier);
 
         String[] sinkIds = sinkIdentifier.split(", ");
         for (String sinkId: sinkIds) {
@@ -282,7 +293,7 @@ public class StramChild
                 activeStreams.remove(spair.component);
               }
 
-              removableSocketOutputStreams.add(sinkId);
+              removableStreams.add(sinkId);
             }
           }
         }
@@ -320,7 +331,7 @@ public class StramChild
             activeStreams.remove(stream);
           }
 
-          removableSocketOutputStreams.add(indexingKey);
+          removableStreams.add(indexingKey);
         }
         else {
           // may be we should also check if the count has changed from something to 1
@@ -330,7 +341,7 @@ public class StramChild
       }
     }
 
-    for (String streamId: removableSocketOutputStreams) {
+    for (String streamId: removableStreams) {
       logger.debug("removing stream {}", streamId);
       // need to check why control comes here twice to remove the stream which was deleted before.
       // is it because of multiSinkCapableStream ?
@@ -361,7 +372,7 @@ public class StramChild
     }
   }
 
-  private void undeploy(List<OperatorDeployInfo> nodeList)
+  private synchronized void undeploy(List<OperatorDeployInfo> nodeList)
   {
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
@@ -384,17 +395,24 @@ public class StramChild
     // track the ones which are active
 
     ArrayList<Thread> joinList = new ArrayList<Thread>();
+    ArrayList<String> discoList = new ArrayList<String>();
     for (OperatorDeployInfo ndi: nodeList) {
       OperatorContext oc = activeNodes.get(ndi.id);
-      if (oc != null) {
+      if (oc == null) {
+        disconnectNode(ndi.id);
+      }
+      else {
         joinList.add(oc.getThread());
+        discoList.add(ndi.id);
         nodes.get(ndi.id).deactivate();
       }
     }
 
     try {
+      Iterator<String> iterator = discoList.iterator();
       for (Thread t: joinList) {
         t.join();
+        disconnectNode(iterator.next());
       }
     }
     catch (InterruptedException ex) {
@@ -409,6 +427,10 @@ public class StramChild
   public void teardown()
   {
     deactivate();
+
+    assert (streams.isEmpty());
+
+    nodes.clear();
 
     HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
     gens.addAll(generators.values());
@@ -573,7 +595,7 @@ public class StramChild
     }
   }
 
-  private void deploy(List<OperatorDeployInfo> nodeList) throws Exception
+  private synchronized void deploy(List<OperatorDeployInfo> nodeList) throws Exception
   {
     /**
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
@@ -936,8 +958,8 @@ public class StramChild
     return windowGenerator;
   }
 
-  @SuppressWarnings("SleepWhileInLoop")
-  public void activate(List<OperatorDeployInfo> nodeList)
+  @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
+  public synchronized void activate(List<OperatorDeployInfo> nodeList)
   {
     for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
@@ -971,7 +993,6 @@ public class StramChild
           activeNodes.remove(ndi.id);
 
           node.getOperator().teardown();
-          disconnectNode(ndi.id);
         }
       }.start();
     }
