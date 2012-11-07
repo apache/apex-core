@@ -21,8 +21,13 @@ public class RecoverableInputOperator implements InputOperator
   transient boolean first;
   transient long windowId;
   boolean failed_once;
-  int count;
+  int maximumTuples = 20;
   transient int fail;
+
+  public void setMaximumTuples(int count)
+  {
+    maximumTuples = count;
+  }
 
   @Override
   public void emitTuples()
@@ -31,7 +36,7 @@ public class RecoverableInputOperator implements InputOperator
 //      logger.debug("generating tuple {}", Long.toHexString(windowId));
       output.emit(windowId);
       first = false;
-      if (++count == 30) {
+      if (--maximumTuples == 0) {
         Thread.currentThread().interrupt();
       }
     }
@@ -49,7 +54,7 @@ public class RecoverableInputOperator implements InputOperator
   {
     if (!failed_once) {
       failed_once = true;
-      fail = 20;
+      fail = maximumTuples >> 1;
     }
 
     if (fail > 0) {
@@ -62,6 +67,9 @@ public class RecoverableInputOperator implements InputOperator
   @Override
   public void setup(OperatorContext context)
   {
+    if (maximumTuples < 4) {
+      throw new RuntimeException("MaximumTuples value should at least be 4 for this Operator to serve its purpose!");
+    }
   }
 
   @Override
