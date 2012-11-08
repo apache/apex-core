@@ -375,7 +375,7 @@ public class StramChild
 
   private synchronized void undeploy(List<OperatorDeployInfo> nodeList)
   {
-    logger.debug("got undeploy request {}", nodeList);
+    logger.info("got undeploy request {}", nodeList);
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
@@ -416,10 +416,10 @@ public class StramChild
         t.join();
         disconnectNode(iterator.next());
       }
-      logger.debug("undeploy complete");
+      logger.info("undeploy complete");
     }
     catch (InterruptedException ex) {
-      logger.debug("Aborted waiting for the deactivate to finish!");
+      logger.warn("Aborted waiting for the deactivate to finish!");
     }
 
     for (OperatorDeployInfo ndi: nodeList) {
@@ -990,7 +990,7 @@ public class StramChild
             activeNodes.put(ndi.id, context);
 
             activatedNodeCount.incrementAndGet();
-            logger.debug("activating {} in container {}", node, containerId);
+            logger.info("activating {} in container {}", node, containerId);
             node.activate(context);
           }
           catch (Exception ex) {
