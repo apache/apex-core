@@ -24,7 +24,7 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.yarn.Clock;
@@ -77,7 +77,6 @@ import com.malhartech.stram.webapp.StramWebApp;
  * Once the dag is starts {@link com.malhartech.stram.StramAppMaster} runs the dag on a continual basis<br>
  * Stram can be shut down in the following ways<br>
  * cli command shutdown<br>
- * TODO: Need a streaming message to shut down the stram<br>
  * Currently stram high availability (integration with zookeeper) is not available<br>
  * <br>
  *
@@ -558,7 +557,7 @@ public class StramAppMaster
         if (0 != exitStatus) {
           // StramChild failure or process killed (externally or via stop request by AM)
           numFailedContainers.incrementAndGet();
-          LOG.info("Container {} failed, launching new container.", containerStatus.getContainerId());
+          LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
           dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
         }
         else {
@@ -622,7 +621,9 @@ public class StramAppMaster
         diagnostics += dnmgr.shutdownDiagnosticsMessage;
       }
       finishReq.setDiagnostics(diagnostics);
-      isSuccess = false;
+      // return true to indicates expected termination of the master process
+      // application status and diagnostics message are set above
+      isSuccess = true;
     }
     LOG.info("diagnostics: " + finishReq.getDiagnostics());
     resourceManager.finishApplicationMaster(finishReq);

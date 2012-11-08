@@ -525,7 +525,7 @@ public class StramCli
       throw new CliException("No application selected");
     }
 
-    // WebAppProxyServlet does not support POST - for now bypass it for this request
+    // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     currentApp = assertRunningApp(currentApp); // or else "N/A" might be there..
     String trackingUrl = currentApp.getOriginalTrackingUrl();
 

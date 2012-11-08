@@ -71,6 +71,7 @@ public class StreamingContainerManager
   protected final  Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final  ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
   protected String shutdownDiagnosticsMessage = "";
+  protected boolean forcedShutdown = false;
 
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
@@ -116,7 +117,7 @@ public class StreamingContainerManager
          // TODO: separate startup timeout handling
          if (cs.createdMillis + heartbeatTimeoutMillis < currentTms) {
            // issue stop as process may still be hanging around (would have been detected by Yarn otherwise)
-           LOG.info("Triggering restart for container {} after heartbeat timeout.", containerId);
+           LOG.info("Container {} heartbeat timeout.", containerId);
            containerStopRequests.put(containerId, containerId);
          }
        }
@@ -131,13 +132,13 @@ public class StreamingContainerManager
    * @param containerId
    */
   public void scheduleContainerRestart(String containerId) {
-    LOG.info("Initiating recovery for container {}", containerId);
 
     StramChildAgent cs = getContainerAgent(containerId);
     if (cs.shutdownRequested == true) {
       return;
     }
 
+    LOG.info("Initiating recovery for container {}", containerId);
     // building the checkpoint dependency,
     // downstream operators will appear first in map
     // TODO: traversal needs to include inline upstream operators
@@ -428,10 +429,10 @@ public class StreamingContainerManager
             LOG.error("Issuing container stop to restart after operator failure {}", status.operator);
             containerStopRequests.put(sca.container.containerId, sca.container.containerId);
           } else {
-            this.shutdownDiagnosticsMessage = String.format("Shutting down application after reaching failure threshold for %s", status.operator);
-            LOG.error(this.shutdownDiagnosticsMessage);
-            // TODO: propagate exit code / shutdown message to master
-            shutdownAllContainers();
+            String msg = String.format("Shutdown after reaching failure threshold for %s", status.operator);
+            LOG.warn(msg);
+            forcedShutdown = true;
+            shutdownAllContainers(msg);
           }
         }
       }
@@ -609,7 +610,9 @@ public class StreamingContainerManager
    * If containers don't respond, the application can be forcefully terminated
    * via yarn using forceKillApplication.
    */
-  public void shutdownAllContainers() {
+  public void shutdownAllContainers(String message) {
+    this.shutdownDiagnosticsMessage = message;
+    LOG.info("Initiating application shutdown: " + message);
     for (StramChildAgent cs : this.containers.values()) {
       cs.shutdownRequested = true;
     }

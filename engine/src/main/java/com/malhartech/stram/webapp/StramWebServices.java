@@ -112,7 +112,7 @@ public class StramWebServices
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject shutdown()
   {
-    dagManager.shutdownAllContainers();
+    dagManager.shutdownAllContainers("Shutdown requested externally.");
     return new JSONObject();
   }
 }
