@@ -526,11 +526,8 @@ public class StramCli
     }
 
     // WebAppProxyServlet does not support POST - for now bypass it for this request
+    currentApp = assertRunningApp(currentApp); // or else "N/A" might be there..
     String trackingUrl = currentApp.getOriginalTrackingUrl();
-    if (trackingUrl == null) {
-      currentApp = assertRunningApp(currentApp);
-      trackingUrl = currentApp.getOriginalTrackingUrl();
-    }
 
     Client wsClient = Client.create();
     wsClient.setFollowRedirects(true);
