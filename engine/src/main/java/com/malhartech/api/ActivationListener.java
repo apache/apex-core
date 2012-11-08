@@ -10,7 +10,7 @@ package com.malhartech.api;
  */
 public interface ActivationListener<CONTEXT extends Context>
 {
-  public void postActivate(CONTEXT ctx);
+  public void activate(CONTEXT ctx);
 
-  public void preDeactivate();
+  public void deactivate();
 }

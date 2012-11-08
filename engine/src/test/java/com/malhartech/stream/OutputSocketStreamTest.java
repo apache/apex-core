@@ -84,9 +84,9 @@ public final class OutputSocketStreamTest
   public void testGetClientPipelineFactory()
   {
     System.out.println("getClientPipelineFactory");
-    oss.postActivate(ctx);
+    oss.activate(ctx);
     io.netty.channel.ChannelPipeline pipeline = oss.channel.pipeline();
     assert (pipeline.last() == oss);
-    oss.preDeactivate();
+    oss.deactivate();
   }
 }

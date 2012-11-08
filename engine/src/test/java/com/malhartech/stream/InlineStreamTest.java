@@ -97,7 +97,7 @@ public class InlineStreamTest
     }
     sink.process(StramTestSupport.generateEndWindowTuple("irrelevant", 0, totalTupleCount));
 
-    stream.postActivate(streamContext);
+    stream.activate(streamContext);
 
     Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
     launchNodeThread(node1, activeNodes);
@@ -113,7 +113,7 @@ public class InlineStreamTest
     for (Node node: activeNodes.values()) {
       node.deactivate();
     }
-    stream.preDeactivate();
+    stream.deactivate();
 
     for (int i = 0; i < 10; i++) {
       Thread.sleep(20);

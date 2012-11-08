@@ -33,7 +33,7 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
   final public transient BufferingOutputPort<T> outputPort = new BufferingOutputPort<T>(this);
 
   @Override
-  final public void postActivate(OperatorContext ctx)
+  final public void activate(OperatorContext ctx)
   {
     isActive = true;
     if (this instanceof Runnable) {
@@ -43,7 +43,7 @@ public class BaseInputOperator<T> extends BaseOperator implements InputOperator,
   }
 
   @Override
-  final public void preDeactivate()
+  final public void deactivate()
   {
     isActive = false;
     if (ioThread != null) {

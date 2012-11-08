@@ -50,7 +50,7 @@ public class InputOperatorTest
     }
 
     @Override
-    public void postActivate(OperatorContext ctx)
+    public void activate(OperatorContext ctx)
     {
       dataGeneratorThread = new Thread("Integer Emitter")
       {
@@ -73,7 +73,7 @@ public class InputOperatorTest
     }
 
     @Override
-    public void preDeactivate()
+    public void deactivate()
     {
       dataGeneratorThread = null;
     }

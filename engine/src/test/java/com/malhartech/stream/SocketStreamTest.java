@@ -106,10 +106,10 @@ public class SocketStreamTest
     BufferServerOutputStream oss = new BufferServerOutputStream(serde);
     oss.setup(ossContext);
 
-    iss.postActivate(issContext);
+    iss.activate(issContext);
     LOG.debug("input stream activated");
 
-    oss.postActivate(ossContext);
+    oss.activate(ossContext);
     LOG.debug("output stream activated");
 
     LOG.debug("Sending hello message");

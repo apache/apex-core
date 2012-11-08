@@ -47,7 +47,7 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   }
 
   @Override
-  public void postActivate(StreamContext context)
+  public void activate(StreamContext context)
   {
     bootstrap = new Bootstrap();
     bootstrap.group(new NioEventLoopGroup())
@@ -73,7 +73,7 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   }
 
   @Override
-  public void preDeactivate()
+  public void deactivate()
   {
     if (channel != null) {
       channel.flush().awaitUninterruptibly();

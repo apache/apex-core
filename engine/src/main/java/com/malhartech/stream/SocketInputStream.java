@@ -45,7 +45,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
   }
 
   @Override
-  public void postActivate(StreamContext context)
+  public void activate(StreamContext context)
   {
     bootstrap = new Bootstrap();
 
@@ -69,7 +69,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
   }
 
   @Override
-  public void preDeactivate()
+  public void deactivate()
   {
     channel.close().awaitUninterruptibly();
     bootstrap.shutdown();

@@ -45,7 +45,7 @@ public class MuxStream implements Stream<Object>
    */
   @Override
   @SuppressWarnings("SillyAssignment")
-  public void postActivate(StreamContext context)
+  public void activate(StreamContext context)
   {
     sinks = new Sink[outputs.size()];
 
@@ -60,7 +60,7 @@ public class MuxStream implements Stream<Object>
    *
    */
   @Override
-  public void preDeactivate()
+  public void deactivate()
   {
     sinks = NO_SINKS;
   }
@@ -83,7 +83,7 @@ public class MuxStream implements Stream<Object>
     else {
       sink = outputs.put(id, sink);
       if (sinks != NO_SINKS) {
-        postActivate(null);
+        activate(null);
       }
     }
 

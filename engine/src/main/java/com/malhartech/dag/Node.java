@@ -118,13 +118,13 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     this.context = context;
 
     if (activationListener) {
-      ((ActivationListener)operator).postActivate(context);
+      ((ActivationListener)operator).activate(context);
     }
 
     run();
 
     if (activationListener) {
-      ((ActivationListener)operator).preDeactivate();
+      ((ActivationListener)operator).deactivate();
     }
 
     this.context = null;

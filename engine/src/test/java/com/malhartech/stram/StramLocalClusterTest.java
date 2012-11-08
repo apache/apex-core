@@ -105,13 +105,13 @@ public class StramLocalClusterTest
 
     List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException
     {
-      bsi.postActivate(streamContext);
+      bsi.activate(streamContext);
       //LOG.debug("test sink activated");
       sink.waitForResultCount(1, 3000);
       Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
       List<Object> result = new ArrayList<Object>(sink.collectedTuples);
 
-      bsi.preDeactivate();
+      bsi.deactivate();
       sink.collectedTuples.clear();
       return result;
     }

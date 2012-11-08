@@ -161,7 +161,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
   }
 
   @Override
-  public void postActivate(StreamContext context)
+  public void activate(StreamContext context)
   {
     activateSinks();
 
@@ -203,7 +203,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
   }
 
   @Override
-  public void preDeactivate()
+  public void deactivate()
   {
     ses.shutdown();
     sinks = NO_SINKS;
