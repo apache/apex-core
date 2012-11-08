@@ -440,7 +440,7 @@ public class StreamingContainerManager
 
         // checkpoint tracking
         PTOperator node = status.operator;
-        if (shb.getLastBackupWindowId() != 0 && shb.getState() == DNodeState.ACTIVE.name()) {
+        if (shb.getLastBackupWindowId() != 0) {
           synchronized (node.checkpointWindows) {
             if (!node.checkpointWindows.isEmpty()) {
               Long lastCheckpoint = node.checkpointWindows.getLast();

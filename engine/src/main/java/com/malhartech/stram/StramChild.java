@@ -4,10 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.InputOperator;
-import com.malhartech.api.Operator;
-import com.malhartech.api.OperatorSerDe;
-import com.malhartech.api.Sink;
+import com.malhartech.api.*;
 import com.malhartech.dag.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -168,10 +165,14 @@ public class StramChild
           StreamingContainerContext ctx = umbilical.getInitContext(childId);
           logger.debug("Got context: " + ctx);
           stramChild.setup(ctx);
-          // main thread enters heartbeat loop
-          stramChild.monitorHeartbeat();
-          // teardown
-          stramChild.teardown();
+          try {
+            // main thread enters heartbeat loop
+            stramChild.monitorHeartbeat();
+          }
+          finally {
+            // teardown
+            stramChild.teardown();
+          }
           return null;
         }
       });
@@ -374,6 +375,7 @@ public class StramChild
 
   private synchronized void undeploy(List<OperatorDeployInfo> nodeList)
   {
+    logger.debug("got undeploy request {}", nodeList);
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
@@ -581,11 +583,15 @@ public class StramChild
         context.request(new OperatorContext.NodeRequest()
         {
           @Override
-          public void execute(Operator module, String id, long windowId) throws IOException
+          public void execute(Operator operator, String id, long windowId) throws IOException
           {
-            new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, module, StramUtils.getNodeSerDe(null));
+            new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, operator, StramUtils.getNodeSerDe(null));
             // record last backup window id for heartbeat
             StramChild.this.backupInfo.put(id, windowId);
+
+            if (operator instanceof CheckpointListener) {
+              ((CheckpointListener)operator).checkpointed(windowId);
+            }
           }
         });
         break;

@@ -141,10 +141,14 @@ public class StramLocalCluster implements Runnable
     {
       LOG.debug("Got context: " + ctx);
       stramChild.setup(ctx);
-      // main thread enters heartbeat loop
-      stramChild.monitorHeartbeat();
-      // teardown
-      stramChild.teardown();
+      try {
+        // main thread enters heartbeat loop
+        stramChild.monitorHeartbeat();
+      }
+      finally {
+        // teardown
+        stramChild.teardown();
+      }
     }
 
     public void waitForHeartbeat(int waitMillis) throws InterruptedException
