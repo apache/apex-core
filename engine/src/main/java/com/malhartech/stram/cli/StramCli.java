@@ -313,6 +313,21 @@ public class StramCli
     }
   }
 
+  private ApplicationReport assertRunningApp(ApplicationReport app) {
+    ApplicationReport r;
+    try {
+      r = rmClient.getApplicationReport(app.getApplicationId());
+      if (r.getYarnApplicationState() != YarnApplicationState.RUNNING) {
+        String msg = String.format("Application %s not running (status %s)",
+            r.getApplicationId().getId(), r.getYarnApplicationState());
+        throw new CliException(msg);
+      }
+    } catch (YarnRemoteException rmExc) {
+      throw new CliException("Unable to determine application status.", rmExc);
+    }
+    return r;
+  }
+
   private ClientResponse getResource(String resourcePath)
   {
 
@@ -338,16 +353,7 @@ public class StramCli
     }
     catch (Exception e) {
       // check the application status as above may have failed due application termination etc.
-      try {
-        this.currentApp = rmClient.getApplicationReport(currentApp.getApplicationId());
-        if (currentApp.getYarnApplicationState() != YarnApplicationState.RUNNING) {
-          String msg = String.format("Application %s not running (status %s)",
-              currentApp.getApplicationId().getId(), currentApp.getYarnApplicationState());
-          throw new CliException(msg);
-        }
-      } catch (YarnRemoteException rmExc) {
-        throw new CliException("Unable to determine application status.", rmExc);
-      }
+      currentApp = assertRunningApp(currentApp);
       throw new CliException("Failed to request " + r.getURI(), e);
     }
   }
@@ -519,10 +525,16 @@ public class StramCli
       throw new CliException("No application selected");
     }
 
+    // WebAppProxyServlet does not support POST - for now bypass it for this request
+    String trackingUrl = currentApp.getOriginalTrackingUrl();
+    if (trackingUrl == null) {
+      currentApp = assertRunningApp(currentApp);
+      trackingUrl = currentApp.getOriginalTrackingUrl();
+    }
+
     Client wsClient = Client.create();
     wsClient.setFollowRedirects(true);
-    // WebAppProxyServlet does not support POST - for now bypass it for this request
-    WebResource r = wsClient.resource("http://" + currentApp.getOriginalTrackingUrl()).path(StramWebServices.PATH).path(StramWebServices.PATH_SHUTDOWN);
+    WebResource r = wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH).path(StramWebServices.PATH_SHUTDOWN);
     try {
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class);
       System.out.println("shutdown requested: " + response);
