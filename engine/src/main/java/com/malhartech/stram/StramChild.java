@@ -955,11 +955,11 @@ public class StramChild
     /**
      * let's make sure that we send the same window Ids with the same reset windows.
      */
-    // let's see if we want to send the exact same window id even the second time.
     windowGenerator.setResetWindow(firstWindowMillis);
-    windowGenerator.setFirstWindow(smallestWindowId > firstWindowMillis
-                                   ? (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID)
-                                   : firstWindowMillis);
+
+    long millisAtFirstWindow = (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID);
+    windowGenerator.setFirstWindow(millisAtFirstWindow > firstWindowMillis ? millisAtFirstWindow : firstWindowMillis);
+
     windowGenerator.setWindowWidth(windowWidthMillis);
     return windowGenerator;
   }
