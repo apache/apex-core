@@ -35,6 +35,7 @@ public class OperatorInfo {
   public String status;
   public long lastHeartbeat;
   public long failureCount;
+  public long lastCheckpoint;
 
   public OperatorInfo() {
   }

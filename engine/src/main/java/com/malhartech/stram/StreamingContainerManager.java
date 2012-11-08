@@ -138,7 +138,7 @@ public class StreamingContainerManager
       return;
     }
 
-    LOG.info("Initiating recovery for container {}", containerId);
+    LOG.info("Initiating recovery for container {}@{}", containerId, cs.container.host);
     // building the checkpoint dependency,
     // downstream operators will appear first in map
     // TODO: traversal needs to include inline upstream operators
@@ -634,6 +634,7 @@ public class StreamingContainerManager
           ni.totalTuples = os.tuplesTotal;
           ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           ni.failureCount = os.operator.failureCount;
+          ni.lastCheckpoint = hb.getLastBackupWindowId();
         } else {
           // TODO: proper node status tracking
           StramChildAgent cs = containers.get(os.container.containerId);
