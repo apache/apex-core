@@ -25,11 +25,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.malhartech.api.ApplicationFactory;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator;
-import com.malhartech.engine.ApplicationFactory;
 import com.malhartech.engine.Operators;
 import com.malhartech.engine.SerDe;
 
