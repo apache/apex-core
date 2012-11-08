@@ -134,6 +134,9 @@ public class StreamingContainerManager
     LOG.info("Initiating recovery for container {}", containerId);
 
     StramChildAgent cs = getContainerAgent(containerId);
+    if (cs.shutdownRequested == true) {
+      return;
+    }
 
     // building the checkpoint dependency,
     // downstream operators will appear first in map
@@ -470,7 +473,7 @@ public class StreamingContainerManager
       rsp.shutdown = true;
     } else {
       if (sca.shutdownRequested) {
-        LOG.info("requesting idle shutdown for container {}", heartbeat.getContainerId());
+        LOG.info("requesting shutdown for container {}", heartbeat.getContainerId());
         rsp.shutdown = true;
       }
     }
