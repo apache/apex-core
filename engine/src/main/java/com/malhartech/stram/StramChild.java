@@ -416,6 +416,7 @@ public class StramChild
         t.join();
         disconnectNode(iterator.next());
       }
+      logger.debug("undeploy complete");
     }
     catch (InterruptedException ex) {
       logger.debug("Aborted waiting for the deactivate to finish!");
@@ -976,7 +977,7 @@ public class StramChild
 
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
     for (final OperatorDeployInfo ndi: nodeList) {
-      final Node node = nodes.get(ndi.id);
+      final Node<?> node = nodes.get(ndi.id);
       assert (!activeNodes.containsKey(ndi.id));
       new Thread(node.id)
       {
@@ -997,8 +998,8 @@ public class StramChild
           }
 
           activeNodes.remove(ndi.id);
-
           node.getOperator().teardown();
+          logger.info("deactivated {}", node.id);
         }
       }.start();
     }
