@@ -72,9 +72,37 @@ public class NodeRecoveryTest
   @Test
   public void testInputOperatorRecovery() throws Exception
   {
+    collection.clear();
     int maxTuples = 30;
     DAG dag = new DAG();
-    dag.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 5000);
+    dag.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 500);
+    dag.getConf().setInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 300);
+
+    dag.setMaxContainerCount(1);
+    RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
+    rip.setMaximumTuples(maxTuples);
+
+    CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
+    dag.addStream("connection", rip.output, cm.input);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.setHeartbeatMonitoringEnabled(false);
+    lc.run();
+
+//    for (Long l: collection) {
+//      logger.debug(Long.toHexString(l));
+//    }
+    Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
+  }
+
+  @Test
+  public void testOperatorRecovery() throws Exception
+  {
+    collection.clear();
+    int maxTuples = 30;
+    DAG dag = new DAG();
+    dag.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 500);
+    dag.getConf().setInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 300);
     dag.setMaxContainerCount(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
@@ -82,6 +110,32 @@ public class NodeRecoveryTest
     CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
     cm.setSimulateFailure(true);
     dag.addStream("connection", rip.output, cm.input);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.setHeartbeatMonitoringEnabled(false);
+    lc.run();
+
+//    for (Long l: collection) {
+//      logger.debug(Long.toHexString(l));
+//    }
+    Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
+  }
+
+  @Test
+  public void testInlineOperatorsRecovery() throws Exception
+  {
+    collection.clear();
+    int maxTuples = 30;
+    DAG dag = new DAG();
+    dag.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 500);
+    dag.getConf().setInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 300);
+    dag.setMaxContainerCount(1);
+    RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
+    rip.setMaximumTuples(maxTuples);
+
+    CollectorOperator cm = dag.addOperator("LongCollector", CollectorOperator.class);
+    cm.setSimulateFailure(true);
+    dag.addStream("connection", rip.output, cm.input).setInline(true);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
