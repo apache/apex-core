@@ -5,15 +5,15 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.Node;
-import com.malhartech.dag.OperatorContext;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.TestGeneratorInputModule;
-import com.malhartech.dag.TestOutputModule;
-import com.malhartech.dag.TestSink;
-import com.malhartech.dag.WindowGenerator;
+import com.malhartech.engine.DefaultSerDe;
+import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.Node;
+import com.malhartech.engine.OperatorContext;
+import com.malhartech.engine.StreamContext;
+import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.TestOutputModule;
+import com.malhartech.engine.TestSink;
+import com.malhartech.engine.WindowGenerator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;

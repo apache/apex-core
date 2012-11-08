@@ -29,9 +29,9 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator;
-import com.malhartech.dag.ApplicationFactory;
-import com.malhartech.dag.Operators;
-import com.malhartech.dag.SerDe;
+import com.malhartech.engine.ApplicationFactory;
+import com.malhartech.engine.Operators;
+import com.malhartech.engine.SerDe;
 
 /**
  *

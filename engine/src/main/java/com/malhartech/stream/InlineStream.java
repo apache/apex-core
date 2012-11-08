@@ -5,8 +5,8 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.dag.Stream;
-import com.malhartech.dag.StreamContext;
+import com.malhartech.engine.Stream;
+import com.malhartech.engine.StreamContext;
 
 /**
  *

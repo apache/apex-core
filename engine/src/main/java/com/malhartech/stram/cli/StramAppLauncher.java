@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.DAG;
-import com.malhartech.dag.ApplicationFactory;
+import com.malhartech.engine.ApplicationFactory;
 import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramClient;
 import com.malhartech.stram.StramLocalCluster;

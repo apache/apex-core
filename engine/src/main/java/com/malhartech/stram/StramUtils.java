@@ -6,8 +6,8 @@ package com.malhartech.stram;
 
 import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.OperatorSerDe;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.SerDe;
+import com.malhartech.engine.DefaultSerDe;
+import com.malhartech.engine.SerDe;
 
 /**
  *

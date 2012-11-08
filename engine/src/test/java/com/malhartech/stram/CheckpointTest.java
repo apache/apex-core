@@ -6,7 +6,7 @@ package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
-import com.malhartech.dag.*;
+import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;

@@ -5,10 +5,11 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.DefaultSerDe;
-import com.malhartech.dag.SerDe;
-import com.malhartech.dag.StreamContext;
-import com.malhartech.dag.Tuple;
+import com.malhartech.engine.DefaultSerDe;
+import com.malhartech.engine.SerDe;
+import com.malhartech.engine.StreamContext;
+import com.malhartech.engine.Tuple;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;

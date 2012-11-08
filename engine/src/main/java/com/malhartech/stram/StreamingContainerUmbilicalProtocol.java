@@ -26,7 +26,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
-import com.malhartech.dag.HeartbeatCounters;
+import com.malhartech.engine.HeartbeatCounters;
 
 /**
  * Protocol that streaming node child process uses to contact its parent

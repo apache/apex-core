@@ -5,7 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.dag.*;
+import com.malhartech.engine.*;
 import com.malhartech.stram.ManualScheduledExecutorService;
 import static org.junit.Assert.assertTrue;
 import org.slf4j.Logger;

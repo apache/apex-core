@@ -5,7 +5,8 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.dag.StreamContext;
+import com.malhartech.engine.StreamContext;
+
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import java.net.InetSocketAddress;

@@ -620,6 +620,7 @@ public class StramAppMaster
         diagnostics += "\n";
         diagnostics += dnmgr.shutdownDiagnosticsMessage;
       }
+      // YARN-208 - as of 2.0.1-alpha dropped by the RM
       finishReq.setDiagnostics(diagnostics);
       // return true to indicates expected termination of the master process
       // application status and diagnostics message are set above

@@ -47,24 +47,24 @@
  * <b>{@link com.malhartech.stream.BufferServerStreamContext}</b>: Implements stream context for buffer server<br>
  * 
  * <br><b>Console Streams</b><br>
- * <b>{@link com.malhartech.lib.io.ConsoleOutputNode}</b>: Extends {@link com.malhartech.dag.Stream} class.
+ * <b>{@link com.malhartech.lib.io.ConsoleOutputNode}</b>: Extends {@link com.malhartech.engine.Stream} class.
  * Writes directly to stdout. The data would show up in the stdout of Hadoop container in which the node runs. This
  * is a very good way to debug. Care must be taken to avoid connecting {@link com.malhartech.lib.io.ConsoleOutputNode} to an output of a
  * node with high throughput<br>
  * 
  * <br><b>Inline Stream (Within a Hadoop Container)</b><br>
  * <b>{@link com.malhartech.stream.InlineStream}</b>: Streams data between two operators in inline mode. This implementation of
- * {@link com.malhartech.dag.Stream} and {{@link com.malhartech.api.Sink}
+ * {@link com.malhartech.engine.Stream} and {{@link com.malhartech.api.Sink}
  * interface does not have connection to BufferServer and cannot be persisted.<br>
  * 
  * <b>{@link com.malhartech.stream.MuxStream}</b>: <br>
  * <b>{@link com.malhartech.stream.PartitionAwareSink}</b>: <br>
  * 
  * <br><b>Socket Interface Streams</b><br>
- * <b>{@link com.malhartech.stream.SocketInputStream}</b>: Implements {@link com.malhartech.dag.Stream} interface and provides
+ * <b>{@link com.malhartech.stream.SocketInputStream}</b>: Implements {@link com.malhartech.engine.Stream} interface and provides
  * basic stream connection for a node to read from a socket. Users can use this class if they want to directly connect to
  * a outside socket<br>
- * <b>{@link com.malhartech.stream.SocketOutputStream}</b>: Implements {@link com.malhartech.dag.Stream} interface and provides
+ * <b>{@link com.malhartech.stream.SocketOutputStream}</b>: Implements {@link com.malhartech.engine.Stream} interface and provides
  * basic stream connection for a node to write to a socket. Most likely users would not use it to write to a socket by themselves.
  *   Would be used in adapters and via {@link com.malhartech.stream.BufferServerOutputStream}<br>
  * <br>

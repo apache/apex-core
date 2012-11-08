@@ -5,8 +5,9 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.dag.SerDe;
-import com.malhartech.dag.Tuple;
+import com.malhartech.engine.SerDe;
+import com.malhartech.engine.Tuple;
+
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;

@@ -8,7 +8,8 @@ import com.malhartech.api.BaseOperator;
 import com.malhartech.api.CheckpointListener;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
-import com.malhartech.dag.RecoverableInputOperator;
+import com.malhartech.engine.RecoverableInputOperator;
+
 import java.util.HashSet;
 import org.junit.Assert;
 import org.junit.Test;

@@ -6,8 +6,9 @@ package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
 import com.malhartech.bufferserver.Server;
-import com.malhartech.dag.GenericTestModule;
-import com.malhartech.dag.TestGeneratorInputModule;
+import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.TestGeneratorInputModule;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;

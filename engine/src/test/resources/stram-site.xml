@@ -10,7 +10,7 @@
 
   <property>
     <name>stram.operator.module1.classname</name>
-    <value>com.malhartech.dag.GenericTestModule</value>
+    <value>com.malhartech.engine.GenericTestModule</value>
     <description>The root module</description>
   </property>
 
@@ -25,7 +25,7 @@
 
   <property>
     <name>stram.operator.module2.classname</name>
-    <value>com.malhartech.dag.GenericTestModule</value>
+    <value>com.malhartech.engine.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>
 
@@ -53,7 +53,7 @@
 
   <property>
     <name>stram.operator.module3.classname</name>
-    <value>com.malhartech.dag.GenericTestModule</value>
+    <value>com.malhartech.engine.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>
 
@@ -61,7 +61,7 @@
 
   <property>
     <name>stram.operator.module4.classname</name>
-    <value>com.malhartech.dag.GenericTestModule</value>
+    <value>com.malhartech.engine.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>
 
@@ -81,7 +81,7 @@
 
   <property>
     <name>stram.operator.module5.classname</name>
-    <value>com.malhartech.dag.GenericTestModule</value>
+    <value>com.malhartech.engine.GenericTestModule</value>
   </property>
 
   <property>
@@ -101,7 +101,7 @@
 
   <property>
     <name>stram.operator.module6.classname</name>
-    <value>com.malhartech.dag.GenericTestModule</value>
+    <value>com.malhartech.engine.GenericTestModule</value>
     <description>Another module, which gets input from root</description>
   </property>
 

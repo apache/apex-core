@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.dag.SerDe;
+import com.malhartech.engine.SerDe;
 import com.malhartech.api.DAG.StreamDecl;
 
 /**
