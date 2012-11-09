@@ -5,7 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
-import com.malhartech.engine.DefaultSerDe;
+import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.Node;
 import com.malhartech.engine.OperatorContext;
@@ -98,7 +98,7 @@ public class StramLocalClusterTest
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
-      bsi = new BufferServerInputStream(new DefaultSerDe());
+      bsi = new BufferServerInputStream(new DefaultStreamCodec());
       bsi.setup(streamContext);
       bsi.setSink("testSink", sink);
     }

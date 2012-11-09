@@ -5,7 +5,8 @@
 package com.malhartech.api;
 
 import com.malhartech.api.Context.OperatorContext;
-
+import java.util.Map;
+import java.util.Set;
 
 public interface Operator extends Component<OperatorContext>
 {
@@ -62,6 +63,15 @@ public interface Operator extends Component<OperatorContext>
      * @param connected
      */
     public void setConnected(boolean connected);
+
+    /**
+     * Provide the codec which can be used to serialize or deserialize the data
+     * that can be received on the port. If there is no specific implementation
+     * then it can return null, in which case the engine may use a generic codec.
+     *
+     * @return codec if special implementation, null otherwise.
+     */
+    public Class<? extends StreamCodec<T>> getStreamCodec();
   }
 
   /**

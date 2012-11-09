@@ -12,7 +12,7 @@ import java.io.OutputStream;
  * Interface to control operator serialization.
  * Serialization of operators occurs as part of association to a DAG.
  */
-public interface OperatorSerDe
+public interface OperatorCodec
 {
   /**
    * Read object from stream.

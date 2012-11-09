@@ -243,7 +243,7 @@ public class StramClient
     Class<?>[] defaultClasses = new Class<?>[]{
       com.malhartech.bufferserver.Server.class,
       com.malhartech.stram.StramAppMaster.class,
-      com.malhartech.engine.DefaultSerDe.class,
+      com.malhartech.engine.DefaultStreamCodec.class,
       io.netty.channel.socket.nio.NioEventLoopGroup.class,
       io.netty.util.AttributeMap.class,
       io.netty.buffer.ChannelBufType.class,

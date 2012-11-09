@@ -5,8 +5,8 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Server;
-import com.malhartech.engine.DefaultSerDe;
-import com.malhartech.engine.SerDe;
+import com.malhartech.engine.DefaultStreamCodec;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
 
@@ -83,7 +83,7 @@ public class SocketStreamTest
       }
     };
 
-    SerDe serde = new DefaultSerDe();
+    StreamCodec serde = new DefaultStreamCodec();
 
     String streamName = "streamName"; // AKA "type"
     String upstreamNodeId = "upstreamNodeId";

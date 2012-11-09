@@ -4,17 +4,17 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Operator;
+import com.malhartech.api.StreamCodec;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.annotation.ShipContainingJars;
-
+import com.malhartech.api.Operator;
 import java.util.Collection;
 
 /**
  *
- * Default SerDe for streams if nothing is configured. Has no partitioning<p>
+ * Default StreamCodec for streams if nothing is configured. Has no partitioning<p>
  * <br>
  * No partitioning is done and it uses Kryo serializer for serde<br>
  * <br>
@@ -22,9 +22,9 @@ import java.util.Collection;
  * Requires kryo and its dependencies in deployment
  */
 @ShipContainingJars (classes={Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
-public class DefaultSerDe implements SerDe
+public class DefaultStreamCodec implements StreamCodec<Object>
 {
-  //private static final Logger logger = LoggerFactory.getLogger(DefaultSerDe.class);
+  //private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodec.class);
 
   private Kryo kryo = new Kryo();
   private Output output = new Output(new byte[4096]);

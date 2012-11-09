@@ -11,27 +11,38 @@ import com.malhartech.api.Operator.InputPort;
  * An operator would typically create a derived inner class that defines process method.
  * This class is designed for use with a transient field, i.e. not to be serialized with the operator state.
  */
-public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T> {
+public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
+{
   final private Operator operator;
   protected boolean connected = false;
 
-  public DefaultInputPort(Operator module) {
+  public DefaultInputPort(Operator module)
+  {
     this.operator = module;
   }
 
   @Override
-  final public Operator getOperator() {
+  final public Operator getOperator()
+  {
     return operator;
   }
 
   @Override
-  public Sink<T> getSink() {
+  public Sink<T> getSink()
+  {
     return this;
   }
 
   @Override
-  public void setConnected(boolean connected) {
+  public void setConnected(boolean connected)
+  {
     this.connected = connected;
+  }
+
+  @Override
+  public Class<? extends StreamCodec<T>> getStreamCodec()
+  {
+    return null;
   }
 
   /**

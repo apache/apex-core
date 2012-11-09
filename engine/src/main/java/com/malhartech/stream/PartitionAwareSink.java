@@ -5,7 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.engine.SerDe;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.Tuple;
 
 import java.nio.ByteBuffer;
@@ -18,7 +18,7 @@ import java.util.List;
  */
 public class PartitionAwareSink implements Sink
 {
-  private final SerDe serde;
+  private final StreamCodec serde;
   private final HashSet<ByteBuffer> partitions;
   private volatile Sink output;
 
@@ -28,7 +28,7 @@ public class PartitionAwareSink implements Sink
    * @param partitions
    * @param output
    */
-  public PartitionAwareSink(SerDe serde, List<byte[]> partitions, Sink output)
+  public PartitionAwareSink(StreamCodec serde, List<byte[]> partitions, Sink output)
   {
     this.serde = serde;
 

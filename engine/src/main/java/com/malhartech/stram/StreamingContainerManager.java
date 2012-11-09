@@ -26,7 +26,7 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
-import com.malhartech.api.OperatorSerDe;
+import com.malhartech.api.OperatorCodec;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTComponent;
@@ -66,7 +66,7 @@ public class StreamingContainerManager
   private final int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
   private final int operatorMaxAttemptCount = 5;
-  private final OperatorSerDe nodeSerDe = StramUtils.getNodeSerDe(null);
+  private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
 
   protected final  Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final  ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();

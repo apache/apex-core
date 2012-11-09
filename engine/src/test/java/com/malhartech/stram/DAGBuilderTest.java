@@ -15,7 +15,7 @@ import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
-import com.malhartech.engine.DefaultSerDe;
+import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.TestGeneratorInputModule;
 import com.malhartech.stram.cli.StramClientUtils;
@@ -239,7 +239,7 @@ public class DAGBuilderTest {
 
   }
 
-  public static class TestSerDe extends DefaultSerDe {
+  public static class TestSerDe extends DefaultStreamCodec {
 
   }
 

@@ -31,7 +31,7 @@ import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator;
 import com.malhartech.engine.Operators;
-import com.malhartech.engine.SerDe;
+import com.malhartech.api.StreamCodec;
 
 /**
  *
@@ -414,7 +414,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
       String serdeClassName = streamConf.getProperty(DAGPropertiesBuilder.STREAM_SERDE_CLASSNAME);
       if (serdeClassName != null) {
-        sd.setSerDeClass(StramUtils.classForName(serdeClassName, SerDe.class));
+        sd.setSerDeClass(StramUtils.classForName(serdeClassName, StreamCodec.class));
       }
 
       if (streamConf.sourceNode != null) {

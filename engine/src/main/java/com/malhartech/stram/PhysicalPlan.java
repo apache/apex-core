@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.engine.SerDe;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.api.DAG.StreamDecl;
 
 /**
@@ -397,7 +397,7 @@ public class PhysicalPlan {
   {
     if (streamConf.getSerDeClass() != null) {
       try {
-        SerDe serde = StramUtils.newInstance(streamConf.getSerDeClass());
+        StreamCodec serde = StramUtils.newInstance(streamConf.getSerDeClass());
         byte[][] partitions = serde.getPartitions();
         if (partitions != null) {
           return partitions;
