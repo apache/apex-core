@@ -126,9 +126,13 @@ public class StreamingContainerManager
   }
 
   /**
-   * Schedule container restart. Resolves downstream dependencies and checkpoint states.
-   * Called by Stram after a failed container is reported by the RM,
-   * or after heartbeat timeout occurs.
+   * Schedule container restart. Called by Stram after a failed container is
+   * reported by the RM, or after heartbeat timeout occurs. <br>
+   * Recovery will resolve affected operators (within the container and
+   * everything downstream with respective recovery checkpoint states). Affected
+   * operators will be undeployed, buffer server connections reset prior to
+   * redeploy to recovery checkpoint.
+   *
    * @param containerId
    */
   public void scheduleContainerRestart(String containerId) {
@@ -141,9 +145,9 @@ public class StreamingContainerManager
     LOG.info("Initiating recovery for container {}@{}", containerId, cs.container.host);
     // building the checkpoint dependency,
     // downstream operators will appear first in map
-    // TODO: traversal needs to include inline upstream operators
-    Map<PTOperator, Long> checkpoints = new LinkedHashMap<PTOperator, Long>();
+    LinkedHashMap<PTOperator, Long> checkpoints = new LinkedHashMap<PTOperator, Long>();
     for (PTOperator node : cs.container.operators) {
+      // TODO: traversal needs to include inline upstream operators
       updateRecoveryCheckpoints(node, checkpoints);
     }
 
@@ -159,32 +163,57 @@ public class StreamingContainerManager
     }
 
     // stop affected downstream operators (all except failed container)
+    // particular order does not matter, remove all affected operators in each container in one sweep
     AtomicInteger undeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
-        StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
+        List<OperatorDeployInfo> deployList = getDeployInfoList(e.getValue(), e.getKey(), checkpoints);
         UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
-        r.setNodes(ctx.nodeList);
+        r.setNodes(deployList);
         undeployAckCountdown.incrementAndGet();
         StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
       }
     }
 
-    // schedule deployment for replacement container, depends on above downstream operators stop
+    // deploy replacement container, depends on above downstream operators stop
     AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
     DeployRequest dr = new DeployRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
     dr.checkpoints = checkpoints;
     // launch replacement container, deploy request will be queued with new container agent in assignContainer
     containerStartRequests.add(dr);
 
-    // (re)deploy affected downstream operators
+    // (re)deploy affected operators
+    // this can happen in parallel after buffer server state for recovered publishers is reset
     AtomicInteger redeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
+      // to reset publishers, clean buffer server past checkpoint so subscribers don't read stale data (including end of stream)
+      for (PTOperator operator : e.getValue()) {
+        for (PTOutput out : operator.outputs) {
+          final StreamDecl streamDecl = out.logicalStream;
+          if (!(streamDecl.isInline() && this.plan.isDownStreamInline(out))) {
+            // following needs to match the concat logic in StramChild
+            String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+            // TODO: find way to mock this when testing rest of logic
+            if (operator.container.bufferServerAddress.getPort() != 0) {
+              BufferServerClient bsc = bufferServers.get(operator.container.bufferServerAddress);
+              if (bsc == null) {
+                bsc = new BufferServerClient(operator.container.bufferServerAddress);
+                bufferServers.put(bsc.addr, bsc);
+                LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
+              }
+              // reset publisher state, while stale operator may still write data until disconnected,
+              // ensure new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
+              long checkPoint = checkpoints.get(operator) + 1;
+              bsc.purge(sourceIdentifier, checkPoint);
+            }
+          }
+        }
+      }
       if (e.getKey() != cs.container) {
-        StreamingContainerContext ctx = createStramChildInitContext(e.getValue(), e.getKey(), checkpoints);
+        List<OperatorDeployInfo> deployList = getDeployInfoList(e.getValue(), e.getKey(), checkpoints);
         DeployRequest r = new DeployRequest(e.getKey(), redeployAckCountdown, failedContainerDeployCnt);
-        r.setNodes(ctx.nodeList);
+        r.setNodes(deployList);
         redeployAckCountdown.incrementAndGet();
         StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
@@ -215,15 +244,12 @@ public class StreamingContainerManager
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
-      // populate custom properties
-      //Module node = StramUtils.initNode(nodeDecl.getNodeClass(), dnodeId, nodeDecl.getProperties());
       this.nodeSerDe.write(operator.getOperator(), os);
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {
       throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getOperator().getClass() + ")", e);
     }
-//    ndi.properties = operator.getnodeDecl.getProperties();
     ndi.declaredId = operator.getId();
     ndi.id = dnodeId;
     return ndi;
@@ -235,7 +261,8 @@ public class StreamingContainerManager
       if (container.containerId == null) {
         container.containerId = containerId;
         container.bufferServerAddress = bufferServerAddress;
-        StreamingContainerContext scc = createStramChildInitContext(container.operators, container, Collections.<PTOperator, Long>emptyMap());
+        StreamingContainerContext scc = newStreamingContainerContext();
+        scc.nodeList = getDeployInfoList(container.operators, container, Collections.<PTOperator, Long>emptyMap());
         containers.put(containerId, new StramChildAgent(container, scc));
         return scc;
       }
@@ -265,29 +292,31 @@ public class StreamingContainerManager
     if (checkpoints == null) {
       checkpoints = Collections.emptyMap();
     }
-    StreamingContainerContext initCtx = createStramChildInitContext(container.operators, container, checkpoints);
-    cdr.setNodes(initCtx.nodeList);
-    initCtx.nodeList = new ArrayList<OperatorDeployInfo>(0);
 
-    StramChildAgent sca = new StramChildAgent(container, initCtx);
+    StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext());
     containers.put(containerId, sca);
+    cdr.setNodes(getDeployInfoList(container.operators, container, checkpoints));
     sca.addRequest(cdr);
   }
 
+  private StreamingContainerContext newStreamingContainerContext() {
+    StreamingContainerContext scc = new StreamingContainerContext();
+    scc.setWindowSizeMillis(this.windowSizeMillis);
+    scc.setStartWindowMillis(this.windowStartMillis);
+    scc.setCheckpointDfsPath(this.checkpointFsPath);
+    scc.nodeList = new ArrayList<OperatorDeployInfo>(0);
+    return scc;
+  }
+
   /**
-   * Create the protocol mandated node/stream info for bootstrapping StramChild.
+   * Create deploy info for StramChild.
    * @param container
    * @param deployNodes
    * @param checkpoints
    * @return StreamingContainerContext
    */
-  private StreamingContainerContext createStramChildInitContext(List<PTOperator> deployNodes, PTContainer container, Map<PTOperator, Long> checkpoints) {
-    StreamingContainerContext scc = new StreamingContainerContext();
-    scc.setWindowSizeMillis(this.windowSizeMillis);
-    scc.setStartWindowMillis(this.windowStartMillis);
-    scc.setCheckpointDfsPath(this.checkpointFsPath);
+  private List<OperatorDeployInfo> getDeployInfoList(List<PTOperator> deployNodes, PTContainer container, Map<PTOperator, Long> checkpoints) {
 
-//    List<StreamPConf> streams = new ArrayList<StreamPConf>();
     Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
     Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
 
@@ -371,10 +400,7 @@ public class StreamingContainerManager
       }
     }
 
-    scc.nodeList = new ArrayList<OperatorDeployInfo>(nodes.keySet());
-
-    return scc;
-
+    return new ArrayList<OperatorDeployInfo>(nodes.keySet());
   }
 
   public StramChildAgent getContainerAgent(String containerId) {

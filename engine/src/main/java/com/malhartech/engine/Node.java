@@ -135,7 +135,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public void deactivate()
   {
     alive = false;
-    logger.info("deactivated", new Exception());
+    //logger.info("deactivated", new Exception());
   }
 
   @Override

@@ -229,7 +229,7 @@ public class PhysicalPlan {
     }
   }
 
-  private final Map<OperatorWrapper, List<PTOperator>> deployedOperators = new LinkedHashMap<OperatorWrapper, List<PTOperator>>();
+  private final LinkedHashMap<OperatorWrapper, List<PTOperator>> deployedOperators = new LinkedHashMap<OperatorWrapper, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
   private int maxContainers = 1;
@@ -287,7 +287,7 @@ public class PhysicalPlan {
         if (streamPartitions != null) {
           if (partitions != null) {
             if (!Arrays.deepEquals(partitions, streamPartitions)) {
-              throw new IllegalArgumentException("Node cannot have multiple input streams with different partitions.");
+              throw new IllegalArgumentException("Operator cannot have multiple input streams with different partitions.");
             }
           }
           partitions = streamPartitions;

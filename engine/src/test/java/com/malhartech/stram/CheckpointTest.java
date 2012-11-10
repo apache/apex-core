@@ -186,4 +186,5 @@ public class CheckpointTest
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));
 
   }
+
 }

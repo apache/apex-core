@@ -4,6 +4,18 @@
  */
 package com.malhartech.stram;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import junit.framework.Assert;
+
+import org.apache.hadoop.io.DataInputByteBuffer;
+import org.apache.hadoop.io.DataOutputByteBuffer;
+import org.junit.Test;
+
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
@@ -12,18 +24,11 @@ import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.Tuple;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
+import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.util.AttributeMap;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import junit.framework.Assert;
-import org.apache.hadoop.io.DataInputByteBuffer;
-import org.apache.hadoop.io.DataOutputByteBuffer;
-import org.junit.Test;
 
 public class StreamingContainerManagerTest {
 
@@ -230,6 +235,62 @@ public class StreamingContainerManagerTest {
     dnmgr.assignContainerForTest("container1", InetSocketAddress.createUnresolved("localhost", 9001));
 
   }
+
+  @Test
+  public void testRecoveryOrder() throws Exception
+  {
+    DAG dag = new DAG();
+
+    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
+    GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
+
+    dag.addStream("n1n2", node1.outport1, node2.inport1);
+    dag.addStream("n2n3", node2.outport1, node3.inport1);
+
+    dag.setMaxContainerCount(2);
+
+    StreamingContainerManager scm = new StreamingContainerManager(dag);
+    Assert.assertEquals(""+scm.containerStartRequests, 2, scm.containerStartRequests.size());
+    scm.containerStartRequests.clear();
+
+    PhysicalPlan plan = scm.getPhysicalPlan();
+
+    List<PTContainer> containers = plan.getContainers();
+    Assert.assertEquals(""+containers, 2, plan.getContainers().size());
+
+    PTContainer c1 = containers.get(0);
+    Assert.assertEquals("c1.operators "+c1.operators, 2, c1.operators.size());
+
+    PTContainer c2 = containers.get(1);
+    Assert.assertEquals("c2.operators "+c2.operators, 1, c2.operators.size());
+
+    String c1Id = "container1";
+    String c2Id = "container2";
+
+    scm.assignContainerForTest(c1Id, InetSocketAddress.createUnresolved("localhost", 0));
+    Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
+    StramChildAgent sca1 = scm.getContainerAgent(c1.containerId);
+
+    scm.assignContainerForTest(c2Id, InetSocketAddress.createUnresolved("localhost", 0));
+    Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
+    StramChildAgent sca2 = scm.getContainerAgent(c2.containerId);
+
+    scm.scheduleContainerRestart(c1.containerId);
+    Assert.assertEquals("", 0, sca1.getRequests().size());
+    Assert.assertEquals(""+scm.containerStartRequests, 1, scm.containerStartRequests.size());
+    DeployRequest dr = scm.containerStartRequests.peek();
+    Assert.assertNotNull(""+dr, dr.executeWhenZero);
+    Assert.assertEquals(""+dr, 1, dr.executeWhenZero.get());
+    Assert.assertNotNull(""+dr, dr.ackCountdown);
+    Assert.assertEquals(""+dr, 1, dr.ackCountdown.get());
+
+    List<?> requests = new ArrayList<DeployRequest>(sca2.getRequests());
+    Assert.assertEquals(""+requests, 2, requests.size());
+    Assert.assertEquals(""+requests.get(0), StramChildAgent.UndeployRequest.class, requests.get(0).getClass());
+
+  }
+
 
   public static class TestStaticPartitioningSerDe extends DefaultSerDe {
 
