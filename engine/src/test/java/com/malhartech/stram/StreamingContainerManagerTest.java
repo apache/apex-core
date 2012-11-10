@@ -19,7 +19,7 @@ import org.junit.Test;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.engine.DefaultSerDe;
+import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.Tuple;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
@@ -292,7 +292,7 @@ public class StreamingContainerManagerTest {
   }
 
 
-  public static class TestStaticPartitioningSerDe extends DefaultSerDe {
+  public static class TestStaticPartitioningSerDe extends DefaultStreamCodec {
 
     public final static byte[][] partitions = new byte[][]{
         {'1'}, {'2'}, {'3'}

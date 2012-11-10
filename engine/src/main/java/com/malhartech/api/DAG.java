@@ -45,7 +45,6 @@ import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.engine.Operators;
-import com.malhartech.engine.SerDe;
 import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramUtils;
 import com.malhartech.util.AttributeMap;
@@ -199,7 +198,7 @@ public class DAG implements Serializable, DAGConstants
     private boolean inline;
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
-    private Class<? extends SerDe> serDeClass;
+    private Class<? extends StreamCodec> serDeClass;
     private final String id;
 
     private StreamDecl(String id)
@@ -228,12 +227,12 @@ public class DAG implements Serializable, DAGConstants
       return this;
     }
 
-    public Class<? extends SerDe> getSerDeClass()
+    public Class<? extends StreamCodec> getSerDeClass()
     {
       return serDeClass;
     }
 
-    public StreamDecl setSerDeClass(Class<? extends SerDe> serDeClass)
+    public StreamDecl setSerDeClass(Class<? extends StreamCodec> serDeClass)
     {
       this.serDeClass = serDeClass;
       return this;

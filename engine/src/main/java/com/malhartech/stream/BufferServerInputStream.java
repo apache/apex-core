@@ -3,6 +3,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.api.StreamCodec;
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
@@ -26,9 +27,9 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   private long baseSeconds = 0;
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
-  private final SerDe serde;
+  private final StreamCodec serde;
 
-  public BufferServerInputStream(SerDe serde)
+  public BufferServerInputStream(StreamCodec serde)
   {
     this.serde = serde;
   }

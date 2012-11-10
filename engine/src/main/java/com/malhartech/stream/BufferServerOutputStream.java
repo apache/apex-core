@@ -3,6 +3,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.api.StreamCodec;
 import com.google.protobuf.ByteString;
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
@@ -28,7 +29,7 @@ public class BufferServerOutputStream extends SocketOutputStream
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   public static final int BUFFER_SIZE = 64 * 1024;
-  SerDe serde;
+  StreamCodec serde;
   int windowId;
   int writtenBytes;
 
@@ -45,7 +46,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   }
   final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
 
-  public BufferServerOutputStream(SerDe serde)
+  public BufferServerOutputStream(StreamCodec serde)
   {
     this.serde = serde;
   }

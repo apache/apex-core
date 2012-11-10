@@ -14,7 +14,7 @@ import java.io.OutputStream;
 /**
  * Default serializer that uses Kryo.
  */
-public class DefaultOperatorSerDe implements OperatorSerDe {
+public class DefaultOperatorSerDe implements OperatorCodec {
 
   @Override
   public Object read(InputStream is)

@@ -6,7 +6,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.malhartech.engine;
+package com.malhartech.api;
 
 import com.malhartech.api.Operator;
 import java.util.Collection;
@@ -20,9 +20,9 @@ import java.util.Collection;
  * about the internals of the data flowing between the node, it has to ask the
  * application if payload can be partitioned and appropriately creates downstream
  * operators to share the load as per the partitions. The logic to correspond about
- * partitions is abstracted out in SerDe which is defined on each stream.<br>
+ * partitions is abstracted out in StreamCodec which is defined on each stream.<br>
  * <br>
- * The default SerDe does not define any partitions so it cannot be used for sticky
+ * The default StreamCodec does not define any partitions so it cannot be used for sticky
  * partitions. It can still do load balancing using Round Robin, Least Connection etc.<br>
  * <br>
  * Since stream has upstream node and downstream node which can emit and consume different
@@ -33,14 +33,14 @@ import java.util.Collection;
  *
  * @author chetan
  */
-public interface SerDe
+public interface StreamCodec<T>
 {
   /**
    * Create POJO from the byte array for consumption by the downstream.
    * @param bytes serialized representation of the object using bytes
    * @return plain old java object
    */
-  Object fromByteArray(byte[] bytes);
+  T fromByteArray(byte[] bytes);
 
   /**
    * Serialize the POJO emitted by the upstream node to byte array so that
@@ -48,7 +48,7 @@ public interface SerDe
    * @param o plain old java object
    * @return serialized representation of the object
    */
-  byte[] toByteArray(Object o);
+  byte[] toByteArray(T o);
 
   /**
    * Get the partition on the object to be delivered to the downstream
@@ -64,6 +64,7 @@ public interface SerDe
    * Currently stram assumes that this is idempotent.
    * @return byte[][]
    */
+  @Deprecated()
   byte[][] getPartitions();
 
   /**
@@ -75,15 +76,16 @@ public interface SerDe
    *
    * If partition is null then the entire state from the source is
    * transferred to destination. if partitions is non empty and each
-   * element is a valid partition recognized by this SerDe then state
+   * element is a valid partition recognized by this StreamCodec then state
    * related to the those partitions are moved from source to destination.
-   * if the partitions are not recognized by the SerDe then the number
+   * if the partitions are not recognized by the StreamCodec then the number
    * of partitions are used for proportionately sharing the state. e.g.
    * 2 partitions will cause half of source's state to be transferred to
    * destination, 3 will cause one third transfer and so on.
    *
    * Note that after this operation both the Nodes may have their states altered.
    */
+  @Deprecated
   boolean transferState(Operator destination, Operator source, Collection<byte[]> partitions);
 
 }

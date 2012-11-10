@@ -14,7 +14,7 @@ import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.OperatorSerDe;
+import com.malhartech.api.OperatorCodec;
 
 public class HdfsBackupAgent implements BackupAgent
 {
@@ -29,7 +29,7 @@ public class HdfsBackupAgent implements BackupAgent
   }
 
   @Override
-  public void backup(String id, long windowId, Object o, OperatorSerDe serDe) throws IOException
+  public void backup(String id, long windowId, Object o, OperatorCodec serDe) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
@@ -45,7 +45,7 @@ public class HdfsBackupAgent implements BackupAgent
   }
 
   @Override
-  public Object restore(String id, long windowId, OperatorSerDe serDe) throws IOException
+  public Object restore(String id, long windowId, OperatorCodec serDe) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);

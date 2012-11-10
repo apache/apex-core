@@ -5,9 +5,9 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DefaultOperatorSerDe;
-import com.malhartech.api.OperatorSerDe;
-import com.malhartech.engine.DefaultSerDe;
-import com.malhartech.engine.SerDe;
+import com.malhartech.api.OperatorCodec;
+import com.malhartech.engine.DefaultStreamCodec;
+import com.malhartech.api.StreamCodec;
 
 /**
  *
@@ -16,11 +16,11 @@ import com.malhartech.engine.SerDe;
  */
 public abstract class StramUtils {
 
-  public static SerDe getSerdeInstance(String className) {
+  public static StreamCodec getSerdeInstance(String className) {
     if (className != null) {
-      return newInstance(classForName(className, SerDe.class));
+      return newInstance(classForName(className, StreamCodec.class));
     } else {
-      return new DefaultSerDe();
+      return new DefaultStreamCodec();
     }
   }
 
@@ -43,9 +43,9 @@ public abstract class StramUtils {
     }
   }
 
-  public static OperatorSerDe getNodeSerDe(String className) {
+  public static OperatorCodec getNodeSerDe(String className) {
     if (className != null) {
-      return newInstance(classForName(className, OperatorSerDe.class));
+      return newInstance(classForName(className, OperatorCodec.class));
     }
     return new DefaultOperatorSerDe();
   }
