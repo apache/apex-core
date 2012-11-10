@@ -113,7 +113,6 @@ public class StramChildAgent {
 
   boolean shutdownRequested = false;
   boolean isComplete = false;
- // StreamingContainerContext containerContext;
   long lastHeartbeatMillis = 0;
   long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();
@@ -148,6 +147,10 @@ public class StramChildAgent {
   public void addRequest(DeployRequest r) {
     this.requests.add(r);
     LOG.info("Adding request {} {}", container.containerId, r);
+  }
+
+  protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
+    return this.requests;
   }
 
   public ContainerHeartbeatResponse pollRequest() {

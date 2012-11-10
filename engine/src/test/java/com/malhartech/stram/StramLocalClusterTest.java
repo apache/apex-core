@@ -107,7 +107,7 @@ public class StramLocalClusterTest
     {
       bsi.activate(streamContext);
       //LOG.debug("test sink activated");
-      sink.waitForResultCount(1, 3000);
+      sink.waitForResultCount(expectedCount, timeoutMillis);
       Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
       List<Object> result = new ArrayList<Object>(sink.collectedTuples);
 
@@ -119,7 +119,7 @@ public class StramLocalClusterTest
 
   @Test
   @SuppressWarnings("SleepWhileInLoop")
-  public void testChildRecovery() throws Exception
+  public void testRecovery() throws Exception
   {
     DAG dag = new DAG();
 
@@ -273,11 +273,14 @@ public class StramLocalClusterTest
     c2.triggerHeartbeat();
     c2.waitForHeartbeat(5000);
 
-    // verify tuple sent before publisher went down remains in buffer
+    String window6Tuple = "window6Tuple";
+    n1Replaced.addTuple(window6Tuple);
+
+    // verify tuple sent before publisher reset was removed from buffer during recovery
     // (publisher to resume from checkpoint id)
     tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());
-    Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));
+    Assert.assertEquals("received " + tuples, window6Tuple, tuples.get(0));
 
     // purge checkpoints
     localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
@@ -286,8 +289,8 @@ public class StramLocalClusterTest
     Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
 
     // buffer server data purged
-    tuples = sink.retrieveTuples(0, 3000);
-    Assert.assertEquals("received " + tuples, 0, tuples.size());
+    tuples = sink.retrieveTuples(1, 3000);
+    Assert.assertEquals("received " + tuples, 1, tuples.size());
 
     localCluster.shutdown();
   }

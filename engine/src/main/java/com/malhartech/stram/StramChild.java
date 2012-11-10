@@ -53,10 +53,10 @@ public class StramChild
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
   protected final Map<String, Node<?>> nodes = new ConcurrentHashMap<String, Node<?>>();
-  private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
+  private final Map<String, ComponentContextPair<Stream<?>, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream<?>, StreamContext>>();
   protected final Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   protected final Map<String, OperatorContext> activeNodes = new ConcurrentHashMap<String, OperatorContext>();
-  private final Map<Stream, StreamContext> activeStreams = new ConcurrentHashMap<Stream, StreamContext>();
+  private final Map<Stream<?>, StreamContext> activeStreams = new ConcurrentHashMap<Stream<?>, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private long heartbeatIntervalMillis = 1000;
   private volatile boolean exitHeartbeatLoop = false;
@@ -242,7 +242,7 @@ public class StramChild
     }
     activeGenerators.clear();
 
-    for (Stream stream: activeStreams.keySet()) {
+    for (Stream<?> stream: activeStreams.keySet()) {
       stream.deactivate();
     }
     activeStreams.clear();
@@ -250,14 +250,14 @@ public class StramChild
 
   private void disconnectNode(String nodeid)
   {
-    Node node = nodes.get(nodeid);
+    Node<?> node = nodes.get(nodeid);
     disconnectWindowGenerator(nodeid, node);
 
     Set<String> removableStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
     // with the logic i have in here, the list should not contain repeated streams. but it does and that causes problem.
-    for (Entry<String, ComponentContextPair<Stream, StreamContext>> entry: streams.entrySet()) {
+    for (Entry<String, ComponentContextPair<Stream<?>, StreamContext>> entry: streams.entrySet()) {
       String indexingKey = entry.getKey();
-      Stream stream = entry.getValue().component;
+      Stream<?> stream = entry.getValue().component;
       StreamContext context = entry.getValue().context;
       String sourceIdentifier = context.getSourceId();
       String sinkIdentifier = context.getSinkId();
@@ -277,11 +277,11 @@ public class StramChild
         for (String sinkId: sinkIds) {
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-            Node n = nodes.get(nodeport[0]);
+            Node<?> n = nodes.get(nodeport[0]);
             n.connect(nodeport[1], null);
           }
           else if (stream.isMultiSinkCapable()) {
-            ComponentContextPair<Stream, StreamContext> spair = streams.get(sinkId);
+            ComponentContextPair<Stream<?>, StreamContext> spair = streams.get(sinkId);
             logger.debug("found stream {} against {}", spair == null ? null : spair.component, sinkId);
             if (spair == null) {
               assert (!sinkId.startsWith("tcp://"));
@@ -346,12 +346,12 @@ public class StramChild
       logger.debug("removing stream {}", streamId);
       // need to check why control comes here twice to remove the stream which was deleted before.
       // is it because of multiSinkCapableStream ?
-      ComponentContextPair<Stream, StreamContext> pair = streams.remove(streamId);
+      ComponentContextPair<Stream<?>, StreamContext> pair = streams.remove(streamId);
       pair.component.teardown();
     }
   }
 
-  private void disconnectWindowGenerator(String nodeid, Node node)
+  private void disconnectWindowGenerator(String nodeid, Node<?> node)
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
@@ -379,9 +379,9 @@ public class StramChild
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
-    HashMap<String, Node> toUndeploy = new HashMap<String, Node>();
+    HashMap<String, Node<?>> toUndeploy = new HashMap<String, Node<?>>();
     for (OperatorDeployInfo ndi: nodeList) {
-      Node node = nodes.get(ndi.id);
+      Node<?> node = nodes.get(ndi.id);
       if (node == null) {
         throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
       }
@@ -662,14 +662,14 @@ public class StramChild
      * the Buffer Server port to avoid collision and at the same time keep track of these buffer streams.
      */
     for (OperatorDeployInfo ndi: nodeList) {
-      Node node = nodes.get(ndi.id);
+      Node<?> node = nodes.get(ndi.id);
 
       for (OperatorDeployInfo.OutputDeployInfo nodi: ndi.outputs) {
         String sourceIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
         String sinkIdentifier;
 
         StreamContext context = new StreamContext(nodi.declaredStreamId);
-        Stream stream;
+        Stream<?> stream;
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
         if (collection == null) {
@@ -716,7 +716,7 @@ public class StramChild
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
-            streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
+            streams.put(sinkIdentifier, new ComponentContextPair<Stream<?>, StreamContext>(bsos, bssc));
 
             // should we create inline stream here or wait for the input deployments to create the inline streams?
             stream = new MuxStream();
@@ -732,7 +732,7 @@ public class StramChild
            * to this block multiple times. The actions we take subsequent times are going to be different
            * than the first time. We create the MuxStream only the first time.
            */
-          ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
+          ComponentContextPair<Stream<?>, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
             /**
              * Let's multiplex the output placed on this stream.
@@ -761,7 +761,7 @@ public class StramChild
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
-            streams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsos, bssc));
+            streams.put(sinkIdentifier, new ComponentContextPair<Stream<?>, StreamContext>(bsos, bssc));
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
 
             stream.setup(context);
@@ -776,7 +776,7 @@ public class StramChild
           context.setSinkId(sinkIdentifier);
           context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
-          streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
+          streams.put(sourceIdentifier, new ComponentContextPair<Stream<?>, StreamContext>(stream, context));
           logger.debug("stored stream {} against key {}", stream, sourceIdentifier);
         }
       }
@@ -813,13 +813,13 @@ public class StramChild
         }
       }
       else {
-        Node node = nodes.get(ndi.id);
+        Node<?> node = nodes.get(ndi.id);
 
         for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
           String sourceIdentifier = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
-          ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
+          ComponentContextPair<Stream<?>, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
             /**
              * We connect to the buffer server for the input on this port.
@@ -835,7 +835,7 @@ public class StramChild
             context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
 
-            Stream stream = new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
+            Stream<?> stream = new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
             stream.setup(context);
             logger.debug("deployed buffer input stream {}", stream);
 
@@ -844,7 +844,7 @@ public class StramChild
                            ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(stream, sinkIdentifier, s, ndi.checkpointWindowId) : s);
 
             streams.put(sinkIdentifier,
-                        new ComponentContextPair<Stream, StreamContext>(stream, context));
+                        new ComponentContextPair<Stream<?>, StreamContext>(stream, context));
             logger.debug("put input stream {} against key {}", stream, sinkIdentifier);
           }
           else {
@@ -869,24 +869,24 @@ public class StramChild
               context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
               context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
-              Stream stream = new MuxStream();
+              Stream<Object> stream = new MuxStream();
               stream.setup(context);
               logger.debug("deployed input mux stream {}", stream);
               s = node.connect(nidi.portName, stream);
-              streams.put(sourceIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
+              streams.put(sourceIdentifier, new ComponentContextPair<Stream<?>, StreamContext>(stream, context));
               logger.debug("stored input stream {} against key {}", stream, sourceIdentifier);
 
               /**
                * Lets wire the MuxStream to upstream node.
                */
               String[] nodeport = sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR);
-              Node upstreamNode = nodes.get(nodeport[0]);
+              Node<?> upstreamNode = nodes.get(nodeport[0]);
               upstreamNode.connect(nodeport[1], stream);
 
               Sink existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-                Node anotherNode = nodes.get(np[0]);
+                Node<?> anotherNode = nodes.get(np[0]);
                 existingSink = anotherNode.connect(np[1], stream);
 
                 /*
@@ -935,8 +935,8 @@ public class StramChild
       for (OperatorDeployInfo ndi: inputNodes) {
         generators.put(ndi.id, windowGenerator);
 
-        Node node = nodes.get(ndi.id);
-        Sink s = node.connect(Node.INPUT, windowGenerator);
+        Node<?> node = nodes.get(ndi.id);
+        Sink<?> s = node.connect(Node.INPUT, windowGenerator);
         windowGenerator.setSink(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT),
                                 ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), s, ndi.checkpointWindowId) : s);
       }
@@ -968,7 +968,7 @@ public class StramChild
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void activate(List<OperatorDeployInfo> nodeList)
   {
-    for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
+    for (ComponentContextPair<Stream<?>, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
@@ -1017,7 +1017,7 @@ public class StramChild
       logger.debug(ex.getLocalizedMessage());
     }
 
-    for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
+    for (ComponentContextPair<Stream<?>, StreamContext> pair: streams.values()) {
       if (pair.component instanceof SocketInputStream && !activeStreams.containsKey(pair.component)) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
