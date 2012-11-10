@@ -27,11 +27,11 @@ import org.slf4j.LoggerFactory;
 public class DataList
 {
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
+  private final String identifier;
+  private final String type;
   private final Integer capacity;
   HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
   HashSet<DataListener> all_listeners = new HashSet<DataListener>();
-  String identifier;
-  String type;
   static volatile DataArray free = null;
   volatile DataArray first;
   volatile DataArray last;
@@ -115,6 +115,19 @@ public class DataList
     Arrays.fill(retval.data, Byte.MIN_VALUE);
 
     return retval;
+  }
+
+  synchronized void reset()
+  {
+    listeners.clear();
+    all_listeners.clear();
+
+    synchronized (capacity) {
+      last.next = free;
+      free = first;
+    }
+
+    first = last = getDataArray(capacity);
   }
 
   synchronized void purge(int baseSeconds, int windowId, DataIntrospector di)

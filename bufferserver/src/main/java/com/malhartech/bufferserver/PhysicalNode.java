@@ -18,8 +18,8 @@ public class PhysicalNode
   private long processedMessageCount;
 
   /**
-   * 
-   * @param channel 
+   *
+   * @param channel
    */
   public PhysicalNode(Channel channel)
   {
@@ -29,7 +29,7 @@ public class PhysicalNode
   }
 
   /**
-   * 
+   *
    * @return long
    */
   public long getstartTime()
@@ -38,7 +38,7 @@ public class PhysicalNode
   }
 
   /**
-   * 
+   *
    * @return long
    */
   public long getUptime()
@@ -47,8 +47,8 @@ public class PhysicalNode
   }
 
   /**
-   * 
-   * @param d 
+   *
+   * @param d
    */
   public void send(SerializedData d)
   {
@@ -57,7 +57,7 @@ public class PhysicalNode
   }
 
   /**
-   * 
+   *
    * @return long
    */
   public final long getProcessedMessageCount()
@@ -66,19 +66,18 @@ public class PhysicalNode
   }
 
   /**
-   * 
+   *
    * @param o
    * @return boolean
    */
   @Override
   public boolean equals(Object o)
   {
-    return o == this
-           || o.getClass() == this.getClass() && o.hashCode() == this.hashCode();
+    return o == this || (o.getClass() == this.getClass() && o.hashCode() == this.hashCode());
   }
 
   /**
-   * 
+   *
    * @return int
    */
   public final int getId()
@@ -87,7 +86,7 @@ public class PhysicalNode
   }
 
   /**
-   * 
+   *
    * @return int
    */
   @Override

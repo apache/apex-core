@@ -58,6 +58,11 @@ message PurgeRequest {
   optional uint32 base_seconds = 3 [default = 0];
 }
 
+message ResetRequest {
+  required string identifier = 1;
+  required string type = 2;
+}
+
 message Data {
   enum DataType {
     NO_DATA = 0;
@@ -70,6 +75,7 @@ message Data {
     PUBLISHER_REQUEST = 7;
     SUBSCRIBER_REQUEST = 8;
     PURGE_REQUEST = 9;
+    RESET_REQUEST = 10;
   }
 
   required DataType type = 1;
@@ -83,4 +89,5 @@ message Data {
   optional PublisherRequest publishRequest = 8;
   optional SubscriberRequest subscribeRequest = 9;
   optional PurgeRequest purgeRequest = 10;
+  optional ResetRequest ResetRequest = 11;
 }
