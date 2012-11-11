@@ -5,7 +5,7 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
-import com.malhartech.api.Stats.Counter;
+import com.malhartech.engine.OperatorStats.Counter;
 
 /**
  *

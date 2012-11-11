@@ -26,7 +26,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
-import com.malhartech.engine.HeartbeatCounters;
+import com.malhartech.engine.OperatorStats;
 
 /**
  * Protocol that streaming node child process uses to contact its parent
@@ -200,21 +200,22 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    */
   public static class StreamingNodeHeartbeat extends WritableAdapter {
     private static final long serialVersionUID = 201208171625L;
-    private ArrayList<HeartbeatCounters> heartbeatsContainer = new ArrayList<HeartbeatCounters>();
+    private ArrayList<OperatorStats> windowStats = new ArrayList<OperatorStats>();
 
     /**
-     * @return the heartbeatsCointainer
+     * The operator stats for the windows processed during the heartbeat interval.
+     * @return
      */
-    public ArrayList<HeartbeatCounters> getHeartbeatsContainer() {
-      return heartbeatsContainer;
+    public ArrayList<OperatorStats> getWindowStats() {
+      return windowStats;
     }
 
     /**
+     * The operator stats for the windows processed during the heartbeat interval.
      * @param heartbeatsCointainer
-     *          the heartbeatsCointainer to set
      */
-    public void setHeartbeatsContainer(ArrayList<HeartbeatCounters> heartbeatsCointainer) {
-      this.heartbeatsContainer = heartbeatsCointainer;
+    public void setWindowStats(ArrayList<OperatorStats> stats) {
+      this.windowStats = stats;
     }
 
     public static enum DNodeState {
@@ -265,7 +266,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     }
 
     /**
-     * State of the dnode (processing, idle etc).
+     * State of the operator (processing, idle etc).
      */
     private String state;
 
@@ -275,34 +276,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public void setState(String state) {
       this.state = state;
-    }
-
-    /**
-     * Number of tuples processed within the heartbeat interval. Stram can use
-     * this as bottleneck indicator and ask the node for partitioning
-     * information/option to load balance.
-     */
-    public int getNumberTuplesProcessed() {
-      int numberTuplesProcessed = 0;
-
-      for (HeartbeatCounters hc : heartbeatsContainer) {
-        numberTuplesProcessed += hc.tuplesProcessed;
-      }
-
-      return numberTuplesProcessed;
-    }
-
-    /**
-     * Number of bytes processed during the heartbeat interval.
-     */
-    public int getNumberBytesProcessed() {
-      int numberBytesProcessed = 0;
-
-      for (HeartbeatCounters hc : heartbeatsContainer) {
-        numberBytesProcessed += hc.tuplesProduced;
-      }
-
-      return numberBytesProcessed;
     }
 
     private long lastBackupWindowId;

@@ -85,8 +85,8 @@ public class StramChildAgent {
     StreamingNodeHeartbeat lastHeartbeat;
     final PTOperator operator;
     final PTContainer container;
-    int tuplesTotal;
-    int bytesTotal;
+    int totalTuplesProcessed;
+    int totalTuplesEmitted;
 
     private OperatorStatus(PTContainer container, PTOperator operator) {
       this.operator = operator;

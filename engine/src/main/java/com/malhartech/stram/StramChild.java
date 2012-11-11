@@ -479,7 +479,7 @@ public class StramChild
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
         if (activeNodes.containsKey(e.getKey())) {
-          activeNodes.get(e.getKey()).drainHeartbeatCounters(hb.getHeartbeatsContainer());
+          activeNodes.get(e.getKey()).drainHeartbeatCounters(hb.getWindowStats());
           hb.setState(DNodeState.ACTIVE.toString());
         }
         else {

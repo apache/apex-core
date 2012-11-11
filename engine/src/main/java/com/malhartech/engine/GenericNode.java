@@ -4,16 +4,20 @@
  */
 package com.malhartech.engine;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
+
+import org.apache.commons.lang.UnhandledException;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.api.Stats;
+import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.util.CircularBuffer;
-import java.util.*;
-import java.util.Map.Entry;
-import org.apache.commons.lang.UnhandledException;
-import org.slf4j.LoggerFactory;
 
 // inflight changes to the port connections should be captured.
 /**
@@ -320,15 +324,15 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  protected void reportStats(Map<String, Collection<Stats>> stats)
+  protected void reportStats(OperatorStats stats)
   {
     super.reportStats(stats);
-    ArrayList<Stats> ipstats = new ArrayList<Stats>();
+    ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
     for (Entry<String, Reservoir> e: inputs.entrySet()) {
       ipstats.add(new PortStats(e.getKey(), e.getValue().count));
       e.getValue().count = 0;
     }
 
-    stats.put("INPUT_PORTS", ipstats);
+    stats.inputPorts = ipstats;
   }
 }

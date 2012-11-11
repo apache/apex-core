@@ -12,12 +12,12 @@ import javax.xml.bind.annotation.XmlRootElement;
  *
  * Provides operator instance level data like id, container id, throughput, etc.<p>
  * <br>Current data includes<br>
- * <b>Node Id</b><br>
- * <b>Node Name</b><br>
+ * <b>Operator Id</b><br>
+ * <b>Operator Name</b><br>
  * <b>Container Id</b><br>
  * <b>Total Tuples processed</b><br>
- * <b>Total Bytes processed</b><br>
- * <b>Node Status</b><br>
+ * <b>Total Tuples produced</b><br>
+ * <b>Operator Status</b><br>
  * <b>Last Heartbeat Time</b><br>
  * <br>
  *
@@ -30,8 +30,8 @@ public class OperatorInfo {
   public String id;
   public String name;
   public String container;
-  public long totalTuples;
-  public long totalBytes;
+  public long totalTuplesProcessed;
+  public long totalTuplesEmitted;
   public String status;
   public long lastHeartbeat;
   public long failureCount;
