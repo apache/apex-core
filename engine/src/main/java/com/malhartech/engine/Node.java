@@ -8,13 +8,10 @@ import com.malhartech.api.ActivationListener;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.api.Stats;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.util.CircularBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -197,20 +194,18 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
       throw new RuntimeException(e);
     }
 
-    HashMap<String, Collection<Stats>> stats = new HashMap<String, Collection<Stats>>();
+    OperatorStats stats = new OperatorStats();
     reportStats(stats);
 
     context.report(stats, windowId);
   }
 
-  protected void reportStats(Map<String, Collection<Stats>> stats)
+  protected void reportStats(OperatorStats stats)
   {
-    ArrayList<Stats> opstats = new ArrayList<Stats>();
+    stats.ouputPorts = new ArrayList<OperatorStats.PortStats>();
     for (Entry<String, CounterSink<?>> e: outputs.entrySet()) {
-      opstats.add(new PortStats(e.getKey(), e.getValue().resetCount()));
+      stats.ouputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount()));
     }
-
-    stats.put("OUTPUT_PORTS", opstats);
   }
 
   protected void activateSinks()

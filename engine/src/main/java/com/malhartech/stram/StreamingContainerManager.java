@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -27,6 +28,8 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.OperatorCodec;
+import com.malhartech.engine.OperatorStats;
+import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTComponent;
@@ -465,8 +468,23 @@ public class StreamingContainerManager
 
       if (!status.isIdle()) {
         containerIdle = false;
-        status.bytesTotal += shb.getNumberBytesProcessed();
-        status.tuplesTotal += shb.getNumberTuplesProcessed();
+
+        List<OperatorStats> statsList = shb.getWindowStats();
+        for (OperatorStats stats : statsList) {
+          Collection<PortStats> ports = stats.inputPorts;
+          if (ports != null) {
+            for (PortStats s: ports) {
+              status.totalTuplesProcessed += s.processedCount;
+            }
+          }
+
+          ports = stats.ouputPorts;
+          if (ports != null) {
+            for (PortStats s: ports) {
+              status.totalTuplesEmitted += s.processedCount;
+            }
+          }
+        }
 
         // checkpoint tracking
         PTOperator node = status.operator;
@@ -656,8 +674,8 @@ public class StreamingContainerManager
         if (hb != null) {
           // initial heartbeat not yet received
           ni.status = hb.getState();
-          ni.totalBytes = os.bytesTotal;
-          ni.totalTuples = os.tuplesTotal;
+          ni.totalTuplesProcessed = os.totalTuplesProcessed;
+          ni.totalTuplesEmitted = os.totalTuplesEmitted;
           ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           ni.failureCount = os.operator.failureCount;
           ni.lastCheckpoint = hb.getLastBackupWindowId();

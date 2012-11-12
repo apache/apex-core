@@ -6,14 +6,12 @@ package com.malhartech.engine;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.Context;
 import com.malhartech.api.Operator;
-import com.malhartech.api.Stats;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
 
@@ -42,16 +40,16 @@ public class OperatorContext implements Context.OperatorContext
      * Command to be executed at subsequent end of window.
      * Current used for module state saving, but applicable more widely.
      */
-    public void execute(Operator module, String id, long windowId) throws IOException;
+    public void execute(Operator operator, String id, long windowId) throws IOException;
   }
   private long lastProcessedWindowId;
   private final String id;
   private final AttributeMap<OperatorContext> attributes;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
-  private final CircularBuffer<HeartbeatCounters> heartbeatCounters = new CircularBuffer<HeartbeatCounters>(1024);
+  private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
   /**
-   * The AbstractModule to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
+   * The operator to which this context is passed, will timeout after the following milliseconds if no new tuple has been received by it.
    */
   // we should make it configurable somehow.
   private long idleTimeout = 1000L;
@@ -100,9 +98,9 @@ public class OperatorContext implements Context.OperatorContext
    *
    * @return int
    */
-  public final synchronized int drainHeartbeatCounters(Collection<? super HeartbeatCounters> counters)
+  public final synchronized int drainHeartbeatCounters(Collection<? super OperatorStats> counters)
   {
-    return heartbeatCounters.drainTo(counters);
+    return statsBuffer.drainTo(counters);
   }
 
   public final synchronized long getLastProcessedWindowId()
@@ -110,31 +108,14 @@ public class OperatorContext implements Context.OperatorContext
     return lastProcessedWindowId;
   }
 
-  // stats should have tree like structure
-  synchronized void report(Map<String, Collection<Stats>> stats, long windowId)
+  synchronized void report(OperatorStats stats, long windowId)
   {
     lastProcessedWindowId = windowId;
+    stats.windowId = windowId;
 
-    HeartbeatCounters newWindow = new HeartbeatCounters();
-    newWindow.windowId = windowId;
-
-    Collection<PortStats> ports = (Collection)stats.get("INPUT_PORTS");
-    if (ports != null) {
-      for (PortStats s: ports) {
-        newWindow.tuplesProcessed += s.processedCount;
-      }
-    }
-
-    ports = (Collection)stats.get("OUTPUT_PORTS");
-    if (ports != null) {
-      for (PortStats s: ports) {
-        newWindow.tuplesProduced += s.processedCount;
-      }
-    }
-
-    if (!heartbeatCounters.offer(newWindow)) {
-      heartbeatCounters.poll();
-      heartbeatCounters.offer(newWindow);
+    if (!statsBuffer.offer(stats)) {
+      statsBuffer.poll();
+      statsBuffer.offer(stats);
     }
   }
 
