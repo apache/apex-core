@@ -171,6 +171,7 @@ public class ServerTest
   {
     bsc.windowId = 0;
     bsc.activate();
+    bsc.purge();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -199,6 +200,7 @@ public class ServerTest
   {
     bsc.windowId = 0x7afebabe00000000L;
     bsc.activate();
+    bsc.purge();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -226,6 +228,7 @@ public class ServerTest
   {
     bsc.windowId = 0x7afebabe00000001L;
     bsc.activate();
+    bsc.purge();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -301,6 +304,41 @@ public class ServerTest
     bss.deactivate();
 
     assertEquals(bss.tupleCount.get(), 204);
+  }
+
+  @Test(dependsOnMethods = {"testReblishLowerWindow"})
+  public void testReset() throws InterruptedException
+  {
+    bsc.windowId = 0x7afebabe00000001L;
+    bsc.activate();
+    bsc.reset();
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bsc.data != null) {
+        break;
+      }
+    }
+    bsc.deactivate();
+
+    assertNotNull(bsc.data);
+
+    bss.activate();
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bss.tupleCount.get() > 0) {
+        break;
+      }
+    }
+
+    bss.deactivate();
+
+    assertEquals(bss.tupleCount.get(), 0);
+  }
+
+  @Test(dependsOnMethods = {"testReset"})
+  public void test1WindowAgain() throws InterruptedException
+  {
+    test1Window();
   }
 
   class ResetTuple implements Tuple

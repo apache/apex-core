@@ -61,12 +61,19 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       switch (data.getType()) {
         case PUBLISHER_REQUEST:
           logger.info("Received publisher request: {}", data);
-          dl = handlePublisherRequest(data.getPublishRequest(), ctx, data.getWindowId());
+          dl = handlePublisherRequest(data.getPublishRequest(), ctx);
+          dl.rewind(data.getPublishRequest().getBaseSeconds(), data.getWindowId(), new ProtobufDataInspector());
+          ctx.attr(DATA_LIST).set(dl);
           break;
 
         case SUBSCRIBER_REQUEST:
           logger.info("Received subscriber request: {}", data);
-          handleSubscriberRequest(data.getSubscribeRequest(), ctx, data.getWindowId());
+          boolean contains = subscriberGroups.containsKey(data.getSubscribeRequest().getType());
+          LogicalNode ln = handleSubscriberRequest(data.getSubscribeRequest(), ctx);
+          if (!contains) {
+            ln.catchUp(((long)data.getSubscribeRequest().getBaseSeconds() << 32) | data.getWindowId());
+          }
+          ctx.attr(LOGICAL_NODE).set(ln);
           break;
 
         case PURGE_REQUEST:
@@ -101,7 +108,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @param windowId
    */
-  public DataList handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx, int windowId)
+  public synchronized DataList handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx)
   {
     /* we are never going to write to the publisher socket */
 //    if (ctx.channel() instanceof SocketChannel) {
@@ -119,26 +126,22 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
 
     DataList dl;
 
-    synchronized (publisherBufffers) {
-      if (publisherBufffers.containsKey(identifier)) {
-        /*
-         * close previous connection with the same identifier which is guaranteed to be unique.
-         */
-        Channel previous = publisherChannels.put(identifier, ctx.channel());
-        if (previous != null && previous.id() != ctx.channel().id()) {
-          previous.close();
-        }
+    if (publisherBufffers.containsKey(identifier)) {
+      /*
+       * close previous connection with the same identifier which is guaranteed to be unique.
+       */
+      Channel previous = publisherChannels.put(identifier, ctx.channel());
+      if (previous != null && previous.id() != ctx.channel().id()) {
+        previous.close();
+      }
 
-        dl = publisherBufffers.get(identifier);
-      }
-      else {
-        dl = new DataList(identifier, type, bufferSize);
-        publisherBufffers.put(identifier, dl);
-      }
+      dl = publisherBufffers.get(identifier);
+    }
+    else {
+      dl = new DataList(identifier, type, bufferSize);
+      publisherBufffers.put(identifier, dl);
     }
 
-    dl.rewind(request.getBaseSeconds(), windowId, new ProtobufDataInspector());
-    ctx.attr(DATA_LIST).set(dl);
     return dl;
   }
 
@@ -148,7 +151,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @param windowId
    */
-  public LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
+  public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -176,14 +179,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
        * the datalist is not registered, then create one and register it. Hopefully this one would be used by future upstream nodes.
        */
       DataList dl;
-      synchronized (publisherBufffers) {
-        if (publisherBufffers.containsKey(upstream_identifier)) {
-          dl = publisherBufffers.get(upstream_identifier);
-        }
-        else {
-          dl = new DataList(upstream_identifier, type, bufferSize);
-          publisherBufffers.put(upstream_identifier, dl);
-        }
+      if (publisherBufffers.containsKey(upstream_identifier)) {
+        dl = publisherBufffers.get(upstream_identifier);
+      }
+      else {
+        dl = new DataList(upstream_identifier, type, bufferSize);
+        publisherBufffers.put(upstream_identifier, dl);
       }
 
       ln = new LogicalNode(upstream_identifier,
@@ -200,10 +201,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       subscriberGroups.put(type, ln);
       ln.addChannel(ctx.channel());
       dl.addDataListener(ln);
-      ln.catchUp(((long)request.getBaseSeconds() << 32) | windowId);
     }
 
-    ctx.attr(LOGICAL_NODE).set(ln);
     return ln;
   }
 
@@ -255,7 +254,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
   }
 
   @Override
-  public void channelInactive(ChannelHandlerContext ctx) throws Exception
+  public synchronized void channelInactive(ChannelHandlerContext ctx) throws Exception
   {
     Channel c = ctx.channel();
 
@@ -323,12 +322,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     }
   }
 
-  private void handlePurgeRequest(PurgeRequest request, ChannelHandlerContext ctx, int windowId)
+  private synchronized void handlePurgeRequest(PurgeRequest request, ChannelHandlerContext ctx, int windowId)
   {
     DataList dl;
-    synchronized (publisherBufffers) {
-      dl = publisherBufffers.get(request.getIdentifier());
-    }
+    dl = publisherBufffers.get(request.getIdentifier());
 
     SimpleData.Builder sdb = SimpleData.newBuilder();
     if (dl == null) {
@@ -353,12 +350,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     return Unpooled.messageBuffer();
   }
 
-  private void handleResetRequest(ResetRequest request, ChannelHandlerContext ctx, int windowId)
+  private synchronized void handleResetRequest(ResetRequest request, ChannelHandlerContext ctx, int windowId)
   {
     DataList dl;
-    synchronized (publisherBufffers) {
-      dl = publisherBufffers.remove(request.getIdentifier());
-    }
+    dl = publisherBufffers.remove(request.getIdentifier());
 
     SimpleData.Builder sdb = SimpleData.newBuilder();
     if (dl == null) {
@@ -367,6 +362,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     else {
       Channel channel = publisherChannels.remove(request.getIdentifier());
       if (channel != null) {
+        channel.flush().awaitUninterruptibly();
         channel.close();
       }
       dl.reset();
@@ -380,6 +376,5 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
 
     ctx.write(SerializedData.getInstanceFrom(db.build()))
             .addListener(ChannelFutureListener.CLOSE);
-
   }
 }

@@ -139,6 +139,20 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     channel.write(builder.build());
   }
 
+  public static void reset(Channel channel, String id, long windowId)
+  {
+    Buffer.ResetRequest.Builder rrb = Buffer.ResetRequest.newBuilder();
+    rrb.setIdentifier(id);
+    rrb.setType("irrelevant");
+
+    Data.Builder builder = Data.newBuilder();
+    builder.setType(DataType.RESET_REQUEST);
+    builder.setResetRequest(rrb);
+    builder.setWindowId((int)windowId);
+
+    channel.write(builder.build());
+  }
+
   /**
    *
    * @param arg0

@@ -27,9 +27,19 @@ public class BufferServerController extends AbstractSocketSubscriber<Buffer.Data
   @Override
   public void activate()
   {
-    data = null;
     super.activate();
+  }
+
+  public void purge()
+  {
+    data = null;
     ClientHandler.purge(channel, sourceId, windowId);
+  }
+
+  public void reset()
+  {
+    data = null;
+    ClientHandler.reset(channel, sourceId, windowId);
   }
 
   @Override
