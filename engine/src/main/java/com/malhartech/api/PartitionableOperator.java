@@ -27,7 +27,7 @@ public interface PartitionableOperator extends Operator
    */
   public List<Partition> redoPartitions(List<Partition> partitions);
 
-  public interface Partition extends Map<InputPort, Set<byte[]>>
+  public interface Partition extends Map<InputPort, List<byte[]>>
   {
     /**
      * Get an indication of the load handled by this particular partition.
@@ -49,5 +49,11 @@ public interface PartitionableOperator extends Operator
      * @param new state of the operator
      */
     public void setOperator(PartitionableOperator operator);
+
+    /**
+     * Get a new Partition which can be configured.
+     * @return
+     */
+    public Partition getInstance();
   }
 }
