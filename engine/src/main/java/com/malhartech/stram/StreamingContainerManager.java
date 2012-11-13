@@ -492,8 +492,8 @@ public class StreamingContainerManager
         status.totalTuplesProcessed += tuplesProcessed;
         status.totalTuplesEmitted += tuplesEmitted;
         if (lastHeartbeatIntervalMillis > 0) {
-          status.tuplesProcessedPSMA10.add(tuplesProcessed*1000/lastHeartbeatIntervalMillis);
-          status.tuplesEmittedPSMA10.add(tuplesEmitted*1000/lastHeartbeatIntervalMillis);
+          status.tuplesProcessedPSMA10.add((tuplesProcessed*1000)/lastHeartbeatIntervalMillis);
+          status.tuplesEmittedPSMA10.add((tuplesEmitted*1000)/lastHeartbeatIntervalMillis);
         }
 
         // checkpoint tracking

@@ -100,17 +100,13 @@ public class StramChildAgent {
     }
 
     long getAvg() {
-      if (index == 0) {
-        return 0;
-      }
-
       long sum = 0;
       for (int i=0; i<periods; i++) {
         sum += values[i];
       }
 
       if (!filled) {
-        return sum/index;
+        return index == 0 ? 0 : sum/index;
       } else {
         return sum/periods;
       }
