@@ -3,17 +3,18 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.api.StreamCodec;
 import com.google.protobuf.ByteString;
 import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.engine.*;
-
+import com.malhartech.engine.EndWindowTuple;
+import com.malhartech.engine.ResetWindowTuple;
+import com.malhartech.engine.StreamContext;
+import com.malhartech.engine.Tuple;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import java.util.logging.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,7 +127,6 @@ public class BufferServerOutputStream extends SocketOutputStream
       synchronized (wcfl) {
         if (wcfl.added) {
           try {
-            long t = System.currentTimeMillis();
             wcfl.wait();
             if (d.getSerializedSize() < BUFFER_SIZE) {
               channel.write(d);

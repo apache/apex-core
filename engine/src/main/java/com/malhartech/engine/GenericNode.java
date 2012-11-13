@@ -4,20 +4,18 @@
  */
 package com.malhartech.engine;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
-
-import org.apache.commons.lang.UnhandledException;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.util.CircularBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import org.apache.commons.lang.UnhandledException;
+import org.slf4j.LoggerFactory;
 
 // inflight changes to the port connections should be captured.
 /**
@@ -88,45 +86,38 @@ public class GenericNode extends Node<Operator>
     }
   }
 
-  /**
-   *
-   * Connect a sink to this node on a port identified by port.
-   *
-   * @return if the port is input port, Sink object is returned.
-   *
-   * @param port the value of port
-   * @param sink the value of stream
-   */
   @Override
-  public Sink connect(String port, final Sink sink)
+  public Sink<?> connectInputPort(String port, final Sink sink)
   {
-    Sink retvalue = null;
+    Sink<?> retvalue;
 
-    InputPort inputport = descriptor.inputPorts.get(port);
-    if (inputport != null) {
-      Reservoir cs = inputs.get(port);
+    InputPort<?> inputPort = descriptor.inputPorts.get(port);
+    if (inputPort == null) {
+      retvalue = null;
+    }
+    else {
+      Reservoir reservoir = inputs.get(port);
       if (sink == null) {
         /**
          * since there are tuples which are not yet processed downstream, rather than just removing
          * the sink, it makes sense to wait for all the data to be processed on this sink and then
          * remove it.
          */
-        if (cs != null) {
-          cs.process(new EndStreamTuple());
+        if (reservoir != null) {
+          reservoir.process(new EndStreamTuple());
         }
+
         retvalue = null;
       }
       else {
-        inputport.setConnected(true);
-        if (cs == null) {
-          cs = new Reservoir(inputport.getSink());
-          inputs.put(port, cs);
+        inputPort.setConnected(true);
+        if (reservoir == null) {
+          reservoir = new Reservoir(inputPort.getSink());
+          inputs.put(port, reservoir);
         }
-        retvalue = cs;
+        retvalue = reservoir;
       }
     }
-
-    connectOutputPort(port, sink);
 
     return retvalue;
   }

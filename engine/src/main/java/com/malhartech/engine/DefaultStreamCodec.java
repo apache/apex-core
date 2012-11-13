@@ -4,12 +4,12 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.StreamCodec;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.Operator;
+import com.malhartech.api.StreamCodec;
 import java.util.Collection;
 
 /**

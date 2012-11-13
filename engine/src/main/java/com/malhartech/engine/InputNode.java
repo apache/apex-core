@@ -6,6 +6,7 @@ package com.malhartech.engine;
 
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
+import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
 import java.util.HashMap;
@@ -28,12 +29,10 @@ public class InputNode extends Node<InputOperator>
     controlTuples = new CircularBuffer<Tuple>(1024);
   }
 
-  @Override
-  public Sink connect(String port, final Sink sink)
+  public Sink<?> connectInputPort(String port, final Sink sink)
   {
-    Sink retvalue;
     if (Node.INPUT.equals(port)) {
-      retvalue = new Sink()
+      return new Sink()
       {
         @Override
         public void process(Object payload)
@@ -47,12 +46,8 @@ public class InputNode extends Node<InputOperator>
         }
       };
     }
-    else {
-      connectOutputPort(port, sink);
-      retvalue = null;
-    }
 
-    return retvalue;
+    return null;
   }
 
   @Override

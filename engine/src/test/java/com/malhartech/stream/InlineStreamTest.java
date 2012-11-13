@@ -41,9 +41,9 @@ public class InlineStreamTest
     InlineStream stream = new InlineStream();
     stream.setup(streamContext);
 
-    node1.connect("output", stream);
+    node1.connectOutputPort("output", stream);
 
-    Sink s = node2.connect("input", stream);
+    Sink s = node2.connectInputPort("input", stream);
     stream.setSink("node2.input", s);
 
     Sink<Object> sink = new Sink<Object>()
@@ -80,9 +80,9 @@ public class InlineStreamTest
         }
       }
     };
-    node2.connect("output", sink);
+    node2.connectOutputPort("output", sink);
 
-    sink = node1.connect("input", new Sink()
+    sink = (Sink<Object>)node1.connectInputPort("input", new Sink()
     {
       @Override
       public void process(Object tuple)
