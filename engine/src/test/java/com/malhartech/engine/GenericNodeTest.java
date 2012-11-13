@@ -86,7 +86,7 @@ public class GenericNodeTest
     gn.connectOutputPort("op", output);
 
     final AtomicBoolean ab = new AtomicBoolean(false);
-    new Thread()
+    Thread t = new Thread()
     {
       @Override
       public void run()
@@ -94,7 +94,8 @@ public class GenericNodeTest
         ab.set(true);
         gn.activate(new OperatorContext("GenericOperator", this, null));
       }
-    }.start();
+    };
+    t.start();
 
     do {
       Thread.sleep(sleeptime);
@@ -166,8 +167,13 @@ public class GenericNodeTest
     Thread.sleep(sleeptime);
     assert (list.size() == 6);
 
+    assert (t.getState() != Thread.State.TERMINATED);
+
     input2.process(est);
     Thread.sleep(sleeptime);
     assert (list.size() == 7);
+
+    Thread.sleep(sleeptime);
+    assert (t.getState() == Thread.State.TERMINATED);
   }
 }
