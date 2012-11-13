@@ -54,7 +54,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return operator;
   }
 
-  protected OutputPort<?> connectOutputPort(String port, final Sink sink)
+  public void connectOutputPort(String port, final Sink sink)
   {
     OutputPort<?> outputPort = descriptor.outputPorts.get(port);
     if (outputPort != null) {
@@ -99,11 +99,10 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         outputs.put(port, cs);
       }
     }
-
-    return outputPort;
   }
 
-  public abstract Sink connect(String id, Sink sink);
+  public abstract Sink<?> connectInputPort(String port, final Sink sink);
+
   OperatorContext context;
 
   public void activate(OperatorContext context)
