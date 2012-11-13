@@ -428,6 +428,7 @@ public class StreamingContainerManager
       return response;
     }
     Map<String, OperatorStatus> statusMap = sca.operators;
+    long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
 
@@ -469,21 +470,30 @@ public class StreamingContainerManager
       if (!status.isIdle()) {
         containerIdle = false;
 
+        long tuplesProcessed = 0;
+        long tuplesEmitted = 0;
         List<OperatorStats> statsList = shb.getWindowStats();
         for (OperatorStats stats : statsList) {
           Collection<PortStats> ports = stats.inputPorts;
           if (ports != null) {
             for (PortStats s: ports) {
-              status.totalTuplesProcessed += s.processedCount;
+              tuplesProcessed += s.processedCount;
             }
           }
 
           ports = stats.ouputPorts;
           if (ports != null) {
             for (PortStats s: ports) {
-              status.totalTuplesEmitted += s.processedCount;
+              tuplesEmitted += s.processedCount;
             }
           }
+        }
+
+        status.totalTuplesProcessed += tuplesProcessed;
+        status.totalTuplesEmitted += tuplesEmitted;
+        if (lastHeartbeatIntervalMillis > 0) {
+          status.tuplesProcessedPSMA10.add(tuplesProcessed*1000/lastHeartbeatIntervalMillis);
+          status.tuplesEmittedPSMA10.add(tuplesEmitted*1000/lastHeartbeatIntervalMillis);
         }
 
         // checkpoint tracking
@@ -676,6 +686,8 @@ public class StreamingContainerManager
           ni.status = hb.getState();
           ni.totalTuplesProcessed = os.totalTuplesProcessed;
           ni.totalTuplesEmitted = os.totalTuplesEmitted;
+          ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
+          ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
           ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           ni.failureCount = os.operator.failureCount;
           ni.lastCheckpoint = hb.getLastBackupWindowId();

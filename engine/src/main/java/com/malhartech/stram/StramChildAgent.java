@@ -80,6 +80,43 @@ public class StramChildAgent {
     }
   }
 
+  class MovingAverage {
+    private final int periods;
+    private final long[] values;
+    private int index = 0;
+    private boolean filled = false;
+
+    MovingAverage(int periods) {
+      this.periods = periods;
+      this.values = new long[periods];
+    }
+
+    void add(long val) {
+      values[index++] = val;
+      if (index == periods) {
+        filled = true;
+      }
+      index = index % periods;
+    }
+
+    long getAvg() {
+      if (index == 0) {
+        return 0;
+      }
+
+      long sum = 0;
+      for (int i=0; i<periods; i++) {
+        sum += values[i];
+      }
+
+      if (!filled) {
+        return sum/index;
+      } else {
+        return sum/periods;
+      }
+    }
+  }
+
   class OperatorStatus
   {
     StreamingNodeHeartbeat lastHeartbeat;
@@ -87,6 +124,8 @@ public class StramChildAgent {
     final PTContainer container;
     int totalTuplesProcessed;
     int totalTuplesEmitted;
+    MovingAverage tuplesProcessedPSMA10 = new MovingAverage(10);
+    MovingAverage tuplesEmittedPSMA10 = new MovingAverage(10);
 
     private OperatorStatus(PTContainer container, PTOperator operator) {
       this.operator = operator;
