@@ -118,8 +118,8 @@ public class StramChildAgent {
     StreamingNodeHeartbeat lastHeartbeat;
     final PTOperator operator;
     final PTContainer container;
-    int totalTuplesProcessed;
-    int totalTuplesEmitted;
+    long totalTuplesProcessed;
+    long totalTuplesEmitted;
     MovingAverage tuplesProcessedPSMA10 = new MovingAverage(10);
     MovingAverage tuplesEmittedPSMA10 = new MovingAverage(10);
 

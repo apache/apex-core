@@ -88,5 +88,6 @@ public interface StreamCodec<T>
   @Deprecated
   boolean transferState(Operator destination, Operator source, Collection<byte[]> partitions);
 
+  // what is this???
   public void reset();
 }
