@@ -102,7 +102,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   }
 
   public abstract Sink<?> connectInputPort(String port, final Sink sink);
-
   OperatorContext context;
 
   public void activate(OperatorContext context)
@@ -169,8 +168,18 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      * since we are going away, we should let all the downstream operators know that.
      */
     EndStreamTuple est = new EndStreamTuple();
+    est.windowId = currentWindowId;
     for (final CounterSink output: outputs.values()) {
       output.process(est);
+    }
+  }
+
+  public void emitCheckpoint(long windowId)
+  {
+    CheckpointTuple ct = new CheckpointTuple();
+    ct.windowId = currentWindowId;
+    for (final CounterSink output: outputs.values()) {
+      output.process(ct);
     }
   }
 

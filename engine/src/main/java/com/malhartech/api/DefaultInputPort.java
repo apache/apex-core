@@ -5,6 +5,9 @@
 package com.malhartech.api;
 
 import com.malhartech.api.Operator.InputPort;
+import java.lang.reflect.ParameterizedType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default abstract implementation for input ports.
@@ -13,6 +16,7 @@ import com.malhartech.api.Operator.InputPort;
  */
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
 {
+  private static final Logger logger = LoggerFactory.getLogger(DefaultInputPort.class);
   final private Operator operator;
   protected boolean connected = false;
 
@@ -42,6 +46,9 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
   @Override
   public Class<? extends StreamCodec<T>> getStreamCodec()
   {
+    ParameterizedType superclass = (ParameterizedType)getClass().getGenericSuperclass();
+    Class<T> actualType = (Class<T>)superclass.getActualTypeArguments()[0];
+    logger.debug("parameterized type = {}", actualType);
     return null;
   }
 

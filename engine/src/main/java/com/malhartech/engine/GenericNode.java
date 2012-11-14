@@ -261,6 +261,10 @@ public class GenericNode extends Node<Operator>
                 }
                 break;
 
+              case CHECKPOINT:
+                activePort.remove();
+                break;
+                
               default:
                 throw new UnhandledException("Unrecognized Control Tuple", new IllegalArgumentException(t.toString()));
             }

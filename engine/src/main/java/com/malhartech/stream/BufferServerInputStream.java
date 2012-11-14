@@ -3,13 +3,12 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.api.StreamCodec;
 import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.engine.*;
-
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

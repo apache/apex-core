@@ -66,6 +66,10 @@ public class BufferServerOutputStream extends SocketOutputStream
       db.setWindowId((int)t.getWindowId());
 
       switch (t.getType()) {
+        case CHECKPOINT:
+          serde.reset();
+          return;
+
         case BEGIN_WINDOW:
           Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
           bw.setNode("SOS");

@@ -581,6 +581,7 @@ public class StramChild
         break;
 
       case CHECKPOINT:
+        final Node<?> node = nodes.get(snr.getNodeId());
         context.request(new OperatorContext.NodeRequest()
         {
           @Override
@@ -589,6 +590,8 @@ public class StramChild
             new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, operator, StramUtils.getNodeSerDe(null));
             // record last backup window id for heartbeat
             StramChild.this.backupInfo.put(id, windowId);
+
+            node.emitCheckpoint(windowId);
 
             if (operator instanceof CheckpointListener) {
               ((CheckpointListener)operator).checkpointed(windowId);

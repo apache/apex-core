@@ -258,6 +258,7 @@ public class ServerTest
   }
 
   @Test(dependsOnMethods = {"testRepublish"})
+  @SuppressWarnings("SleepWhileInLoop")
   public void testReblishLowerWindow() throws InterruptedException
   {
     bsp.baseWindow = 10;
@@ -307,6 +308,7 @@ public class ServerTest
   }
 
   @Test(dependsOnMethods = {"testReblishLowerWindow"})
+  @SuppressWarnings("SleepWhileInLoop")
   public void testReset() throws InterruptedException
   {
     bsc.windowId = 0x7afebabe00000001L;

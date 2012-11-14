@@ -76,6 +76,7 @@ message Data {
     SUBSCRIBER_REQUEST = 8;
     PURGE_REQUEST = 9;
     RESET_REQUEST = 10;
+    CHECKPOINT = 11;
   }
 
   required DataType type = 1;

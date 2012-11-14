@@ -62,4 +62,10 @@ public class DefaultStreamCodec implements StreamCodec<Object>
     return false;
   }
 
+  @Override
+  public void reset()
+  {
+    output.flush();
+    kryo = new Kryo();
+  }
 }
