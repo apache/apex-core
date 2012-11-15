@@ -8,7 +8,6 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.api.Operator;
 import java.util.Collection;
 
 /**
@@ -64,7 +63,7 @@ public interface StreamCodec<T>
    * Currently stram assumes that this is idempotent.
    * @return byte[][]
    */
-  @Deprecated()
+  @Deprecated
   byte[][] getPartitions();
 
   /**
@@ -88,6 +87,10 @@ public interface StreamCodec<T>
   @Deprecated
   boolean transferState(Operator destination, Operator source, Collection<byte[]> partitions);
 
-  // what is this???
-  public void reset();
+  /**
+   * Do consolidation at the checkpoint. If the codec builds the state through its lifetime as it
+   * processes the objects for serialization and deserialization, this is the point where it can
+   * reset the state to the default state.
+   */
+  public void checkpoint();
 }

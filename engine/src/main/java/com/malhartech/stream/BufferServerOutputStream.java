@@ -67,7 +67,7 @@ public class BufferServerOutputStream extends SocketOutputStream
 
       switch (t.getType()) {
         case CHECKPOINT:
-          serde.reset();
+          serde.checkpoint();
           return;
 
         case BEGIN_WINDOW:
