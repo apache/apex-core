@@ -4,7 +4,12 @@
  */
 package com.malhartech.stram;
 
+import java.io.ByteArrayOutputStream;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -15,8 +20,16 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.OperatorCodec;
+import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
+import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
+import com.malhartech.stram.PhysicalPlan.PTComponent;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
+import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
@@ -30,20 +43,21 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 public class StramChildAgent {
   private static final Logger LOG = LoggerFactory.getLogger(StramChildAgent.class);
 
+  public static class ContainerStartRequest extends DeployRequest {
+    final PTContainer container;
+
+    ContainerStartRequest(PTContainer container, AtomicInteger ackCountdown, AtomicInteger executeWhenZero) {
+      super(ackCountdown, executeWhenZero);
+      this.container = container;
+    }
+  }
+
   public static class DeployRequest {
     final AtomicInteger ackCountdown;
-    final PTContainer container;
     final AtomicInteger executeWhenZero;
-    private List<OperatorDeployInfo> nodes;
-    Map<PTOperator, Long> checkpoints;
+    private List<PTOperator> nodes;
 
-    public DeployRequest(PTContainer container, AtomicInteger ackCountdown) {
-      this.container = container;
-      this.ackCountdown = ackCountdown;
-      this.executeWhenZero = null;
-    }
-    public DeployRequest(PTContainer container, AtomicInteger ackCountdown, AtomicInteger executeWhenZero) {
-      this.container = container;
+    public DeployRequest(AtomicInteger ackCountdown, AtomicInteger executeWhenZero) {
       this.ackCountdown = ackCountdown;
       this.executeWhenZero = executeWhenZero;
     }
@@ -58,7 +72,7 @@ public class StramChildAgent {
       ackCountdown.decrementAndGet();
     }
 
-    void setNodes(List<OperatorDeployInfo> nodes) {
+    void setNodes(List<PTOperator> nodes) {
       this.nodes = nodes;
     }
 
@@ -76,7 +90,7 @@ public class StramChildAgent {
   public static class UndeployRequest extends DeployRequest {
     public UndeployRequest(PTContainer container,
         AtomicInteger ackCountdown, AtomicInteger executeWhenZero) {
-      super(container, ackCountdown, executeWhenZero);
+      super(ackCountdown, executeWhenZero);
     }
   }
 
@@ -154,15 +168,16 @@ public class StramChildAgent {
   final PTContainer container;
   final Map<String, OperatorStatus> operators;
   final StreamingContainerContext initCtx;
+  private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
   DeployRequest pendingRequest = null;
 
   private final ConcurrentLinkedQueue<DeployRequest> requests = new ConcurrentLinkedQueue<DeployRequest>();
 
   public StreamingContainerContext getInitContext() {
-    ContainerHeartbeatResponse rsp = pollRequest();
-    if (rsp != null && rsp.deployRequest != null) {
-      initCtx.nodeList = rsp.deployRequest;
-    }
+    //ContainerHeartbeatResponse rsp = pollRequest();
+    //if (rsp != null && rsp.deployRequest != null) {
+    //  initCtx.nodeList = rsp.deployRequest;
+    //}
     return initCtx;
   }
 
@@ -217,12 +232,11 @@ public class StramChildAgent {
     this.pendingRequest = r;
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (r.nodes != null) {
-      StreamingContainerContext scc = new StreamingContainerContext();
-      scc.nodeList = r.nodes;
+      List<OperatorDeployInfo> nodeList = getDeployInfoList(r.nodes);
       if (r instanceof UndeployRequest) {
-        rsp.undeployRequest = scc.nodeList;
+        rsp.undeployRequest = nodeList;
       } else {
-        rsp.deployRequest = scc.nodeList;
+        rsp.deployRequest = nodeList;
       }
     }
 
@@ -237,6 +251,133 @@ public class StramChildAgent {
       }
     }
     return true;
+  }
+
+  public List<OperatorDeployInfo> getDeployInfo() {
+    return getDeployInfoList(container.operators);
+  }
+
+  /**
+   * Create deploy info for StramChild.
+   * @param container
+   * @param deployNodes
+   * @param checkpoints
+   * @return StreamingContainerContext
+   */
+  private List<OperatorDeployInfo> getDeployInfoList(List<PTOperator> deployNodes) {
+
+    if (container.bufferServerAddress == null) {
+      throw new IllegalStateException("No buffer server address assigned");
+    }
+
+    Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
+    Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
+
+    for (PTOperator node : deployNodes) {
+      OperatorDeployInfo ndi = createOperatorDeployInfo(node.id, node.getLogicalNode());
+      long checkpointWindowId = node.getRecoveryCheckpoint();
+      if (checkpointWindowId > 0) {
+        LOG.debug("Operator {} recovery checkpoint {}", node.id, Long.toHexString(checkpointWindowId));
+        ndi.checkpointWindowId = checkpointWindowId;
+      }
+      nodes.put(ndi, node);
+      ndi.inputs = new ArrayList<InputDeployInfo>(node.inputs.size());
+      ndi.outputs = new ArrayList<OutputDeployInfo>(node.outputs.size());
+
+      for (PTOutput out : node.outputs) {
+        final StreamDecl streamDecl = out.logicalStream;
+        // buffer server or inline publisher
+        OutputDeployInfo portInfo = new OutputDeployInfo();
+        portInfo.declaredStreamId = streamDecl.getId();
+        portInfo.portName = out.portName;
+
+        if (!(streamDecl.isInline() && out.isDownStreamInline())) {
+          portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
+          portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
+          if (streamDecl.getSerDeClass() != null) {
+            portInfo.serDeClassName = streamDecl.getSerDeClass().getName();
+          }
+        } else {
+          // target set below
+          //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
+        }
+
+        ndi.outputs.add(portInfo);
+        publishers.put(node.id + "/" + streamDecl.getId(), portInfo);
+      }
+    }
+
+    // after we know all publishers within container, determine subscribers
+
+    for (Map.Entry<OperatorDeployInfo, PTOperator> nodeEntry : nodes.entrySet()) {
+      OperatorDeployInfo ndi = nodeEntry.getKey();
+      PTOperator node = nodeEntry.getValue();
+      for (PTInput in : node.inputs) {
+        final StreamDecl streamDecl = in.logicalStream;
+        // input from other node(s) OR input adapter
+        if (streamDecl.getSource() == null) {
+          throw new IllegalStateException("source is null: " + in);
+        }
+        PTComponent sourceNode = in.source;
+
+        InputDeployInfo inputInfo = new InputDeployInfo();
+        inputInfo.declaredStreamId = streamDecl.getId();
+        inputInfo.portName = in.portName;
+        inputInfo.sourceNodeId = sourceNode.id;
+        inputInfo.sourcePortName = in.logicalStream.getSource().getPortName();
+        if (in.partition != null) {
+          inputInfo.partitionKeys = Arrays.asList(in.partition);
+        }
+
+        if (streamDecl.isInline() && sourceNode.container == node.container) {
+          // inline input (both operators in same container and inline hint set)
+          OutputDeployInfo outputInfo = publishers.get(sourceNode.id + "/" + streamDecl.getId());
+          if (outputInfo == null) {
+            throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
+          }
+        } else {
+          // buffer server input
+          // FIXME: address to come from upstream output port, should be assigned first
+          InetSocketAddress addr = in.source.container.bufferServerAddress;
+          if (addr == null) {
+            LOG.warn("upstream address not assigned: " + in.source);
+            addr = container.bufferServerAddress;
+          }
+          inputInfo.bufferServerHost = addr.getHostName();
+          inputInfo.bufferServerPort = addr.getPort();
+          if (streamDecl.getSerDeClass() != null) {
+            inputInfo.serDeClassName = streamDecl.getSerDeClass().getName();
+          }
+        }
+        ndi.inputs.add(inputInfo);
+      }
+    }
+
+    return new ArrayList<OperatorDeployInfo>(nodes.keySet());
+  }
+
+  /**
+   * Create deploy info for operator.<p>
+   * <br>
+   * @param dnodeId
+   * @param nodeDecl
+   * @return {@link com.malhartech.stram.OperatorDeployInfo}
+   *
+   */
+  private OperatorDeployInfo createOperatorDeployInfo(String dnodeId, OperatorWrapper operator)
+  {
+    OperatorDeployInfo ndi = new OperatorDeployInfo();
+    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    try {
+      this.nodeSerDe.write(operator.getOperator(), os);
+      ndi.serializedNode = os.toByteArray();
+      os.close();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getOperator().getClass() + ")", e);
+    }
+    ndi.declaredId = operator.getId();
+    ndi.id = dnodeId;
+    return ndi;
   }
 
 }

@@ -45,6 +45,12 @@ class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
     ClientHandler.purge(channel, sourceIdentifier, windowId);
   }
 
+  void reset(String sourceIdentifier, long windowId) {
+    LOG.debug("Reset sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
+    Channel channel = bootstrap.connect().syncUninterruptibly().channel();
+    ClientHandler.reset(channel, sourceIdentifier, windowId);
+  }
+
   @Override
   public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
     LOG.debug("messageReceived: " + msg);

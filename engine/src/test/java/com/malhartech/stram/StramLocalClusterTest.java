@@ -148,6 +148,7 @@ public class StramLocalClusterTest
     };
 
     StramLocalCluster localCluster = new StramLocalCluster(dag, mcf);
+    localCluster.setPerContainerBufferServer(true);
     localCluster.runAsync();
 
 
@@ -276,6 +277,8 @@ public class StramLocalClusterTest
     String window6Tuple = "window6Tuple";
     n1Replaced.addTuple(window6Tuple);
 
+    // reconnect as buffer was replaced
+    sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputModule.OUTPUT_PORT);
     // verify tuple sent before publisher reset was removed from buffer during recovery
     // (publisher to resume from checkpoint id)
     tuples = sink.retrieveTuples(1, 3000);

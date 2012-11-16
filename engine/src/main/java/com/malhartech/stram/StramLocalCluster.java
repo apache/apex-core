@@ -29,7 +29,7 @@ import com.malhartech.engine.Node;
 import com.malhartech.engine.OperatorContext;
 import com.malhartech.engine.WindowGenerator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.StramChildAgent.DeployRequest;
+import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 
@@ -45,6 +45,7 @@ public class StramLocalCluster implements Runnable
   protected final StreamingContainerManager dnmgr;
   private final UmbilicalProtocolLocalImpl umbilical;
   private final InetSocketAddress bufferServerAddress;
+  private boolean perContainerBufferServer = false;
   private Server bufferServer = null;
   private final Map<String, LocalStramChild> childContainers = new ConcurrentHashMap<String, LocalStramChild>();
   private int containerSeq = 0;
@@ -85,7 +86,9 @@ public class StramLocalCluster implements Runnable
             throws IOException
     {
       StramChildAgent sca = dnmgr.getContainerAgent(containerId);
-      return sca.getInitContext();
+      StreamingContainerContext scc = sca.getInitContext();
+      scc.deployBufferServer = perContainerBufferServer;
+      return scc;
     }
 
     @Override
@@ -198,7 +201,7 @@ public class StramLocalCluster implements Runnable
     final LocalStramChild child;
 
     @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
-    private LocalStramChildLauncher(DeployRequest cdr)
+    private LocalStramChildLauncher(ContainerStartRequest cdr)
     {
       this.containerId = "container-" + containerSeq++;
       WindowGenerator wingen = null;
@@ -206,7 +209,7 @@ public class StramLocalCluster implements Runnable
         wingen = mockComponentFactory.setupWindowGenerator();
       }
       this.child = new LocalStramChild(containerId, umbilical, wingen);
-      dnmgr.assignContainer(cdr, containerId, "localhost", NetUtils.getConnectAddress(bufferServerAddress));
+      dnmgr.assignContainer(cdr, containerId, "localhost", perContainerBufferServer ? null : NetUtils.getConnectAddress(bufferServerAddress));
       Thread launchThread = new Thread(this, containerId);
       launchThread.start();
       childContainers.put(containerId, child);
@@ -231,9 +234,9 @@ public class StramLocalCluster implements Runnable
     }
   }
 
-  public StramLocalCluster(DAG topology) throws Exception
+  public StramLocalCluster(DAG dag) throws Exception
   {
-    topology.validate();
+    dag.validate();
     // convert to URI so we always write to local file system,
     // even when the environment has a default HDFS location.
     String pathUri = CLUSTER_WORK_DIR.toURI().toString();
@@ -245,10 +248,10 @@ public class StramLocalCluster implements Runnable
       throw new RuntimeException("could not cleanup test dir", e);
     }
 
-    if (topology.getConf().get(DAG.STRAM_CHECKPOINT_DIR) == null) {
-      topology.getConf().set(DAG.STRAM_CHECKPOINT_DIR, pathUri);
+    if (dag.getConf().get(DAG.STRAM_CHECKPOINT_DIR) == null) {
+      dag.getConf().set(DAG.STRAM_CHECKPOINT_DIR, pathUri);
     }
-    this.dnmgr = new StreamingContainerManager(topology);
+    this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
     // start buffer server
@@ -263,9 +266,9 @@ public class StramLocalCluster implements Runnable
     return this.childContainers.get(id);
   }
 
-  public StramLocalCluster(DAG topology, MockComponentFactory mcf) throws Exception
+  public StramLocalCluster(DAG dag, MockComponentFactory mcf) throws Exception
   {
-    this(topology);
+    this(dag);
     this.mockComponentFactory = mcf;
   }
 
@@ -313,6 +316,10 @@ public class StramLocalCluster implements Runnable
     this.heartbeatMonitoringEnabled = enabled;
   }
 
+  public void setPerContainerBufferServer(boolean perContainerBufferServer) {
+    this.perContainerBufferServer = perContainerBufferServer;
+  }
+
   @Override
   @SuppressWarnings({"SleepWhileInLoop", "ResultOfObjectAllocationIgnored"})
   public void run()
@@ -334,7 +341,7 @@ public class StramLocalCluster implements Runnable
 
       // start containers
       while (!dnmgr.containerStartRequests.isEmpty()) {
-        DeployRequest cdr = dnmgr.containerStartRequests.poll();
+        ContainerStartRequest cdr = dnmgr.containerStartRequests.poll();
         if (cdr != null) {
           new LocalStramChildLauncher(cdr);
         }

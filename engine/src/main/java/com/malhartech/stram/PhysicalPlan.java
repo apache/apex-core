@@ -126,7 +126,7 @@ public class PhysicalPlan {
    * <br>
    *
    */
-  public static class PTOutput {
+  public class PTOutput {
     final DAG.StreamDecl logicalStream;
     final PTComponent source;
     final String portName;
@@ -140,6 +140,23 @@ public class PhysicalPlan {
       this.logicalStream = logicalStream;
       this.source = source;
       this.portName = portName;
+    }
+
+    /**
+     * Determine whether downstream operators are deployed inline.
+     * (all instances of the logical downstream node are in the same container)
+     * @param output
+     */
+    protected boolean isDownStreamInline() {
+      StreamDecl logicalStream = this.logicalStream;
+      for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
+        for (PTOperator downStreamNode : getOperators(downStreamPort.getOperatorWrapper())) {
+          if (this.source.container != downStreamNode.container) {
+              return false;
+          }
+        }
+      }
+      return true;
     }
 
     /**
@@ -181,7 +198,8 @@ public class PhysicalPlan {
     }
 
     /**
-     *
+     * Return the most recent checkpoint for this operator,
+     * representing the last backup reported.
      * @return long
      */
     public long getRecentCheckpoint() {
@@ -189,6 +207,18 @@ public class PhysicalPlan {
         return checkpointWindows.getLast();
       return 0;
     }
+
+    /**
+     * Return the checkpoint that can be used for recovery. This may not be the
+     * most recent checkpoint, depending on downstream state.
+     *
+     * @return long
+     */
+   public long getRecoveryCheckpoint() {
+     if (checkpointWindows != null && !checkpointWindows.isEmpty())
+       return checkpointWindows.getFirst();
+     return 0;
+   }
 
     /**
      *
@@ -212,7 +242,7 @@ public class PhysicalPlan {
 
   public static class PTContainer {
     List<PTOperator> operators = new ArrayList<PTOperator>();
-    String containerId; // assigned to yarn container id
+    String containerId; // assigned yarn container id
     String host;
     InetSocketAddress bufferServerAddress;
     int restartAttempts;
@@ -421,23 +451,6 @@ public class PhysicalPlan {
 
   protected List<OperatorWrapper> getRootOperators() {
     return dag.getRootOperators();
-  }
-
-  /**
-   * Determine whether downstream operators are deployed inline.
-   * (all instances of the logical downstream node are in the same container)
-   * @param output
-   */
-  protected boolean isDownStreamInline(PTOutput output) {
-    StreamDecl logicalStream = output.logicalStream;
-    for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
-      for (PTOperator downStreamNode : getOperators(downStreamPort.getOperatorWrapper())) {
-        if (output.source.container != downStreamNode.container) {
-            return false;
-        }
-      }
-    }
-    return true;
   }
 
 }

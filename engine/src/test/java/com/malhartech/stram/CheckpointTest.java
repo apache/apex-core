@@ -13,7 +13,6 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbe
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stream.StramTestSupport;
 import java.io.File;
@@ -65,21 +64,26 @@ public class CheckpointTest
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
     String containerId = "container1";
-    StreamingContainerContext cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
+    StramChildAgent cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
     WindowGenerator wingen = StramTestSupport.setupWindowGenerator(mses);
     LocalStramChild container = new LocalStramChild(containerId, null, wingen);
-    container.setup(cc);
+    container.setup(cc.getInitContext());
+    // push deploy
+    List<OperatorDeployInfo> deployInfo = cc.getDeployInfo();
+    ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
+    rsp.deployRequest = deployInfo;
+    container.processHeartbeatResponse(rsp);
 
 //    mses.tick(1); // begin window 0
     mses.tick(1); // begin window 1
 
     Assert.assertEquals("number operators", 1, container.getNodes().size());
-    Operator node = container.getNode(cc.nodeList.get(0).id);
-    OperatorContext context = container.getNodeContext(cc.nodeList.get(0).id);
+    Operator node = container.getNode(deployInfo.get(0).id);
+    OperatorContext context = container.getNodeContext(deployInfo.get(0).id);
 
-    Assert.assertNotNull("node deployed " + cc.nodeList.get(0), node);
-    Assert.assertEquals("nodeId", cc.nodeList.get(0).id, context.getId());
+    Assert.assertNotNull("node deployed " + deployInfo.get(0), node);
+    Assert.assertEquals("nodeId", deployInfo.get(0).id, context.getId());
     Assert.assertEquals("maxTupes", 1, ((TestGeneratorInputModule)node).getMaxTuples());
 
     mses.tick(1); // begin window 2
@@ -89,7 +93,7 @@ public class CheckpointTest
     StramToNodeRequest backupRequest = new StramToNodeRequest();
     backupRequest.setNodeId(context.getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
-    ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
+    rsp = new ContainerHeartbeatResponse();
     rsp.nodeRequests = Collections.singletonList(backupRequest);
     container.processHeartbeatResponse(rsp);
 

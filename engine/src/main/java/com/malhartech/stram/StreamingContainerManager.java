@@ -5,12 +5,9 @@
 package com.malhartech.stram;
 
 
-import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,16 +24,12 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
-import com.malhartech.api.OperatorCodec;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
-import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
-import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
-import com.malhartech.stram.PhysicalPlan.PTComponent;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
+import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StramChildAgent.OperatorStatus;
 import com.malhartech.stram.StramChildAgent.UndeployRequest;
@@ -69,10 +62,9 @@ public class StreamingContainerManager
   private final int heartbeatTimeoutMillis = 30000;
   private int checkpointIntervalMillis = 30000;
   private final int operatorMaxAttemptCount = 5;
-  private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
 
   protected final  Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
-  protected final  ConcurrentLinkedQueue<DeployRequest> containerStartRequests = new ConcurrentLinkedQueue<DeployRequest>();
+  protected final  ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected String shutdownDiagnosticsMessage = "";
   protected boolean forcedShutdown = false;
 
@@ -92,9 +84,11 @@ public class StreamingContainerManager
     checkpointFsPath = dag.getConf().get(DAG.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
     this.checkpointIntervalMillis = dag.getConf().getInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
 
-    // fill initial deploy requests
+    AtomicInteger startupCountDown = new AtomicInteger(plan.getContainers().size());
+    // request initial containers
     for (PTContainer container : plan.getContainers()) {
-      this.containerStartRequests.add(new DeployRequest(container, null));
+      // operators can deploy only after all containers are running (and buffer servers listen)
+      this.containerStartRequests.add(new ContainerStartRequest(container, startupCountDown, startupCountDown));
     }
   }
 
@@ -170,9 +164,8 @@ public class StreamingContainerManager
     AtomicInteger undeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
-        List<OperatorDeployInfo> deployList = getDeployInfoList(e.getValue(), e.getKey(), checkpoints);
         UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
-        r.setNodes(deployList);
+        r.setNodes(e.getValue());
         undeployAckCountdown.incrementAndGet();
         StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
@@ -181,8 +174,8 @@ public class StreamingContainerManager
 
     // deploy replacement container, depends on above downstream operators stop
     AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
-    DeployRequest dr = new DeployRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
-    dr.checkpoints = checkpoints;
+    undeployAckCountdown.incrementAndGet(); // deploy waits for container start
+    ContainerStartRequest dr = new ContainerStartRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
     // launch replacement container, deploy request will be queued with new container agent in assignContainer
     containerStartRequests.add(dr);
 
@@ -193,8 +186,12 @@ public class StreamingContainerManager
       // to reset publishers, clean buffer server past checkpoint so subscribers don't read stale data (including end of stream)
       for (PTOperator operator : e.getValue()) {
         for (PTOutput out : operator.outputs) {
+          if (operator.container == cs.container) {
+            LOG.debug("Skipping purge for buffer server in failed container {}", cs.container.containerId);
+            continue;
+          }
           final StreamDecl streamDecl = out.logicalStream;
-          if (!(streamDecl.isInline() && this.plan.isDownStreamInline(out))) {
+          if (!(streamDecl.isInline() && out.isDownStreamInline())) {
             // following needs to match the concat logic in StramChild
             String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
             // TODO: find way to mock this when testing rest of logic
@@ -205,18 +202,16 @@ public class StreamingContainerManager
                 bufferServers.put(bsc.addr, bsc);
                 LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
               }
-              // reset publisher state, while stale operator may still write data until disconnected,
-              // ensure new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
-              long checkPoint = checkpoints.get(operator) + 1;
-              bsc.purge(sourceIdentifier, checkPoint);
+              // reset publisher (stale operator may still write data until disconnected)
+              // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
+              bsc.reset(sourceIdentifier, 0);
             }
           }
         }
       }
       if (e.getKey() != cs.container) {
-        List<OperatorDeployInfo> deployList = getDeployInfoList(e.getValue(), e.getKey(), checkpoints);
-        DeployRequest r = new DeployRequest(e.getKey(), redeployAckCountdown, failedContainerDeployCnt);
-        r.setNodes(deployList);
+        DeployRequest r = new DeployRequest(redeployAckCountdown, failedContainerDeployCnt);
+        r.setNodes(e.getValue());
         redeployAckCountdown.incrementAndGet();
         StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
@@ -234,40 +229,17 @@ public class StreamingContainerManager
     cs.isComplete = true;
   }
 
-  /**
-   * Create deploy info for logical node.<p>
-   * <br>
-   * @param dnodeId
-   * @param nodeDecl
-   * @return {@link com.malhartech.stram.OperatorDeployInfo}
-   *
-   */
-  private OperatorDeployInfo createModuleDeployInfo(String dnodeId, OperatorWrapper operator)
-  {
-    OperatorDeployInfo ndi = new OperatorDeployInfo();
-    ByteArrayOutputStream os = new ByteArrayOutputStream();
-    try {
-      this.nodeSerDe.write(operator.getOperator(), os);
-      ndi.serializedNode = os.toByteArray();
-      os.close();
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getOperator().getClass() + ")", e);
-    }
-    ndi.declaredId = operator.getId();
-    ndi.id = dnodeId;
-    return ndi;
-  }
 
-  public StreamingContainerContext assignContainerForTest(String containerId, InetSocketAddress bufferServerAddress)
+  public StramChildAgent assignContainerForTest(String containerId, InetSocketAddress bufferServerAddress)
   {
     for (PTContainer container : this.plan.getContainers()) {
       if (container.containerId == null) {
         container.containerId = containerId;
         container.bufferServerAddress = bufferServerAddress;
         StreamingContainerContext scc = newStreamingContainerContext();
-        scc.nodeList = getDeployInfoList(container.operators, container, Collections.<PTOperator, Long>emptyMap());
+        StramChildAgent ca = new StramChildAgent(container, scc);
         containers.put(containerId, new StramChildAgent(container, scc));
-        return scc;
+        return ca;
       }
     }
     throw new IllegalStateException("There are no more containers to deploy.");
@@ -277,29 +249,28 @@ public class StreamingContainerManager
    * Get operators/streams for next container. Multiple operators can share a container.
    *
    * @param containerId
-   * @param bufferServerAddress Buffer server for publishers on the container.
    * @param cdr
    */
-  public void assignContainer(DeployRequest cdr, String containerId, String containerHost, InetSocketAddress bufferServerAddress) {
+  public void assignContainer(ContainerStartRequest cdr, String containerId, String containerHost, InetSocketAddress bufferServerAddr) {
     PTContainer container = cdr.container;
     if (container.containerId != null) {
       LOG.info("Removing existing container agent {}", cdr.container.containerId);
       this.containers.remove(container.containerId);
-    } else {
-      container.bufferServerAddress = bufferServerAddress;
     }
     container.containerId = containerId;
     container.host = containerHost;
-
-    Map<PTOperator, Long> checkpoints = cdr.checkpoints;
-    if (checkpoints == null) {
-      checkpoints = Collections.emptyMap();
-    }
+    container.bufferServerAddress = bufferServerAddr;
 
     StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext());
     containers.put(containerId, sca);
-    cdr.setNodes(getDeployInfoList(container.operators, container, checkpoints));
-    sca.addRequest(cdr);
+
+    // first entry to count down container start(s), signals ready for operator deployment
+    DeployRequest initReq = new DeployRequest(cdr.executeWhenZero, null);
+    sca.addRequest(initReq);
+
+    DeployRequest deployRequest = new DeployRequest(cdr.ackCountdown, cdr.executeWhenZero);
+    deployRequest.setNodes(container.operators);
+    sca.addRequest(deployRequest);
   }
 
   private StreamingContainerContext newStreamingContainerContext() {
@@ -307,104 +278,9 @@ public class StreamingContainerManager
     scc.setWindowSizeMillis(this.windowSizeMillis);
     scc.setStartWindowMillis(this.windowStartMillis);
     scc.setCheckpointDfsPath(this.checkpointFsPath);
-    scc.nodeList = new ArrayList<OperatorDeployInfo>(0);
     return scc;
   }
 
-  /**
-   * Create deploy info for StramChild.
-   * @param container
-   * @param deployNodes
-   * @param checkpoints
-   * @return StreamingContainerContext
-   */
-  private List<OperatorDeployInfo> getDeployInfoList(List<PTOperator> deployNodes, PTContainer container, Map<PTOperator, Long> checkpoints) {
-
-    Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
-    Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
-
-    for (PTOperator node : deployNodes) {
-      OperatorDeployInfo ndi = createModuleDeployInfo(node.id, node.getLogicalNode());
-      Long checkpointWindowId = checkpoints.get(node);
-      if (checkpointWindowId != null) {
-        LOG.debug("Node {} has checkpoint state {}", node.id, Long.toHexString(checkpointWindowId));
-        ndi.checkpointWindowId = checkpointWindowId;
-      }
-      nodes.put(ndi, node);
-      ndi.inputs = new ArrayList<InputDeployInfo>(node.inputs.size());
-      ndi.outputs = new ArrayList<OutputDeployInfo>(node.outputs.size());
-
-      for (PTOutput out : node.outputs) {
-        final StreamDecl streamDecl = out.logicalStream;
-        // buffer server or inline publisher
-        OutputDeployInfo portInfo = new OutputDeployInfo();
-        portInfo.declaredStreamId = streamDecl.getId();
-        portInfo.portName = out.portName;
-
-        if (!(streamDecl.isInline() && this.plan.isDownStreamInline(out))) {
-          portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
-          portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
-          if (streamDecl.getSerDeClass() != null) {
-            portInfo.serDeClassName = streamDecl.getSerDeClass().getName();
-          }
-        } else {
-          // target set below
-          //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
-        }
-
-        ndi.outputs.add(portInfo);
-        publishers.put(node.id + "/" + streamDecl.getId(), portInfo);
-      }
-    }
-
-    // after we know all publishers within container, determine subscribers
-
-    for (Map.Entry<OperatorDeployInfo, PTOperator> nodeEntry : nodes.entrySet()) {
-      OperatorDeployInfo ndi = nodeEntry.getKey();
-      PTOperator node = nodeEntry.getValue();
-      for (PTInput in : node.inputs) {
-        final StreamDecl streamDecl = in.logicalStream;
-        // input from other node(s) OR input adapter
-        if (streamDecl.getSource() == null) {
-          throw new IllegalStateException("source is null: " + in);
-        }
-        PTComponent sourceNode = in.source;
-
-        InputDeployInfo inputInfo = new InputDeployInfo();
-        inputInfo.declaredStreamId = streamDecl.getId();
-        inputInfo.portName = in.portName;
-        inputInfo.sourceNodeId = sourceNode.id;
-        inputInfo.sourcePortName = in.logicalStream.getSource().getPortName();
-        if (in.partition != null) {
-          inputInfo.partitionKeys = Arrays.asList(in.partition);
-        }
-
-        if (streamDecl.isInline() && sourceNode.container == node.container) {
-          // inline input (both operators in same container and inline hint set)
-          OutputDeployInfo outputInfo = publishers.get(sourceNode.id + "/" + streamDecl.getId());
-          if (outputInfo == null) {
-            throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
-          }
-        } else {
-          // buffer server input
-          // FIXME: address to come from upstream output port, should be assigned first
-          InetSocketAddress addr = in.source.container.bufferServerAddress;
-          if (addr == null) {
-            LOG.warn("upstream address not assigned: " + in.source);
-            addr = container.bufferServerAddress;
-          }
-          inputInfo.bufferServerHost = addr.getHostName();
-          inputInfo.bufferServerPort = addr.getPort();
-          if (streamDecl.getSerDeClass() != null) {
-            inputInfo.serDeClassName = streamDecl.getSerDeClass().getName();
-          }
-        }
-        ndi.inputs.add(inputInfo);
-      }
-    }
-
-    return new ArrayList<OperatorDeployInfo>(nodes.keySet());
-  }
 
   public StramChildAgent getContainerAgent(String containerId) {
     StramChildAgent cs = containers.get(containerId);
@@ -427,6 +303,15 @@ public class StreamingContainerManager
       response.shutdown = true;
       return response;
     }
+
+    if (sca.container.bufferServerAddress == null) {
+      // capture dynamically assigned address from container
+      if (heartbeat.bufferServerHost != null) {
+        sca.container.bufferServerAddress = InetSocketAddress.createUnresolved(heartbeat.bufferServerHost, heartbeat.bufferServerPort);
+        LOG.info("Container {} buffer server: {}", sca.container.containerId, sca.container.bufferServerAddress);
+      }
+    }
+
     Map<String, OperatorStatus> statusMap = sca.operators;
     long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
@@ -589,7 +474,7 @@ public class StreamingContainerManager
         }
       }
     }
-    // find checkpoint for downstream dependency, remove checkpoints that are no longer needed
+    // find checkpoint for downstream dependency, remove previous checkpoints
     long c1 = 0;
     synchronized (operator.checkpointWindows) {
       if (operator.checkpointWindows != null && !operator.checkpointWindows.isEmpty()) {
@@ -641,17 +526,22 @@ public class StreamingContainerManager
       // purge stream state when using buffer server
       for (PTOutput out : operator.outputs) {
         final StreamDecl streamDecl = out.logicalStream;
-        if (!(streamDecl.isInline() && this.plan.isDownStreamInline(out))) {
+        if (!(streamDecl.isInline() && out.isDownStreamInline())) {
           // following needs to match the concat logic in StramChild
           String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
           // purge everything from buffer server prior to new checkpoint
           BufferServerClient bsc = bufferServers.get(operator.container.bufferServerAddress);
           if (bsc == null) {
-            bsc = new BufferServerClient(operator.container.bufferServerAddress);
+            // need to use resolved address
+            bsc = new BufferServerClient(new InetSocketAddress(operator.container.bufferServerAddress.getAddress(), operator.container.bufferServerAddress.getPort()));
             bufferServers.put(bsc.addr, bsc);
             LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
           }
-          bsc.purge(sourceIdentifier, operator.checkpointWindows.getFirst()-1);
+          try {
+            bsc.purge(sourceIdentifier, operator.checkpointWindows.getFirst()-1);
+          } catch (Throwable  t) {
+            LOG.error("Failed to purge " + bsc.addr + " " + sourceIdentifier, t);
+          }
         }
       }
     }
