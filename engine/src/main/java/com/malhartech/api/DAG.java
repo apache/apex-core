@@ -554,7 +554,7 @@ public class DAG implements Serializable, DAGConstants
 
   public int getContainerMemoryMB()
   {
-    return confHolder.conf.getInt(STRAM_CONTAINER_MEMORY_MB, 64);
+    return confHolder.conf.getInt(STRAM_CONTAINER_MEMORY_MB, 256);
   }
 
   public int getMasterMemoryMB()

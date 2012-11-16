@@ -4,15 +4,12 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.DAG;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,8 +58,8 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.bufferserver.Server;
-import com.malhartech.stram.StramChildAgent.DeployRequest;
+import com.malhartech.api.DAG;
+import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.StramWebApp;
 
@@ -120,7 +117,6 @@ public class StramAppMaster
   // child container callback
   private StreamingContainerParent rpcImpl;
   private StreamingContainerManager dnmgr;
-  private InetSocketAddress bufferServerAddress;
   private final Clock clock = new SystemClock();
   private final long startTime = clock.getTime();
 
@@ -350,12 +346,6 @@ public class StramAppMaster
 
     LOG.info("Initializing logical topology with {} operators in {} containers", topology.getAllOperators().size(), dnmgr.getNumRequiredContainers());
 
-    // start buffer server
-    com.malhartech.bufferserver.Server s = new Server(0);
-    SocketAddress bindAddr = s.run();
-    this.bufferServerAddress = ((InetSocketAddress) bindAddr);
-    LOG.info("Buffer server started: {}", bufferServerAddress);
-
     StramAppContext appContext = new ClusterAppContextImpl();
     // start web service
     try {
@@ -506,14 +496,14 @@ public class StramAppMaster
         //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
         // get next pending deploy requests
-        DeployRequest cdr = dnmgr.containerStartRequests.poll();
+        ContainerStartRequest cdr = dnmgr.containerStartRequests.poll();
         if (cdr == null) {
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
           releasedContainers.add(allocatedContainer.getId());
         } else {
-          // setup new container context
-          dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), NetUtils.getConnectAddress(this.bufferServerAddress));
+          // setup new container context, with buffer server deployed within container
+          dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), null);
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
           LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, topology, rpcImpl.getAddress());

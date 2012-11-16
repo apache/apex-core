@@ -109,11 +109,11 @@ public class PhysicalPlanTest {
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
 
     PTOutput node1Out = deployer.getOperators(dag.getOperatorWrapper(node1)).get(0).outputs.get(0);
-    Assert.assertTrue("inline " + node1Out, deployer.isDownStreamInline(node1Out));
+    Assert.assertTrue("inline " + node1Out, node1Out.isDownStreamInline());
 
     // per current logic, different container is assigned to second input node
     PTOutput node2Out = deployer.getOperators(dag.getOperatorWrapper(node2)).get(0).outputs.get(0);
-    Assert.assertTrue("inline " + node2Out, deployer.isDownStreamInline(node2Out));
+    Assert.assertTrue("inline " + node2Out, node2Out.isDownStreamInline());
 
   }
 

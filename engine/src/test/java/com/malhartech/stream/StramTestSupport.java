@@ -62,4 +62,19 @@ abstract public class StramTestSupport
       Thread.sleep(20);
     }
   }
+
+  public interface WaitCondition {
+    boolean isComplete();
+  }
+
+  public static void awaitCompletion(WaitCondition c, long timeoutMillis) throws InterruptedException {
+    long startMillis = System.currentTimeMillis();
+    while (System.currentTimeMillis() < (startMillis + timeoutMillis)) {
+      if (c.isComplete()) {
+        return;
+      }
+      Thread.sleep(50);
+    }
+  }
+
 }

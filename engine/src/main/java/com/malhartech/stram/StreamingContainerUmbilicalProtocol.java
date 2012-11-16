@@ -116,11 +116,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 201209071402L;
 
     /**
-     * The list of operators to initially deploy in the container.
-     */
-    public List<OperatorDeployInfo> nodeList;
-
-    /**
      * How frequently should operators heartbeat to stram. Recommended setting is
      * 1000ms. Can be set to 0 for unit testing.
      */
@@ -169,11 +164,13 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.checkpointDfsPath = dfsPath;
     }
 
-    @Override
-    public String toString() {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-          .append("operators", this.nodeList).toString();
-    }
+    public boolean deployBufferServer = true;
+
+    //@Override
+    //public String toString() {
+    //  return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+    //      .append("operators", this.nodeList).toString();
+    //}
   }
 
   /**
@@ -299,6 +296,14 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static class ContainerHeartbeat extends WritableAdapter {
     private static final long serialVersionUID = 1L;
     private String containerId;
+
+    /**
+     * Buffer server address for this container.
+     * Port numbers are dynamically assigned and the master uses this info to deploy subscribers.
+     */
+    public String bufferServerHost;
+    public int bufferServerPort;
+
 
     public String getContainerId() {
       return containerId;

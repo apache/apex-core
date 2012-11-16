@@ -24,6 +24,7 @@ public class Server
 {
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
   public static final int DEFAULT_PORT = 9080;
+  public static final int DEFAULT_BUFFER_SIZE = 64 * 1024 * 1024;
   private final int port;
   private ServerBootstrap bootstrap;
   private String identity;
@@ -34,7 +35,7 @@ public class Server
    */
   public Server(int port)
   {
-    this(port, 64 * 1024 * 1024);
+    this(port, DEFAULT_BUFFER_SIZE);
   }
 
   public Server(int port, int buffersize)

@@ -4,14 +4,20 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.stram.StramLocalCluster;
-import com.malhartech.util.CircularBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import junit.framework.Assert;
+
 import org.junit.Test;
+
+import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.stram.StramLocalCluster;
+import com.malhartech.stream.StramTestSupport;
+import com.malhartech.stream.StramTestSupport.WaitCondition;
+import com.malhartech.util.CircularBuffer;
 
 /**
  *
@@ -20,6 +26,7 @@ import org.junit.Test;
 public class InputOperatorTest
 {
   static HashMap<String, List<?>> collections = new HashMap<String, List<?>>();
+  static AtomicInteger tupleCount = new AtomicInteger();
 
   public static class EvenOddIntegerGeneratorInputOperator implements InputOperator, ActivationListener<OperatorContext>
   {
@@ -101,7 +108,7 @@ public class InputOperatorTest
   {
     DAG dag = new DAG();
     EvenOddIntegerGeneratorInputOperator generator = dag.addOperator("NumberGenerator", EvenOddIntegerGeneratorInputOperator.class);
-    CollectorModule<Number> collector = dag.addOperator("NumberCollector", new CollectorModule<Number>());
+    final CollectorModule<Number> collector = dag.addOperator("NumberCollector", new CollectorModule<Number>());
 
     dag.addStream("EvenIntegers", generator.even, collector.even).setInline(true);
     dag.addStream("OddIntegers", generator.odd, collector.odd).setInline(true);
@@ -109,22 +116,16 @@ public class InputOperatorTest
     final StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
 
-    new Thread("LocalClusterController")
-    {
+    lc.runAsync();
+    WaitCondition c = new WaitCondition() {
       @Override
-      public void run()
-      {
-        try {
-          Thread.sleep(1000);
-        }
-        catch (InterruptedException ex) {
-        }
-
-        lc.shutdown();
+      public boolean isComplete() {
+        return tupleCount.get() > 2;
       }
-    }.start();
+    };
+    StramTestSupport.awaitCompletion(c, 2000);
 
-    lc.run();
+    lc.shutdown();
 
     Assert.assertEquals("Collections size", 2, collections.size());
     Assert.assertFalse("Zero tuple count", collections.get(collector.even.id).isEmpty() && collections.get(collector.odd.id).isEmpty());
@@ -146,6 +147,7 @@ public class InputOperatorTest
     public void process(T tuple)
     {
       list.add(tuple);
+      tupleCount.incrementAndGet();
     }
 
     @Override

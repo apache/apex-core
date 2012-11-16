@@ -32,10 +32,11 @@ class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
   final InetSocketAddress addr;
 
   BufferServerClient(InetSocketAddress addr) {
-    this.addr = addr;
+    // need to use resolved address
+    this.addr = new InetSocketAddress(addr.getHostName(), addr.getPort());
     bootstrap.group(eventLoopGroup)
     .channel(NioSocketChannel.class)
-    .remoteAddress(addr)
+    .remoteAddress(this.addr)
     .handler(new ClientInitializer(this));
   }
 
@@ -43,6 +44,12 @@ class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
     LOG.debug("Purging sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
     Channel channel = bootstrap.connect().syncUninterruptibly().channel();
     ClientHandler.purge(channel, sourceIdentifier, windowId);
+  }
+
+  void reset(String sourceIdentifier, long windowId) {
+    LOG.debug("Reset sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
+    Channel channel = bootstrap.connect().syncUninterruptibly().channel();
+    ClientHandler.reset(channel, sourceIdentifier, windowId);
   }
 
   @Override

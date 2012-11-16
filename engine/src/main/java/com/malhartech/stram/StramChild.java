@@ -5,6 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.*;
+import com.malhartech.bufferserver.Server;
 import com.malhartech.engine.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -19,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.security.PrivilegedExceptionAction;
 import java.util.Map.Entry;
 import java.util.*;
@@ -68,6 +70,8 @@ public class StramChild
   private final Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
   private long firstWindowMillis;
   private int windowWidthMillis;
+  private InetSocketAddress bufferServerAddress;
+  private com.malhartech.bufferserver.Server bufferServer;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -93,11 +97,18 @@ public class StramChild
     if ((this.checkpointFsPath = ctx.getCheckpointDfsPath()) == null) {
       this.checkpointFsPath = "checkpoint-dfs-path-not-configured";
     }
+
     try {
-      deploy(ctx.nodeList);
+      if (ctx.deployBufferServer) {
+        // start buffer server, if it was not set externally
+        bufferServer = new Server(0);
+        SocketAddress bindAddr = bufferServer.run();
+        logger.info("Buffer server started: {}", bindAddr);
+        this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress) bindAddr));
+      }
     }
     catch (Exception ex) {
-      logger.debug("deploy request failed due to {}", ex);
+      logger.warn("deploy request failed due to {}", ex);
     }
   }
 
@@ -441,6 +452,11 @@ public class StramChild
     for (WindowGenerator wg: gens) {
       wg.teardown();
     }
+
+    if (bufferServer != null) {
+      bufferServer.shutdown();
+    }
+
     gens.clear();
   }
 
@@ -470,6 +486,10 @@ public class StramChild
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
       msg.setContainerId(this.containerId);
+      if (this.bufferServerAddress != null) {
+        msg.bufferServerHost = this.bufferServerAddress.getHostName();
+        msg.bufferServerPort = this.bufferServerAddress.getPort();
+      }
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all operators

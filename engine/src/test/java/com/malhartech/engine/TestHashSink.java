@@ -36,6 +36,11 @@ public class TestHashSink<T> implements Sink<T>
     this.count = 0;
   }
 
+  public int size()
+  {
+    return map.size();
+  }
+
   public int getCount(T key)
   {
     int ret = -1;
