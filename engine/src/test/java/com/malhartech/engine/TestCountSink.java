@@ -20,6 +20,11 @@ public class TestCountSink<T> extends TestSink<T>
     super.clear();
   }
 
+  public int getCount()
+  {
+    return count;
+  }
+
   /**
    *
    * @param payload
