@@ -33,7 +33,7 @@ class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
 
   BufferServerClient(InetSocketAddress addr) {
     // need to use resolved address
-    this.addr = new InetSocketAddress(addr.getAddress(), addr.getPort());
+    this.addr = new InetSocketAddress(addr.getHostName(), addr.getPort());
     bootstrap.group(eventLoopGroup)
     .channel(NioSocketChannel.class)
     .remoteAddress(this.addr)
