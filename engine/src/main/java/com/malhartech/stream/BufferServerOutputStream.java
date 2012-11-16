@@ -6,8 +6,11 @@ package com.malhartech.stream;
 import com.google.protobuf.ByteString;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Data.Builder;
+import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.engine.EndWindowTuple;
 import com.malhartech.engine.ResetWindowTuple;
@@ -33,6 +36,43 @@ public class BufferServerOutputStream extends SocketOutputStream
   StreamCodec serde;
   int windowId;
   int writtenBytes;
+
+  protected void write(Builder db) throws RuntimeException
+  {
+    Data d = db.build();
+    //
+    // we should find a place for the following code in the base class.
+    //
+    if (BUFFER_SIZE - writtenBytes > d.getSerializedSize()) {
+      channel.write(d);
+      writtenBytes += d.getSerializedSize();
+    }
+    else {
+      synchronized (wcfl) {
+        if (wcfl.added) {
+          try {
+            wcfl.wait();
+            if (d.getSerializedSize() < BUFFER_SIZE) {
+              channel.write(d);
+            }
+            else {
+              wcfl.added = true;
+              channel.write(d).addListener(wcfl);
+            }
+          }
+          catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+        else {
+          wcfl.added = true;
+          channel.write(d).addListener(wcfl);
+        }
+
+        writtenBytes = d.getSerializedSize();
+      }
+    }
+  }
 
   class WaitingChannelFutureListener implements ChannelFutureListener
   {
@@ -101,57 +141,36 @@ public class BufferServerOutputStream extends SocketOutputStream
     }
     else {
       db.setWindowId(this.windowId);
+      DataStatePair dsp = serde.toByteArray(payload);
+
+      /*
+       * if there is any state write that for the subscriber before we write the data.
+       */
+      if (dsp.state != null) {
+        write(Buffer.Data.newBuilder().setType(DataType.CODEC_STATE).setWindowId(windowId)
+                .setCodecState(Buffer.CodecState.newBuilder().setData(ByteString.copyFrom(dsp.state))));
+      }
+
+      /*
+       * Now that the state if any has been sent, we can proceed with the actual data we want to send.
+       */
       byte partition[] = serde.getPartition(payload);
       if (partition == null) {
         Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
-        sdb.setData(ByteString.copyFrom(serde.toByteArray(payload)));
-
+        sdb.setData(ByteString.copyFrom(dsp.data));
         db.setType(Buffer.Data.DataType.SIMPLE_DATA);
         db.setSimpleData(sdb);
       }
       else {
         Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
         pdb.setPartition(ByteString.copyFrom(partition));
-        pdb.setData(ByteString.copyFrom(serde.toByteArray(payload)));
-
+        pdb.setData(ByteString.copyFrom(dsp.data));
         db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
         db.setPartitionedData(pdb);
       }
     }
 
-    Data d = db.build();
-    //
-    // we should find a place for the following code in the base class.
-    //
-    if (BUFFER_SIZE - writtenBytes > d.getSerializedSize()) {
-      channel.write(d);
-      writtenBytes += d.getSerializedSize();
-    }
-    else {
-      synchronized (wcfl) {
-        if (wcfl.added) {
-          try {
-            wcfl.wait();
-            if (d.getSerializedSize() < BUFFER_SIZE) {
-              channel.write(d);
-            }
-            else {
-              wcfl.added = true;
-              channel.write(d).addListener(wcfl);
-            }
-          }
-          catch (InterruptedException ex) {
-            throw new RuntimeException(ex);
-          }
-        }
-        else {
-          wcfl.added = true;
-          channel.write(d).addListener(wcfl);
-        }
-
-        writtenBytes = d.getSerializedSize();
-      }
-    }
+    write(db);
   }
 
   /**

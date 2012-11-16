@@ -5,6 +5,7 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.ClientHandler;
@@ -27,6 +28,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
   private final StreamCodec serde;
+  DataStatePair dsp = new DataStatePair();
 
   public BufferServerInputStream(StreamCodec serde)
   {
@@ -53,15 +55,21 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   {
     Tuple t;
     switch (data.getType()) {
+      case CODEC_STATE:
+        dsp.state = data.getCodecState().getData().toByteArray();
+        return;
+
       case SIMPLE_DATA:
-        Object o = serde.fromByteArray(data.getSimpleData().getData().toByteArray());
+        dsp.data = data.getSimpleData().getData().toByteArray();
+        Object o = serde.fromByteArray(dsp);
         for (Sink s: sinks) {
           s.process(o);
         }
         return;
 
       case PARTITIONED_DATA:
-        o = serde.fromByteArray(data.getPartitionedData().getData().toByteArray());
+        dsp.data = data.getPartitionedData().getData().toByteArray();
+        o = serde.fromByteArray(dsp);
         for (Sink s: sinks) {
           s.process(o);
         }

@@ -10,11 +10,10 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
-import com.esotericsoftware.kryo.util.ObjectMap;
-import com.esotericsoftware.kryo.util.Util;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.Operator;
 import com.malhartech.api.StreamCodec;
+import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -37,24 +36,25 @@ import org.slf4j.LoggerFactory;
 public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
 {
   private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodec.class);
-  private Output output = new Output(4096, Integer.MAX_VALUE);
+  private Output data = new Output(4096, Integer.MAX_VALUE);
+  private Output state = new Output(4096, Integer.MAX_VALUE);
   private Input input = new Input();
 
   static class ClassIdPair
   {
     final int id;
-    final String type;
+    final String classname;
 
     ClassIdPair()
     {
       id = 0;
-      type = null;
+      classname = null;
     }
 
-    public ClassIdPair(int id, String type)
+    public ClassIdPair(int id, String classname)
     {
       this.id = id;
-      this.type = type;
+      this.classname = classname;
     }
   }
 
@@ -109,45 +109,48 @@ public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
   }
 
   @Override
-  public Object fromByteArray(byte[] bytes)
+  public Object fromByteArray(DataStatePair dspair)
   {
-    input.setBuffer(bytes);
-    Object o = readClassAndObject(input);
-    if (o instanceof ClassIdPair) {
+    if (dspair.state != null) {
       try {
-        do {
-          ClassIdPair pair = (ClassIdPair)o;
-          register(Class.forName(pair.type, false, getClassLoader()), pair.id);
-          o = readClassAndObject(input);
+        input.setBuffer(dspair.state);
+        while (input.position() < input.limit()) {
+          ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
+          register(Class.forName(pair.classname, false, getClassLoader()), pair.id);
         }
-        while (o instanceof ClassIdPair);
       }
       catch (ClassNotFoundException ex) {
         logger.debug("exception", ex);
-        o = null;
+        throw new RuntimeException(ex);
+      }
+      finally {
+        dspair.state = null;
       }
     }
-    return o;
+
+    input.setBuffer(dspair.data);
+    return readClassAndObject(input);
   }
 
   @Override
-  public byte[] toByteArray(Object o)
+  public DataStatePair toByteArray(Object o)
   {
-    output.setPosition(0);
-    writeClassAndObject(output, o);
+    DataStatePair pair = new DataStatePair();
+    data.setPosition(0);
+    writeClassAndObject(data, o);
 
     if (!pairs.isEmpty()) {
-      final Output out = new Output(4096, Integer.MAX_VALUE);
+      state.setPosition(0);
       for (ClassIdPair cip: pairs) {
-        writeClassAndObject(out, cip);
+        writeClassAndObject(state, cip);
       }
       pairs.clear();
 
-      out.write(output.getBuffer(), 0, output.position());
-      return out.toBytes();
+      pair.state = state.toBytes();
     }
 
-    return output.toBytes();
+    pair.data = data.toBytes();
+    return pair;
   }
 
   @Override
@@ -182,16 +185,20 @@ public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
     }
 
     Registration registration = classResolver.getRegistration(type);
+
+
     if (registration == null) {
       if (Proxy.isProxyClass(type)) {
         // If a Proxy class, treat it like an InvocationHandler because the concrete class for a proxy is generated.
         registration = getRegistration(InvocationHandler.class);
       }
-      else if (!type.isEnum() && Enum.class.isAssignableFrom(type)) {
+      else if (!type.isEnum() && Enum.class
+              .isAssignableFrom(type)) {
         // This handles an enum value that is an inner class. Eg: enum A {b{}};
         registration = getRegistration(type.getEnclosingClass());
       }
-      else if (EnumSet.class.isAssignableFrom(type)) {
+      else if (EnumSet.class
+              .isAssignableFrom(type)) {
         registration = classResolver.getRegistration(EnumSet.class);
       }
       if (registration == null) {

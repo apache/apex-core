@@ -29,11 +29,19 @@ public class WindowIdActivatedSink implements Sink
   @Override
   public void process(Object payload)
   {
-    if (payload instanceof Tuple
-            && ((Tuple)payload).getType() == Buffer.Data.DataType.BEGIN_WINDOW
-            && ((Tuple)payload).getWindowId() > windowId) {
-      sink.process(payload);
-      stream.setSink(identifier, sink);
+    if (payload instanceof Tuple) {
+      switch (((Tuple)payload).getType()) {
+        case BEGIN_WINDOW:
+          if (((Tuple)payload).getWindowId() > windowId) {
+            sink.process(payload);
+            stream.setSink(identifier, sink);
+          }
+          break;
+
+        case CODEC_STATE:
+          sink.process(payload);
+          break;
+      }
     }
   }
 }

@@ -7,6 +7,7 @@ package com.malhartech.engine;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.engine.DefaultStreamCodec.ClassIdPair;
 import org.junit.Assert;
 import org.junit.Test;
@@ -71,7 +72,7 @@ public class DefaultStreamCodecTest
   {
   }
 
- @Test
+  @Test
   public void testVirginKryo()
   {
     Kryo coder = new Kryo();
@@ -96,24 +97,29 @@ public class DefaultStreamCodecTest
     TestClass tc = new TestClass("hello!", 42);
 //    String tc = "hello!";
 
-    byte[] tcbytes1 = coder.toByteArray(tc);
-    byte[] tcbytes2 = coder.toByteArray(tc);
-    assert (tcbytes1.length > tcbytes2.length);
+    DataStatePair dsp1 = coder.toByteArray(tc);
+    byte[] state1 = dsp1.state;
+    DataStatePair dsp2 = coder.toByteArray(tc);
+    byte[] state2 = dsp2.state;
+    assert (state1 != null);
+    assert (state2 == null);
+    Assert.assertArrayEquals(dsp1.data, dsp2.data);
 
-    Object tcObject1 = decoder.fromByteArray(tcbytes1);
+    Object tcObject1 = decoder.fromByteArray(dsp1);
     assert (tc.equals(tcObject1));
 
-    Object tcObject2 = decoder.fromByteArray(tcbytes2);
+    Object tcObject2 = decoder.fromByteArray(dsp2);
     assert (tc.equals(tcObject2));
 
     coder.checkpoint();
 
-    tcbytes2 = coder.toByteArray(tc);
-    Assert.assertArrayEquals(tcbytes1, tcbytes2);
+    dsp2 = coder.toByteArray(tc);
+    state2 = dsp2.state;
+    Assert.assertArrayEquals(state1, state2);
 
-    tcbytes1 = coder.toByteArray(tc);
-    assert(tcbytes1.length < tcbytes2.length);
-    tcbytes2 = coder.toByteArray(tc);
-    assert(tcbytes1.length == tcbytes2.length);
+    dsp1 = coder.toByteArray(tc);
+    dsp2 = coder.toByteArray(tc);
+    Assert.assertArrayEquals(dsp1.data, dsp2.data);
+    Assert.assertArrayEquals(dsp1.state, dsp2.state);
   }
 }

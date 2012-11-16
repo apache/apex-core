@@ -9,6 +9,7 @@
 package com.malhartech.api;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  *
@@ -34,25 +35,34 @@ import java.util.Collection;
  */
 public interface StreamCodec<T>
 {
+  public class DataStatePair
+  {
+    public byte[] data;
+    public byte[] state;
+  }
+
   /**
    * Create POJO from the byte array for consumption by the downstream.
+   *
    * @param bytes serialized representation of the object using bytes
    * @return plain old java object
    */
-  T fromByteArray(byte[] bytes);
+  T fromByteArray(DataStatePair dspair);
 
   /**
    * Serialize the POJO emitted by the upstream node to byte array so that
    * it can be transmitted or stored in file
+   *
    * @param o plain old java object
    * @return serialized representation of the object
    */
-  byte[] toByteArray(T o);
+  DataStatePair toByteArray(T o);
 
   /**
    * Get the partition on the object to be delivered to the downstream
    * so that it can be sent to appropriate downstream node if the load
    * balancing per partition is in effect.
+   *
    * @param o object for which the partition has to be determined
    * @return byte array representing the partition for the object
    */
@@ -61,6 +71,7 @@ public interface StreamCodec<T>
   /**
    * Possible partitions that can be generated.
    * Currently stram assumes that this is idempotent.
+   *
    * @return byte[][]
    */
   @Deprecated

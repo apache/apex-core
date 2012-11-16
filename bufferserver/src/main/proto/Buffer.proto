@@ -63,6 +63,10 @@ message ResetRequest {
   required string type = 2;
 }
 
+message CodecState {
+  required bytes data = 1;
+}
+
 message Data {
   enum DataType {
     NO_DATA = 0;
@@ -77,6 +81,7 @@ message Data {
     PURGE_REQUEST = 9;
     RESET_REQUEST = 10;
     CHECKPOINT = 11;
+    CODEC_STATE = 12;
   }
 
   required DataType type = 1;
@@ -91,4 +96,5 @@ message Data {
   optional SubscriberRequest subscribeRequest = 9;
   optional PurgeRequest purgeRequest = 10;
   optional ResetRequest ResetRequest = 11;
+  optional CodecState codecState = 12;
 }
