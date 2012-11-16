@@ -532,8 +532,7 @@ public class StreamingContainerManager
           // purge everything from buffer server prior to new checkpoint
           BufferServerClient bsc = bufferServers.get(operator.container.bufferServerAddress);
           if (bsc == null) {
-            // need to use resolved address
-            bsc = new BufferServerClient(new InetSocketAddress(operator.container.bufferServerAddress.getAddress(), operator.container.bufferServerAddress.getPort()));
+            bsc = new BufferServerClient(operator.container.bufferServerAddress);
             bufferServers.put(bsc.addr, bsc);
             LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
           }
