@@ -159,34 +159,34 @@ public class CheckpointTest
     Assert.assertEquals(1, nodes2.size());
     PTOperator pnode2 = nodes2.get(0);
 
-    Map<PTOperator, Long> checkpoints = new HashMap<PTOperator, Long>();
-    long cp = dnm.updateRecoveryCheckpoints(pnode2, checkpoints);
+    long cp = dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>());
     Assert.assertEquals("no checkpoints " + pnode2, 0, cp);
 
-    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashMap<PTOperator, Long>());
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("no checkpoints " + pnode1, 0, cp);
 
     // adding checkpoints to upstream only does not move recovery checkpoint
     pnode1.checkpointWindows.add(3L);
     pnode1.checkpointWindows.add(5L);
-    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashMap<PTOperator, Long>());
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("no checkpoints " + pnode1, 0L, cp);
+    Assert.assertEquals("checkpoint "+pnode1, 0, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(3L);
-    checkpoints = new HashMap<PTOperator, Long>();
-    cp = dnm.updateRecoveryCheckpoints(pnode1, checkpoints);
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
+    Assert.assertEquals("checkpoint "+pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(4L);
-    checkpoints = new HashMap<PTOperator, Long>();
-    cp = dnm.updateRecoveryCheckpoints(pnode1, checkpoints);
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
+    Assert.assertEquals("checkpoint "+pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode1.checkpointWindows.add(1, 4L);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {3L, 4L, 5L}));
-    checkpoints = new HashMap<PTOperator, Long>();
-    cp = dnm.updateRecoveryCheckpoints(pnode1, checkpoints);
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 4L, cp);
+    Assert.assertEquals("checkpoint "+pnode1, 4L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));
 
   }

@@ -187,6 +187,7 @@ public class PhysicalPlan {
     List<PTInput> inputs;
     List<PTOutput> outputs;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
+    long recoveryCheckpoint = 0;
     int failureCount = 0;
 
     /**
@@ -215,9 +216,7 @@ public class PhysicalPlan {
      * @return long
      */
    public long getRecoveryCheckpoint() {
-     if (checkpointWindows != null && !checkpointWindows.isEmpty())
-       return checkpointWindows.getFirst();
-     return 0;
+     return recoveryCheckpoint;
    }
 
     /**
