@@ -111,6 +111,7 @@ public class LogicalNode implements DataListener
     partitions.add(partition);
   }
 
+  // make it run a lot faster by tracking faster!
   /**
    *
    * @param longWindowId
@@ -142,13 +143,17 @@ public class LogicalNode implements DataListener
             break outer;
           }
           break;
+
+        case CHECKPOINT:
+        case CODEC_STATE:
+          GiveAll.getInstance().distribute(physicalNodes, data);
+          break;
       }
     }
 
     if (iterator.hasNext()) {
       dataAdded(DataListener.NULL_PARTITION);
     }
-
   }
 
   /**

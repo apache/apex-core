@@ -164,7 +164,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-
       Channel previous = subscriberChannels.put(identifier, ctx.channel());
       if (previous != null && previous.id() != ctx.channel().id()) {
         previous.close();
@@ -174,9 +173,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       ln.addChannel(ctx.channel());
     }
     else {
-      /**
-       * if there is already a datalist registered for the type in which this client is interested, then get a iterator on the data items of that data list. If
-       * the datalist is not registered, then create one and register it. Hopefully this one would be used by future upstream nodes.
+      /*
+       * if there is already a datalist registered for the type in which this client is interested,
+       * then get a iterator on the data items of that data list. If the datalist is not registered,
+       * then create one and register it. Hopefully this one would be used by future upstream nodes.
        */
       DataList dl;
       if (publisherBufffers.containsKey(upstream_identifier)) {
