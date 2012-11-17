@@ -593,7 +593,7 @@ public class StramChild
    * @param n
    * @param snr
    */
-  private void processStramRequest(OperatorContext context, StramToNodeRequest snr)
+  private void processStramRequest(OperatorContext context, final StramToNodeRequest snr)
   {
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
@@ -615,6 +615,7 @@ public class StramChild
 
             if (operator instanceof CheckpointListener) {
               ((CheckpointListener)operator).checkpointed(windowId);
+              ((CheckpointListener)operator).committed(snr.getRecoveryCheckpoint());
             }
           }
         });

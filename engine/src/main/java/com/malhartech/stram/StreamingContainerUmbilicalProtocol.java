@@ -346,6 +346,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     private String nodeId;
     private RequestType requestType;
+    private long recoveryCheckpoint;
 
     public String getNodeId() {
       return nodeId;
@@ -361,6 +362,14 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public void setRequestType(RequestType requestType) {
       this.requestType = requestType;
+    }
+
+    public long getRecoveryCheckpoint() {
+      return recoveryCheckpoint;
+    }
+
+    public void setRecoveryCheckpoint(long recoveryCheckpoint) {
+      this.recoveryCheckpoint = recoveryCheckpoint;
     }
 
     @Override

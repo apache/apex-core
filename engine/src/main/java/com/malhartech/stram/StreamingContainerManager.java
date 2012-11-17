@@ -9,7 +9,6 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -429,6 +428,7 @@ public class StreamingContainerManager
             StramToNodeRequest backupRequest = new StramToNodeRequest();
             backupRequest.setNodeId(os.operator.id);
             backupRequest.setRequestType(RequestType.CHECKPOINT);
+            backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
             requests.add(backupRequest);
           }
         }
