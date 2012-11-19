@@ -9,9 +9,10 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -142,7 +143,7 @@ public class StreamingContainerManager
     LOG.info("Initiating recovery for container {}@{}", containerId, cs.container.host);
     // building the checkpoint dependency,
     // downstream operators will appear first in map
-    LinkedHashMap<PTOperator, Long> checkpoints = new LinkedHashMap<PTOperator, Long>();
+    LinkedHashSet<PTOperator> checkpoints = new LinkedHashSet<PTOperator>();
     for (PTOperator node : cs.container.operators) {
       // TODO: traversal needs to include inline upstream operators
       updateRecoveryCheckpoints(node, checkpoints);
@@ -150,7 +151,7 @@ public class StreamingContainerManager
 
     Map<PTContainer, List<PTOperator>> resetNodes = new HashMap<PTContainer, List<PhysicalPlan.PTOperator>>();
     // group by container
-    for (PTOperator node : checkpoints.keySet()) {
+    for (PTOperator node : checkpoints) {
         List<PTOperator> nodes = resetNodes.get(node.container);
         if (nodes == null) {
           nodes = new ArrayList<PhysicalPlan.PTOperator>();
@@ -427,6 +428,7 @@ public class StreamingContainerManager
             StramToNodeRequest backupRequest = new StramToNodeRequest();
             backupRequest.setNodeId(os.operator.id);
             backupRequest.setRequestType(RequestType.CHECKPOINT);
+            backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
             requests.add(backupRequest);
           }
         }
@@ -452,10 +454,10 @@ public class StreamingContainerManager
    * This is done by looking at checkpoints available for downstream dependencies first,
    * and then selecting the most recent available checkpoint that is smaller than downstream.
    * @param operator Operator instance for which to find recovery checkpoint
-   * @param visitedCheckpoints Map into which to collect checkpoints for visited dependencies
+   * @param visited Set into which to collect visited dependencies
    * @return Checkpoint that can be used to recover (along with dependencies in visitedCheckpoints).
    */
-  public long updateRecoveryCheckpoints(PTOperator operator, Map<PTOperator, Long> visitedCheckpoints) {
+  public long updateRecoveryCheckpoints(PTOperator operator, Set<PTOperator> visited) {
     long maxCheckpoint = operator.getRecentCheckpoint();
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : operator.outputs) {
@@ -464,12 +466,11 @@ public class StreamingContainerManager
         if (lDownNode != null) {
           List<PTOperator> downNodes = plan.getOperators(lDownNode);
           for (PTOperator downNode : downNodes) {
-            Long downstreamCheckpoint = visitedCheckpoints.get(downNode);
-            if (downstreamCheckpoint == null) {
+            if (!visited.contains(downNode)) {
               // downstream traversal
-              downstreamCheckpoint = updateRecoveryCheckpoints(downNode, visitedCheckpoints);
+              updateRecoveryCheckpoints(downNode, visited);
             }
-            maxCheckpoint = Math.min(maxCheckpoint, downstreamCheckpoint);
+            maxCheckpoint = Math.min(maxCheckpoint, downNode.recoveryCheckpoint);
           }
         }
       }
@@ -491,8 +492,7 @@ public class StreamingContainerManager
         }
       }
     }
-    visitedCheckpoints.put(operator, c1);
-    return c1;
+    return operator.recoveryCheckpoint = c1;
   }
 
   /**
@@ -502,7 +502,7 @@ public class StreamingContainerManager
    * @param recentCheckpoint
    */
   private void updateCheckpoints() {
-    Map<PTOperator, Long> visitedCheckpoints = new LinkedHashMap<PTOperator, Long>();
+    Set<PTOperator> visitedCheckpoints = new LinkedHashSet<PTOperator>();
     for (OperatorWrapper logicalOperator : plan.getRootOperators()) {
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
@@ -579,7 +579,7 @@ public class StreamingContainerManager
           ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
           ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           ni.failureCount = os.operator.failureCount;
-          ni.lastCheckpoint = hb.getLastBackupWindowId();
+          ni.recoveryCheckpoint = os.operator.recoveryCheckpoint;
         } else {
           // TODO: proper node status tracking
           StramChildAgent cs = containers.get(os.container.containerId);
