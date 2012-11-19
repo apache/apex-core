@@ -69,9 +69,9 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
         case SUBSCRIBER_REQUEST:
           logger.info("Received subscriber request: {}", data);
           boolean contains = subscriberGroups.containsKey(data.getSubscribeRequest().getType());
-          LogicalNode ln = handleSubscriberRequest(data.getSubscribeRequest(), ctx, ((long)data.getSubscribeRequest().getBaseSeconds() << 32) | data.getWindowId());
+          LogicalNode ln = handleSubscriberRequest(data.getSubscribeRequest(), ctx, data.getWindowId());
           if (!contains) {
-            ln.catchUp(data.getSubscribeRequest().getBaseSeconds(), data.getWindowId());
+            ln.catchUp();
           }
           ctx.attr(LOGICAL_NODE).set(ln);
           break;
@@ -150,7 +150,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @param windowId
    */
-  public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, long windowId)
+  public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -190,7 +190,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
                            type,
                            dl.newIterator(identifier, new ProtobufDataInspector(), windowId),
                            getPolicy(request.getPolicy(), null),
-                           windowId);
+                           (long)request.getBaseSeconds() << 32 | windowId);
 
       if (request.getPartitionCount() > 0) {
         for (ByteString bs: request.getPartitionList()) {
@@ -310,7 +310,11 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
   {
-    if (!(cause instanceof java.nio.channels.ClosedChannelException)) {
+    if (cause instanceof java.nio.channels.ClosedChannelException) {
+    }
+    else if (cause instanceof java.io.IOException) {
+    }
+    else {
       logger.info("unexpected exception", cause);
     }
 

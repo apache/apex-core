@@ -8,6 +8,7 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static org.testng.Assert.assertEquals;
@@ -219,6 +220,8 @@ public class NewSubscriberTest
     bsp.deactivate();
     bss.deactivate();
 
+
+    Assert.assertTrue((bss.lastPayload.getWindowId() - 8) * 3 < bss.tupleCount.get());
   }
 
   class ResetTuple implements Tuple

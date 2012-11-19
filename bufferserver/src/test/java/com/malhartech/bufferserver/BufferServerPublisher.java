@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver;
 
 import com.google.protobuf.ByteString;
+import java.util.concurrent.RejectedExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,12 @@ public class BufferServerPublisher extends AbstractSocketPublisher
     }
 
 //    logger.debug("write with data {}", db.build());
-    channel.write(db.build());
+    try {
+      channel.write(db.build());
+    }
+    catch (RejectedExecutionException ree) {
+      
+    }
   }
 
   /**

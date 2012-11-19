@@ -95,7 +95,7 @@ public class InlineStreamTest
     for (int i = 0; i < totalTupleCount; i++) {
       sink.process(i);
     }
-    sink.process(StramTestSupport.generateEndWindowTuple("irrelevant", 0, totalTupleCount));
+    sink.process(StramTestSupport.generateEndWindowTuple("irrelevant", 0));
 
     stream.activate(streamContext);
 

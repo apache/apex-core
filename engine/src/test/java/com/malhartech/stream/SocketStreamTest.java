@@ -116,7 +116,7 @@ public class SocketStreamTest
     LOG.debug("Sending hello message");
     oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
     oss.process(StramTestSupport.generateTuple("hello", 0));
-    oss.process(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0, 1));
+    oss.process(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0));
     oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
     if (messageCount.get() == 0) {
       synchronized (SocketStreamTest.this) {

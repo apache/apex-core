@@ -53,7 +53,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
   {
     tupleCount.incrementAndGet();
-    logger.debug("received {}", data);
+//    logger.debug("received {}", data);
     if (firstPayload == null) {
       firstPayload = data;
     }

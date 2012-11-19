@@ -30,10 +30,9 @@ abstract public class StramTestSupport
     return bwt;
   }
 
-  public static Tuple generateEndWindowTuple(String nodeid, int windowId, int tupleCount)
+  public static Tuple generateEndWindowTuple(String nodeid, int windowId)
   {
     EndWindowTuple t = new EndWindowTuple();
-    t.setTupleCount(tupleCount);
     t.setWindowId(windowId);
     return t;
   }

@@ -36,6 +36,7 @@ public class LogicalNode implements DataListener
   private final DataListIterator iterator;
   private final long windowId;
   private long baseSeconds;
+  private boolean caughtup;
 
   /**
    *
@@ -120,7 +121,7 @@ public class LogicalNode implements DataListener
    *
    * @param windowId
    */
-  public synchronized void catchUp(int intBaseSeconds, int intWindowId)
+  public synchronized void catchUp()
   {
     int intervalMillis;
     /*
@@ -143,6 +144,7 @@ public class LogicalNode implements DataListener
         case BEGIN_WINDOW:
           if ((baseSeconds | iterator.getWindowId()) >= windowId) {
             GiveAll.getInstance().distribute(physicalNodes, data);
+            caughtup = true;
             break outer;
           }
           break;
@@ -165,12 +167,13 @@ public class LogicalNode implements DataListener
    */
   public synchronized void dataAdded(ByteBuffer partition)
   {
-    /*
-     * consume as much data as you can before running out of steam
-     */
-    if (partitions.isEmpty()) {
-      while (iterator.hasNext()) {
-        SerializedData data = iterator.next();
+    if (caughtup) {
+      /*
+       * consume as much data as you can before running out of steam
+       */
+      if (partitions.isEmpty()) {
+        while (iterator.hasNext()) {
+          SerializedData data = iterator.next();
           switch (iterator.getType()) {
             case PARTITIONED_DATA:
             case SIMPLE_DATA:
@@ -188,32 +191,36 @@ public class LogicalNode implements DataListener
               GiveAll.getInstance().distribute(physicalNodes, data);
               break;
           }
+        }
+      }
+      else {
+        while (iterator.hasNext()) {
+          SerializedData data = iterator.next();
+          switch (iterator.getType()) {
+            case PARTITIONED_DATA:
+              if (partitions.contains(((Data)iterator.getData()).getPartitionedData().getPartition().asReadOnlyByteBuffer())) {
+                policy.distribute(physicalNodes, data);
+              }
+              break;
+
+            case NO_DATA:
+            case SIMPLE_DATA:
+              break;
+
+            case RESET_WINDOW:
+              Data resetWindow = (Data)iterator.getData();
+              baseSeconds = (long)resetWindow.getWindowId() << 32;
+              break;
+
+            default:
+              GiveAll.getInstance().distribute(physicalNodes, data);
+              break;
+          }
+        }
       }
     }
     else {
-      while (iterator.hasNext()) {
-        SerializedData data = iterator.next();
-        switch (iterator.getType()) {
-          case PARTITIONED_DATA:
-            if (partitions.contains(((Data)iterator.getData()).getPartitionedData().getPartition().asReadOnlyByteBuffer())) {
-              policy.distribute(physicalNodes, data);
-            }
-            break;
-
-          case NO_DATA:
-          case SIMPLE_DATA:
-            break;
-
-          case RESET_WINDOW:
-            Data resetWindow = (Data)iterator.getData();
-            baseSeconds = (long)resetWindow.getWindowId() << 32;
-            break;
-
-          default:
-            GiveAll.getInstance().distribute(physicalNodes, data);
-            break;
-        }
-      }
+      catchUp();
     }
   }
 
