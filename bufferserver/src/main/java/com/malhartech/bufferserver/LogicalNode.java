@@ -34,6 +34,8 @@ public class LogicalNode implements DataListener
   private final HashSet<ByteBuffer> partitions;
   private final Policy policy;
   private final DataListIterator iterator;
+  private final long windowId;
+  private long baseSeconds;
 
   /**
    *
@@ -42,7 +44,7 @@ public class LogicalNode implements DataListener
    * @param iterator
    * @param policy
    */
-  LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy)
+  LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy, long startingWindowId)
   {
     this.upstream = upstream;
     this.group = group;
@@ -56,6 +58,8 @@ public class LogicalNode implements DataListener
     else {
       throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
     }
+
+    windowId = startingWindowId;
   }
 
   /**
@@ -114,11 +118,10 @@ public class LogicalNode implements DataListener
   // make it run a lot faster by tracking faster!
   /**
    *
-   * @param longWindowId
+   * @param windowId
    */
-  public synchronized void catchUp(long longWindowId)
+  public synchronized void catchUp(int intBaseSeconds, int intWindowId)
   {
-    long baseSeconds = 0;
     int intervalMillis;
     /*
      * fast forward to catch up with the windowId without consuming
@@ -138,7 +141,7 @@ public class LogicalNode implements DataListener
           break;
 
         case BEGIN_WINDOW:
-          if ((baseSeconds | iterator.getWindowId()) >= longWindowId) {
+          if ((baseSeconds | iterator.getWindowId()) >= windowId) {
             GiveAll.getInstance().distribute(physicalNodes, data);
             break outer;
           }
@@ -168,19 +171,23 @@ public class LogicalNode implements DataListener
     if (partitions.isEmpty()) {
       while (iterator.hasNext()) {
         SerializedData data = iterator.next();
-        switch (iterator.getType()) {
-          case PARTITIONED_DATA:
-          case SIMPLE_DATA:
-            policy.distribute(physicalNodes, data);
-            break;
+          switch (iterator.getType()) {
+            case PARTITIONED_DATA:
+            case SIMPLE_DATA:
+              policy.distribute(physicalNodes, data);
+              break;
 
-          case NO_DATA:
-            break;
+            case NO_DATA:
+              break;
 
-          default:
-            GiveAll.getInstance().distribute(physicalNodes, data);
-            break;
-        }
+            case RESET_WINDOW:
+              Data resetWindow = (Data)iterator.getData();
+              baseSeconds = (long)resetWindow.getWindowId() << 32;
+
+            default:
+              GiveAll.getInstance().distribute(physicalNodes, data);
+              break;
+          }
       }
     }
     else {
@@ -195,6 +202,11 @@ public class LogicalNode implements DataListener
 
           case NO_DATA:
           case SIMPLE_DATA:
+            break;
+
+          case RESET_WINDOW:
+            Data resetWindow = (Data)iterator.getData();
+            baseSeconds = (long)resetWindow.getWindowId() << 32;
             break;
 
           default:

@@ -41,7 +41,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
   public static void publish(Channel channel, String identifier, String type, long startingWindowId)
   {
     Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
-    prb.setIdentifier(identifier).setType(type).setBaseSeconds((int)(startingWindowId >> 32));
+    prb.setIdentifier(identifier).setBaseSeconds((int)(startingWindowId >> 32));
 
 
     Data.Builder db = Data.newBuilder();
@@ -89,7 +89,6 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
           String id,
           String down_type,
           String node,
-          String type,
           Collection<byte[]> partitions,
           long startingWindowId)
   {
@@ -97,7 +96,6 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     srb.setIdentifier(id);
     srb.setType(down_type);
     srb.setUpstreamIdentifier(node);
-    srb.setUpstreamType(type);
     srb.setBaseSeconds((int)(startingWindowId >> 32));
 
     if (partitions != null) {
@@ -129,7 +127,6 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     Buffer.PurgeRequest.Builder prb = Buffer.PurgeRequest.newBuilder();
     prb.setBaseSeconds((int)(windowId >> 32));
     prb.setIdentifier(id);
-    prb.setType("irrelevant");
 
     Data.Builder builder = Data.newBuilder();
     builder.setType(DataType.PURGE_REQUEST);
@@ -143,7 +140,6 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
   {
     Buffer.ResetRequest.Builder rrb = Buffer.ResetRequest.newBuilder();
     rrb.setIdentifier(id);
-    rrb.setType("irrelevant");
 
     Data.Builder builder = Data.newBuilder();
     builder.setType(DataType.RESET_REQUEST);

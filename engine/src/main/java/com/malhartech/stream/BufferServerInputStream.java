@@ -46,7 +46,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     ClientHandler.subscribe(channel,
                             context.getSinkId(),
                             context.getId() + '/' + context.getSinkId(),
-                            context.getSourceId(), type,
+                            context.getSourceId(),
                             context.getPartitions(), context.getStartingWindowId());
   }
 
@@ -55,6 +55,10 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   {
     Tuple t;
     switch (data.getType()) {
+      case CHECKPOINT:
+        serde.checkpoint();
+        return;
+
       case CODEC_STATE:
         dsp.state = data.getCodecState().getData().toByteArray();
         return;

@@ -34,18 +34,10 @@ public class BufferServerPublisher extends AbstractSocketPublisher
 
       switch (t.getType()) {
         case BEGIN_WINDOW:
-          Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
-          bw.setNode("SOS");
-          db.setBeginWindow(bw);
           this.windowId = db.getWindowId();
           break;
 
         case END_WINDOW:
-          Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
-          ew.setNode("SOS");
-          ew.setTupleCount(0);
-
-          db.setEndWindow(ew);
           break;
 
         case END_STREAM:

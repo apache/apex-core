@@ -65,7 +65,7 @@ public class ProtobufDataInspector implements DataIntrospector
    * @return long
    */
   @Override
-  public final long getWindowId(SerializedData data)
+  public final int getWindowId(SerializedData data)
   {
     readyMessage(data);
     return previousMessage instanceof Data ? previousMessage.getWindowId() : 0;

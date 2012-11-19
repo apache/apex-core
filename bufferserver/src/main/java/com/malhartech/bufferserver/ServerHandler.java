@@ -69,9 +69,9 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
         case SUBSCRIBER_REQUEST:
           logger.info("Received subscriber request: {}", data);
           boolean contains = subscriberGroups.containsKey(data.getSubscribeRequest().getType());
-          LogicalNode ln = handleSubscriberRequest(data.getSubscribeRequest(), ctx);
+          LogicalNode ln = handleSubscriberRequest(data.getSubscribeRequest(), ctx, ((long)data.getSubscribeRequest().getBaseSeconds() << 32) | data.getWindowId());
           if (!contains) {
-            ln.catchUp(((long)data.getSubscribeRequest().getBaseSeconds() << 32) | data.getWindowId());
+            ln.catchUp(data.getSubscribeRequest().getBaseSeconds(), data.getWindowId());
           }
           ctx.attr(LOGICAL_NODE).set(ln);
           break;
@@ -122,7 +122,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
 //    }
 
     String identifier = request.getIdentifier();
-    String type = request.getType();
 
     DataList dl;
 
@@ -138,7 +137,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       dl = publisherBufffers.get(identifier);
     }
     else {
-      dl = new DataList(identifier, type, bufferSize);
+      dl = new DataList(identifier, bufferSize);
       publisherBufffers.put(identifier, dl);
     }
 
@@ -151,7 +150,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @param windowId
    */
-  public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx)
+  public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, long windowId)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -183,14 +182,15 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
         dl = publisherBufffers.get(upstream_identifier);
       }
       else {
-        dl = new DataList(upstream_identifier, type, bufferSize);
+        dl = new DataList(upstream_identifier, bufferSize);
         publisherBufffers.put(upstream_identifier, dl);
       }
 
       ln = new LogicalNode(upstream_identifier,
                            type,
-                           dl.newIterator(identifier, new ProtobufDataInspector()),
-                           getPolicy(request.getPolicy(), null));
+                           dl.newIterator(identifier, new ProtobufDataInspector(), windowId),
+                           getPolicy(request.getPolicy(), null),
+                           windowId);
 
       if (request.getPartitionCount() > 0) {
         for (ByteString bs: request.getPartitionList()) {

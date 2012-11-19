@@ -92,7 +92,7 @@ public class Client
     Bootstrap bootstrap = new Bootstrap();
     bootstrap.group(new NioEventLoopGroup())
             .channel(NioSocketChannel.class)
-//            .option(ChannelOption.ALLOW_HALF_CLOSURE, true)
+            //            .option(ChannelOption.ALLOW_HALF_CLOSURE, true)
             .remoteAddress(host, port)
             .handler(new ClientInitializer(new ClientHandler()));
 
@@ -106,7 +106,7 @@ public class Client
       ClientHandler.publish(channel, node, type, 0L);
     }
     else {
-      ClientHandler.subscribe(channel, id, down_type, node, type, partitions, 0L);
+      ClientHandler.subscribe(channel, id, down_type, node, partitions, 0L);
     }
   }
 

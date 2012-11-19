@@ -27,11 +27,14 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   private final Collection<byte[]> partitions;
   AtomicInteger tupleCount = new AtomicInteger(0);
   Data firstPayload, lastPayload;
+  long windowId;
 
-  public BufferServerSubscriber(String sourceId, Collection<byte[]> partitions) {
+  public BufferServerSubscriber(String sourceId, Collection<byte[]> partitions)
+  {
     this.sourceId = sourceId;
     this.partitions = partitions;
   }
+
   @Override
   public void activate()
   {
@@ -39,17 +42,18 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
     firstPayload = lastPayload = null;
     super.activate();
     ClientHandler.subscribe(channel,
-                                     "BufferServerSubscriber",
-                                     "BufferServerOutput/BufferServerSubscriber",
-                                     sourceId, "irrelevant",
-                                     partitions, 0);
+                            "BufferServerSubscriber",
+                            "BufferServerOutput/BufferServerSubscriber",
+                            sourceId,
+                            partitions,
+                            windowId);
   }
 
   @Override
   public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
   {
     tupleCount.incrementAndGet();
-//    logger.debug("received {}", data);
+    logger.debug("received {}", data);
     if (firstPayload == null) {
       firstPayload = data;
     }

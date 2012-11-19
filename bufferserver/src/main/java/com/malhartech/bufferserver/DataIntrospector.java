@@ -12,35 +12,35 @@ import java.nio.ByteBuffer;
  *
  * Looks at the data and provide information about it<p>
  * <br>
- * 
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface DataIntrospector
 {
     /**
-     * 
+     *
      * @param data
      * @return DataType
      */
   public DataType getType(SerializedData data);
 
   /**
-   * 
+   *
    * @param data
    * @return long
    */
-  public long getWindowId(SerializedData data);
+  public int getWindowId(SerializedData data);
 
   /**
-   * 
+   *
    * @param data
    * @return Object
    */
   public Object getData(SerializedData data);
 
   /**
-   * 
-   * @param previous 
+   *
+   * @param previous
    */
   public void wipeData(SerializedData previous);
 }

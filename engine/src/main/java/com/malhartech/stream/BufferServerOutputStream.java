@@ -108,21 +108,13 @@ public class BufferServerOutputStream extends SocketOutputStream
       switch (t.getType()) {
         case CHECKPOINT:
           serde.checkpoint();
-          return;
+          break;
 
         case BEGIN_WINDOW:
-          Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
-          bw.setNode("SOS");
-          db.setBeginWindow(bw);
           this.windowId = db.getWindowId();
           break;
 
         case END_WINDOW:
-          Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
-          ew.setNode("SOS");
-          ew.setTupleCount(((EndWindowTuple)t).getTupleCount());
-
-          db.setEndWindow(ew);
           break;
 
         case END_STREAM:

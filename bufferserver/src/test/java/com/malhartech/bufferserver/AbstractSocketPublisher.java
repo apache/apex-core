@@ -13,6 +13,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundMessageHandlerAdapter;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import java.nio.channels.ClosedChannelException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,5 +58,14 @@ public abstract class AbstractSocketPublisher extends ChannelOutboundMessageHand
   {
     channel.flush().awaitUninterruptibly();
     channel.close();
+  }
+
+  @Override
+  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
+          throws Exception
+  {
+    if (!(cause instanceof ClosedChannelException)) {
+      ctx.fireExceptionCaught(cause);
+    }
   }
 }

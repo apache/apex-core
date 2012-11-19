@@ -19,15 +19,6 @@ message ResetWindow {
   required uint32 width = 1;
 }
 
-message BeginWindow {
-  required string node = 1;
-}
-
-message EndWindow {
-  required string node = 1;
-  required uint32 tuple_count = 2;
-}
-
 message SubscriberRequest {
   enum PolicyType {
     CUSTOM = 0;
@@ -41,26 +32,22 @@ message SubscriberRequest {
   required string type = 2;
   optional uint32 base_seconds = 3 [default = 0];
   optional string upstream_identifier = 4;
-  required string upstream_type = 5;
   repeated bytes partition = 6;
   optional PolicyType policy = 7 [default = GIVE_ALL ];
 }
 
 message PublisherRequest {
   required string identifier = 1;
-  required string type = 2;
-  optional uint32 base_seconds = 3 [default = 0];
+  optional uint32 base_seconds = 2 [default = 0];
 }
 
 message PurgeRequest {
   required string identifier = 1;
-  required string type = 2;
-  optional uint32 base_seconds = 3 [default = 0];
+  optional uint32 base_seconds = 2 [default = 0];
 }
 
 message ResetRequest {
   required string identifier = 1;
-  required string type = 2;
 }
 
 message CodecState {
@@ -88,13 +75,11 @@ message Data {
   required uint32 window_id = 2;
 
   optional ResetWindow resetWindow = 3;
-  optional BeginWindow beginWindow = 4;
-  optional SimpleData simpleData = 5;
-  optional PartitionedData partitionedData = 6;
-  optional EndWindow endWindow = 7;
-  optional PublisherRequest publishRequest = 8;
-  optional SubscriberRequest subscribeRequest = 9;
-  optional PurgeRequest purgeRequest = 10;
-  optional ResetRequest ResetRequest = 11;
-  optional CodecState codecState = 12;
+  optional SimpleData simpleData = 4;
+  optional PartitionedData partitionedData = 5;
+  optional PublisherRequest publishRequest = 6;
+  optional SubscriberRequest subscribeRequest = 7;
+  optional PurgeRequest purgeRequest = 8;
+  optional ResetRequest ResetRequest = 9;
+  optional CodecState codecState = 10;
 }

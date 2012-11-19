@@ -28,18 +28,12 @@ public class DataList
 {
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
   private final String identifier;
-  private final String type;
   private final Integer capacity;
   HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
   HashSet<DataListener> all_listeners = new HashSet<DataListener>();
   static volatile DataArray free = null;
   volatile DataArray first;
   volatile DataArray last;
-
-  Object getType()
-  {
-    return this.type;
-  }
 
   synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
   {
@@ -48,8 +42,10 @@ public class DataList
     for (DataArray temp = first; temp != null; temp = temp.next) {
       if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
         if (temp != last) {
-          last.next = free;
-          free = temp.next;
+          synchronized (this.capacity) {
+            last.next = free;
+            free = temp.next;
+          }
           temp.next = null;
           last = temp;
         }
@@ -399,21 +395,20 @@ public class DataList
     }
   }
 
-  public DataList(String identifier, String type, int capacity)
+  public DataList(String identifier, int capacity)
   {
     this.identifier = identifier;
-    this.type = type;
     this.capacity = capacity;
 
     first = last = getDataArray(capacity);
   }
 
-  public DataList(String identifier, String type)
+  public DataList(String identifier)
   {
     /*
      * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
      */
-    this(identifier, type, 64 * 1024 * 1024);
+    this(identifier, 64 * 1024 * 1024);
   }
 
   public final void flush()
@@ -471,20 +466,35 @@ public class DataList
    */
   private final HashMap<String, DataListIterator> iterators = new HashMap<String, DataListIterator>();
 
-  public Iterator<SerializedData> newIterator(String identifier, DataIntrospector di)
+  public Iterator<SerializedData> newIterator(String identifier, DataIntrospector di, long windowId)
   {
-    DataListIterator dli;
-    first.lockRead();
+    for (DataArray temp = first; temp != null; temp = temp.next) {
+      if (true || temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
+        temp.lockWrite();
+        try {
+          DataListIterator dli = new DataListIterator(temp, di);
+          synchronized (iterators) {
+            iterators.put(identifier, dli);
+          }
+          return dli;
+        }
+        finally {
+          temp.unlockWrite();
+        }
+      }
+    }
+
+    last.lockRead();
     try {
-      dli = new DataListIterator(first, di);
+      DataListIterator dli = new DataListIterator(last, di);
       synchronized (iterators) {
         iterators.put(identifier, dli);
       }
+      return dli;
     }
     finally {
-      first.unlockRead();
+      last.unlockRead();
     }
-    return dli;
   }
 
   /**
@@ -602,8 +612,6 @@ public class DataList
   {
     System.out.println("capacity = " + capacity);
     System.out.println("identifier = " + identifier);
-    System.out.println("type = " + type);
-
     DataArray tmp = first;
     while (tmp != null) {
       System.out.println("offset = " + tmp.offset);

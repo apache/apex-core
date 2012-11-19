@@ -261,29 +261,30 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testReblishLowerWindow() throws InterruptedException
   {
+    logger.debug("test republish");
     bsp.baseWindow = 10;
     bsp.windowId = 0;
     bsp.activate();
     Thread.sleep(10);
 
-    BeginTuple bt = new BeginTuple();
-    bt.id = 0L;
-    bsp.publishMessage(bt);
+    BeginTuple bt0 = new BeginTuple();
+    bt0.id = 0L;
+    bsp.publishMessage(bt0);
 
-    for (int i = 0; i < 100; i++) {
-      bsp.publishMessage(new byte[i]);
+    for (int i = 0; i < 2; i++) {
+      bsp.publishMessage(new byte[]{(byte)i});
     }
 
-    EndTuple et = new EndTuple();
-    et.id = bt.id;
-    bsp.publishMessage(et);
+    EndTuple et0 = new EndTuple();
+    et0.id = bt0.id;
+    bsp.publishMessage(et0);
 
     BeginTuple bt1 = new BeginTuple();
-    bt1.id = bt.id + 1;
+    bt1.id = bt0.id + 1;
     bsp.publishMessage(bt1);
 
-    for (int i = 0; i < 100; i++) {
-      bsp.publishMessage(new byte[i]);
+    for (int i = 0; i < 2; i++) {
+      bsp.publishMessage(new byte[]{(byte)i});
     }
 
     EndTuple et1 = new EndTuple();
@@ -295,7 +296,7 @@ public class ServerTest
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 203) {
+      if (bss.tupleCount.get() > 7) {
         break;
       }
     }
@@ -304,7 +305,7 @@ public class ServerTest
     bsp.deactivate();
     bss.deactivate();
 
-    assertEquals(bss.tupleCount.get(), 204);
+    assertEquals(bss.tupleCount.get(), 8);
   }
 
   @Test(dependsOnMethods = {"testReblishLowerWindow"})
