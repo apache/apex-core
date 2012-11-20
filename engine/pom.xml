@@ -3,9 +3,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.malhartech</groupId>
+  <parent>
+    <groupId>com.malhartech</groupId>
+    <artifactId>malhar-framework</artifactId>
+    <version>0.1-SNAPSHOT</version>
+  </parent>
+
   <artifactId>malhar-stram</artifactId>
-  <version>0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>Streaming Application Manager</name>
@@ -232,32 +236,6 @@
       </build>
     </profile>
 
-    <!-- mvn package -Prelease -->
-    <profile>
-      <id>release</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <properties>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>javadoc</goal>
-                  <goal>jar</goal>
-                </goals>
-                <phase>prepare-package</phase>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
     <profile>
       <id>fullTests</id>
       <properties>

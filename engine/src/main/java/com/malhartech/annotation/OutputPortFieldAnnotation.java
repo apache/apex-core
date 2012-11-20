@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
 
 /**
 *
-* Annotation for input ports on streaming operators.<p>
+* Annotation for output ports on streaming operators.<p>
 *
 */
 @Documented
