@@ -18,14 +18,15 @@ public interface DataListener
 {
   public static final ByteBuffer NULL_PARTITION = ByteBuffer.allocate(0);
 
+  public void setBaseSeconds(int baseSeconds);
   /**
-   * 
-   * @param partition 
+   *
+   * @param partition
    */
   public void dataAdded(ByteBuffer partition);
 
   /**
-   * 
+   *
    * @param partitions
    * @return int
    */

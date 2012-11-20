@@ -255,4 +255,9 @@ public class LogicalNode implements DataListener
   {
     return upstream;
   }
+
+  public void setBaseSeconds(int baseSeconds)
+  {
+    this.baseSeconds = baseSeconds;
+  }
 }

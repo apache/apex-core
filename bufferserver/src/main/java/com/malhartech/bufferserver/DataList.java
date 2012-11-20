@@ -34,6 +34,7 @@ public class DataList
   static volatile DataArray free = null;
   volatile DataArray first;
   volatile DataArray last;
+  private final int baseSeconds;
 
   synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
   {
@@ -395,20 +396,21 @@ public class DataList
     }
   }
 
-  public DataList(String identifier, int capacity)
+  public DataList(String identifier, int capacity, int baseSeconds)
   {
     this.identifier = identifier;
     this.capacity = capacity;
+    this.baseSeconds = baseSeconds;
 
     first = last = getDataArray(capacity);
   }
 
-  public DataList(String identifier)
+  public DataList(String identifier, int baseSeconds)
   {
     /*
      * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
      */
-    this(identifier, 64 * 1024 * 1024);
+    this(identifier, 64 * 1024 * 1024, baseSeconds);
   }
 
   public final void flush()
@@ -560,6 +562,7 @@ public class DataList
   public void addDataListener(DataListener dl)
   {
     all_listeners.add(dl);
+    dl.setBaseSeconds(baseSeconds);
     ArrayList<ByteBuffer> partitions = new ArrayList<ByteBuffer>();
     if (dl.getPartitions(partitions) > 0) {
       for (ByteBuffer partition: partitions) {
@@ -603,7 +606,6 @@ public class DataList
         listeners.get(DataListener.NULL_PARTITION).remove(dl);
       }
     }
-
 
     all_listeners.remove(dl);
   }
