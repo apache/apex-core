@@ -15,11 +15,11 @@ import java.util.List;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class PartitionAwareSink implements Sink
+public class PartitionAwareSink<T> implements Sink<T>
 {
-  private final StreamCodec serde;
+  private final StreamCodec<T> serde;
   private final HashSet<ByteBuffer> partitions;
-  private volatile Sink output;
+  private volatile Sink<T> output;
 
   /**
    *
@@ -27,7 +27,7 @@ public class PartitionAwareSink implements Sink
    * @param partitions
    * @param output
    */
-  public PartitionAwareSink(StreamCodec serde, List<byte[]> partitions, Sink output)
+  public PartitionAwareSink(StreamCodec<T> serde, List<byte[]> partitions, Sink<T> output)
   {
     this.serde = serde;
 
@@ -44,7 +44,7 @@ public class PartitionAwareSink implements Sink
    * @param payload
    */
   @Override
-  public void process(Object payload)
+  public void process(T payload)
   {
     if (payload instanceof Tuple) {
       output.process(payload);
