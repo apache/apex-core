@@ -492,6 +492,7 @@ public class StreamingContainerManager
         }
       }
     }
+    visited.add(operator);
     return operator.recoveryCheckpoint = c1;
   }
 

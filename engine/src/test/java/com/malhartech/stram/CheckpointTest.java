@@ -162,8 +162,10 @@ public class CheckpointTest
     long cp = dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>());
     Assert.assertEquals("no checkpoints " + pnode2, 0, cp);
 
-    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
+    HashSet<PTOperator> s = new HashSet<PTOperator>();
+    cp = dnm.updateRecoveryCheckpoints(pnode1, s);
     Assert.assertEquals("no checkpoints " + pnode1, 0, cp);
+    Assert.assertEquals("number dependencies " + s, 2, s.size());
 
     // adding checkpoints to upstream only does not move recovery checkpoint
     pnode1.checkpointWindows.add(3L);
