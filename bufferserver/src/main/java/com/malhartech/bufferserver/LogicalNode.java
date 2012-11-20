@@ -258,6 +258,6 @@ public class LogicalNode implements DataListener
 
   public void setBaseSeconds(int baseSeconds)
   {
-    this.baseSeconds = baseSeconds;
+    this.baseSeconds = (long)baseSeconds << 32;
   }
 }
