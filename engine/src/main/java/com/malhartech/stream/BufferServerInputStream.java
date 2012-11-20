@@ -24,13 +24,13 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
   private final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
-  private long baseSeconds = 0;
+  private long baseSeconds;
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink[] sinks = NO_SINKS;
-  private final StreamCodec serde;
+  private final StreamCodec<Object> serde;
   DataStatePair dsp = new DataStatePair();
 
-  public BufferServerInputStream(StreamCodec serde)
+  public BufferServerInputStream(StreamCodec<Object> serde)
   {
     this.serde = serde;
   }
@@ -41,7 +41,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     super.activate(context);
     activateSinks();
 
-    String type = "unused";
+    baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId()});
     ClientHandler.subscribe(channel,
                             context.getSinkId(),
