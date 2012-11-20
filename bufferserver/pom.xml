@@ -3,9 +3,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.malhartech</groupId>
+  <parent>
+    <groupId>com.malhartech</groupId>
+    <artifactId>malhar-framework</artifactId>
+    <version>0.1-SNAPSHOT</version>
+  </parent>
+
   <artifactId>malhar-bufferserver</artifactId>
-  <version>0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
   <description>Interface for nodes from 2 different containers to talk to each other.</description>
 
