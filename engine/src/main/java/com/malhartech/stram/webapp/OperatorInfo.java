@@ -37,7 +37,8 @@ public class OperatorInfo {
   public String status;
   public long lastHeartbeat;
   public long failureCount;
-  public long recoveryCheckpoint;
+  public long recoveryWindowId;
+  public long currentWindowId;
 
   public OperatorInfo() {
   }

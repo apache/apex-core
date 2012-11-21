@@ -134,6 +134,7 @@ public class StramChildAgent {
     final PTContainer container;
     long totalTuplesProcessed;
     long totalTuplesEmitted;
+    long currentWindowId;
     MovingAverage tuplesProcessedPSMA10 = new MovingAverage(10);
     MovingAverage tuplesEmittedPSMA10 = new MovingAverage(10);
 
