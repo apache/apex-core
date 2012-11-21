@@ -115,6 +115,6 @@ public class Codec
 
   public static String getStringWindowId(long windowId)
   {
-    return "base = " + (windowId >> 32) + " window = " + (windowId & 0xffffffff);
+    return String.valueOf(windowId >> 32) + "[" + (int)windowId + "]";
   }
 }
