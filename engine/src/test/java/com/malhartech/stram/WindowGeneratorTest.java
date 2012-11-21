@@ -4,6 +4,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.Sink;
+import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.*;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -141,13 +142,13 @@ public class WindowGeneratorTest
             currentWindow.set(windowId);
             beginWindowCount.incrementAndGet();
             windowXor.set(windowXor.get() ^ windowId);
-            System.out.println("begin: " + Long.toHexString(windowId) + " (" + Long.toHexString(System.currentTimeMillis() / 1000) + ")");
+            System.out.println("begin: " + Codec.getStringWindowId(windowId) + " (" + Codec.getStringWindowId(System.currentTimeMillis() / 1000) + ")");
             break;
 
           case END_WINDOW:
             endWindowCount.incrementAndGet();
             windowXor.set(windowXor.get() ^ windowId);
-            System.out.println("end  : " + Long.toHexString(windowId) + " (" + Long.toHexString(System.currentTimeMillis() / 1000) + ")");
+            System.out.println("end  : " + Codec.getStringWindowId(windowId) + " (" + Codec.getStringWindowId(System.currentTimeMillis() / 1000) + ")");
             break;
 
           case RESET_WINDOW:

@@ -33,6 +33,7 @@ class DataListIterator implements Iterator<SerializedData>
     this.di = di;
 
     current.bytes = da.data;
+    current.offset = da.readingOffset;
   }
 
   /**
@@ -53,8 +54,8 @@ class DataListIterator implements Iterator<SerializedData>
           }
 
           da = da.next;
-          current.offset = 0;
           current.bytes = da.data;
+          current.offset = da.readingOffset;
           break;
 
         default:

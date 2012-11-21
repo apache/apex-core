@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.OperatorCodec;
+import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTComponent;
@@ -277,7 +278,7 @@ public class StramChildAgent {
       OperatorDeployInfo ndi = createOperatorDeployInfo(node.id, node.getLogicalNode());
       long checkpointWindowId = node.getRecoveryCheckpoint();
       if (checkpointWindowId > 0) {
-        LOG.debug("Operator {} recovery checkpoint {}", node.id, Long.toHexString(checkpointWindowId));
+        LOG.debug("Operator {} recovery checkpoint {}", node.id, Codec.getStringWindowId(checkpointWindowId));
         ndi.checkpointWindowId = checkpointWindowId;
       }
       nodes.put(ndi, node);

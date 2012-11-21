@@ -127,24 +127,24 @@ public class ServerTest
     bsp.windowId = 0;
     bsp.activate();
 
-    BeginTuple bt = new BeginTuple();
-    bt.id = 0x7afebabe00000000L;
-    bsp.publishMessage(bt);
+    BeginTuple bt0 = new BeginTuple();
+    bt0.id = 0x7afebabe00000000L;
+    bsp.publishMessage(bt0);
 
     for (int i = 0; i < 100; i++) {
-      bsp.publishMessage(new byte[i]);
+      bsp.publishMessage(new byte[]{(byte)i});
     }
 
-    EndTuple et = new EndTuple();
-    et.id = bt.id;
-    bsp.publishMessage(et);
+    EndTuple et0 = new EndTuple();
+    et0.id = bt0.id;
+    bsp.publishMessage(et0);
 
     BeginTuple bt1 = new BeginTuple();
-    bt1.id = bt.id + 1;
+    bt1.id = bt0.id + 1;
     bsp.publishMessage(bt1);
 
     for (int i = 0; i < 100; i++) {
-      bsp.publishMessage(new byte[i]);
+      bsp.publishMessage(new byte[]{(byte)i});
     }
 
     EndTuple et1 = new EndTuple();

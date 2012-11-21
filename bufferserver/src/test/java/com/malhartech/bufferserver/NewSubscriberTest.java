@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.util.Codec;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -102,7 +103,7 @@ public class NewSubscriberTest
         catch (InterruptedException ex) {
         }
         finally {
-          logger.debug("publisher the middle of window = {}", Long.toHexString(windowId));
+          logger.debug("publisher the middle of window = {}", Codec.getStringWindowId(windowId));
         }
       }
     }.start();
@@ -182,7 +183,7 @@ public class NewSubscriberTest
         catch (InterruptedException ex) {
         }
         finally {
-          logger.debug("publisher the middle of window = {}", Long.toHexString(windowId));
+          logger.debug("publisher the middle of window = {}", Codec.getStringWindowId(windowId));
         }
       }
     }.start();

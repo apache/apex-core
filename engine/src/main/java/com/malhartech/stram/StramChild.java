@@ -6,6 +6,7 @@ package com.malhartech.stram;
 
 import com.malhartech.api.*;
 import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -654,7 +655,7 @@ public class StramChild
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
-          logger.debug("Restoring node {} to checkpoint {}", ndi.id, Long.toHexString(ndi.checkpointWindowId));
+          logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpointWindowId));
           foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId, moduleSerDe);
         }
         else {

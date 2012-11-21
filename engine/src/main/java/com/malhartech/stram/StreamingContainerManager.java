@@ -391,7 +391,7 @@ public class StreamingContainerManager
               // no need for extra work unless checkpoint moves
               if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
                 node.checkpointWindows.add(shb.getLastBackupWindowId());
-                //System.out.println(node.container.containerId + " " + node + " checkpoint " + Long.toHexString(shb.getLastBackupWindowId()) + " at " + Long.toHexString(currentTimeMillis/1000));
+                //System.out.println(node.container.containerId + " " + node + " checkpoint " + Codec.getStringWindowId(shb.getLastBackupWindowId()) + " at " + Codec.getStringWindowId(currentTimeMillis/1000));
               }
             } else {
               node.checkpointWindows.add(shb.getLastBackupWindowId());

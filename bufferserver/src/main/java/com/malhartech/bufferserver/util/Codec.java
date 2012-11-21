@@ -36,7 +36,7 @@ public class Codec
     int i = writeRawVarint32(value, buffer, offset);
     int expectedOffset = offset + size;
     if (i < expectedOffset--) {
-      buffer[i -1] |= 0x80;
+      buffer[i - 1] |= 0x80;
       while (i < expectedOffset) {
         buffer[i++] = (byte)0x80;
       }
@@ -111,5 +111,10 @@ public class Codec
 
     current.dataOffset = offset;
     current.size = result + offset - current.offset;
+  }
+
+  public static String getStringWindowId(long windowId)
+  {
+    return "base = " + (windowId >> 32) + " window = " + (windowId & 0xffffffff);
   }
 }

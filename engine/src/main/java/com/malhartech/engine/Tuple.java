@@ -5,6 +5,7 @@
 package com.malhartech.engine;
 
 import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.util.Codec;
 
 /**
  *
@@ -15,6 +16,7 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
  * Control: begin window, end window, reset window, end stream<br>
  * heartbeat: To be done, not a high priority<br>
  * <br>
+ *
  * @author chetan
  */
 public class Tuple
@@ -26,6 +28,7 @@ public class Tuple
   {
     type = t;
   }
+
   /**
    * @return the windowId
    */
@@ -53,6 +56,6 @@ public class Tuple
   @Override
   public String toString()
   {
-    return "type = " + type + " window = " + Long.toHexString(windowId);
+    return "type = " + type + " " + Codec.getStringWindowId(windowId);
   }
 }

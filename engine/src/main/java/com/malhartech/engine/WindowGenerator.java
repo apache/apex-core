@@ -63,7 +63,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
     resetWindowMillis = currentWindowMillis - ((currentWindowMillis - resetWindowMillis) % timespanBetween2Resets);
     windowId = (int)((currentWindowMillis - resetWindowMillis) / windowWidthMillis);
 
-//    logger.debug("generating reset -> begin {}", Long.toHexString(resetWindowMillis));
+//    logger.debug("generating reset -> begin {}", Codec.getStringWindowId(resetWindowMillis));
 
     baseSeconds = (resetWindowMillis / 1000) << 32;
     ResetWindowTuple rwt = new ResetWindowTuple();
@@ -78,7 +78,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(rwt);
     }
-//    logger.debug("generating begin {}", Long.toHexString(windowId));
+//    logger.debug("generating begin {}", Codec.getStringWindowId(windowId));
     for (int i = sinks.length; i-- > 0;) {
       sinks[i].process(bwt);
     }

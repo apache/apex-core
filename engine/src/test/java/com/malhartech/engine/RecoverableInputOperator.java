@@ -34,7 +34,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   public void emitTuples()
   {
     if (first) {
-//      logger.debug("generating tuple {}", Long.toHexString(windowId));
+//      logger.debug("generating tuple {}", Codec.getStringWindowId(windowId));
       output.emit(windowId);
       first = false;
       if (--maximumTuples == 0) {

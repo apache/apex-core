@@ -34,7 +34,7 @@ public class NodeRecoveryTest
       @Override
       public void process(Long tuple)
       {
-//        logger.debug("adding the tuple {}", Long.toHexString(tuple));
+//        logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
         collection.add(tuple);
       }
     };
@@ -91,7 +91,7 @@ public class NodeRecoveryTest
     lc.run();
 
 //    for (Long l: collection) {
-//      logger.debug(Long.toHexString(l));
+//      logger.debug(Codec.getStringWindowId(l));
 //    }
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
@@ -117,7 +117,7 @@ public class NodeRecoveryTest
     lc.run();
 
 //    for (Long l: collection) {
-//      logger.debug(Long.toHexString(l));
+//      logger.debug(Codec.getStringWindowId(l));
 //    }
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
@@ -143,7 +143,7 @@ public class NodeRecoveryTest
     lc.run();
 
 //    for (Long l: collection) {
-//      logger.debug(Long.toHexString(l));
+//      logger.debug(Codec.getStringWindowId(l));
 //    }
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
