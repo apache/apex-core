@@ -55,7 +55,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     DataList dl = ctx.attr(DATA_LIST).get();
 
     MessageBuf<Data> in = ctx.inboundMessageBuffer();
-//    logger.debug("InboundBuffer updated with {} messages", in.size());
     for (int i = in.size(); i-- > 0;) {
       Data data = in.poll();
       switch (data.getType()) {
