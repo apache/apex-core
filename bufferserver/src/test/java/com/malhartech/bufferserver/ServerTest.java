@@ -132,7 +132,7 @@ public class ServerTest
     bsp.publishMessage(bt0);
 
     for (int i = 0; i < 100; i++) {
-      bsp.publishMessage(new byte[]{(byte)i});
+      bsp.publishMessage(new byte[] {(byte)i});
     }
 
     EndTuple et0 = new EndTuple();
@@ -144,7 +144,7 @@ public class ServerTest
     bsp.publishMessage(bt1);
 
     for (int i = 0; i < 100; i++) {
-      bsp.publishMessage(new byte[]{(byte)i});
+      bsp.publishMessage(new byte[] {(byte)i});
     }
 
     EndTuple et1 = new EndTuple();
@@ -272,7 +272,7 @@ public class ServerTest
     bsp.publishMessage(bt0);
 
     for (int i = 0; i < 2; i++) {
-      bsp.publishMessage(new byte[]{(byte)i});
+      bsp.publishMessage(new byte[] {(byte)i});
     }
 
     EndTuple et0 = new EndTuple();
@@ -284,7 +284,7 @@ public class ServerTest
     bsp.publishMessage(bt1);
 
     for (int i = 0; i < 2; i++) {
-      bsp.publishMessage(new byte[]{(byte)i});
+      bsp.publishMessage(new byte[] {(byte)i});
     }
 
     EndTuple et1 = new EndTuple();
@@ -342,6 +342,54 @@ public class ServerTest
   public void test1WindowAgain() throws InterruptedException
   {
     test1Window();
+  }
+
+  @Test(dependsOnMethods = {"test1WindowAgain"})
+  public void testResetAgain() throws InterruptedException
+  {
+    testReset();
+  }
+
+  @Test(dependsOnMethods = {"testResetAgain"})
+  @SuppressWarnings("SleepWhileInLoop")
+  public void testEarlySubscriberForLaterWindow() throws InterruptedException
+  {
+    bss.windowId = 50;
+    bss.activate();
+
+    /* wait in a hope that the subscriber is able to reach the server */
+    Thread.sleep(100);
+
+    bsp.baseWindow = 0;
+    bsp.windowId = 0;
+    bsp.activate();
+
+    for (int i = 0; i < 100; i++) {
+      BeginTuple bt = new BeginTuple();
+      bt.id = i;
+      bsp.publishMessage(bt);
+
+      bsp.publishMessage(new byte[] {(byte)i});
+
+      EndTuple et = new EndTuple();
+      et.id = i;
+      bsp.publishMessage(et);
+    }
+
+    for (int i = 0; i < spinCount; i++) {
+      Thread.sleep(10);
+      if (bss.tupleCount.get() > 149) {
+        break;
+      }
+    }
+
+    Thread.sleep(10);
+
+    bsp.deactivate();
+
+    assertEquals(bss.tupleCount.get(), 150);
+
+    bss.deactivate();
   }
 
   class ResetTuple implements Tuple

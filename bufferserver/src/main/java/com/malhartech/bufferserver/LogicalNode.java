@@ -7,6 +7,7 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
+import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import io.netty.channel.Channel;
 import java.nio.ByteBuffer;
@@ -144,7 +145,13 @@ public class LogicalNode implements DataListener
           break;
 
         case BEGIN_WINDOW:
-//          logger.debug("{}->{} condition {} =? {}", new Object[] {upstream, group, (baseSeconds | iterator.getWindowId()), windowId});
+//          logger.debug("{}->{} condition {} =? {}",
+//                       new Object[] {
+//                    upstream,
+//                    group,
+//                    Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
+//                    Codec.getStringWindowId(windowId)
+//                  });
           if ((baseSeconds | iterator.getWindowId()) >= windowId) {
             GiveAll.getInstance().distribute(physicalNodes, data);
             caughtup = true;
@@ -260,5 +267,6 @@ public class LogicalNode implements DataListener
   public void setBaseSeconds(int baseSeconds)
   {
     this.baseSeconds = (long)baseSeconds << 32;
+//    logger.debug("setting baseSeconds to {}", Codec.getStringWindowId(this.baseSeconds));
   }
 }

@@ -108,7 +108,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     Data.Builder builder = Data.newBuilder();
     builder.setType(Data.DataType.SUBSCRIBER_REQUEST);
     builder.setSubscribeRequest(srb);
-    builder.setWindowId((int)startingWindowId); // TODO Message missing required fields: window_id
+    builder.setWindowId((int)startingWindowId);
 
     channel.write(builder.build()).addListener(new ChannelFutureListener()
     {
