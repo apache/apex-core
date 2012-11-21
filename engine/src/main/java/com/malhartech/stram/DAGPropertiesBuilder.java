@@ -536,10 +536,10 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       return operator;
     }
     catch (IllegalAccessException e) {
-      throw new IllegalArgumentException("Error setting node properties", e);
+      throw new IllegalArgumentException("Error setting operator properties", e);
     }
     catch (InvocationTargetException e) {
-      throw new IllegalArgumentException("Error setting node properties", e);
+      throw new IllegalArgumentException("Error setting operator properties", e);
     }
   }
 
