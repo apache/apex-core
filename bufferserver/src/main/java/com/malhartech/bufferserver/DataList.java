@@ -29,12 +29,12 @@ public class DataList
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
   private final String identifier;
   private final Integer capacity;
-  HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
-  HashSet<DataListener> all_listeners = new HashSet<DataListener>();
-  static volatile DataArray free = null;
-  volatile DataArray first;
-  volatile DataArray last;
   private final int baseSeconds;
+  private HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
+  private HashSet<DataListener> all_listeners = new HashSet<DataListener>();
+  private static volatile DataArray free = null;
+  private volatile DataArray first;
+  private volatile DataArray last;
 
   synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
   {
@@ -209,24 +209,32 @@ public class DataList
        * it also makes sense to start all over.
        * It helps with better utilization of the RAM.
        */
-      if (!dli.hasNext()) {
-        int previousOffset = da.offset;
-        if (lastReset != null && lastReset.offset != 0) {
-          System.arraycopy(lastReset.bytes, lastReset.offset, da.data, 0, lastReset.size);
-          da.offset = lastReset.size;
-          da.starting_window = da.ending_window = bs;
-        }
-        else {
-          da.offset = 0;
-          da.starting_window = da.ending_window = 0;
-        }
-
-        Arrays.fill(da.data, da.offset, previousOffset, Byte.MIN_VALUE);
-      }
+//      if (!dli.hasNext()) {
+//        int previousOffset = da.offset;
+//        if (lastReset != null && lastReset.offset != 0) {
+//          System.arraycopy(lastReset.bytes, lastReset.offset, da.data, 0, lastReset.size);
+//          da.offset = lastReset.size;
+//          da.starting_window = da.ending_window = bs;
+//        }
+//        else {
+//          da.offset = 0;
+//          da.starting_window = da.ending_window = 0;
+//        }
+//
+//        Arrays.fill(da.data, da.offset, previousOffset, Byte.MIN_VALUE);
+//      }
     }
     finally {
       da.unlockWrite();
     }
+  }
+
+  /**
+   * @return the identifier
+   */
+  public String getIdentifier()
+  {
+    return identifier;
   }
 
   class DataArray
@@ -613,7 +621,7 @@ public class DataList
   public void printState()
   {
     System.out.println("capacity = " + capacity);
-    System.out.println("identifier = " + identifier);
+    System.out.println("identifier = " + getIdentifier());
     DataArray tmp = first;
     while (tmp != null) {
       System.out.println("offset = " + tmp.offset);

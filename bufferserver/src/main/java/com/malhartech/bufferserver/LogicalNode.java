@@ -125,7 +125,7 @@ public class LogicalNode implements DataListener
   {
     int intervalMillis;
 
-    logger.debug("catching up {}->{}", upstream, group);
+//    logger.debug("catching up {}->{}", upstream, group);
     /*
      * fast forward to catch up with the windowId without consuming
      */
@@ -144,7 +144,7 @@ public class LogicalNode implements DataListener
           break;
 
         case BEGIN_WINDOW:
-          logger.debug("{}->{} condition {} =? {}", new Object[] {upstream, group, (baseSeconds | iterator.getWindowId()), windowId});
+//          logger.debug("{}->{} condition {} =? {}", new Object[] {upstream, group, (baseSeconds | iterator.getWindowId()), windowId});
           if ((baseSeconds | iterator.getWindowId()) >= windowId) {
             GiveAll.getInstance().distribute(physicalNodes, data);
             caughtup = true;
@@ -168,10 +168,11 @@ public class LogicalNode implements DataListener
    *
    * @param partition
    */
+  @SuppressWarnings("fallthrough")
   public synchronized void dataAdded(ByteBuffer partition)
   {
     if (caughtup) {
-      logger.debug("caught up {}->{}", upstream, group);
+//      logger.debug("caught up {}->{}", upstream, group);
       /*
        * consume as much data as you can before running out of steam
        */
