@@ -309,7 +309,7 @@ public class DAGBuilderTest {
 
   }
 
-  static class ValidationTestOperator extends BaseOperator {
+  public static class ValidationTestOperator extends BaseOperator {
     @NotNull
     @Pattern(regexp=".*malhar.*", message="Value has to contain 'malhar'!")
     private String stringField1;
@@ -332,6 +332,16 @@ public class DAGBuilderTest {
     public void setProperty2(String s) {
       // annotations need to be on the getter
       getterProperty2 = s;
+    }
+
+    private String[] stringArrayField;
+
+    public String[] getStringArrayField() {
+      return stringArrayField;
+    }
+
+    public void setStringArrayField(String[] stringArrayField) {
+      this.stringArrayField = stringArrayField;
     }
 
     public class Nested {
@@ -507,16 +517,18 @@ public class DAGBuilderTest {
 
     Configuration conf = new Configuration(false);
     conf.set("stram.operator.o1.myStringProperty", "myStringPropertyValue");
+    conf.set("stram.operator.o2.stringArrayField", "a,b,c");
 
     DAG dag = new DAG();
     GenericTestModule o1 = dag.addOperator("o1", new GenericTestModule());
+    ValidationTestOperator o2 = dag.addOperator("o2", new ValidationTestOperator());
 
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
     pb.addFromConfiguration(conf);
 
     pb.setOperatorProperties(dag, "testSetOperatorProperties");
     Assert.assertEquals("o1.myStringProperty", "myStringPropertyValue", o1.getMyStringProperty());
-
+    Assert.assertArrayEquals("o2.stringArrayField", new String[] {"a", "b", "c"}, o2.stringArrayField);
   }
 
 }
