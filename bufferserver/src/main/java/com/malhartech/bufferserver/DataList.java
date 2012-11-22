@@ -158,7 +158,7 @@ public class DataList
   private static void purge(DataArray da, long longWindowId, DataIntrospector di)
   {
     logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}",
-                 new Object[] {Codec.getStringWindowId(da.starting_window), Codec.getStringWindowId(longWindowId), Codec.getStringWindowId(da.baseSeconds)});
+                 new Object[] {Codec.getStringWindowId(da.starting_window), Codec.getStringWindowId(longWindowId), da.baseSeconds});
     da.lockWrite();
     try {
       boolean found = false;
