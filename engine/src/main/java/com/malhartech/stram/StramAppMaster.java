@@ -80,6 +80,20 @@ import com.malhartech.stram.webapp.StramWebApp;
  */
 public class StramAppMaster
 {
+  static {
+    // set system properties so they can be used in logger configuration
+    Map<String, String> envs = System.getenv();
+    String containerIdString = envs.get(ApplicationConstants.AM_CONTAINER_ID_ENV);
+    if (containerIdString == null) {
+      // container id should always be set in the env by the framework
+      throw new IllegalArgumentException(
+          "ContainerId not set in the environment");
+    }
+    System.setProperty("stram.cid", containerIdString);
+    //ContainerId containerId = ConverterUtils.toContainerId(containerIdString);
+    //ApplicationAttemptId appAttemptID = containerId.getApplicationAttemptId();
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
   // Configuration
   private final Configuration conf;

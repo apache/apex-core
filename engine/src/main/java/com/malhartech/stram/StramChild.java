@@ -140,7 +140,8 @@ public class StramChild
     final InetSocketAddress address =
             NetUtils.createSocketAddrForHost(host, port);
 
-    final String childId = args[2];
+    final String childId = System.getProperty("stram.cid");
+
     //Token<JobTokenIdentifier> jt = loadCredentials(defaultConf, address);
 
     // Communicate with parent as actual task owner.
