@@ -90,6 +90,7 @@ public class StramClient
   private String log4jPropFile = "";
   // Timeout threshold for client. Kill app after time interval expires.
   private long clientTimeout = 600000;
+  private static final String DEFAULT_APPNAME = "Stram";
 
   /**
    * @param args Command line arguments
@@ -380,12 +381,12 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(dag.getConf().get(DAG.STRAM_APPNAME, StramConstants.APPNAME));
+    appContext.setApplicationName(dag.getConf().get(DAG.STRAM_APPNAME, DEFAULT_APPNAME));
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
-    String pathSuffix = StramConstants.APPNAME + "/" + appId.getId();
+    String pathSuffix = DEFAULT_APPNAME + "/" + appId.getId();
 
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = FileSystem.get(conf);

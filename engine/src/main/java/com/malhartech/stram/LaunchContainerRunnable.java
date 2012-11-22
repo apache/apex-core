@@ -222,6 +222,7 @@ public class LaunchContainerRunnable implements Runnable
     Path childTmpDir = new Path(Environment.PWD.$(),
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
+    vargs.add("-Dstram.cid=" + jvmID);
 
     // Add main class and its arguments
     vargs.add(StramChild.class.getName());  // main of Child
@@ -229,8 +230,6 @@ public class LaunchContainerRunnable implements Runnable
     vargs.add(heartbeatAddress.getAddress().getHostAddress());
     vargs.add(Integer.toString(heartbeatAddress.getPort()));
 
-    // Finally add the jvmID
-    vargs.add(String.valueOf(jvmID));
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
 
