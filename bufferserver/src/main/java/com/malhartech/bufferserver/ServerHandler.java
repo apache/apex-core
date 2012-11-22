@@ -136,7 +136,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       dl = publisherBufffers.get(identifier);
     }
     else {
-      dl = new DataList(identifier, bufferSize, request.getBaseSeconds());
+      dl = new DataList(identifier, bufferSize);
       publisherBufffers.put(identifier, dl);
     }
 
@@ -181,7 +181,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
         dl = publisherBufffers.get(upstream_identifier);
       }
       else {
-        dl = new DataList(upstream_identifier, bufferSize, 0);
+        dl = new DataList(upstream_identifier, bufferSize);
         publisherBufffers.put(upstream_identifier, dl);
       }
 

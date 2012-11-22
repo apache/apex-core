@@ -222,7 +222,7 @@ public class NewSubscriberTest
     bss.deactivate();
 
 
-    Assert.assertTrue((bss.lastPayload.getWindowId() - 8) * 3 < bss.tupleCount.get());
+    Assert.assertTrue((bss.lastPayload.getWindowId() - 8) * 3 <  bss.tupleCount.get());
   }
 
   class ResetTuple implements Tuple

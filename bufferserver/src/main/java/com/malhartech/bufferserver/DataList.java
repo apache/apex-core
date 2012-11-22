@@ -9,6 +9,7 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.ResetWindow;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
+import com.malhartech.bufferserver.util.Tuple;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
@@ -29,7 +30,6 @@ public class DataList
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
   private final String identifier;
   private final Integer capacity;
-  private final int baseSeconds;
   private HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
   private HashSet<DataListener> all_listeners = new HashSet<DataListener>();
   private static volatile DataArray free = null;
@@ -83,6 +83,11 @@ public class DataList
           temp.unlockWrite();
         }
       }
+    }
+
+    // passing the baseSeconds == 0 is a crime, so the following is a hack.
+    if (baseSeconds != 0) {
+      last.add(Tuple.getResetTuple(baseSeconds, windowId)); // passing windowId is a hack here!!! I should be passing the windowWidth.
     }
   }
 
@@ -428,21 +433,19 @@ public class DataList
     }
   }
 
-  public DataList(String identifier, int capacity, int baseSeconds)
+  public DataList(String identifier, int capacity)
   {
     this.identifier = identifier;
     this.capacity = capacity;
-    this.baseSeconds = baseSeconds;
-
     first = last = getDataArray(capacity);
   }
 
-  public DataList(String identifier, int baseSeconds)
+  public DataList(String identifier)
   {
     /*
      * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
      */
-    this(identifier, 64 * 1024 * 1024, baseSeconds);
+    this(identifier, 64 * 1024 * 1024);
   }
 
   public final void flush()
@@ -594,7 +597,6 @@ public class DataList
   public void addDataListener(DataListener dl)
   {
     all_listeners.add(dl);
-    dl.setBaseSeconds(baseSeconds);
     ArrayList<ByteBuffer> partitions = new ArrayList<ByteBuffer>();
     if (dl.getPartitions(partitions) > 0) {
       for (ByteBuffer partition: partitions) {

@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.Buffer.Data;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   private final Collection<byte[]> partitions;
   AtomicInteger tupleCount = new AtomicInteger(0);
   Data firstPayload, lastPayload;
+  ArrayList<Data> resetPayloads = new ArrayList<Data>();
   long windowId;
 
   public BufferServerSubscriber(String sourceId, Collection<byte[]> partitions)
@@ -40,6 +42,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   {
     tupleCount.set(0);
     firstPayload = lastPayload = null;
+    resetPayloads.clear();
     super.activate();
     ClientHandler.subscribe(channel,
                             "BufferServerSubscriber",
@@ -52,13 +55,17 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   @Override
   public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
   {
-    tupleCount.incrementAndGet();
-//    logger.debug("received {}", data);
-    if (firstPayload == null) {
-      firstPayload = data;
+    if (data.getType() == Data.DataType.RESET_WINDOW) {
+      resetPayloads.add(data);
     }
     else {
-      lastPayload = data;
+      tupleCount.incrementAndGet();
+      if (firstPayload == null) {
+        firstPayload = data;
+      }
+      else {
+        lastPayload = data;
+      }
     }
   }
 }

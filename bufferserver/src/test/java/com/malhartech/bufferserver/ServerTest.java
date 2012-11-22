@@ -9,6 +9,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import org.testng.annotations.AfterClass;
@@ -67,7 +68,7 @@ public class ServerTest
     bss.deactivate();
     bsp.deactivate();
 
-    assertEquals(0, bss.tupleCount.get());
+    assertEquals(bss.tupleCount.get(), 0);
   }
 
   @Test(dependsOnMethods = {"testNoPublishNoSubscribe"})
@@ -83,7 +84,7 @@ public class ServerTest
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 0) {
+      if (!bss.resetPayloads.isEmpty()) {
         break;
       }
     }
@@ -92,8 +93,8 @@ public class ServerTest
     bss.deactivate();
     bsp.deactivate();
 
-    assertEquals(bss.tupleCount.get(), 1);
-    assertEquals(rt.getType(), bss.firstPayload.getType());
+    assertEquals(bss.tupleCount.get(), 0);
+    Assert.assertFalse(bss.resetPayloads.isEmpty());
   }
 
   @Test(dependsOnMethods = {"test1Window"})
@@ -104,8 +105,7 @@ public class ServerTest
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 0) {
-        logger.debug("{}", bss.tupleCount);
+      if (!bss.resetPayloads.isEmpty()) {
         break;
       }
     }
@@ -113,8 +113,8 @@ public class ServerTest
 
     bss.deactivate();
 
-    assertEquals(bss.tupleCount.get(), 1);
-    assertEquals(bss.firstPayload.getType(), DataType.RESET_WINDOW);
+    assertEquals(bss.tupleCount.get(), 0);
+    Assert.assertFalse(bss.resetPayloads.isEmpty());
   }
 
   @Test(dependsOnMethods = {"testLateSubscriber"})
@@ -153,7 +153,7 @@ public class ServerTest
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 204) {
+      if (bss.tupleCount.get() > 203) {
         break;
       }
     }
@@ -162,7 +162,7 @@ public class ServerTest
     bsp.deactivate();
     bss.deactivate();
 
-    assertEquals(bss.tupleCount.get(), 205);
+    assertEquals(bss.tupleCount.get(), 204);
   }
 
   @Test(dependsOnMethods = {"testATonOfData"})
@@ -185,13 +185,13 @@ public class ServerTest
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 204) {
+      if (bss.tupleCount.get() > 203) {
         break;
       }
     }
     Thread.sleep(10);
     bss.deactivate();
-    assertEquals(bss.tupleCount.get(), 205);
+    assertEquals(bss.tupleCount.get(), 204);
   }
 
   @Test(dependsOnMethods = {"testPurgeNonExistent"})
@@ -214,12 +214,12 @@ public class ServerTest
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 102) {
+      if (bss.tupleCount.get() > 101) {
         break;
       }
     }
     bss.deactivate();
-    assertEquals(bss.tupleCount.get(), 103);
+    assertEquals(bss.tupleCount.get(), 102);
   }
 
   @Test(dependsOnMethods = {"testPurgeSome"})
@@ -242,13 +242,13 @@ public class ServerTest
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 0) {
+      if (!bss.resetPayloads.isEmpty()) {
         break;
       }
     }
     Thread.sleep(10);
     bss.deactivate();
-    assertEquals(bss.tupleCount.get(), 1);
+    assertEquals(bss.tupleCount.get(), 0);
   }
 
   @Test(dependsOnMethods = {"testPurgeAll"})

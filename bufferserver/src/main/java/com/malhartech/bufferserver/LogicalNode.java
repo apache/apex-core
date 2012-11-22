@@ -145,14 +145,15 @@ public class LogicalNode implements DataListener
           break;
 
         case BEGIN_WINDOW:
-//          logger.debug("{}->{} condition {} =? {}",
-//                       new Object[] {
-//                    upstream,
-//                    group,
-//                    Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
-//                    Codec.getStringWindowId(windowId)
-//                  });
+          logger.debug("{}->{} condition {} =? {}",
+                       new Object[] {
+                    upstream,
+                    group,
+                    Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
+                    Codec.getStringWindowId(windowId)
+                  });
           if ((baseSeconds | iterator.getWindowId()) >= windowId) {
+            logger.debug("caught up {}->{}", upstream, group);
             GiveAll.getInstance().distribute(physicalNodes, data);
             caughtup = true;
             break outer;
@@ -179,7 +180,6 @@ public class LogicalNode implements DataListener
   public synchronized void dataAdded(ByteBuffer partition)
   {
     if (caughtup) {
-//      logger.debug("caught up {}->{}", upstream, group);
       /*
        * consume as much data as you can before running out of steam
        */
@@ -262,11 +262,5 @@ public class LogicalNode implements DataListener
   public String getUpstream()
   {
     return upstream;
-  }
-
-  public void setBaseSeconds(int baseSeconds)
-  {
-    this.baseSeconds = (long)baseSeconds << 32;
-//    logger.debug("setting baseSeconds to {}", Codec.getStringWindowId(this.baseSeconds));
   }
 }
