@@ -490,14 +490,15 @@ public class StramAppMaster
       }
 
       // Send the request to RM
-      LOG.info("Asking RM for containers"
-               + ", askCount=" + askCount);
+      if (askCount > 0) {
+        LOG.info("Asking RM for containers" + ", askCount=" + askCount);
+      }
       AMResponse amResp = sendContainerAskToRM(resourceReq, releasedContainers);
       releasedContainers.clear();
 
       // Retrieve list of allocated containers from the response
       List<Container> newAllocatedContainers = amResp.getAllocatedContainers();
-      LOG.info("Got response from RM for container ask, allocatedCnt=" + newAllocatedContainers.size());
+      //LOG.info("Got response from RM for container ask, allocatedCnt=" + newAllocatedContainers.size());
       numRequestedContainers -= newAllocatedContainers.size();
       for (Container allocatedContainer : newAllocatedContainers) {
         LOG.info("Got new container."
@@ -530,7 +531,7 @@ public class StramAppMaster
       // TODO: we need to obtain the initial list...
       // keep track of updated operators - we use this info to make decisions about where to request new containers
       List<NodeReport> nodeReports = amResp.getUpdatedNodes();
-      LOG.info("Got {} updated node reports.", nodeReports.size());
+      //LOG.debug("Got {} updated node reports.", nodeReports.size());
       for (NodeReport nr : nodeReports) {
         StringBuilder sb = new StringBuilder();
         sb.append("rackName=").append(nr.getRackName()).append("nodeid=").append(nr.getNodeId()).append("numContainers=").append(nr.getNumContainers()).append("capability=").append(nr.getCapability()).append("used=").append(nr.getUsed()).append("state=").append(nr.getNodeState());
@@ -538,13 +539,12 @@ public class StramAppMaster
       }
 
       // Check what the current available resources in the cluster are
-      // TODO should we do anything if the available resources are not enough?
-      Resource availableResources = amResp.getAvailableResources();
-      LOG.info("Current available resources in the cluster " + availableResources);
+      //Resource availableResources = amResp.getAvailableResources();
+      //LOG.debug("Current available resources in the cluster " + availableResources);
 
       // Check the completed containers
       List<ContainerStatus> completedContainers = amResp.getCompletedContainersStatuses();
-      LOG.info("Got response from RM for container ask, completedCnt=" + completedContainers.size());
+      //LOG.debug("Got response from RM for container ask, completedCnt=" + completedContainers.size());
       for (ContainerStatus containerStatus : completedContainers) {
         LOG.info("Got container status for containerID= " + containerStatus.getContainerId()
                  + ", state=" + containerStatus.getState()
@@ -578,7 +578,7 @@ public class StramAppMaster
         appDone = true;
       }
 
-      LOG.info("Current application state: loop=" + loopCounter
+      LOG.debug("Current application state: loop=" + loopCounter
                + ", appDone=" + appDone
                + ", total=" + numTotalContainers
                + ", requested=" + numRequestedContainers
@@ -727,10 +727,10 @@ public class StramAppMaster
     req.addAllReleases(releasedContainers);
     //req.setProgress((float) numCompletedContainers.get() / numTotalContainers);
 
-    LOG.info("Sending request to RM for containers"
-             + ", requestedSet=" + requestedContainers.size()
-             + ", releasedSet=" + releasedContainers.size()
-             + ", progress=" + req.getProgress());
+    //LOG.info("Sending request to RM for containers"
+    //         + ", requestedSet=" + requestedContainers.size()
+    //         + ", releasedSet=" + releasedContainers.size()
+    //         + ", progress=" + req.getProgress());
 
     for (ResourceRequest rsrcReq : requestedContainers) {
       LOG.info("Requested container ask: " + rsrcReq.toString());

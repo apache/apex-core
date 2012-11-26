@@ -101,7 +101,7 @@ public class StramWebServices
   public OperatorsInfo getOperatorsInfo() throws Exception
   {
     init();
-    LOG.info("DAGManager: {}", dagManager);
+    //LOG.info("DAGManager: {}", dagManager);
     OperatorsInfo nodeList = new OperatorsInfo();
     nodeList.operators = dagManager.getNodeInfoList();
     return nodeList;
