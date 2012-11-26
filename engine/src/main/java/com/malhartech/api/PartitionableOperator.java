@@ -4,10 +4,8 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.api.Operator.InputPort;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  *

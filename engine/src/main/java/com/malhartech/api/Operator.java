@@ -5,8 +5,6 @@
 package com.malhartech.api;
 
 import com.malhartech.api.Context.OperatorContext;
-import java.util.Map;
-import java.util.Set;
 
 public interface Operator extends Component<OperatorContext>
 {
@@ -23,9 +21,9 @@ public interface Operator extends Component<OperatorContext>
   public void endWindow();
 
   /**
-   * A module provides ports as a means to consume and produce data tuples.
+   * A operator provides ports as a means to consume and produce data tuples.
    * Concrete ports implement derived interfaces. The common characteristic is
-   * that ports provide a reference to the module instance they belong to.
+   * that ports provide a reference to the operator instance they belong to.
    */
   public interface Port
   {
@@ -40,7 +38,7 @@ public interface Operator extends Component<OperatorContext>
   /**
    * Input ports process data delivered through a stream. The execution engine
    * will call the port's associated sink to pass the tuples. Ports are declared
-   * as annotated fields in the module. The interface should be implemented by a
+   * as annotated fields in the operator. The interface should be implemented by a
    * non parameterized class to make the type parameter are available at runtime
    * for validation.
    *
@@ -50,7 +48,7 @@ public interface Operator extends Component<OperatorContext>
   {
     /**
      * Provide the sink that will process incoming data. Sink would typically be
-     * the port itself but can also be implemented by the enclosing module or
+     * the port itself but can also be implemented by the enclosing operator or
      * separate class.
      *
      * @param payload
@@ -75,9 +73,9 @@ public interface Operator extends Component<OperatorContext>
   }
 
   /**
-   * Output ports deliver data produced by a module to a stream, abstracted by
+   * Output ports deliver data produced by the operator to a stream, abstracted by
    * Sink and injected by the execution engine at deployment time. Ports are
-   * declared as annotated fields in the module. The interface should be
+   * declared as annotated fields in the operator. The interface should be
    * implemented with a bounded type parameter for introspection and validation.
    *
    * @param <T>
@@ -93,7 +91,7 @@ public interface Operator extends Component<OperatorContext>
 
     /**
      * Merge tuples emitted by multiple upstream instances of the enclosing
-     * module (partitioning or load balancing).
+     * operator (partitioning or load balancing).
      *
      * @param tuple
      */
