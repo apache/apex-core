@@ -489,6 +489,7 @@ public class StreamingContainerManager
       }
     }
     visited.add(operator);
+    LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.id, c1, operator.checkpointWindows});
     return operator.recoveryCheckpoint = c1;
   }
 
