@@ -197,12 +197,7 @@ public class StreamingContainerManager
             String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
             // TODO: find way to mock this when testing rest of logic
             if (operator.container.bufferServerAddress.getPort() != 0) {
-              BufferServerClient bsc = bufferServers.get(operator.container.bufferServerAddress);
-              if (bsc == null) {
-                bsc = new BufferServerClient(operator.container.bufferServerAddress);
-                bufferServers.put(bsc.addr, bsc);
-                LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
-              }
+              BufferServerClient bsc = getBufferServerClient(operator);
               // reset publisher (stale operator may still write data until disconnected)
               // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
               bsc.reset(sourceIdentifier, 0);
@@ -516,6 +511,17 @@ public class StreamingContainerManager
     purgeCheckpoints();
   }
 
+  private BufferServerClient getBufferServerClient(PTOperator operator) {
+    BufferServerClient bsc = bufferServers.get(operator.container.bufferServerAddress);
+    if (bsc == null) {
+      bsc = new BufferServerClient(operator.container.bufferServerAddress);
+      // use original address address as key
+      bufferServers.put(operator.container.bufferServerAddress, bsc);
+      LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
+    }
+    return bsc;
+  }
+
   private void purgeCheckpoints() {
     BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath);
     for (Pair<PTOperator, Long> p : purgeCheckpoints) {
@@ -532,12 +538,7 @@ public class StreamingContainerManager
           // following needs to match the concat logic in StramChild
           String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
           // purge everything from buffer server prior to new checkpoint
-          BufferServerClient bsc = bufferServers.get(operator.container.bufferServerAddress);
-          if (bsc == null) {
-            bsc = new BufferServerClient(operator.container.bufferServerAddress);
-            bufferServers.put(bsc.addr, bsc);
-            LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
-          }
+          BufferServerClient bsc = getBufferServerClient(operator);
           try {
             bsc.purge(sourceIdentifier, operator.checkpointWindows.getFirst()-1);
           } catch (Throwable  t) {
