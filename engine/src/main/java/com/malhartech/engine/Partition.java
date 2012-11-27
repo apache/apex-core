@@ -4,22 +4,20 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.PartitionableOperator;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import com.malhartech.api.Operator.InputPort;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class Partition extends HashMap<InputPort, List<byte[]>> implements com.malhartech.api.PartitionableOperator.Partition, Cloneable
+public class Partition extends HashMap<InputPort<?>, List<byte[]>> /*implements com.malhartech.api.PartitionableOperator.Partition, Cloneable*/
 {
-  private int load;
-  private PartitionableOperator operator;
   private boolean modified;
 
   private HashSet<ByteBuffer> validateNoRepeats(List<byte[]> collection)
@@ -69,39 +67,13 @@ public class Partition extends HashMap<InputPort, List<byte[]>> implements com.m
     return true;
   }
 
-  public void setLoad(int load)
-  {
-    this.load = load;
-  }
-
-  @Override
-  public int getLoad()
-  {
-    return load;
-  }
-
-  @Override
-  public PartitionableOperator getOperator()
-  {
-    return operator;
-  }
-
-  @Override
-  public void setOperator(PartitionableOperator operator)
-  {
-    if (operator != this.operator) {
-      modified = true;
-      this.operator = operator;
-    }
-  }
-
   public boolean isModified()
   {
     return modified;
   }
 
   @Override
-  public List<byte[]> put(InputPort key, List<byte[]> value)
+  public List<byte[]> put(InputPort<?> key, List<byte[]> value)
   {
     List<byte[]> prev = super.put(key, value);
     if (!modified) {
@@ -112,9 +84,9 @@ public class Partition extends HashMap<InputPort, List<byte[]>> implements com.m
   }
 
   @Override
-  public void putAll(Map<? extends InputPort, ? extends List<byte[]>> m)
+  public void putAll(Map<? extends InputPort<?>, ? extends List<byte[]>> m)
   {
-    for (Entry<? extends InputPort, ? extends List<byte[]>> entry: m.entrySet()) {
+    for (Map.Entry<? extends InputPort<?>, ? extends List<byte[]>> entry: m.entrySet()) {
       put(entry.getKey(), entry.getValue());
     }
   }
@@ -140,9 +112,4 @@ public class Partition extends HashMap<InputPort, List<byte[]>> implements com.m
     }
   }
 
-  @Override
-  public PartitionableOperator.Partition getInstance()
-  {
-    return new Partition();
-  }
 }

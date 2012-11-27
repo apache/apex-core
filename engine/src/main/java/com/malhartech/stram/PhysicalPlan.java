@@ -6,7 +6,7 @@ package com.malhartech.stram;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -24,8 +24,10 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.api.StreamCodec;
 import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.PartitionableOperator;
+import com.malhartech.api.PartitionableOperator.Partition;
 
 /**
  *
@@ -84,7 +86,7 @@ public class PhysicalPlan {
   public static class PTInput {
     final DAG.StreamDecl logicalStream;
     final PTComponent target;
-    final byte[] partition;
+    final List<byte[]> partitions;
     final PTComponent source;
     final String portName;
 
@@ -95,10 +97,10 @@ public class PhysicalPlan {
      * @param partition
      * @param source
      */
-    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, byte[] partition, PTComponent source) {
+    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, List<byte[]> partitions, PTComponent source) {
       this.logicalStream = logicalStream;
       this.target = target;
-      this.partition = partition;
+      this.partitions = partitions;
       this.source = source;
       this.portName = portName;
     }
@@ -258,6 +260,7 @@ public class PhysicalPlan {
     }
   }
 
+  private final AtomicInteger nodeSequence = new AtomicInteger();
   private final LinkedHashMap<OperatorWrapper, List<PTOperator>> deployedOperators = new LinkedHashMap<OperatorWrapper, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
@@ -273,6 +276,35 @@ public class PhysicalPlan {
       }
     }
     return containers.get(index);
+  }
+
+  private class PartitionImpl implements PartitionableOperator.Partition {
+    private final Map<InputPort<?>, List<byte[]>> partitionKeys = new HashMap<InputPort<?>, List<byte[]>>();
+    private final PartitionableOperator operator;
+
+    private PartitionImpl(PartitionableOperator operator) {
+      this.operator = operator;
+    }
+
+    @Override
+    public Map<InputPort<?>, List<byte[]>> getPartitionKeys() {
+      return partitionKeys;
+    }
+
+    @Override
+    public int getLoad() {
+      return 0;
+    }
+
+    @Override
+    public PartitionableOperator getOperator() {
+      return operator;
+    }
+
+    @Override
+    public Partition getInstance(PartitionableOperator operator) {
+      return new PartitionImpl(operator);
+    }
   }
 
   /**
@@ -300,27 +332,29 @@ public class PhysicalPlan {
         continue;
       }
 
-      // look at all input streams to determine partitioning / number of operators
-      byte[][] partitions = null;
       boolean upstreamDeployed = true;
+      // determine partitioning / number of operators
+      List<Partition> partitions = null;
       boolean isSingleNodeInstance = true;
+
+      if (n.getOperator() instanceof PartitionableOperator) {
+        // operator to provide initial partitioning
+        PartitionableOperator partitionableOperator = (PartitionableOperator)n.getOperator();
+        partitions = new ArrayList<Partition>(1);
+        partitions.add(new PartitionImpl(partitionableOperator));
+        partitions = partitionableOperator.definePartitions(partitions);
+        if (partitions.isEmpty()) {
+          throw new IllegalArgumentException("PartitionableOperator must return at least one partition: " + n);
+        }
+        isSingleNodeInstance = false;
+      }
+
       for (StreamDecl s : n.getInputStreams().values()) {
         if (s.getSource() != null && !inlineGroups.containsKey(s.getSource().getOperatorWrapper())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getOperatorWrapper());
           upstreamDeployed = false;
           break;
-        }
-
-        byte[][] streamPartitions = getStreamPartitions(s);
-        if (streamPartitions != null) {
-          if (partitions != null) {
-            if (!Arrays.deepEquals(partitions, streamPartitions)) {
-              throw new IllegalArgumentException("Operator cannot have multiple input streams with different partitions.");
-            }
-          }
-          partitions = streamPartitions;
-          isSingleNodeInstance = false;
         }
       }
 
@@ -347,9 +381,9 @@ public class PhysicalPlan {
         // add new physical node(s)
         List<PTOperator> pnodes = new ArrayList<PTOperator>();
         if (partitions != null) {
-          // create node per partition
-          for (int i = 0; i < partitions.length; i++) {
-            PTOperator pNode = createPTOperator(n, partitions[i], pnodes.size());
+          // create operator instance per partition
+          for (Partition p : partitions) {
+            PTOperator pNode = createPTOperator(n, p, pnodes.size());
             pnodes.add(pNode);
           }
         } else {
@@ -387,15 +421,26 @@ public class PhysicalPlan {
 
   }
 
-  private final AtomicInteger nodeSequence = new AtomicInteger();
-
-  private PTOperator createPTOperator(OperatorWrapper nodeDecl, byte[] partition, int instanceCount) {
+  private PTOperator createPTOperator(OperatorWrapper nodeDecl, Partition partition, int instanceCount) {
 
     PTOperator pOperator = new PTOperator();
     pOperator.logicalNode = nodeDecl;
     pOperator.inputs = new ArrayList<PTInput>();
     pOperator.outputs = new ArrayList<PTOutput>();
     pOperator.id = ""+nodeSequence.incrementAndGet();
+
+    Map<DAG.InputPortMeta, List<byte[]>> partitionKeys = Collections.emptyMap();
+    if (partition != null) {
+      partitionKeys = new HashMap<DAG.InputPortMeta, List<byte[]>>(partition.getPartitionKeys().size());
+      Map<InputPort<?>, List<byte[]>> partKeys = partition.getPartitionKeys();
+      for (Map.Entry<InputPort<?>, List<byte[]>> partitionPort : partKeys.entrySet()) {
+        DAG.InputPortMeta pportMeta = nodeDecl.getInputPortMeta(partitionPort.getKey());
+        if (pportMeta == null) {
+          throw new IllegalArgumentException("Invalid port reference " + partitionPort);
+        }
+        partitionKeys.put(pportMeta, partitionPort.getValue());
+      }
+    }
 
     for (Map.Entry<DAG.InputPortMeta, StreamDecl> inputEntry : nodeDecl.getInputStreams().entrySet()) {
       // find upstream node(s),
@@ -407,7 +452,7 @@ public class PhysicalPlan {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
             if (upstreamOut.logicalStream == streamDecl) {
-              PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, partition, upNode);
+              PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, partitionKeys.get(inputEntry.getKey()), upNode);
               pOperator.inputs.add(input);
             }
           }
@@ -421,24 +466,6 @@ public class PhysicalPlan {
 
     return pOperator;
   }
-
-  private byte[][] getStreamPartitions(StreamDecl streamConf)
-  {
-    if (streamConf.getSerDeClass() != null) {
-      try {
-        StreamCodec serde = StramUtils.newInstance(streamConf.getSerDeClass());
-        byte[][] partitions = serde.getPartitions();
-        if (partitions != null) {
-          return partitions;
-        }
-      }
-      catch (Exception e) {
-        throw new RuntimeException("Failed to get partition info from " + streamConf.getSerDeClass(), e);
-      }
-    }
-    return null;
-  }
-
 
   protected List<PTContainer> getContainers() {
     return this.containers;

@@ -18,15 +18,22 @@ public interface PartitionableOperator extends Operator
    * into multiple copies so that they all collectively can do the work by working on
    * only a partition of the data.
    *
-   * @param partitions - Partitions associated with available containers.
+   * @param partitions - Current partitions, containing at least one entry.
    *
-   * @return new partitions. The partitions which should not be changed can be returned
+   * @return New partitioning. Partitions from input list which should not be changed can be returned
    * as they are.
    */
-  public List<Partition> redoPartitions(List<Partition> partitions);
+  public List<Partition> definePartitions(List<Partition> partitions);
 
-  public interface Partition extends Map<InputPort, List<byte[]>>
+  public interface Partition
   {
+    /**
+     * Return the partition keys for this partition.
+     * Input ports that are not mapped will receive all data.
+     * @return
+     */
+    public Map<InputPort<?>, List<byte[]>> getPartitionKeys();
+
     /**
      * Get an indication of the load handled by this particular partition.
      *
@@ -35,23 +42,18 @@ public interface PartitionableOperator extends Operator
     public int getLoad();
 
     /**
-     * Get the frozen state of the partition which is currently handling the partition.
+     * Get the frozen state of the operator which is currently handling the partition.
      *
      * @return frozen operator instance
      */
     public PartitionableOperator getOperator();
 
     /**
-     * Set the new state of the operator which will handle the partitions.
+     * Create a new partition for the given operator. The returned partition
+     * needs to be further configured with the port to partition key mapping.
      *
-     * @param new state of the operator
-     */
-    public void setOperator(PartitionableOperator operator);
-
-    /**
-     * Get a new Partition which can be configured.
      * @return
      */
-    public Partition getInstance();
+    public Partition getInstance(PartitionableOperator operator);
   }
 }

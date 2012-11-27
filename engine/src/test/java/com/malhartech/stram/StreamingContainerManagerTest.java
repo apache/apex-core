@@ -26,6 +26,7 @@ import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.PhysicalPlanTest.PartitiongTestOperator;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.util.AttributeMap;
@@ -155,12 +156,10 @@ public class StreamingContainerManagerTest {
     DAG dag = new DAG();
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
+    PhysicalPlanTest.PartitiongTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitiongTestOperator.class);
     GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
-    DAG.StreamDecl n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1)
-      .setSerDeClass(TestStaticPartitioningSerDe.class);
-
+    DAG.StreamDecl n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
     DAG.StreamDecl mergeStream = dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
     dag.setMaxContainerCount(5);
@@ -186,8 +185,8 @@ public class StreamingContainerManagerTest {
 
       InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
-      Assert.assertTrue("partition for " + containerId, Arrays.equals(TestStaticPartitioningSerDe.partitions[i], nidi.partitionKeys.get(0)));
-      Assert.assertEquals("serde " + nidi, TestStaticPartitioningSerDe.class.getName(), nidi.serDeClassName);
+      Assert.assertTrue("partition for " + containerId, Arrays.equals(PartitiongTestOperator.PARTITION_KEYS[i], nidi.partitionKeys.get(0)));
+      Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
     }
 
     // mergeNode container
@@ -223,8 +222,7 @@ public class StreamingContainerManagerTest {
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
     GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    dag.addStream("n1n2", node1.outport1, node2.inport1)
-      .setSerDeClass(TestStaticPartitioningSerDe.class);
+    dag.addStream("n1n2", node1.outport1, node2.inport1);
 
     dag.addStream("n2n3", node2.outport1, node3.inport1);
 
@@ -297,11 +295,6 @@ public class StreamingContainerManagerTest {
     public final static byte[][] partitions = new byte[][]{
         {'1'}, {'2'}, {'3'}
     };
-
-    @Override
-    public byte[][] getPartitions() {
-      return partitions;
-    }
 
     @Override
     public byte[] getPartition(Object o)

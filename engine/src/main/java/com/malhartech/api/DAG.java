@@ -227,11 +227,13 @@ public class DAG implements Serializable, DAGConstants
       return this;
     }
 
+    @Deprecated
     public Class<? extends StreamCodec> getSerDeClass()
     {
       return serDeClass;
     }
 
+    @Deprecated
     public StreamDecl setSerDeClass(Class<? extends StreamCodec> serDeClass)
     {
       this.serDeClass = serDeClass;

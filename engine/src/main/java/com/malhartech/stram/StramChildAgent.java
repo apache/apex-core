@@ -327,8 +327,8 @@ public class StramChildAgent {
         inputInfo.portName = in.portName;
         inputInfo.sourceNodeId = sourceNode.id;
         inputInfo.sourcePortName = in.logicalStream.getSource().getPortName();
-        if (in.partition != null) {
-          inputInfo.partitionKeys = Arrays.asList(in.partition);
+        if (in.partitions != null) {
+          inputInfo.partitionKeys = in.partitions;
         }
 
         if (streamDecl.isInline() && sourceNode.container == node.container) {

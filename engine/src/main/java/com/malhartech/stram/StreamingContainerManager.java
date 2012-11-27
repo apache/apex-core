@@ -115,7 +115,7 @@ public class StreamingContainerManager
          // TODO: separate startup timeout handling
          if (cs.createdMillis + heartbeatTimeoutMillis < currentTms) {
            // issue stop as process may still be hanging around (would have been detected by Yarn otherwise)
-           LOG.info("Container {} heartbeat timeout.", containerId);
+           LOG.info("Container {}@{} heartbeat timeout.", containerId, cse.getValue().container.host);
            containerStopRequests.put(containerId, containerId);
          }
        }

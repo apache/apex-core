@@ -68,13 +68,7 @@ public class OperatorDeployInfo implements Serializable
     public String serDeClassName;
 
     /**
-     * Partition keys. For dynamic partitioning, set is initially empty (after
-     * topology initialization) and will be populated from node processing stats
-     * if the node emits partitioned data. Value(s), once assigned assigned by
-     * stram limit what data flows between 2 physical operators. Once values are set,
-     * node uses them subscribe to buffer server. Stram may request detailed
-     * partition stats as heartbeat response, based on which it can load balance
-     * (split/merge operators) if node is elastic.
+     * Partition keys for the input stream. Null w/o partitioning.
      */
     public List<byte[]> partitionKeys;
 

@@ -4,6 +4,14 @@
  */
 package com.malhartech.engine;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.EnumSet;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
 import com.esotericsoftware.kryo.io.Input;
@@ -11,17 +19,7 @@ import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import com.malhartech.annotation.ShipContainingJars;
-import com.malhartech.api.Operator;
 import com.malhartech.api.StreamCodec;
-import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -36,9 +34,9 @@ import org.slf4j.LoggerFactory;
 public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
 {
   private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodec.class);
-  private Output data = new Output(4096, Integer.MAX_VALUE);
-  private Output state = new Output(4096, Integer.MAX_VALUE);
-  private Input input = new Input();
+  private final Output data = new Output(4096, Integer.MAX_VALUE);
+  private final Output state = new Output(4096, Integer.MAX_VALUE);
+  private final Input input = new Input();
 
   static class ClassIdPair
   {
@@ -157,18 +155,6 @@ public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
   public byte[] getPartition(Object o)
   {
     return null;
-  }
-
-  @Override
-  public byte[][] getPartitions()
-  {
-    return null;
-  }
-
-  @Override
-  public boolean transferState(Operator destination, Operator source, Collection<byte[]> partitions)
-  {
-    return false;
   }
 
   @Override

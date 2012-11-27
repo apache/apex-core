@@ -83,7 +83,8 @@ public interface Operator extends Component<OperatorContext>
   public interface OutputPort<T> extends Port
   {
     /**
-     * Called by execution engine to inject sink at deployment time.
+     * Set the sink for the output port.
+     * Called by execution engine sink at deployment time.
      *
      * @param s
      */

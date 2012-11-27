@@ -8,8 +8,6 @@
  */
 package com.malhartech.api;
 
-import java.util.Collection;
-import java.util.List;
 
 /**
  *
@@ -67,36 +65,6 @@ public interface StreamCodec<T>
    * @return byte array representing the partition for the object
    */
   byte[] getPartition(Object o);
-
-  /**
-   * Possible partitions that can be generated.
-   * Currently stram assumes that this is idempotent.
-   *
-   * @return byte[][]
-   */
-  @Deprecated
-  byte[][] getPartitions();
-
-  /**
-   * @param destination - the downstream node which receives additional state
-   * @param source - the downstream node which loses some state to the destination
-   * @param partitions - criteria for state transfer to be used as hint
-   *
-   * @return true if the state transfer was successful, false otherwise.
-   *
-   * If partition is null then the entire state from the source is
-   * transferred to destination. if partitions is non empty and each
-   * element is a valid partition recognized by this StreamCodec then state
-   * related to the those partitions are moved from source to destination.
-   * if the partitions are not recognized by the StreamCodec then the number
-   * of partitions are used for proportionately sharing the state. e.g.
-   * 2 partitions will cause half of source's state to be transferred to
-   * destination, 3 will cause one third transfer and so on.
-   *
-   * Note that after this operation both the Nodes may have their states altered.
-   */
-  @Deprecated
-  boolean transferState(Operator destination, Operator source, Collection<byte[]> partitions);
 
   /**
    * Do consolidation at the checkpoint. If the codec builds the state through its lifetime as it
