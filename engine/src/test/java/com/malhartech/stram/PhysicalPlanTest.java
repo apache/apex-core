@@ -57,7 +57,7 @@ public class PhysicalPlanTest {
 
     dag.setMaxContainerCount(2);
 
-    PhysicalPlan plan = new PhysicalPlan(dag);
+    PhysicalPlan plan = new PhysicalPlan(dag, null);
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
     OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
@@ -95,7 +95,7 @@ public class PhysicalPlanTest {
 
     int maxContainers = 5;
     dag.setMaxContainerCount(maxContainers);
-    PhysicalPlan deployer1 = new PhysicalPlan(dag);
+    PhysicalPlan deployer1 = new PhysicalPlan(dag, null);
     Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
     Assert.assertEquals("operators container 0", 3, deployer1.getContainers().get(0).operators.size());
 
@@ -135,7 +135,7 @@ public class PhysicalPlanTest {
     int maxContainers = 5;
     dag.setMaxContainerCount(maxContainers);
 
-    PhysicalPlan deployer = new PhysicalPlan(dag);
+    PhysicalPlan deployer = new PhysicalPlan(dag, null);
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
 
     PTOutput node1Out = deployer.getOperators(dag.getOperatorWrapper(node1)).get(0).outputs.get(0);

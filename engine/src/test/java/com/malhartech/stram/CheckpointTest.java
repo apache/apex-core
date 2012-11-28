@@ -138,7 +138,7 @@ public class CheckpointTest
   }
 
   @Test
-  public void testRecoveryCheckpoint() throws Exception
+  public void testUpdateRecoveryCheckpoint() throws Exception
   {
     DAG dag = new DAG();
 
@@ -190,6 +190,19 @@ public class CheckpointTest
     Assert.assertEquals("checkpoint pnode1", 4L, cp);
     Assert.assertEquals("checkpoint "+pnode1, 4L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));
+
+    // out of sequence windowIds should be sorted
+    dnm.addCheckpoint(pnode2, 2L);
+    Assert.assertEquals("add first", Arrays.asList(new Long[] {2L, 4L}), pnode2.checkpointWindows);
+
+    dnm.addCheckpoint(pnode2, 3L);
+    Assert.assertEquals("add middle", Arrays.asList(new Long[] {2L, 3L, 4L}), pnode2.checkpointWindows);
+
+    dnm.addCheckpoint(pnode2, 4L);
+    Assert.assertEquals("ignore duplicate", Arrays.asList(new Long[] {2L, 3L, 4L}), pnode2.checkpointWindows);
+
+    dnm.addCheckpoint(pnode2, 5L);
+    Assert.assertEquals("add latest", Arrays.asList(new Long[] {2L, 3L, 4L, 5L}), pnode2.checkpointWindows);
 
   }
 

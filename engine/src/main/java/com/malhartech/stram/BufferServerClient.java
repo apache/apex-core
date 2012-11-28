@@ -54,7 +54,7 @@ class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
 
   @Override
   public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
-    LOG.debug("messageReceived: " + msg);
+    //LOG.debug("messageReceived: " + msg);
   }
 
   @Override

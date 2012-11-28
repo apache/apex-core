@@ -233,10 +233,11 @@ public class StramChildAgent {
     this.pendingRequest = r;
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (r.nodes != null) {
-      List<OperatorDeployInfo> nodeList = getDeployInfoList(r.nodes);
       if (r instanceof UndeployRequest) {
+        List<OperatorDeployInfo> nodeList = getDeployInfoList(r.nodes);
         rsp.undeployRequest = nodeList;
       } else {
+        List<OperatorDeployInfo> nodeList = getDeployInfoList(r.nodes);
         rsp.deployRequest = nodeList;
       }
     }
@@ -341,9 +342,10 @@ public class StramChildAgent {
           // FIXME: address to come from upstream output port, should be assigned first
           InetSocketAddress addr = in.source.container.bufferServerAddress;
           if (addr == null) {
-            //LOG.warn("upstream address not assigned: " + in.source);
-            //addr = container.bufferServerAddress;
-            throw new IllegalStateException("upstream address not assigned: " + in.source);
+            // TODO: occurs during undeploy
+            LOG.warn("upstream address not assigned: " + in.source);
+            addr = container.bufferServerAddress;
+            //throw new IllegalStateException("upstream address not assigned: " + in.source);
           }
           inputInfo.bufferServerHost = addr.getHostName();
           inputInfo.bufferServerPort = addr.getPort();

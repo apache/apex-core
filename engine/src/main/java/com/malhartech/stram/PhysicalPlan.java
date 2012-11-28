@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
@@ -186,6 +188,7 @@ public class PhysicalPlan {
    */
   public static class PTOperator extends PTComponent {
     DAG.OperatorWrapper logicalNode;
+    Partition partition;
     List<PTInput> inputs;
     List<PTOutput> outputs;
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
@@ -267,6 +270,7 @@ public class PhysicalPlan {
   private final LinkedHashMap<OperatorWrapper, List<PTOperator>> deployedOperators = new LinkedHashMap<OperatorWrapper, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
+  private final PlanContext ctx;
   private int maxContainers = 1;
 
   private PTContainer getContainer(int index) {
@@ -282,11 +286,16 @@ public class PhysicalPlan {
   }
 
   private class PartitionImpl implements PartitionableOperator.Partition {
-    private final Map<InputPort<?>, List<byte[]>> partitionKeys = new HashMap<InputPort<?>, List<byte[]>>();
+    private final Map<InputPort<?>, List<byte[]>> partitionKeys;
     private final PartitionableOperator operator;
 
-    private PartitionImpl(PartitionableOperator operator) {
+    private PartitionImpl(PartitionableOperator operator, Map<InputPort<?>, List<byte[]>> partitionKeys) {
       this.operator = operator;
+      this.partitionKeys = partitionKeys;
+    }
+
+    private PartitionImpl(PartitionableOperator operator) {
+      this(operator, new HashMap<InputPort<?>, List<byte[]>>());
     }
 
     @Override
@@ -310,13 +319,25 @@ public class PhysicalPlan {
     }
   }
 
+  interface PlanContext {
+    /**
+     * Read committed frozen state of the partition.
+     * Dynamic partitioning requires access to committed state so that operators can be split or merged.
+     * @param operatorInstance
+     * @return
+     * @throws IOException
+     */
+    public PartitionableOperator readCommitted(PTOperator operatorInstance) throws IOException;
+  }
+
   /**
    *
    * @param dag
    */
-  public PhysicalPlan(DAG dag) {
+  public PhysicalPlan(DAG dag, PlanContext ctx) {
 
     this.dag = dag;
+    this.ctx = ctx;
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing for {} containers.", this.maxContainers);
 
@@ -432,8 +453,39 @@ public class PhysicalPlan {
     return partitions;
   }
 
+  private void redoPartitions(DAG.OperatorWrapper n) {
+    // collect current partitions with frozen operator state
+    // those will be needed by the partitioner for split/merge
+    List<PTOperator> operators = getOperators(n);
+    List<Partition> currentPartitions = new ArrayList<Partition>(operators.size());
+    for (PTOperator pOperator : operators) {
+      Partition p = pOperator.partition;
+      if (p == null) {
+        throw new AssertionError("Null partition: " + pOperator);
+      }
+      // load operator state from last committed checkpoint
+      PartitionableOperator partitionedOperator = p.getOperator();
+      if (pOperator.recoveryCheckpoint != 0) {
+        try {
+          partitionedOperator = ctx.readCommitted(pOperator);
+        } catch (IOException e) {
+          LOG.warn("Failed to read partition state for " + pOperator, e);
+          return; // TODO
+        }
+      }
+      // assumes that it does not matter which port objects are referenced in the mapping
+      currentPartitions.add(new PartitionImpl(partitionedOperator, p.getPartitionKeys()));
+    }
+    // TODO: figure out how to deal with the load indicator
+
+    List<Partition> newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions);
+
+    List<PTOperator> undeployList;
+    List<PTOperator> deployList;
+    // now see what has changed, modify the plan and fire events so that deployment can be scheduled
 
 
+  }
 
   private PTOperator createPTOperator(OperatorWrapper nodeDecl, Partition partition, int instanceCount) {
 
@@ -442,6 +494,7 @@ public class PhysicalPlan {
     pOperator.inputs = new ArrayList<PTInput>();
     pOperator.outputs = new ArrayList<PTOutput>();
     pOperator.id = ""+nodeSequence.incrementAndGet();
+    pOperator.partition = partition;
 
     Map<DAG.InputPortMeta, List<byte[]>> partitionKeys = Collections.emptyMap();
     if (partition != null) {

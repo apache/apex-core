@@ -651,7 +651,7 @@ public class StramChild
   private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
     OperatorCodec moduleSerDe = StramUtils.getNodeSerDe(null);
-    HdfsBackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
+    BackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
     for (OperatorDeployInfo ndi: nodeList) {
       try {
         final Object foreignObject;

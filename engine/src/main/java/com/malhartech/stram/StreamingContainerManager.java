@@ -5,12 +5,14 @@
 package com.malhartech.stram;
 
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,11 +27,13 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.PartitionableOperator;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
+import com.malhartech.stram.PhysicalPlan.PlanContext;
 import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StramChildAgent.OperatorStatus;
@@ -55,7 +59,7 @@ import com.malhartech.util.Pair;
  *
  */
 
-public class StreamingContainerManager
+public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
@@ -77,7 +81,7 @@ public class StreamingContainerManager
 
 
   public StreamingContainerManager(DAG dag) {
-    this.plan = new PhysicalPlan(dag);
+    this.plan = new PhysicalPlan(dag, this);
 
     this.windowSizeMillis = dag.getConf().getInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
     // try to align to it pleases eyes.
@@ -379,20 +383,8 @@ public class StreamingContainerManager
         }
 
         // checkpoint tracking
-        PTOperator node = status.operator;
         if (shb.getLastBackupWindowId() != 0) {
-          synchronized (node.checkpointWindows) {
-            if (!node.checkpointWindows.isEmpty()) {
-              Long lastCheckpoint = node.checkpointWindows.getLast();
-              // no need for extra work unless checkpoint moves
-              if (lastCheckpoint.longValue() != shb.getLastBackupWindowId()) {
-                node.checkpointWindows.add(shb.getLastBackupWindowId());
-                //System.out.println(node.container.containerId + " " + node + " checkpoint " + Codec.getStringWindowId(shb.getLastBackupWindowId()) + " at " + Codec.getStringWindowId(currentTimeMillis/1000));
-              }
-            } else {
-              node.checkpointWindows.add(shb.getLastBackupWindowId());
-            }
-          }
+          addCheckpoint(status.operator, shb.getLastBackupWindowId());
         }
       }
     }
@@ -445,6 +437,30 @@ public class StreamingContainerManager
     return true;
   }
 
+  void addCheckpoint(PTOperator node, long backupWindowId) {
+    synchronized (node.checkpointWindows) {
+      if (!node.checkpointWindows.isEmpty()) {
+        Long lastCheckpoint = node.checkpointWindows.getLast();
+        // skip unless checkpoint moves
+        if (lastCheckpoint.longValue() != backupWindowId) {
+          if (lastCheckpoint.longValue() > backupWindowId) {
+            // list needs to have max windowId last
+            LOG.warn("Out of sequence checkpoint {} last {} (operator {})", new Object[] {backupWindowId, lastCheckpoint, node});
+            ListIterator<Long> li = node.checkpointWindows.listIterator();
+            while (li.hasNext() && li.next().longValue() < backupWindowId);
+            if (li.previous() != backupWindowId) {
+              li.add(backupWindowId);
+            }
+          } else {
+            node.checkpointWindows.add(backupWindowId);
+          }
+        }
+      } else {
+        node.checkpointWindows.add(backupWindowId);
+      }
+    }
+  }
+
   /**
    * Compute checkpoints required for a given operator instance to be recovered.
    * This is done by looking at checkpoints available for downstream dependencies first,
@@ -471,10 +487,10 @@ public class StreamingContainerManager
         }
       }
     }
-    // find checkpoint for downstream dependency, remove previous checkpoints
+    // find commit point for downstream dependency, remove previous checkpoints
     long c1 = 0;
     synchronized (operator.checkpointWindows) {
-      if (operator.checkpointWindows != null && !operator.checkpointWindows.isEmpty()) {
+      if (!operator.checkpointWindows.isEmpty()) {
         if ((c1 = operator.checkpointWindows.getFirst().longValue()) <= maxCheckpoint) {
           long c2 = 0;
           while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
@@ -563,6 +579,15 @@ public class StreamingContainerManager
     for (StramChildAgent cs : this.containers.values()) {
       cs.shutdownRequested = true;
     }
+  }
+
+  @Override
+  public PartitionableOperator readCommitted(PTOperator pOperator) throws IOException {
+    BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath);
+    if (pOperator.recoveryCheckpoint == 0) {
+      LOG.warn("No commited state for " + pOperator);
+    }
+    return (PartitionableOperator)ba.restore(pOperator.id, pOperator.recoveryCheckpoint, StramUtils.getNodeSerDe(null));
   }
 
   public ArrayList<OperatorInfo> getNodeInfoList() {
