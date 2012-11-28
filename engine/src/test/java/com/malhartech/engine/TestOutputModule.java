@@ -8,8 +8,6 @@ import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context;
 import com.malhartech.api.DefaultInputPort;
-import com.malhartech.engine.Tuple;
-
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;

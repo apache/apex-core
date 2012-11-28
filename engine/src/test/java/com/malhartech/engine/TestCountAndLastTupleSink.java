@@ -4,8 +4,6 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.engine.Tuple;
-
 /**
  * A sink implementation to collect expected test results.
  */
