@@ -234,10 +234,13 @@ public class PhysicalPlan {
 
   /**
    *
-   * Representation of a container for physical objects of dag to be placed in<p>
+   * Representation of a container for physical objects of DAG to be placed in
+   * <p>
    * <br>
-   * This class directly maps to a hadoop container<br>
-   * <br>
+   * References the actual container assigned by the resource manager which
+   * hosts the streaming operators in the execution layer.<br>
+   * The container reference may change throughout the lifecycle of the
+   * application due to failure/recovery or scheduler decisions in general. <br>
    *
    */
 
@@ -333,21 +336,6 @@ public class PhysicalPlan {
       }
 
       boolean upstreamDeployed = true;
-      // determine partitioning / number of operators
-      List<Partition> partitions = null;
-      boolean isSingleNodeInstance = true;
-
-      if (n.getOperator() instanceof PartitionableOperator) {
-        // operator to provide initial partitioning
-        PartitionableOperator partitionableOperator = (PartitionableOperator)n.getOperator();
-        partitions = new ArrayList<Partition>(1);
-        partitions.add(new PartitionImpl(partitionableOperator));
-        partitions = partitionableOperator.definePartitions(partitions);
-        if (partitions.isEmpty()) {
-          throw new IllegalArgumentException("PartitionableOperator must return at least one partition: " + n);
-        }
-        isSingleNodeInstance = false;
-      }
 
       for (StreamDecl s : n.getInputStreams().values()) {
         if (s.getSource() != null && !inlineGroups.containsKey(s.getSource().getOperatorWrapper())) {
@@ -359,6 +347,17 @@ public class PhysicalPlan {
       }
 
       if (upstreamDeployed) {
+
+        // determine partitioning / number of operators
+        List<Partition> partitions = null;
+        boolean isSingleNodeInstance = true;
+
+        if (n.getOperator() instanceof PartitionableOperator) {
+          // operator to provide initial partitioning
+          partitions = partition(n);
+          isSingleNodeInstance = false;
+        }
+
         // ready to look at this node
         Set<PTOperator> inlineSet = new HashSet<PTOperator>();
         if (isSingleNodeInstance) {
@@ -421,6 +420,21 @@ public class PhysicalPlan {
 
   }
 
+  private List<Partition> partition(DAG.OperatorWrapper n) {
+    PartitionableOperator partitionableOperator = (PartitionableOperator)n.getOperator();
+    List<Partition> partitions = new ArrayList<Partition>(1);
+    partitions.add(new PartitionImpl(partitionableOperator));
+
+    partitions = partitionableOperator.definePartitions(partitions);
+    if (partitions == null || partitions.isEmpty()) {
+      throw new IllegalArgumentException("PartitionableOperator must return at least one partition: " + n);
+    }
+    return partitions;
+  }
+
+
+
+
   private PTOperator createPTOperator(OperatorWrapper nodeDecl, Partition partition, int instanceCount) {
 
     PTOperator pOperator = new PTOperator();
@@ -433,12 +447,12 @@ public class PhysicalPlan {
     if (partition != null) {
       partitionKeys = new HashMap<DAG.InputPortMeta, List<byte[]>>(partition.getPartitionKeys().size());
       Map<InputPort<?>, List<byte[]>> partKeys = partition.getPartitionKeys();
-      for (Map.Entry<InputPort<?>, List<byte[]>> partitionPort : partKeys.entrySet()) {
-        DAG.InputPortMeta pportMeta = nodeDecl.getInputPortMeta(partitionPort.getKey());
+      for (Map.Entry<InputPort<?>, List<byte[]>> portEntry : partKeys.entrySet()) {
+        DAG.InputPortMeta pportMeta = nodeDecl.getInputPortMeta(portEntry.getKey());
         if (pportMeta == null) {
-          throw new IllegalArgumentException("Invalid port reference " + partitionPort);
+          throw new IllegalArgumentException("Invalid port reference " + portEntry);
         }
-        partitionKeys.put(pportMeta, partitionPort.getValue());
+        partitionKeys.put(pportMeta, portEntry.getValue());
       }
     }
 

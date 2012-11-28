@@ -34,7 +34,7 @@ public class PhysicalPlanTest {
       List<Partition> newPartitions = new ArrayList<Partition>(3);
       Partition templatePartition = partitions.get(0);
       for (int i=0; i<3; i++) {
-        Partition p = templatePartition.getInstance(templatePartition.getOperator());
+        Partition p = templatePartition.getInstance(new PartitiongTestOperator());
         p.getPartitionKeys().put(this.inport1, Arrays.asList(PARTITION_KEYS[i]));
         newPartitions.add(p);
       }

@@ -7,7 +7,6 @@ package com.malhartech.stram;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,8 +19,8 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.Operator;
 import com.malhartech.api.OperatorCodec;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
@@ -276,7 +275,7 @@ public class StramChildAgent {
     Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
 
     for (PTOperator node : deployNodes) {
-      OperatorDeployInfo ndi = createOperatorDeployInfo(node.id, node.getLogicalNode());
+      OperatorDeployInfo ndi = createOperatorDeployInfo(node);
       long checkpointWindowId = node.getRecoveryCheckpoint();
       if (checkpointWindowId > 0) {
         LOG.debug("Operator {} recovery checkpoint {}", node.id, Codec.getStringWindowId(checkpointWindowId));
@@ -342,8 +341,9 @@ public class StramChildAgent {
           // FIXME: address to come from upstream output port, should be assigned first
           InetSocketAddress addr = in.source.container.bufferServerAddress;
           if (addr == null) {
-            LOG.warn("upstream address not assigned: " + in.source);
-            addr = container.bufferServerAddress;
+            //LOG.warn("upstream address not assigned: " + in.source);
+            //addr = container.bufferServerAddress;
+            throw new IllegalStateException("upstream address not assigned: " + in.source);
           }
           inputInfo.bufferServerHost = addr.getHostName();
           inputInfo.bufferServerPort = addr.getPort();
@@ -366,19 +366,20 @@ public class StramChildAgent {
    * @return {@link com.malhartech.stram.OperatorDeployInfo}
    *
    */
-  private OperatorDeployInfo createOperatorDeployInfo(String dnodeId, OperatorWrapper operator)
+  private OperatorDeployInfo createOperatorDeployInfo(PTOperator node)
   {
+    Operator operator = node.getLogicalNode().getOperator();
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
-      this.nodeSerDe.write(operator.getOperator(), os);
+      this.nodeSerDe.write(operator, os);
       ndi.serializedNode = os.toByteArray();
       os.close();
     } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getOperator().getClass() + ")", e);
+      throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getClass() + ")", e);
     }
-    ndi.declaredId = operator.getId();
-    ndi.id = dnodeId;
+    ndi.declaredId = node.getLogicalId();
+    ndi.id = node.id;
     return ndi;
   }
 
