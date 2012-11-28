@@ -5,8 +5,6 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
-import com.malhartech.engine.Tuple;
-
 import java.util.HashMap;
 
 /**
