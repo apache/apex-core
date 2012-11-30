@@ -5,16 +5,12 @@
 package com.malhartech.stram.webapp;
 
 import com.google.inject.Inject;
-import com.malhartech.stram.StreamingContainerManager;
 import com.malhartech.stram.StramAppContext;
+import com.malhartech.stram.StreamingContainerManager;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;

@@ -4,15 +4,13 @@
  */
 package com.malhartech.stram;
 
-import java.io.Serializable;
-import java.util.List;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.util.AttributeMap;
+import java.io.Serializable;
+import java.util.List;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  * Operator deployment info passed from master to container as part of initialization

@@ -4,32 +4,20 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.PartitionableOperator;
+import com.malhartech.api.PartitionableOperator.Partition;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.api.DAG.StreamDecl;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.PartitionableOperator;
-import com.malhartech.api.PartitionableOperator.Partition;
 
 /**
  *
