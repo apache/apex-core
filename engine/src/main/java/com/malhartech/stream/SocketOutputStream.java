@@ -10,7 +10,6 @@ package com.malhartech.stream;
 import com.malhartech.bufferserver.netty.ClientInitializer;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
-
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;

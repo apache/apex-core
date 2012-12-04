@@ -4,16 +4,14 @@
  */
 package com.malhartech.util;
 
+import com.malhartech.util.AttributeMap.AttributeKey;
 import io.netty.util.Attribute;
-
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
-
-import com.malhartech.util.AttributeMap.AttributeKey;
 
 /**
  * Parameterized and scoped context attribute map that supports serialization.

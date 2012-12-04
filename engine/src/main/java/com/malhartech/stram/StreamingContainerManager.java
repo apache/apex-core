@@ -48,6 +48,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.util.Pair;
+
 /**
  *
  * Tracks topology provisioning/allocation to containers<p>
@@ -59,7 +60,6 @@ import com.malhartech.util.Pair;
  * <br>
  *
  */
-
 public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
