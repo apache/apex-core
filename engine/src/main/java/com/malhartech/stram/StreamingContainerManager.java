@@ -23,6 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
@@ -153,6 +154,10 @@ public class StreamingContainerManager implements PlanContext
       updateRecoveryCheckpoints(node, checkpoints);
     }
 
+    // redeploy cycle for all affected operators
+    redeploy(checkpoints, Sets.newHashSet(cs.container), checkpoints);
+
+/*
     Map<PTContainer, List<PTOperator>> resetNodes = new HashMap<PTContainer, List<PhysicalPlan.PTOperator>>();
     // group by container
     for (PTOperator node : checkpoints) {
@@ -165,7 +170,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // stop affected downstream operators (all except failed container)
-    // particular order does not matter, remove all affected operators in each container in one sweep
+    // order does not matter, remove all affected operators in each container in one sweep
     AtomicInteger undeployAckCountdown = new AtomicInteger();
     for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
       if (e.getKey() != cs.container) {
@@ -217,7 +222,7 @@ public class StreamingContainerManager implements PlanContext
         downstreamContainer.addRequest(r);
       }
     }
-
+*/
   }
 
   public void markComplete(String containerId) {
@@ -588,6 +593,97 @@ public class StreamingContainerManager implements PlanContext
       LOG.warn("No commited state for " + pOperator);
     }
     return (PartitionableOperator)ba.restore(pOperator.id, pOperator.recoveryCheckpoint, StramUtils.getNodeSerDe(null));
+  }
+
+  private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators) {
+    Map<PTContainer, List<PTOperator>> m = new HashMap<PTContainer, List<PTOperator>>();
+    for (PTOperator node : operators) {
+      List<PTOperator> nodes = m.get(node.container);
+      if (nodes == null) {
+        nodes = new ArrayList<PhysicalPlan.PTOperator>();
+        m.put(node.container, nodes);
+      }
+      nodes.add(node);
+    }
+    return m;
+  }
+
+  @Override
+  public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
+
+    Map<PTContainer, List<PTOperator>> undeployGroups = groupByContainer(undeploy);
+
+    // stop affected operators (exclude new/failed containers)
+    // order does not matter, remove all affected operators in each container in one sweep
+    AtomicInteger undeployAckCountdown = new AtomicInteger();
+    for (Map.Entry<PTContainer, List<PTOperator>> e : undeployGroups.entrySet()) {
+      if (!startContainers.contains(e.getKey())) {
+        UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
+        r.setNodes(e.getValue());
+        undeployAckCountdown.incrementAndGet();
+        StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
+        downstreamContainer.addRequest(r);
+      }
+    }
+
+    // deploy new containers, depends on above operators stop
+    AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
+    for (PTContainer c : startContainers) {
+      undeployAckCountdown.incrementAndGet(); // operator deploy waits for container start
+      ContainerStartRequest dr = new ContainerStartRequest(c, failedContainerDeployCnt, undeployAckCountdown);
+      // launch replacement container, deploy request will be queued with new container agent in assignContainer
+      containerStartRequests.add(dr);
+    }
+
+    // (re)deploy affected operators (other than those in new containers)
+    // this can happen in parallel after buffer server state for recovered publishers is reset
+    Map<PTContainer, List<PTOperator>> deployGroups = groupByContainer(deploy);
+    AtomicInteger redeployAckCountdown = new AtomicInteger();
+    for (Map.Entry<PTContainer, List<PTOperator>> e : deployGroups.entrySet()) {
+      if (startContainers.contains(e.getKey())) {
+        // operators already deployed as part of container startup
+        continue;
+      }
+
+      // to reset publishers, clean buffer server past checkpoint so subscribers don't read stale data (including end of stream)
+      for (PTOperator operator : e.getValue()) {
+        for (PTOutput out : operator.outputs) {
+          final StreamDecl streamDecl = out.logicalStream;
+          if (!(streamDecl.isInline() && out.isDownStreamInline())) {
+            // following needs to match the concat logic in StramChild
+            String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+            // TODO: find way to mock this when testing rest of logic
+            if (operator.container.bufferServerAddress.getPort() != 0) {
+              BufferServerClient bsc = getBufferServerClient(operator);
+              // reset publisher (stale operator may still write data until disconnected)
+              // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
+              bsc.reset(sourceIdentifier, 0);
+            }
+          }
+        }
+      }
+
+      DeployRequest r = new DeployRequest(redeployAckCountdown, failedContainerDeployCnt);
+      r.setNodes(e.getValue());
+      redeployAckCountdown.incrementAndGet();
+      StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
+      downstreamContainer.addRequest(r);
+    }
+
+  }
+
+  @Override
+  public Set<PTOperator> getDependents(Collection<PTOperator> p) {
+    Set<PTOperator> visited = new LinkedHashSet<PTOperator>();
+    for (OperatorWrapper logicalOperator : plan.getRootOperators()) {
+      List<PTOperator> operators = plan.getOperators(logicalOperator);
+      if (operators != null) {
+        for (PTOperator operator : operators) {
+          updateRecoveryCheckpoints(operator, visited);
+        }
+      }
+    }
+    return visited;
   }
 
   public ArrayList<OperatorInfo> getNodeInfoList() {

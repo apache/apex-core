@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
-import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
@@ -187,6 +187,16 @@ public class PhysicalPlan {
    *
    */
   public static class PTOperator extends PTComponent {
+    enum State {
+      NEW,
+      PENDING_DEPLOY,
+      RUNNING,
+      PENDING_UNDEPLOY,
+      REMOVED
+    }
+
+    State state = State.NEW;
+
     DAG.OperatorWrapper logicalNode;
     Partition partition;
     List<PTInput> inputs;
@@ -267,7 +277,7 @@ public class PhysicalPlan {
   }
 
   private final AtomicInteger nodeSequence = new AtomicInteger();
-  private final LinkedHashMap<OperatorWrapper, List<PTOperator>> deployedOperators = new LinkedHashMap<OperatorWrapper, List<PTOperator>>();
+  private final LinkedHashMap<OperatorWrapper, List<PTOperator>> logicalToPTOperator = new LinkedHashMap<OperatorWrapper, List<PTOperator>>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
   private final PlanContext ctx;
@@ -328,6 +338,15 @@ public class PhysicalPlan {
      * @throws IOException
      */
     public PartitionableOperator readCommitted(PTOperator operatorInstance) throws IOException;
+
+    /**
+     * Request deployment changes as sequence of undeploy, container start and deploy groups with dependency.
+     * @param container
+     */
+    public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy);
+
+    public Set<PTOperator> getDependents(Collection<PTOperator> p);
+
   }
 
   /**
@@ -403,24 +422,24 @@ public class PhysicalPlan {
         if (partitions != null) {
           // create operator instance per partition
           for (Partition p : partitions) {
-            PTOperator pNode = createPTOperator(n, p, pnodes.size());
+            PTOperator pNode = createPTOperator(n, p);
             pnodes.add(pNode);
           }
         } else {
           // single instance, no partitions
-          PTOperator pNode = createPTOperator(n, null, pnodes.size());
+          PTOperator pNode = createPTOperator(n, null);
           pnodes.add(pNode);
           inlineSet.add(pNode);
         }
 
         inlineGroups.put(n, inlineSet);
-        this.deployedOperators.put(n, pnodes);
+        this.logicalToPTOperator.put(n, pnodes);
       }
     }
 
     // assign operators to containers
     int groupCount = 0;
-    for (Map.Entry<OperatorWrapper, List<PTOperator>> e : deployedOperators.entrySet()) {
+    for (Map.Entry<OperatorWrapper, List<PTOperator>> e : logicalToPTOperator.entrySet()) {
       for (PTOperator node : e.getValue()) {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
@@ -453,11 +472,35 @@ public class PhysicalPlan {
     return partitions;
   }
 
+  public interface OperatorEvent {
+    public void execute();
+  }
+
+  /**
+   * Request resource to deploy operator
+   */
+  public class DeployOperatorRequest implements OperatorEvent {
+    PTOperator operator;
+    @Override
+    public void execute() {
+    }
+  }
+
+  public class UndeployOperatorRequest implements OperatorEvent {
+    PTOperator operator;
+    @Override
+    public void execute() {
+      operator.container.operators.remove(operator); // TODO: thread safety
+    }
+  }
+
   private void redoPartitions(DAG.OperatorWrapper n) {
-    // collect current partitions with frozen operator state
+    // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = getOperators(n);
     List<Partition> currentPartitions = new ArrayList<Partition>(operators.size());
+    Map<PartitionableOperator, PTOperator> currentPartitionMap = new HashMap<PartitionableOperator, PTOperator>(operators.size());
+
     for (PTOperator pOperator : operators) {
       Partition p = pOperator.partition;
       if (p == null) {
@@ -473,21 +516,84 @@ public class PhysicalPlan {
           return; // TODO
         }
       }
-      // assumes that it does not matter which port objects are referenced in the mapping
-      currentPartitions.add(new PartitionImpl(partitionedOperator, p.getPartitionKeys()));
+      // assume it does not matter which instance's port objects are referenced in mapping
+      PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys());
+      currentPartitions.add(partition);
+      currentPartitionMap.put(partitionedOperator, pOperator);
     }
-    // TODO: figure out how to deal with the load indicator
 
+    // TODO: figure out how to deal with load indicator
     List<Partition> newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions);
 
-    List<PTOperator> undeployList;
-    List<PTOperator> deployList;
-    // now see what has changed, modify the plan and fire events so that deployment can be scheduled
+    LinkedList<PTOperator> newList = new LinkedList<PhysicalPlan.PTOperator>(this.logicalToPTOperator.get(n));
+    List<OperatorEvent> actions = new ArrayList<OperatorEvent>();
+    List<Partition> addedPartitions = new ArrayList<Partition>();
 
+    // determine modifications of partition set, identify affected operator instance
+    for (Partition newPartition : newPartitions) {
+      PTOperator op = currentPartitionMap.remove(newPartition.getOperator());
+      if (op == null) {
+        addedPartitions.add(newPartition);
+      } else {
+        // see whether mapping was changed
+        throw new UnsupportedOperationException("partition key change to be implemented");
+      }
+    }
+
+    // remaining operator instances represent deprecated partitions
+    // operators need to be removed from deployment and plan first
+    // freed resources available prior to new/modified partition processing
+    Set<PTOperator> undeployOperators = this.ctx.getDependents(currentPartitionMap.values());
+
+    for (PTOperator p : currentPartitionMap.values()) {
+      // TODO: identify downstream dependencies, undeploy set prior to plan modification
+      removePTOperator(p);
+      newList.remove(p);
+      // partitions that were removed
+      UndeployOperatorRequest ev = new UndeployOperatorRequest();
+      ev.operator = p;
+      p.state = PTOperator.State.PENDING_UNDEPLOY;
+      actions.add(0, ev);
+      // TODO: remove checkpoint state
+    }
+
+    // add new operators after cleanup complete
+    List<PTOperator> addedOperators = new ArrayList<PTOperator>(addedPartitions.size());
+    Set<PTContainer> newContainers = new HashSet<PTContainer>();
+
+    for (Partition newPartition : addedPartitions) {
+      // new partition, add operator instance
+      PTOperator p = createPTOperator(n, newPartition);
+      addedOperators.add(p);
+      newList.add(p);
+
+      // TODO: write checkpoint state
+      // set checkpoint on new operators to pin downstream state
+
+      // find container for new operator
+      PTContainer c = findContainer(p);
+      if (c == null) {
+        // get new container
+        c = new PTContainer();
+        newContainers.add(c);
+      }
+      p.container = c;
+      p.container.operators.add(p); // TODO: thread safety
+    }
+
+    Set<PTOperator> deployOperators = this.ctx.getDependents(addedOperators);
+    ctx.redeploy(undeployOperators, newContainers, deployOperators);
+
+    this.logicalToPTOperator.put(n, newList);  // TODO: thread safety
 
   }
 
-  private PTOperator createPTOperator(OperatorWrapper nodeDecl, Partition partition, int instanceCount) {
+  private PTContainer findContainer(PTOperator p) {
+    // TODO: find container based on current utilization
+    return null;
+  }
+
+  private PTOperator createPTOperator(OperatorWrapper nodeDecl, Partition partition) {
 
     PTOperator pOperator = new PTOperator();
     pOperator.logicalNode = nodeDecl;
@@ -514,7 +620,7 @@ public class PhysicalPlan {
       // (can be multiple with partitioning or load balancing)
       StreamDecl streamDecl = inputEntry.getValue();
       if (streamDecl.getSource() != null) {
-        List<PTOperator> upstreamNodes = deployedOperators.get(streamDecl.getSource().getOperatorWrapper());
+        List<PTOperator> upstreamNodes = logicalToPTOperator.get(streamDecl.getSource().getOperatorWrapper());
         for (PTOperator upNode : upstreamNodes) {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
@@ -534,12 +640,32 @@ public class PhysicalPlan {
     return pOperator;
   }
 
+  private void removePTOperator(PTOperator node) {
+    OperatorWrapper nodeDecl = node.logicalNode;
+    for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
+      StreamDecl streamDecl = outputEntry.getValue();
+      for (DAG.InputPortMeta inp : streamDecl.getSinks()) {
+        List<PTOperator> sinkNodes = logicalToPTOperator.get(inp.getOperatorWrapper());
+        for (PTOperator sinkNode : sinkNodes) {
+          // unlink from downstream operators
+          List<PTInput> newInputs = new ArrayList<PTInput>(sinkNode.inputs.size());
+          for (PTInput sinkIn : sinkNode.inputs) {
+            if (sinkIn.source != node) {
+              newInputs.add(sinkIn);
+            }
+          }
+          sinkNode.inputs = newInputs;
+        }
+      }
+    }
+  }
+
   protected List<PTContainer> getContainers() {
     return this.containers;
   }
 
   protected List<PTOperator> getOperators(OperatorWrapper logicalOperator) {
-    return this.deployedOperators.get(logicalOperator);
+    return this.logicalToPTOperator.get(logicalOperator);
   }
 
   protected List<OperatorWrapper> getRootOperators() {
