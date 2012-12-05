@@ -8,6 +8,7 @@ import com.malhartech.api.*;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import junit.framework.Assert;
 import org.junit.Test;
 
 /**
@@ -28,6 +29,7 @@ public class GenericNodeTest
       {
         op.emit(tuple);
       }
+
     };
     DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>(this)
     {
@@ -36,6 +38,7 @@ public class GenericNodeTest
       {
         op.emit(tuple);
       }
+
     };
     DefaultOutputPort<Object> op = new DefaultOutputPort<Object>(this);
 
@@ -62,6 +65,7 @@ public class GenericNodeTest
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
+
   }
 
   @Test
@@ -79,6 +83,7 @@ public class GenericNodeTest
       {
         list.add(tuple);
       }
+
     };
 
     Sink<Object> input1 = (Sink<Object>)gn.connectInputPort("ip1", output);
@@ -94,6 +99,7 @@ public class GenericNodeTest
         ab.set(true);
         gn.activate(new OperatorContext("GenericOperator", this, null));
       }
+
     };
     t.start();
 
@@ -108,72 +114,74 @@ public class GenericNodeTest
 
     input1.process(beginWindow1);
     Thread.sleep(sleeptime);
-    assert (list.size() == 1);
+    Assert.assertEquals(1, list.size());
 
     input2.process(beginWindow1);
     Thread.sleep(sleeptime);
-    assert (list.size() == 1);
+    Assert.assertEquals(1, list.size());
 
     Tuple endWindow1 = new EndWindowTuple();
     endWindow1.windowId = 0x1L;
 
     input1.process(endWindow1);
     Thread.sleep(sleeptime);
-    assert (list.size() == 1);
+    Assert.assertEquals(1, list.size());
 
     Tuple beginWindow2 = new Tuple(DataType.BEGIN_WINDOW);
     beginWindow2.windowId = 0x2L;
 
     input1.process(beginWindow2);
     Thread.sleep(sleeptime);
-    assert (list.size() == 1);
+    Assert.assertEquals(1, list.size());
 
     input2.process(endWindow1);
     Thread.sleep(sleeptime);
-    assert (list.size() == 3);
+    Assert.assertEquals(3, list.size());
 
     input2.process(beginWindow2);
     Thread.sleep(sleeptime);
-    assert (list.size() == 3);
+    Assert.assertEquals(3, list.size());
 
     Tuple endWindow2 = new EndWindowTuple();
     endWindow2.windowId = 0x2L;
 
     input2.process(endWindow2);
     Thread.sleep(sleeptime);
-    assert (list.size() == 3);
+    Assert.assertEquals(3, list.size());
 
     input1.process(endWindow2);
     Thread.sleep(sleeptime);
-    assert (list.size() == 4);
+    Assert.assertEquals(4, list.size());
 
     EndStreamTuple est = new EndStreamTuple();
 
     input1.process(est);
     Thread.sleep(sleeptime);
-    assert (list.size() == 4);
+    Assert.assertEquals(4, list.size());
 
     Tuple beginWindow3 = new Tuple(DataType.BEGIN_WINDOW);
     beginWindow3.windowId = 0x3L;
 
     input2.process(beginWindow3);
     Thread.sleep(sleeptime);
-    assert (list.size() == 5);
+    Assert.assertEquals(5, list.size());
 
     Tuple endWindow3 = new EndWindowTuple();
     endWindow3.windowId = 0x3L;
 
     input2.process(endWindow3);
     Thread.sleep(sleeptime);
-    assert (list.size() == 6);
+    Assert.assertEquals(6, list.size());
 
-    assert (t.getState() != Thread.State.TERMINATED);
+    Assert.assertNotSame(Thread.State.TERMINATED, t.getState());
 
     input2.process(est);
     Thread.sleep(sleeptime);
-    assert (list.size() == 7);
+    Assert.assertEquals(7, list.size());
 
     Thread.sleep(sleeptime);
-    assert (t.getState() == Thread.State.TERMINATED);
+
+    Assert.assertEquals(Thread.State.TERMINATED, t.getState());
   }
+
 }
