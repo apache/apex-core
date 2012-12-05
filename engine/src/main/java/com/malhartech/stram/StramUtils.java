@@ -14,36 +14,45 @@ import com.malhartech.engine.DefaultStreamCodec;
  * Utilities for shared use in Stram components<p>
  * <br>
  */
-public abstract class StramUtils {
-
-  public static StreamCodec getSerdeInstance(String className) {
+public abstract class StramUtils
+{
+  @SuppressWarnings({"unchecked"})
+  public static StreamCodec<Object> getSerdeInstance(String className)
+  {
     if (className != null) {
       return newInstance(classForName(className, StreamCodec.class));
-    } else {
+    }
+    else {
       return new DefaultStreamCodec();
     }
   }
 
-  public static <T> Class<? extends T> classForName(String className, Class<T> superClass) {
+  public static <T> Class<? extends T> classForName(String className, Class<T> superClass)
+  {
     try {
       //return Class.forName(className).asSubclass(superClass);
       return Thread.currentThread().getContextClassLoader().loadClass(className).asSubclass(superClass);
-    } catch (ClassNotFoundException e) {
+    }
+    catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("Class not found: " + className, e);
     }
   }
 
-  public static <T> T newInstance(Class<T> clazz) {
+  public static <T> T newInstance(Class<T> clazz)
+  {
     try {
       return clazz.newInstance();
-    } catch (IllegalAccessException e) {
+    }
+    catch (IllegalAccessException e) {
       throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
-    } catch (InstantiationException e) {
+    }
+    catch (InstantiationException e) {
       throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
     }
   }
 
-  public static OperatorCodec getNodeSerDe(String className) {
+  public static OperatorCodec getNodeSerDe(String className)
+  {
     if (className != null) {
       return newInstance(classForName(className, OperatorCodec.class));
     }

@@ -21,6 +21,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
  */
 public class StreamContext extends DefaultAttributeMap<StreamContext> implements Context
 {
+  private static final long serialVersionUID = 201212042146L;
   public static final AttributeKey<InetSocketAddress> BUFFER_SERVER_ADDRESS = new AttributeKey<InetSocketAddress>("BUFFER_SERVER_ADDRESS");
 
   public static class AttributeKey<T> extends AttributeMap.AttributeKey<StreamContext, T>

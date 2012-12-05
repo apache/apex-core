@@ -101,7 +101,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  public abstract Sink<?> connectInputPort(String port, final Sink sink);
+  public abstract Sink<Object> connectInputPort(String port, final Sink<?> sink);
   OperatorContext context;
 
   public void activate(OperatorContext context)

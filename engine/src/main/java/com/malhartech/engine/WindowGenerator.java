@@ -7,6 +7,7 @@ package com.malhartech.engine;
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.util.ScheduledExecutorService;
+import java.lang.reflect.Array;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -35,9 +36,9 @@ public class WindowGenerator implements Stream<Object>, Runnable
   private final ScheduledExecutorService ses;
   private long firstWindowMillis; // Window start time
   private int windowWidthMillis; // Window size
-  HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink[] sinks = NO_SINKS;
+  private volatile Sink<Object>[] sinks = NO_SINKS;
   private long currentWindowMillis;
   private long baseSeconds;
   private int windowId;
@@ -93,7 +94,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
     if (windowId == MAX_WINDOW_ID) {
       EndWindowTuple t = new EndWindowTuple();
       t.setWindowId(baseSeconds | windowId);
-      for (Sink s: sinks) {
+      for (Sink<Object> s: sinks) {
         s.process(t);
       }
 
@@ -216,33 +217,31 @@ public class WindowGenerator implements Stream<Object>, Runnable
   }
 
   @Override
-  public Sink setSink(String id, Sink sink)
+  public void setSink(String id, Sink<Object> sink)
   {
     if (sink == null) {
-      sink = outputs.remove(id);
+      outputs.remove(id);
       if (outputs.isEmpty()) {
         sinks = NO_SINKS;
       }
     }
     else {
-      sink = outputs.put(id, sink);
+      outputs.put(id, sink);
       if (sinks != NO_SINKS) {
         activateSinks();
       }
     }
-
-    return sink;
   }
 
-  @SuppressWarnings("SillyAssignment")
   private void activateSinks()
   {
-    sinks = new Sink[outputs.size()];
+    @SuppressWarnings("unchecked")
+    Sink<Object>[] newSinks = (Sink<Object>[]) Array.newInstance(Sink.class, outputs.size());
     int i = 0;
-    for (Sink s: outputs.values()) {
-      sinks[i++] = s;
+    for (Sink<Object> s: outputs.values()) {
+      newSinks[i++] = s;
     }
-    sinks = sinks;
+    sinks = newSinks;
   }
 
   @Override

@@ -22,5 +22,5 @@ public interface Stream<T> extends Component<StreamContext>, ActivationListener<
 {
   public boolean isMultiSinkCapable();
 
-  public Sink setSink(String sinkId, Sink<T> sink);
+  public void setSink(String sinkId, Sink<T> sink);
 }

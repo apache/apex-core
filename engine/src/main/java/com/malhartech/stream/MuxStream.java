@@ -7,7 +7,7 @@ package com.malhartech.stream;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
-
+import java.lang.reflect.Array;
 import java.util.HashMap;
 
 /**
@@ -16,9 +16,9 @@ import java.util.HashMap;
  */
 public class MuxStream implements Stream<Object>
 {
-  private HashMap<String, Sink> outputs;
+  private HashMap<String, Sink<Object>> outputs;
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink[] sinks = NO_SINKS;
+  private volatile Sink<Object>[] sinks = NO_SINKS;
 
   /**
    *
@@ -27,7 +27,7 @@ public class MuxStream implements Stream<Object>
   @Override
   public void setup(StreamContext context)
   {
-    outputs = new HashMap<String, Sink>();
+    outputs = new HashMap<String, Sink<Object>>();
   }
 
   /**
@@ -45,16 +45,16 @@ public class MuxStream implements Stream<Object>
    * @param context
    */
   @Override
-  @SuppressWarnings("SillyAssignment")
   public void activate(StreamContext context)
   {
-    sinks = new Sink[outputs.size()];
+    @SuppressWarnings("unchecked")
+    Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, outputs.size());
 
     int i = 0;
-    for (final Sink s: outputs.values()) {
-      sinks[i++] = s;
+    for (final Sink<Object> s: outputs.values()) {
+      newSinks[i++] = s;
     }
-    sinks = sinks;
+    sinks = newSinks;
   }
 
   /**
@@ -73,22 +73,20 @@ public class MuxStream implements Stream<Object>
    * @return Sink
    */
   @Override
-  public Sink setSink(String id, Sink sink)
+  public void setSink(String id, Sink<Object> sink)
   {
     if (sink == null) {
-      sink = outputs.remove(id);
+      outputs.remove(id);
       if (outputs.isEmpty()) {
         sinks = NO_SINKS;
       }
     }
     else {
-      sink = outputs.put(id, sink);
+      outputs.put(id, sink);
       if (sinks != NO_SINKS) {
         activate(null);
       }
     }
-
-    return sink;
   }
 
   /**

@@ -56,7 +56,7 @@ public class StramChild
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
   protected final Map<String, Node<?>> nodes = new ConcurrentHashMap<String, Node<?>>();
-  private final Map<String, ComponentContextPair<Stream<?>, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream<?>, StreamContext>>();
+  private final Map<String, ComponentContextPair<Stream<Object>, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream<Object>, StreamContext>>();
   protected final Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
   protected final Map<String, OperatorContext> activeNodes = new ConcurrentHashMap<String, OperatorContext>();
   private final Map<Stream<?>, StreamContext> activeStreams = new ConcurrentHashMap<Stream<?>, StreamContext>();
@@ -268,7 +268,7 @@ public class StramChild
 
     Set<String> removableStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
     // with the logic i have in here, the list should not contain repeated streams. but it does and that causes problem.
-    for (Entry<String, ComponentContextPair<Stream<?>, StreamContext>> entry: streams.entrySet()) {
+    for (Entry<String, ComponentContextPair<Stream<Object>, StreamContext>> entry: streams.entrySet()) {
       String indexingKey = entry.getKey();
       Stream<?> stream = entry.getValue().component;
       StreamContext context = entry.getValue().context;
@@ -294,7 +294,7 @@ public class StramChild
             n.connectInputPort(nodeport[1], null);
           }
           else if (stream.isMultiSinkCapable()) {
-            ComponentContextPair<Stream<?>, StreamContext> spair = streams.get(sinkId);
+            ComponentContextPair<Stream<Object>, StreamContext> spair = streams.get(sinkId);
             logger.debug("found stream {} against {}", spair == null ? null : spair.component, sinkId);
             if (spair == null) {
               assert (!sinkId.startsWith("tcp://"));
@@ -359,7 +359,7 @@ public class StramChild
       logger.debug("removing stream {}", streamId);
       // need to check why control comes here twice to remove the stream which was deleted before.
       // is it because of multiSinkCapableStream ?
-      ComponentContextPair<Stream<?>, StreamContext> pair = streams.remove(streamId);
+      ComponentContextPair<Stream<Object>, StreamContext> pair = streams.remove(streamId);
       pair.component.teardown();
     }
   }
@@ -680,12 +680,12 @@ public class StramChild
 
   private void deployOutputStreams(List<OperatorDeployInfo> nodeList, HashMap<String, ArrayList<String>> groupedInputStreams) throws Exception
   {
-    /**
-     * We proceed to deploy all the output streams.
-     * At the end of this block, our streams collection will contain all the streams which originate at the
-     * output port of the operators. The streams are generally mapped against the "nodename.portname" string.
-     * But the BufferOutputStreams which share the output port with other inline streams are mapped against
-     * the Buffer Server port to avoid collision and at the same time keep track of these buffer streams.
+    /*
+     * We proceed to deploy all the output streams. At the end of this block, our streams collection
+     * will contain all the streams which originate at the output port of the operators. The streams
+     * are generally mapped against the "nodename.portname" string. But the BufferOutputStreams which
+     * share the output port with other inline streams are mapped against the Buffer Server port to
+     * avoid collision and at the same time keep track of these buffer streams.
      */
     for (OperatorDeployInfo ndi: nodeList) {
       Node<?> node = nodes.get(ndi.id);
@@ -695,11 +695,11 @@ public class StramChild
         String sinkIdentifier;
 
         StreamContext context = new StreamContext(nodi.declaredStreamId);
-        Stream<?> stream;
+        Stream<Object> stream;
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
         if (collection == null) {
-          /**
+          /*
            * Let's create a stream to carry the data to the Buffer Server.
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
@@ -742,12 +742,12 @@ public class StramChild
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
-            streams.put(sinkIdentifier, new ComponentContextPair<Stream<?>, StreamContext>(bsos, bssc));
+            streams.put(sinkIdentifier, new ComponentContextPair<Stream<Object>, StreamContext>(bsos, bssc));
 
             // should we create inline stream here or wait for the input deployments to create the inline streams?
             stream = new MuxStream();
             stream.setup(context);
-            stream.setSink(sinkIdentifier, bsos);
+            stream.setSink(sinkIdentifier, (Sink<Object>)bsos);
 
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
           }
@@ -758,7 +758,7 @@ public class StramChild
            * to this block multiple times. The actions we take subsequent times are going to be different
            * than the first time. We create the MuxStream only the first time.
            */
-          ComponentContextPair<Stream<?>, StreamContext> pair = streams.get(sourceIdentifier);
+          ComponentContextPair<Stream<Object>, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
             /**
              * Let's multiplex the output placed on this stream.
@@ -787,7 +787,7 @@ public class StramChild
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
-            streams.put(sinkIdentifier, new ComponentContextPair<Stream<?>, StreamContext>(bsos, bssc));
+            streams.put(sinkIdentifier, new ComponentContextPair<Stream<Object>, StreamContext>(bsos, bssc));
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
 
             stream.setup(context);
@@ -802,7 +802,7 @@ public class StramChild
           context.setSinkId(sinkIdentifier);
           context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
 
-          streams.put(sourceIdentifier, new ComponentContextPair<Stream<?>, StreamContext>(stream, context));
+          streams.put(sourceIdentifier, new ComponentContextPair<Stream<Object>, StreamContext>(stream, context));
           logger.debug("stored stream {} against key {}", stream, sourceIdentifier);
         }
       }
@@ -845,7 +845,7 @@ public class StramChild
           String sourceIdentifier = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
-          ComponentContextPair<Stream<?>, StreamContext> pair = streams.get(sourceIdentifier);
+          ComponentContextPair<Stream<Object>, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
             /**
              * We connect to the buffer server for the input on this port.
@@ -861,22 +861,23 @@ public class StramChild
             context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
 
-            Stream<?> stream = new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
+            @SuppressWarnings("unchecked")
+            Stream<Object> stream = (Stream<Object>)(Stream)new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
             stream.setup(context);
             logger.debug("deployed buffer input stream {}", stream);
 
-            Sink s = node.connectInputPort(nidi.portName, stream);
+            Sink<Object> s = node.connectInputPort(nidi.portName, stream);
             stream.setSink(sinkIdentifier,
-                           ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(stream, sinkIdentifier, s, ndi.checkpointWindowId) : s);
+                           ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(stream, sinkIdentifier, s, ndi.checkpointWindowId) : s);
 
             streams.put(sinkIdentifier,
-                        new ComponentContextPair<Stream<?>, StreamContext>(stream, context));
+                        new ComponentContextPair<Stream<Object>, StreamContext>(stream, context));
             logger.debug("put input stream {} against key {}", stream, sinkIdentifier);
           }
           else {
             String streamSinkId = pair.context.getSinkId();
 
-            Sink s;
+            Sink<Object> s;
             if (streamSinkId == null) {
               s = node.connectInputPort(nidi.portName, pair.component);
               pair.context.setSinkId(sinkIdentifier);
@@ -899,7 +900,7 @@ public class StramChild
               stream.setup(context);
               logger.debug("deployed input mux stream {}", stream);
               s = node.connectInputPort(nidi.portName, stream);
-              streams.put(sourceIdentifier, new ComponentContextPair<Stream<?>, StreamContext>(stream, context));
+              streams.put(sourceIdentifier, new ComponentContextPair<Stream<Object>, StreamContext>(stream, context));
               logger.debug("stored input stream {} against key {}", stream, sourceIdentifier);
 
               /**
@@ -909,7 +910,7 @@ public class StramChild
               Node<?> upstreamNode = nodes.get(nodeport[0]);
               upstreamNode.connectOutputPort(nodeport[1], stream);
 
-              Sink existingSink;
+              Sink<Object> existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
                 Node<?> anotherNode = nodes.get(np[0]);
@@ -922,7 +923,7 @@ public class StramChild
                 pair.component.teardown();
               }
               else {
-                existingSink = pair.component; // !!!! highly suspicious. Recheck this if things do not work. - Chetan chetan
+                existingSink = pair.component;
 
                 /*
                  * we got this stream since it was mapped against sourceId, but since
@@ -937,16 +938,16 @@ public class StramChild
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
               pair.component.setSink(sinkIdentifier,
-                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
+                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
             }
             else {
               /*
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              PartitionAwareSink pas = new PartitionAwareSink(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, s);
+              PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, s);
               pair.component.setSink(sinkIdentifier,
-                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);
+                                     ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);
             }
           }
         }
@@ -959,9 +960,9 @@ public class StramChild
         generators.put(ndi.id, windowGenerator);
 
         Node<?> node = nodes.get(ndi.id);
-        Sink<?> s = node.connectInputPort(Node.INPUT, windowGenerator);
+        Sink<Object> s = node.connectInputPort(Node.INPUT, windowGenerator);
         windowGenerator.setSink(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT),
-                                ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), s, ndi.checkpointWindowId) : s);
+                                ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), s, ndi.checkpointWindowId) : s);
       }
     }
   }
@@ -991,7 +992,7 @@ public class StramChild
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void activate(List<OperatorDeployInfo> nodeList)
   {
-    for (ComponentContextPair<Stream<?>, StreamContext> pair: streams.values()) {
+    for (ComponentContextPair<Stream<Object>, StreamContext> pair: streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
@@ -1040,7 +1041,7 @@ public class StramChild
       logger.debug(ex.getLocalizedMessage());
     }
 
-    for (ComponentContextPair<Stream<?>, StreamContext> pair: streams.values()) {
+    for (ComponentContextPair<Stream<Object>, StreamContext> pair: streams.values()) {
       if (pair.component instanceof SocketInputStream && !activeStreams.containsKey(pair.component)) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
@@ -1060,13 +1061,14 @@ public class StramChild
     for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
       String source = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
-      /**
+      /*
        * if we do not want to combine multiple streams with different partitions from the
        * same upstream node, we could also use the partition to group the streams together.
-       * This logic comes with the danger that the performance of the group which shares the same
-       * stream is bounded on the higher side by the performance of the lowest performer. May be
-       * combining the streams is not such a good thing but let's see if we allow this as an option
-       * to the user, what they end up choosing the most.
+       * This logic comes with the danger that the performance of the group which shares
+       * the same stream is bounded on the higher side by the performance of the lowest
+       * performer upstream port. May be combining the streams is not such a good thing
+       * but let's see if we allow this as an option to the user, what they end up choosing
+       * the most.
        */
       ArrayList<String> collection = groupedInputStreams.get(source);
       if (collection == null) {

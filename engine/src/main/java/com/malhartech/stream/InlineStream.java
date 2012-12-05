@@ -26,7 +26,7 @@ import com.malhartech.engine.StreamContext;
  */
 public class InlineStream implements Stream<Object>
 {
-  private volatile Sink current, output, shunted = new Sink()
+  private volatile Sink<Object> current, output, shunted = new Sink<Object>()
   {
     @Override
     public void process(Object payload)
@@ -79,15 +79,12 @@ public class InlineStream implements Stream<Object>
    * @return Sink
    */
   @Override
-  public Sink setSink(String port, Sink sink)
+  public void setSink(String port, Sink<Object> sink)
   {
-    Sink previous;
     if (current == output) {
       current = sink;
     }
-    previous = output;
     output = sink;
-    return previous;
   }
 
   /**
@@ -100,7 +97,7 @@ public class InlineStream implements Stream<Object>
     current.process(payload);
   }
 
-  public final Sink getOutput()
+  public final Sink<Object> getOutput()
   {
     return output;
   }

@@ -12,7 +12,6 @@ import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.Builder;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.engine.EndWindowTuple;
 import com.malhartech.engine.ResetWindowTuple;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
@@ -29,11 +28,11 @@ import org.slf4j.LoggerFactory;
  * Partitioning is managed by this instance of the buffer server<br>
  * <br>
  */
-public class BufferServerOutputStream extends SocketOutputStream
+public class BufferServerOutputStream extends SocketOutputStream<Object>
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   public static final int BUFFER_SIZE = 64 * 1024;
-  StreamCodec serde;
+  StreamCodec<Object> serde;
   int windowId;
   int writtenBytes;
 
@@ -87,7 +86,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   }
   final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
 
-  public BufferServerOutputStream(StreamCodec serde)
+  public BufferServerOutputStream(StreamCodec<Object> serde)
   {
     this.serde = serde;
   }
@@ -177,7 +176,7 @@ public class BufferServerOutputStream extends SocketOutputStream
   }
 
   @Override
-  public Sink setSink(String id, Sink sink)
+  public void setSink(String id, Sink<Object> sink)
   {
     throw new IllegalAccessError("Attempt to set destination other than buffer server on " + this + " stream!");
   }

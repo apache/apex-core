@@ -6,10 +6,10 @@ package com.malhartech.stream;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
-import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.engine.*;
+import java.lang.reflect.Array;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,13 +20,13 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
+public class BufferServerInputStream extends SocketInputStream<Data>
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
-  private final HashMap<String, Sink> outputs = new HashMap<String, Sink>();
+  private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   private long baseSeconds;
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink[] sinks = NO_SINKS;
+  private volatile Sink<Object>[] sinks = NO_SINKS;
   private final StreamCodec<Object> serde;
   DataStatePair dsp = new DataStatePair();
 
@@ -66,7 +66,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
       case SIMPLE_DATA:
         dsp.data = data.getSimpleData().getData().toByteArray();
         Object o = serde.fromByteArray(dsp);
-        for (Sink s: sinks) {
+        for (Sink<Object> s: sinks) {
           s.process(o);
         }
         return;
@@ -74,7 +74,7 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
       case PARTITIONED_DATA:
         dsp.data = data.getPartitionedData().getData().toByteArray();
         o = serde.fromByteArray(dsp);
-        for (Sink s: sinks) {
+        for (Sink<Object> s: sinks) {
           s.process(o);
         }
         return;
@@ -107,22 +107,22 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   }
 
   @Override
-  public Sink setSink(String id, Sink sink)
+  @SuppressWarnings("unchecked")
+  public void setSink(String id, Sink<Data> sink)
   {
     if (sink == null) {
-      sink = outputs.remove(id);
+      outputs.remove(id);
       if (outputs.isEmpty()) {
         sinks = NO_SINKS;
       }
     }
     else {
-      sink = outputs.put(id, sink);
+      outputs.put(id, (Sink<Object>)(Sink)sink);
       if (sinks != NO_SINKS) {
         activateSinks();
       }
     }
 
-    return sink;
   }
 
   @Override
@@ -131,15 +131,15 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
     return true;
   }
 
-  @SuppressWarnings("SillyAssignment")
   private void activateSinks()
   {
-    sinks = new Sink[outputs.size()];
+    @SuppressWarnings("unchecked")
+    Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, outputs.size());
     int i = 0;
-    for (final Sink s: outputs.values()) {
-      sinks[i++] = s;
+    for (final Sink<Object> s: outputs.values()) {
+      newSinks[i++] = s;
     }
-    sinks = sinks;
+    sinks = newSinks;
   }
 
   @Override
@@ -147,4 +147,5 @@ public class BufferServerInputStream extends SocketInputStream<Buffer.Data>
   {
     throw new IllegalAccessError("Attempt to pass payload " + tuple + " to " + this + " from source other than buffer server!");
   }
+
 }

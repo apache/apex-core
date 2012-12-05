@@ -11,14 +11,14 @@ import com.malhartech.bufferserver.Buffer;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class WindowIdActivatedSink implements Sink
+public class WindowIdActivatedSink<T> implements Sink<T>
 {
-  private final Sink sink;
+  private final Sink<Object> sink;
   private final long windowId;
-  private final Stream stream;
+  private final Stream<Object> stream;
   private final String identifier;
 
-  public WindowIdActivatedSink(Stream stream, String identifier, final Sink sink, final long windowId)
+  public WindowIdActivatedSink(Stream<Object> stream, String identifier, final Sink<Object> sink, final long windowId)
   {
     this.stream = stream;
     this.identifier = identifier;

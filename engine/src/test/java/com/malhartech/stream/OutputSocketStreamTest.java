@@ -6,7 +6,6 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.engine.StreamContext;
-
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import java.net.InetSocketAddress;
@@ -18,7 +17,7 @@ import org.junit.*;
  */
 public final class OutputSocketStreamTest
 {
-  static class MyOutputSocketStream extends SocketOutputStream
+  static class MyOutputSocketStream extends SocketOutputStream<Object>
   {
     @Override
     public void flush(ChannelHandlerContext ctx, ChannelFuture future) throws Exception
@@ -27,7 +26,7 @@ public final class OutputSocketStreamTest
     }
 
     @Override
-    public Sink setSink(String port, Sink sink)
+    public void setSink(String port, Sink<Object> sink)
     {
       throw new UnsupportedOperationException("Not supported yet.");
     }
@@ -44,7 +43,7 @@ public final class OutputSocketStreamTest
       throw new UnsupportedOperationException("Not supported yet.");
     }
   }
-  static SocketOutputStream oss;
+  static SocketOutputStream<Object> oss;
   static StreamContext ctx;
 
   public OutputSocketStreamTest()

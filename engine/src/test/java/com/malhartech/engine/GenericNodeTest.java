@@ -86,7 +86,9 @@ public class GenericNodeTest
 
     };
 
+    @SuppressWarnings("unchecked")
     Sink<Object> input1 = (Sink<Object>)gn.connectInputPort("ip1", output);
+    @SuppressWarnings("unchecked")
     Sink<Object> input2 = (Sink<Object>)gn.connectInputPort("ip2", output);
     gn.connectOutputPort("op", output);
 
