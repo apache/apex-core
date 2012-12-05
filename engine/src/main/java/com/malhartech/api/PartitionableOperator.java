@@ -23,7 +23,7 @@ public interface PartitionableOperator extends Operator
    * @return New partitioning. Partitions from input list which should not be changed can be returned
    * as they are.
    */
-  public List<Partition> definePartitions(List<Partition> partitions);
+  public List<Partition> definePartitions(List<? extends Partition> partitions);
 
   public interface Partition
   {

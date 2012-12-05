@@ -30,7 +30,7 @@ public class PhysicalPlanTest {
     final static byte[][] PARTITION_KEYS = { {'a'}, {'b'}, {'c'}};
 
     @Override
-    public List<Partition> definePartitions(List<Partition> partitions) {
+    public List<Partition> definePartitions(List<? extends Partition> partitions) {
       List<Partition> newPartitions = new ArrayList<Partition>(3);
       Partition templatePartition = partitions.get(0);
       for (int i=0; i<3; i++) {

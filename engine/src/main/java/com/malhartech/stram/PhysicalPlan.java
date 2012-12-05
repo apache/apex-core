@@ -30,6 +30,7 @@ import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
+import com.malhartech.stram.OperatorPartitions.PartitionImpl;
 
 /**
  *
@@ -295,39 +296,6 @@ public class PhysicalPlan {
     return containers.get(index);
   }
 
-  private class PartitionImpl implements PartitionableOperator.Partition {
-    private final Map<InputPort<?>, List<byte[]>> partitionKeys;
-    private final PartitionableOperator operator;
-
-    private PartitionImpl(PartitionableOperator operator, Map<InputPort<?>, List<byte[]>> partitionKeys) {
-      this.operator = operator;
-      this.partitionKeys = partitionKeys;
-    }
-
-    private PartitionImpl(PartitionableOperator operator) {
-      this(operator, new HashMap<InputPort<?>, List<byte[]>>());
-    }
-
-    @Override
-    public Map<InputPort<?>, List<byte[]>> getPartitionKeys() {
-      return partitionKeys;
-    }
-
-    @Override
-    public int getLoad() {
-      return 0;
-    }
-
-    @Override
-    public PartitionableOperator getOperator() {
-      return operator;
-    }
-
-    @Override
-    public Partition getInstance(PartitionableOperator operator) {
-      return new PartitionImpl(operator);
-    }
-  }
 
   interface PlanContext {
     /**
@@ -387,20 +355,24 @@ public class PhysicalPlan {
       }
 
       if (upstreamDeployed) {
+        // ready to look at this node
 
         // determine partitioning / number of operators
         List<Partition> partitions = null;
-        boolean isSingleNodeInstance = true;
+        List<PTOperator> pnodes = new ArrayList<PTOperator>();
 
         if (n.getOperator() instanceof PartitionableOperator) {
           // operator to provide initial partitioning
           partitions = partition(n);
-          isSingleNodeInstance = false;
+          // create operator instance per partition
+          for (Partition p : partitions) {
+            PTOperator pNode = createPTOperator(n, p);
+            pnodes.add(pNode);
+          }
         }
 
-        // ready to look at this node
         Set<PTOperator> inlineSet = new HashSet<PTOperator>();
-        if (isSingleNodeInstance) {
+        if (partitions == null) {
           for (StreamDecl s : n.getInputStreams().values()) {
             if (s.isInline()) {
               // if stream is marked inline, join the upstream operators
@@ -415,17 +387,6 @@ public class PhysicalPlan {
               }
             }
           }
-        }
-
-        // add new physical node(s)
-        List<PTOperator> pnodes = new ArrayList<PTOperator>();
-        if (partitions != null) {
-          // create operator instance per partition
-          for (Partition p : partitions) {
-            PTOperator pNode = createPTOperator(n, p);
-            pnodes.add(pNode);
-          }
-        } else {
           // single instance, no partitions
           PTOperator pNode = createPTOperator(n, null);
           pnodes.add(pNode);
@@ -472,33 +433,11 @@ public class PhysicalPlan {
     return partitions;
   }
 
-  public interface OperatorEvent {
-    public void execute();
-  }
-
-  /**
-   * Request resource to deploy operator
-   */
-  public class DeployOperatorRequest implements OperatorEvent {
-    PTOperator operator;
-    @Override
-    public void execute() {
-    }
-  }
-
-  public class UndeployOperatorRequest implements OperatorEvent {
-    PTOperator operator;
-    @Override
-    public void execute() {
-      operator.container.operators.remove(operator); // TODO: thread safety
-    }
-  }
-
-  private void redoPartitions(DAG.OperatorWrapper n) {
+  private void redoPartitions(OperatorWrapper n) {
     // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = getOperators(n);
-    List<Partition> currentPartitions = new ArrayList<Partition>(operators.size());
+    List<PartitionImpl> currentPartitions = new ArrayList<PartitionImpl>(operators.size());
     Map<PartitionableOperator, PTOperator> currentPartitionMap = new HashMap<PartitionableOperator, PTOperator>(operators.size());
 
     for (PTOperator pOperator : operators) {
@@ -525,35 +464,34 @@ public class PhysicalPlan {
     // TODO: figure out how to deal with load indicator
     List<Partition> newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions);
 
-    LinkedList<PTOperator> newList = new LinkedList<PhysicalPlan.PTOperator>(this.logicalToPTOperator.get(n));
-    List<OperatorEvent> actions = new ArrayList<OperatorEvent>();
     List<Partition> addedPartitions = new ArrayList<Partition>();
-
+    Set<PTOperator> undeployOperators = this.ctx.getDependents(currentPartitionMap.values());
     // determine modifications of partition set, identify affected operator instance
     for (Partition newPartition : newPartitions) {
       PTOperator op = currentPartitionMap.remove(newPartition.getOperator());
       if (op == null) {
         addedPartitions.add(newPartition);
       } else {
-        // see whether mapping was changed
-        throw new UnsupportedOperationException("partition key change to be implemented");
+        // check whether mapping was changed
+        for (PartitionImpl pi : currentPartitions) {
+          if (pi == newPartition && pi.isModified()) {
+            // partition was changed
+            addedPartitions.add(newPartition);
+            undeployOperators.add(op);
+          }
+        }
       }
     }
 
-    // remaining operator instances represent deprecated partitions
+    // remaining entries represent deprecated partitions
+    undeployOperators.addAll(currentPartitionMap.values());
+
     // operators need to be removed from deployment and plan first
     // freed resources available prior to new/modified partition processing
-    Set<PTOperator> undeployOperators = this.ctx.getDependents(currentPartitionMap.values());
-
-    for (PTOperator p : currentPartitionMap.values()) {
-      // TODO: identify downstream dependencies, undeploy set prior to plan modification
+    LinkedList<PTOperator> newList = new LinkedList<PhysicalPlan.PTOperator>(this.logicalToPTOperator.get(n));
+    for (PTOperator p : undeployOperators) {
       removePTOperator(p);
       newList.remove(p);
-      // partitions that were removed
-      UndeployOperatorRequest ev = new UndeployOperatorRequest();
-      ev.operator = p;
-      p.state = PTOperator.State.PENDING_UNDEPLOY;
-      actions.add(0, ev);
       // TODO: remove checkpoint state
     }
 
