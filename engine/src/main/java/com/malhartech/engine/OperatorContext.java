@@ -4,16 +4,14 @@
  */
 package com.malhartech.engine;
 
-import java.io.IOException;
-import java.util.Collection;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.malhartech.api.Context;
 import com.malhartech.api.Operator;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
+import java.io.IOException;
+import java.util.Collection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The for context for all of the operators<p>

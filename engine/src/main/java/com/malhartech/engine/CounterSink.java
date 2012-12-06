@@ -6,6 +6,7 @@ package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
 import com.malhartech.engine.OperatorStats.Counter;
+import java.lang.reflect.Array;
 
 /**
  *
@@ -13,5 +14,6 @@ import com.malhartech.engine.OperatorStats.Counter;
  */
 public interface CounterSink<T> extends Sink<T>, Counter
 {
-  public static final CounterSink<?>[] NO_SINKS = new CounterSink[0];
+  @SuppressWarnings( {"unchecked", "FieldNameHidesFieldInSuperclass"})
+  public static final CounterSink<Object>[] NO_SINKS = (CounterSink<Object>[])Array.newInstance(CounterSink.class, 0);
 }

@@ -3,26 +3,20 @@
  */
 package com.malhartech.stram.cli;
 
+import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
+import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
+import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.webapp.StramWebServices;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-
+import java.util.*;
 import javax.ws.rs.core.MediaType;
-
-import jline.ArgumentCompletor;
-import jline.Completor;
-import jline.ConsoleReader;
-import jline.FileNameCompletor;
-import jline.History;
-import jline.MultiCompletor;
-import jline.SimpleCompletor;
-
+import jline.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
@@ -37,14 +31,6 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
-import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
-import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.webapp.StramWebServices;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
 
 /**
  *
@@ -174,7 +160,6 @@ public class StramCli
       }
       catch (Exception e) {
         System.err.println("Unexpected error: " + e.getMessage());
-        e.printStackTrace();
       }
       out.flush();
     }

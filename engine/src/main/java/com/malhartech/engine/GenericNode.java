@@ -46,12 +46,12 @@ public class GenericNode extends Node<Operator>
   {
   }
 
-  class Reservoir extends CircularBuffer<Object> implements Sink
+  class Reservoir extends CircularBuffer<Object> implements Sink<Object>
   {
-    final Sink sink;
+    final Sink<Object> sink;
     private int count;
 
-    public Reservoir(Sink sink)
+    public Reservoir(Sink<Object> sink)
     {
       super(bufferCapacity);
       this.sink = sink;
@@ -87,11 +87,12 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  public Sink<?> connectInputPort(String port, final Sink sink)
+  public Sink<Object> connectInputPort(String port, final Sink<Object> sink)
   {
-    Sink<?> retvalue;
+    Sink<Object> retvalue;
 
-    InputPort<?> inputPort = descriptor.inputPorts.get(port);
+    @SuppressWarnings("unchecked")
+    InputPort<Object> inputPort = (InputPort<Object>)descriptor.inputPorts.get(port);
     if (inputPort == null) {
       retvalue = null;
     }
@@ -178,7 +179,7 @@ public class GenericNode extends Node<Operator>
                   lastEndWindow = activePort.remove();
                   if (++receivedEndWindow == totalQueues) {
                     operator.endWindow();
-                    for (final Sink output: outputs.values()) {
+                    for (final Sink<Object> output: outputs.values()) {
                       output.process(t);
                     }
 
@@ -248,7 +249,7 @@ public class GenericNode extends Node<Operator>
                    * Do the same sequence as the end window since the current window is not ended.
                    */
                   operator.endWindow();
-                  for (final Sink output: outputs.values()) {
+                  for (final Sink<Object> output: outputs.values()) {
                     output.process(lastEndWindow);
                   }
 
@@ -264,7 +265,7 @@ public class GenericNode extends Node<Operator>
               case CHECKPOINT:
                 activePort.remove();
                 break;
-                
+
               default:
                 throw new UnhandledException("Unrecognized Control Tuple", new IllegalArgumentException(t.toString()));
             }

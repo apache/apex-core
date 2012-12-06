@@ -5,12 +5,13 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.Component;
+import com.malhartech.api.Context;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class ComponentComplementPair<COMPONENT extends Component, COMPLEMENT>
+public abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
 {
   public final COMPONENT component;
 

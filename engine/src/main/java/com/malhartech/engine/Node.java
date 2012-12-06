@@ -10,6 +10,7 @@ import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.util.CircularBuffer;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -30,9 +31,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public static final String INPUT = "input";
   public static final String OUTPUT = "output";
   public final String id;
-  protected final HashMap<String, CounterSink<?>> outputs = new HashMap<String, CounterSink<?>>();
+  protected final HashMap<String, CounterSink<Object>> outputs = new HashMap<String, CounterSink<Object>>();
   @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile CounterSink[] sinks = CounterSink.NO_SINKS;
+  protected volatile CounterSink<Object>[] sinks = CounterSink.NO_SINKS;
   protected final int spinMillis = 10;
   protected final int bufferCapacity = 1024 * 1024;
   protected boolean alive;
@@ -54,13 +55,14 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return operator;
   }
 
-  public void connectOutputPort(String port, final Sink sink)
+  public void connectOutputPort(String port, final Sink<Object> sink)
   {
-    OutputPort<?> outputPort = descriptor.outputPorts.get(port);
+    @SuppressWarnings("unchecked")
+    OutputPort<Object> outputPort = (OutputPort<Object>)descriptor.outputPorts.get(port);
     if (outputPort != null) {
       if (sink instanceof CounterSink) {
         outputPort.setSink(sink);
-        outputs.put(port, (CounterSink<?>)sink);
+        outputs.put(port, (CounterSink<Object>)sink);
       }
       else if (sink == null) {
         outputPort.setSink(null);
@@ -70,7 +72,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         /*
          * if streams implemented CounterSink, this would not get called.
          */
-        CounterSink cs = new CounterSink()
+        CounterSink<Object> cs = new CounterSink<Object>()
         {
           int count;
 
@@ -101,9 +103,10 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  public abstract Sink<Object> connectInputPort(String port, final Sink<?> sink);
+  public abstract Sink<Object> connectInputPort(String port, final Sink<Object> sink);
   OperatorContext context;
 
+  @SuppressWarnings("unchecked")
   public void activate(OperatorContext context)
   {
     boolean activationListener = operator instanceof ActivationListener;
@@ -142,7 +145,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     if (getClass() != obj.getClass()) {
       return false;
     }
-    final Node other = (Node)obj;
+    final Node<?> other = (Node<?>)obj;
     if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
       return false;
     }
@@ -169,7 +172,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      */
     EndStreamTuple est = new EndStreamTuple();
     est.windowId = currentWindowId;
-    for (final CounterSink output: outputs.values()) {
+    for (final CounterSink<Object> output: outputs.values()) {
       output.process(est);
     }
   }
@@ -178,7 +181,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     CheckpointTuple ct = new CheckpointTuple();
     ct.windowId = currentWindowId;
-    for (final CounterSink output: outputs.values()) {
+    for (final CounterSink<Object> output: outputs.values()) {
       output.process(ct);
     }
   }
@@ -211,7 +214,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected void reportStats(OperatorStats stats)
   {
     stats.ouputPorts = new ArrayList<OperatorStats.PortStats>();
-    for (Entry<String, CounterSink<?>> e: outputs.entrySet()) {
+    for (Entry<String, CounterSink<Object>> e: outputs.entrySet()) {
       stats.ouputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount()));
     }
   }
@@ -223,8 +226,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
       sinks = CounterSink.NO_SINKS;
     }
     else {
-      CounterSink[] newSinks = new CounterSink[size];
-      for (CounterSink s: outputs.values()) {
+      @SuppressWarnings("unchecked")
+      CounterSink<Object>[] newSinks = (CounterSink<Object>[])Array.newInstance(CounterSink.class, size);
+      for (CounterSink<Object> s: outputs.values()) {
         newSinks[--size] = s;
       }
 

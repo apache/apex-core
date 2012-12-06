@@ -5,6 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.Component;
+import com.malhartech.api.Context;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -13,7 +14,7 @@ import org.apache.hadoop.conf.Configuration;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class ComponentConfigurationPair<COMPONENT extends Component, CONFIG extends Configuration> extends ComponentComplementPair<COMPONENT, CONFIG>
+public class ComponentConfigurationPair<COMPONENT extends Component<Context>, CONFIG extends Configuration> extends ComponentComplementPair<COMPONENT, CONFIG>
 {
   public final CONFIG config;
 

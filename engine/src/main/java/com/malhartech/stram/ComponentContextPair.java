@@ -12,7 +12,7 @@ import com.malhartech.api.Context;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class ComponentContextPair<COMPONENT extends Component, CONTEXT extends Context> extends ComponentComplementPair<COMPONENT, CONTEXT>
+public class ComponentContextPair<COMPONENT extends Component<?>, CONTEXT extends Context> extends ComponentComplementPair<COMPONENT, CONTEXT>
 {
   public final CONTEXT context;
 

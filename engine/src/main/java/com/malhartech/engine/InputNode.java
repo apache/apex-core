@@ -5,12 +5,8 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.InputOperator;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
-import java.util.HashMap;
-import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,10 +25,11 @@ public class InputNode extends Node<InputOperator>
     controlTuples = new CircularBuffer<Tuple>(1024);
   }
 
-  public Sink<?> connectInputPort(String port, final Sink sink)
+  @Override
+  public Sink<Object> connectInputPort(String port, final Sink<Object> sink)
   {
     if (Node.INPUT.equals(port)) {
-      return new Sink()
+      return new Sink<Object>()
       {
         @Override
         public void process(Object payload)
@@ -94,13 +91,13 @@ public class InputNode extends Node<InputOperator>
           if (inWindow) {
             int generatedTuples = 0;
 
-            for (CounterSink cs: sinks) {
+            for (CounterSink<Object> cs: sinks) {
               generatedTuples -= cs.getCount();
             }
 
             operator.emitTuples();
 
-            for (CounterSink cs: sinks) {
+            for (CounterSink<Object> cs: sinks) {
               generatedTuples += cs.getCount();
             }
 
@@ -129,7 +126,7 @@ public class InputNode extends Node<InputOperator>
     if (inWindow) {
       EndWindowTuple ewt = new EndWindowTuple();
       ewt.setWindowId(t.getWindowId());
-      for (final Sink output: outputs.values()) {
+      for (final Sink<Object> output: outputs.values()) {
         output.process(ewt);
       }
     }
