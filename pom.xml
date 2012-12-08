@@ -42,6 +42,7 @@
     <module>library</module>
     <module>demos</module>
     <!-- module>examples/wordcount</module -->
+    <!--module>contrib</module-->
     <module>dist</module>
   </modules>
 
@@ -64,6 +65,9 @@
   <profiles>
     <profile>
     <id>release</id>
+      <modules>
+        <module>contrib</module>
+      </modules>
       <build>
         <plugins>
           <plugin>
