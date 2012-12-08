@@ -5,7 +5,10 @@ package com.malhartech.stram;
 
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.engine.*;
+import com.malhartech.engine.Node;
+import com.malhartech.engine.ResetWindowTuple;
+import com.malhartech.engine.Tuple;
+import com.malhartech.engine.WindowGenerator;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,7 +39,7 @@ public class WindowGeneratorTest
     final AtomicInteger resetWindowCount = new AtomicInteger(0);
     final AtomicBoolean loggingEnabled = new AtomicBoolean(true);
 
-    generator.setSink(Node.OUTPUT, new Sink()
+    generator.setSink(Node.OUTPUT, new Sink<Object>()
     {
       @Override
       public void process(Object payload)
@@ -96,7 +99,7 @@ public class WindowGeneratorTest
     generator.setFirstWindow(currentTIme);
     generator.setResetWindow(currentTIme);
     generator.setWindowWidth(windowWidth);
-    generator.setSink(Node.OUTPUT, new Sink()
+    generator.setSink(Node.OUTPUT, new Sink<Object>()
     {
       boolean firsttime = true;
 
@@ -130,7 +133,7 @@ public class WindowGeneratorTest
 
     final AtomicLong windowXor = new AtomicLong();
 
-    Sink s = new Sink()
+    Sink<Object> s = new Sink<Object>()
     {
       @Override
       public void process(Object payload)

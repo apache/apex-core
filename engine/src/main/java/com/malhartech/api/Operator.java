@@ -21,6 +21,22 @@ public interface Operator extends Component<OperatorContext>
   public void endWindow();
 
   /**
+   * If the Operator can be partitioned, then Unifier is used to unify
+   * the tuples from the output ports from all the partitioned instances.
+   * Unifier are the operators which do not have any input ports defined
+   * and exactly one output port defined which emits the tuple of the
+   * type identical as the type emitted by the output port which is being
+   * unified.
+   *
+   * @param <T> Type of the tuple emitted by the output port which is being unified
+   */
+  public interface Unifier<T> extends Operator
+  {
+    public void merge(T tuple);
+
+  }
+
+  /**
    * A operator provides ports as a means to consume and produce data tuples.
    * Concrete ports implement derived interfaces. The common characteristic is
    * that ports provide a reference to the operator instance they belong to.
@@ -33,6 +49,7 @@ public interface Operator extends Component<OperatorContext>
      * @return
      */
     public Operator getOperator();
+
   }
 
   /**
@@ -70,6 +87,7 @@ public interface Operator extends Component<OperatorContext>
      * @return codec if special implementation, null otherwise.
      */
     public Class<? extends StreamCodec<T>> getStreamCodec();
+
   }
 
   /**
@@ -92,10 +110,11 @@ public interface Operator extends Component<OperatorContext>
 
     /**
      * Merge tuples emitted by multiple upstream instances of the enclosing
-     * operator (partitioning or load balancing).
+     * operator (partitioned or load balanced).
      *
-     * @param tuple
      */
-    public Operator getUnifier();
+    public Unifier<T> getUnifier();
+
   }
+
 }

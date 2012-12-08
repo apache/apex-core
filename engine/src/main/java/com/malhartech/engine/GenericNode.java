@@ -35,26 +35,16 @@ import org.slf4j.LoggerFactory;
 public class GenericNode extends Node<Operator>
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
-  private final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
+  protected final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
+  protected int deletionId;
 
-  public GenericNode(String id, Operator operator)
+  protected abstract class Reservoir extends CircularBuffer<Object> implements Sink<Object>
   {
-    super(id, operator);
-  }
+    protected int count;
 
-  public void handleIdleTimeout()
-  {
-  }
-
-  class Reservoir extends CircularBuffer<Object> implements Sink<Object>
-  {
-    final Sink<Object> sink;
-    private int count;
-
-    public Reservoir(Sink<Object> sink)
+    public Reservoir()
     {
       super(bufferCapacity);
-      this.sink = sink;
     }
 
     @Override
@@ -69,7 +59,22 @@ public class GenericNode extends Node<Operator>
       }
     }
 
-    final Tuple sweep()
+    public abstract Tuple sweep();
+
+  }
+
+  private class InputReservoir extends Reservoir
+  {
+    final Sink<Object> sink;
+
+    public InputReservoir(Sink<Object> sink)
+    {
+      super();
+      this.sink = sink;
+    }
+
+    @Override
+    public final Tuple sweep()
     {
       int size = size();
       for (int i = 1; i <= size; i++) {
@@ -84,6 +89,16 @@ public class GenericNode extends Node<Operator>
       count += size;
       return null;
     }
+
+  }
+
+  public GenericNode(String id, Operator operator)
+  {
+    super(id, operator);
+  }
+
+  public void handleIdleTimeout()
+  {
   }
 
   @Override
@@ -97,14 +112,15 @@ public class GenericNode extends Node<Operator>
       retvalue = null;
     }
     else {
-      Reservoir reservoir = inputs.get(port);
       if (sink == null) {
+        Reservoir reservoir = inputs.remove(port);
         /**
          * since there are tuples which are not yet processed downstream, rather than just removing
          * the sink, it makes sense to wait for all the data to be processed on this sink and then
          * remove it.
          */
         if (reservoir != null) {
+          inputs.put(port.concat(".").concat(String.valueOf(deletionId++)), reservoir);
           reservoir.process(new EndStreamTuple());
         }
 
@@ -112,8 +128,9 @@ public class GenericNode extends Node<Operator>
       }
       else {
         inputPort.setConnected(true);
+        Reservoir reservoir = inputs.get(port);
         if (reservoir == null) {
-          reservoir = new Reservoir(inputPort.getSink());
+          reservoir = new InputReservoir(inputPort.getSink());
           inputs.put(port, reservoir);
         }
         retvalue = reservoir;
@@ -331,4 +348,5 @@ public class GenericNode extends Node<Operator>
 
     stats.inputPorts = ipstats;
   }
+
 }

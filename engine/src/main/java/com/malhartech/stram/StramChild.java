@@ -5,6 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.*;
+import com.malhartech.api.Operator.Unifier;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.*;
@@ -105,7 +106,7 @@ public class StramChild
         bufferServer = new Server(0);
         SocketAddress bindAddr = bufferServer.run();
         logger.info("Buffer server started: {}", bindAddr);
-        this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress) bindAddr));
+        this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
       }
     }
     catch (Exception ex) {
@@ -157,6 +158,7 @@ public class StramChild
         return RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
                             StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
       }
+
     });
 
     logger.debug("PID: " + System.getenv().get("JVM_PID"));
@@ -188,6 +190,7 @@ public class StramChild
           }
           return null;
         }
+
       });
     }
     catch (FSError e) {
@@ -276,7 +279,7 @@ public class StramChild
       String sinkIdentifier = context.getSinkId();
       logger.debug("considering stream {} against id {}", stream, indexingKey);
       if (nodeid.equals(sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR)[0])) {
-        /**
+        /*
          * the stream originates at the output port of one of the operators that are going to vanish.
          */
         if (activeStreams.containsKey(stream)) {
@@ -291,7 +294,12 @@ public class StramChild
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
             Node<?> n = nodes.get(nodeport[0]);
-            n.connectInputPort(nodeport[1], null);
+            if (n instanceof UnifierNode) {
+              n.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
+            }
+            else {
+              n.connectInputPort(nodeport[1], null);
+            }
           }
           else if (stream.isMultiSinkCapable()) {
             ComponentContextPair<Stream<Object>, StreamContext> spair = streams.get(sinkId);
@@ -321,7 +329,12 @@ public class StramChild
           String[] nodeport = sinkIds[i].split(NODE_PORT_SPLIT_SEPARATOR);
           if (nodeid.equals(nodeport[0])) {
             stream.setSink(sinkIds[i], null);
-            node.connectInputPort(nodeport[1], null);
+            if (node instanceof UnifierNode) {
+             node.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
+            }
+            else {
+              node.connectInputPort(nodeport[1], null);
+            }
             sinkIds[i] = null;
           }
         }
@@ -620,6 +633,7 @@ public class StramChild
               ((CheckpointListener)operator).committed(snr.getRecoveryCheckpoint());
             }
           }
+
         });
         break;
 
@@ -630,24 +644,36 @@ public class StramChild
 
   private synchronized void deploy(List<OperatorDeployInfo> nodeList) throws Exception
   {
-    /**
+    /*
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
      */
-    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
     for (OperatorDeployInfo ndi: nodeList) {
       if (nodes.containsKey(ndi.id)) {
         throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
       }
-      groupInputStreams(groupedInputStreams, ndi);
     }
 
     deployNodes(nodeList);
+
+    HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
+    for (OperatorDeployInfo ndi: nodeList) {
+      groupInputStreams(groupedInputStreams, ndi);
+    }
     deployOutputStreams(nodeList, groupedInputStreams);
+
     deployInputStreams(nodeList);
 
     activate(nodeList);
   }
 
+  private void massageUnifierDeployInfo(OperatorDeployInfo odi)
+  {
+    for (OperatorDeployInfo.InputDeployInfo idi: odi.inputs) {
+      idi.portName += "(" + idi.sourceNodeId + NODE_PORT_CONCAT_SEPARATOR + idi.sourcePortName + ")";
+    }
+  }
+
+  @SuppressWarnings("unchecked")
   private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
     OperatorCodec moduleSerDe = StramUtils.getNodeSerDe(null);
@@ -666,6 +692,10 @@ public class StramChild
         String nodeid = ndi.id.concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
         if (foreignObject instanceof InputOperator) {
           nodes.put(ndi.id, new InputNode(nodeid, (InputOperator)foreignObject));
+        }
+        else if (foreignObject instanceof Unifier) {
+          nodes.put(ndi.id, new UnifierNode(nodeid, (Unifier<Object>)foreignObject));
+          massageUnifierDeployInfo(ndi);
         }
         else {
           nodes.put(ndi.id, new GenericNode(nodeid, (Operator)foreignObject));
@@ -816,22 +846,23 @@ public class StramChild
     ArrayList<OperatorDeployInfo> inputNodes = new ArrayList<OperatorDeployInfo>();
     long smallestCheckpointedWindowId = Long.MAX_VALUE;
 
-    /**
-     * Hook up all the downstream sinks.
-     * There are 2 places where we deal with more than sinks. The first one follows immediately for WindowGenerator.
-     * The second case is when source for the input of some node in this container is another container. So we need
-     * to create the stream. We need to track this stream along with other streams, and many such streams may exist,
-     * we hash them against buffer server info as we did for outputs but throw in the sinkid in the mix as well.
+    /*
+     * Hook up all the downstream ports. There are 2 places where we deal with more than 1
+     * downstream ports. The first one follows immediately for WindowGenerator. The second
+     * case is when source for the input port of some node in this container is in another
+     * container. So we need to create the stream. We need to track this stream along with
+     * other streams,and many such streams may exist, we hash them against buffer server
+     * info as we did for outputs but throw in the sinkid in the mix as well.
      */
     for (OperatorDeployInfo ndi: nodeList) {
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         /**
-         * This has to be AbstractInputNode, so let's hook the WindowGenerator to it.
+         * This has to be InputNode, so let's hook the WindowGenerator to it.
          * A node which does not take any input cannot exist in the DAG since it would be completely
          * unaware of the windows. So for that reason, AbstractInputNode allows Component.INPUT port.
          */
         inputNodes.add(ndi);
-        /**
+        /*
          * When we activate the window Generator, we plan to activate it only from required windowId.
          */
         if (ndi.checkpointWindowId < smallestCheckpointedWindowId) {
@@ -847,10 +878,11 @@ public class StramChild
 
           ComponentContextPair<Stream<Object>, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
-            /**
+            /*
              * We connect to the buffer server for the input on this port.
-             * We have already placed all the output streams for all the operators in this container yet, there is no stream
-             * which can source this port so it has to come from the buffer server, so let's make a connection to it.
+             * We have already placed all the output streams for all the operators in this container.
+             * Yet, there is no stream which can source this port so it has to come from the buffer
+             * server, so let's make a connection to it.
              */
             assert (nidi.isInline() == false);
 
@@ -1025,6 +1057,7 @@ public class StramChild
           node.getOperator().teardown();
           logger.info("deactivated {}", node.id);
         }
+
       }.start();
     }
 
@@ -1078,4 +1111,5 @@ public class StramChild
       collection.add(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName));
     }
   }
+
 }
