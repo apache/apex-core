@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Stack;
 
@@ -179,6 +180,15 @@ public class DAG implements Serializable, DAGConstants
     public String getPortName()
     {
       return portAnnotation == null || portAnnotation.name() == null ? fieldName : portAnnotation.name();
+    }
+
+    public Operator.Unifier<?> getUnifier() {
+      for (Entry<OutputPort<?>, OutputPortMeta> e : operatorWrapper.getPortMapping().outPortMap.entrySet()) {
+        if (e.getValue() == this) {
+          return e.getKey().getUnifier();
+        }
+      }
+      return null;
     }
 
     @Override

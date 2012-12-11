@@ -26,7 +26,7 @@ import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.PhysicalPlanTest.PartitiongTestOperator;
+import com.malhartech.stram.PhysicalPlanTest.PartitioningTestOperator;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.util.AttributeMap;
@@ -156,16 +156,16 @@ public class StreamingContainerManagerTest {
     DAG dag = new DAG();
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    PhysicalPlanTest.PartitiongTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitiongTestOperator.class);
-    GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
+    PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
+    GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
     DAG.StreamDecl n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
-    DAG.StreamDecl mergeStream = dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
+    DAG.StreamDecl n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.setMaxContainerCount(5);
+    dag.setMaxContainerCount(6);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    Assert.assertEquals("number required containers", 5, dnm.getNumRequiredContainers());
+    Assert.assertEquals("number required containers", 6, dnm.getNumRequiredContainers());
 
     String container1Id = "container1";
     List<OperatorDeployInfo> c1 = dnm.assignContainerForTest(container1Id, InetSocketAddress.createUnresolved(container1Id+"Host", 9001)).getDeployInfo();
@@ -185,30 +185,43 @@ public class StreamingContainerManagerTest {
 
       InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
-      Assert.assertTrue("partition for " + containerId, Arrays.equals(PartitiongTestOperator.PARTITION_KEYS[i], nidi.partitionKeys.get(0)));
+      Assert.assertTrue("partition for " + containerId, Arrays.equals(PartitioningTestOperator.PARTITION_KEYS[i], nidi.partitionKeys.get(0)));
       Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
     }
 
-    // mergeNode container
-    String mergeContainerId = "mergeNodeContainer";
-    List<OperatorDeployInfo> cmerge = dnm.assignContainerForTest(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001)).getDeployInfo();
-    Assert.assertEquals("number operators assigned to " + mergeContainerId, 1, cmerge.size());
+    // unifier
+    String mergeContainerId = "mergeContainer";
+    List<OperatorDeployInfo> cUnifier = dnm.assignContainerForTest(mergeContainerId, InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001)).getDeployInfo();
+    Assert.assertEquals("number operators assigned to " + mergeContainerId, 1, cUnifier.size());
 
-    OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cmerge,  dag.getOperatorWrapper(mergeNode));
-    Assert.assertNotNull(mergeNode.getName() + " assigned to " + container1Id, mergeNodeDI);
+    OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cUnifier,  dag.getOperatorWrapper(node2));
+    Assert.assertNotNull("unifier for " + node2, mergeNodeDI);
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
     List<String> sourceNodeIds = new ArrayList<String>();
     for (InputDeployInfo nidi : mergeNodeDI.inputs) {
-      Assert.assertEquals("streamName " + nidi, mergeStream.getId(), nidi.declaredStreamId);
-      Assert.assertEquals("portName " + nidi, dag.getOperatorWrapper(mergeNode).getInputPortMeta(mergeNode.inport1).getPortName(), nidi.portName);
+      Assert.assertEquals("streamName " + nidi, n2n3.getId(), nidi.declaredStreamId);
+      String mergePortName = "<merge#" +  dag.getOperatorWrapper(node2).getOutputPortMeta(node2.outport1).getPortName() + ">";
+      Assert.assertEquals("portName " + nidi, mergePortName, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       sourceNodeIds.add(nidi.sourceNodeId);
     }
-
     for (PTOperator node : dnm.getPhysicalPlan().getOperators(dag.getOperatorWrapper(node2))) {
       Assert.assertTrue(sourceNodeIds + " contains " + node.id, sourceNodeIds.contains(node.id));
     }
-    Assert.assertEquals("outputs " + mergeNodeDI, 0, mergeNodeDI.outputs.size());
+    Assert.assertEquals("outputs " + mergeNodeDI, 1, mergeNodeDI.outputs.size());
+
+    // node3 container
+    String node3ContainerId = "node3Container";
+    List<OperatorDeployInfo> cmerge = dnm.assignContainerForTest(node3ContainerId, InetSocketAddress.createUnresolved(node3ContainerId+"Host", 9001)).getDeployInfo();
+    Assert.assertEquals("number operators assigned to " + node3ContainerId, 1, cmerge.size());
+
+    OperatorDeployInfo node3DI = getNodeDeployInfo(cmerge,  dag.getOperatorWrapper(node3));
+    Assert.assertNotNull(node3.getName() + " assigned", node3DI);
+    Assert.assertEquals("inputs " + node3DI, 1, node3DI.inputs.size());
+    InputDeployInfo node3In = node3DI.inputs.get(0);
+    Assert.assertEquals("streamName " + node3In, n2n3.getId(), node3In.declaredStreamId);
+    Assert.assertEquals("portName " + node3In, dag.getOperatorWrapper(node3).getInputPortMeta(node3.inport1).getPortName(), node3In.portName);
+    Assert.assertNotNull("sourceNodeId " + node3DI, node3In.sourceNodeId);
   }
 
   /**

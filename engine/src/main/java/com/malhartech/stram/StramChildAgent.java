@@ -371,6 +371,11 @@ public class StramChildAgent {
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator node)
   {
     Operator operator = node.getLogicalNode().getOperator();
+    if (node.merge != null) {
+      operator = node.merge;
+    } else if (node.partition != null) {
+      operator = node.partition.getOperator();
+    }
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {

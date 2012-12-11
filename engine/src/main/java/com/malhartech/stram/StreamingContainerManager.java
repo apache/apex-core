@@ -156,73 +156,6 @@ public class StreamingContainerManager implements PlanContext
 
     // redeploy cycle for all affected operators
     redeploy(checkpoints, Sets.newHashSet(cs.container), checkpoints);
-
-/*
-    Map<PTContainer, List<PTOperator>> resetNodes = new HashMap<PTContainer, List<PhysicalPlan.PTOperator>>();
-    // group by container
-    for (PTOperator node : checkpoints) {
-        List<PTOperator> nodes = resetNodes.get(node.container);
-        if (nodes == null) {
-          nodes = new ArrayList<PhysicalPlan.PTOperator>();
-          resetNodes.put(node.container, nodes);
-        }
-        nodes.add(node);
-    }
-
-    // stop affected downstream operators (all except failed container)
-    // order does not matter, remove all affected operators in each container in one sweep
-    AtomicInteger undeployAckCountdown = new AtomicInteger();
-    for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
-      if (e.getKey() != cs.container) {
-        UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
-        r.setNodes(e.getValue());
-        undeployAckCountdown.incrementAndGet();
-        StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
-        downstreamContainer.addRequest(r);
-      }
-    }
-
-    // deploy replacement container, depends on above downstream operators stop
-    AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
-    undeployAckCountdown.incrementAndGet(); // deploy waits for container start
-    ContainerStartRequest dr = new ContainerStartRequest(cs.container, failedContainerDeployCnt, undeployAckCountdown);
-    // launch replacement container, deploy request will be queued with new container agent in assignContainer
-    containerStartRequests.add(dr);
-
-    // (re)deploy affected operators
-    // this can happen in parallel after buffer server state for recovered publishers is reset
-    AtomicInteger redeployAckCountdown = new AtomicInteger();
-    for (Map.Entry<PTContainer, List<PTOperator>> e : resetNodes.entrySet()) {
-      // to reset publishers, clean buffer server past checkpoint so subscribers don't read stale data (including end of stream)
-      for (PTOperator operator : e.getValue()) {
-        for (PTOutput out : operator.outputs) {
-          if (operator.container == cs.container) {
-            LOG.debug("Skipping purge for buffer server in failed container {}", cs.container.containerId);
-            continue;
-          }
-          final StreamDecl streamDecl = out.logicalStream;
-          if (!(streamDecl.isInline() && out.isDownStreamInline())) {
-            // following needs to match the concat logic in StramChild
-            String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
-            // TODO: find way to mock this when testing rest of logic
-            if (operator.container.bufferServerAddress.getPort() != 0) {
-              BufferServerClient bsc = getBufferServerClient(operator);
-              // reset publisher (stale operator may still write data until disconnected)
-              // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
-              bsc.reset(sourceIdentifier, 0);
-            }
-          }
-        }
-      }
-      if (e.getKey() != cs.container) {
-        DeployRequest r = new DeployRequest(redeployAckCountdown, failedContainerDeployCnt);
-        r.setNodes(e.getValue());
-        redeployAckCountdown.incrementAndGet();
-        StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
-        downstreamContainer.addRequest(r);
-      }
-    }
-*/
   }
 
   public void markComplete(String containerId) {
@@ -233,7 +166,6 @@ public class StreamingContainerManager implements PlanContext
     }
     cs.isComplete = true;
   }
-
 
   public StramChildAgent assignContainerForTest(String containerId, InetSocketAddress bufferServerAddress)
   {

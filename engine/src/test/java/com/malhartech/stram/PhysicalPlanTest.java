@@ -22,11 +22,10 @@ import com.malhartech.api.PartitionableOperator;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
-import com.malhartech.stram.StreamingContainerManagerTest.TestStaticPartitioningSerDe;
 
 public class PhysicalPlanTest {
 
-  public static class PartitiongTestOperator extends GenericTestModule implements PartitionableOperator {
+  public static class PartitioningTestOperator extends GenericTestModule implements PartitionableOperator {
     final static byte[][] PARTITION_KEYS = { {'a'}, {'b'}, {'c'}};
 
     @Override
@@ -34,7 +33,7 @@ public class PhysicalPlanTest {
       List<Partition> newPartitions = new ArrayList<Partition>(3);
       Partition templatePartition = partitions.get(0);
       for (int i=0; i<3; i++) {
-        Partition p = templatePartition.getInstance(new PartitiongTestOperator());
+        Partition p = templatePartition.getInstance(new PartitioningTestOperator());
         p.getPartitionKeys().put(this.inport1, Arrays.asList(PARTITION_KEYS[i]));
         newPartitions.add(p);
       }
@@ -47,7 +46,7 @@ public class PhysicalPlanTest {
     DAG dag = new DAG();
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    PartitiongTestOperator node2 = dag.addOperator("node2", PartitiongTestOperator.class);
+    PartitioningTestOperator node2 = dag.addOperator("node2", PartitioningTestOperator.class);
 
     GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
@@ -63,11 +62,11 @@ public class PhysicalPlanTest {
     OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
 
     List<PTOperator> n2Instances = plan.getOperators(node2Decl);
-    Assert.assertEquals("partition instances " + n2Instances, PartitiongTestOperator.PARTITION_KEYS.length, n2Instances.size());
-    for (int i=0; i<PartitiongTestOperator.PARTITION_KEYS.length; i++) {
+    Assert.assertEquals("partition instances " + n2Instances, PartitioningTestOperator.PARTITION_KEYS.length, n2Instances.size());
+    for (int i=0; i<PartitioningTestOperator.PARTITION_KEYS.length; i++) {
       PTOperator po = n2Instances.get(i);
-      Assert.assertEquals(""+po.inputs.get(0), PartitiongTestOperator.IPORT1, po.inputs.get(0).portName);
-      Assert.assertEquals("partitions "+po.inputs.get(0), Collections.singletonList(PartitiongTestOperator.PARTITION_KEYS[i]), po.inputs.get(0).partitions);
+      Assert.assertEquals(""+po.inputs.get(0), PartitioningTestOperator.IPORT1, po.inputs.get(0).portName);
+      Assert.assertEquals("partitions "+po.inputs.get(0), Collections.singletonList(PartitioningTestOperator.PARTITION_KEYS[i]), po.inputs.get(0).partitions);
     }
 
   }
@@ -83,7 +82,7 @@ public class PhysicalPlanTest {
 
     GenericTestModule notInlineNode = dag.addOperator("notInlineNode", GenericTestModule.class);
     // partNode has 2 inputs, inline must be ignored with partitioned input
-    PartitiongTestOperator partNode = dag.addOperator("partNode", PartitiongTestOperator.class);
+    PartitioningTestOperator partNode = dag.addOperator("partNode", PartitioningTestOperator.class);
 
     dag.addStream("n1Output1", node1.outport1, node2.inport1, node3.inport1, partNode.inport1)
       .setInline(true);

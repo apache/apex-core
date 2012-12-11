@@ -21,7 +21,7 @@ public interface Operator extends Component<OperatorContext>
   public void endWindow();
 
   /**
-   * If the Operator can be partitioned, then Unifier is used to unify
+   * If the Operator can be partitioned, then Unifier is used to merge
    * the tuples from the output ports from all the partitioned instances.
    * Unifier are the operators which do not have any input ports defined
    * and exactly one output port defined which emits the tuple of the
