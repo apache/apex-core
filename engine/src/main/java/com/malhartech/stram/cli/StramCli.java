@@ -176,7 +176,7 @@ public class StramCli
     System.out.println("ls               - Show running applications");
     System.out.println("connect <appId>  - Connect to running streaming application");
     System.out.println("listoperators        - List deployed streaming operators");
-    System.out.println("launch <jarFile> [<topologyFile>] - Launch topology packaged in jar file.");
+    System.out.println("launch <jarFile> [<configuration>] - Launch application packaged in jar file.");
     System.out.println("timeout <duration> - Wait for completion of current application.");
     System.out.println("kill             - Force termination for current application.");
     System.out.println("exit             - Exit the app");
@@ -478,7 +478,7 @@ public class StramCli
         }
       }
       else {
-        System.err.println("No topology specified.");
+        System.err.println("No application specified.");
       }
 
     }

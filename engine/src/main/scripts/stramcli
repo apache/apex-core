@@ -1,27 +1,5 @@
 #!/bin/bash
 
-function addhc
-{
-  if test -z "$STRAM_CLASSPATH"
-  then
-    export STRAM_CLASSPATH=~/.m2/repository/$1
-  else 
-    export STRAM_CLASSPATH=$STRAM_CLASSPATH:~/.m2/repository/$1
-  fi
-}
-
-#addhc com/malhartech/malhar-bufferserver/0.1-SNAPSHOT/malhar-bufferserver-0.1-SNAPSHOT.jar
-#addhc com/malhartech/malhar-stram/0.1-SNAPSHOT/malhar-stram-0.1-SNAPSHOT.jar
-#addhc com/esotericsoftware/kryo/kryo/2.19/kryo-2.19.jar
-#addhc com/esotericsoftware/reflectasm/reflectasm/1.07/reflectasm-1.07-shaded.jar
-#addhc com/esotericsoftware/minlog/minlog/1.2/minlog-1.2.jar
-#addhc com/sun/jersey/jersey-client/1.8/jersey-client-1.8.jar
-#addhc org/objenesis/objenesis/1.2/objenesis-1.2.jar
-#addhc io/netty/netty-transport/4.0.0.Alpha5/netty-transport-4.0.0.Alpha5.jar
-#addhc io/netty/netty-common/4.0.0.Alpha5/netty-common-4.0.0.Alpha5.jar
-#addhc io/netty/netty-buffer/4.0.0.Alpha5/netty-buffer-4.0.0.Alpha5.jar
-#addhc io/netty/netty-codec/4.0.0.Alpha5/netty-codec-4.0.0.Alpha5.jar
-
 BUILD_DIR="$( dirname "$0" )/../../../target"
 MVN_GENERATED_PATH="$BUILD_DIR/mvn-generated-runtime-classpath"
 if [ -f "$MVN_GENERATED_PATH" ]; then
@@ -33,12 +11,16 @@ if [ -f "$MVN_GENERATED_PATH" ]; then
     exit 1;
   fi 
   STRAM_CLASSPATH="$STRAM_CLASSPATH:$STRAM_CORE_JAR"
-  STRAM_CLASSPATH=$STRAM_CLASSPATH:`cat $MVN_GENERATED_PATH`
-  #echo "$STRAM_CLASSPATH"
 else
-  echo "Error: Installer not supported yet"
-  exit 1;
+  MVN_GENERATED_PATH="$( dirname "$0" )/mvn-generated-runtime-classpath"
+  if [ ! -f "$MVN_GENERATED_PATH" ]; then
+    echo "Error: Cannot find $MVN_GENERATED_PATH (has $( cd $(dirname $0)/..; pwd -P )/install.sh run?)";
+    exit 1;
+  fi
 fi
+
+STRAM_CLASSPATH=$STRAM_CLASSPATH:`cat $MVN_GENERATED_PATH`
+#echo "$STRAM_CLASSPATH"
 
 if [ "$STRAM_CLASSPATH" != "" ]; then
   if test -z "$HADOOP_CLASSPATH"
