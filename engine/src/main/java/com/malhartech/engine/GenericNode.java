@@ -102,7 +102,7 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  public Sink<Object> connectInputPort(String port, final Sink<Object> sink)
+  public Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink)
   {
     Sink<Object> retvalue;
 

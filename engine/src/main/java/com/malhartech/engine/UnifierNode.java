@@ -46,7 +46,7 @@ public class UnifierNode extends GenericNode
   }
 
   @Override
-  public Sink<Object> connectInputPort(String port, Sink<Object> sink)
+  public Sink<Object> connectInputPort(String port, Sink<? extends Object> sink)
   {
     MergeReservoir retvalue;
 

@@ -153,6 +153,15 @@ public class DAG implements Serializable, DAGConstants
       return portAnnotation == null || portAnnotation.name() == null ? fieldName : portAnnotation.name();
     }
 
+    public InputPort<?> getPortObject() {
+      for (Entry<InputPort<?>, InputPortMeta> e : operatorWrapper.getPortMapping().inPortMap.entrySet()) {
+        if (e.getValue() == this) {
+          return e.getKey();
+        }
+      }
+      throw new AssertionError();
+    }
+
     @Override
     public String toString()
     {
@@ -208,7 +217,7 @@ public class DAG implements Serializable, DAGConstants
     private boolean inline;
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
-    private Class<? extends StreamCodec> serDeClass;
+    private Class<? extends StreamCodec<?>> serDeClass;
     private final String id;
 
     private StreamDecl(String id)
@@ -237,17 +246,9 @@ public class DAG implements Serializable, DAGConstants
       return this;
     }
 
-    @Deprecated
-    public Class<? extends StreamCodec> getSerDeClass()
+    public Class<? extends StreamCodec<?>> getCodecClass()
     {
       return serDeClass;
-    }
-
-    @Deprecated
-    public StreamDecl setSerDeClass(Class<? extends StreamCodec> serDeClass)
-    {
-      this.serDeClass = serDeClass;
-      return this;
     }
 
     public OutputPortMeta getSource()
@@ -287,9 +288,21 @@ public class DAG implements Serializable, DAGConstants
       if (op.inputStreams.containsKey(portMeta)) {
         throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, op.inputStreams.get(portMeta)));
       }
+
+      // determine codec for the stream based on what was set on the ports
+      Class<? extends StreamCodec<?>> codecClass = port.getStreamCodec();
+      if (codecClass != null) {
+        if (this.serDeClass != null && !this.serDeClass.equals(codecClass)) {
+          String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", codecClass, portMeta, this.serDeClass);
+          throw new IllegalArgumentException(msg);
+        }
+        this.serDeClass = codecClass;
+      }
+
       sinks.add(portMeta);
       op.inputStreams.put(portMeta, this);
       rootNodes.remove(portMeta.operatorWrapper);
+
       return this;
     }
   }

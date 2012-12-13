@@ -31,7 +31,6 @@ import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator;
 import com.malhartech.engine.Operators;
-import com.malhartech.api.StreamCodec;
 
 /**
  *
@@ -51,7 +50,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   public static final String STREAM_SINKS = "sinks";
   public static final String STREAM_TEMPLATE = "template";
   public static final String STREAM_INLINE = "inline";
-  public static final String STREAM_SERDE_CLASSNAME = "serdeClassname";
 
   public static final String OPERATOR_PREFIX = "stram.operator.";
   public static final String OPERATOR_CLASSNAME = "classname";
@@ -97,15 +95,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
     private StreamConf(String id) {
       this.id = id;
-    }
-
-    /**
-     *
-     * @param key get property of key
-     * @return String
-     */
-    public String getProperty(String key) {
-      return properties.getProperty(key);
     }
 
     /**
@@ -411,11 +400,6 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       StreamConf streamConf = streamConfEntry.getValue();
       StreamDecl sd = dag.addStream(streamConfEntry.getKey());
       sd.setInline(streamConf.isInline());
-
-      String serdeClassName = streamConf.getProperty(DAGPropertiesBuilder.STREAM_SERDE_CLASSNAME);
-      if (serdeClassName != null) {
-        sd.setSerDeClass(StramUtils.classForName(serdeClassName, StreamCodec.class));
-      }
 
       if (streamConf.sourceNode != null) {
         String portName = null;

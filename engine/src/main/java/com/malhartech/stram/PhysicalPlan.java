@@ -54,7 +54,7 @@ public class PhysicalPlan {
   private final static Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class);
 
   /**
-   * Common abstraction for streams and operators for heartbeat/monitoring.<p>
+   * Common abstraction for physical DAG nodes.<p>
    * <br>
    *
    */
@@ -87,9 +87,6 @@ public class PhysicalPlan {
    *
    * Representation of an input in the physical layout. A source in the DAG<p>
    * <br>
-   * This can come from another node or from outside the DAG<br>
-   * <br>
-   *
    */
   public static class PTInput {
     final DAG.StreamDecl logicalStream;
@@ -132,9 +129,6 @@ public class PhysicalPlan {
    *
    * Representation of an output in the physical layout. A sink in the DAG<p>
    * <br>
-   * This can go to another node or to a output Adapter (i.e. outside the DAG)<br>
-   * <br>
-   *
    */
   public class PTOutput {
     final DAG.StreamDecl logicalStream;
@@ -622,7 +616,7 @@ public class PhysicalPlan {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
             if (upstreamOut.logicalStream == streamDecl) {
-              // TODO: look for unifier in upstream output port
+              // TODO: stream codec
               PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, partitionKeys.get(inputEntry.getKey()), upNode);
               pOperator.inputs.add(input);
             }
@@ -632,11 +626,12 @@ public class PhysicalPlan {
     }
 
     for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : nodeDecl.logicalOperator.getOutputStreams().entrySet()) {
+      // TODO: stream codec
       pOperator.outputs.add(new PTOutput(outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator));
-      // if a unifier is defined, add the new partition to inputs
+      // if a unifier is defined, add the new partition to its inputs
       PTOperator mergeNode = nodeDecl.mergeOperators.get(outputEntry.getKey());
       if (mergeNode != null) {
-        // add merge operator input
+        // merge operator input
         PTInput input = new PTInput("<merge#" + outputEntry.getKey().getPortName() + ">", outputEntry.getValue(), pOperator, null, pOperator);
         mergeNode.inputs.add(input);
       } else {

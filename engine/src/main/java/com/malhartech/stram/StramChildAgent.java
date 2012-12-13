@@ -296,8 +296,8 @@ public class StramChildAgent {
         if (!(streamDecl.isInline() && out.isDownStreamInline())) {
           portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
           portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
-          if (streamDecl.getSerDeClass() != null) {
-            portInfo.serDeClassName = streamDecl.getSerDeClass().getName();
+          if (streamDecl.getCodecClass() != null) {
+            portInfo.serDeClassName = streamDecl.getCodecClass().getName();
           }
         } else {
           // target set below
@@ -349,8 +349,8 @@ public class StramChildAgent {
           }
           inputInfo.bufferServerHost = addr.getHostName();
           inputInfo.bufferServerPort = addr.getPort();
-          if (streamDecl.getSerDeClass() != null) {
-            inputInfo.serDeClassName = streamDecl.getSerDeClass().getName();
+          if (streamDecl.getCodecClass() != null) {
+            inputInfo.serDeClassName = streamDecl.getCodecClass().getName();
           }
         }
         ndi.inputs.add(inputInfo);

@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,8 +19,10 @@ import org.junit.Test;
 
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
+import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.engine.DefaultStreamCodec;
+import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.Tuple;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
@@ -209,6 +212,9 @@ public class StreamingContainerManagerTest {
       Assert.assertTrue(sourceNodeIds + " contains " + node.id, sourceNodeIds.contains(node.id));
     }
     Assert.assertEquals("outputs " + mergeNodeDI, 1, mergeNodeDI.outputs.size());
+
+    Object operator = new DefaultOperatorSerDe().read(new ByteArrayInputStream(mergeNodeDI.serializedNode));
+    Assert.assertTrue("" + operator, operator instanceof DefaultUnifier);
 
     // node3 container
     String node3ContainerId = "node3Container";

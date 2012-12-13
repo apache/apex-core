@@ -7,8 +7,10 @@ package com.malhartech.stram;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import junit.framework.Assert;
@@ -16,17 +18,43 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
+import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.PartitionableOperator;
+import com.malhartech.api.StreamCodec;
+import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
+import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 
 public class PhysicalPlanTest {
 
+  public static class PartitioningTestStreamCodec extends DefaultStreamCodec {
+    @Override
+    public byte[] getPartition(Object o) {
+      return PartitioningTestOperator.PARTITION_KEYS[ o.hashCode() % PartitioningTestOperator.PARTITION_KEYS.length ];
+    }
+  }
+
   public static class PartitioningTestOperator extends GenericTestModule implements PartitionableOperator {
     final static byte[][] PARTITION_KEYS = { {'a'}, {'b'}, {'c'}};
+    final static String INPORT_WITH_CODEC = "inportWithCodec";
+
+    @InputPortFieldAnnotation(name=INPORT_WITH_CODEC, optional=true)
+    final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>(this) {
+
+      @Override
+      public Class<? extends StreamCodec<Object>> getStreamCodec() {
+        return PartitioningTestStreamCodec.class;
+      }
+
+      @Override
+      final public void process(Object payload) {
+      }
+    };
 
     @Override
     public List<Partition> definePartitions(List<? extends Partition> partitions) {
@@ -35,6 +63,7 @@ public class PhysicalPlanTest {
       for (int i=0; i<3; i++) {
         Partition p = templatePartition.getInstance(new PartitioningTestOperator());
         p.getPartitionKeys().put(this.inport1, Arrays.asList(PARTITION_KEYS[i]));
+        p.getPartitionKeys().put(this.inportWithCodec, Arrays.asList(PARTITION_KEYS[i]));
         newPartitions.add(p);
       }
       return newPartitions;
@@ -47,11 +76,9 @@ public class PhysicalPlanTest {
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
     PartitioningTestOperator node2 = dag.addOperator("node2", PartitioningTestOperator.class);
-
     GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
-    dag.addStream("n1n2", node1.outport1, node2.inport1);
-
+    dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inportWithCodec);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
     dag.setMaxContainerCount(2);
@@ -65,10 +92,14 @@ public class PhysicalPlanTest {
     Assert.assertEquals("partition instances " + n2Instances, PartitioningTestOperator.PARTITION_KEYS.length, n2Instances.size());
     for (int i=0; i<PartitioningTestOperator.PARTITION_KEYS.length; i++) {
       PTOperator po = n2Instances.get(i);
-      Assert.assertEquals(""+po.inputs.get(0), PartitioningTestOperator.IPORT1, po.inputs.get(0).portName);
-      Assert.assertEquals("partitions "+po.inputs.get(0), Collections.singletonList(PartitioningTestOperator.PARTITION_KEYS[i]), po.inputs.get(0).partitions);
+      Map<String, PTInput> inputsMap = new HashMap<String, PTInput>();
+      for (PTInput input : po.inputs) {
+        inputsMap.put(input.portName, input);
+        Assert.assertEquals("partitions "+input, Collections.singletonList(PartitioningTestOperator.PARTITION_KEYS[i]), input.partitions);
+        Assert.assertEquals("codec " + input.logicalStream, PartitioningTestStreamCodec.class, input.logicalStream.getCodecClass());
+      }
+      Assert.assertEquals("number inputs " + inputsMap, Sets.newHashSet(PartitioningTestOperator.IPORT1, PartitioningTestOperator.INPORT_WITH_CODEC), inputsMap.keySet());
     }
-
   }
 
   @Test

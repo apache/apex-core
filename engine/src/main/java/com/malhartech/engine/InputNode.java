@@ -26,7 +26,7 @@ public class InputNode extends Node<InputOperator>
   }
 
   @Override
-  public Sink<Object> connectInputPort(String port, final Sink<Object> sink)
+  public Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink)
   {
     if (Node.INPUT.equals(port)) {
       return new Sink<Object>()

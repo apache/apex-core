@@ -676,17 +676,17 @@ public class StramChild
   @SuppressWarnings("unchecked")
   private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
-    OperatorCodec moduleSerDe = StramUtils.getNodeSerDe(null);
+    OperatorCodec operatorSerDe = StramUtils.getNodeSerDe(null);
     BackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
     for (OperatorDeployInfo ndi: nodeList) {
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
           logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpointWindowId));
-          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId, moduleSerDe);
+          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId, operatorSerDe);
         }
         else {
-          foreignObject = moduleSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
+          foreignObject = operatorSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
 
         String nodeid = ndi.id.concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
@@ -777,7 +777,7 @@ public class StramChild
             // should we create inline stream here or wait for the input deployments to create the inline streams?
             stream = new MuxStream();
             stream.setup(context);
-            stream.setSink(sinkIdentifier, (Sink<Object>)bsos);
+            stream.setSink(sinkIdentifier, bsos);
 
             logger.debug("stored stream {} against key {}", bsos, sinkIdentifier);
           }
@@ -894,7 +894,7 @@ public class StramChild
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
 
             @SuppressWarnings("unchecked")
-            Stream<Object> stream = (Stream<Object>)(Stream)new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
+            Stream<Object> stream = (Stream)new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
             stream.setup(context);
             logger.debug("deployed buffer input stream {}", stream);
 

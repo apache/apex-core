@@ -103,7 +103,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  public abstract Sink<Object> connectInputPort(String port, final Sink<Object> sink);
+  public abstract Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink);
   OperatorContext context;
 
   @SuppressWarnings("unchecked")
