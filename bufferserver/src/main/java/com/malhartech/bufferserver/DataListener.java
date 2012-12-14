@@ -17,18 +17,18 @@ import java.util.Collection;
  */
 public interface DataListener
 {
-  public static final ByteBuffer NULL_PARTITION = ByteBuffer.allocate(0);
+  public static final int NULL_PARTITION = 0;
 
   /**
    *
    * @param partition
    */
-  public void dataAdded(ByteBuffer partition);
+  public void dataAdded(Integer partition);
 
   /**
    *
    * @param partitions
    * @return int
    */
-  public int getPartitions(Collection<ByteBuffer> partitions);
+  public int getPartitions(Collection<Integer> partitions);
 }

@@ -32,7 +32,7 @@ public class LogicalNode implements DataListener
   private final String upstream;
   private final String group;
   private final HashSet<PhysicalNode> physicalNodes;
-  private final HashSet<ByteBuffer> partitions;
+  private final HashSet<Integer> partitions;
   private final Policy policy;
   private final DataListIterator iterator;
   private final long windowId;
@@ -52,7 +52,7 @@ public class LogicalNode implements DataListener
     this.group = group;
     this.policy = policy;
     this.physicalNodes = new HashSet<PhysicalNode>();
-    this.partitions = new HashSet<ByteBuffer>();
+    this.partitions = new HashSet<Integer>();
 
     if (iterator instanceof DataListIterator) {
       this.iterator = (DataListIterator)iterator;
@@ -112,7 +112,7 @@ public class LogicalNode implements DataListener
    *
    * @param partition
    */
-  public void addPartition(ByteBuffer partition)
+  public void addPartition(int partition)
   {
     partitions.add(partition);
   }
@@ -177,7 +177,7 @@ public class LogicalNode implements DataListener
    * @param partition
    */
   @SuppressWarnings("fallthrough")
-  public synchronized void dataAdded(ByteBuffer partition)
+  public synchronized void dataAdded(Integer partition)
   {
     if (caughtup) {
       /*
@@ -210,7 +210,7 @@ public class LogicalNode implements DataListener
           SerializedData data = iterator.next();
           switch (iterator.getType()) {
             case PARTITIONED_DATA:
-              if (partitions.contains(((Data)iterator.getData()).getPartitionedData().getPartition().asReadOnlyByteBuffer())) {
+              if (partitions.contains(((Data)iterator.getData()).getPartitionedData().getPartition())) {
                 policy.distribute(physicalNodes, data);
               }
               break;
@@ -241,7 +241,7 @@ public class LogicalNode implements DataListener
    * @param partitions
    * @return int
    */
-  public int getPartitions(Collection<ByteBuffer> partitions)
+  public int getPartitions(Collection<Integer> partitions)
   {
     partitions.addAll(this.partitions);
     return partitions.size();

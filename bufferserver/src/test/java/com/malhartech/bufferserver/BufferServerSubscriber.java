@@ -25,13 +25,13 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerSubscriber.class);
   private final String sourceId;
-  private final Collection<byte[]> partitions;
+  private final Collection<Integer> partitions;
   AtomicInteger tupleCount = new AtomicInteger(0);
   Data firstPayload, lastPayload;
   ArrayList<Data> resetPayloads = new ArrayList<Data>();
   long windowId;
 
-  public BufferServerSubscriber(String sourceId, Collection<byte[]> partitions)
+  public BufferServerSubscriber(String sourceId, Collection<Integer> partitions)
   {
     this.sourceId = sourceId;
     this.partitions = partitions;
