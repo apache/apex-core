@@ -64,7 +64,7 @@ public interface StreamCodec<T>
    * @param o object for which the partition has to be determined
    * @return byte array representing the partition for the object
    */
-  byte[] getPartition(Object o);
+  int getPartition(Object o);
 
   /**
    * Do consolidation at the checkpoint. If the codec builds the state through its lifetime as it

@@ -7,7 +7,6 @@ package com.malhartech.stram;
 import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -188,7 +187,7 @@ public class StreamingContainerManagerTest {
 
       InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
-      Assert.assertTrue("partition for " + containerId, Arrays.equals(PartitioningTestOperator.PARTITION_KEYS[i], nidi.partitionKeys.get(0)));
+      Assert.assertEquals("partition for " + containerId, PartitioningTestOperator.PARTITION_KEYS[i], nidi.partitionKeys.get(0));
       Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
     }
 
@@ -311,12 +310,12 @@ public class StreamingContainerManagerTest {
 
   public static class TestStaticPartitioningSerDe extends DefaultStreamCodec {
 
-    public final static byte[][] partitions = new byte[][]{
-        {'1'}, {'2'}, {'3'}
+    public final static int[] partitions = new int[]{
+      0, 1, 2
     };
 
     @Override
-    public byte[] getPartition(Object o)
+    public int getPartition(Object o)
     {
       if (o instanceof Tuple) {
         throw new UnsupportedOperationException("should not be called with control tuple");

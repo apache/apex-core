@@ -78,6 +78,5 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   @Override
   public void committed(long windowId)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 }

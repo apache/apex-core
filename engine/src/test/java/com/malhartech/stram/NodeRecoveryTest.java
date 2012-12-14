@@ -66,7 +66,6 @@ public class NodeRecoveryTest
     @Override
     public void committed(long windowId)
     {
-      throw new UnsupportedOperationException("Not supported yet.");
     }
   }
 

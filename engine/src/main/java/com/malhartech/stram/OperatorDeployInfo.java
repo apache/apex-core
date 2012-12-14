@@ -68,7 +68,7 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
-    public List<byte[]> partitionKeys;
+    public List<Integer> partitionKeys;
 
     /**
      * Context attributes for input port

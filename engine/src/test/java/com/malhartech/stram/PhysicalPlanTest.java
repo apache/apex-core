@@ -4,19 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import junit.framework.Assert;
-
-import org.junit.Test;
-
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.DAG;
@@ -29,18 +16,21 @@ import com.malhartech.engine.GenericTestModule;
 import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
+import java.util.*;
+import junit.framework.Assert;
+import org.junit.Test;
 
 public class PhysicalPlanTest {
 
   public static class PartitioningTestStreamCodec extends DefaultStreamCodec {
     @Override
-    public byte[] getPartition(Object o) {
+    public int getPartition(Object o) {
       return PartitioningTestOperator.PARTITION_KEYS[ o.hashCode() % PartitioningTestOperator.PARTITION_KEYS.length ];
     }
   }
 
   public static class PartitioningTestOperator extends GenericTestModule implements PartitionableOperator {
-    final static byte[][] PARTITION_KEYS = { {'a'}, {'b'}, {'c'}};
+    final static Integer[] PARTITION_KEYS = { new Integer(0), new Integer(1), new Integer(2)};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
 
     @InputPortFieldAnnotation(name=INPORT_WITH_CODEC, optional=true)
@@ -103,6 +93,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   public void testInline() {
 
     DAG dag = new DAG();

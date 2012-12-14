@@ -145,8 +145,8 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
       /*
        * Now that the state if any has been sent, we can proceed with the actual data we want to send.
        */
-      byte partition[] = serde.getPartition(payload);
-      if (partition == null) {
+      int partition = serde.getPartition(payload);
+      if (partition == 0) {
         Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
         sdb.setData(ByteString.copyFrom(dsp.data));
         db.setType(Buffer.Data.DataType.SIMPLE_DATA);
@@ -154,7 +154,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
       }
       else {
         Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
-        pdb.setPartition(ByteString.copyFrom(partition));
+        pdb.setPartition(partition);
         pdb.setData(ByteString.copyFrom(dsp.data));
         db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
         db.setPartitionedData(pdb);

@@ -53,20 +53,20 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   private String sourceId;
   private String sinkId;
   private long startingWindowId;
-  private HashSet<byte[]> partitions;
+  private HashSet<Integer> partitions;
   private String id;
 
   /**
    *
    * @param partitionKeys
    */
-  public void setPartitions(Collection<byte[]> partitionKeys)
+  public void setPartitions(Collection<Integer> partitionKeys)
   {
     if (partitionKeys == null) {
       partitions = null;
     }
     else {
-      partitions = new HashSet<byte[]>(partitionKeys.size());
+      partitions = new HashSet<Integer>(partitionKeys.size());
       partitions.addAll(partitionKeys);
     }
   }
@@ -75,7 +75,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
    *
    * @return Collection<byte[]>
    */
-  public Collection<byte[]> getPartitions()
+  public Collection<Integer> getPartitions()
   {
     return partitions;
   }
