@@ -32,7 +32,7 @@ public interface PartitionableOperator extends Operator
      * Input ports that are not mapped will receive all data.
      * @return
      */
-    public Map<InputPort<?>, List<byte[]>> getPartitionKeys();
+    public Map<InputPort<?>, List<Integer>> getPartitionKeys();
 
     /**
      * Get an indication of the load handled by this particular partition.

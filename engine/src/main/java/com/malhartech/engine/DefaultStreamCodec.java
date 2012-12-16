@@ -150,9 +150,9 @@ public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
   }
 
   @Override
-  public byte[] getPartition(Object o)
+  public int getPartition(Object o)
   {
-    return null;
+    return 0;
   }
 
   @Override

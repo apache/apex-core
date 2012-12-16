@@ -7,7 +7,6 @@ package com.malhartech.stream;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.Tuple;
-import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 
@@ -18,7 +17,7 @@ import java.util.List;
 public class PartitionAwareSink<T> implements Sink<T>
 {
   private final StreamCodec<T> serde;
-  private final HashSet<ByteBuffer> partitions;
+  private final HashSet<Integer> partitions;
   private volatile Sink<T> output;
 
   /**
@@ -27,13 +26,13 @@ public class PartitionAwareSink<T> implements Sink<T>
    * @param partitions
    * @param output
    */
-  public PartitionAwareSink(StreamCodec<T> serde, List<byte[]> partitions, Sink<T> output)
+  public PartitionAwareSink(StreamCodec<T> serde, List<Integer> partitions, Sink<T> output)
   {
     this.serde = serde;
 
-    this.partitions = new HashSet<ByteBuffer>(partitions.size());
-    for (byte[] partition: partitions) {
-      this.partitions.add(ByteBuffer.wrap(partition));
+    this.partitions = new HashSet<Integer>(partitions.size());
+    for (Integer partition: partitions) {
+      this.partitions.add(partition);
     }
 
     this.output = output;
@@ -49,7 +48,7 @@ public class PartitionAwareSink<T> implements Sink<T>
     if (payload instanceof Tuple) {
       output.process(payload);
     }
-    else if (partitions.contains(ByteBuffer.wrap(serde.getPartition(payload)))) {
+    else if (partitions.contains(serde.getPartition(payload))) {
       output.process(payload);
     }
   }

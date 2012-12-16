@@ -30,7 +30,7 @@ public class DataList
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
   private final String identifier;
   private final Integer capacity;
-  private HashMap<ByteBuffer, HashSet<DataListener>> listeners = new HashMap<ByteBuffer, HashSet<DataListener>>();
+  private HashMap<Integer, HashSet<DataListener>> listeners = new HashMap<Integer, HashSet<DataListener>>();
   private HashSet<DataListener> all_listeners = new HashSet<DataListener>();
   private static volatile DataArray free = null;
   private volatile DataArray first;
@@ -597,9 +597,9 @@ public class DataList
   public void addDataListener(DataListener dl)
   {
     all_listeners.add(dl);
-    ArrayList<ByteBuffer> partitions = new ArrayList<ByteBuffer>();
+    ArrayList<Integer> partitions = new ArrayList<Integer>();
     if (dl.getPartitions(partitions) > 0) {
-      for (ByteBuffer partition: partitions) {
+      for (Integer partition: partitions) {
         HashSet<DataListener> set;
         if (listeners.containsKey(partition)) {
           set = listeners.get(partition);
@@ -627,9 +627,9 @@ public class DataList
 
   public void removeDataListener(DataListener dl)
   {
-    ArrayList<ByteBuffer> partitions = new ArrayList<ByteBuffer>();
+    ArrayList<Integer> partitions = new ArrayList<Integer>();
     if (dl.getPartitions(partitions) > 0) {
-      for (ByteBuffer partition: partitions) {
+      for (Integer partition: partitions) {
         if (listeners.containsKey(partition)) {
           listeners.get(partition).remove(dl);
         }

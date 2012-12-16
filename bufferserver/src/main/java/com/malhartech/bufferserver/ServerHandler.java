@@ -192,8 +192,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
                            (long)request.getBaseSeconds() << 32 | windowId);
 
       if (request.getPartitionCount() > 0) {
-        for (ByteString bs: request.getPartitionList()) {
-          ln.addPartition(bs.asReadOnlyByteBuffer());
+        for (Integer bs: request.getPartitionList()) {
+          ln.addPartition(bs);
         }
       }
 

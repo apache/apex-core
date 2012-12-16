@@ -12,7 +12,7 @@ message SimpleData {
 
 message PartitionedData {
   required bytes data = 1;
-  required bytes partition = 2;
+  required uint32 partition = 2;
 }
 
 message ResetWindow {
@@ -32,7 +32,7 @@ message SubscriberRequest {
   required string type = 2;
   optional uint32 base_seconds = 3 [default = 0];
   optional string upstream_identifier = 4;
-  repeated bytes partition = 6;
+  repeated uint32 partition = 6;
   optional PolicyType policy = 7 [default = GIVE_ALL ];
 }
 

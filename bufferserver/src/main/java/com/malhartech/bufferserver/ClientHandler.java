@@ -7,13 +7,8 @@ package com.malhartech.bufferserver;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
-import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.*;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Random;
@@ -27,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * @author chetan
  */
 @Sharable
-public class ClientHandler extends ChannelInboundMessageHandlerAdapter
+public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
 {
   private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
 
@@ -57,8 +52,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
         Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
         pdb.setData(ByteString.EMPTY);
 
-        byte[] bytes = String.valueOf(new Random().nextInt() % 10).getBytes();
-        pdb.setPartition(ByteString.copyFrom(bytes));
+        pdb.setPartition(new Random().nextInt());
 
 
         Buffer.Data.Builder db = Data.newBuilder();
@@ -89,7 +83,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
           String id,
           String down_type,
           String node,
-          Collection<byte[]> partitions,
+          Collection<Integer> partitions,
           long startingWindowId)
   {
     Buffer.SubscriberRequest.Builder srb = Buffer.SubscriberRequest.newBuilder();
@@ -99,8 +93,8 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter
     srb.setBaseSeconds((int)(startingWindowId >> 32));
 
     if (partitions != null) {
-      for (byte[] c: partitions) {
-        srb.addPartition(ByteString.copyFrom(c));
+      for (Integer c: partitions) {
+        srb.addPartition(c);
       }
     }
     srb.setPolicy(Buffer.SubscriberRequest.PolicyType.ROUND_ROBIN);

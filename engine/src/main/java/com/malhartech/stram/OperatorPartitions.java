@@ -1,7 +1,5 @@
 package com.malhartech.stram;
 
-import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -20,11 +18,11 @@ public class OperatorPartitions {
     this.operatorWrapper = operator;
   }
 
-  private Map<DAG.InputPortMeta, List<byte[]>> convertMapping(Map<InputPort<?>, List<byte[]>> keys) {
-    Map<DAG.InputPortMeta, List<byte[]>> partitionKeys = Collections.emptyMap();
-    partitionKeys = new HashMap<DAG.InputPortMeta, List<byte[]>>(keys.size());
-    Map<InputPort<?>, List<byte[]>> partKeys = keys;
-    for (Map.Entry<InputPort<?>, List<byte[]>> portEntry : partKeys.entrySet()) {
+  private Map<DAG.InputPortMeta, List<Integer>> convertMapping(Map<InputPort<?>, List<Integer>> keys) {
+    Map<DAG.InputPortMeta, List<Integer>> partitionKeys;
+    partitionKeys = new HashMap<DAG.InputPortMeta, List<Integer>>(keys.size());
+    Map<InputPort<?>, List<Integer>> partKeys = keys;
+    for (Map.Entry<InputPort<?>, List<Integer>> portEntry : partKeys.entrySet()) {
       DAG.InputPortMeta pportMeta = operatorWrapper.getInputPortMeta(portEntry.getKey());
       if (pportMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + portEntry);
@@ -39,7 +37,7 @@ public class OperatorPartitions {
     private final PartitionPortMap partitionKeys;
     private final PartitionableOperator operator;
 
-    PartitionImpl(PartitionableOperator operator, Map<InputPort<?>, List<byte[]>> partitionKeys) {
+    PartitionImpl(PartitionableOperator operator, Map<InputPort<?>, List<Integer>> partitionKeys) {
       this.operator = operator;
       this.partitionKeys = new PartitionPortMap();
       this.partitionKeys.putAll(partitionKeys);
@@ -51,7 +49,7 @@ public class OperatorPartitions {
     }
 
     @Override
-    public Map<InputPort<?>, List<byte[]>> getPartitionKeys() {
+    public Map<InputPort<?>, List<Integer>> getPartitionKeys() {
       return partitionKeys;
     }
 
@@ -77,15 +75,16 @@ public class OperatorPartitions {
   }
 
 
-  public static class PartitionPortMap extends HashMap<InputPort<?>, List<byte[]>>
+  public static class PartitionPortMap extends HashMap<InputPort<?>, List<Integer>>
   {
+    private static final long serialVersionUID = 201212131624L;
     private boolean modified;
 
-    private HashSet<ByteBuffer> validateNoRepeats(List<byte[]> collection)
+    private HashSet<Integer> validateNoRepeats(List<Integer> collection)
     {
-      HashSet<ByteBuffer> hs = new HashSet<ByteBuffer>(collection.size());
-      for (byte[] bytes: collection) {
-        hs.add(ByteBuffer.wrap(bytes));
+      HashSet<Integer> hs = new HashSet<Integer>(collection.size());
+      for (Integer bytes: collection) {
+        hs.add(bytes);
       }
 
       if (hs.size() == collection.size()) {
@@ -95,7 +94,7 @@ public class OperatorPartitions {
       return null;
     }
 
-    private boolean validateEqual(List<byte[]> collection1, List<byte[]> collection2)
+    private boolean validateEqual(List<Integer> collection1, List<Integer> collection2)
     {
       if (collection1 == null && collection2 == null) {
         return true;
@@ -109,17 +108,17 @@ public class OperatorPartitions {
         return false;
       }
 
-      HashSet<ByteBuffer> hs1 = validateNoRepeats(collection1);
+      HashSet<Integer> hs1 = validateNoRepeats(collection1);
       if (hs1 == null) {
         return false;
       }
 
-      HashSet<ByteBuffer> hs2 = validateNoRepeats(collection2);
+      HashSet<Integer> hs2 = validateNoRepeats(collection2);
       if (hs2 == null) {
         return false;
       }
 
-      for (ByteBuffer bb: hs1) {
+      for (Integer bb: hs1) {
         if (!hs2.contains(bb)) {
           return false;
         }
@@ -134,9 +133,9 @@ public class OperatorPartitions {
     }
 
     @Override
-    public List<byte[]> put(InputPort<?> key, List<byte[]> value)
+    public List<Integer> put(InputPort<?> key, List<Integer> value)
     {
-      List<byte[]> prev = super.put(key, value);
+      List<Integer> prev = super.put(key, value);
       if (!modified) {
         modified = !validateEqual(prev, value);
       }
@@ -145,16 +144,16 @@ public class OperatorPartitions {
     }
 
     @Override
-    public void putAll(Map<? extends InputPort<?>, ? extends List<byte[]>> m)
+    public void putAll(Map<? extends InputPort<?>, ? extends List<Integer>> m)
     {
-      for (Map.Entry<? extends InputPort<?>, ? extends List<byte[]>> entry: m.entrySet()) {
+      for (Map.Entry<? extends InputPort<?>, ? extends List<Integer>> entry: m.entrySet()) {
         put(entry.getKey(), entry.getValue());
       }
     }
 
     @Override
     @SuppressWarnings("element-type-mismatch")
-    public List<byte[]> remove(Object key)
+    public List<Integer> remove(Object key)
     {
       if (containsKey(key)) {
         modified = true;

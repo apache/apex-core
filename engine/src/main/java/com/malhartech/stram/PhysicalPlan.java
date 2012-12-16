@@ -91,7 +91,7 @@ public class PhysicalPlan {
   public static class PTInput {
     final DAG.StreamDecl logicalStream;
     final PTComponent target;
-    final List<byte[]> partitions;
+    final List<Integer> partitions;
     final PTComponent source;
     final String portName;
 
@@ -102,7 +102,7 @@ public class PhysicalPlan {
      * @param partition
      * @param source
      */
-    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, List<byte[]> partitions, PTComponent source) {
+    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, List<Integer> partitions, PTComponent source) {
       this.logicalStream = logicalStream;
       this.target = target;
       this.partitions = partitions;
@@ -462,7 +462,7 @@ public class PhysicalPlan {
       if (mergeDesc.outputPorts.size() != 1) {
         throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
       }
-      PTOperator merge = null;
+      PTOperator merge;
       merge = new PTOperator();
       merge.logicalNode = m.logicalOperator;
       merge.inputs = new ArrayList<PTInput>();
@@ -589,11 +589,11 @@ public class PhysicalPlan {
     pOperator.id = ""+nodeSequence.incrementAndGet();
     pOperator.partition = partition;
 
-    Map<DAG.InputPortMeta, List<byte[]>> partitionKeys = Collections.emptyMap();
+    Map<DAG.InputPortMeta, List<Integer>> partitionKeys = Collections.emptyMap();
     if (partition != null) {
-      partitionKeys = new HashMap<DAG.InputPortMeta, List<byte[]>>(partition.getPartitionKeys().size());
-      Map<InputPort<?>, List<byte[]>> partKeys = partition.getPartitionKeys();
-      for (Map.Entry<InputPort<?>, List<byte[]>> portEntry : partKeys.entrySet()) {
+      partitionKeys = new HashMap<DAG.InputPortMeta, List<Integer>>(partition.getPartitionKeys().size());
+      Map<InputPort<?>, List<Integer>> partKeys = partition.getPartitionKeys();
+      for (Map.Entry<InputPort<?>, List<Integer>> portEntry : partKeys.entrySet()) {
         DAG.InputPortMeta pportMeta = nodeDecl.logicalOperator.getInputPortMeta(portEntry.getKey());
         if (pportMeta == null) {
           throw new IllegalArgumentException("Invalid port reference " + portEntry);
