@@ -4,7 +4,10 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.DAGConstants;
 import com.malhartech.engine.OperatorStats;
+import com.malhartech.util.AttributeMap;
+
 import java.io.*;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
@@ -96,8 +99,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   }
 
   /**
-   * Initialization parameters for StramChild container container. Container
-   * wide settings remain effective as long as the process is running. Nodes can
+   * Initialization parameters for StramChild container. Container
+   * wide settings remain effective as long as the process is running. Operators can
    * be deployed and removed dynamically.
    * <p>
    * <br>
@@ -106,62 +109,20 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static class StreamingContainerContext extends WritableAdapter {
     private static final long serialVersionUID = 201209071402L;
 
-    /**
-     * How frequently should operators heartbeat to stram. Recommended setting is
-     * 1000ms. Can be set to 0 for unit testing.
-     */
-    private long heartbeatIntervalMillis;
-
-    public long getHeartbeatIntervalMillis() {
-      return heartbeatIntervalMillis;
-    }
-
-    public void setHeartbeatIntervalMillis(long heartbeatIntervalMillis) {
-      this.heartbeatIntervalMillis = heartbeatIntervalMillis;
-    }
+    public AttributeMap<DAGConstants> applicationAttributes;
 
     /**
-     * Window size. Inputs into the DAG propagate BEGIN_WINDOW at this interval.
+     * Operators should start processing the initial window at this time.
      */
-    private int windowSizeMillis;
-    /**
-     * Node should start processing the initial window at this time.
-     */
-    private long startWindowMillis;
-
-    public int getWindowSizeMillis() {
-      return windowSizeMillis;
-    }
-
-    public void setWindowSizeMillis(int windowSizeMillis) {
-      this.windowSizeMillis = windowSizeMillis;
-    }
-
-    public long getStartWindowMillis() {
-      return startWindowMillis;
-    }
-
-    public void setStartWindowMillis(long startWindowBeginMillis) {
-      this.startWindowMillis = startWindowBeginMillis;
-    }
-
-    private String checkpointDfsPath;
-
-    public String getCheckpointDfsPath() {
-      return checkpointDfsPath;
-    }
-
-    public void setCheckpointDfsPath(String dfsPath) {
-      this.checkpointDfsPath = dfsPath;
-    }
+    public long startWindowMillis;
 
     public boolean deployBufferServer = true;
 
-    //@Override
-    //public String toString() {
-    //  return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-    //      .append("operators", this.nodeList).toString();
-    //}
+    @Override
+    public String toString() {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+          .append("applicationAttributes", this.applicationAttributes).toString();
+    }
   }
 
   /**

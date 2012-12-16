@@ -176,7 +176,7 @@ public class StramClient
     dag = DAGPropertiesBuilder.create(new Configuration(false), propertyFileName);
     dag.validate();
     if (cliParser.hasOption("debug")) {
-      dag.getConf().setBoolean(DAG.STRAM_DEBUG, true);
+      dag.getAttributes().attr(DAG.STRAM_DEBUG).set(true);
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
@@ -198,9 +198,9 @@ public class StramClient
                                          + ", numContainer=" + containerCount);
     }
 
-    dag.setMaxContainerCount(containerCount);
-    dag.getConf().setInt(DAG.STRAM_MASTER_MEMORY_MB, amMemory);
-    dag.getConf().setInt(DAG.STRAM_CONTAINER_MEMORY_MB, containerMemory);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(containerCount);
+    dag.getAttributes().attr(DAG.STRAM_MASTER_MEMORY_MB).set(amMemory);
+    dag.getAttributes().attr(DAG.STRAM_CONTAINER_MEMORY_MB).set(containerMemory);
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
     if (clientTimeout == 0) {
@@ -212,7 +212,7 @@ public class StramClient
     return true;
   }
 
-  public static LinkedHashSet<String> findJars(DAG tplg) {
+  public static LinkedHashSet<String> findJars(DAG dag) {
     // platform dependencies that are not part of Hadoop and need to be deployed,
     // entry below will cause containing jar file from client to be copied to cluster
     Class<?>[] defaultClasses = new Class<?>[]{
@@ -228,7 +228,7 @@ public class StramClient
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
 
-    for (String className : tplg.getClassNames()) {
+    for (String className : dag.getClassNames()) {
       try {
         Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
         jarClasses.add(clazz);
@@ -256,7 +256,7 @@ public class StramClient
         LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
       }
     }
-    String libJarsPath = tplg.getLibJars();
+    String libJarsPath = dag.getAttributes().attrValue(DAG.STRAM_LIBJARS, null);
     if (!StringUtils.isEmpty(libJarsPath)) {
       String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, ",");
       localJarFiles.addAll(Arrays.asList(libJars));
@@ -348,6 +348,9 @@ public class StramClient
       amMemory = maxMem;
     }
 
+    dag.getAttributes().attr(DAG.STRAM_APPNAME).setIfAbsent(DEFAULT_APPNAME);
+    dag.getAttributes().attr(DAG.STRAM_APP_ID).setIfAbsent(appId.toString());
+
     // Create launch context for app master
     LOG.info("Setting up application submission context for ASM");
     ApplicationSubmissionContext appContext = Records.newRecord(ApplicationSubmissionContext.class);
@@ -355,7 +358,7 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(dag.getConf().get(DAG.STRAM_APPNAME, DEFAULT_APPNAME));
+    appContext.setApplicationName(dag.getAttributes().attr(DAG.STRAM_APPNAME).get());
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
@@ -378,9 +381,8 @@ public class StramClient
     }
 
     LOG.info("libjars: {}", libJarsCsv);
-    dag.getConf().set(DAG.STRAM_LIBJARS, libJarsCsv);
-    dag.getConf().set(DAG.STRAM_CHECKPOINT_DIR, new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
-
+    dag.getAttributes().attr(DAG.STRAM_LIBJARS).set(libJarsCsv);
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).set(new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
 
     // set local resources for the application master
     // local files or archives as needed

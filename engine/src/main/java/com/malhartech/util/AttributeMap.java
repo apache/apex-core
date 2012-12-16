@@ -139,6 +139,12 @@ public interface AttributeMap<CONTEXT> {
         target.attr(key).set(e.getValue().get());
       }
     }
+
+    @Override
+    public String toString() {
+      return this.map.toString();
+    }
+
   }
 
 }

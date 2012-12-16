@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
+import com.malhartech.api.DAGConstants;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.PartitionableOperator;
@@ -47,6 +48,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContain
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.webapp.OperatorInfo;
+import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
 
 /**
@@ -64,10 +66,11 @@ public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
-  private int windowSizeMillis = 500;
   private final int heartbeatTimeoutMillis = 30000;
-  private int checkpointIntervalMillis = 30000;
   private final int operatorMaxAttemptCount = 5;
+  private final AttributeMap<DAGConstants> appAttributes;
+  private final int checkpointIntervalMillis;
+  private final String checkpointFsPath;
 
   protected final  Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final  ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
@@ -76,19 +79,23 @@ public class StreamingContainerManager implements PlanContext
 
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
-  private final String checkpointFsPath;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
   private final Map<InetSocketAddress, BufferServerClient> bufferServers = new HashMap<InetSocketAddress, BufferServerClient>();
 
 
   public StreamingContainerManager(DAG dag) {
     this.plan = new PhysicalPlan(dag, this);
+    this.appAttributes = dag.getAttributes();
 
-    this.windowSizeMillis = dag.getConf().getInt(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
+    appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).setIfAbsent(500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
-    checkpointFsPath = dag.getConf().get(DAG.STRAM_CHECKPOINT_DIR, "stram/" + System.currentTimeMillis() + "/checkpoints");
-    this.checkpointIntervalMillis = dag.getConf().getInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, this.checkpointIntervalMillis);
+
+    appAttributes.attr(DAG.STRAM_CHECKPOINT_DIR).setIfAbsent("stram/" + System.currentTimeMillis() + "/checkpoints");
+    this.checkpointFsPath = appAttributes.attr(DAG.STRAM_CHECKPOINT_DIR).get();
+
+    appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).setIfAbsent(30000);
+    this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).get();
 
     AtomicInteger startupCountDown = new AtomicInteger(plan.getContainers().size());
     // request initial containers
@@ -212,12 +219,10 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext() {
     StreamingContainerContext scc = new StreamingContainerContext();
-    scc.setWindowSizeMillis(this.windowSizeMillis);
-    scc.setStartWindowMillis(this.windowStartMillis);
-    scc.setCheckpointDfsPath(this.checkpointFsPath);
+    scc.applicationAttributes = this.appAttributes;
+    scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }
-
 
   public StramChildAgent getContainerAgent(String containerId) {
     StramChildAgent cs = containers.get(containerId);
@@ -520,7 +525,7 @@ public class StreamingContainerManager implements PlanContext
 
   @Override
   public PartitionableOperator readCommitted(PTOperator pOperator) throws IOException {
-    BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath);
+    BackupAgent ba = new HdfsBackupAgent(new Configuration(), this.checkpointFsPath);
     if (pOperator.recoveryCheckpoint == 0) {
       LOG.warn("No commited state for " + pOperator);
     }

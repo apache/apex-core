@@ -166,10 +166,10 @@ public class StramMiniClusterTest
     dagProps.put("stram.stream.n1n2.source", "module1.output1");
     dagProps.put("stram.stream.n1n2.sinks", "module2.input1");
 
-    dagProps.setProperty(DAG.STRAM_MASTER_MEMORY_MB, "128");
-    dagProps.setProperty(DAG.STRAM_CONTAINER_MEMORY_MB, "512");
-    dagProps.setProperty(DAG.STRAM_DEBUG, "true");
-    dagProps.setProperty(DAG.STRAM_MAX_CONTAINERS, "2");
+    dagProps.setProperty(DAG.STRAM_MASTER_MEMORY_MB.name(), "128");
+    dagProps.setProperty(DAG.STRAM_CONTAINER_MEMORY_MB.name(), "512");
+    dagProps.setProperty(DAG.STRAM_DEBUG.name(), "true");
+    dagProps.setProperty(DAG.STRAM_MAX_CONTAINERS.name(), "2");
     tb.addFromProperties(dagProps);
 
     Properties tplgProperties = tb.getProperties();

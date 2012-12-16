@@ -288,12 +288,13 @@ public class StramAppLauncher {
   }
 
   private static DAG prepareDAG(AppConfig appConfig, String launchMode) {
-    DAG dag = appConfig.createApp(getConfig(launchMode));
-    dag.getConf().setIfUnset(DAG.STRAM_APPNAME, appConfig.getName());
-    // inject configuration
+    Configuration conf = getConfig(launchMode);
+    DAG dag = appConfig.createApp(conf);
+    dag.getAttributes().attr(DAG.STRAM_APPNAME).setIfAbsent(appConfig.getName());
+    // inject external operator configuration
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
-    pb.addFromConfiguration(dag.getConf());
-    pb.setOperatorProperties(dag, dag.getConf().get(DAG.STRAM_APPNAME));
+    pb.addFromConfiguration(conf);
+    pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.STRAM_APPNAME).get());
     return dag;
   }
 

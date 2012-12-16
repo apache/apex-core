@@ -49,6 +49,7 @@ import com.malhartech.engine.Operators;
 import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramUtils;
 import com.malhartech.util.AttributeMap;
+import com.malhartech.util.ExternalizableConf;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
 
 /**
@@ -62,36 +63,9 @@ public class DAG implements Serializable, DAGConstants
   private final Map<String, StreamDecl> streams = new HashMap<String, StreamDecl>();
   private final Map<String, OperatorWrapper> nodes = new HashMap<String, OperatorWrapper>();
   private final List<OperatorWrapper> rootNodes = new ArrayList<OperatorWrapper>();
-  private final ExternalizableConf confHolder;
+  private final AttributeMap<DAGConstants> attributes = new DefaultAttributeMap<DAGConstants>();
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorWrapper> stack = new Stack<OperatorWrapper>(); // used for cycle validation
-
-  public static class ExternalizableConf implements Externalizable
-  {
-    private final Configuration conf;
-
-    public ExternalizableConf(Configuration conf)
-    {
-      this.conf = conf;
-    }
-
-    public ExternalizableConf()
-    {
-      this.conf = new Configuration(false);
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
-    {
-      conf.readFields(in);
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException
-    {
-      conf.write(out);
-    }
-  }
 
   public static class ExternalizableModule implements Externalizable
   {
@@ -127,12 +101,28 @@ public class DAG implements Serializable, DAGConstants
 
   public DAG()
   {
-    this.confHolder = new ExternalizableConf(new Configuration(false));
   }
 
+  @SuppressWarnings("unchecked")
   public DAG(Configuration conf)
   {
-    this.confHolder = new ExternalizableConf(conf);
+    for (@SuppressWarnings("rawtypes") DAGConstants.AttributeKey key : DAGConstants.AttributeKey.INSTANCES) {
+      String stringValue = conf.get(key.name());
+      if (stringValue != null) {
+        if (key.attributeType == Integer.class) {
+          this.attributes.attr((DAGConstants.AttributeKey<Integer>)key).set(conf.getInt(key.name(), 0));
+        } else if (key.attributeType == Long.class) {
+          this.attributes.attr((DAGConstants.AttributeKey<Long>)key).set(conf.getLong(key.name(), 0));
+        } else if (key.attributeType == String.class) {
+          this.attributes.attr((DAGConstants.AttributeKey<String>)key).set(stringValue);
+        } else if (key.attributeType == Boolean.class) {
+          this.attributes.attr((DAGConstants.AttributeKey<Boolean>)key).set(conf.getBoolean(key.name(), false));
+        } else {
+          String msg = String.format("Unsupported attribute type: %s (%s)", key.attributeType, key.name());
+          throw new UnsupportedOperationException(msg);
+        }
+      }
+    }
   }
 
   public final class InputPortMeta implements Serializable
@@ -552,39 +542,33 @@ public class DAG implements Serializable, DAGConstants
     throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
   }
 
-  public Configuration getConf()
-  {
-    return this.confHolder.conf;
+//  public Configuration getConf()
+//  {
+//    return this.confHolder.conf;
+//  }
+
+  public AttributeMap<DAGConstants> getAttributes() {
+    return this.attributes;
   }
 
   public int getMaxContainerCount()
   {
-    return this.confHolder.conf.getInt(STRAM_MAX_CONTAINERS, 3);
-  }
-
-  public void setMaxContainerCount(int containerCount)
-  {
-    this.confHolder.conf.setInt(STRAM_MAX_CONTAINERS, containerCount);
-  }
-
-  public String getLibJars()
-  {
-    return confHolder.conf.get(STRAM_LIBJARS, "");
+    return this.attributes.attrValue(STRAM_MAX_CONTAINERS, 3);
   }
 
   public boolean isDebug()
   {
-    return confHolder.conf.getBoolean(STRAM_DEBUG, false);
+    return this.attributes.attrValue(STRAM_DEBUG, false);
   }
 
   public int getContainerMemoryMB()
   {
-    return confHolder.conf.getInt(STRAM_CONTAINER_MEMORY_MB, 256);
+    return this.attributes.attrValue(STRAM_CONTAINER_MEMORY_MB, 256);
   }
 
   public int getMasterMemoryMB()
   {
-    return confHolder.conf.getInt(STRAM_MASTER_MEMORY_MB, 256);
+    return this.attributes.attrValue(STRAM_MASTER_MEMORY_MB, 256);
   }
 
   /**
@@ -745,7 +729,7 @@ public class DAG implements Serializable, DAGConstants
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
             append("operators", this.nodes).
             append("streams", this.streams).
-            append("properties", DAGPropertiesBuilder.toProperties(this.confHolder.conf, "")).
+            append("properties", this.attributes).
             toString();
   }
 }

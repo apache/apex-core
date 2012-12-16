@@ -58,7 +58,7 @@ public class CheckpointTest
     // node with no inputs will be connected to window generator
     TestGeneratorInputModule m1 = dag.addOperator("node1", TestGeneratorInputModule.class);
     m1.setMaxTuples(1);
-    dag.getConf().set(DAG.STRAM_CHECKPOINT_DIR, testWorkDir.getPath());
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).set(testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
