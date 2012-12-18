@@ -28,8 +28,19 @@ public interface PartitionableOperator extends Operator
 
   public class PartitionKeys
   {
-    int mask;
-    Set<Integer> partitions;
+    final public int mask;
+    final public Set<Integer> partitions;
+
+    public PartitionKeys(int mask, Set<Integer> partitions) {
+      this.mask = mask;
+      this.partitions = partitions;
+    }
+
+    @Override
+    public String toString() {
+      return "[" + mask + "," + partitions + "]";
+    }
+
   }
 
   public interface Partition

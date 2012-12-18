@@ -4,11 +4,12 @@
  */
 package com.malhartech.stream;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.Tuple;
-import java.util.HashSet;
-import java.util.List;
 
 /**
  *
@@ -17,7 +18,7 @@ import java.util.List;
 public class PartitionAwareSink<T> implements Sink<T>
 {
   private final StreamCodec<T> serde;
-  private final HashSet<Integer> partitions;
+  private final Set<Integer> partitions;
   private volatile Sink<T> output;
 
   /**
@@ -26,15 +27,10 @@ public class PartitionAwareSink<T> implements Sink<T>
    * @param partitions
    * @param output
    */
-  public PartitionAwareSink(StreamCodec<T> serde, List<Integer> partitions, Sink<T> output)
+  public PartitionAwareSink(StreamCodec<T> serde, Set<Integer> partitions, Sink<T> output)
   {
     this.serde = serde;
-
-    this.partitions = new HashSet<Integer>(partitions.size());
-    for (Integer partition: partitions) {
-      this.partitions.add(partition);
-    }
-
+    this.partitions = partitions;
     this.output = output;
   }
 

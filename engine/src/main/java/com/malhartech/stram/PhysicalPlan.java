@@ -32,6 +32,7 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
+import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.Operators;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
@@ -91,7 +92,7 @@ public class PhysicalPlan {
   public static class PTInput {
     final DAG.StreamDecl logicalStream;
     final PTComponent target;
-    final List<Integer> partitions;
+    final PartitionKeys partitions;
     final PTComponent source;
     final String portName;
 
@@ -102,7 +103,7 @@ public class PhysicalPlan {
      * @param partition
      * @param source
      */
-    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, List<Integer> partitions, PTComponent source) {
+    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, PartitionKeys partitions, PTComponent source) {
       this.logicalStream = logicalStream;
       this.target = target;
       this.partitions = partitions;
@@ -589,11 +590,11 @@ public class PhysicalPlan {
     pOperator.id = ""+nodeSequence.incrementAndGet();
     pOperator.partition = partition;
 
-    Map<DAG.InputPortMeta, List<Integer>> partitionKeys = Collections.emptyMap();
+    Map<DAG.InputPortMeta, PartitionKeys> partitionKeys = Collections.emptyMap();
     if (partition != null) {
-      partitionKeys = new HashMap<DAG.InputPortMeta, List<Integer>>(partition.getPartitionKeys().size());
-      Map<InputPort<?>, List<Integer>> partKeys = partition.getPartitionKeys();
-      for (Map.Entry<InputPort<?>, List<Integer>> portEntry : partKeys.entrySet()) {
+      partitionKeys = new HashMap<DAG.InputPortMeta, PartitionKeys>(partition.getPartitionKeys().size());
+      Map<InputPort<?>, PartitionKeys> partKeys = partition.getPartitionKeys();
+      for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
         DAG.InputPortMeta pportMeta = nodeDecl.logicalOperator.getInputPortMeta(portEntry.getKey());
         if (pportMeta == null) {
           throw new IllegalArgumentException("Invalid port reference " + portEntry);

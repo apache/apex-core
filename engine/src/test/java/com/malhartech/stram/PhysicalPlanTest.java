@@ -4,6 +4,18 @@
  */
 package com.malhartech.stram;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import junit.framework.Assert;
+
+import org.junit.Test;
+
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.DAG;
@@ -16,9 +28,6 @@ import com.malhartech.engine.GenericTestModule;
 import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
-import java.util.*;
-import junit.framework.Assert;
-import org.junit.Test;
 
 public class PhysicalPlanTest {
 
@@ -52,8 +61,8 @@ public class PhysicalPlanTest {
       Partition templatePartition = partitions.get(0);
       for (int i=0; i<3; i++) {
         Partition p = templatePartition.getInstance(new PartitioningTestOperator());
-        p.getPartitionKeys().put(this.inport1, Arrays.asList(PARTITION_KEYS[i]));
-        p.getPartitionKeys().put(this.inportWithCodec, Arrays.asList(PARTITION_KEYS[i]));
+        p.getPartitionKeys().put(this.inport1, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
+        p.getPartitionKeys().put(this.inportWithCodec, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
         newPartitions.add(p);
       }
       return newPartitions;
@@ -85,7 +94,7 @@ public class PhysicalPlanTest {
       Map<String, PTInput> inputsMap = new HashMap<String, PTInput>();
       for (PTInput input : po.inputs) {
         inputsMap.put(input.portName, input);
-        Assert.assertEquals("partitions "+input, Collections.singletonList(PartitioningTestOperator.PARTITION_KEYS[i]), input.partitions);
+        Assert.assertEquals("partitions "+input, Sets.newHashSet(PartitioningTestOperator.PARTITION_KEYS[i]), input.partitions.partitions);
         Assert.assertEquals("codec " + input.logicalStream, PartitioningTestStreamCodec.class, input.logicalStream.getCodecClass());
       }
       Assert.assertEquals("number inputs " + inputsMap, Sets.newHashSet(PartitioningTestOperator.IPORT1, PartitioningTestOperator.INPORT_WITH_CODEC), inputsMap.keySet());

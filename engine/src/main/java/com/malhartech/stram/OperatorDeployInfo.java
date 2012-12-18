@@ -4,13 +4,16 @@
  */
 package com.malhartech.stram;
 
+import java.io.Serializable;
+import java.util.List;
+import java.util.Set;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.util.AttributeMap;
-import java.io.Serializable;
-import java.util.List;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -68,7 +71,9 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Partition keys for the input stream. Null w/o partitioning.
      */
-    public List<Integer> partitionKeys;
+    public Set<Integer> partitionKeys;
+    public int partitionMask;
+
 
     /**
      * Context attributes for input port

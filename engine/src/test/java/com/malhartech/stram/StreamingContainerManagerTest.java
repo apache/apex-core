@@ -16,6 +16,7 @@ import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
+import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultOperatorSerDe;
@@ -187,7 +188,7 @@ public class StreamingContainerManagerTest {
 
       InputDeployInfo nidi = ndi.inputs.get(0);
       Assert.assertEquals("stream " + nidi, n1n2.getId(), nidi.declaredStreamId);
-      Assert.assertEquals("partition for " + containerId, PartitioningTestOperator.PARTITION_KEYS[i], nidi.partitionKeys.get(0));
+      Assert.assertEquals("partition for " + containerId, Sets.newHashSet(PartitioningTestOperator.PARTITION_KEYS[i]), nidi.partitionKeys);
       Assert.assertEquals("serde " + nidi, null, nidi.serDeClassName);
     }
 
