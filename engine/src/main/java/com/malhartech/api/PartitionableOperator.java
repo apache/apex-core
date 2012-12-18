@@ -6,6 +6,7 @@ package com.malhartech.api;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  *
@@ -25,6 +26,12 @@ public interface PartitionableOperator extends Operator
    */
   public List<Partition> definePartitions(List<? extends Partition> partitions);
 
+  public class PartitionKeys
+  {
+    int mask;
+    Set<Integer> partitions;
+  }
+
   public interface Partition
   {
     /**
@@ -32,7 +39,7 @@ public interface PartitionableOperator extends Operator
      * Input ports that are not mapped will receive all data.
      * @return
      */
-    public Map<InputPort<?>, List<Integer>> getPartitionKeys();
+    public Map<InputPort<?>, PartitionKeys> getPartitionKeys();
 
     /**
      * Get an indication of the load handled by this particular partition.
