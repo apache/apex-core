@@ -19,6 +19,11 @@ message ResetWindow {
   required uint32 width = 1;
 }
 
+message Partitions {
+   required uint32 mask = 1;
+   repeated uint32 partition = 2;
+}
+
 message SubscriberRequest {
   enum PolicyType {
     CUSTOM = 0;
@@ -32,8 +37,8 @@ message SubscriberRequest {
   required string type = 2;
   optional uint32 base_seconds = 3 [default = 0];
   optional string upstream_identifier = 4;
-  repeated uint32 partition = 6;
-  optional PolicyType policy = 7 [default = GIVE_ALL ];
+  optional Partitions partitions = 5;
+  optional PolicyType policy = 6 [default = GIVE_ALL ];
 }
 
 message PublisherRequest {

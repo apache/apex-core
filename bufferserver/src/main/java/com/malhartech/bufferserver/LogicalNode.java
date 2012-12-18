@@ -7,10 +7,10 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
+import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import io.netty.channel.Channel;
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -32,7 +32,7 @@ public class LogicalNode implements DataListener
   private final String upstream;
   private final String group;
   private final HashSet<PhysicalNode> physicalNodes;
-  private final HashSet<Integer> partitions;
+  private final HashSet<BitVector> partitions;
   private final Policy policy;
   private final DataListIterator iterator;
   private final long windowId;
@@ -52,7 +52,7 @@ public class LogicalNode implements DataListener
     this.group = group;
     this.policy = policy;
     this.physicalNodes = new HashSet<PhysicalNode>();
-    this.partitions = new HashSet<Integer>();
+    this.partitions = new HashSet<BitVector>();
 
     if (iterator instanceof DataListIterator) {
       this.iterator = (DataListIterator)iterator;
@@ -112,9 +112,9 @@ public class LogicalNode implements DataListener
    *
    * @param partition
    */
-  public void addPartition(int partition)
+  public void addPartition(int partition, int mask)
   {
-    partitions.add(partition);
+    partitions.add(new BitVector(partition, mask));
   }
 
   // make it run a lot faster by tracking faster!
@@ -168,7 +168,7 @@ public class LogicalNode implements DataListener
     }
 
     if (iterator.hasNext()) {
-      dataAdded(DataListener.NULL_PARTITION);
+      dataAdded();
     }
   }
 
@@ -177,7 +177,7 @@ public class LogicalNode implements DataListener
    * @param partition
    */
   @SuppressWarnings("fallthrough")
-  public synchronized void dataAdded(Integer partition)
+  public synchronized void dataAdded()
   {
     if (caughtup) {
       /*
@@ -210,8 +210,12 @@ public class LogicalNode implements DataListener
           SerializedData data = iterator.next();
           switch (iterator.getType()) {
             case PARTITIONED_DATA:
-              if (partitions.contains(((Data)iterator.getData()).getPartitionedData().getPartition())) {
-                policy.distribute(physicalNodes, data);
+              int value = ((Data)iterator.getData()).getPartitionedData().getPartition();
+              for (BitVector bv: partitions) {
+                if (bv.matches(value)) {
+                  policy.distribute(physicalNodes, data);
+                  break;
+                }
               }
               break;
 
@@ -241,7 +245,7 @@ public class LogicalNode implements DataListener
    * @param partitions
    * @return int
    */
-  public int getPartitions(Collection<Integer> partitions)
+  public int getPartitions(Collection<BitVector> partitions)
   {
     partitions.addAll(this.partitions);
     return partitions.size();
@@ -263,4 +267,5 @@ public class LogicalNode implements DataListener
   {
     return upstream;
   }
+
 }

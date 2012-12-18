@@ -7,10 +7,10 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.Buffer.Data;
 import com.malhartech.bufferserver.Buffer.Data.DataType;
 import com.malhartech.bufferserver.Buffer.ResetWindow;
+import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import com.malhartech.bufferserver.util.Tuple;
-import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
@@ -30,7 +30,7 @@ public class DataList
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
   private final String identifier;
   private final Integer capacity;
-  private HashMap<Integer, HashSet<DataListener>> listeners = new HashMap<Integer, HashSet<DataListener>>();
+  private HashMap<BitVector, HashSet<DataListener>> listeners = new HashMap<BitVector, HashSet<DataListener>>();
   private HashSet<DataListener> all_listeners = new HashSet<DataListener>();
   private static volatile DataArray free = null;
   private volatile DataArray first;
@@ -451,7 +451,7 @@ public class DataList
   public final void flush()
   {
     for (DataListener dl: all_listeners) {
-      dl.dataAdded(DataListener.NULL_PARTITION);
+      dl.dataAdded();
     }
   }
 
@@ -597,9 +597,9 @@ public class DataList
   public void addDataListener(DataListener dl)
   {
     all_listeners.add(dl);
-    ArrayList<Integer> partitions = new ArrayList<Integer>();
+    ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (Integer partition: partitions) {
+      for (BitVector partition: partitions) {
         HashSet<DataListener> set;
         if (listeners.containsKey(partition)) {
           set = listeners.get(partition);
@@ -627,9 +627,9 @@ public class DataList
 
   public void removeDataListener(DataListener dl)
   {
-    ArrayList<Integer> partitions = new ArrayList<Integer>();
+    ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (Integer partition: partitions) {
+      for (BitVector partition: partitions) {
         if (listeners.containsKey(partition)) {
           listeners.get(partition).remove(dl);
         }

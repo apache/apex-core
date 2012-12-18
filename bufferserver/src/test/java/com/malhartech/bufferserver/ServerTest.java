@@ -41,7 +41,7 @@ public class ServerTest
     bsp = new BufferServerPublisher("MyPublisher");
     bsp.setup(host, port);
 
-    bss = new BufferServerSubscriber("MyPublisher", null);
+    bss = new BufferServerSubscriber("MyPublisher", 0, null);
     bss.setup(host, port);
 
     bsc = new BufferServerController("MyPublisher");

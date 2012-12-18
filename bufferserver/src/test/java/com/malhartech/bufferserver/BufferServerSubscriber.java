@@ -26,14 +26,17 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   private static final Logger logger = LoggerFactory.getLogger(BufferServerSubscriber.class);
   private final String sourceId;
   private final Collection<Integer> partitions;
+  private final int mask;
   AtomicInteger tupleCount = new AtomicInteger(0);
   Data firstPayload, lastPayload;
   ArrayList<Data> resetPayloads = new ArrayList<Data>();
   long windowId;
 
-  public BufferServerSubscriber(String sourceId, Collection<Integer> partitions)
+
+  public BufferServerSubscriber(String sourceId, int mask, Collection<Integer> partitions)
   {
     this.sourceId = sourceId;
+    this.mask = mask;
     this.partitions = partitions;
   }
 
@@ -48,6 +51,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
                             "BufferServerSubscriber",
                             "BufferServerOutput/BufferServerSubscriber",
                             sourceId,
+                            mask,
                             partitions,
                             windowId);
   }

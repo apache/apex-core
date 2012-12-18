@@ -7,7 +7,6 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.netty.ClientInitializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import java.util.ArrayList;
@@ -27,6 +26,7 @@ public class Client
   private final String type;
   private final String id;
   private final String down_type;
+  private final int mask;
   private final Collection<Integer> partitions;
   private final long windowId;
   private final boolean purge;
@@ -41,7 +41,7 @@ public class Client
    * @param down_type
    * @param partitions
    */
-  public Client(String host, int port, String node, String type, String id, String down_type, Collection<Integer> partitions)
+  public Client(String host, int port, String node, String type, String id, String down_type, int mask, Collection<Integer> partitions)
   {
     this.host = host;
     this.port = port;
@@ -49,6 +49,7 @@ public class Client
     this.type = type;
     this.id = id;
     this.down_type = down_type;
+    this.mask = mask;
     this.partitions = new ArrayList<Integer>();
     this.partitions.addAll(partitions);
     windowId = 0;
@@ -64,6 +65,7 @@ public class Client
     this.type = type;
     id = null;
     down_type = null;
+    this.mask = 0;
     partitions = null;
     windowId = 0;
     purge = false;
@@ -71,6 +73,7 @@ public class Client
 
   private Client(String host, int port, String publisher_id, long lastWindowId)
   {
+    this.mask = 0;
     partitions = null;
     down_type = null;
     type = null;
@@ -106,7 +109,7 @@ public class Client
       ClientHandler.publish(channel, node, type, 0L);
     }
     else {
-      ClientHandler.subscribe(channel, id, down_type, node, partitions, 0L);
+      ClientHandler.subscribe(channel, id, down_type, node, mask, partitions, 0L);
     }
   }
 
@@ -137,8 +140,9 @@ public class Client
     else { // downstream node
       String identifier = args[4];
       String down_type = args[5];
-      Collection<Integer> partitions = parsePartitions(args, 6);
-      new Client(host, port, node, type, identifier, down_type, partitions).run();
+      int mask = Integer.parseInt(args[6]);
+      Collection<Integer> partitions = parsePartitions(args, 7);
+      new Client(host, port, node, type, identifier, down_type, mask, partitions).run();
     }
   }
 

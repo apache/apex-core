@@ -191,9 +191,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
                            getPolicy(request.getPolicy(), null),
                            (long)request.getBaseSeconds() << 32 | windowId);
 
-      if (request.getPartitionCount() > 0) {
-        for (Integer bs: request.getPartitionList()) {
-          ln.addPartition(bs);
+      int mask = request.getPartitions().getMask();
+      if (request.getPartitions().getPartitionCount() > 0) {
+        for (Integer bs: request.getPartitions().getPartitionList()) {
+          ln.addPartition(bs, mask);
         }
       }
 

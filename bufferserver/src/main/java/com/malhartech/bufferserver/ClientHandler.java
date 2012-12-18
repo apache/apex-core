@@ -63,6 +63,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
         Thread.sleep(500);
         cf.channel().write(db).addListener(this);
       }
+
     };
 
     channel.write(db.build());//.addListener(cfl);
@@ -83,6 +84,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
           String id,
           String down_type,
           String node,
+          int mask,
           Collection<Integer> partitions,
           long startingWindowId)
   {
@@ -93,9 +95,13 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     srb.setBaseSeconds((int)(startingWindowId >> 32));
 
     if (partitions != null) {
+      Buffer.Partitions.Builder bpb = Buffer.Partitions.newBuilder();
+      bpb.setMask(mask);
       for (Integer c: partitions) {
-        srb.addPartition(c);
+        bpb.addPartition(c);
       }
+
+      srb.setPartitions(bpb);
     }
     srb.setPolicy(Buffer.SubscriberRequest.PolicyType.ROUND_ROBIN);
 
@@ -113,6 +119,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
 //          ((SocketChannel)channel).shutdownOutput();
 //        }
       }
+
     });
   }
 
@@ -171,4 +178,5 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     catch (Exception e) {
     }
   }
+
 }

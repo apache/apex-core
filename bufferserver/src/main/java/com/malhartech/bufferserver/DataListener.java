@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import java.nio.ByteBuffer;
+import com.malhartech.bufferserver.util.BitVector;
 import java.util.Collection;
 
 /**
@@ -17,18 +17,18 @@ import java.util.Collection;
  */
 public interface DataListener
 {
-  public static final int NULL_PARTITION = 0;
+  public static final BitVector NULL_PARTITION = new BitVector(0,0);
 
   /**
    *
    * @param partition
    */
-  public void dataAdded(Integer partition);
+  public void dataAdded();
 
   /**
    *
    * @param partitions
    * @return int
    */
-  public int getPartitions(Collection<Integer> partitions);
+  public int getPartitions(Collection<BitVector> partitions);
 }

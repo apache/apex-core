@@ -53,6 +53,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   private String sourceId;
   private String sinkId;
   private long startingWindowId;
+  private int mask;
   private HashSet<Integer> partitions;
   private String id;
 
@@ -73,7 +74,14 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
 
   /**
    *
-   * @return Collection<byte[]>
+   */
+  public int getPartitionMask()
+  {
+    return mask;
+  }
+  /**
+   *
+   * @return Collection<Integer>
    */
   public Collection<Integer> getPartitions()
   {

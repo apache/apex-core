@@ -47,7 +47,9 @@ public class BufferServerInputStream extends SocketInputStream<Data>
                             context.getSinkId(),
                             context.getId() + '/' + context.getSinkId(),
                             context.getSourceId(),
-                            context.getPartitions(), context.getStartingWindowId());
+                            context.getPartitionMask(),
+                            context.getPartitions(),
+                            context.getStartingWindowId());
   }
 
   @Override
