@@ -71,7 +71,7 @@ public class PhysicalPlanTest {
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inportWithCodec);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
-    dag.setMaxContainerCount(2);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
     PhysicalPlan plan = new PhysicalPlan(dag, null);
 
@@ -115,7 +115,7 @@ public class PhysicalPlanTest {
     dag.addStream("n3Output1", node3.outport1, partNode.inport2);
 
     int maxContainers = 5;
-    dag.setMaxContainerCount(maxContainers);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
     PhysicalPlan deployer1 = new PhysicalPlan(dag, null);
     Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
     Assert.assertEquals("operators container 0", 3, deployer1.getContainers().get(0).operators.size());
@@ -154,7 +154,7 @@ public class PhysicalPlanTest {
       .setInline(true);
 
     int maxContainers = 5;
-    dag.setMaxContainerCount(maxContainers);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
 
     PhysicalPlan deployer = new PhysicalPlan(dag, null);
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());

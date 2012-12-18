@@ -136,7 +136,7 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(yarnClient.getConf());
-      addLibJarsToLocalResources(dag.getLibJars(), localResources, fs);
+      addLibJarsToLocalResources(dag.getAttributes().attr(DAG.STRAM_LIBJARS).get(), localResources, fs);
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
@@ -210,8 +210,9 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
 
-    if (dag.getConf().get(DAG.STRAM_CONTAINER_JVM_OPTS) != null) {
-      vargs.add(dag.getConf().get(DAG.STRAM_CONTAINER_JVM_OPTS));
+    String jvmOpts = dag.getAttributes().attrValue(DAG.STRAM_CONTAINER_JVM_OPTS, null);
+    if (jvmOpts != null) {
+      vargs.add(jvmOpts);
     }
     else {
       // default Xmx based on total allocated memory size

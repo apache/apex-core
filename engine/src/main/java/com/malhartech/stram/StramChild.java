@@ -62,7 +62,7 @@ public class StramChild
   protected final Map<String, OperatorContext> activeNodes = new ConcurrentHashMap<String, OperatorContext>();
   private final Map<Stream<?>, StreamContext> activeStreams = new ConcurrentHashMap<Stream<?>, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
-  private long heartbeatIntervalMillis = 1000;
+  private int heartbeatIntervalMillis = 1000;
   private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
   private String checkpointFsPath;
@@ -85,20 +85,11 @@ public class StramChild
 
   public void setup(StreamingContainerContext ctx)
   {
-    heartbeatIntervalMillis = ctx.getHeartbeatIntervalMillis();
-    if (heartbeatIntervalMillis == 0) {
-      heartbeatIntervalMillis = 1000;
-    }
+    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_HEARTBEAT_INTERVAL_MILLIS,  1000);
+    firstWindowMillis = ctx.startWindowMillis;
+    windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
 
-    firstWindowMillis = ctx.getStartWindowMillis();
-    windowWidthMillis = ctx.getWindowSizeMillis();
-    if (windowWidthMillis == 0) {
-      windowWidthMillis = 500;
-    }
-
-    if ((this.checkpointFsPath = ctx.getCheckpointDfsPath()) == null) {
-      this.checkpointFsPath = "checkpoint-dfs-path-not-configured";
-    }
+    this.checkpointFsPath = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_DIR, "checkpoint-dfs-path-not-configured");
 
     try {
       if (ctx.deployBufferServer) {
@@ -176,8 +167,8 @@ public class StramChild
         @Override
         public Object run() throws Exception
         {
-          StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
           StreamingContainerContext ctx = umbilical.getInitContext(childId);
+          StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
           logger.debug("Got context: " + ctx);
           stramChild.setup(ctx);
           try {

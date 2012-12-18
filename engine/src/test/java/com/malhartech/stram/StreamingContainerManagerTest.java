@@ -97,7 +97,7 @@ public class StreamingContainerManagerTest {
     dag.addStream("n2n3", node2.outport1, node3.inport1)
       .setInline(true);
 
-    dag.setMaxContainerCount(2);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
     Assert.assertEquals("number operators", 3, dag.getAllOperators().size());
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
@@ -164,7 +164,7 @@ public class StreamingContainerManagerTest {
     DAG.StreamDecl n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
     DAG.StreamDecl n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.setMaxContainerCount(6);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(6);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals("number required containers", 6, dnm.getNumRequiredContainers());
@@ -244,7 +244,7 @@ public class StreamingContainerManagerTest {
 
     dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.setMaxContainerCount(2);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
     // node1 and node3 are assigned, node2 unassigned
     StreamingContainerManager dnmgr = new StreamingContainerManager(dag);
@@ -264,7 +264,7 @@ public class StreamingContainerManagerTest {
     dag.addStream("n1n2", node1.outport1, node2.inport1);
     dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.setMaxContainerCount(2);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     Assert.assertEquals(""+scm.containerStartRequests, 2, scm.containerStartRequests.size());

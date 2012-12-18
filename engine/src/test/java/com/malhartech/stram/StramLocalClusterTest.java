@@ -55,7 +55,7 @@ public class StramLocalClusterTest
 
     dag.addStream("fromNode1", node1.outport1, outNode.inport);
 
-    dag.setMaxContainerCount(2);
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
     StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.setHeartbeatMonitoringEnabled(false);
@@ -122,7 +122,7 @@ public class StramLocalClusterTest
 
     dag.validate();
 
-    dag.getConf().setInt(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS, 0); // disable auto backup
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).set(0); // disable auto backup
 
     final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
 
