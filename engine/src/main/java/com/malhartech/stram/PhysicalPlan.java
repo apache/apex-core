@@ -98,6 +98,7 @@ public class PhysicalPlan {
 
     /**
      *
+     * @param portName
      * @param logicalStream
      * @param target
      * @param partition
@@ -150,7 +151,7 @@ public class PhysicalPlan {
     /**
      * Determine whether downstream operators are deployed inline.
      * (all instances of the logical downstream node are in the same container)
-     * @param output
+     * @return boolean
      */
     protected boolean isDownStreamInline() {
       StreamDecl logicalStream = this.logicalStream;
@@ -303,7 +304,7 @@ public class PhysicalPlan {
      * Read committed frozen state of the partition.
      * Dynamic partitioning requires access to committed state so that operators can be split or merged.
      * @param operatorInstance
-     * @return
+     * @return PartitionableOperator
      * @throws IOException
      */
     public PartitionableOperator readCommitted(PTOperator operatorInstance) throws IOException;
