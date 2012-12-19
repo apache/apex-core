@@ -186,6 +186,7 @@ public class OperatorPartitions {
         // default mapping will partition all input ports or we need to find a deterministic way to find the first port
         Map<InputPortMeta, StreamDecl> inputs = logicalOperator.getInputStreams();
         if (inputs.size() == 0) {
+          // TODO - allow input operator partitioning?
           throw new AssertionError("Partitioning configured for operator but no input ports found: " + logicalOperator);
         }
         for (Map.Entry<InputPortMeta, StreamDecl> e : inputs.entrySet()) {
