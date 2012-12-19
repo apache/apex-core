@@ -486,7 +486,7 @@ public class PhysicalPlan {
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = getOperators(n);
     List<PartitionImpl> currentPartitions = new ArrayList<PartitionImpl>(operators.size());
-    Map<PartitionableOperator, PTOperator> currentPartitionMap = new HashMap<PartitionableOperator, PTOperator>(operators.size());
+    Map<Operator, PTOperator> currentPartitionMap = new HashMap<Operator, PTOperator>(operators.size());
 
     for (PTOperator pOperator : operators) {
       Partition p = pOperator.partition;
@@ -494,7 +494,7 @@ public class PhysicalPlan {
         throw new AssertionError("Null partition: " + pOperator);
       }
       // load operator state from last committed checkpoint
-      PartitionableOperator partitionedOperator = p.getOperator();
+      Operator partitionedOperator = p.getOperator();
       if (pOperator.recoveryCheckpoint != 0) {
         try {
           partitionedOperator = ctx.readCommitted(pOperator);

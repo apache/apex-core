@@ -542,11 +542,6 @@ public class DAG implements Serializable, DAGConstants
     throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
   }
 
-//  public Configuration getConf()
-//  {
-//    return this.confHolder.conf;
-//  }
-
   public AttributeMap<DAGConstants> getAttributes() {
     return this.attributes;
   }

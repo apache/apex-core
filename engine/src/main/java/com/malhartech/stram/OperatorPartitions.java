@@ -1,9 +1,16 @@
 package com.malhartech.stram;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.Sets;
+import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.InputPortMeta;
+import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
@@ -34,16 +41,16 @@ public class OperatorPartitions {
 
   static class PartitionImpl implements PartitionableOperator.Partition {
     private final PartitionPortMap partitionKeys;
-    private final PartitionableOperator operator;
+    private final Operator operator;
 
-    PartitionImpl(PartitionableOperator operator, Map<InputPort<?>, PartitionKeys> partitionKeys) {
+    PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys) {
       this.operator = operator;
       this.partitionKeys = new PartitionPortMap();
       this.partitionKeys.putAll(partitionKeys);
       this.partitionKeys.modified = false;
     }
 
-    PartitionImpl(PartitionableOperator operator) {
+    PartitionImpl(Operator operator) {
       this(operator, new PartitionPortMap());
     }
 
@@ -58,7 +65,7 @@ public class OperatorPartitions {
     }
 
     @Override
-    public PartitionableOperator getOperator() {
+    public Operator getOperator() {
       return operator;
     }
 
@@ -152,5 +159,46 @@ public class OperatorPartitions {
 
   }
 
+  /**
+   * The default partitioning applied to operators that do not implement
+   * {@link PartitionableOperator} but are configured for partitioning in the
+   * DAG.
+   */
+  public static class DefaultPartitioner {
+
+    public List<Partition> defineInitialPartitions(DAG.OperatorWrapper logicalOperator) {
+
+      int initialPartitionCnt = logicalOperator.getAttributes().attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 1);
+
+      //int partitionBits = 0;
+      //if (initialPartitionCnt > 0) {
+      //  partitionBits = 1 + (int) (Math.log(initialPartitionCnt) / Math.log(2)) ;
+      //}
+      int partitionBits = (Integer.numberOfLeadingZeros(0)-Integer.numberOfLeadingZeros(initialPartitionCnt));
+      int partitionMask = 0;
+      if (partitionBits > 0) {
+        partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
+      }
+
+      List<Partition> partitions = new ArrayList<Partition>(initialPartitionCnt);
+      for (int i=0; i<initialPartitionCnt; i++) {
+        Partition p = new PartitionImpl(logicalOperator.getOperator());
+        // default mapping will partition all input ports or we need to find a deterministic way to find the first port
+        Map<InputPortMeta, StreamDecl> inputs = logicalOperator.getInputStreams();
+        if (inputs.size() == 0) {
+          throw new AssertionError("Partitioning configured for operator but no input ports found: " + logicalOperator);
+        }
+        for (Map.Entry<InputPortMeta, StreamDecl> e : inputs.entrySet()) {
+          // TODO: eliminate this and work with the port meta object instead as this is what we will be using during plan processing anyways
+          InputPortMeta portMeta = inputs.keySet().iterator().next();
+          p.getPartitionKeys().put(portMeta.getPortObject(), new PartitionKeys(partitionMask, Sets.newHashSet(i)));
+        }
+        partitions.add(p);
+      }
+      return partitions;
+
+    }
+
+  }
 
 }

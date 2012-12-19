@@ -64,7 +64,7 @@ public interface PartitionableOperator extends Operator
      *
      * @return frozen operator instance
      */
-    public PartitionableOperator getOperator();
+    public Operator getOperator();
 
     /**
      * Create a new partition for the given operator. The returned partition
