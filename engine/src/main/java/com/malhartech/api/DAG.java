@@ -471,12 +471,12 @@ public class DAG implements Serializable, DAGConstants
    * Overload varargs version to avoid generic array type safety warnings in calling code.
    * "Type safety: A generic array of Operator.InputPort<> is created for a varargs parameter"
    *
-   * @see http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300
+   * @link <a href=http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300>Programming Idioms</a>
    * @param id
    * @param source
    * @param sink1
    * @param sink2
-   * @return
+   * @return <T> StreamDecl
    */
   @SuppressWarnings("unchecked")
   public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
@@ -498,8 +498,8 @@ public class DAG implements Serializable, DAGConstants
   /**
    * Set attribute for the operator. For valid attributes, see {
    *
-   * @ link Context}
    * @param operator
+   * @return AttributeMap<OperatorContext>
    */
   public AttributeMap<OperatorContext> getContextAttributes(Operator operator)
   {

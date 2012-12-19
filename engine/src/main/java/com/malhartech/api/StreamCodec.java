@@ -42,8 +42,8 @@ public interface StreamCodec<T>
   /**
    * Create POJO from the byte array for consumption by the downstream.
    *
-   * @param bytes serialized representation of the object using bytes
-   * @return plain old java object
+   * @param dspair
+   * @return T (plain old java object)
    */
   T fromByteArray(DataStatePair dspair);
 
