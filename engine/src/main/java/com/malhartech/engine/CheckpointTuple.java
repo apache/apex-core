@@ -17,3 +17,4 @@ public class CheckpointTuple extends Tuple
     super(DataType.CHECKPOINT);
   }
 }
+

@@ -410,7 +410,7 @@ public class DAG implements Serializable, DAGConstants
    *
    * @param name
    * @param clazz
-   * @return
+   * @return <T extends Operator> T
    */
   public <T extends Operator> T addOperator(String name, Class<T> clazz)
   {
@@ -455,7 +455,7 @@ public class DAG implements Serializable, DAGConstants
    * @param id
    * @param source
    * @param sinks
-   * @return
+   * @return <T> StreamDecl
    */
   public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {

@@ -41,7 +41,7 @@ public interface Context
 
     /**
      * Return the operator runtime id.
-     * @return
+     * @return String
      */
     String getId();
 
