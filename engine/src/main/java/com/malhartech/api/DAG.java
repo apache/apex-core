@@ -475,7 +475,6 @@ public class DAG implements Serializable, DAGConstants
    * @param id
    * @param source
    * @param sink1
-   * @param sink2
    * @return <T> StreamDecl
    */
   @SuppressWarnings("unchecked")

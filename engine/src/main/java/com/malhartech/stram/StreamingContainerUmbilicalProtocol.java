@@ -153,7 +153,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
-     * @return
+     * @return ArrayList<OperatorStats>
      */
     public ArrayList<OperatorStats> getWindowStats() {
       return windowStats;
@@ -161,7 +161,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
-     * @param heartbeatsCointainer
+     * @param stats
      */
     public void setWindowStats(ArrayList<OperatorStats> stats) {
       this.windowStats = stats;

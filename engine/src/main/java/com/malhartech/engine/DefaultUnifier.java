@@ -8,7 +8,6 @@ import com.malhartech.api.Operator.Unifier;
 /**
  * Default unifier passes through all tuples received. Used when an operator has
  * multiple partitions and no unifier was provided through
- * {@link OutputPort#getUnifier()}.
  */
 public class DefaultUnifier extends BaseOperator implements Unifier<Object> {
 

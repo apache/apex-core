@@ -101,7 +101,7 @@ public class PhysicalPlan {
      * @param portName
      * @param logicalStream
      * @param target
-     * @param partition
+     * @param partitions
      * @param source
      */
     protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, PartitionKeys partitions, PTComponent source) {
