@@ -36,7 +36,7 @@ public class InlineStream implements Stream<Object>
 
   /**
    *
-   * @param config
+   * @param context
    */
   @Override
   public void setup(StreamContext context)
@@ -76,7 +76,6 @@ public class InlineStream implements Stream<Object>
    *
    * @param port
    * @param sink
-   * @return Sink
    */
   @Override
   public void setSink(String port, Sink<Object> sink)

@@ -995,7 +995,7 @@ public class StramChild
    * This is a hook for tests to control the window generation.
    *
    * @param smallestWindowId
-   * @return
+   * @return WindowGenerator
    */
   protected WindowGenerator setupWindowGenerator(long smallestWindowId)
   {

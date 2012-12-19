@@ -478,10 +478,9 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
 
   /**
    * Produce the collections of templates that apply for the given id.
-   * @param id
+   * @param nodeConf
    * @param appName
-   * @param assignedTemplate
-   * @return
+   * @return TreeMap<Integer, TemplateConf>
    */
   public TreeMap<Integer, TemplateConf> getMatchingTemplates(NodeConf nodeConf, String appName) {
     TreeMap<Integer, TemplateConf> tm = new TreeMap<Integer, TemplateConf>();
@@ -510,7 +509,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
    * Inject the configuration properties into the operator instance.
    * @param operator
    * @param properties
-   * @return
+   * @return Operator
    */
   public static Operator setOperatorProperties(Operator operator, Map<String, String> properties)
   {

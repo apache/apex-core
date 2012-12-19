@@ -51,7 +51,7 @@ public class DefaultOutputPort<T>  implements Operator.OutputPort<T> {
   /**
    * Module developer can override for getUnifier functionality
    *
-   * @param o
+   * @return Unifier<T>
    */
   @Override
   public Unifier<T> getUnifier() {
