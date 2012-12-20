@@ -878,7 +878,7 @@ public class StramChild
             assert (nidi.isInline() == false);
 
             StreamContext context = new StreamContext(nidi.declaredStreamId);
-            context.setPartitions(nidi.partitionKeys);
+            context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
             context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
