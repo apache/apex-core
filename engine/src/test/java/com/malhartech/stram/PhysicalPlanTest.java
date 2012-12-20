@@ -5,7 +5,6 @@
 package com.malhartech.stram;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,10 +17,14 @@ import org.junit.Test;
 
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.PartitionableOperator;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.PartitionableOperator.Partition;
+import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
@@ -82,10 +85,11 @@ public class PhysicalPlanTest {
 
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
+    OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
+
     PhysicalPlan plan = new PhysicalPlan(dag, null);
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
-    OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
 
     List<PTOperator> n2Instances = plan.getOperators(node2Decl);
     Assert.assertEquals("partition instances " + n2Instances, PartitioningTestOperator.PARTITION_KEYS.length, n2Instances.size());
@@ -100,6 +104,42 @@ public class PhysicalPlanTest {
       Assert.assertEquals("number inputs " + inputsMap, Sets.newHashSet(PartitioningTestOperator.IPORT1, PartitioningTestOperator.INPORT_WITH_CODEC), inputsMap.keySet());
     }
   }
+
+  @Test
+  public void testDefaultPartitioning() {
+    DAG dag = new DAG();
+
+    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
+    dag.addStream("node1.outport1", node1.outport1, node2.inport2, node2.inport1);
+
+    int initialPartitionCount = 5;
+    OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
+    node2Decl.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(initialPartitionCount);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, null);
+
+    List<PTOperator> n2Instances = plan.getOperators(node2Decl);
+    Assert.assertEquals("partition instances " + n2Instances, initialPartitionCount, n2Instances.size());
+
+    for (int i=0; i<n2Instances.size(); i++) {
+      PTOperator partitionInstance = n2Instances.get(i);
+      Partition p = partitionInstance.partition;
+      Assert.assertNotNull("partition null: " + partitionInstance, p);
+      Map<InputPort<?>, PartitionKeys> pkeys = p.getPartitionKeys();
+      Assert.assertNotNull("partition keys null: " + partitionInstance, pkeys);
+      Assert.assertEquals("partition keys size: " + pkeys, 1, pkeys.size()); // one port partitioned
+      // default partitioning does not clone the operator
+      Assert.assertEquals("partition operator: " + pkeys, node2, partitionInstance.partition.getOperator());
+      InputPort<?> expectedPort = node2.inport2;
+      Assert.assertEquals("partition port: " + pkeys, expectedPort, pkeys.keySet().iterator().next());
+
+      Assert.assertEquals("partition mask: " + pkeys, "111", Integer.toBinaryString(pkeys.get(expectedPort).mask));
+      Assert.assertEquals("partition id: " + pkeys, Sets.newHashSet(i), pkeys.get(expectedPort).partitions);
+    }
+
+  }
+
 
   @Test
   @SuppressWarnings("unchecked")
