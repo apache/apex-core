@@ -4,7 +4,7 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 
 /**
  *
@@ -14,7 +14,7 @@ public class CheckpointTuple extends Tuple
 {
   public CheckpointTuple()
   {
-    super(DataType.CHECKPOINT);
+    super(MessageType.CHECKPOINT);
   }
 }
 

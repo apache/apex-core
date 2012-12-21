@@ -4,20 +4,20 @@
  */
 package com.malhartech.bufferserver.util;
 
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.Buffer.ResetWindow;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class Tuple
+public class DataFactory
 {
-  public static Data getResetTuple(int baseSeconds, int intervalMillis)
+  public static Message getResetTuple(int baseSeconds, int intervalMillis)
   {
-    Data.Builder db = Data.newBuilder();
-    db.setType(DataType.RESET_WINDOW);
+    Message.Builder db = Message.newBuilder();
+    db.setType(MessageType.RESET_WINDOW);
     db.setWindowId(baseSeconds);
 
     ResetWindow.Builder rwb = ResetWindow.newBuilder();

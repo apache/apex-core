@@ -19,6 +19,6 @@ public class EndWindowTuple extends Tuple
 {
   public EndWindowTuple()
   {
-    super(Buffer.Data.DataType.END_WINDOW);
+    super(Buffer.Message.MessageType.END_WINDOW);
   }
 }

@@ -20,7 +20,7 @@ public class EndStreamTuple extends Tuple
 {
   public EndStreamTuple()
   {
-    super(Buffer.Data.DataType.END_STREAM);
+    super(Buffer.Message.MessageType.END_STREAM);
   }
 
 }

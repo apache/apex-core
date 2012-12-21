@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.util;
 
-import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Message;
 
 /**
  * Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying array.<p>
@@ -31,7 +31,7 @@ public final class SerializedData
    */
   public int size;
 
-  public static SerializedData getInstanceFrom(Data d)
+  public static SerializedData getInstanceFrom(Message d)
   {
     SerializedData sd = new SerializedData();
     int size = d.getSerializedSize();

@@ -70,7 +70,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
     ResetWindowTuple rwt = new ResetWindowTuple();
     rwt.setWindowId(baseSeconds | windowWidthMillis);
 
-    Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
+    Tuple bwt = new Tuple(Buffer.Message.MessageType.BEGIN_WINDOW);
     bwt.setWindowId(baseSeconds | windowId);
 
     /**
@@ -111,7 +111,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
       }
       advanceWindow();
 
-      Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
+      Tuple bwt = new Tuple(Buffer.Message.MessageType.BEGIN_WINDOW);
       bwt.setWindowId(baseSeconds | windowId);
       for (int i = sinks.length; i-- > 0;) {
         sinks[i].process(bwt);

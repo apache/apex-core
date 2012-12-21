@@ -41,7 +41,7 @@ public class RoundRobin extends AbstractPolicy
     int count = index++;
     /*
      * May need to look at accessing nodes as arrays, so that iteration can be avoided
-     * This matters if say there are 1000+ partitions(?) and this may happen in a Big Data
+     * This matters if say there are 1000+ partitions(?) and this may happen in a Big Message
      * application
      * 
      */

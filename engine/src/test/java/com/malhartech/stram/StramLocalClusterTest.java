@@ -5,7 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
-import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -75,19 +75,19 @@ public class StramLocalClusterTest
   {
     final BufferServerInputStream bsi;
     final StreamContext streamContext;
-    final TestSink<Data> sink;
+    final TestSink<Message> sink;
 
     TestBufferServerSubscriber(PTOperator publisherOperator, String publisherPortName)
     {
       // sink to collect tuples emitted by the input module
-      sink = new TestSink<Data>();
+      sink = new TestSink<Message>();
       String streamName = "testSinkStream";
       String sourceId = publisherOperator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(TestGeneratorInputModule.OUTPUT_PORT);
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
-      bsi = new BufferServerInputStream(new DefaultStreamCodec());
+      bsi = new BufferServerInputStream(new DefaultStreamCodec<Object>());
       bsi.setup(streamContext);
       bsi.setSink("testSink", sink);
     }

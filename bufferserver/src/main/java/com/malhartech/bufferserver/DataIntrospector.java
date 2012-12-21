@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.nio.ByteBuffer;
 
@@ -20,9 +20,9 @@ public interface DataIntrospector
     /**
      *
      * @param data
-     * @return DataType
+     * @return MessageType
      */
-  public DataType getType(SerializedData data);
+  public MessageType getType(SerializedData data);
 
   /**
    *

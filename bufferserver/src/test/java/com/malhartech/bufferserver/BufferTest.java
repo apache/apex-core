@@ -5,7 +5,7 @@
 package com.malhartech.bufferserver;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Message;
 import junit.framework.TestCase;
 
 /**
@@ -18,13 +18,13 @@ public class BufferTest extends TestCase
   {
     super(testName);
   }
-  
+
   @Override
   protected void setUp() throws Exception
   {
     super.setUp();
   }
-  
+
   @Override
   protected void tearDown() throws Exception
   {
@@ -33,16 +33,16 @@ public class BufferTest extends TestCase
 
   public void testSerDe() throws InvalidProtocolBufferException
   {
-    Data.Builder db = Data.newBuilder();
-    db.setType(Data.DataType.NO_DATA);
+    Message.Builder db = Message.newBuilder();
+    db.setType(Message.MessageType.NO_MESSAGE);
     db.setWindowId(0);
-    
-    Data d = db.build();
-    
+
+    Message d = db.build();
+
     byte[] serialized = d.toByteArray();
 
-    db = Data.newBuilder().mergeFrom(serialized, 0, serialized.length);
-    Data d1 = db.build();
+    db = Message.newBuilder().mergeFrom(serialized, 0, serialized.length);
+    Message d1 = db.build();
 
     assertEquals(d, d1);
   }

@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Message;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -13,11 +13,11 @@ import io.netty.channel.ChannelHandlerContext;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 @Sharable
-public class BufferServerController extends AbstractSocketSubscriber<Buffer.Data>
+public class BufferServerController extends AbstractSocketSubscriber<Buffer.Message>
 {
   private final String sourceId;
   long windowId;
-  Data data;
+  Message data;
 
   public BufferServerController(String sourceId)
   {
@@ -43,7 +43,7 @@ public class BufferServerController extends AbstractSocketSubscriber<Buffer.Data
   }
 
   @Override
-  public void messageReceived(ChannelHandlerContext ctx, Data data) throws Exception
+  public void messageReceived(ChannelHandlerContext ctx, Message data) throws Exception
   {
 //    logger.debug("received {}", data);
     this.data = data;

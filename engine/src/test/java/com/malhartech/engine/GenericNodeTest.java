@@ -5,7 +5,7 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.*;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.Assert;
@@ -111,7 +111,7 @@ public class GenericNodeTest
     while (ab.get() == false);
 
 
-    Tuple beginWindow1 = new Tuple(DataType.BEGIN_WINDOW);
+    Tuple beginWindow1 = new Tuple(MessageType.BEGIN_WINDOW);
     beginWindow1.windowId = 0x1L;
 
     input1.process(beginWindow1);
@@ -129,7 +129,7 @@ public class GenericNodeTest
     Thread.sleep(sleeptime);
     Assert.assertEquals(1, list.size());
 
-    Tuple beginWindow2 = new Tuple(DataType.BEGIN_WINDOW);
+    Tuple beginWindow2 = new Tuple(MessageType.BEGIN_WINDOW);
     beginWindow2.windowId = 0x2L;
 
     input1.process(beginWindow2);
@@ -161,7 +161,7 @@ public class GenericNodeTest
     Thread.sleep(sleeptime);
     Assert.assertEquals(4, list.size());
 
-    Tuple beginWindow3 = new Tuple(DataType.BEGIN_WINDOW);
+    Tuple beginWindow3 = new Tuple(MessageType.BEGIN_WINDOW);
     beginWindow3.windowId = 0x3L;
 
     input2.process(beginWindow3);

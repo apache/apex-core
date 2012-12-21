@@ -6,7 +6,7 @@ package com.malhartech.stream;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
-import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.engine.*;
 import java.lang.reflect.Array;
@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerInputStream extends SocketInputStream<Data>
+public class BufferServerInputStream extends SocketInputStream<Message>
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
   private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
@@ -53,7 +53,7 @@ public class BufferServerInputStream extends SocketInputStream<Data>
   }
 
   @Override
-  public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
+  public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Message data) throws Exception
   {
     Tuple t;
     switch (data.getType()) {
@@ -65,17 +65,9 @@ public class BufferServerInputStream extends SocketInputStream<Data>
         dsp.state = data.getCodecState().getData().toByteArray();
         return;
 
-      case SIMPLE_DATA:
-        dsp.data = data.getSimpleData().getData().toByteArray();
+      case PAYLOAD:
+        dsp.data = data.getPayload().getData().toByteArray();
         Object o = serde.fromByteArray(dsp);
-        for (Sink<Object> s: sinks) {
-          s.process(o);
-        }
-        return;
-
-      case PARTITIONED_DATA:
-        dsp.data = data.getPartitionedData().getData().toByteArray();
-        o = serde.fromByteArray(dsp);
         for (Sink<Object> s: sinks) {
           s.process(o);
         }
@@ -110,7 +102,7 @@ public class BufferServerInputStream extends SocketInputStream<Data>
 
   @Override
   @SuppressWarnings("unchecked")
-  public void setSink(String id, Sink<Data> sink)
+  public void setSink(String id, Sink<Message> sink)
   {
     if (sink == null) {
       outputs.remove(id);
@@ -145,7 +137,7 @@ public class BufferServerInputStream extends SocketInputStream<Data>
   }
 
   @Override
-  public void process(Data tuple)
+  public void process(Message tuple)
   {
     throw new IllegalAccessError("Attempt to pass payload " + tuple + " to " + this + " from source other than buffer server!");
   }
