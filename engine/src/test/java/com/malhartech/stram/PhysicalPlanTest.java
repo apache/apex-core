@@ -34,7 +34,7 @@ import com.malhartech.stram.PhysicalPlan.PTOutput;
 
 public class PhysicalPlanTest {
 
-  public static class PartitioningTestStreamCodec extends DefaultStreamCodec {
+  public static class PartitioningTestStreamCodec extends DefaultStreamCodec<Object> {
     @Override
     public int getPartition(Object o) {
       return PartitioningTestOperator.PARTITION_KEYS[ o.hashCode() % PartitioningTestOperator.PARTITION_KEYS.length ];
