@@ -4,15 +4,16 @@
  */
 package com.malhartech.engine;
 
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.engine.DefaultStreamCodec.ClassIdPair;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -122,4 +123,25 @@ public class DefaultStreamCodecTest
     Assert.assertArrayEquals(dsp1.data, dsp2.data);
     Assert.assertArrayEquals(dsp1.state, dsp2.state);
   }
+
+  public static class TestTuple {
+    final Integer finalField;
+    @SuppressWarnings("unused")
+    private TestTuple() {
+      finalField = null;
+    }
+    public TestTuple(Integer i) {
+      this.finalField = i;
+    }
+  }
+
+  @Test
+  public void testFinalFieldSerialization() throws Exception {
+    TestTuple t1 = new TestTuple(5);
+    DefaultStreamCodec c = new DefaultStreamCodec();
+    DataStatePair dsp = c.toByteArray(t1);
+    TestTuple t2 = (TestTuple)c.fromByteArray(dsp);
+    Assert.assertEquals("", t1.finalField, t2.finalField);
+  }
+
 }
