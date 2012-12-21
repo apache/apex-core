@@ -5,7 +5,7 @@
  */
 
 /**
- * 
+ *
  * <b>com.malhartech.stream</b> package contains all code related to various implementations of Stream interface<p>
  * <br>
  * A stream is a logical unit of a dag that defines the connection between
@@ -14,25 +14,14 @@
  * - Any number of listener operators<br>
  * - Context as defined by the properties specified in the dag<br>
  * A stream definition in the dag is a logical definition. Multiple logical listerner operators means that the emitted tuple
- * would reach each of them. Partitioning is done when a single 
- * logical listener node partitions into multilpe physical operators. This may happen due to initial user 
+ * would reach each of them. Partitioning is done when a single
+ * logical listener node partitions into multilpe physical operators. This may happen due to initial user
  * specification, or dynamic run time constraint enforcement. In such a scenerio the logical stream gets partitioned
  * into physical streams. Each physical stream would retain the
  * characteristics of the logical node (one writer, multiple readers, and context).<br>
  * <br>
  * The streams included in com.malhartech.stream include<br>
  * <br>
- * <br><b>ActiveMQ Interface Streams</b><br>
- * <b>{@link com.malhartech.stream.AbstractActiveMQInputStream}</b>: Provides implementation to read from ActiveMQ.
- * Users need to provide getObject implementation.
- * (See example in InputActiveMQStreamTest)<br>
- * <b>ActiveMQOutputStream</b>: TBD<br>
- * <br>
- * <b>HDFS Streams</b><br>
- * <b>{@link com.malhartech.stream.AbstractHDFSInputStream}</b>: Provides implementation of reading from HDFS.
- * Users need to provide getRecord implementation. (see example HDFSInputStream in com.malhartech.example.wordcount)<br>
- * <b>{@link com.malhartech.stream.HDFSOutputStream}</b>: Provides implementation for writing to to HDFS<br>
- * 
  * <br><b>Buffer Server Streams</b><br>
  * <b>{@link com.malhartech.stream.BufferServerInputStream}</b>: extends {@link com.malhartech.stream.SocketInputStream},
  * takes data from buffer server into the node. Every logical stream will have at least two such
@@ -44,22 +33,14 @@
  * <b>{@link com.malhartech.stream.BufferServerOutputStream}</b>: extends {@link com.malhartech.stream.SocketOutputStream}
  * and in conjunction with {@link com.malhartech.stream.BufferServerInputStream} forms a complete stream
  * in a node->buffer server->node path<br>
- * <b>{@link com.malhartech.stream.BufferServerStreamContext}</b>: Implements stream context for buffer server<br>
- * 
- * <br><b>Console Streams</b><br>
- * <b>{@link com.malhartech.lib.io.ConsoleOutputNode}</b>: Extends {@link com.malhartech.engine.Stream} class.
- * Writes directly to stdout. The data would show up in the stdout of Hadoop container in which the node runs. This
- * is a very good way to debug. Care must be taken to avoid connecting {@link com.malhartech.lib.io.ConsoleOutputNode} to an output of a
- * node with high throughput<br>
- * 
  * <br><b>Inline Stream (Within a Hadoop Container)</b><br>
  * <b>{@link com.malhartech.stream.InlineStream}</b>: Streams data between two operators in inline mode. This implementation of
  * {@link com.malhartech.engine.Stream} and {{@link com.malhartech.api.Sink}
  * interface does not have connection to BufferServer and cannot be persisted.<br>
- * 
+ *
  * <b>{@link com.malhartech.stream.MuxStream}</b>: <br>
  * <b>{@link com.malhartech.stream.PartitionAwareSink}</b>: <br>
- * 
+ *
  * <br><b>Socket Interface Streams</b><br>
  * <b>{@link com.malhartech.stream.SocketInputStream}</b>: Implements {@link com.malhartech.engine.Stream} interface and provides
  * basic stream connection for a node to read from a socket. Users can use this class if they want to directly connect to
@@ -68,7 +49,7 @@
  * basic stream connection for a node to write to a socket. Most likely users would not use it to write to a socket by themselves.
  *   Would be used in adapters and via {@link com.malhartech.stream.BufferServerOutputStream}<br>
  * <br>
- * 
+ *
  */
 
 package com.malhartech.stream;

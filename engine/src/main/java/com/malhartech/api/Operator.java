@@ -46,7 +46,7 @@ public interface Operator extends Component<OperatorContext>
     /**
      * Reference to the operator to which this port belongs.
      *
-     * @return
+     * @return Operator
      */
     public Operator getOperator();
 
@@ -68,7 +68,7 @@ public interface Operator extends Component<OperatorContext>
      * the port itself but can also be implemented by the enclosing operator or
      * separate class.
      *
-     * @param payload
+     * @return Sink<T>
      */
     public Sink<T> getSink();
 

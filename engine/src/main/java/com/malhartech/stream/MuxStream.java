@@ -22,7 +22,7 @@ public class MuxStream implements Stream<Object>
 
   /**
    *
-   * @param config
+   * @param context
    */
   @Override
   public void setup(StreamContext context)
@@ -70,7 +70,6 @@ public class MuxStream implements Stream<Object>
    *
    * @param id
    * @param sink
-   * @return Sink
    */
   @Override
   public void setSink(String id, Sink<Object> sink)

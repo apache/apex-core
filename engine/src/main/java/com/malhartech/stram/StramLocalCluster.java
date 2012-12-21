@@ -293,6 +293,11 @@ public class StramLocalCluster implements Runnable
     return nodes.get(0);
   }
 
+  List<PTOperator> getPlanOperators(OperatorWrapper logicalNode)
+  {
+    return dnmgr.getPhysicalPlan().getOperators(logicalNode);
+  }
+
   StramChildAgent getContainerAgent(StramChild c)
   {
     return this.dnmgr.getContainerAgent(c.getContainerId());

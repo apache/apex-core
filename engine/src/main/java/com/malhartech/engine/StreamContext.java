@@ -4,14 +4,16 @@
  */
 package com.malhartech.engine;
 
+import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.Set;
+
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+
 import com.malhartech.api.Context;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
-import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.HashSet;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  * Defines the destination for tuples processed<p>
@@ -54,22 +56,17 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   private String sinkId;
   private long startingWindowId;
   private int mask;
-  private HashSet<Integer> partitions;
+  private Set<Integer> partitions;
   private String id;
 
   /**
    *
    * @param partitionKeys
    */
-  public void setPartitions(Collection<Integer> partitionKeys)
+  public void setPartitions(int mask, Set<Integer> partitionKeys)
   {
-    if (partitionKeys == null) {
-      partitions = null;
-    }
-    else {
-      partitions = new HashSet<Integer>(partitionKeys.size());
-      partitions.addAll(partitionKeys);
-    }
+    this.mask = mask;
+    this.partitions = partitionKeys;
   }
 
   /**

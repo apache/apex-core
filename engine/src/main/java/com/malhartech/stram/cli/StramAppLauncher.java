@@ -314,7 +314,7 @@ public class StramAppLauncher {
   /**
    * Submit application to the cluster and return the app id.
    * @param appConfig
-   * @return
+   * @return ApplicationId
    * @throws Exception
    */
   public ApplicationId launchApp(AppConfig appConfig) throws Exception {

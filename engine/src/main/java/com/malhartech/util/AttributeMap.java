@@ -24,7 +24,7 @@ public interface AttributeMap<CONTEXT> {
    * entry for the key, a default attribute value will be returned.
    *
    * @param key
-   * @return
+   * @return <T> Attribute<T>
    */
   <T> Attribute<T> attr(AttributeKey<CONTEXT, T> key);
 
@@ -36,7 +36,7 @@ public interface AttributeMap<CONTEXT> {
    *
    * @param key
    * @param defaultValue
-   * @return
+   * @return <T> T
    */
   <T>  T attrValue(AttributeKey<CONTEXT, T> key, T defaultValue);
 

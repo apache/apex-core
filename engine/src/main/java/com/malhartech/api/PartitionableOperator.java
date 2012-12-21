@@ -48,7 +48,7 @@ public interface PartitionableOperator extends Operator
     /**
      * Return the partition keys for this partition.
      * Input ports that are not mapped will receive all data.
-     * @return
+     * @return Map<InputPort<?>, PartitionKeys>
      */
     public Map<InputPort<?>, PartitionKeys> getPartitionKeys();
 
@@ -70,7 +70,8 @@ public interface PartitionableOperator extends Operator
      * Create a new partition for the given operator. The returned partition
      * needs to be further configured with the port to partition key mapping.
      *
-     * @return
+     * @param operator
+     * @return Partition
      */
     public Partition getInstance(PartitionableOperator operator);
   }

@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -46,10 +47,8 @@ import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.engine.Operators;
-import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramUtils;
 import com.malhartech.util.AttributeMap;
-import com.malhartech.util.ExternalizableConf;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
 
 /**
@@ -303,8 +302,8 @@ public class DAG implements Serializable, DAGConstants
   public final class OperatorWrapper implements Serializable
   {
     private static final long serialVersionUID = 1L;
-    private final Map<InputPortMeta, StreamDecl> inputStreams = new HashMap<InputPortMeta, StreamDecl>();
-    private final Map<OutputPortMeta, StreamDecl> outputStreams = new HashMap<OutputPortMeta, StreamDecl>();
+    private final LinkedHashMap<InputPortMeta, StreamDecl> inputStreams = new LinkedHashMap<InputPortMeta, StreamDecl>();
+    private final LinkedHashMap<OutputPortMeta, StreamDecl> outputStreams = new LinkedHashMap<OutputPortMeta, StreamDecl>();
     private final AttributeMap<OperatorContext> attributes = new DefaultAttributeMap<OperatorContext>();
     private final ExternalizableModule moduleHolder;
     private final String id;
@@ -410,7 +409,7 @@ public class DAG implements Serializable, DAGConstants
    *
    * @param name
    * @param clazz
-   * @return
+   * @return <T extends Operator> T
    */
   public <T extends Operator> T addOperator(String name, Class<T> clazz)
   {
@@ -455,7 +454,7 @@ public class DAG implements Serializable, DAGConstants
    * @param id
    * @param source
    * @param sinks
-   * @return
+   * @return <T> StreamDecl
    */
   public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
@@ -471,12 +470,11 @@ public class DAG implements Serializable, DAGConstants
    * Overload varargs version to avoid generic array type safety warnings in calling code.
    * "Type safety: A generic array of Operator.InputPort<> is created for a varargs parameter"
    *
-   * @see http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300
+   * @link <a href=http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300>Programming Idioms</a>
    * @param id
    * @param source
    * @param sink1
-   * @param sink2
-   * @return
+   * @return <T> StreamDecl
    */
   @SuppressWarnings("unchecked")
   public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
@@ -498,8 +496,8 @@ public class DAG implements Serializable, DAGConstants
   /**
    * Set attribute for the operator. For valid attributes, see {
    *
-   * @ link Context}
    * @param operator
+   * @return AttributeMap<OperatorContext>
    */
   public AttributeMap<OperatorContext> getContextAttributes(Operator operator)
   {

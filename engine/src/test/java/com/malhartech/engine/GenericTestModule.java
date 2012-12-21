@@ -30,6 +30,10 @@ public class GenericTestModule extends BaseOperator {
     final public void process(Object payload) {
       processInternal(payload);
     }
+    @Override
+    public String toString() {
+      return GenericTestModule.this.toString() + "." + IPORT1;
+    }
   };
 
   @InputPortFieldAnnotation(name=IPORT2, optional=true)
@@ -37,6 +41,10 @@ public class GenericTestModule extends BaseOperator {
     @Override
     final public void process(Object payload) {
       processInternal(payload);
+    }
+    @Override
+    public String toString() {
+      return GenericTestModule.this.toString() + "." + IPORT2;
     }
   };
 

@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
+import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator;
@@ -98,9 +99,10 @@ public class PhysicalPlan {
 
     /**
      *
+     * @param portName
      * @param logicalStream
      * @param target
-     * @param partition
+     * @param partitions
      * @param source
      */
     protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, PartitionKeys partitions, PTComponent source) {
@@ -150,7 +152,7 @@ public class PhysicalPlan {
     /**
      * Determine whether downstream operators are deployed inline.
      * (all instances of the logical downstream node are in the same container)
-     * @param output
+     * @return boolean
      */
     protected boolean isDownStreamInline() {
       StreamDecl logicalStream = this.logicalStream;
@@ -303,7 +305,7 @@ public class PhysicalPlan {
      * Read committed frozen state of the partition.
      * Dynamic partitioning requires access to committed state so that operators can be split or merged.
      * @param operatorInstance
-     * @return
+     * @return PartitionableOperator
      * @throws IOException
      */
     public PartitionableOperator readCommitted(PTOperator operatorInstance) throws IOException;
@@ -383,12 +385,10 @@ public class PhysicalPlan {
 
       if (upstreamDeployed) {
         // ready to look at this node
+        PMapping pnodes = new PMapping(n);
 
         // determine partitioning / number of operators
-        PMapping pnodes = new PMapping(n);
-        if (n.getOperator() instanceof PartitionableOperator) {
-          initPartitioning(pnodes);
-        }
+        initPartitioning(pnodes);
 
         Set<PTOperator> inlineSet = new HashSet<PTOperator>();
         if (pnodes.partitions.isEmpty()) {
@@ -440,12 +440,24 @@ public class PhysicalPlan {
   }
 
   private void initPartitioning(PMapping m) {
-    PartitionableOperator partitionableOperator = (PartitionableOperator)m.logicalOperator.getOperator();
-    List<Partition> partitions = new ArrayList<Partition>(1);
-    partitions.add(new PartitionImpl(partitionableOperator));
+    Operator operator = m.logicalOperator.getOperator();
 
-    // operator to provide initial partitioning
-    partitions = partitionableOperator.definePartitions(partitions);
+    List<Partition> partitions = new ArrayList<Partition>(1);
+
+    if (operator instanceof PartitionableOperator) {
+      // operator to provide initial partitioning
+      partitions.add(new PartitionImpl(operator));
+      partitions = ((PartitionableOperator)operator).definePartitions(partitions);
+    } else {
+      // partitioning is enabled through initial count attribute
+      // if the attribute is not present or set to zero, partitioning is off
+      int partitionCnt = m.logicalOperator.getAttributes().attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
+      if (partitionCnt == 0) {
+        return;
+      }
+      partitions = new OperatorPartitions.DefaultPartitioner().defineInitialPartitions(m.logicalOperator, partitionCnt);
+    }
+
     if (partitions == null || partitions.isEmpty()) {
       throw new IllegalArgumentException("PartitionableOperator must return at least one partition: " + m.logicalOperator);
     }
