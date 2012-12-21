@@ -756,7 +756,7 @@ public class StramChild
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
-            bssc.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
+            bssc.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
             bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
             BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
@@ -801,7 +801,7 @@ public class StramChild
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
-            bssc.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
+            bssc.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
             bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
             BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
@@ -821,7 +821,7 @@ public class StramChild
 
           context.setSourceId(sourceIdentifier);
           context.setSinkId(sinkIdentifier);
-          context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
+          context.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
 
           streams.put(sourceIdentifier, new ComponentContextPair<Stream<Object>, StreamContext>(stream, context));
           logger.debug("stored stream {} against key {}", stream, sourceIdentifier);
@@ -881,7 +881,7 @@ public class StramChild
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
-            context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
+            context.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
 
             @SuppressWarnings("unchecked")
@@ -917,7 +917,7 @@ public class StramChild
               StreamContext context = new StreamContext(nidi.declaredStreamId);
               context.setSourceId(sourceIdentifier);
               context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
-              context.setStartingWindowId(ndi.checkpointWindowId + 1); // TODO: next window after checkpoint
+              context.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
 
               Stream<Object> stream = new MuxStream();
               stream.setup(context);

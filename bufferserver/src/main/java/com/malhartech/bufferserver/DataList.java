@@ -10,7 +10,7 @@ import com.malhartech.bufferserver.Buffer.ResetWindow;
 import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
-import com.malhartech.bufferserver.util.DataFactory;
+import com.malhartech.bufferserver.util.TupleFactory;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
@@ -87,7 +87,7 @@ public class DataList
 
     // passing the baseSeconds == 0 is a crime, so the following is a hack.
     if (baseSeconds != 0) {
-      last.add(DataFactory.getResetTuple(baseSeconds, windowId)); // passing windowId is a hack here!!! I should be passing the windowWidth.
+      last.add(TupleFactory.getResetTuple(baseSeconds, windowId)); // passing windowId is a hack here!!! I should be passing the windowWidth.
     }
   }
 

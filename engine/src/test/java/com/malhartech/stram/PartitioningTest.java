@@ -1,23 +1,16 @@
 package com.malhartech.stram;
 
+import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.*;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
 import junit.framework.Assert;
-
 import org.junit.Test;
-
-import com.malhartech.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.InputOperator;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
 
 public class PartitioningTest {
 
@@ -49,8 +42,8 @@ public class PartitioningTest {
       }
     };
 
-    @OutputPortFieldAnnotation(name="output", optional=true)
-    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>(this);
+    @OutputPortFieldAnnotation(name="outputPort", optional=true)
+    public final transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>(this);
 
   }
 
@@ -106,8 +99,8 @@ public class PartitioningTest {
     dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     dag.addStream("fromInput", input.output, collector.input);
 
-    //CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
-    //dag.addStream("toMerged", collector.output, merged.input);
+    CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
+    dag.addStream("toMerged", collector.outputPort, merged.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
