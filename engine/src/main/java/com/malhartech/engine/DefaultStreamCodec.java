@@ -152,7 +152,7 @@ public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
   @Override
   public int getPartition(Object o)
   {
-    return 0;
+    return o.hashCode();
   }
 
   @Override
