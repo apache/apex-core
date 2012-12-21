@@ -118,7 +118,7 @@ public class DataList
         i++;
       }
 
-      if (i < maxliveblocks) {
+      if (true || i < maxliveblocks) {
         /*
          * we are below threshold
          */
