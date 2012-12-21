@@ -172,7 +172,7 @@ public class OperatorPartitions {
       //if (initialPartitionCnt > 0) {
       //  partitionBits = 1 + (int) (Math.log(initialPartitionCnt) / Math.log(2)) ;
       //}
-      int partitionBits = (Integer.numberOfLeadingZeros(0)-Integer.numberOfLeadingZeros(initialPartitionCnt));
+      int partitionBits = (Integer.numberOfLeadingZeros(0)-Integer.numberOfLeadingZeros(initialPartitionCnt-1));
       int partitionMask = 0;
       if (partitionBits > 0) {
         partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
