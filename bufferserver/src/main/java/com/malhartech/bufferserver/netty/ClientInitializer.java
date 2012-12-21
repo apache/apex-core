@@ -44,7 +44,7 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel>
   {
     ChannelPipeline p = channel.pipeline();
     p.addLast("frameDecoder", new ProtobufVarint32FrameDecoder());
-    p.addLast("protobufDecoder", new ProtobufDecoder(Buffer.Data.getDefaultInstance()));
+    p.addLast("protobufDecoder", new ProtobufDecoder(Buffer.Message.getDefaultInstance()));
 
     p.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
     p.addLast("protobufEncoder", new ProtobufEncoder());
@@ -54,7 +54,7 @@ public class ClientInitializer extends ChannelInitializer<SocketChannel>
     //      @Override
     //      public void writeRequested(ChannelHandlerContext ctx, MessageEvent me) throws Exception
     //      {
-    //        logger.debug("buffer handing out {0} for window {1}", new Object[]{((Data) me.getMessage()).getType(), ((Data) me.getMessage()).getWindowId()});
+    //        logger.debug("buffer handing out {0} for window {1}", new Object[]{((Message) me.getMessage()).getType(), ((Message) me.getMessage()).getWindowId()});
     //        super.writeRequested(ctx, me);
     //      }
     //    });

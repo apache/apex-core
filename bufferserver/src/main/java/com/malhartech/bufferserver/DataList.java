@@ -4,13 +4,13 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.Buffer.ResetWindow;
 import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
-import com.malhartech.bufferserver.util.Tuple;
+import com.malhartech.bufferserver.util.DataFactory;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
@@ -19,22 +19,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
  * Maintains list of data and manages addition and deletion of the data<p>
  * <br>
  *
- * @author chetan
+ * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class DataList
 {
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
   private final String identifier;
-  private final Integer capacity;
+  private final Integer blocksize;
   private HashMap<BitVector, HashSet<DataListener>> listeners = new HashMap<BitVector, HashSet<DataListener>>();
   private HashSet<DataListener> all_listeners = new HashSet<DataListener>();
   private static volatile DataArray free = null;
   private volatile DataArray first;
   private volatile DataArray last;
+  private final int maxliveblocks;
 
   synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
   {
@@ -43,7 +43,7 @@ public class DataList
     for (DataArray temp = first; temp != null; temp = temp.next) {
       if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
         if (temp != last) {
-          synchronized (this.capacity) {
+          synchronized (this.blocksize) {
             last.next = free;
             free = temp.next;
           }
@@ -87,19 +87,19 @@ public class DataList
 
     // passing the baseSeconds == 0 is a crime, so the following is a hack.
     if (baseSeconds != 0) {
-      last.add(Tuple.getResetTuple(baseSeconds, windowId)); // passing windowId is a hack here!!! I should be passing the windowWidth.
+      last.add(DataFactory.getResetTuple(baseSeconds, windowId)); // passing windowId is a hack here!!! I should be passing the windowWidth.
     }
   }
 
   /**
-   * @param capacity - it's ignored if we are reusing block
+   * @param blocksize - it's ignored if we are reusing block
    * @return DataArray
    */
-  private DataArray getDataArray(int capacity)
+  private DataArray getDataArray(int blocksize)
   {
     DataArray retval = null;
 
-    synchronized (this.capacity) {
+    synchronized (this.blocksize) {
       if (free != null) {
         retval = free;
         free = free.next;
@@ -107,7 +107,65 @@ public class DataList
     }
 
     if (retval == null) {
-      retval = new DataArray(capacity);
+      /*
+       * count the blocks we used for this list so far. If it's less than the
+       * maxblockcount, then we can go ahead and allocate a new block. If not
+       * then we need to spool to secondary storage and free up a block to use
+       * with this list.
+       */
+      int i = 1;
+      for (DataArray temp = first; temp != last; temp = temp.next) {
+        i++;
+      }
+
+      if (i < maxliveblocks) {
+        /*
+         * we are below threshold
+         */
+        retval = new DataArray(blocksize);
+      }
+      else {
+        /*
+         * we gotta hunt one of the unused blocks.
+         * the block which is currently pointed by any iterator is out of question.
+         * the next block is also out of question since that will be take up anytime.
+         * the last block is out of question since it's being written to.
+         * if that does not leave us any block then we pick the first one which is
+         * not being read from. If nothing works then we just wait for a while.
+         */
+        ArrayList<DataArray> secondaryCandidates = new ArrayList<DataArray>();
+        DataArray temp = first;
+        while (temp != last) {
+          boolean inuse = false;
+          for (DataListIterator di: iterators.values()) {
+            if (di.da == temp) {
+              inuse = true;
+              break;
+            }
+          }
+
+          if (inuse) {
+            temp = temp.next;
+            secondaryCandidates.add(temp);
+          }
+          else {
+            // save this to secondary storage, and use the memory associated with it
+            // if successful then break here!
+            break;
+          }
+
+          temp = temp.next;
+        }
+
+        if (retval == null) {
+          /*
+           * we reach here since we could not identify any block.
+           */
+          for (DataArray da: secondaryCandidates) {
+            // do the same thing as you would do in the case above
+          }
+        }
+      }
     }
     else {
       retval.starting_window = retval.ending_window = retval.writingOffset = retval.readingOffset = 0;
@@ -124,12 +182,12 @@ public class DataList
     listeners.clear();
     all_listeners.clear();
 
-    synchronized (capacity) {
+    synchronized (blocksize) {
       last.next = free;
       free = first;
     }
 
-    first = last = getDataArray(capacity);
+    first = last = getDataArray(blocksize);
   }
 
   synchronized void purge(int baseSeconds, int windowId, DataIntrospector di)
@@ -140,7 +198,7 @@ public class DataList
     for (DataArray temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
       if (temp.ending_window > longWindowId || temp == last) {
         if (prev != null) {
-          synchronized (capacity) {
+          synchronized (blocksize) {
             prev.next = free;
             free = first;
             first = temp;
@@ -297,13 +355,13 @@ public class DataList
      */
     DataArray next;
 
-    private DataArray(int capacity)
+    private DataArray(int blocksize)
     {
       /*
        * we want to make sure that MSB of each byte is on, so that we can exploit it ensure presence of a record which is prepended with getSize represented as
        * 32 bit integer varint.
        */
-      data = new byte[capacity];
+      data = new byte[blocksize];
     }
 
     void getNextData(SerializedData current)
@@ -322,7 +380,7 @@ public class DataList
       }
     }
 
-    public final void addUnsafe(Data d)
+    public final void addUnsafe(Message d)
     {
       int size = d.getSerializedSize();
       if (writingOffset + 5 /* for max varint size */ + size > data.length
@@ -335,11 +393,11 @@ public class DataList
         if (i + writingOffset <= data.length) {
           writingOffset = Codec.writeRawVarint32(data.length - writingOffset - i, data, writingOffset, i);
           if (writingOffset < data.length) {
-            Data.Builder db = Data.newBuilder();
-            db.setType(DataType.NO_DATA);
+            Message.Builder db = Message.newBuilder();
+            db.setType(MessageType.NO_MESSAGE);
             db.setWindowId(0);
 
-            Data noData = db.build();
+            Message noData = db.build();
             int writeSize = data.length - writingOffset;
             if (writeSize > noData.getSerializedSize()) {
               writeSize = noData.getSerializedSize();
@@ -349,9 +407,9 @@ public class DataList
           }
         }
 
-        int newblockSize = capacity;
+        int newblockSize = blocksize;
         while (newblockSize < size + 5) {
-          newblockSize += capacity;
+          newblockSize += blocksize;
         }
 
         DataList.this.last = next = getDataArray(newblockSize);
@@ -360,9 +418,9 @@ public class DataList
         /**
          * Add reset window at the beginning of each new block.
          */
-        if (d.getType() != DataType.RESET_WINDOW) {
-          Data.Builder db = Data.newBuilder();
-          db.setType(DataType.RESET_WINDOW);
+        if (d.getType() != MessageType.RESET_WINDOW) {
+          Message.Builder db = Message.newBuilder();
+          db.setType(MessageType.RESET_WINDOW);
           db.setWindowId(baseSeconds);
 
           ResetWindow.Builder rwb = ResetWindow.newBuilder();
@@ -401,7 +459,7 @@ public class DataList
       }
     }
 
-    public void add(Data d)
+    public void add(Message d)
     {
       w.lock();
       try {
@@ -433,11 +491,12 @@ public class DataList
     }
   }
 
-  public DataList(String identifier, int capacity)
+  public DataList(String identifier, int blocksize, int maxlivebocks)
   {
     this.identifier = identifier;
-    this.capacity = capacity;
-    first = last = getDataArray(capacity);
+    this.blocksize = blocksize;
+    this.maxliveblocks = maxlivebocks;
+    first = last = getDataArray(blocksize);
   }
 
   public DataList(String identifier)
@@ -445,7 +504,7 @@ public class DataList
     /*
      * We use 64MB (the default HDFS block getSize) as the getSize of the memory pool so we can flush the data 1 block at a time to the filesystem.
      */
-    this(identifier, 64 * 1024 * 1024);
+    this(identifier, 64 * 1024 * 1024, 8);
   }
 
   public final void flush()
@@ -455,7 +514,7 @@ public class DataList
     }
   }
 
-  public final void add(Data d)
+  public final void add(Message d)
   {
     last.add(d);
 
@@ -642,18 +701,5 @@ public class DataList
     }
 
     all_listeners.remove(dl);
-  }
-
-  public void printState()
-  {
-    System.out.println("capacity = " + capacity);
-    System.out.println("identifier = " + getIdentifier());
-    DataArray tmp = first;
-    while (tmp != null) {
-      System.out.println("writing offset = " + tmp.writingOffset);
-      tmp = tmp.next;
-    }
-
-    System.out.println("=====================================================");
   }
 }

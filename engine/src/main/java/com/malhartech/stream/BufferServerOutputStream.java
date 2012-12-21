@@ -8,9 +8,9 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.Data.Builder;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.Buffer.Message.Builder;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.engine.ResetWindowTuple;
 import com.malhartech.engine.StreamContext;
@@ -38,7 +38,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
 
   protected void write(Builder db) throws RuntimeException
   {
-    Data d = db.build();
+    Message d = db.build();
     //
     // we should find a place for the following code in the base class.
     //
@@ -83,7 +83,9 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
       added = false;
       notify();
     }
+
   }
+
   final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
 
   public BufferServerOutputStream(StreamCodec<Object> serde)
@@ -98,7 +100,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   @Override
   public void process(Object payload)
   {
-    Buffer.Data.Builder db = Buffer.Data.newBuilder();
+    Buffer.Message.Builder db = Buffer.Message.newBuilder();
     if (payload instanceof Tuple) {
       final Tuple t = (Tuple)payload;
       db.setType(t.getType());
@@ -138,27 +140,18 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
        * if there is any state write that for the subscriber before we write the data.
        */
       if (dsp.state != null) {
-        write(Buffer.Data.newBuilder().setType(DataType.CODEC_STATE).setWindowId(windowId)
+        write(Buffer.Message.newBuilder().setType(MessageType.CODEC_STATE).setWindowId(windowId)
                 .setCodecState(Buffer.CodecState.newBuilder().setData(ByteString.copyFrom(dsp.state))));
       }
 
       /*
        * Now that the state if any has been sent, we can proceed with the actual data we want to send.
        */
-      int partition = serde.getPartition(payload);
-      if (partition == 0) {
-        Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
-        sdb.setData(ByteString.copyFrom(dsp.data));
-        db.setType(Buffer.Data.DataType.SIMPLE_DATA);
-        db.setSimpleData(sdb);
-      }
-      else {
-        Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
-        pdb.setPartition(partition);
-        pdb.setData(ByteString.copyFrom(dsp.data));
-        db.setType(Buffer.Data.DataType.PARTITIONED_DATA);
-        db.setPartitionedData(pdb);
-      }
+      Buffer.Payload.Builder pdb = Buffer.Payload.newBuilder();
+      pdb.setPartition(serde.getPartition(payload));
+      pdb.setData(ByteString.copyFrom(dsp.data));
+      db.setType(Buffer.Message.MessageType.PAYLOAD);
+      db.setPayload(pdb);
     }
 
     write(db);
@@ -186,4 +179,5 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   {
     return false;
   }
+
 }

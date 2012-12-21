@@ -88,6 +88,7 @@ public class DiskStorage implements Storage
     return retrieveBlock(file, block.getIdentifier());
   }
 
+  @Override
   public Block storeFirstBlock(final String identifier, byte[] bytes, int startingOffset, int endingOffset)
   {
     String normalizedFileName = normalizeFileName(identifier);
@@ -111,48 +112,28 @@ public class DiskStorage implements Storage
       }
     }
 
-    try {
-      final byte[] newbytes;
-      if (startingOffset > 0 || endingOffset < bytes.length) {
-        newbytes = new byte[endingOffset - startingOffset];
-        System.arraycopy(bytes, startingOffset, newbytes, 0, endingOffset - startingOffset);
+    return writeFile(bytes, startingOffset, endingOffset, directory, identifier, "1");
+  }
+
+  public Block delete(Block block)
+  {
+    String normalizedFileName = normalizeFileName(block.getIdentifier());
+    File directory = new File(basePath, normalizedFileName);
+    if (directory.exists()) {
+      final File file = new File(directory, block.getNumber());
+      if (file.exists()) {
+        if (file.delete()) {
+          return block;
+        }
       }
-      else {
-        newbytes = bytes;
-      }
-      Files.write(newbytes, new File(directory, "1"));
-
-      return new Block()
-      {
-        public String getIdentifier()
-        {
-          return identifier;
-        }
-
-        public String getNumber()
-        {
-          return "1";
-        }
-
-        public byte[] getBytes()
-        {
-          return newbytes;
-        }
-      };
-    }
-    catch (IOException ex) {
     }
 
     return null;
   }
 
-  public Block delete(Block block)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
   public void write(File file, byte[] bytes) throws IOException
   {
+    Files.write(bytes, file);
   }
 
   public byte[] read(File file) throws IOException
@@ -206,6 +187,7 @@ public class DiskStorage implements Storage
         {
           return contents;
         }
+
       };
     }
     catch (IOException ex) {
@@ -214,8 +196,62 @@ public class DiskStorage implements Storage
     return null;
   }
 
+  /**
+   *
+   * @param block
+   * @param bytes
+   * @param startingOffset
+   * @param endingOffset
+   * @return
+   */
   public Block storeNextBlock(Block block, byte[] bytes, int startingOffset, int endingOffset)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    String normalizedFileName = normalizeFileName(block.getIdentifier());
+    File directory = new File(basePath, normalizedFileName);
+    if (directory.exists()) {
+      int i = Integer.parseInt(block.getNumber());
+      return writeFile(bytes, startingOffset, endingOffset, directory, block.getIdentifier(), String.valueOf(i + 1));
+    }
+
+    return null;
   }
+
+  protected Block writeFile(byte[] bytes, int startingOffset, int endingOffset, File directory, final String identifier, final String number)
+  {
+    try {
+      final byte[] newbytes;
+      if (startingOffset > 0 || endingOffset < bytes.length) {
+        newbytes = new byte[endingOffset - startingOffset];
+        System.arraycopy(bytes, startingOffset, newbytes, 0, endingOffset - startingOffset);
+      }
+      else {
+        newbytes = bytes;
+      }
+      Files.write(newbytes, new File(directory, number));
+
+      return new Block()
+      {
+        public String getIdentifier()
+        {
+          return identifier;
+        }
+
+        public String getNumber()
+        {
+          return number;
+        }
+
+        public byte[] getBytes()
+        {
+          return newbytes;
+        }
+
+      };
+    }
+    catch (IOException ex) {
+    }
+
+    return null;
+  }
+
 }

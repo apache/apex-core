@@ -4,7 +4,7 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 
 /**
  *
@@ -16,7 +16,7 @@ public class CodecStateTuple extends Tuple
 
   public CodecStateTuple(long windowId, byte[] state)
   {
-    super(DataType.CODEC_STATE);
+    super(MessageType.CODEC_STATE);
     this.windowId = windowId;
     this.state = state;
   }

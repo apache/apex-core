@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Iterator;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ class DataListIterator implements Iterator<SerializedData>
    * @param da
    * @param di
    */
-  public DataListIterator(DataList.DataArray da, DataIntrospector di)
+  DataListIterator(DataList.DataArray da, DataIntrospector di)
   {
     this.da = da;
     this.di = di;
@@ -59,7 +59,7 @@ class DataListIterator implements Iterator<SerializedData>
           break;
 
         default:
-          if (di.getType(current) != DataType.NO_DATA) {
+          if (di.getType(current) != MessageType.NO_MESSAGE) {
             return true;
           }
           current.offset += current.size;
@@ -97,9 +97,9 @@ class DataListIterator implements Iterator<SerializedData>
 
   /**
    *
-   * @return DataType
+   * @return MessageType
    */
-  DataType getType()
+  MessageType getType()
   {
     return di.getType(previous);
   }

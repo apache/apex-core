@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.Codec;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -229,9 +229,9 @@ public class NewSubscriberTest
   {
     long id;
 
-    public DataType getType()
+    public MessageType getType()
     {
-      return DataType.RESET_WINDOW;
+      return MessageType.RESET_WINDOW;
     }
 
     public long getWindowId()
@@ -253,18 +253,18 @@ public class NewSubscriberTest
   class BeginTuple extends ResetTuple
   {
     @Override
-    public DataType getType()
+    public MessageType getType()
     {
-      return DataType.BEGIN_WINDOW;
+      return MessageType.BEGIN_WINDOW;
     }
   }
 
   class EndTuple extends ResetTuple
   {
     @Override
-    public DataType getType()
+    public MessageType getType()
     {
-      return DataType.END_WINDOW;
+      return MessageType.END_WINDOW;
     }
   }
 }
