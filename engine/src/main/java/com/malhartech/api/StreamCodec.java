@@ -29,6 +29,7 @@ package com.malhartech.api;
  * that way.<br>
  * <br>
  *
+ * @param <T>
  * @author chetan
  */
 public interface StreamCodec<T>
@@ -43,9 +44,9 @@ public interface StreamCodec<T>
    * Create POJO from the byte array for consumption by the downstream.
    *
    * @param dspair
-   * @return T (plain old java object)
+   * @return plain old java object, the type is intentionally not T since the consumer does not care about it.
    */
-  T fromByteArray(DataStatePair dspair);
+  Object fromByteArray(DataStatePair dspair);
 
   /**
    * Serialize the POJO emitted by the upstream node to byte array so that
@@ -64,7 +65,7 @@ public interface StreamCodec<T>
    * @param o object for which the partition has to be determined
    * @return byte array representing the partition for the object
    */
-  int getPartition(Object o);
+  int getPartition(T o);
 
   /**
    * Do consolidation at the checkpoint. If the codec builds the state through its lifetime as it

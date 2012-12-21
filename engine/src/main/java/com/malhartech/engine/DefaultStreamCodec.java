@@ -27,9 +27,10 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  * Requires kryo and its dependencies in deployment
+ * @param <T>
  */
 @ShipContainingJars(classes = {Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
-public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
+public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
 {
   private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodec.class);
   private final Output data = new Output(4096, Integer.MAX_VALUE);
@@ -129,7 +130,7 @@ public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
   }
 
   @Override
-  public DataStatePair toByteArray(Object o)
+  public DataStatePair toByteArray(T o)
   {
     DataStatePair pair = new DataStatePair();
     data.setPosition(0);
@@ -150,7 +151,7 @@ public class DefaultStreamCodec extends Kryo implements StreamCodec<Object>
   }
 
   @Override
-  public int getPartition(Object o)
+  public int getPartition(T o)
   {
     return o.hashCode();
   }
