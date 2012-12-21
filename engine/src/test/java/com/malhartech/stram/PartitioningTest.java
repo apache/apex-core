@@ -10,6 +10,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
@@ -47,6 +48,10 @@ public class PartitioningTest {
         l.add(tuple);
       }
     };
+
+    @OutputPortFieldAnnotation(name="output", optional=true)
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>(this);
+
   }
 
   public static class TestInputOperator<T> extends BaseOperator implements InputOperator
@@ -88,18 +93,21 @@ public class PartitioningTest {
   public void testDefaultPartitioning() throws Exception {
     DAG dag = new DAG();
 
-    String[][] testData = {
-        {"a", "b"}
+    Integer[][] testData = {
+        {4, 5}
     };
 
-    TestInputOperator<String> input = dag.addOperator("input", new TestInputOperator<String>());
-    input.testTuples = new ArrayList<List<String>>();
-    for (String[] tuples : testData) {
-      input.testTuples.add(new ArrayList<String>(Arrays.asList(tuples)));
+    TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
+    input.testTuples = new ArrayList<List<Integer>>();
+    for (Integer[] tuples : testData) {
+      input.testTuples.add(new ArrayList<Integer>(Arrays.asList(tuples)));
     }
     CollectorOperator collector = dag.addOperator("collector", new CollectorOperator());
     dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     dag.addStream("fromInput", input.output, collector.input);
+
+    //CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
+    //dag.addStream("toMerged", collector.output, merged.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
@@ -110,6 +118,8 @@ public class PartitioningTest {
 
     // one entry for each partition
     Assert.assertEquals("received tuples " + CollectorOperator.receivedTuples, 2, CollectorOperator.receivedTuples.size());
+    Assert.assertEquals("received tuples " + operators.get(0), Arrays.asList(4), CollectorOperator.receivedTuples.get(operators.get(0).id));
+    Assert.assertEquals("received tuples " + operators.get(1), Arrays.asList(5), CollectorOperator.receivedTuples.get(operators.get(1).id));
   }
 
 }
