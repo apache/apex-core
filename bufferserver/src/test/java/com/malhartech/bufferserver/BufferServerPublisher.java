@@ -27,7 +27,7 @@ public class BufferServerPublisher extends AbstractSocketPublisher
 
   public void publishMessage(Object payload)
   {
-    Buffer.Data.Builder db = Buffer.Data.newBuilder();
+    Buffer.Message.Builder db = Buffer.Message.newBuilder();
     if (payload instanceof Tuple) {
       final Tuple t = (Tuple)payload;
       db.setType(t.getType());
@@ -57,11 +57,12 @@ public class BufferServerPublisher extends AbstractSocketPublisher
     }
     else {
       db.setWindowId(this.windowId);
-      Buffer.SimpleData.Builder sdb = Buffer.SimpleData.newBuilder();
+      Buffer.Payload.Builder sdb = Buffer.Payload.newBuilder();
       sdb.setData(ByteString.copyFrom((byte[])payload));
+      sdb.setPartition(0);
 
-      db.setType(Buffer.Data.DataType.SIMPLE_DATA);
-      db.setSimpleData(sdb);
+      db.setType(Buffer.Message.MessageType.PAYLOAD);
+      db.setPayload(sdb);
     }
 
 //    logger.debug("write with data {}", db.build());
@@ -69,7 +70,7 @@ public class BufferServerPublisher extends AbstractSocketPublisher
       channel.write(db.build());
     }
     catch (RejectedExecutionException ree) {
-      
+
     }
   }
 

@@ -4,7 +4,7 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.Codec;
 
 /**
@@ -22,9 +22,9 @@ import com.malhartech.bufferserver.util.Codec;
 public class Tuple
 {
   protected long windowId;
-  private final DataType type;
+  private final MessageType type;
 
-  public Tuple(DataType t)
+  public Tuple(MessageType t)
   {
     type = t;
   }
@@ -48,7 +48,7 @@ public class Tuple
   /**
    * @return the type
    */
-  public DataType getType()
+  public MessageType getType()
   {
     return type;
   }

@@ -5,12 +5,13 @@
 package com.malhartech.bufferserver;
 
 import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.bufferserver.Buffer.Payload;
 import com.malhartech.bufferserver.Buffer.PurgeRequest;
 import com.malhartech.bufferserver.Buffer.ResetRequest;
-import com.malhartech.bufferserver.Buffer.SimpleData;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
+import com.malhartech.bufferserver.Buffer.Payload;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.util.SerializedData;
 import io.netty.buffer.MessageBuf;
@@ -33,7 +34,7 @@ import org.slf4j.LoggerFactory;
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 @Sharable
-public class ServerHandler extends ChannelInboundHandlerAdapter implements ChannelInboundMessageHandler<Data>
+public class ServerHandler extends ChannelInboundHandlerAdapter implements ChannelInboundMessageHandler<Message>
 {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(ServerHandler.class);
   private static final AttributeKey<DataList> DATA_LIST = new AttributeKey<DataList>("ServerHandler.datalist");
@@ -42,11 +43,13 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
   private final ConcurrentHashMap<String, Channel> publisherChannels = new ConcurrentHashMap<String, Channel>();
   private final ConcurrentHashMap<String, Channel> subscriberChannels = new ConcurrentHashMap<String, Channel>();
-  private final int bufferSize;
+  private final int blockSize;
+  private final int blockCount;
 
-  public ServerHandler(int buffersize)
+  public ServerHandler(int blocksize, int blockcount)
   {
-    this.bufferSize = buffersize;
+    blockSize = blocksize;
+    blockCount = blockcount;
   }
 
   @Override
@@ -54,9 +57,9 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
   {
     DataList dl = ctx.attr(DATA_LIST).get();
 
-    MessageBuf<Data> in = ctx.inboundMessageBuffer();
+    MessageBuf<Message> in = ctx.inboundMessageBuffer();
     for (int i = in.size(); i-- > 0;) {
-      Data data = in.poll();
+      Message data = in.poll();
       switch (data.getType()) {
         case PUBLISHER_REQUEST:
           logger.info("Received publisher request: {}", data);
@@ -105,7 +108,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    *
    * @param request
    * @param ctx
-   * @param windowId
+   * @return
    */
   public synchronized DataList handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx)
   {
@@ -136,7 +139,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       dl = publisherBufffers.get(identifier);
     }
     else {
-      dl = new DataList(identifier, bufferSize);
+      dl = new DataList(identifier, blockSize, 8);
       publisherBufffers.put(identifier, dl);
     }
 
@@ -148,6 +151,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param request
    * @param ctx
    * @param windowId
+   * @return
    */
   public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
   {
@@ -181,7 +185,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
         dl = publisherBufffers.get(upstream_identifier);
       }
       else {
-        dl = new DataList(upstream_identifier, bufferSize);
+        dl = new DataList(upstream_identifier, blockSize, 8);
         publisherBufffers.put(upstream_identifier, dl);
       }
 
@@ -331,7 +335,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
 
-    SimpleData.Builder sdb = SimpleData.newBuilder();
+    Payload.Builder sdb = Payload.newBuilder();
+    sdb.setPartition(0);
     if (dl == null) {
       sdb.setData(ByteString.copyFromUtf8("Invalid identifier '" + request.getIdentifier() + "'"));
     }
@@ -340,16 +345,16 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       sdb.setData(ByteString.copyFromUtf8("Purge request sent for processing"));
     }
 
-    Data.Builder db = Data.newBuilder();
-    db.setType(DataType.SIMPLE_DATA);
+    Message.Builder db = Message.newBuilder();
+    db.setType(MessageType.PAYLOAD);
     db.setWindowId(windowId);
-    db.setSimpleData(sdb);
+    db.setPayload(sdb);
 
     ctx.write(SerializedData.getInstanceFrom(db.build()))
             .addListener(ChannelFutureListener.CLOSE);
   }
 
-  public MessageBuf<Data> newInboundBuffer(ChannelHandlerContext ctx) throws Exception
+  public MessageBuf<Message> newInboundBuffer(ChannelHandlerContext ctx) throws Exception
   {
     return Unpooled.messageBuffer();
   }
@@ -359,7 +364,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());
 
-    SimpleData.Builder sdb = SimpleData.newBuilder();
+    Payload.Builder sdb = Payload.newBuilder();
+    sdb.setPartition(0);
     if (dl == null) {
       sdb.setData(ByteString.copyFromUtf8("Invalid identifier '" + request.getIdentifier() + "'"));
     }
@@ -373,10 +379,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       sdb.setData(ByteString.copyFromUtf8("Reset request sent for processing"));
     }
 
-    Data.Builder db = Data.newBuilder();
-    db.setType(DataType.SIMPLE_DATA);
+    Message.Builder db = Message.newBuilder();
+    db.setType(MessageType.PAYLOAD);
     db.setWindowId(windowId);
-    db.setSimpleData(sdb);
+    db.setPayload(sdb);
 
     ctx.write(SerializedData.getInstanceFrom(db.build()))
             .addListener(ChannelFutureListener.CLOSE);

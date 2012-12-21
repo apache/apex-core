@@ -25,6 +25,7 @@ public class Server
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
   public static final int DEFAULT_PORT = 9080;
   public static final int DEFAULT_BUFFER_SIZE = 64 * 1024 * 1024;
+  public static final int DEFAULT_BLOCK_COUNT = 8;
   private final int port;
   private ServerBootstrap bootstrap;
   private String identity;
@@ -35,13 +36,13 @@ public class Server
    */
   public Server(int port)
   {
-    this(port, DEFAULT_BUFFER_SIZE);
+    this(port, DEFAULT_BUFFER_SIZE, DEFAULT_BLOCK_COUNT);
   }
 
-  public Server(int port, int buffersize)
+  public Server(int port, int blocksize, int blockcount)
   {
     this.port = port;
-    serverInitializer = new ServerInitializer(buffersize);
+    serverInitializer = new ServerInitializer(blocksize, blockcount);
   }
 
   /**

@@ -5,8 +5,8 @@
 package com.malhartech.bufferserver;
 
 import com.google.protobuf.ByteString;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.*;
 import java.util.Collection;
@@ -39,8 +39,8 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     prb.setIdentifier(identifier).setBaseSeconds((int)(startingWindowId >> 32));
 
 
-    Data.Builder db = Data.newBuilder();
-    db.setType(Data.DataType.PUBLISHER_REQUEST);
+    Message.Builder db = Message.newBuilder();
+    db.setType(Message.MessageType.PUBLISHER_REQUEST);
     db.setPublishRequest(prb);
     //windowStartTime is ignored for now - shouldn't we?
     db.setWindowId((int)startingWindowId);
@@ -49,16 +49,16 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     {
       public void operationComplete(ChannelFuture cf) throws Exception
       {
-        Buffer.PartitionedData.Builder pdb = Buffer.PartitionedData.newBuilder();
+        Buffer.Payload.Builder pdb = Buffer.Payload.newBuilder();
         pdb.setData(ByteString.EMPTY);
 
         pdb.setPartition(new Random().nextInt());
 
 
-        Buffer.Data.Builder db = Data.newBuilder();
-        db.setType(Data.DataType.PARTITIONED_DATA);
+        Buffer.Message.Builder db = Message.newBuilder();
+        db.setType(Message.MessageType.PAYLOAD);
         db.setWindowId((int)new Date().getTime());
-        db.setPartitionedData(pdb);
+        db.setPayload(pdb);
 
         Thread.sleep(500);
         cf.channel().write(db).addListener(this);
@@ -75,7 +75,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
    * @param id
    * @param down_type
    * @param node
-   * @param type
+   * @param mask
    * @param partitions
    * @param startingWindowId
    */
@@ -105,8 +105,8 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     }
     srb.setPolicy(Buffer.SubscriberRequest.PolicyType.ROUND_ROBIN);
 
-    Data.Builder builder = Data.newBuilder();
-    builder.setType(Data.DataType.SUBSCRIBER_REQUEST);
+    Message.Builder builder = Message.newBuilder();
+    builder.setType(Message.MessageType.SUBSCRIBER_REQUEST);
     builder.setSubscribeRequest(srb);
     builder.setWindowId((int)startingWindowId);
 
@@ -129,8 +129,8 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     prb.setBaseSeconds((int)(windowId >> 32));
     prb.setIdentifier(id);
 
-    Data.Builder builder = Data.newBuilder();
-    builder.setType(DataType.PURGE_REQUEST);
+    Message.Builder builder = Message.newBuilder();
+    builder.setType(MessageType.PURGE_REQUEST);
     builder.setPurgeRequest(prb);
     builder.setWindowId((int)windowId);
 
@@ -142,8 +142,8 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     Buffer.ResetRequest.Builder rrb = Buffer.ResetRequest.newBuilder();
     rrb.setIdentifier(id);
 
-    Data.Builder builder = Data.newBuilder();
-    builder.setType(DataType.RESET_REQUEST);
+    Message.Builder builder = Message.newBuilder();
+    builder.setType(MessageType.RESET_REQUEST);
     builder.setResetRequest(rrb);
     builder.setWindowId((int)windowId);
 

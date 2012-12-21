@@ -25,7 +25,7 @@ abstract public class StramTestSupport
 
   public static Tuple generateBeginWindowTuple(String nodeid, int windowId)
   {
-    Tuple bwt = new Tuple(Buffer.Data.DataType.BEGIN_WINDOW);
+    Tuple bwt = new Tuple(Buffer.Message.MessageType.BEGIN_WINDOW);
     bwt.setWindowId(windowId);
     return bwt;
   }

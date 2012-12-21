@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Message;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,15 +21,15 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data>
+public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Message>
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerSubscriber.class);
   private final String sourceId;
   private final Collection<Integer> partitions;
   private final int mask;
   AtomicInteger tupleCount = new AtomicInteger(0);
-  Data firstPayload, lastPayload;
-  ArrayList<Data> resetPayloads = new ArrayList<Data>();
+  Message firstPayload, lastPayload;
+  ArrayList<Message> resetPayloads = new ArrayList<Message>();
   long windowId;
 
 
@@ -57,9 +57,9 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Data
   }
 
   @Override
-  public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Data data) throws Exception
+  public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Message data) throws Exception
   {
-    if (data.getType() == Data.DataType.RESET_WINDOW) {
+    if (data.getType() == Message.MessageType.RESET_WINDOW) {
       resetPayloads.add(data);
     }
     else {

@@ -6,13 +6,9 @@ package com.malhartech.bufferserver;
 
 option optimize_for = SPEED;
 
-message SimpleData {
+message Payload {
   required bytes data = 1;
-}
-
-message PartitionedData {
-  required bytes data = 1;
-  required uint32 partition = 2;
+  required uint32 partition = 2 [default = 0];
 }
 
 message ResetWindow {
@@ -59,32 +55,30 @@ message CodecState {
   required bytes data = 1;
 }
 
-message Data {
-  enum DataType {
-    NO_DATA = 0;
+message Message {
+  enum MessageType {
+    NO_MESSAGE = 0;
     RESET_WINDOW = 1;
     BEGIN_WINDOW = 2;
-    SIMPLE_DATA = 3;
-    PARTITIONED_DATA = 4;
-    END_WINDOW = 5;
-    END_STREAM = 6;
-    PUBLISHER_REQUEST = 7;
-    SUBSCRIBER_REQUEST = 8;
-    PURGE_REQUEST = 9;
-    RESET_REQUEST = 10;
-    CHECKPOINT = 11;
-    CODEC_STATE = 12;
+    PAYLOAD = 3;
+    END_WINDOW = 4;
+    END_STREAM = 5;
+    PUBLISHER_REQUEST = 6;
+    SUBSCRIBER_REQUEST = 7;
+    PURGE_REQUEST = 8;
+    RESET_REQUEST = 9;
+    CHECKPOINT = 10;
+    CODEC_STATE = 11;
   }
 
-  required DataType type = 1;
+  required MessageType type = 1;
   required uint32 window_id = 2;
 
   optional ResetWindow resetWindow = 3;
-  optional SimpleData simpleData = 4;
-  optional PartitionedData partitionedData = 5;
-  optional PublisherRequest publishRequest = 6;
-  optional SubscriberRequest subscribeRequest = 7;
-  optional PurgeRequest purgeRequest = 8;
-  optional ResetRequest ResetRequest = 9;
-  optional CodecState codecState = 10;
+  optional Payload payload = 4;
+  optional PublisherRequest publishRequest = 5;
+  optional SubscriberRequest subscribeRequest = 6;
+  optional PurgeRequest purgeRequest = 7;
+  optional ResetRequest resetRequest = 8;
+  optional CodecState codecState = 9;
 }

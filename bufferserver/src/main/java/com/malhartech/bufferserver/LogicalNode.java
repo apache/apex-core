@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data;
+import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
 import com.malhartech.bufferserver.util.BitVector;
@@ -111,6 +111,7 @@ public class LogicalNode implements DataListener
   /**
    *
    * @param partition
+   * @param mask
    */
   public void addPartition(int partition, int mask)
   {
@@ -120,7 +121,6 @@ public class LogicalNode implements DataListener
   // make it run a lot faster by tracking faster!
   /**
    *
-   * @param windowId
    */
   public synchronized void catchUp()
   {
@@ -135,7 +135,7 @@ public class LogicalNode implements DataListener
       SerializedData data = iterator.next();
       switch (iterator.getType()) {
         case RESET_WINDOW:
-          Data resetWindow = (Data)iterator.getData();
+          Message resetWindow = (Message)iterator.getData();
           baseSeconds = (long)resetWindow.getWindowId() << 32;
           intervalMillis = resetWindow.getResetWindow().getWidth();
           if (intervalMillis <= 0) {
@@ -174,7 +174,6 @@ public class LogicalNode implements DataListener
 
   /**
    *
-   * @param partition
    */
   @SuppressWarnings("fallthrough")
   public synchronized void dataAdded()
@@ -187,16 +186,15 @@ public class LogicalNode implements DataListener
         while (iterator.hasNext()) {
           SerializedData data = iterator.next();
           switch (iterator.getType()) {
-            case PARTITIONED_DATA:
-            case SIMPLE_DATA:
+            case PAYLOAD:
               policy.distribute(physicalNodes, data);
               break;
 
-            case NO_DATA:
+            case NO_MESSAGE:
               break;
 
             case RESET_WINDOW:
-              Data resetWindow = (Data)iterator.getData();
+              Message resetWindow = (Message)iterator.getData();
               baseSeconds = (long)resetWindow.getWindowId() << 32;
 
             default:
@@ -209,8 +207,8 @@ public class LogicalNode implements DataListener
         while (iterator.hasNext()) {
           SerializedData data = iterator.next();
           switch (iterator.getType()) {
-            case PARTITIONED_DATA:
-              int value = ((Data)iterator.getData()).getPartitionedData().getPartition();
+            case PAYLOAD:
+              int value = ((Message)iterator.getData()).getPayload().getPartition();
               for (BitVector bv: partitions) {
                 if (bv.matches(value)) {
                   policy.distribute(physicalNodes, data);
@@ -219,14 +217,12 @@ public class LogicalNode implements DataListener
               }
               break;
 
-            case NO_DATA:
-            case SIMPLE_DATA:
+            case NO_MESSAGE:
               break;
 
             case RESET_WINDOW:
-              Data resetWindow = (Data)iterator.getData();
+              Message resetWindow = (Message)iterator.getData();
               baseSeconds = (long)resetWindow.getWindowId() << 32;
-              break;
 
             default:
               GiveAll.getInstance().distribute(physicalNodes, data);

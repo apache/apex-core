@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 
 /**
  *
@@ -12,7 +12,7 @@ import com.malhartech.bufferserver.Buffer.Data.DataType;
  */
 public interface Tuple
 {
-  public DataType getType();
+  public MessageType getType();
 
   public long getWindowId();
 

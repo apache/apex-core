@@ -33,10 +33,10 @@ public class ServerInitializer extends ChannelInitializer<SocketChannel>
     /**
      *
      */
-    public ServerInitializer(int buffersize)
+    public ServerInitializer(int buffersize, int blockcount)
     {
-        serverHandler = new ServerHandler(buffersize);
-        protobufDecoder = new ProtobufDecoder(Buffer.Data.getDefaultInstance());
+        serverHandler = new ServerHandler(buffersize, blockcount);
+        protobufDecoder = new ProtobufDecoder(Buffer.Message.getDefaultInstance());
         encoder = new MessageToMessageEncoder<SerializedData, ByteBuf>()
         {
             @Override

@@ -5,8 +5,8 @@
 package com.malhartech.bufferserver;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.malhartech.bufferserver.Buffer.Data;
-import com.malhartech.bufferserver.Buffer.Data.DataType;
+import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +19,7 @@ public class ProtobufDataInspector implements DataIntrospector
 {
   private static final Logger logger = LoggerFactory.getLogger(ProtobufDataInspector.class);
   int previousOffset = -1;
-  Data previousMessage;
+  Message previousMessage;
 
   /**
    *
@@ -35,7 +35,7 @@ public class ProtobufDataInspector implements DataIntrospector
           previousMessage = null;
         }
         else {
-          previousMessage = Data.newBuilder().mergeFrom(data.bytes, data.dataOffset, size).build();
+          previousMessage = Message.newBuilder().mergeFrom(data.bytes, data.dataOffset, size).build();
         }
       }
       catch (InvalidProtocolBufferException ipbe) {
@@ -50,13 +50,13 @@ public class ProtobufDataInspector implements DataIntrospector
   /**
    *
    * @param data
-   * @return DataType
+   * @return MessageType
    */
   @Override
-  public final DataType getType(SerializedData data)
+  public final MessageType getType(SerializedData data)
   {
     readyMessage(data);
-    return previousMessage == null ? Data.DataType.NO_DATA : previousMessage.getType();
+    return previousMessage == null ? Message.MessageType.NO_MESSAGE : previousMessage.getType();
   }
 
   /**
@@ -68,16 +68,16 @@ public class ProtobufDataInspector implements DataIntrospector
   public final int getWindowId(SerializedData data)
   {
     readyMessage(data);
-    return previousMessage instanceof Data ? previousMessage.getWindowId() : 0;
+    return previousMessage instanceof Message ? previousMessage.getWindowId() : 0;
   }
 
   /**
    *
    * @param data
-   * @return Data
+   * @return Message
    */
   @Override
-  public final Data getData(SerializedData data)
+  public final Message getData(SerializedData data)
   {
     readyMessage(data);
     return previousMessage;
@@ -106,18 +106,18 @@ public class ProtobufDataInspector implements DataIntrospector
   private static final byte[] BasicData;
 
   static {
-    Data.Builder db = Data.newBuilder();
-    db.setType(DataType.NO_DATA);
+    Message.Builder db = Message.newBuilder();
+    db.setType(MessageType.NO_MESSAGE);
     db.setWindowId(0);
-    Data basic = db.build();
+    Message basic = db.build();
     BasicData = basic.toByteArray();
     BasicDataMinLength = basic.getSerializedSize();
     if (BasicData.length != BasicDataMinLength) {
       logger.debug("BasicDataMinLength({}) != BasicData.length({})", BasicDataMinLength, BasicData.length);
     }
 
-    db = Data.newBuilder();
-    db.setType(DataType.NO_DATA); // i may need to change this if protobuf is compacting to smaller than 1 byte
+    db = Message.newBuilder();
+    db.setType(MessageType.NO_MESSAGE); // i may need to change this if protobuf is compacting to smaller than 1 byte
     db.setWindowId(Integer.MAX_VALUE);
 
     BasicDataMaxLength = db.build().getSerializedSize();
