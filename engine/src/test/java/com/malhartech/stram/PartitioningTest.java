@@ -42,8 +42,8 @@ public class PartitioningTest {
       }
     };
 
-    @OutputPortFieldAnnotation(name="outputPort", optional=true)
-    public final transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>(this);
+    @OutputPortFieldAnnotation(name="output", optional=true)
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>(this);
 
   }
 
@@ -100,7 +100,7 @@ public class PartitioningTest {
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
-    dag.addStream("toMerged", collector.outputPort, merged.input);
+    dag.addStream("toMerged", collector.output, merged.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);

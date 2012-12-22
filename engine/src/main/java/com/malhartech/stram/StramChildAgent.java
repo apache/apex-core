@@ -25,7 +25,6 @@ import com.malhartech.api.OperatorCodec;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
-import com.malhartech.stram.PhysicalPlan.PTComponent;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -320,28 +319,28 @@ public class StramChildAgent {
         if (streamDecl.getSource() == null) {
           throw new IllegalStateException("source is null: " + in);
         }
-        PTComponent sourceNode = in.source;
+        PTOutput sourceOutput = in.source;
 
         InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamDecl.getId();
         inputInfo.portName = in.portName;
-        inputInfo.sourceNodeId = sourceNode.id;
-        inputInfo.sourcePortName = in.logicalStream.getSource().getPortName();
+        inputInfo.sourceNodeId = sourceOutput.source.id;
+        inputInfo.sourcePortName = sourceOutput.portName;
         if (in.partitions != null) {
           inputInfo.partitionKeys = in.partitions.partitions;
           inputInfo.partitionMask = in.partitions.mask;
         }
 
-        if (streamDecl.isInline() && sourceNode.container == node.container) {
+        if (streamDecl.isInline() && sourceOutput.source.container == node.container) {
           // inline input (both operators in same container and inline hint set)
-          OutputDeployInfo outputInfo = publishers.get(sourceNode.id + "/" + streamDecl.getId());
+          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.id + "/" + streamDecl.getId());
           if (outputInfo == null) {
             throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
           }
         } else {
           // buffer server input
           // FIXME: address to come from upstream output port, should be assigned first
-          InetSocketAddress addr = in.source.container.bufferServerAddress;
+          InetSocketAddress addr = sourceOutput.source.container.bufferServerAddress;
           if (addr == null) {
             // TODO: occurs during undeploy
             LOG.warn("upstream address not assigned: " + in.source);
