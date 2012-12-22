@@ -94,7 +94,7 @@ public class PhysicalPlan {
     final DAG.StreamDecl logicalStream;
     final PTComponent target;
     final PartitionKeys partitions;
-    final PTComponent source;
+    final PTOutput source;
     final String portName;
 
     /**
@@ -105,7 +105,7 @@ public class PhysicalPlan {
      * @param partitions
      * @param source
      */
-    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, PartitionKeys partitions, PTComponent source) {
+    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, PartitionKeys partitions, PTOutput source) {
       this.logicalStream = logicalStream;
       this.target = target;
       this.partitions = partitions;
@@ -630,7 +630,7 @@ public class PhysicalPlan {
           for (PTOutput upstreamOut : upNode.outputs) {
             if (upstreamOut.logicalStream == streamDecl) {
               // TODO: stream codec
-              PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, partitionKeys.get(inputEntry.getKey()), upNode);
+              PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, partitionKeys.get(inputEntry.getKey()), upstreamOut);
               pOperator.inputs.add(input);
             }
           }
@@ -639,13 +639,13 @@ public class PhysicalPlan {
     }
 
     for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : nodeDecl.logicalOperator.getOutputStreams().entrySet()) {
-      // TODO: stream codec
-      pOperator.outputs.add(new PTOutput(outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator));
+      PTOutput out = new PTOutput(outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
+      pOperator.outputs.add(out);
       // if a unifier is defined, add the new partition to its inputs
       PTOperator mergeNode = nodeDecl.mergeOperators.get(outputEntry.getKey());
       if (mergeNode != null) {
         // merge operator input
-        PTInput input = new PTInput("<merge#" + outputEntry.getKey().getPortName() + ">", outputEntry.getValue(), pOperator, null, pOperator);
+        PTInput input = new PTInput("<merge#" + outputEntry.getKey().getPortName() + ">", outputEntry.getValue(), pOperator, null, out);
         mergeNode.inputs.add(input);
       } else {
         if (!nodeDecl.partitions.isEmpty()) {
@@ -666,7 +666,7 @@ public class PhysicalPlan {
       if (merge != null) {
         List<PTInput> newInputs = new ArrayList<PTInput>(merge.inputs.size());
         for (PTInput sinkIn : merge.inputs) {
-          if (sinkIn.source != node) {
+          if (sinkIn.source.source != node) {
             newInputs.add(sinkIn);
           }
         }
@@ -679,7 +679,7 @@ public class PhysicalPlan {
             // unlink from downstream operators
             List<PTInput> newInputs = new ArrayList<PTInput>(sinkNode.inputs.size());
             for (PTInput sinkIn : sinkNode.inputs) {
-              if (sinkIn.source != node) {
+              if (sinkIn.source.source != node) {
                 newInputs.add(sinkIn);
               }
             }

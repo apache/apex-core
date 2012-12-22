@@ -228,6 +228,8 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("streamName " + node3In, n2n3.getId(), node3In.declaredStreamId);
     Assert.assertEquals("portName " + node3In, dag.getOperatorWrapper(node3).getInputPortMeta(node3.inport1).getPortName(), node3In.portName);
     Assert.assertNotNull("sourceNodeId " + node3DI, node3In.sourceNodeId);
+    Assert.assertEquals("sourcePortName " + node3DI, mergeNodeDI.outputs.get(0).portName, node3In.sourcePortName);
+
   }
 
   /**
@@ -309,7 +311,7 @@ public class StreamingContainerManagerTest {
   }
 
 
-  public static class TestStaticPartitioningSerDe extends DefaultStreamCodec {
+  public static class TestStaticPartitioningSerDe extends DefaultStreamCodec<Object> {
 
     public final static int[] partitions = new int[]{
       0, 1, 2
