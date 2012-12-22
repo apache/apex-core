@@ -12,7 +12,7 @@ import com.malhartech.bufferserver.Buffer.ResetWindow;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class DataFactory
+public class TupleFactory
 {
   public static Message getResetTuple(int baseSeconds, int intervalMillis)
   {
@@ -25,5 +25,9 @@ public class DataFactory
     db.setResetWindow(rwb);
 
     return db.build();
+  }
+
+  private TupleFactory()
+  {
   }
 }

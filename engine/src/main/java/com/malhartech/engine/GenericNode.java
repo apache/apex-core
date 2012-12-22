@@ -248,7 +248,9 @@ public class GenericNode extends Node<Operator>
                 for (Iterator<Entry<String, Reservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
                   Entry<String, Reservoir> e = it.next();
                   if (e.getValue() == activePort) {
-                    descriptor.inputPorts.get(e.getKey()).setConnected(false);
+                    if (!descriptor.inputPorts.isEmpty()) {
+                      descriptor.inputPorts.get(e.getKey()).setConnected(false);
+                    }
                     it.remove();
                     break;
                   }
