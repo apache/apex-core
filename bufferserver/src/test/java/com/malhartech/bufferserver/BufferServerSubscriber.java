@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,7 +68,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Mess
       if (firstPayload == null) {
         firstPayload = data;
       }
-      else {
+      else if (data.getType() == MessageType.BEGIN_WINDOW || data.getType() == MessageType.RESET_WINDOW) {
         lastPayload = data;
       }
     }

@@ -68,7 +68,24 @@ public class ProtobufDataInspector implements DataIntrospector
   public final int getWindowId(SerializedData data)
   {
     readyMessage(data);
-    return previousMessage instanceof Message ? previousMessage.getWindowId() : 0;
+
+    int windowId;
+    if (previousMessage == null) {
+      windowId = 0;
+    }
+    else {
+      switch (previousMessage.getType()) {
+        case BEGIN_WINDOW:
+          windowId = previousMessage.getBeginWindow().getWindowId();
+          break;
+
+        default:
+          windowId = 0;
+          break;
+      }
+    }
+
+    return windowId;
   }
 
   /**
@@ -98,28 +115,45 @@ public class ProtobufDataInspector implements DataIntrospector
       System.arraycopy(BasicData, 0, data.bytes, data.dataOffset, BasicDataMinLength);
     }
   }
+
   /**
    * Here is a hope that Protobuf implementation is not very different than what small common sense would dictate.
    */
   private static final int BasicDataMinLength;
-  private static final int BasicDataMaxLength;
   private static final byte[] BasicData;
 
   static {
     Message.Builder db = Message.newBuilder();
     db.setType(MessageType.NO_MESSAGE);
-    db.setWindowId(0);
     Message basic = db.build();
     BasicData = basic.toByteArray();
     BasicDataMinLength = basic.getSerializedSize();
     if (BasicData.length != BasicDataMinLength) {
       logger.debug("BasicDataMinLength({}) != BasicData.length({})", BasicDataMinLength, BasicData.length);
     }
-
-    db = Message.newBuilder();
-    db.setType(MessageType.NO_MESSAGE); // i may need to change this if protobuf is compacting to smaller than 1 byte
-    db.setWindowId(Integer.MAX_VALUE);
-
-    BasicDataMaxLength = db.build().getSerializedSize();
   }
+
+  public int getBaseSeconds(SerializedData data)
+  {
+    readyMessage(data);
+
+    int baseSeconds;
+    if (previousMessage == null) {
+      baseSeconds = 0;
+    }
+    else {
+      switch (previousMessage.getType()) {
+        case RESET_WINDOW:
+          baseSeconds = previousMessage.getResetWindow().getBaseSeconds();
+          break;
+
+        default:
+          baseSeconds = 0;
+          break;
+      }
+    }
+
+    return baseSeconds;
+  }
+
 }

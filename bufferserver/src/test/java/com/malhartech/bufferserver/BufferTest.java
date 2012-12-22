@@ -35,7 +35,6 @@ public class BufferTest extends TestCase
   {
     Message.Builder db = Message.newBuilder();
     db.setType(Message.MessageType.NO_MESSAGE);
-    db.setWindowId(0);
 
     Message d = db.build();
 

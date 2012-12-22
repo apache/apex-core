@@ -10,7 +10,6 @@ import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.*;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +36,11 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
   {
     Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
     prb.setIdentifier(identifier).setBaseSeconds((int)(startingWindowId >> 32));
-
+    prb.setWindowId((int)startingWindowId);
 
     Message.Builder db = Message.newBuilder();
     db.setType(Message.MessageType.PUBLISHER_REQUEST);
-    db.setPublishRequest(prb);
-    //windowStartTime is ignored for now - shouldn't we?
-    db.setWindowId((int)startingWindowId);
+    db.setPublisherRequest(prb);
 
     final ChannelFutureListener cfl = new ChannelFutureListener()
     {
@@ -57,7 +54,6 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
 
         Buffer.Message.Builder db = Message.newBuilder();
         db.setType(Message.MessageType.PAYLOAD);
-        db.setWindowId((int)new Date().getTime());
         db.setPayload(pdb);
 
         Thread.sleep(500);
@@ -95,7 +91,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     srb.setBaseSeconds((int)(startingWindowId >> 32));
 
     if (partitions != null) {
-      Buffer.Partitions.Builder bpb = Buffer.Partitions.newBuilder();
+      Buffer.SubscriberRequest.Partitions.Builder bpb = Buffer.SubscriberRequest.Partitions.newBuilder();
       bpb.setMask(mask);
       for (Integer c: partitions) {
         bpb.addPartition(c);
@@ -104,11 +100,11 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
       srb.setPartitions(bpb);
     }
     srb.setPolicy(Buffer.SubscriberRequest.PolicyType.ROUND_ROBIN);
+    srb.setWindowId((int)startingWindowId);
 
     Message.Builder builder = Message.newBuilder();
     builder.setType(Message.MessageType.SUBSCRIBER_REQUEST);
-    builder.setSubscribeRequest(srb);
-    builder.setWindowId((int)startingWindowId);
+    builder.setSubscriberRequest(srb);
 
     channel.write(builder.build()).addListener(new ChannelFutureListener()
     {
@@ -127,12 +123,12 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
   {
     Buffer.PurgeRequest.Builder prb = Buffer.PurgeRequest.newBuilder();
     prb.setBaseSeconds((int)(windowId >> 32));
+    prb.setWindowId((int)windowId);
     prb.setIdentifier(id);
 
     Message.Builder builder = Message.newBuilder();
     builder.setType(MessageType.PURGE_REQUEST);
     builder.setPurgeRequest(prb);
-    builder.setWindowId((int)windowId);
 
     channel.write(builder.build());
   }
@@ -145,7 +141,6 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     Message.Builder builder = Message.newBuilder();
     builder.setType(MessageType.RESET_REQUEST);
     builder.setResetRequest(rrb);
-    builder.setWindowId((int)windowId);
 
     channel.write(builder.build());
   }

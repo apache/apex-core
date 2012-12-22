@@ -8,47 +8,66 @@ option optimize_for = SPEED;
 
 message Payload {
   required bytes data = 1;
-  required uint32 partition = 2 [default = 0];
+  optional uint32 partition = 2 [default = 0];
 }
 
 message ResetWindow {
-  required uint32 width = 1;
+  required uint32 base_seconds = 1;
+  required uint32 width = 2;
 }
 
-message Partitions {
-   required uint32 mask = 1;
-   repeated uint32 partition = 2;
+message BeginWindow {
+  required uint32 window_id = 1;
 }
 
-message SubscriberRequest {
-  enum PolicyType {
-    CUSTOM = 0;
-    ROUND_ROBIN = 1;
-    RANDOM_ONE = 2;
-    LEAST_BUSY = 3;
-    GIVE_ALL = 4;
-  }
+message EndWindow {
+  required uint32 window_id = 1;
+}
 
-  required string identifier = 1;
-  required string type = 2;
-  optional uint32 base_seconds = 3 [default = 0];
-  optional string upstream_identifier = 4;
-  optional Partitions partitions = 5;
-  optional PolicyType policy = 6 [default = GIVE_ALL ];
+message EndStream {
+  required uint32 window_id = 1;
 }
 
 message PublisherRequest {
   required string identifier = 1;
   optional uint32 base_seconds = 2 [default = 0];
+  optional uint32 window_id = 3 [default = 0];
+}
+
+message SubscriberRequest {
+  required string identifier = 1;
+  required string type = 2;
+  optional uint32 base_seconds = 3 [default = 0];
+  optional uint32 window_id = 4 [default = 0];
+  optional string upstream_identifier = 5;
+
+  message Partitions {
+     required uint32 mask = 1;
+     repeated uint32 partition = 2;
+  }
+  optional Partitions partitions = 6;
+
+  enum PolicyType {
+      CUSTOM = 0;
+      ROUND_ROBIN = 1;
+      RANDOM_ONE = 2;
+      LEAST_BUSY = 3;
+      GIVE_ALL = 4;
+  }
+  optional PolicyType policy = 7 [default = GIVE_ALL ];
 }
 
 message PurgeRequest {
   required string identifier = 1;
   optional uint32 base_seconds = 2 [default = 0];
+  optional uint32 window_id = 3 [default = 0];
 }
 
 message ResetRequest {
   required string identifier = 1;
+}
+
+message CheckPoint {
 }
 
 message CodecState {
@@ -56,11 +75,23 @@ message CodecState {
 }
 
 message Message {
+  optional Payload payload = 1;
+  optional ResetWindow reset_window = 2;
+  optional BeginWindow begin_window = 3;
+  optional EndWindow end_window = 4;
+  optional EndStream end_stream = 5;
+  optional PublisherRequest publisher_request = 6;
+  optional SubscriberRequest subscriber_request = 7;
+  optional PurgeRequest purge_request = 8;
+  optional ResetRequest reset_request = 9;
+  optional CheckPoint check_point = 10;
+  optional CodecState codec_state = 11;
+
   enum MessageType {
     NO_MESSAGE = 0;
-    RESET_WINDOW = 1;
-    BEGIN_WINDOW = 2;
-    PAYLOAD = 3;
+    PAYLOAD = 1;
+    RESET_WINDOW = 2;
+    BEGIN_WINDOW = 3;
     END_WINDOW = 4;
     END_STREAM = 5;
     PUBLISHER_REQUEST = 6;
@@ -70,15 +101,5 @@ message Message {
     CHECKPOINT = 10;
     CODEC_STATE = 11;
   }
-
-  required MessageType type = 1;
-  required uint32 window_id = 2;
-
-  optional ResetWindow resetWindow = 3;
-  optional Payload payload = 4;
-  optional PublisherRequest publishRequest = 5;
-  optional SubscriberRequest subscribeRequest = 6;
-  optional PurgeRequest purgeRequest = 7;
-  optional ResetRequest resetRequest = 8;
-  optional CodecState codecState = 9;
+  required MessageType type = 12;
 }

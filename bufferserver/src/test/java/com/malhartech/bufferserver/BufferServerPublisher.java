@@ -31,23 +31,30 @@ public class BufferServerPublisher extends AbstractSocketPublisher
     if (payload instanceof Tuple) {
       final Tuple t = (Tuple)payload;
       db.setType(t.getType());
-      db.setWindowId((int)t.getWindowId());
 
       switch (t.getType()) {
         case BEGIN_WINDOW:
-          this.windowId = db.getWindowId();
+          Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
+          bw.setWindowId(windowId = (int)t.getWindowId());
+          db.setBeginWindow(bw);
           break;
 
         case END_WINDOW:
+          Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
+          ew.setWindowId(windowId = (int)t.getWindowId());
+          db.setEndWindow(ew);
           break;
 
         case END_STREAM:
+          Buffer.EndStream.Builder es = Buffer.EndStream.newBuilder();
+          es.setWindowId(windowId = (int)t.getWindowId());
+          db.setEndStream(es);
           break;
 
         case RESET_WINDOW:
           Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
           rw.setWidth(t.getIntervalMillis());
-          db.setWindowId(t.getBaseSeconds());
+          rw.setBaseSeconds(t.getBaseSeconds());
           db.setResetWindow(rw);
           break;
 
@@ -56,7 +63,6 @@ public class BufferServerPublisher extends AbstractSocketPublisher
       }
     }
     else {
-      db.setWindowId(this.windowId);
       Buffer.Payload.Builder sdb = Buffer.Payload.newBuilder();
       sdb.setData(ByteString.copyFrom((byte[])payload));
       sdb.setPartition(0);

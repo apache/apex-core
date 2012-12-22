@@ -75,24 +75,27 @@ public class BufferServerInputStream extends SocketInputStream<Message>
 
       case END_WINDOW:
         t = new EndWindowTuple();
-        t.setWindowId(baseSeconds | data.getWindowId());
+        t.setWindowId(baseSeconds | data.getEndWindow().getWindowId());
         break;
 
       case END_STREAM:
         t = new EndStreamTuple();
-        t.setWindowId(baseSeconds | data.getWindowId());
+        t.setWindowId(baseSeconds | data.getEndStream().getWindowId());
         break;
 
       case RESET_WINDOW:
         t = new ResetWindowTuple();
-        baseSeconds = (long)data.getWindowId() << 32;
+        baseSeconds = (long)data.getResetWindow().getBaseSeconds() << 32;
         t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
         break;
 
-      default:
+      case BEGIN_WINDOW:
         t = new Tuple(data.getType());
-        t.setWindowId(baseSeconds | data.getWindowId());
+        t.setWindowId(baseSeconds | data.getBeginWindow().getWindowId());
         break;
+
+      default:
+        throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
     }
 
     for (int i = sinks.length; i-- > 0;) {

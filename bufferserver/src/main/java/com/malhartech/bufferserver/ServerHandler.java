@@ -63,15 +63,15 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       switch (data.getType()) {
         case PUBLISHER_REQUEST:
           logger.info("Received publisher request: {}", data);
-          dl = handlePublisherRequest(data.getPublishRequest(), ctx);
-          dl.rewind(data.getPublishRequest().getBaseSeconds(), data.getWindowId(), new ProtobufDataInspector());
+          dl = handlePublisherRequest(data.getPublisherRequest(), ctx);
+          dl.rewind(data.getPublisherRequest().getBaseSeconds(), data.getPublisherRequest().getWindowId(), new ProtobufDataInspector());
           ctx.attr(DATA_LIST).set(dl);
           break;
 
         case SUBSCRIBER_REQUEST:
           logger.info("Received subscriber request: {}", data);
-          boolean contains = subscriberGroups.containsKey(data.getSubscribeRequest().getType());
-          LogicalNode ln = handleSubscriberRequest(data.getSubscribeRequest(), ctx, data.getWindowId());
+          boolean contains = subscriberGroups.containsKey(data.getSubscriberRequest().getType());
+          LogicalNode ln = handleSubscriberRequest(data.getSubscriberRequest(), ctx);
           if (!contains) {
             ln.catchUp();
           }
@@ -80,12 +80,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
 
         case PURGE_REQUEST:
           logger.info("Received purge request: {}", data);
-          handlePurgeRequest(data.getPurgeRequest(), ctx, data.getWindowId());
+          handlePurgeRequest(data.getPurgeRequest(), ctx);
           break;
 
         case RESET_REQUEST:
           logger.info("Received purge all request: {}", data);
-          handleResetRequest(data.getResetRequest(), ctx, data.getWindowId());
+          handleResetRequest(data.getResetRequest(), ctx);
           break;
 
         default:
@@ -150,10 +150,9 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    *
    * @param request
    * @param ctx
-   * @param windowId
    * @return
    */
-  public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx, int windowId)
+  public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx)
   {
     String identifier = request.getIdentifier();
     String type = request.getType();
@@ -191,9 +190,9 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
 
       ln = new LogicalNode(upstream_identifier,
                            type,
-                           dl.newIterator(identifier, new ProtobufDataInspector(), windowId),
+                           dl.newIterator(identifier, new ProtobufDataInspector(), request.getWindowId()),
                            getPolicy(request.getPolicy(), null),
-                           (long)request.getBaseSeconds() << 32 | windowId);
+                           (long)request.getBaseSeconds() << 32 | request.getWindowId());
 
       int mask = request.getPartitions().getMask();
       if (request.getPartitions().getPartitionCount() > 0) {
@@ -330,7 +329,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     }
   }
 
-  private synchronized void handlePurgeRequest(PurgeRequest request, ChannelHandlerContext ctx, int windowId)
+  private synchronized void handlePurgeRequest(PurgeRequest request, ChannelHandlerContext ctx)
   {
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
@@ -341,13 +340,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       sdb.setData(ByteString.copyFromUtf8("Invalid identifier '" + request.getIdentifier() + "'"));
     }
     else {
-      dl.purge(request.getBaseSeconds(), windowId, new ProtobufDataInspector());
+      dl.purge(request.getBaseSeconds(), request.getWindowId(), new ProtobufDataInspector());
       sdb.setData(ByteString.copyFromUtf8("Purge request sent for processing"));
     }
 
     Message.Builder db = Message.newBuilder();
     db.setType(MessageType.PAYLOAD);
-    db.setWindowId(windowId);
     db.setPayload(sdb);
 
     ctx.write(SerializedData.getInstanceFrom(db.build()))
@@ -359,7 +357,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     return Unpooled.messageBuffer();
   }
 
-  private synchronized void handleResetRequest(ResetRequest request, ChannelHandlerContext ctx, int windowId)
+  private synchronized void handleResetRequest(ResetRequest request, ChannelHandlerContext ctx)
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());
@@ -381,7 +379,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
 
     Message.Builder db = Message.newBuilder();
     db.setType(MessageType.PAYLOAD);
-    db.setWindowId(windowId);
     db.setPayload(sdb);
 
     ctx.write(SerializedData.getInstanceFrom(db.build()))

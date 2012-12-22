@@ -31,6 +31,8 @@ public interface DataIntrospector
    */
   public int getWindowId(SerializedData data);
 
+  public int getBaseSeconds(SerializedData data);
+  
   /**
    *
    * @param data

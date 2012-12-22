@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
+import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.Codec;
 import java.net.InetSocketAddress;
@@ -131,9 +132,15 @@ public class NewSubscriberTest
       }
     }.start();
 
-    while (bss.lastPayload == null || bss.lastPayload.getWindowId() < 10) {
+    do {
+      Message message = bss.lastPayload;
+      if (message != null) {
+        if (message.getType() == MessageType.BEGIN_WINDOW && message.getBeginWindow().getWindowId() > 9) {
+          break;
+        }
+      }
       Thread.sleep(10);
-    }
+    } while (true);
 
     publisherRun.set(false);
     subscriberRun.set(false);
@@ -211,9 +218,13 @@ public class NewSubscriberTest
       }
     }.start();
 
-    while (bss.lastPayload == null || bss.lastPayload.getWindowId() < 15) {
+    do {
+      Message message = bss.lastPayload;
+      if (message != null && message.getBeginWindow().getWindowId() > 14) {
+        break;
+      }
       Thread.sleep(10);
-    }
+    } while (true);
 
     publisherRun.set(false);
     subscriberRun.set(false);
@@ -221,8 +232,7 @@ public class NewSubscriberTest
     bsp.deactivate();
     bss.deactivate();
 
-
-    Assert.assertTrue((bss.lastPayload.getWindowId() - 8) * 3 <  bss.tupleCount.get());
+    Assert.assertTrue((bss.lastPayload.getBeginWindow().getWindowId() - 8) * 3 <  bss.tupleCount.get());
   }
 
   class ResetTuple implements Tuple

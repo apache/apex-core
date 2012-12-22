@@ -136,7 +136,7 @@ public class LogicalNode implements DataListener
       switch (iterator.getType()) {
         case RESET_WINDOW:
           Message resetWindow = (Message)iterator.getData();
-          baseSeconds = (long)resetWindow.getWindowId() << 32;
+          baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
           intervalMillis = resetWindow.getResetWindow().getWidth();
           if (intervalMillis <= 0) {
             logger.warn("Interval value set to non positive value = {}", intervalMillis);
@@ -195,7 +195,7 @@ public class LogicalNode implements DataListener
 
             case RESET_WINDOW:
               Message resetWindow = (Message)iterator.getData();
-              baseSeconds = (long)resetWindow.getWindowId() << 32;
+              baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
 
             default:
               GiveAll.getInstance().distribute(physicalNodes, data);
@@ -222,7 +222,7 @@ public class LogicalNode implements DataListener
 
             case RESET_WINDOW:
               Message resetWindow = (Message)iterator.getData();
-              baseSeconds = (long)resetWindow.getWindowId() << 32;
+              baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
 
             default:
               GiveAll.getInstance().distribute(physicalNodes, data);

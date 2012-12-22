@@ -16,12 +16,12 @@ public class TupleFactory
 {
   public static Message getResetTuple(int baseSeconds, int intervalMillis)
   {
+    ResetWindow.Builder rwb = ResetWindow.newBuilder();
+    rwb.setBaseSeconds(baseSeconds);
+    rwb.setWidth(intervalMillis);
+
     Message.Builder db = Message.newBuilder();
     db.setType(MessageType.RESET_WINDOW);
-    db.setWindowId(baseSeconds);
-
-    ResetWindow.Builder rwb = ResetWindow.newBuilder();
-    rwb.setWidth(intervalMillis);
     db.setResetWindow(rwb);
 
     return db.build();

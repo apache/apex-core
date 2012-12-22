@@ -60,7 +60,7 @@ public class DataList
             SerializedData sd = dli.next();
             switch (di.getType(sd)) {
               case RESET_WINDOW:
-                bs = (long)di.getWindowId(sd) << 32;
+                bs = (long)di.getBaseSeconds(sd) << 32;
                 if (bs > longWindowId) {
                   temp.writingOffset = sd.offset;
                   Arrays.fill(temp.data, temp.writingOffset, temp.data.length, Byte.MIN_VALUE);
@@ -229,7 +229,7 @@ public class DataList
         SerializedData sd = dli.next();
         switch (di.getType(sd)) {
           case RESET_WINDOW:
-            bs = (long)di.getWindowId(sd) << 32;
+            bs = (long)di.getBaseSeconds(sd) << 32;
             lastReset = sd;
             break;
 
@@ -395,7 +395,6 @@ public class DataList
           if (writingOffset < data.length) {
             Message.Builder db = Message.newBuilder();
             db.setType(MessageType.NO_MESSAGE);
-            db.setWindowId(0);
 
             Message noData = db.build();
             int writeSize = data.length - writingOffset;
@@ -421,9 +420,9 @@ public class DataList
         if (d.getType() != MessageType.RESET_WINDOW) {
           Message.Builder db = Message.newBuilder();
           db.setType(MessageType.RESET_WINDOW);
-          db.setWindowId(baseSeconds);
 
           ResetWindow.Builder rwb = ResetWindow.newBuilder();
+          rwb.setBaseSeconds(baseSeconds);
           rwb.setWidth(intervalMillis);
           db.setResetWindow(rwb);
           next.add(db.build());
@@ -438,7 +437,7 @@ public class DataList
 
         switch (d.getType()) {
           case BEGIN_WINDOW:
-            long long_window_id = ((long)baseSeconds << 32 | d.getWindowId());
+            long long_window_id = ((long)baseSeconds << 32 | d.getBeginWindow().getWindowId());
 //            logger.debug("baseSeconds = {}, windowId = {}, long_window_id = {}",
 //                         new Object[] {Integer.toHexString(baseSeconds), Integer.toHexString(d.getWindowId()), Codec.getStringWindowId(long_window_id)});
             if (starting_window == 0) {
@@ -448,7 +447,7 @@ public class DataList
             break;
 
           case RESET_WINDOW:
-            baseSeconds = d.getWindowId();
+            baseSeconds = d.getResetWindow().getBaseSeconds();
             intervalMillis = d.getResetWindow().getWidth();
             if (starting_window == 0) {
               starting_window = (long)baseSeconds << 32;

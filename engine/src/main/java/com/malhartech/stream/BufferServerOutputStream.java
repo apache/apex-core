@@ -104,7 +104,6 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
     if (payload instanceof Tuple) {
       final Tuple t = (Tuple)payload;
       db.setType(t.getType());
-      db.setWindowId((int)t.getWindowId());
 
       switch (t.getType()) {
         case CHECKPOINT:
@@ -112,19 +111,27 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
           break;
 
         case BEGIN_WINDOW:
-          this.windowId = db.getWindowId();
+          Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
+          bw.setWindowId(windowId = (int)t.getWindowId());
+          db.setBeginWindow(bw);
           break;
 
         case END_WINDOW:
+          Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
+          ew.setWindowId(windowId = (int)t.getWindowId());
+          db.setEndWindow(ew);
           break;
 
         case END_STREAM:
+          Buffer.EndStream.Builder es = Buffer.EndStream.newBuilder();
+          es.setWindowId(windowId = (int)t.getWindowId());
+          db.setEndStream(es);
           break;
 
         case RESET_WINDOW:
           Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
           rw.setWidth(((ResetWindowTuple)t).getIntervalMillis());
-          db.setWindowId(((ResetWindowTuple)t).getBaseSeconds());
+          rw.setBaseSeconds(((ResetWindowTuple)t).getBaseSeconds());
           db.setResetWindow(rw);
           break;
 
@@ -133,14 +140,13 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
       }
     }
     else {
-      db.setWindowId(this.windowId);
       DataStatePair dsp = serde.toByteArray(payload);
 
       /*
        * if there is any state write that for the subscriber before we write the data.
        */
       if (dsp.state != null) {
-        write(Buffer.Message.newBuilder().setType(MessageType.CODEC_STATE).setWindowId(windowId)
+        write(Buffer.Message.newBuilder().setType(MessageType.CODEC_STATE)
                 .setCodecState(Buffer.CodecState.newBuilder().setData(ByteString.copyFrom(dsp.state))));
       }
 
