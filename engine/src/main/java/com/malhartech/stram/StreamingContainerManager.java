@@ -36,6 +36,7 @@ import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.PhysicalPlan.PlanContext;
+import com.malhartech.stram.PhysicalPlan.StatsHandler;
 import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.StramChildAgent.DeployRequest;
 import com.malhartech.stram.StramChildAgent.OperatorStatus;
@@ -322,6 +323,12 @@ public class StreamingContainerManager implements PlanContext
         if (lastHeartbeatIntervalMillis > 0) {
           status.tuplesProcessedPSMA10.add((tuplesProcessed*1000)/lastHeartbeatIntervalMillis);
           status.tuplesEmittedPSMA10.add((tuplesEmitted*1000)/lastHeartbeatIntervalMillis);
+          if (status.operator.statsMonitors != null) {
+            long tps = status.tuplesProcessedPSMA10.getAvg() + status.tuplesEmittedPSMA10.getAvg();
+            for (StatsHandler sm : status.operator.statsMonitors) {
+              sm.onThroughputUpdate(tps);
+            }
+          }
         }
 
         // checkpoint tracking
@@ -607,6 +614,11 @@ public class StreamingContainerManager implements PlanContext
       downstreamContainer.addRequest(r);
     }
 
+  }
+
+  @Override
+  public void dispatch(Runnable r) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

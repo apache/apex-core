@@ -4,7 +4,9 @@
  */
 package com.malhartech.stram;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,9 +30,11 @@ import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
+import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
+import com.malhartech.stram.PhysicalPlan.PlanContext;
 
 public class PhysicalPlanTest {
 
@@ -140,6 +144,71 @@ public class PhysicalPlanTest {
 
   }
 
+  private class TestPlanContext implements PlanContext {
+    List<Runnable> events = new ArrayList<Runnable>();
+
+    @Override
+    public PartitionableOperator readCommitted(PTOperator operatorInstance) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Set<PTOperator> getDependents(Collection<PTOperator> p) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void dispatch(Runnable r) {
+      events.add(r);
+    }
+
+  }
+
+
+  @Test
+  public void testRepartitioning() {
+    DAG dag = new DAG();
+
+    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    PartitioningTestOperator node2 = dag.addOperator("node2", PartitioningTestOperator.class);
+    GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
+
+    dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inportWithCodec);
+    dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
+
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+
+    OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
+    node2Decl.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    node2Decl.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(0);
+    node2Decl.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+
+    Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+
+    List<PTOperator> n2Instances = plan.getOperators(node2Decl);
+    Assert.assertEquals("partition instances " + n2Instances, PartitioningTestOperator.PARTITION_KEYS.length, n2Instances.size());
+    for (int i=0; i</*PartitioningTestOperator.PARTITION_KEYS.length*/1; i++) {
+      PTOperator po = n2Instances.get(i);
+      Assert.assertEquals("stats handlers " + po, 1, po.statsMonitors.size());
+      PhysicalPlan.StatsHandler sm = po.statsMonitors.get(0);
+      Assert.assertTrue("stats handlers " + po.statsMonitors, sm instanceof PhysicalPlan.PartitionLoadWatch);
+      sm.onThroughputUpdate(0);
+      Assert.assertEquals("load event triggered", 0, ctx.events.size());
+      sm.onThroughputUpdate(3);
+      Assert.assertEquals("load within range", 0, ctx.events.size());
+      sm.onThroughputUpdate(10);
+      Assert.assertEquals("load exceeds max", 1, ctx.events.size());
+    }
+
+  }
 
   @Test
   @SuppressWarnings("unchecked")

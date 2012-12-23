@@ -181,6 +181,55 @@ public class PhysicalPlan {
 
   }
 
+  public static interface StatsHandler {
+    public void onThroughputUpdate(long tps);
+  }
+
+  /**
+   * Handler for partition load check.
+   * Used when throughput monitoring is configured.
+   */
+  public class PartitionLoadWatch implements StatsHandler {
+    private final int EVAL_INTERVAL_MIN = 30*1000;
+    private final long tpsMin;
+    private final long tpsMax;
+    private long lastEvalMillis;
+
+    private final PMapping m;
+
+    private PartitionLoadWatch(PMapping mapping, long min, long max) {
+      this.m = mapping;
+      this.tpsMin = min;
+      this.tpsMax = max;
+    }
+
+    @Override
+    public void onThroughputUpdate(long tps) {
+      if (tps < tpsMin || tps > tpsMax) {
+        if (lastEvalMillis < (System.currentTimeMillis() - EVAL_INTERVAL_MIN)) {
+          synchronized (m) {
+            // concurrent heartbeat processing
+            if (m.shouldRedoPartitions) {
+              return;
+            }
+            LOG.debug("Scheduling partitioning update for {}", m);
+            // hand over to monitor thread
+            Runnable r = new Runnable() {
+              @Override
+              public void run() {
+                redoPartitions(m.logicalOperator);
+                m.shouldRedoPartitions = false;
+              }
+            };
+            PhysicalPlan.this.ctx.dispatch(r);
+            lastEvalMillis = System.currentTimeMillis();
+            m.shouldRedoPartitions = true;
+          }
+        }
+      }
+    }
+  }
+
   /**
    *
    * Representation of a node in the physical layout<p>
@@ -208,6 +257,7 @@ public class PhysicalPlan {
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
     long recoveryCheckpoint = 0;
     int failureCount = 0;
+    List<? extends StatsHandler> statsMonitors;
 
     /**
      *
@@ -318,6 +368,8 @@ public class PhysicalPlan {
 
     public Set<PTOperator> getDependents(Collection<PTOperator> p);
 
+    public void dispatch(Runnable r);
+
   }
 
   private static class PMapping {
@@ -328,9 +380,12 @@ public class PhysicalPlan {
     final private OperatorWrapper logicalOperator;
     final private List<PTOperator> partitions = new LinkedList<PTOperator>();
     final private Map<DAG.OutputPortMeta, PTOperator> mergeOperators = new HashMap<DAG.OutputPortMeta, PTOperator>();
+    private boolean shouldRedoPartitions = false;
+    private List<? extends StatsHandler> statsMonitors;
 
     void addPartition(PTOperator p) {
       partitions.add(p);
+      p.statsMonitors = this.statsMonitors;
     }
 
     private Collection<PTOperator> getAllNodes() {
@@ -486,6 +541,12 @@ public class PhysicalPlan {
       m.mergeOperators.put(outputEntry.getKey(), merge);
     }
 
+    int minTps = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_TPS_MIN, 0);
+    int maxTps = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_TPS_MAX, 0);
+    if (maxTps > minTps) {
+      // monitor load
+      m.statsMonitors = Collections.singletonList(new PartitionLoadWatch(m, minTps, maxTps));
+    }
     // create operator instance per partition
     for (Partition p : partitions) {
       addPTOperator(m, p);
@@ -522,6 +583,7 @@ public class PhysicalPlan {
     }
 
     // TODO: figure out how to deal with load indicator
+    // TODO: default partitioner
     List<Partition> newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions);
 
     List<Partition> addedPartitions = new ArrayList<Partition>();
