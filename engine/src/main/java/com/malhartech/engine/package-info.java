@@ -5,10 +5,7 @@
 */
 
 /**
- * <b>com.malhartech.engine</b> package deals with data operators, tuple processing, serialization, streams, window boundaries etc.<p>
- * <br>
- * All code needed that is executed by Stram to run the dag in Hadoop. Once you have designed your DAG, and designed what each node would do, you would need to write your code by deriving your classes from
- * dag package.<br>
+ * Execution layer for data operators, tuple processing, serialization, streams, window boundaries etc.<p>
  * <br>
  * <br>
  * The streaming platform would take care of the following for you<br>(TBD, add "How it will")<br>

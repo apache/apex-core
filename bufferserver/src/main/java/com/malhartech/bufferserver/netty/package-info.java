@@ -4,12 +4,8 @@
  */
 
 /**
- * 
- * <b>com.malhartech.bufferserver.netty</b>...<p>
- * <br>
- * com.malhartech.bufferserver.netty includes<br>
- * <b>{@link com.malhartech.bufferserver.netty.ClientInitializer}</b>:
- * <b>{@link com.malhartech.bufferserver.netty.ServerInitializer}</b>:
+ *
+ * Internal<p>
  */
 package com.malhartech.bufferserver.netty;
 
