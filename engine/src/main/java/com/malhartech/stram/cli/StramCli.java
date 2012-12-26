@@ -432,7 +432,7 @@ public class StramCli
       if (appConfig == null) {
         List<AppConfig> cfgList = submitApp.getBundledTopologies();
         if (cfgList.isEmpty()) {
-          throw new CliException("No configurations bundled in jar, please specify one");
+          throw new CliException("No applications bundled in jar, please specify one");
         }
         else if (cfgList.size() == 1) {
           appConfig = cfgList.get(0);
@@ -449,7 +449,7 @@ public class StramCli
           for (Completor c : completors) {
             reader.removeCompletor(c);
           }
-          String optionLine = reader.readLine("Pick configuration? ");
+          String optionLine = reader.readLine("Pick application? ");
           reader.setUseHistory(useHistory);
           for (Completor c : completors) {
             reader.addCompletor(c);

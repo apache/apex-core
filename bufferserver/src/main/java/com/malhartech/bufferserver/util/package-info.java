@@ -7,7 +7,7 @@
  */
 
 /**
- * Utility classes for {@link com.malhartech.bufferserver}<p>
+ * Utility classes.<p>
  * <br>
  *
  */

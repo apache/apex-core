@@ -263,7 +263,7 @@ public class StramAppLauncher {
           });
         }
       } catch (Throwable e) { // java.lang.NoClassDefFoundError
-        LOG.error("Unable for load class: " + className);
+        LOG.error("Unable to load class: " + className + " " + e);
       }
     }
   }
