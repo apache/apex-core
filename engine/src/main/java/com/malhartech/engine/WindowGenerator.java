@@ -25,9 +25,6 @@ import org.slf4j.LoggerFactory;
 public class WindowGenerator implements Stream<Object>, Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);
-  public static final String FIRST_WINDOW_MILLIS = "FirstWindowMillis";
-  public static final String WINDOW_WIDTH_MILLIS = "WindowWidthMillis";
-  public static final String RESET_WINDOW_MILLIS = "ResetWindowMillis";
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
@@ -146,19 +143,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
   @Override
   public void setup(StreamContext context)
   {
-    logger.info("WindowGenerator::setup does not do anything useful, please use setFirstWindow/setResetWindow/setWindowWidth if were using this.");
-    if (context != null) {
-//      if (context.getRaw(FIRST_WINDOW_MILLIS) != null) {
-//        setFirstWindow(context.getLong(FIRST_WINDOW_MILLIS, ses.getCurrentTimeMillis()));
-//      }
-//      if (context.getRaw(WINDOW_WIDTH_MILLIS) != null) {
-//        setWindowWidth(context.getInt(WINDOW_WIDTH_MILLIS, 500));
-//      }
-//      if (context.getRaw(RESET_WINDOW_MILLIS) != null) {
-//        setResetWindow(context.getLong(RESET_WINDOW_MILLIS, firstWindowMillis));
-//      }
-    }
-//    logger.debug("firstWindowMillis {} resetwindowmillis = {}", firstWindowMillis, resetWindowMillis);
+    logger.info("WindowGenerator::setup does not do anything useful, please use setFirstWindow/setResetWindow/setWindowWidth do set properties.");
   }
 
   @Override
