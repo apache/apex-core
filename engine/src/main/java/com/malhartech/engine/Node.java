@@ -194,7 +194,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     try {
       CircularBuffer<OperatorContext.NodeRequest> requests = context.getRequests();
       int size;
-      if ((size = requests.size()) > 0 && !Thread.currentThread().isInterrupted()) {
+      if ((size = requests.size()) > 0) {
         while (size-- > 0) {
           //logger.debug("endwindow: " + t.getWindowId() + " lastprocessed: " + context.getLastProcessedWindowId());
           requests.remove().execute(operator, context.getId(), windowId);
