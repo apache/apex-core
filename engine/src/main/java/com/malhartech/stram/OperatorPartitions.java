@@ -230,7 +230,7 @@ public class OperatorPartitions {
             siblingPartition.getPartitionKeys().entrySet().iterator().next().setValue(newPks);
             // add as new partition
             // TODO: we should repeat the same check with for the combined partition,
-            // which would catch the other branch was combined, too
+            // which would catch the case where other branch was combined, too
             newPartitions.add(siblingPartition);
           }
         } else if (load > 0) {
