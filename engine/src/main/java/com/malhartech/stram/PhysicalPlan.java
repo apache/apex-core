@@ -182,7 +182,7 @@ public class PhysicalPlan {
   }
 
   public static interface StatsHandler {
-    public void onThroughputUpdate(long tps);
+    public void onThroughputUpdate(PTOperator operatorInstance, long tps);
   }
 
   /**
@@ -204,7 +204,7 @@ public class PhysicalPlan {
     }
 
     @Override
-    public void onThroughputUpdate(long tps) {
+    public void onThroughputUpdate(PTOperator operatorInstance, long tps) {
       if (tps < tpsMin || tps > tpsMax) {
         if (lastEvalMillis < (System.currentTimeMillis() - EVAL_INTERVAL_MIN)) {
           synchronized (m) {
@@ -226,6 +226,9 @@ public class PhysicalPlan {
             m.shouldRedoPartitions = true;
           }
         }
+        operatorInstance.loadIndicator = (tps < tpsMin) ? -1 : 1;
+      } else {
+        operatorInstance.loadIndicator = 0;
       }
     }
   }
@@ -257,6 +260,7 @@ public class PhysicalPlan {
     LinkedList<Long> checkpointWindows = new LinkedList<Long>();
     long recoveryCheckpoint = 0;
     int failureCount = 0;
+    int loadIndicator = 0;
     List<? extends StatsHandler> statsMonitors;
 
     /**
@@ -366,6 +370,12 @@ public class PhysicalPlan {
      */
     public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy);
 
+    /**
+     * Get all operator instances that depend on the current operator.
+     * Added here to reuse recovery checkpoint traversal logic although knowledge of the plan is sufficient.
+     * @param p
+     * @return
+     */
     public Set<PTOperator> getDependents(Collection<PTOperator> p);
 
     public void dispatch(Runnable r);
@@ -561,12 +571,13 @@ public class PhysicalPlan {
     List<PartitionImpl> currentPartitions = new ArrayList<PartitionImpl>(operators.size());
     Map<Operator, PTOperator> currentPartitionMap = new HashMap<Operator, PTOperator>(operators.size());
 
+    final List<Partition> newPartitions;
     for (PTOperator pOperator : operators) {
       Partition p = pOperator.partition;
       if (p == null) {
         throw new AssertionError("Null partition: " + pOperator);
       }
-      // load operator state from last committed checkpoint
+      // load recoverable operator state
       Operator partitionedOperator = p.getOperator();
       if (pOperator.recoveryCheckpoint != 0) {
         try {
@@ -576,15 +587,17 @@ public class PhysicalPlan {
           return; // TODO
         }
       }
-      // assume it does not matter which instance's port objects are referenced in mapping
-      PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys());
+      // assume it does not matter which operator instance's port objects are referenced in mapping
+      PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator);
       currentPartitions.add(partition);
       currentPartitionMap.put(partitionedOperator, pOperator);
     }
 
-    // TODO: figure out how to deal with load indicator
-    // TODO: default partitioner
-    List<Partition> newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions);
+    if (n.getOperator() instanceof PartitionableOperator) {
+      newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions);
+    } else {
+      newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
+    }
 
     List<Partition> addedPartitions = new ArrayList<Partition>();
     Set<PTOperator> undeployOperators = this.ctx.getDependents(currentPartitionMap.values());

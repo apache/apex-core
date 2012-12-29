@@ -326,7 +326,7 @@ public class StreamingContainerManager implements PlanContext
           if (status.operator.statsMonitors != null) {
             long tps = status.tuplesProcessedPSMA10.getAvg() + status.tuplesEmittedPSMA10.getAvg();
             for (StatsHandler sm : status.operator.statsMonitors) {
-              sm.onThroughputUpdate(tps);
+              sm.onThroughputUpdate(status.operator, tps);
             }
           }
         }
