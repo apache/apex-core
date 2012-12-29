@@ -37,10 +37,23 @@ public interface PartitionableOperator extends Operator
     }
 
     @Override
+    public boolean equals(Object obj) {
+      if (obj == null || !(obj instanceof PartitionKeys)) {
+        return false;
+      }
+      PartitionKeys pks = (PartitionKeys)obj;
+      return (this.mask == pks.mask && this.partitions.equals(pks.partitions));
+    }
+
+    @Override
+    public int hashCode() {
+      return mask + partitions.size();
+    }
+
+    @Override
     public String toString() {
       return "[" + mask + "," + partitions + "]";
     }
-
   }
 
   public interface Partition
@@ -53,9 +66,14 @@ public interface PartitionableOperator extends Operator
     public Map<InputPort<?>, PartitionKeys> getPartitionKeys();
 
     /**
-     * Get an indication of the load handled by this particular partition.
+     * Get an indication of the load handled by this partition. The indicator
+     * is calculated by the platform based on throughput etc. Thresholds are
+     * configured in the DAG as attributes.<br>
+     * Negative number: partition is under utilized and could me merged.<br>
+     * Zero: the partition is operating within the load thresholds.<br>
+     * Positive: partition is handling more load (and is a candidate for partition split).<br>
      *
-     * @return An positive integer is an indicative of the load handled by the partition.
+     * @return Integer indicative of the load handled by the partition.
      */
     public int getLoad();
 

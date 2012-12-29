@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.Sets;
 import com.malhartech.api.DAG;
@@ -38,19 +39,21 @@ public class OperatorPartitions {
   }
 
 
-  static class PartitionImpl implements PartitionableOperator.Partition {
+  public static class PartitionImpl implements PartitionableOperator.Partition {
     private final PartitionPortMap partitionKeys;
     private final Operator operator;
+    private final int loadIndicator;
 
-    PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys) {
+    PartitionImpl(Operator operator, Map<InputPort<?>, PartitionKeys> partitionKeys, int loadIndicator) {
       this.operator = operator;
       this.partitionKeys = new PartitionPortMap();
       this.partitionKeys.putAll(partitionKeys);
       this.partitionKeys.modified = false;
+      this.loadIndicator = loadIndicator;
     }
 
     PartitionImpl(Operator operator) {
-      this(operator, new PartitionPortMap());
+      this(operator, new PartitionPortMap(), 0);
     }
 
     @Override
@@ -60,7 +63,7 @@ public class OperatorPartitions {
 
     @Override
     public int getLoad() {
-      return 0;
+      return this.loadIndicator;
     }
 
     @Override
@@ -167,7 +170,6 @@ public class OperatorPartitions {
 
     public List<Partition> defineInitialPartitions(DAG.OperatorWrapper logicalOperator, int initialPartitionCnt) {
 
-
       //int partitionBits = 0;
       //if (initialPartitionCnt > 0) {
       //  partitionBits = 1 + (int) (Math.log(initialPartitionCnt) / Math.log(2)) ;
@@ -194,7 +196,66 @@ public class OperatorPartitions {
         partitions.add(p);
       }
       return partitions;
+    }
 
+    /**
+     * Change existing partitioning based on runtime state (load). Unlike
+     * implementations of {@link PartitionableOperator}), decisions are made
+     * solely based on load indicator and state of operator instances is not
+     * considered in the event of partition split or merge.
+     *
+     * @param partitions
+     *          List of new partitions
+     * @return
+     */
+    public List<Partition> repartition(List<? extends Partition> partitions) {
+      List<Partition> newPartitions = new ArrayList<Partition>();
+      HashMap<Integer, Partition> lowLoadPartitions = new HashMap<Integer, Partition>();
+      for (Partition p : partitions) {
+        int load = p.getLoad();
+        if (load < 0) {
+          // combine neighboring underutilized partitions
+          PartitionKeys pks = p.getPartitionKeys().values().iterator().next(); // one port partitioned
+          int partitionKey = pks.partitions.iterator().next();
+
+          // look for the sibling partition by flipping leading bit
+          int lookupKey = ( ( pks.mask >>> 1 ) & pks.mask ) & partitionKey;
+          Partition siblingPartition = lowLoadPartitions.get(lookupKey);
+          if (siblingPartition == null) {
+            lowLoadPartitions.put(partitionKey, p);
+          } else {
+            // both of the partitions are low load, combine
+            lowLoadPartitions.remove(lookupKey);
+            PartitionKeys newPks = new PartitionKeys(pks.mask >>> 1, Sets.newHashSet(lookupKey & (pks.mask >>> 1)));
+            siblingPartition.getPartitionKeys().entrySet().iterator().next().setValue(newPks);
+            // add as new partition
+            // TODO: we should repeat the same check with for the combined partition,
+            // which would catch the other branch was combined, too
+            newPartitions.add(siblingPartition);
+          }
+        } else if (load > 0) {
+          // split bottlenecks
+          Map<InputPort<?>, PartitionKeys> keys = p.getPartitionKeys();
+          Map.Entry<InputPort<?>, PartitionKeys> e = keys.entrySet().iterator().next();
+          // default partitions always have a single key
+          int key = e.getValue().partitions.iterator().next();
+          int newMask = (e.getValue().mask << 1) | 1;
+          int key2 = (newMask ^ e.getValue().mask) | key;
+
+          Partition p1 = new PartitionImpl(p.getOperator());
+          p1.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key)));
+
+          Partition p2 = new PartitionImpl(p.getOperator());
+          p2.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key2)));
+
+          newPartitions.add(p1);
+          newPartitions.add(p2);
+        } else {
+          // leave unchanged
+          newPartitions.add(p);
+        }
+      }
+      return newPartitions;
     }
 
   }
