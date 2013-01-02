@@ -14,6 +14,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map.Entry;
+import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -192,7 +193,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      * we prefer to cater to requests at the end of the window boundary.
      */
     try {
-      CircularBuffer<OperatorContext.NodeRequest> requests = context.getRequests();
+      BlockingQueue<OperatorContext.NodeRequest> requests = context.getRequests();
       int size;
       if ((size = requests.size()) > 0) {
         while (size-- > 0) {

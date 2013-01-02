@@ -10,6 +10,7 @@ import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +53,7 @@ public class OperatorContext implements Context.OperatorContext
   // we should make it configurable somehow.
   private long idleTimeout = 1000L;
 
-  public CircularBuffer<NodeRequest> getRequests()
+  public BlockingQueue<NodeRequest> getRequests()
   {
     return requests;
   }
