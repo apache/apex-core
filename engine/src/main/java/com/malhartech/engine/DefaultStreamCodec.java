@@ -157,7 +157,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   }
 
   @Override
-  public void checkpoint()
+  public void reset()
   {
     classResolver.checkpoint();
   }

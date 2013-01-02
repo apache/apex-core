@@ -112,7 +112,7 @@ public class DefaultStreamCodecTest
     Object tcObject2 = decoder.fromByteArray(dsp2);
     assert (tc.equals(tcObject2));
 
-    coder.checkpoint();
+    coder.reset();
 
     dsp2 = coder.toByteArray(tc);
     state2 = dsp2.state;

@@ -17,26 +17,50 @@ package com.malhartech.api;
  * downstream operators, we can use sticky partitions. Since the framework has no knowledge
  * about the internals of the data flowing between operators, it has to ask the
  * application if payload can be partitioned and appropriately creates downstream
- * operators to share the load as per the partitions. The logic to correspond about
- * partitions is abstracted out in StreamCodec which is defined on each stream.<br>
- * <br>
- * The default StreamCodec does not define any partitions so it cannot be used for sticky
- * partitions. It can still do load balancing using Round Robin, Least Connection etc.<br>
- * <br>
- * Since stream has upstream operator and downstream operator which can emit and consume different
- * type of objects, the objects values associated with fromByteArray and toByteArray
- * could differ. In most cases they would be identical and is recommended to keep them
- * that way.<br>
- * <br>
+ * operators to share the load as per the partitions. This functionality is abstracted
+ * out in StreamCodec. Typically StreamCodec is defined on each input stream and is able to
+ * serialize/deserialize and partition the data of type supported by the stream.
+ * <br /><br />
+ * For a few known types, the system is able to determine the StreamCodec. In all other cases,
+ * it would need user to define the codec on each input stream.
+ * <br /> <br />
+ * In the physical layout, each codec has at least 2 instances - serializer instance which
+ * attaches itself to the stream coming out of upstream operator and deserializer instance
+ * which attaches itself to input stream of downstream operator.
  *
- * @param <T>
+ * @param <T> data type of the tuples on the stream
  * @author chetan
  */
 public interface StreamCodec<T>
 {
+  /**
+   * A convenience class which is used to hold 2 different values associated with each serialize/deserialize operation.
+   */
   public class DataStatePair
   {
+    /**
+     * This byte array corresponds to serialized form of the tuple of type T.
+     */
     public byte[] data;
+    /**
+     * This byte array corresponds to serialized form the incremental state the
+     * codec built while serializing the tuple into data field.
+     *
+     * Since serialization and deserialization fall among the most expensive calculations
+     * that a system can do, codecs are expected optimize these operations considerably.
+     * An example of it is instead of storing fully qualified class name along with the
+     * object, the codec can store an integer for it. This creates a mapping from an integer
+     * to fully qualified class name and is only known to the codec instance which
+     * serializes the object using this information. We call this dynamically changing
+     * knowledge (mapping) a state. For deserializer instance to do its job, it also needs
+     * to have this knowledge and can be passed through the state variable.
+     *
+     * Note that the state is incremental so it's additive to previous state. It does not
+     * replace it. If state does not change during serialization, this field can be set to
+     * null. Otherwise it will be delivered to all the instances of deserializing codecs of
+     * this serializer in the same order as it was created. Due to the nature of the partitioning
+     * the accompanying data field may not make it to the deserializer.
+     */
     public byte[] state;
   }
 
@@ -68,9 +92,12 @@ public interface StreamCodec<T>
   int getPartition(T o);
 
   /**
-   * Do consolidation at the checkpoint. If the codec builds the state through its lifetime as it
-   * processes the objects for serialization and deserialization, this is the point where it can
-   * reset the state to the default state.
+   * Reset the state of the codec to the default state before any of the tuples are processed.
+   *
+   * The state used to serialize/deserialize after reset is the same as the state codec has after
+   * it is instantiated. reset is called periodically when the upstream operator checkpoints but
+   * should not be confused with the checkpoint operation of upstream operator.
+   *
    */
-  public void checkpoint();
+  public void reset();
 }
