@@ -5,7 +5,8 @@
 package com.malhartech.bufferserver.storage;
 
 import com.google.common.io.Files;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -14,58 +15,162 @@ import java.util.Arrays;
  */
 public class DiskStorage implements Storage
 {
+  final String basePath;
+
+  public DiskStorage(String baseDirectory)
+  {
+    basePath = baseDirectory;
+  }
+
+  public DiskStorage() throws IOException
+  {
+    basePath = File.createTempFile("tt", "tt").getParent();
+  }
 
   public Storage getInstance() throws IOException
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return new DiskStorage();
   }
 
-  public void store(String Identifier, byte[] bytes, int startingOffset, int endingOffset)
+  public static String normalizeFileName(String name)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < name.length(); i++) {
+      Character c = name.charAt(i);
+      if (Character.isLetterOrDigit(c)) {
+        sb.append(c);
+      }
+      else {
+        sb.append('-');
+      }
+    }
+
+    return sb.toString();
   }
 
-  public void retrieve(String identifier)
+  @Override
+  public int store(String identifier, byte[] bytes, int startingOffset, int endingOffset)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    int filename = 0;
+
+    String normalizedFileName = normalizeFileName(identifier);
+    File directory = new File(basePath, normalizedFileName);
+    if (directory.exists()) {
+      File identityFile = new File(directory, "identity");
+      if (identityFile.isFile()) {
+        try {
+          byte[] stored = Files.toByteArray(identityFile);
+          if (Arrays.equals(stored, identifier.getBytes())) {
+            String[] sfiles = directory.list();
+            Arrays.sort(sfiles);
+            for (int j = sfiles.length; j-- > 0;) {
+              if (!sfiles[j].equals("identity")) {
+                filename = Integer.parseInt(sfiles[j]) + 1;
+              }
+            }
+          }
+          else {
+            throw new RuntimeException("Collission in identifier name, please ensure that the slug for the identifiers is differents");
+          }
+        }
+        catch (IOException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+      else {
+        throw new RuntimeException("Identity file is hijacked!");
+      }
+    }
+    else {
+      if (directory.mkdir()) {
+        File identity = new File(directory, "identity");
+        try {
+          Files.write(identifier.getBytes(), identity);
+        }
+        catch (IOException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+      else {
+        throw new RuntimeException("directory " + directory.getAbsolutePath() + " could not be created!");
+      }
+    }
+
+    return writeFile(bytes, startingOffset, endingOffset, directory, filename == 0 ? 1 : filename);
   }
 
-  public void discard(String identifier)
+  public void discard(String identifier, int uniqueIdentifier)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    String normalizedFilename = normalizeFileName(identifier);
+    File directory = new File(basePath, normalizedFilename);
+    if (directory.exists()) {
+      File identityFile = new File(directory, "identity");
+      if (identityFile.isFile()) {
+        try {
+          byte[] stored = Files.toByteArray(identityFile);
+          if (Arrays.equals(stored, identifier.getBytes())) {
+            File deletionFile = new File(directory, String.valueOf(uniqueIdentifier));
+            if (deletionFile.exists() && deletionFile.isFile()) {
+              if (!deletionFile.delete()) {
+                throw new RuntimeException("File " + deletionFile.getPath() + " could not be deleted!");
+              }
+            }
+            else {
+              throw new RuntimeException("File " + deletionFile.getPath() + " either is non existent or not a file!");
+            }
+          }
+          else {
+            throw new RuntimeException("Collission in identifier name, please ensure that the slug for the identifiers is differents");
+          }
+        }
+        catch (IOException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+      else {
+        throw new RuntimeException(identityFile + " is not a file!");
+      }
+    }
+    else {
+      throw new RuntimeException("directory " + directory.getPath() + " does not exist!");
+    }
   }
-//  final String basePath;
-//
-//  public DiskStorage(String baseDirectory)
-//  {
-//    basePath = baseDirectory;
-//  }
-//
-//  public DiskStorage() throws IOException
-//  {
-//    basePath = File.createTempFile("tt", "tt").getParent();
-//  }
-//
-//  public Storage getInstance() throws IOException
-//  {
-//    return new DiskStorage();
-//  }
-//
-//  public static String normalizeFileName(String name)
-//  {
-//    StringBuilder sb = new StringBuilder();
-//    for (int i = 0; i < name.length(); i++) {
-//      Character c = name.charAt(i);
-//      if (Character.isLetterOrDigit(c)) {
-//        sb.append(c);
-//      }
-//      else {
-//        sb.append('-');
-//      }
-//    }
-//
-//    return sb.toString();
-//  }
+
+  public byte[] retrieve(String identifier, int uniqueIdentifier)
+  {
+    String normalizedFilename = normalizeFileName(identifier);
+    File directory = new File(basePath, normalizedFilename);
+    if (directory.exists()) {
+      File identityFile = new File(directory, "identity");
+      if (identityFile.isFile()) {
+        try {
+          byte[] stored = Files.toByteArray(identityFile);
+          if (Arrays.equals(stored, identifier.getBytes())) {
+            File filename = new File(directory, String.valueOf(uniqueIdentifier));
+            if (filename.exists() && filename.isFile()) {
+              return Files.toByteArray(filename);
+            }
+            else {
+              throw new RuntimeException("File " + filename.getPath() + " either is non existent or not a file!");
+            }
+          }
+          else {
+            throw new RuntimeException("Collission in identifier name, please ensure that the slug for the identifiers is differents");
+          }
+        }
+        catch (IOException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+      else {
+        throw new RuntimeException(identityFile + " is not a file!");
+      }
+    }
+    else {
+      throw new RuntimeException("directory " + directory.getPath() + " does not exist!");
+    }
+  }
+
 //
 //  private File getNextFileName(String identifier, String filename)
 //  {
@@ -73,23 +178,6 @@ public class DiskStorage implements Storage
 //    File directory = new File(basePath, normalizedFileName);
 //    if (directory.isDirectory()) {
 //      /* make sure that it's the directory for the current identifier */
-//      File identityFile = new File(directory, "identity");
-//      if (identityFile.isFile()) {
-//        try {
-//          byte[] stored = Files.toByteArray(identityFile);
-//          if (Arrays.equals(stored, identifier.getBytes())) {
-//            String[] sfiles = directory.list();
-//            Arrays.sort(sfiles);
-//
-//            for (String s: sfiles) {
-//              if (!s.equals("identity") && s.compareTo(filename) > 0) {
-//                return new File(directory, s);
-//              }
-//            }
-//          }
-//        }
-//        catch (IOException ex) {
-//        }
 //      }
 //    }
 //
@@ -111,28 +199,6 @@ public class DiskStorage implements Storage
 //  @Override
 //  public Block storeFirstBlock(final String identifier, byte[] bytes, int startingOffset, int endingOffset)
 //  {
-//    String normalizedFileName = normalizeFileName(identifier);
-//    File directory = new File(basePath, normalizedFileName);
-//    if (directory.exists()) {
-//      // clean it up!
-//      throw new RuntimeException("directory " + directory.getAbsolutePath() + " exists!");
-//    }
-//    else {
-//      if (directory.mkdir()) {
-//        File identity = new File(directory, "identity");
-//        try {
-//          Files.write(identifier.getBytes(), identity);
-//        }
-//        catch (IOException ex) {
-//          throw new RuntimeException(ex);
-//        }
-//      }
-//      else {
-//        throw new RuntimeException("directory " + directory.getAbsolutePath() + " could not be created!");
-//      }
-//    }
-//
-//    return writeFile(bytes, startingOffset, endingOffset, directory, identifier, "1");
 //  }
 //
 //  public Block delete(Block block)
@@ -235,43 +301,24 @@ public class DiskStorage implements Storage
 //
 //    return null;
 //  }
-//
-//  protected Block writeFile(byte[] bytes, int startingOffset, int endingOffset, File directory, final String identifier, final String number)
-//  {
-//    try {
-//      final byte[] newbytes;
-//      if (startingOffset > 0 || endingOffset < bytes.length) {
-//        newbytes = new byte[endingOffset - startingOffset];
-//        System.arraycopy(bytes, startingOffset, newbytes, 0, endingOffset - startingOffset);
-//      }
-//      else {
-//        newbytes = bytes;
-//      }
-//      Files.write(newbytes, new File(directory, number));
-//
-//      return new Block()
-//      {
-//        public String getIdentifier()
-//        {
-//          return identifier;
-//        }
-//
-//        public String getNumber()
-//        {
-//          return number;
-//        }
-//
-//        public byte[] getBytes()
-//        {
-//          return newbytes;
-//        }
-//
-//      };
-//    }
-//    catch (IOException ex) {
-//    }
-//
-//    return null;
-//  }
-//
+  protected int writeFile(byte[] bytes, int startingOffset, int endingOffset, File directory, final int number)
+  {
+    try {
+      final byte[] newbytes;
+      if (startingOffset > 0 || endingOffset < bytes.length) {
+        newbytes = new byte[endingOffset - startingOffset];
+        System.arraycopy(bytes, startingOffset, newbytes, 0, endingOffset - startingOffset);
+      }
+      else {
+        newbytes = bytes;
+      }
+      Files.write(newbytes, new File(directory, String.valueOf(number)));
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+
+    return number;
+  }
+
 }
