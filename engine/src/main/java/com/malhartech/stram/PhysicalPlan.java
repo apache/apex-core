@@ -24,8 +24,8 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.DAG;
 import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
 import com.malhartech.api.Operator;
@@ -69,7 +69,10 @@ public class PhysicalPlan {
      * @return String
      */
     abstract public String getLogicalId();
-    // stats
+
+    public PTContainer getContainer() {
+      return container;
+    }
 
     /**
      *
@@ -133,17 +136,19 @@ public class PhysicalPlan {
    * Representation of an output in the physical layout. A sink in the DAG<p>
    * <br>
    */
-  public class PTOutput {
+  public static class PTOutput {
     final DAG.StreamDecl logicalStream;
     final PTComponent source;
     final String portName;
+    final PhysicalPlan plan;
 
     /**
      * Constructor
      * @param logicalStream
      * @param source
      */
-    protected PTOutput(String portName, StreamDecl logicalStream, PTComponent source) {
+    protected PTOutput(PhysicalPlan plan, String portName, StreamDecl logicalStream, PTComponent source) {
+      this.plan = plan;
       this.logicalStream = logicalStream;
       this.source = source;
       this.portName = portName;
@@ -157,7 +162,7 @@ public class PhysicalPlan {
     protected boolean isDownStreamInline() {
       StreamDecl logicalStream = this.logicalStream;
       for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
-        for (PTOperator downStreamNode : getOperators(downStreamPort.getOperatorWrapper())) {
+        for (PTOperator downStreamNode : plan.getOperators(downStreamPort.getOperatorWrapper())) {
           if (this.source.container != downStreamNode.container) {
               return false;
           }
@@ -182,6 +187,7 @@ public class PhysicalPlan {
   }
 
   public static interface StatsHandler {
+    // TODO: handle stats generically
     public void onThroughputUpdate(PTOperator operatorInstance, long tps);
   }
 
@@ -189,11 +195,12 @@ public class PhysicalPlan {
    * Handler for partition load check.
    * Used when throughput monitoring is configured.
    */
-  public class PartitionLoadWatch implements StatsHandler {
-    private final int EVAL_INTERVAL_MIN = 30*1000;
+  public static class PartitionLoadWatch implements StatsHandler {
+    protected long evalIntervalMillis = 30*1000;
     private final long tpsMin;
     private final long tpsMax;
     private long lastEvalMillis;
+    private long lastTps = 0;
 
     private final PMapping m;
 
@@ -203,32 +210,43 @@ public class PhysicalPlan {
       this.tpsMax = max;
     }
 
+    protected PartitionLoadWatch(PMapping mapping) {
+      this(mapping, 0, 0);
+    }
+
+    protected int getLoadIndicator(PTOperator operatorInstance, long tps) {
+      if ((tps < tpsMin && lastTps > tps) || tps > tpsMax) {
+        lastTps = tps;
+        return (tps < tpsMin) ? -1 : 1;
+      }
+      lastTps = tps;
+      return 0;
+    }
+
     @Override
-    public void onThroughputUpdate(PTOperator operatorInstance, long tps) {
-      if (tps < tpsMin || tps > tpsMax) {
-        if (lastEvalMillis < (System.currentTimeMillis() - EVAL_INTERVAL_MIN)) {
+    public void onThroughputUpdate(final PTOperator operatorInstance, long tps) {
+      operatorInstance.loadIndicator = getLoadIndicator(operatorInstance, tps);
+      if (operatorInstance.loadIndicator != 0) {
+        if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
+          lastEvalMillis = System.currentTimeMillis();
           synchronized (m) {
             // concurrent heartbeat processing
             if (m.shouldRedoPartitions) {
               return;
             }
+            m.shouldRedoPartitions = true;
             LOG.debug("Scheduling partitioning update for {}", m);
             // hand over to monitor thread
             Runnable r = new Runnable() {
               @Override
               public void run() {
-                redoPartitions(m.logicalOperator);
+                operatorInstance.getPlan().redoPartitions(m.logicalOperator);
                 m.shouldRedoPartitions = false;
               }
             };
-            PhysicalPlan.this.ctx.dispatch(r);
-            lastEvalMillis = System.currentTimeMillis();
-            m.shouldRedoPartitions = true;
+            operatorInstance.getPlan().ctx.dispatch(r);
           }
         }
-        operatorInstance.loadIndicator = (tps < tpsMin) ? -1 : 1;
-      } else {
-        operatorInstance.loadIndicator = 0;
       }
     }
   }
@@ -242,6 +260,7 @@ public class PhysicalPlan {
    *
    */
   public static class PTOperator extends PTComponent {
+/*
     enum State {
       NEW,
       PENDING_DEPLOY,
@@ -251,7 +270,12 @@ public class PhysicalPlan {
     }
 
     State state = State.NEW;
+*/
+    PTOperator(PhysicalPlan plan) {
+      this.plan = plan;
+    }
 
+    final PhysicalPlan plan;
     DAG.OperatorWrapper logicalNode;
     Partition partition;
     Operator merge;
@@ -299,6 +323,10 @@ public class PhysicalPlan {
     @Override
     public String getLogicalId() {
       return logicalNode.getId();
+    }
+
+    public PhysicalPlan getPlan() {
+      return plan;
     }
 
   }
@@ -371,18 +399,19 @@ public class PhysicalPlan {
     public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy);
 
     /**
-     * Get all operator instances that depend on the current operator.
+     * Get all operator instances that depend on the specified operator instance(s).
      * Added here to reuse recovery checkpoint traversal logic although knowledge of the plan is sufficient.
      * @param p
      * @return
      */
     public Set<PTOperator> getDependents(Collection<PTOperator> p);
 
+    // TODO: pass events through pub/sub and present context as command parameter
     public void dispatch(Runnable r);
 
   }
 
-  private static class PMapping {
+  public static class PMapping {
     private PMapping(OperatorWrapper ow) {
       this.logicalOperator = ow;
     }
@@ -391,11 +420,11 @@ public class PhysicalPlan {
     final private List<PTOperator> partitions = new LinkedList<PTOperator>();
     final private Map<DAG.OutputPortMeta, PTOperator> mergeOperators = new HashMap<DAG.OutputPortMeta, PTOperator>();
     private boolean shouldRedoPartitions = false;
-    private List<? extends StatsHandler> statsMonitors;
+    private List<StatsHandler> statsHandlers;
 
-    void addPartition(PTOperator p) {
+    private void addPartition(PTOperator p) {
       partitions.add(p);
-      p.statsMonitors = this.statsMonitors;
+      p.statsMonitors = this.statsHandlers;
     }
 
     private Collection<PTOperator> getAllNodes() {
@@ -541,13 +570,13 @@ public class PhysicalPlan {
         throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
       }
       PTOperator merge;
-      merge = new PTOperator();
+      merge = new PTOperator(this);
       merge.logicalNode = m.logicalOperator;
       merge.inputs = new ArrayList<PTInput>();
       merge.outputs = new ArrayList<PTOutput>();
       merge.id = ""+nodeSequence.incrementAndGet();
       merge.merge = unifier;
-      merge.outputs.add(new PTOutput(mergeDesc.outputPorts.keySet().iterator().next(), outputEntry.getValue(), merge));
+      merge.outputs.add(new PTOutput(this, mergeDesc.outputPorts.keySet().iterator().next(), outputEntry.getValue(), merge));
       m.mergeOperators.put(outputEntry.getKey(), merge);
     }
 
@@ -555,8 +584,31 @@ public class PhysicalPlan {
     int maxTps = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_TPS_MAX, 0);
     if (maxTps > minTps) {
       // monitor load
-      m.statsMonitors = Collections.singletonList(new PartitionLoadWatch(m, minTps, maxTps));
+      if (m.statsHandlers == null) {
+        m.statsHandlers = new ArrayList<StatsHandler>(1);
+      }
+      m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
+
+    String handlers = dag.getAttributes().attrValue(DAG.STRAM_STATS_HANDLER, null);
+    if (handlers != null) {
+      if (m.statsHandlers == null) {
+        m.statsHandlers = new ArrayList<StatsHandler>(1);
+      }
+      Class<? extends StatsHandler> shClass = StramUtils.classForName(handlers, StatsHandler.class);
+      final StatsHandler sh;
+      if (PartitionLoadWatch.class.isAssignableFrom(shClass)) {
+        try {
+          sh = shClass.getConstructor(m.getClass()).newInstance(m);
+        } catch (Exception e) {
+          throw new RuntimeException("Failed to create custom partition load handler.", e);
+        }
+      } else {
+        sh = StramUtils.newInstance(shClass);
+      }
+      m.statsHandlers.add(sh);
+    }
+
     // create operator instance per partition
     for (Partition p : partitions) {
       addPTOperator(m, p);
@@ -569,7 +621,7 @@ public class PhysicalPlan {
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = getOperators(n);
     List<PartitionImpl> currentPartitions = new ArrayList<PartitionImpl>(operators.size());
-    Map<Operator, PTOperator> currentPartitionMap = new HashMap<Operator, PTOperator>(operators.size());
+    Map<Partition, PTOperator> currentPartitionMap = new HashMap<Partition, PTOperator>(operators.size());
 
     final List<Partition> newPartitions;
     for (PTOperator pOperator : operators) {
@@ -590,7 +642,7 @@ public class PhysicalPlan {
       // assume it does not matter which operator instance's port objects are referenced in mapping
       PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator);
       currentPartitions.add(partition);
-      currentPartitionMap.put(partitionedOperator, pOperator);
+      currentPartitionMap.put(partition, pOperator);
     }
 
     if (n.getOperator() instanceof PartitionableOperator) {
@@ -600,17 +652,17 @@ public class PhysicalPlan {
     }
 
     List<Partition> addedPartitions = new ArrayList<Partition>();
-    Set<PTOperator> undeployOperators = this.ctx.getDependents(currentPartitionMap.values());
+    Set<PTOperator> undeployOperators = new HashSet<PTOperator>();
     // determine modifications of partition set, identify affected operator instance
     for (Partition newPartition : newPartitions) {
-      PTOperator op = currentPartitionMap.remove(newPartition.getOperator());
+      PTOperator op = currentPartitionMap.remove(newPartition);
       if (op == null) {
         addedPartitions.add(newPartition);
       } else {
         // check whether mapping was changed
         for (PartitionImpl pi : currentPartitions) {
           if (pi == newPartition && pi.isModified()) {
-            // partition was changed
+            // existing partition was changed
             addedPartitions.add(newPartition);
             undeployOperators.add(op);
           }
@@ -620,6 +672,8 @@ public class PhysicalPlan {
 
     // remaining entries represent deprecated partitions
     undeployOperators.addAll(currentPartitionMap.values());
+    // include dependencies that require redeploy
+    undeployOperators = this.ctx.getDependents(undeployOperators);
 
     // operators need to be removed from deployment and plan first
     // freed resources available prior to new/modified partition processing
@@ -628,7 +682,7 @@ public class PhysicalPlan {
     newMapping.mergeOperators.putAll(this.logicalToPTOperator.get(n).mergeOperators);
 
     for (PTOperator p : undeployOperators) {
-      removePTOperator(p);
+      removePTOperator(p); // TODO: exclude dependencies
       newMapping.partitions.remove(p);
       // TODO: remove checkpoint state
     }
@@ -670,7 +724,7 @@ public class PhysicalPlan {
 
   private PTOperator addPTOperator(PMapping nodeDecl, Partition partition) {
 
-    PTOperator pOperator = new PTOperator();
+    PTOperator pOperator = new PTOperator(this);
     pOperator.logicalNode = nodeDecl.logicalOperator;
     pOperator.inputs = new ArrayList<PTInput>();
     pOperator.outputs = new ArrayList<PTOutput>();
@@ -704,7 +758,6 @@ public class PhysicalPlan {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
             if (upstreamOut.logicalStream == streamDecl) {
-              // TODO: stream codec
               PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, partitionKeys.get(inputEntry.getKey()), upstreamOut);
               pOperator.inputs.add(input);
             }
@@ -714,7 +767,7 @@ public class PhysicalPlan {
     }
 
     for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : nodeDecl.logicalOperator.getOutputStreams().entrySet()) {
-      PTOutput out = new PTOutput(outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
+      PTOutput out = new PTOutput(this, outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
       pOperator.outputs.add(out);
       // if a unifier is defined, add the new partition to its inputs
       PTOperator mergeNode = nodeDecl.mergeOperators.get(outputEntry.getKey());

@@ -298,6 +298,27 @@ public class StramLocalCluster implements Runnable
     return dnmgr.getPhysicalPlan().getOperators(logicalNode);
   }
 
+  /**
+   * Return the container that has the given operator deployed.
+   * Returns null if the specified operator is not deployed.
+   * @param planOperator
+   * @param timeout
+   * @return
+   * @throws InterruptedException
+   */
+  public LocalStramChild getContainer(PTOperator planOperator)
+  {
+    LocalStramChild container;
+    if (planOperator.container.containerId != null) {
+     if ((container = getContainer(planOperator.container.containerId)) != null) {
+        if (container.getNodeContext(planOperator.id) != null) {
+          return container;
+        }
+      }
+    }
+    return null;
+  }
+
   StramChildAgent getContainerAgent(StramChild c)
   {
     return this.dnmgr.getContainerAgent(c.getContainerId());

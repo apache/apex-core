@@ -23,7 +23,7 @@ public abstract class StramUtils
       return newInstance(classForName(className, StreamCodec.class));
     }
     else {
-      return new DefaultStreamCodec();
+      return new DefaultStreamCodec<Object>();
     }
   }
 

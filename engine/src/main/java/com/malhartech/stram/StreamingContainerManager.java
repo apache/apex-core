@@ -75,6 +75,7 @@ public class StreamingContainerManager implements PlanContext
 
   protected final  Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final  ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
+  protected final  ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
   protected String shutdownDiagnosticsMessage = "";
   protected boolean forcedShutdown = false;
 
@@ -133,7 +134,25 @@ public class StreamingContainerManager implements PlanContext
          }
        }
     }
+
+    processEvents();
+
     updateCheckpoints();
+  }
+
+  public int processEvents() {
+    int count = 0;
+    Runnable command;
+    while ((command = this.eventQueue.poll()) != null) {
+      try {
+        command.run();
+        count ++;
+      } catch (Exception e) {
+        // TODO: handle error
+        LOG.error("Failed to execute {} {}", command, e);
+      }
+    }
+    return count;
   }
 
   /**
@@ -618,18 +637,15 @@ public class StreamingContainerManager implements PlanContext
 
   @Override
   public void dispatch(Runnable r) {
-    throw new UnsupportedOperationException();
+    this.eventQueue.add(r);
   }
 
   @Override
-  public Set<PTOperator> getDependents(Collection<PTOperator> p) {
+  public Set<PTOperator> getDependents(Collection<PTOperator> operators) {
     Set<PTOperator> visited = new LinkedHashSet<PTOperator>();
-    for (OperatorWrapper logicalOperator : plan.getRootOperators()) {
-      List<PTOperator> operators = plan.getOperators(logicalOperator);
-      if (operators != null) {
-        for (PTOperator operator : operators) {
-          updateRecoveryCheckpoints(operator, visited);
-        }
+    if (operators != null) {
+      for (PTOperator operator : operators) {
+        updateRecoveryCheckpoints(operator, visited);
       }
     }
     return visited;
