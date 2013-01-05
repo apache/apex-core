@@ -188,7 +188,9 @@ public class PartitioningTest {
 
     partitions = assertNumberPartitions(3, lc, dag.getOperatorWrapper(collector));
     // check deployment
-
+    for (PTOperator p : partitions) {
+      StramTestSupport.waitForActivation(lc, p);
+    }
 
   //  PTOperator planInput = lc.findByLogicalNode(dag.getOperatorWrapper(input));
   //  LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
