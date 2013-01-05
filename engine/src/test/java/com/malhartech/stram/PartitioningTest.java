@@ -2,6 +2,7 @@ package com.malhartech.stram;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,6 +10,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import junit.framework.Assert;
 
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
@@ -17,12 +20,15 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.InputOperator;
+import com.malhartech.engine.Node;
 import com.malhartech.stram.PhysicalPlan.PMapping;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stream.StramTestSupport;
 import com.malhartech.stream.StramTestSupport.WaitCondition;
 
 public class PartitioningTest {
+  private static final Logger LOG = LoggerFactory.getLogger(PartitioningTest.class);
 
   public static class CollectorOperator extends BaseOperator
   {
@@ -31,6 +37,7 @@ public class PartitioningTest {
      */
     public static final Map<String, List<Object>> receivedTuples = new ConcurrentHashMap<String, List<Object>>();
     private transient String operatorId;
+    public String prefix = "";
 
     @Override
     public void setup(OperatorContext context) {
@@ -43,10 +50,11 @@ public class PartitioningTest {
       public void process(Object tuple)
       {
         Assert.assertNotNull(CollectorOperator.this.operatorId);
-        List<Object> l = receivedTuples.get(CollectorOperator.this.operatorId);
+        String id = prefix + CollectorOperator.this.operatorId;
+        List<Object> l = receivedTuples.get(id);
         if (l == null) {
           l = new ArrayList<Object>();
-          receivedTuples.put(CollectorOperator.this.operatorId, l);
+          receivedTuples.put(id, l);
         }
         l.add(tuple);
       }
@@ -60,15 +68,11 @@ public class PartitioningTest {
   public static class TestInputOperator<T> extends BaseOperator implements InputOperator
   {
     public final transient DefaultOutputPort<T> output = new DefaultOutputPort<T>(this);
+
     transient boolean first;
     transient long windowId;
 
-    /**
-     * Number of tuples to emit in beginWindow.
-     * Used to control rate of tuples without making assumptions on total number of windows.
-     */
-    int emitOnBeginWindowCount = 0;
-    T emitOnBeginWindowTuple;
+    boolean blockEndStream = false;
 
     /**
      * Tuples to be emitted by the operator, with one entry per window.
@@ -78,11 +82,10 @@ public class PartitioningTest {
     @Override
     public void emitTuples()
     {
-      if (emitOnBeginWindowCount > 0) {
-        return;
-      }
-
       if (testTuples == null || testTuples.isEmpty()) {
+        if (blockEndStream) {
+          return;
+        }
         throw new RuntimeException(new InterruptedException("No more tuples to send!"));
       }
 
@@ -100,10 +103,6 @@ public class PartitioningTest {
     {
       this.windowId = windowId;
       first = true;
-
-      for (int i=0; i<this.emitOnBeginWindowCount; i++) {
-        output.emit(this.emitOnBeginWindowTuple);
-      }
     }
   }
 
@@ -121,6 +120,7 @@ public class PartitioningTest {
       input.testTuples.add(new ArrayList<Integer>(Arrays.asList(tuples)));
     }
     CollectorOperator collector = dag.addOperator("collector", new CollectorOperator());
+    collector.prefix = ""+System.identityHashCode(collector);
     dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     dag.addStream("fromInput", input.output, collector.input);
 
@@ -136,8 +136,8 @@ public class PartitioningTest {
 
     // one entry for each partition
     Assert.assertEquals("received tuples " + CollectorOperator.receivedTuples, 2, CollectorOperator.receivedTuples.size());
-    Assert.assertEquals("received tuples " + operators.get(0), Arrays.asList(4), CollectorOperator.receivedTuples.get(operators.get(0).id));
-    Assert.assertEquals("received tuples " + operators.get(1), Arrays.asList(5), CollectorOperator.receivedTuples.get(operators.get(1).id));
+    Assert.assertEquals("received tuples " + operators.get(0), Arrays.asList(4), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(0).id));
+    Assert.assertEquals("received tuples " + operators.get(1), Arrays.asList(5), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(1).id));
   }
 
   public static class PartitionLoadWatch extends PhysicalPlan.PartitionLoadWatch {
@@ -163,10 +163,10 @@ public class PartitioningTest {
     dag.getAttributes().attr(DAG.STRAM_STATS_HANDLER).set(PartitionLoadWatch.class.getName());
 
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
-    input.emitOnBeginWindowCount = 50;
-    input.emitOnBeginWindowTuple = 0;
+    input.blockEndStream = true;
 
     CollectorOperator collector = dag.addOperator("collector", new CollectorOperator());
+    collector.prefix = ""+System.identityHashCode(collector);
     dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(20);
     //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(200);
@@ -178,7 +178,8 @@ public class PartitioningTest {
 
     List<PTOperator> partitions = assertNumberPartitions(2, lc, dag.getOperatorWrapper(collector));
 
-    PartitionLoadWatch.loadIndicators.put(partitions.get(0), 1);
+    PTOperator splitPartition = partitions.get(0);
+    PartitionLoadWatch.loadIndicators.put(splitPartition, 1);
 
     int count = 0;
     long startMillis = System.currentTimeMillis();
@@ -192,13 +193,34 @@ public class PartitioningTest {
       StramTestSupport.waitForActivation(lc, p);
     }
 
-  //  PTOperator planInput = lc.findByLogicalNode(dag.getOperatorWrapper(input));
-  //  LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
-  //  Map<String, Node<?>> nodeMap = c.getNodes();
-  //  Assert.assertEquals("number operators", 1, nodeMap.size());
-  //  @SuppressWarnings({ "unchecked" })
-  //  TestInputOperator<Integer> inputDeployed = (TestInputOperator<Integer>)nodeMap.get(planInput.id).getOperator();
-  //  Assert.assertNotNull(inputDeployed);
+    PartitionLoadWatch.loadIndicators.remove(splitPartition);
+
+    PTOperator planInput = lc.findByLogicalNode(dag.getOperatorWrapper(input));
+    LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
+    Map<String, Node<?>> nodeMap = c.getNodes();
+    Assert.assertEquals("number operators", 1, nodeMap.size());
+    @SuppressWarnings({ "unchecked" })
+    TestInputOperator<Integer> inputDeployed = (TestInputOperator<Integer>)nodeMap.get(planInput.id).getOperator();
+    Assert.assertNotNull(inputDeployed);
+
+    // add tuple that matches the partition key and check that each partition receives it
+    ArrayList<Integer> tuples = new ArrayList<Integer>();
+    for (PTOperator p : partitions) {
+      // default partitioning has one port mapping with a single partition key
+      tuples.add(p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next());
+    }
+    inputDeployed.testTuples = Collections.synchronizedList(new ArrayList<List<Integer>>());
+    inputDeployed.testTuples.add(tuples);
+
+    for (PTOperator p : partitions) {
+      List<Object> receivedTuples;
+      Integer expectedTuple = p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next();
+      while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.id)) == null) {
+        LOG.debug("Waiting for tuple: " + p);
+        Thread.sleep(20);
+      }
+      Assert.assertEquals("received " + p, Arrays.asList(expectedTuple), receivedTuples);
+    }
 
     lc.shutdown();
 
