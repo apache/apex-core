@@ -27,7 +27,7 @@ public class HdfsBackupAgent implements BackupAgent
   }
 
   @Override
-  public void backup(String id, long windowId, Object o, OperatorCodec serDe) throws IOException
+  public void backup(int id, long windowId, Object o, OperatorCodec serDe) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
@@ -43,7 +43,7 @@ public class HdfsBackupAgent implements BackupAgent
   }
 
   @Override
-  public Object restore(String id, long windowId, OperatorCodec serDe) throws IOException
+  public Object restore(int id, long windowId, OperatorCodec serDe) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
@@ -57,7 +57,7 @@ public class HdfsBackupAgent implements BackupAgent
   }
 
   @Override
-  public void delete(String id, long windowId) throws IOException {
+  public void delete(int id, long windowId) throws IOException {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     fs.delete(path, false);

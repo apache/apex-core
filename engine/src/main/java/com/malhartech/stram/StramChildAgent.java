@@ -154,7 +154,7 @@ public class StramChildAgent {
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx) {
     this.container = container;
     this.initCtx = initCtx;
-    this.operators = new HashMap<String, OperatorStatus>(container.operators.size());
+    this.operators = new HashMap<Integer, OperatorStatus>(container.operators.size());
     for (PTOperator operator : container.operators) {
       this.operators.put(operator.id, new OperatorStatus(container, operator));
     }
@@ -166,7 +166,7 @@ public class StramChildAgent {
   long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
-  final Map<String, OperatorStatus> operators;
+  final Map<Integer, OperatorStatus> operators;
   final StreamingContainerContext initCtx;
   private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
   DeployRequest pendingRequest = null;

@@ -61,7 +61,7 @@ public class PhysicalPlan {
    *
    */
   public abstract static class PTComponent {
-    String id;
+    int id;
     PTContainer container;
 
     /**
@@ -574,7 +574,7 @@ public class PhysicalPlan {
       merge.logicalNode = m.logicalOperator;
       merge.inputs = new ArrayList<PTInput>();
       merge.outputs = new ArrayList<PTOutput>();
-      merge.id = ""+nodeSequence.incrementAndGet();
+      merge.id = nodeSequence.incrementAndGet();
       merge.merge = unifier;
       merge.outputs.add(new PTOutput(this, mergeDesc.outputPorts.keySet().iterator().next(), outputEntry.getValue(), merge));
       m.mergeOperators.put(outputEntry.getKey(), merge);
@@ -675,8 +675,9 @@ public class PhysicalPlan {
     // include dependencies that require redeploy
     undeployOperators = this.ctx.getDependents(undeployOperators);
 
-    // operators need to be removed from deployment and plan first
-    // freed resources available prior to new/modified partition processing
+    // plan updates start here, after all changes were identified
+    // remove obsolete operators first, any freed resources
+    // can subsequently be used for new/modified partitions
     PMapping newMapping = new PMapping(n);
     newMapping.partitions.addAll(this.logicalToPTOperator.get(n).partitions);
     newMapping.mergeOperators.putAll(this.logicalToPTOperator.get(n).mergeOperators);
@@ -718,7 +719,7 @@ public class PhysicalPlan {
   }
 
   private PTContainer findContainer(PTOperator p) {
-    // TODO: find container based on current utilization
+    // TODO: find container based on utilization
     return null;
   }
 
@@ -728,7 +729,7 @@ public class PhysicalPlan {
     pOperator.logicalNode = nodeDecl.logicalOperator;
     pOperator.inputs = new ArrayList<PTInput>();
     pOperator.outputs = new ArrayList<PTOutput>();
-    pOperator.id = ""+nodeSequence.incrementAndGet();
+    pOperator.id = nodeSequence.incrementAndGet();
     pOperator.partition = partition;
 
     Map<DAG.InputPortMeta, PartitionKeys> partitionKeys = Collections.emptyMap();

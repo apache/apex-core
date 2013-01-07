@@ -36,7 +36,7 @@ public class PartitioningTest {
      * Received tuples are stored in a map keyed with the system assigned operator id.
      */
     public static final Map<String, List<Object>> receivedTuples = new ConcurrentHashMap<String, List<Object>>();
-    private transient String operatorId;
+    private transient int operatorId;
     public String prefix = "";
 
     @Override
@@ -197,7 +197,7 @@ public class PartitioningTest {
 
     PTOperator planInput = lc.findByLogicalNode(dag.getOperatorWrapper(input));
     LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
-    Map<String, Node<?>> nodeMap = c.getNodes();
+    Map<Integer, Node<?>> nodeMap = c.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
     @SuppressWarnings({ "unchecked" })
     TestInputOperator<Integer> inputDeployed = (TestInputOperator<Integer>)nodeMap.get(planInput.id).getOperator();

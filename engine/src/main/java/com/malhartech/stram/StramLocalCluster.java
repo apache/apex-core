@@ -174,17 +174,17 @@ public class StramLocalCluster implements Runnable
       return super.setupWindowGenerator(smallestWindowId);
     }
 
-    OperatorContext getNodeContext(String id)
+    OperatorContext getNodeContext(int id)
     {
       return activeNodes.get(id);
     }
 
-    Operator getNode(String id)
+    Operator getNode(int id)
     {
       return nodes.get(id).getOperator();
     }
 
-    Map<String, Node<?>> getNodes()
+    Map<Integer, Node<?>> getNodes()
     {
       return nodes;
     }

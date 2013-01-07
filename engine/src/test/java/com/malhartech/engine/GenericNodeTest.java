@@ -87,9 +87,9 @@ public class GenericNodeTest
     };
 
     @SuppressWarnings("unchecked")
-    Sink<Object> input1 = (Sink<Object>)gn.connectInputPort("ip1", output);
+    Sink<Object> input1 = gn.connectInputPort("ip1", output);
     @SuppressWarnings("unchecked")
-    Sink<Object> input2 = (Sink<Object>)gn.connectInputPort("ip2", output);
+    Sink<Object> input2 = gn.connectInputPort("ip2", output);
     gn.connectOutputPort("op", output);
 
     final AtomicBoolean ab = new AtomicBoolean(false);
@@ -99,7 +99,7 @@ public class GenericNodeTest
       public void run()
       {
         ab.set(true);
-        gn.activate(new OperatorContext("GenericOperator", this, null));
+        gn.activate(new OperatorContext(0, this, null, null));
       }
 
     };

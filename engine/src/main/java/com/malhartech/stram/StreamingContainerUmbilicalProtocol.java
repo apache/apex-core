@@ -177,13 +177,13 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * The originating node. There can be multiple operators in a container.
      */
-    private String nodeId;
+    private int nodeId;
 
-    public String getNodeId() {
+    public int getNodeId() {
       return nodeId;
     }
 
-    public void setNodeId(String nodeId) {
+    public void setNodeId(int nodeId) {
       this.nodeId = nodeId;
     }
 
@@ -296,15 +296,15 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       REPORT_PARTION_STATS, CHECKPOINT
     }
 
-    private String nodeId;
+    private int nodeId;
     private RequestType requestType;
     private long recoveryCheckpoint;
 
-    public String getNodeId() {
+    public int getNodeId() {
       return nodeId;
     }
 
-    public void setNodeId(String nodeId) {
+    public void setNodeId(int nodeId) {
       this.nodeId = nodeId;
     }
 

@@ -78,10 +78,16 @@ public interface Context
      *
      * @return String
      */
-    String getId();
+    int getId();
 
     AttributeMap<OperatorContext> getAttributes();
 
+    /**
+     * Return the application level attributes.
+     * This will be the same set for all operators in the system.
+     * @return
+     */
+    AttributeMap<DAGConstants> getApplicationAttributes();
   }
 
 }
