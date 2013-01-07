@@ -7,6 +7,7 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.Buffer.ResetWindow;
+import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
@@ -35,6 +36,7 @@ public class DataList
   private volatile DataArray first;
   private volatile DataArray last;
   private final int maxliveblocks;
+  private Storage storage;
 
   synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
   {
@@ -315,6 +317,40 @@ public class DataList
     }
   }
 
+  private void requestStorageOnSecondary(final DataArray da)
+  {
+    if (storage != null) {
+      da.lockWrite();
+      try {
+        for (DataListIterator dli: iterators.values()) {
+          if (dli.da == da) {
+            return;
+          }
+        }
+        new Thread()
+        {
+          @Override
+          public void run()
+          {
+            int i = storage.store(identifier, da.data, da.readingOffset, da.writingOffset - 1);
+            da.lockWrite();
+            try {
+              da.uniqueIdentifier = i;
+              da.data = null;
+            }
+            finally {
+              da.unlockWrite();
+            }
+          }
+
+        }.start();
+      }
+      finally {
+        da.unlockWrite();
+      }
+    }
+  }
+
   /**
    * @return the identifier
    */
@@ -333,13 +369,16 @@ public class DataList
     private final Lock w = rwl.writeLock();
     private volatile int baseSeconds = 0;
     private volatile int intervalMillis = 0;
+    /**
+     * readingOffset is the first valid byte in the array.
+     */
     volatile int readingOffset;
     /**
-     * currentOffset is the number of data elements in the array.
+     * writingOffset is the number of data elements in the array.
      */
     volatile int writingOffset;
     /**
-     * The starting window which is available in this data array
+     * The starting window which is available in this data array.
      */
     volatile long starting_window;
     /**
@@ -350,6 +389,10 @@ public class DataList
      * actual data - stored as length followed by actual data.
      */
     byte data[];
+    /**
+     * when the data is null, uniqueIdentifier is the identifier in the backup storage to retrieve the object.
+     */
+    private int uniqueIdentifier;
     /**
      * the next in the chain.
      */
@@ -366,7 +409,7 @@ public class DataList
 
     void getNextData(SerializedData current)
     {
-      if (current.offset < data.length) {
+      if (current.offset < writingOffset) {
         r.lock();
         try {
           Codec.readRawVarInt32(current);
@@ -383,8 +426,12 @@ public class DataList
     public final void addUnsafe(Message d)
     {
       int size = d.getSerializedSize();
-      if (writingOffset + 5 /* for max varint size */ + size > data.length
-              && /* this is a fast check */ writingOffset + Codec.getSizeOfRawVarint32(size) + size > data.length) {
+      if (writingOffset + 5 /* for max varint size */ + size > data.length /* this is a fast check */
+              && writingOffset + Codec.getSizeOfRawVarint32(size) + size > data.length /* this is a slower check */) {
+        /*
+         * The remaining space in the current data array is not sufficient to save the message.
+         * We mark the remaining space unusable and allocate a new byte array to store the data.
+         */
         int i = 1;
         while (i < Codec.getSizeOfRawVarint32(data.length - writingOffset - i)) {
           i++;
@@ -406,17 +453,10 @@ public class DataList
           }
         }
 
-        int newblockSize = blocksize;
-        while (newblockSize < size + 5) {
-          newblockSize += blocksize;
-        }
-
-        DataList.this.last = next = getDataArray(newblockSize);
-        logger.debug("added a new data array {}", next);
-
-        /**
+        /*
          * Add reset window at the beginning of each new block.
          */
+        Message reset = null;
         if (d.getType() != MessageType.RESET_WINDOW) {
           Message.Builder db = Message.newBuilder();
           db.setType(MessageType.RESET_WINDOW);
@@ -425,9 +465,32 @@ public class DataList
           rwb.setBaseSeconds(baseSeconds);
           rwb.setWidth(intervalMillis);
           db.setResetWindow(rwb);
-          next.add(db.build());
+          reset = db.build();
+          size += reset.getSerializedSize() + 5; /* roughly for storing the reset tuple and its size */
         }
 
+        /*
+         * make sure that the new block that we try to allocate is enough to store the current message.
+         */
+        int newblockSize = blocksize;
+        while (newblockSize < size + 5) {
+          newblockSize += blocksize;
+        }
+
+        /*
+         * Back up the current block, possibly saving some RAM
+         */
+        requestStorageOnSecondary(this);
+
+        last = next = getDataArray(newblockSize);
+        logger.debug("added a new data array {}", next);
+
+        /*
+         * recursively invoke add on the newly allocated DataArray.
+         */
+        if (reset != null) {
+          next.add(reset);
+        }
         next.add(d);
       }
       else {
@@ -488,6 +551,7 @@ public class DataList
     {
       r.unlock();
     }
+
   }
 
   public DataList(String identifier, int blocksize, int maxlivebocks)
@@ -511,6 +575,11 @@ public class DataList
     for (DataListener dl: all_listeners) {
       dl.dataAdded();
     }
+  }
+
+  public void setSecondaryStorage(Storage storage)
+  {
+    this.storage = storage;
   }
 
   public final void add(Message d)
@@ -701,4 +770,5 @@ public class DataList
 
     all_listeners.remove(dl);
   }
+
 }
