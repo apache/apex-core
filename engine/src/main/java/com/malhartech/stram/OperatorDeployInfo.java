@@ -48,7 +48,7 @@ public class OperatorDeployInfo implements Serializable
      * If inline connection, id of source node in same container.
      * For buffer server, upstream publisher node id.
      */
-    public String sourceNodeId;
+    public int sourceNodeId;
 
     /**
      * Port of the upstream node from where this input stream originates.
@@ -153,7 +153,7 @@ public class OperatorDeployInfo implements Serializable
   /**
    * Unique id in the DAG, assigned by the master and immutable (restart/recovery)
    */
-  public String id;
+  public int id;
 
   /**
    * Logical node name from the topology declaration.

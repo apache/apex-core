@@ -19,9 +19,9 @@ import com.malhartech.api.OperatorCodec;
  */
 public interface BackupAgent
 {
-  public void backup(String operatorId, long windowId, Object o, OperatorCodec serDe) throws IOException;
+  public void backup(int operatorId, long windowId, Object o, OperatorCodec serDe) throws IOException;
 
-  public Object restore(String operatorId, long windowId, OperatorCodec serDe) throws IOException;
+  public Object restore(int operatorId, long windowId, OperatorCodec serDe) throws IOException;
 
-  public void delete(String operatorId, long windowId) throws IOException;
+  public void delete(int operatorId, long windowId) throws IOException;
 }

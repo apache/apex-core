@@ -174,17 +174,17 @@ public class StramLocalCluster implements Runnable
       return super.setupWindowGenerator(smallestWindowId);
     }
 
-    OperatorContext getNodeContext(String id)
+    OperatorContext getNodeContext(int id)
     {
       return activeNodes.get(id);
     }
 
-    Operator getNode(String id)
+    Operator getNode(int id)
     {
       return nodes.get(id).getOperator();
     }
 
-    Map<String, Node<?>> getNodes()
+    Map<Integer, Node<?>> getNodes()
     {
       return nodes;
     }
@@ -296,6 +296,27 @@ public class StramLocalCluster implements Runnable
   List<PTOperator> getPlanOperators(OperatorWrapper logicalNode)
   {
     return dnmgr.getPhysicalPlan().getOperators(logicalNode);
+  }
+
+  /**
+   * Return the container that has the given operator deployed.
+   * Returns null if the specified operator is not deployed.
+   * @param planOperator
+   * @param timeout
+   * @return
+   * @throws InterruptedException
+   */
+  public LocalStramChild getContainer(PTOperator planOperator)
+  {
+    LocalStramChild container;
+    if (planOperator.container.containerId != null) {
+     if ((container = getContainer(planOperator.container.containerId)) != null) {
+        if (container.getNodeContext(planOperator.id) != null) {
+          return container;
+        }
+      }
+    }
+    return null;
   }
 
   StramChildAgent getContainerAgent(StramChild c)

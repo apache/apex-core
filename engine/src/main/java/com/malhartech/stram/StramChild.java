@@ -16,6 +16,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContain
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stream.*;
+import com.malhartech.util.AttributeMap;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -56,10 +57,10 @@ public class StramChild
   private final String containerId;
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
-  protected final Map<String, Node<?>> nodes = new ConcurrentHashMap<String, Node<?>>();
+  protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<Integer, Node<?>>();
   private final Map<String, ComponentContextPair<Stream<Object>, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream<Object>, StreamContext>>();
-  protected final Map<String, WindowGenerator> generators = new ConcurrentHashMap<String, WindowGenerator>();
-  protected final Map<String, OperatorContext> activeNodes = new ConcurrentHashMap<String, OperatorContext>();
+  protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
+  protected final Map<Integer, OperatorContext> activeNodes = new ConcurrentHashMap<Integer, OperatorContext>();
   private final Map<Stream<?>, StreamContext> activeStreams = new ConcurrentHashMap<Stream<?>, StreamContext>();
   private final Map<WindowGenerator, Object> activeGenerators = new ConcurrentHashMap<WindowGenerator, Object>();
   private int heartbeatIntervalMillis = 1000;
@@ -69,11 +70,12 @@ public class StramChild
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
-  private final Map<String, Long> backupInfo = new ConcurrentHashMap<String, Long>();
+  private final Map<Integer, Long> backupInfo = new ConcurrentHashMap<Integer, Long>();
   private long firstWindowMillis;
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
   private com.malhartech.bufferserver.Server bufferServer;
+  private AttributeMap<DAGConstants> applicationAttributes;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -85,6 +87,7 @@ public class StramChild
 
   public void setup(StreamingContainerContext ctx)
   {
+    this.applicationAttributes = ctx.applicationAttributes;
     heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_HEARTBEAT_INTERVAL_MILLIS,  1000);
     firstWindowMillis = ctx.startWindowMillis;
     windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
@@ -218,9 +221,9 @@ public class StramChild
   public synchronized void deactivate()
   {
     ArrayList<Thread> activeThreads = new ArrayList<Thread>();
-    ArrayList<String> activeOperators = new ArrayList<String>();
+    ArrayList<Integer> activeOperators = new ArrayList<Integer>();
 
-    for (Entry<String, Node<?>> e: nodes.entrySet()) {
+    for (Entry<Integer, Node<?>> e: nodes.entrySet()) {
       OperatorContext oc = activeNodes.get(e.getKey());
       if (oc == null) {
         disconnectNode(e.getKey());
@@ -233,7 +236,7 @@ public class StramChild
     }
 
     try {
-      Iterator<String> iterator = activeOperators.iterator();
+      Iterator<Integer> iterator = activeOperators.iterator();
       for (Thread t: activeThreads) {
         t.join();
         disconnectNode(iterator.next());
@@ -255,7 +258,7 @@ public class StramChild
     activeStreams.clear();
   }
 
-  private void disconnectNode(String nodeid)
+  private void disconnectNode(int nodeid)
   {
     Node<?> node = nodes.get(nodeid);
     disconnectWindowGenerator(nodeid, node);
@@ -269,7 +272,7 @@ public class StramChild
       String sourceIdentifier = context.getSourceId();
       String sinkIdentifier = context.getSinkId();
       logger.debug("considering stream {} against id {}", stream, indexingKey);
-      if (nodeid.equals(sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR)[0])) {
+      if (nodeid == Integer.parseInt(sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR)[0])) {
         /*
          * the stream originates at the output port of one of the operators that are going to vanish.
          */
@@ -318,7 +321,7 @@ public class StramChild
         String[] sinkIds = sinkIdentifier.split(", ");
         for (int i = sinkIds.length; i-- > 0;) {
           String[] nodeport = sinkIds[i].split(NODE_PORT_SPLIT_SEPARATOR);
-          if (nodeid.equals(nodeport[0])) {
+          if (Integer.toString(nodeid).equals(nodeport[0])) {
             stream.setSink(sinkIds[i], null);
             if (node instanceof UnifierNode) {
              node.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
@@ -368,11 +371,11 @@ public class StramChild
     }
   }
 
-  private void disconnectWindowGenerator(String nodeid, Node<?> node)
+  private void disconnectWindowGenerator(int nodeid, Node<?> node)
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
-      chosen1.setSink(nodeid.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), null);
+      chosen1.setSink(Integer.toString(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), null);
       node.connectInputPort(Node.INPUT, null);
 
       int count = 0;
@@ -396,7 +399,7 @@ public class StramChild
     /**
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
-    HashMap<String, Node<?>> toUndeploy = new HashMap<String, Node<?>>();
+    HashMap<Integer, Node<?>> toUndeploy = new HashMap<Integer, Node<?>>();
     for (OperatorDeployInfo ndi: nodeList) {
       Node<?> node = nodes.get(ndi.id);
       if (node == null) {
@@ -414,7 +417,7 @@ public class StramChild
     // track the ones which are active
 
     ArrayList<Thread> joinList = new ArrayList<Thread>();
-    ArrayList<String> discoList = new ArrayList<String>();
+    ArrayList<Integer> discoList = new ArrayList<Integer>();
     for (OperatorDeployInfo ndi: nodeList) {
       OperatorContext oc = activeNodes.get(ndi.id);
       if (oc == null) {
@@ -428,7 +431,7 @@ public class StramChild
     }
 
     try {
-      Iterator<String> iterator = discoList.iterator();
+      Iterator<Integer> iterator = discoList.iterator();
       for (Thread t: joinList) {
         t.join();
         disconnectNode(iterator.next());
@@ -499,7 +502,7 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all operators
-      for (Map.Entry<String, Node<?>> e: nodes.entrySet()) {
+      for (Map.Entry<Integer, Node<?>> e: nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
@@ -611,7 +614,7 @@ public class StramChild
         context.request(new OperatorContext.NodeRequest()
         {
           @Override
-          public void execute(Operator operator, String id, long windowId) throws IOException
+          public void execute(Operator operator, int id, long windowId) throws IOException
           {
             new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, operator, StramUtils.getNodeSerDe(null));
             // record last backup window id for heartbeat
@@ -680,7 +683,7 @@ public class StramChild
           foreignObject = operatorSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
 
-        String nodeid = ndi.id.concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
+        String nodeid = Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
         if (foreignObject instanceof InputOperator) {
           nodes.put(ndi.id, new InputNode(nodeid, (InputOperator)foreignObject));
         }
@@ -712,7 +715,7 @@ public class StramChild
       Node<?> node = nodes.get(ndi.id);
 
       for (OperatorDeployInfo.OutputDeployInfo nodi: ndi.outputs) {
-        String sourceIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
+        String sourceIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
         String sinkIdentifier;
 
         StreamContext context = new StreamContext(nodi.declaredStreamId);
@@ -864,8 +867,8 @@ public class StramChild
         Node<?> node = nodes.get(ndi.id);
 
         for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
-          String sourceIdentifier = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
-          String sinkIdentifier = ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
+          String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
+          String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
           ComponentContextPair<Stream<Object>, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
@@ -984,8 +987,8 @@ public class StramChild
 
         Node<?> node = nodes.get(ndi.id);
         Sink<Object> s = node.connectInputPort(Node.INPUT, windowGenerator);
-        windowGenerator.setSink(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT),
-                                ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(windowGenerator, ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), s, ndi.checkpointWindowId) : s);
+        windowGenerator.setSink(Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT),
+                                ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(windowGenerator, Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), s, ndi.checkpointWindowId) : s);
       }
     }
   }
@@ -1032,7 +1035,7 @@ public class StramChild
         public void run()
         {
           try {
-            OperatorContext context = new OperatorContext(ndi.id, this, ndi.contextAttributes);
+            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes);
             node.getOperator().setup(context);
             activeNodes.put(ndi.id, context);
 
@@ -1083,7 +1086,7 @@ public class StramChild
   private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, OperatorDeployInfo ndi)
   {
     for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
-      String source = nidi.sourceNodeId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
+      String source = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
       /*
        * if we do not want to combine multiple streams with different partitions from the
@@ -1099,7 +1102,7 @@ public class StramChild
         collection = new ArrayList<String>();
         groupedInputStreams.put(source, collection);
       }
-      collection.add(ndi.id.concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName));
+      collection.add(Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName));
     }
   }
 

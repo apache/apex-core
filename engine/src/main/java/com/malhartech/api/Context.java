@@ -63,7 +63,7 @@ public interface Context
      * <p>
      * Operator that implements {@link PartitionableOperator}:<br>
      * Count 0 disables partitioning. Other values are ignored as number of
-     * initial partitions are determined by operator implementation.
+     * initial partitions is determined by operator implementation.
      */
     public static final AttributeKey<Integer> INITIAL_PARTITION_COUNT = new AttributeKey<Integer>("initialPartitionCount");
     public static final AttributeKey<Integer> PARTITION_TPS_MIN = new AttributeKey<Integer>("partitionTpsMin");
@@ -78,10 +78,16 @@ public interface Context
      *
      * @return String
      */
-    String getId();
+    int getId();
 
     AttributeMap<OperatorContext> getAttributes();
 
+    /**
+     * Return the application level attributes.
+     * This will be the same set for all operators in the system.
+     * @return
+     */
+    AttributeMap<DAGConstants> getApplicationAttributes();
   }
 
 }

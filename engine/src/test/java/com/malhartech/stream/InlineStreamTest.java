@@ -31,11 +31,11 @@ public class InlineStreamTest
 
     final PassThroughNode operator1 = new PassThroughNode();
     final GenericNode node1 = new GenericNode("node1", operator1);
-    operator1.setup(new OperatorContext(null, null, null));
+    operator1.setup(new OperatorContext(0, null, null, null));
 
     final PassThroughNode operator2 = new PassThroughNode();
     final GenericNode node2 = new GenericNode("node2", operator2);
-    operator2.setup(new OperatorContext(null, null, null));
+    operator2.setup(new OperatorContext(0, null, null, null));
 
     StreamContext streamContext = new StreamContext("node1->node2");
     InlineStream stream = new InlineStream();
@@ -82,7 +82,7 @@ public class InlineStreamTest
     };
     node2.connectOutputPort("output", sink);
 
-    sink = (Sink<Object>)node1.connectInputPort("input", new Sink()
+    sink = node1.connectInputPort("input", new Sink()
     {
       @Override
       public void process(Object tuple)
@@ -99,7 +99,7 @@ public class InlineStreamTest
 
     stream.activate(streamContext);
 
-    Map<String, Node> activeNodes = new ConcurrentHashMap<String, Node>();
+    Map<Integer, Node> activeNodes = new ConcurrentHashMap<Integer, Node>();
     launchNodeThread(node1, activeNodes);
     launchNodeThread(node2, activeNodes);
 
@@ -130,15 +130,15 @@ public class InlineStreamTest
   }
   final AtomicInteger counter = new AtomicInteger(0);
 
-  private void launchNodeThread(final Node node, final Map<String, Node> activeNodes)
+  private void launchNodeThread(final Node node, final Map<Integer, Node> activeNodes)
   {
     Runnable nodeRunnable = new Runnable()
     {
       @Override
       public void run()
       {
-        String id = String.valueOf(counter.incrementAndGet());
-        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<Context.OperatorContext>());
+        int id = counter.incrementAndGet();
+        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<Context.OperatorContext>(), null);
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
         activeNodes.remove(ctx.getId());

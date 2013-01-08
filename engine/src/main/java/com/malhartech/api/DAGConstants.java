@@ -81,6 +81,7 @@ public interface DAGConstants {
    */
   public static final AttributeKey<Integer> STRAM_HEARTBEAT_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.heartbeatIntervalMillis", Integer.class);
 
+  public static final AttributeKey<String> STRAM_STATS_HANDLER = new AttributeKey<String>("stram.statsHandler", String.class);
 
   public class AttributeKey<T> extends AttributeMap.AttributeKey<DAGConstants, T> {
     public final Class<T> attributeType;

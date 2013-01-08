@@ -625,9 +625,9 @@ public class DAG implements Serializable, DAGConstants
 
   /**
    * Check for cycles in the graph reachable from start node n. This is done by
-   * attempting to find a strongly connected components, see
-   * http://en.wikipedia.
-   * org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm
+   * attempting to find a strongly connected components.
+   *
+   * @see http://en.wikipedia.org/wiki/Tarjan%E2%80%99s_strongly_connected_components_algorithm
    *
    * @param n
    * @param cycles

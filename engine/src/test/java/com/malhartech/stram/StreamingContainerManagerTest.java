@@ -40,14 +40,14 @@ public class StreamingContainerManagerTest {
   public void testOperatorDeployInfoSerialization() throws Exception {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ndi.declaredId = "node1";
-    ndi.id ="1";
+    ndi.id = 1;
     ndi.contextAttributes = new AttributeMap.DefaultAttributeMap<OperatorContext>();
     ndi.contextAttributes.attr(OperatorContext.SPIN_MILLIS).set(100);
 
     OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();
     input.declaredStreamId = "streamToNode";
     input.portName = "inputPortNameOnNode";
-    input.sourceNodeId = "sourceNodeId";
+    input.sourceNodeId = 99;
 
     ndi.inputs = new ArrayList<OperatorDeployInfo.InputDeployInfo>();
     ndi.inputs.add(input);
@@ -200,7 +200,7 @@ public class StreamingContainerManagerTest {
     OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cUnifier,  dag.getOperatorWrapper(node2));
     Assert.assertNotNull("unifier for " + node2, mergeNodeDI);
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
-    List<String> sourceNodeIds = new ArrayList<String>();
+    List<Integer> sourceNodeIds = new ArrayList<Integer>();
     for (InputDeployInfo nidi : mergeNodeDI.inputs) {
       Assert.assertEquals("streamName " + nidi, n2n3.getId(), nidi.declaredStreamId);
       String mergePortName = "<merge#" +  dag.getOperatorWrapper(node2).getOutputPortMeta(node2.outport1).getPortName() + ">";

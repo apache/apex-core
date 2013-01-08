@@ -5,6 +5,7 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Context;
+import com.malhartech.api.DAGConstants;
 import com.malhartech.api.Operator;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
@@ -39,11 +40,12 @@ public class OperatorContext implements Context.OperatorContext
      * Command to be executed at subsequent end of window.
      * Current used for module state saving, but applicable more widely.
      */
-    public void execute(Operator operator, String id, long windowId) throws IOException;
+    public void execute(Operator operator, int id, long windowId) throws IOException;
   }
   private long lastProcessedWindowId;
-  private final String id;
+  private final int id;
   private final AttributeMap<OperatorContext> attributes;
+  private final AttributeMap<DAGConstants> applicationAttributes;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
@@ -79,17 +81,23 @@ public class OperatorContext implements Context.OperatorContext
    * @param id the value of id
    * @param attributes the value of attributes
    */
-  public OperatorContext(String id, Thread worker, AttributeMap<OperatorContext> attributes)
+  public OperatorContext(int id, Thread worker, AttributeMap<OperatorContext> attributes, AttributeMap<DAGConstants> applicationAttributes)
   {
     this.id = id;
     this.attributes = attributes;
+    this.applicationAttributes = applicationAttributes;
     this.thread = worker;
   }
 
   @Override
-  public String getId()
+  public int getId()
   {
     return id;
+  }
+
+  @Override
+  public AttributeMap<DAGConstants> getApplicationAttributes() {
+    return this.applicationAttributes;
   }
 
   /**

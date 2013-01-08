@@ -75,6 +75,7 @@ public class StreamingContainerManager implements PlanContext
 
   protected final  Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final  ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
+  protected final  ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
   protected String shutdownDiagnosticsMessage = "";
   protected boolean forcedShutdown = false;
 
@@ -133,7 +134,25 @@ public class StreamingContainerManager implements PlanContext
          }
        }
     }
+
+    processEvents();
+
     updateCheckpoints();
+  }
+
+  public int processEvents() {
+    int count = 0;
+    Runnable command;
+    while ((command = this.eventQueue.poll()) != null) {
+      try {
+        command.run();
+        count ++;
+      } catch (Exception e) {
+        // TODO: handle error
+        LOG.error("Failed to execute {} {}", command, e);
+      }
+    }
+    return count;
   }
 
   /**
@@ -255,7 +274,7 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    Map<String, OperatorStatus> statusMap = sca.operators;
+    Map<Integer, OperatorStatus> statusMap = sca.operators;
     long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
     for (StreamingNodeHeartbeat shb : heartbeat.getDnodeEntries()) {
@@ -502,7 +521,7 @@ public class StreamingContainerManager implements PlanContext
         final StreamDecl streamDecl = out.logicalStream;
         if (!(streamDecl.isInline() && out.isDownStreamInline())) {
           // following needs to match the concat logic in StramChild
-          String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+          String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
           // purge everything from buffer server prior to new checkpoint
           BufferServerClient bsc = getBufferServerClient(operator);
           try {
@@ -595,7 +614,7 @@ public class StreamingContainerManager implements PlanContext
           final StreamDecl streamDecl = out.logicalStream;
           if (!(streamDecl.isInline() && out.isDownStreamInline())) {
             // following needs to match the concat logic in StramChild
-            String sourceIdentifier = operator.id.concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+            String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
             // TODO: find way to mock this when testing rest of logic
             if (operator.container.bufferServerAddress.getPort() != 0) {
               BufferServerClient bsc = getBufferServerClient(operator);
@@ -618,18 +637,15 @@ public class StreamingContainerManager implements PlanContext
 
   @Override
   public void dispatch(Runnable r) {
-    throw new UnsupportedOperationException();
+    this.eventQueue.add(r);
   }
 
   @Override
-  public Set<PTOperator> getDependents(Collection<PTOperator> p) {
+  public Set<PTOperator> getDependents(Collection<PTOperator> operators) {
     Set<PTOperator> visited = new LinkedHashSet<PTOperator>();
-    for (OperatorWrapper logicalOperator : plan.getRootOperators()) {
-      List<PTOperator> operators = plan.getOperators(logicalOperator);
-      if (operators != null) {
-        for (PTOperator operator : operators) {
-          updateRecoveryCheckpoints(operator, visited);
-        }
+    if (operators != null) {
+      for (PTOperator operator : operators) {
+        updateRecoveryCheckpoints(operator, visited);
       }
     }
     return visited;
@@ -641,7 +657,7 @@ public class StreamingContainerManager implements PlanContext
       for (OperatorStatus os : container.operators.values()) {
         OperatorInfo ni = new OperatorInfo();
         ni.container = os.container.containerId + "@" + os.container.host;
-        ni.id = os.operator.id;
+        ni.id = Integer.toString(os.operator.id);
         ni.name = os.operator.getLogicalId();
         StreamingNodeHeartbeat hb = os.lastHeartbeat;
         if (hb != null) {
