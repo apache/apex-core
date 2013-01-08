@@ -321,7 +321,7 @@ public class StramChild
         String[] sinkIds = sinkIdentifier.split(", ");
         for (int i = sinkIds.length; i-- > 0;) {
           String[] nodeport = sinkIds[i].split(NODE_PORT_SPLIT_SEPARATOR);
-          if (nodeid == Integer.parseInt(nodeport[0])) {
+          if (Integer.toString(nodeid).equals(nodeport[0])) {
             stream.setSink(sinkIds[i], null);
             if (node instanceof UnifierNode) {
              node.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);

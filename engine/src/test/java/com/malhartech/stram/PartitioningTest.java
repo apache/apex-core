@@ -13,6 +13,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Sets;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
@@ -57,6 +58,10 @@ public class PartitioningTest {
           receivedTuples.put(id, l);
         }
         l.add(tuple);
+
+        if (output.isConnected()) {
+          output.emit(tuple);
+        }
       }
     };
 
@@ -125,6 +130,7 @@ public class PartitioningTest {
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
+    merged.prefix = ""+System.identityHashCode(collector);
     dag.addStream("toMerged", collector.output, merged.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
@@ -134,10 +140,16 @@ public class PartitioningTest {
     List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorWrapper(collector));
     Assert.assertEquals("number operator instances " + operators, 2, operators.size());
 
-    // one entry for each partition
-    Assert.assertEquals("received tuples " + CollectorOperator.receivedTuples, 2, CollectorOperator.receivedTuples.size());
+    // one entry for each partition + merged output
+    Assert.assertEquals("received tuples " + CollectorOperator.receivedTuples, 3, CollectorOperator.receivedTuples.size());
     Assert.assertEquals("received tuples " + operators.get(0), Arrays.asList(4), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(0).id));
     Assert.assertEquals("received tuples " + operators.get(1), Arrays.asList(5), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(1).id));
+
+    PTOperator pmerged = lc.findByLogicalNode(dag.getOperatorWrapper(merged));
+    List<Object> tuples = CollectorOperator.receivedTuples.get(merged.prefix + pmerged.id);
+    Assert.assertNotNull("merged tuples " + pmerged, tuples);
+    Assert.assertEquals("merged tuples " + pmerged, Sets.newHashSet(testData[0]), Sets.newHashSet(tuples));
+
   }
 
   public static class PartitionLoadWatch extends PhysicalPlan.PartitionLoadWatch {
@@ -171,6 +183,9 @@ public class PartitioningTest {
     //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(20);
     //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(200);
     dag.addStream("fromInput", input.output, collector.input);
+
+    //CollectorOperator merged = dag.addOperator("outputSingle", new CollectorOperator());
+    //dag.addStream("toOutputSingle", collector.output, merged.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
@@ -213,15 +228,23 @@ public class PartitioningTest {
     inputDeployed.testTuples.add(tuples);
 
     for (PTOperator p : partitions) {
-      List<Object> receivedTuples;
       Integer expectedTuple = p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next();
+      List<Object> receivedTuples;
       while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.id)) == null) {
         LOG.debug("Waiting for tuple: " + p);
         Thread.sleep(20);
       }
       Assert.assertEquals("received " + p, Arrays.asList(expectedTuple), receivedTuples);
     }
-
+/*
+    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorWrapper(merged));
+    Assert.assertEquals("number output operator instances " + operators, 1, operators.size());
+    List<Object> receivedTuples;
+    while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + operators.get(0).id)) == null) {
+      LOG.debug("Waiting for merge operator tuple: " + operators.get(0));
+      Thread.sleep(20);
+    }
+*/
     lc.shutdown();
 
   }
