@@ -58,7 +58,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
     Tuple t;
     switch (data.getType()) {
       case CHECKPOINT:
-        serde.reset();
+        serde.resetState();
         return;
 
       case CODEC_STATE:

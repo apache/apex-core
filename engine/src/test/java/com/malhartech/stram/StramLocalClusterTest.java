@@ -268,14 +268,14 @@ public class StramLocalClusterTest
 
     // reconnect as buffer was replaced
     sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputModule.OUTPUT_PORT);
-    // verify tuple sent before publisher reset was removed from buffer during recovery
-    // (publisher to resume from reset id)
+    // verify tuple sent before publisher checkpoint was removed from buffer during recovery
+    // (publisher to resume from checkpoint id)
     tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());
     Assert.assertEquals("received " + tuples, window6Tuple, tuples.get(0));
 
     // purge checkpoints
-    localCluster.dnmgr.monitorHeartbeat(); // reset purging
+    localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
 
     Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
     Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);

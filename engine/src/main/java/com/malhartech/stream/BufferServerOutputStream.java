@@ -107,7 +107,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
 
       switch (t.getType()) {
         case CHECKPOINT:
-          serde.reset();
+          serde.resetState();
           break;
 
         case BEGIN_WINDOW:

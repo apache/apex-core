@@ -4,16 +4,15 @@
  */
 package com.malhartech.engine;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.engine.DefaultStreamCodec.ClassIdPair;
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -28,13 +27,13 @@ public class DefaultStreamCodecTest
     final String s;
     final int i;
 
-    public TestClass(String s, int i)
+    TestClass(String s, int i)
     {
       this.s = s;
       this.i = i;
     }
 
-    public TestClass()
+    TestClass()
     {
       s = "default!";
       i = Integer.MAX_VALUE;
@@ -67,6 +66,7 @@ public class DefaultStreamCodecTest
       }
       return true;
     }
+
   }
 
   public DefaultStreamCodecTest()
@@ -92,8 +92,8 @@ public class DefaultStreamCodecTest
   @Test
   public void testSomeMethod()
   {
-    DefaultStreamCodec coder = new DefaultStreamCodec();
-    DefaultStreamCodec decoder = new DefaultStreamCodec();
+    DefaultStreamCodec<Object> coder = new DefaultStreamCodec<Object>();
+    DefaultStreamCodec<Object> decoder = new DefaultStreamCodec<Object>();
 
     TestClass tc = new TestClass("hello!", 42);
 //    String tc = "hello!";
@@ -112,7 +112,7 @@ public class DefaultStreamCodecTest
     Object tcObject2 = decoder.fromByteArray(dsp2);
     assert (tc.equals(tcObject2));
 
-    coder.reset();
+    coder.resetState();
 
     dsp2 = coder.toByteArray(tc);
     state2 = dsp2.state;
@@ -124,21 +124,28 @@ public class DefaultStreamCodecTest
     Assert.assertArrayEquals(dsp1.state, dsp2.state);
   }
 
-  public static class TestTuple {
+  public static class TestTuple
+  {
     final Integer finalField;
+
     @SuppressWarnings("unused")
-    private TestTuple() {
+    private TestTuple()
+    {
       finalField = null;
     }
-    public TestTuple(Integer i) {
+
+    public TestTuple(Integer i)
+    {
       this.finalField = i;
     }
+
   }
 
   @Test
-  public void testFinalFieldSerialization() throws Exception {
+  public void testFinalFieldSerialization() throws Exception
+  {
     TestTuple t1 = new TestTuple(5);
-    DefaultStreamCodec c = new DefaultStreamCodec();
+    DefaultStreamCodec<Object> c = new DefaultStreamCodec<Object>();
     DataStatePair dsp = c.toByteArray(t1);
     TestTuple t2 = (TestTuple)c.fromByteArray(dsp);
     Assert.assertEquals("", t1.finalField, t2.finalField);

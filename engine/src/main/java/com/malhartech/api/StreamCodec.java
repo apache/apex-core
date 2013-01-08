@@ -94,10 +94,10 @@ public interface StreamCodec<T>
   /**
    * Reset the state of the codec to the default state before any of the tuples are processed.
    *
-   * The state used to serialize/deserialize after reset is the same as the state codec has after
-   * it is instantiated. reset is called periodically when the upstream operator checkpoints but
-   * should not be confused with the checkpoint operation of upstream operator.
+   * The state used to serialize/deserialize after resetState is the same as the state codec has after
+   * it is instantiated. resetState is called periodically when the upstream operator checkpoints but
+   * should not be confused with the resetState operation of upstream operator.
    *
    */
-  public void reset();
+  public void resetState();
 }

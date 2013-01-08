@@ -78,7 +78,7 @@
                <goal>build-classpath</goal>
              </goals>
              <configuration>
-               <!-- 
+               <!--
                generate runtime classpath for running client in dev environment
                -->
                <outputFile>${project.build.directory}/mvn-generated-runtime-classpath</outputFile>
@@ -173,7 +173,7 @@
     <dependency>
       <groupId>com.esotericsoftware.kryo</groupId>
       <artifactId>kryo</artifactId>
-      <version>2.19</version>
+      <version>2.20</version>
     </dependency>
 
 	<dependency>
@@ -190,6 +190,11 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>malhar-bufferserver</artifactId>
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.esotericsoftware.kryo</groupId>
+      <artifactId>kryo</artifactId>
+      <version>2.21-SNAPSHOT</version>
     </dependency>
   </dependencies>
 

@@ -9,7 +9,6 @@ import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
-import com.malhartech.util.CircularBuffer;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
+ * @param <OPERATOR>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class Node<OPERATOR extends Operator> implements Runnable

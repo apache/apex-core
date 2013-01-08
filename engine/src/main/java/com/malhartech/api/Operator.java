@@ -11,6 +11,7 @@ public interface Operator extends Component<OperatorContext>
   /**
    * This method gets called at the beginning of each window.
    *
+   * @param windowId identifier for the window that is unique for this run of the application.
    */
   public void beginWindow(long windowId);
 
@@ -112,6 +113,7 @@ public interface Operator extends Component<OperatorContext>
      * Merge tuples emitted by multiple upstream instances of the enclosing
      * operator (partitioned or load balanced).
      *
+     * @return unifier object which can merge partitioned streams together into a single stream.
      */
     public Unifier<T> getUnifier();
 

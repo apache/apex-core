@@ -65,6 +65,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
     {
       Registration registration = idToRegistration.remove(classId);
       classToRegistration.remove(registration.getType());
+      getRegistration(int.class); /* make sure that we bust the memoized cache in superclass */
     }
 
     @Override
@@ -157,7 +158,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   }
 
   @Override
-  public void reset()
+  public void resetState()
   {
     classResolver.checkpoint();
   }
