@@ -7,6 +7,7 @@ import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.StramWebServices;
+import com.malhartech.util.VersionInfo;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -167,7 +168,7 @@ public class StramCli
 
   private void printWelcomeMessage()
   {
-    System.out.println("Stram CLI. For assistance press TAB or type \"help\" then hit ENTER.");
+    System.out.println("Stram CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate());
   }
 
   private void printHelp()

@@ -53,6 +53,12 @@
              <!-- never include into jar (used in minicluster test) -->
              <exclude>**/yarn-site.xml</exclude>
            </excludes>
+          <archive>
+            <manifestEntries>
+              <malhar-buildtime>${maven.build.timestamp}</malhar-buildtime>
+              <malhar-buildversion>${project.version}</malhar-buildversion>
+            </manifestEntries>
+          </archive>
          </configuration>
        </plugin>
        <plugin>
