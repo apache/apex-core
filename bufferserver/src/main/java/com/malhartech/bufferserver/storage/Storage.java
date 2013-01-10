@@ -24,12 +24,13 @@ public interface Storage
    * Store memory block represented by block in non memory storage.
    *
    * @param Identifier - application specific Id, this need not be unique.
+   * @param uniqueIdentifier - Unique identifier of the block if we want to replace, -1 if storing for the first time.
    * @param bytes - memory represented as byte array
    * @param start - the offset of the first byte in the array
    * @param end - the offset of the last byte in the array.
    * @return unique identifier for the stored block.
    */
-  public int store(String Identifier, byte[] bytes, int start, int end);
+  public int store(String Identifier, int uniqueIdentifier, byte[] bytes, int start, int end);
 
   /**
    *

@@ -8,6 +8,8 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -15,21 +17,24 @@ import java.util.Arrays;
  */
 public class DiskStorage implements Storage
 {
+  private static final Logger logger = LoggerFactory.getLogger(DiskStorage.class);
   final String basePath;
 
   public DiskStorage(String baseDirectory)
   {
     basePath = baseDirectory;
+    logger.info("using {} as the basepath for spooling temporary files.", basePath);
   }
 
   public DiskStorage() throws IOException
   {
     basePath = File.createTempFile("tt", "tt").getParent();
+    logger.info("using {} as the basepath for spooling temporary files.", basePath);
   }
 
   public Storage getInstance() throws IOException
   {
-    return new DiskStorage();
+    return new DiskStorage(basePath);
   }
 
   public static String normalizeFileName(String name)
@@ -49,10 +54,8 @@ public class DiskStorage implements Storage
   }
 
   @Override
-  public int store(String identifier, byte[] bytes, int startingOffset, int endingOffset)
+  public int store(String identifier, int uniqueIdentifier, byte[] bytes, int startingOffset, int endingOffset)
   {
-    int filename = 0;
-
     String normalizedFileName = normalizeFileName(identifier);
     File directory = new File(basePath, normalizedFileName);
     if (directory.exists()) {
@@ -61,11 +64,17 @@ public class DiskStorage implements Storage
         try {
           byte[] stored = Files.toByteArray(identityFile);
           if (Arrays.equals(stored, identifier.getBytes())) {
-            String[] sfiles = directory.list();
-            Arrays.sort(sfiles);
-            for (int j = sfiles.length; j-- > 0;) {
-              if (!sfiles[j].equals("identity")) {
-                filename = Integer.parseInt(sfiles[j]) + 1;
+            if (uniqueIdentifier == 0) {
+              String[] sfiles = directory.list();
+              Arrays.sort(sfiles);
+              for (int j = sfiles.length; j-- > 0;) {
+                if (!sfiles[j].equals("identity")) {
+                  uniqueIdentifier = Integer.parseInt(sfiles[j]) + 1;
+                }
+              }
+
+              if (uniqueIdentifier == 0) {
+                uniqueIdentifier = 1;
               }
             }
           }
@@ -96,7 +105,7 @@ public class DiskStorage implements Storage
       }
     }
 
-    return writeFile(bytes, startingOffset, endingOffset, directory, filename == 0 ? 1 : filename);
+    return writeFile(bytes, startingOffset, endingOffset, directory, uniqueIdentifier);
   }
 
   public void discard(String identifier, int uniqueIdentifier)
