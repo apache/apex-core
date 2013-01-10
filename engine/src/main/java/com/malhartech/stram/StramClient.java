@@ -242,20 +242,24 @@ public class StramClient
 
     for (Class<?> jarClass : jarClasses) {
       localJarFiles.add(JarFinder.getJar(jarClass));
-      // check for annotated dependencies
-      try {
-        ShipContainingJars shipJars = jarClass.getAnnotation(ShipContainingJars.class);
-        if (shipJars != null) {
-          for (Class<?> depClass : shipJars.classes()) {
-            localJarFiles.add(JarFinder.getJar(depClass));
-            LOG.info("Including {} as dependency of {}", depClass, jarClass);
+      // check for annotated dependencies in class and super classes
+      for (Class<?> c = jarClass; c != Object.class && c != null; c = c.getSuperclass()) {
+        try {
+          //LOG.debug("checking " + c);
+          ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
+          if (shipJars != null) {
+            for (Class<?> depClass : shipJars.classes()) {
+              localJarFiles.add(JarFinder.getJar(depClass));
+              LOG.info("Including {} as dependency of {}", depClass, jarClass);
+            }
           }
         }
-      }
-      catch (ArrayStoreException e) {
-        LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
+        catch (ArrayStoreException e) {
+          LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
+        }
       }
     }
+
     String libJarsPath = dag.getAttributes().attrValue(DAG.STRAM_LIBJARS, null);
     if (!StringUtils.isEmpty(libJarsPath)) {
       String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, ",");
