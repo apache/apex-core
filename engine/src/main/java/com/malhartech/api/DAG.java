@@ -79,7 +79,7 @@ public class DAG implements Serializable, DAGConstants
   @SuppressWarnings("unchecked")
   public DAG(Configuration conf)
   {
-    for (@SuppressWarnings("rawtypes") DAGConstants.AttributeKey key : DAGConstants.AttributeKey.INSTANCES) {
+    for (@SuppressWarnings("rawtypes") DAGConstants.AttributeKey key : DAGConstants.ATTRIBUTE_KEYS) {
       String stringValue = conf.get(key.name());
       if (stringValue != null) {
         if (key.attributeType == Integer.class) {

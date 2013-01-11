@@ -84,9 +84,11 @@ public interface DAGConstants {
 
   public static final AttributeKey<String> STRAM_STATS_HANDLER = new AttributeKey<String>("stram.statsHandler", String.class);
 
+  public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
+
   public class AttributeKey<T> extends AttributeMap.AttributeKey<DAGConstants, T> {
     public final Class<T> attributeType;
-    public final static Set<AttributeKey<?>> INSTANCES = new HashSet<AttributeKey<?>>();
+    private final static Set<AttributeKey<?>> INSTANCES = new HashSet<AttributeKey<?>>();
 
     private AttributeKey(String name, Class<T> type) {
       super(DAGConstants.class, name);

@@ -41,9 +41,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.BaseOperator;
+import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.InputOperator;
-import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.TestGeneratorInputModule;
 import com.malhartech.stram.webapp.StramWebServices;
@@ -348,5 +348,25 @@ public class StramMiniClusterTest
     // unable to get the diagnostics message set by the AM here
     //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
   }
+
+/*
+  @ShipContainingJars(classes = {javax.jms.Message.class})
+  protected class ShipJarsBaseOperator extends BaseOperator {
+
+  }
+
+  protected class ShipJarsOperator extends ShipJarsBaseOperator {
+
+  }
+
+  @Test
+  public void testShipContainingJars() {
+    DAG dag = new DAG();
+    dag.addOperator("foo", new ShipJarsOperator());
+    dag.getClassNames();
+    LinkedHashSet<String> jars = StramClient.findJars(dag);
+    Assert.assertEquals("" + jars, 1 , jars.size());
+  }
+*/
 
 }
