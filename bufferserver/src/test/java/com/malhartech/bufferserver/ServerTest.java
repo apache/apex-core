@@ -32,7 +32,8 @@ public class ServerTest
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
-    instance = new Server(0);
+    instance = new Server(0, 4096, 10);
+
     SocketAddress result = instance.run();
     assert (result instanceof InetSocketAddress);
     String host = ((InetSocketAddress)result).getHostName();

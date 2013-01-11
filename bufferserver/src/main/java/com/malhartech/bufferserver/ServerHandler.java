@@ -13,6 +13,7 @@ import com.malhartech.bufferserver.Buffer.ResetRequest;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.Buffer.Payload;
 import com.malhartech.bufferserver.policy.*;
+import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.SerializedData;
 import io.netty.buffer.MessageBuf;
 import io.netty.buffer.Unpooled;
@@ -45,11 +46,17 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
   private final ConcurrentHashMap<String, Channel> subscriberChannels = new ConcurrentHashMap<String, Channel>();
   private final int blockSize;
   private final int blockCount;
+  private Storage storage;
 
   public ServerHandler(int blocksize, int blockcount)
   {
     blockSize = blocksize;
     blockCount = blockcount;
+  }
+
+  public void setSpoolStorage(Storage storage)
+  {
+    this.storage = storage;
   }
 
   @Override
@@ -62,14 +69,14 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       Message data = in.poll();
       switch (data.getType()) {
         case PUBLISHER_REQUEST:
-          logger.info("Received publisher request: {}", data);
+          logger.info("Received publisher request: {}", data.getPublisherRequest());
           dl = handlePublisherRequest(data.getPublisherRequest(), ctx);
           dl.rewind(data.getPublisherRequest().getBaseSeconds(), data.getPublisherRequest().getWindowId(), new ProtobufDataInspector());
           ctx.attr(DATA_LIST).set(dl);
           break;
 
         case SUBSCRIBER_REQUEST:
-          logger.info("Received subscriber request: {}", data);
+          logger.info("Received subscriber request: {}", data.getSubscriberRequest());
           boolean contains = subscriberGroups.containsKey(data.getSubscriberRequest().getType());
           LogicalNode ln = handleSubscriberRequest(data.getSubscriberRequest(), ctx);
           if (!contains) {
@@ -79,12 +86,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
           break;
 
         case PURGE_REQUEST:
-          logger.info("Received purge request: {}", data);
+          logger.info("Received purge request: {}", data.getPurgeRequest());
           handlePurgeRequest(data.getPurgeRequest(), ctx);
           break;
 
         case RESET_REQUEST:
-          logger.info("Received purge all request: {}", data);
+          logger.info("Received purge all request: {}", data.getResetRequest());
           handleResetRequest(data.getResetRequest(), ctx);
           break;
 
@@ -140,6 +147,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     }
     else {
       dl = new DataList(identifier, blockSize, 8);
+      dl.setSecondaryStorage(storage);
       publisherBufffers.put(identifier, dl);
     }
 
@@ -384,4 +392,5 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     ctx.write(SerializedData.getInstanceFrom(db.build()))
             .addListener(ChannelFutureListener.CLOSE);
   }
+
 }

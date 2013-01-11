@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.netty.ServerInitializer;
+import com.malhartech.bufferserver.storage.Storage;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
@@ -30,6 +31,7 @@ public class Server
   private ServerBootstrap bootstrap;
   private String identity;
   private final ServerInitializer serverInitializer;
+  private Storage storage;
 
   /**
    * @param port - port number to bind to or 0 to auto select a free port
@@ -45,6 +47,10 @@ public class Server
     serverInitializer = new ServerInitializer(blocksize, blockcount);
   }
 
+  public void setSpoolStorage(Storage storage)
+  {
+    this.storage = storage;
+  }
   /**
    *
    * @return {@link java.net.SocketAddress}

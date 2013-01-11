@@ -32,10 +32,8 @@ public class DataList
   private final Integer blocksize;
   private HashMap<BitVector, HashSet<DataListener>> listeners = new HashMap<BitVector, HashSet<DataListener>>();
   private HashSet<DataListener> all_listeners = new HashSet<DataListener>();
-  private static volatile DataArray free = null;
   private volatile DataArray first;
   private volatile DataArray last;
-  private final int maxliveblocks;
   private Storage storage;
 
   synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
@@ -45,45 +43,11 @@ public class DataList
     for (DataArray temp = first; temp != null; temp = temp.next) {
       if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
         if (temp != last) {
-          synchronized (this.blocksize) {
-            last.next = free;
-            free = temp.next;
-          }
           temp.next = null;
           last = temp;
         }
 
-        long bs = temp.starting_window & 0x7fffffff00000000L;
-        temp.lockWrite();
-        try {
-          DataListIterator dli = new DataListIterator(last, di);
-          done:
-          while (dli.hasNext()) {
-            SerializedData sd = dli.next();
-            switch (di.getType(sd)) {
-              case RESET_WINDOW:
-                bs = (long)di.getBaseSeconds(sd) << 32;
-                if (bs > longWindowId) {
-                  temp.writingOffset = sd.offset;
-                  Arrays.fill(temp.data, temp.writingOffset, temp.data.length, Byte.MIN_VALUE);
-                  break done;
-                }
-                break;
-
-              case BEGIN_WINDOW:
-                if ((bs | di.getWindowId(sd)) >= longWindowId) {
-                  temp.writingOffset = sd.offset;
-                  Arrays.fill(temp.data, temp.writingOffset, temp.data.length, Byte.MIN_VALUE);
-                  break done;
-                }
-                break;
-            }
-          }
-
-        }
-        finally {
-          temp.unlockWrite();
-        }
+        temp.rewind(di, longWindowId);
       }
     }
 
@@ -93,103 +57,14 @@ public class DataList
     }
   }
 
-  /**
-   * @param blocksize - it's ignored if we are reusing block
-   * @return DataArray
-   */
-  private DataArray getDataArray(int blocksize)
-  {
-    DataArray retval = null;
-
-    synchronized (this.blocksize) {
-      if (free != null) {
-        retval = free;
-        free = free.next;
-      }
-    }
-
-    if (retval == null) {
-      /*
-       * count the blocks we used for this list so far. If it's less than the
-       * maxblockcount, then we can go ahead and allocate a new block. If not
-       * then we need to spool to secondary storage and free up a block to use
-       * with this list.
-       */
-      int i = 1;
-      for (DataArray temp = first; temp != last; temp = temp.next) {
-        i++;
-      }
-
-      if (true || i < maxliveblocks) {
-        /*
-         * we are below threshold
-         */
-        retval = new DataArray(blocksize);
-      }
-      else {
-        /*
-         * we gotta hunt one of the unused blocks.
-         * the block which is currently pointed by any iterator is out of question.
-         * the next block is also out of question since that will be take up anytime.
-         * the last block is out of question since it's being written to.
-         * if that does not leave us any block then we pick the first one which is
-         * not being read from. If nothing works then we just wait for a while.
-         */
-        ArrayList<DataArray> secondaryCandidates = new ArrayList<DataArray>();
-        DataArray temp = first;
-        while (temp != last) {
-          boolean inuse = false;
-          for (DataListIterator di: iterators.values()) {
-            if (di.da == temp) {
-              inuse = true;
-              break;
-            }
-          }
-
-          if (inuse) {
-            temp = temp.next;
-            secondaryCandidates.add(temp);
-          }
-          else {
-            // save this to secondary storage, and use the memory associated with it
-            // if successful then break here!
-            break;
-          }
-
-          temp = temp.next;
-        }
-
-        if (retval == null) {
-          /*
-           * we reach here since we could not identify any block.
-           */
-          for (DataArray da: secondaryCandidates) {
-            // do the same thing as you would do in the case above
-          }
-        }
-      }
-    }
-    else {
-      retval.starting_window = retval.ending_window = retval.writingOffset = retval.readingOffset = 0;
-      retval.next = null;
-    }
-
-    Arrays.fill(retval.data, Byte.MIN_VALUE);
-
-    return retval;
-  }
-
   synchronized void reset()
   {
     listeners.clear();
     all_listeners.clear();
 
-    synchronized (blocksize) {
-      last.next = free;
-      free = first;
-    }
-
-    first = last = getDataArray(blocksize);
+    DataArray temp = new DataArray(blocksize);
+    temp.acquire();
+    first = last = temp;
   }
 
   synchronized void purge(int baseSeconds, int windowId, DataIntrospector di)
@@ -200,154 +75,14 @@ public class DataList
     for (DataArray temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
       if (temp.ending_window > longWindowId || temp == last) {
         if (prev != null) {
-          synchronized (blocksize) {
-            prev.next = free;
-            free = first;
-            first = temp;
-          }
+          first = temp;
         }
 
-        purge(first, longWindowId, di);
+        first.purge(longWindowId, di);
         break;
       }
 
       prev = temp;
-    }
-  }
-
-  private static void purge(DataArray da, long longWindowId, DataIntrospector di)
-  {
-    logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}",
-                 new Object[] {Codec.getStringWindowId(da.starting_window), Codec.getStringWindowId(longWindowId), da.baseSeconds});
-    da.lockWrite();
-    try {
-      boolean found = false;
-      long bs = (long)da.baseSeconds << 32;
-      SerializedData lastReset = null;
-
-      DataListIterator dli = new DataListIterator(da, di);
-      done:
-      while (dli.hasNext()) {
-        SerializedData sd = dli.next();
-        switch (di.getType(sd)) {
-          case RESET_WINDOW:
-            bs = (long)di.getBaseSeconds(sd) << 32;
-            lastReset = sd;
-            break;
-
-          case BEGIN_WINDOW:
-            if ((bs | di.getWindowId(sd)) > longWindowId) {
-              found = true;
-              if (lastReset != null) {
-                /*
-                 * Restore the last Reset tuple if there was any and adjust the writingOffset to the beginning of the reset tuple.
-                 */
-                if (sd.offset >= lastReset.size) {
-                  sd.offset -= lastReset.size;
-                  if (!(sd.bytes == lastReset.bytes && sd.offset == lastReset.offset)) {
-                    System.arraycopy(lastReset.bytes, lastReset.offset, sd.bytes, sd.offset, lastReset.size);
-                  }
-                }
-
-                da.starting_window = bs | di.getWindowId(sd);
-                da.readingOffset = sd.offset;
-              }
-
-              // the following code through done may not even be needed. why waste cycles.
-              int i = 1;
-              while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
-                i++;
-              }
-
-              if (i <= sd.offset) {
-                sd.size = sd.offset;
-                sd.offset = 0;
-                sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
-                di.wipeData(sd);
-              }
-              else {
-                logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
-              }
-              break done;
-            }
-        }
-      }
-
-      /**
-       * If we ended up purging all the data from the current DataArray then,
-       * it also makes sense to start all over.
-       * It helps with better utilization of the RAM.
-       */
-      if (!found) {
-        logger.debug("we could not find a tuple which is in a window later than the window to be purged, so this has to be the last window published so far");
-        if (lastReset != null && lastReset.offset != 0) {
-          da.readingOffset = da.writingOffset - lastReset.size;
-          System.arraycopy(lastReset.bytes, lastReset.offset, da.data, da.readingOffset, lastReset.size);
-          da.starting_window = da.ending_window = bs;
-        }
-        else {
-          da.readingOffset = da.writingOffset;
-          da.starting_window = da.ending_window = 0;
-        }
-
-
-        SerializedData sd = new SerializedData();
-        sd.bytes = da.data;
-        sd.offset = da.readingOffset;
-
-        // the rest of it is just a copy from beginWindow case here to wipe the data - refactor
-        int i = 1;
-        while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
-          i++;
-        }
-
-        if (i <= sd.offset) {
-          sd.size = sd.offset;
-          sd.offset = 0;
-          sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
-          di.wipeData(sd);
-        }
-        else {
-          logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
-        }
-      }
-    }
-    finally {
-      da.unlockWrite();
-    }
-  }
-
-  private void requestStorageOnSecondary(final DataArray da)
-  {
-    if (storage != null) {
-      da.lockWrite();
-      try {
-        for (DataListIterator dli: iterators.values()) {
-          if (dli.da == da) {
-            return;
-          }
-        }
-        new Thread()
-        {
-          @Override
-          public void run()
-          {
-            int i = storage.store(identifier, da.data, da.readingOffset, da.writingOffset - 1);
-            da.lockWrite();
-            try {
-              da.uniqueIdentifier = i;
-              da.data = null;
-            }
-            finally {
-              da.unlockWrite();
-            }
-          }
-
-        }.start();
-      }
-      finally {
-        da.unlockWrite();
-      }
     }
   }
 
@@ -364,9 +99,6 @@ public class DataList
     /**
      * Any operation on this data array would need read or write lock here.
      */
-    private final ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
-    private final Lock r = rwl.readLock();
-    private final Lock w = rwl.writeLock();
     private volatile int baseSeconds = 0;
     private volatile int intervalMillis = 0;
     /**
@@ -397,6 +129,7 @@ public class DataList
      * the next in the chain.
      */
     DataArray next;
+    private int refcount;
 
     private DataArray(int blocksize)
     {
@@ -404,26 +137,144 @@ public class DataList
        * we want to make sure that MSB of each byte is on, so that we can exploit it ensure presence of a record which is prepended with getSize represented as
        * 32 bit integer varint.
        */
-      data = new byte[blocksize];
+      Arrays.fill(data = new byte[blocksize], Byte.MIN_VALUE);
     }
 
     void getNextData(SerializedData current)
     {
       if (current.offset < writingOffset) {
-        r.lock();
-        try {
-          Codec.readRawVarInt32(current);
-        }
-        finally {
-          r.unlock();
-        }
+        Codec.readRawVarInt32(current);
       }
       else {
         current.size = 0;
       }
     }
 
-    public final void addUnsafe(Message d)
+    private synchronized void rewind(DataIntrospector di, long windowId)
+    {
+      long bs = starting_window & 0x7fffffff00000000L;
+      DataListIterator dli = new DataListIterator(last, di);
+      done:
+      while (dli.hasNext()) {
+        SerializedData sd = dli.next();
+        switch (di.getType(sd)) {
+          case RESET_WINDOW:
+            bs = (long)di.getBaseSeconds(sd) << 32;
+            if (bs > windowId) {
+              writingOffset = sd.offset;
+              Arrays.fill(data, writingOffset, data.length, Byte.MIN_VALUE);
+              break done;
+            }
+            break;
+
+          case BEGIN_WINDOW:
+            if ((bs | di.getWindowId(sd)) >= windowId) {
+              writingOffset = sd.offset;
+              Arrays.fill(data, writingOffset, data.length, Byte.MIN_VALUE);
+              break done;
+            }
+            break;
+        }
+      }
+    }
+
+    private synchronized void purge(long longWindowId, DataIntrospector di)
+    {
+      logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}",
+                   new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId), this.baseSeconds});
+      boolean found = false;
+      long bs = (long)this.baseSeconds << 32;
+      SerializedData lastReset = null;
+
+      DataListIterator dli = new DataListIterator(this, di);
+      done:
+      while (dli.hasNext()) {
+        SerializedData sd = dli.next();
+        switch (di.getType(sd)) {
+          case RESET_WINDOW:
+            bs = (long)di.getBaseSeconds(sd) << 32;
+            lastReset = sd;
+            break;
+
+          case BEGIN_WINDOW:
+            if ((bs | di.getWindowId(sd)) > longWindowId) {
+              found = true;
+              if (lastReset != null) {
+                /*
+                 * Restore the last Reset tuple if there was any and adjust the writingOffset to the beginning of the reset tuple.
+                 */
+                if (sd.offset >= lastReset.size) {
+                  sd.offset -= lastReset.size;
+                  if (!(sd.bytes == lastReset.bytes && sd.offset == lastReset.offset)) {
+                    System.arraycopy(lastReset.bytes, lastReset.offset, sd.bytes, sd.offset, lastReset.size);
+                  }
+                }
+
+                this.starting_window = bs | di.getWindowId(sd);
+                this.readingOffset = sd.offset;
+              }
+
+              // the following code through done may not even be needed. why waste cycles.
+              int i = 1;
+              while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
+                i++;
+              }
+
+              if (i <= sd.offset) {
+                sd.size = sd.offset;
+                sd.offset = 0;
+                sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
+                di.wipeData(sd);
+              }
+              else {
+                logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
+              }
+              break done;
+            }
+        }
+      }
+
+      /**
+       * If we ended up purging all the data from the current DataArray then,
+       * it also makes sense to start all over.
+       * It helps with better utilization of the RAM.
+       */
+      if (!found) {
+        logger.debug("we could not find a tuple which is in a window later than the window to be purged, so this has to be the last window published so far");
+        if (lastReset != null && lastReset.offset != 0) {
+          this.readingOffset = this.writingOffset - lastReset.size;
+          System.arraycopy(lastReset.bytes, lastReset.offset, this.data, this.readingOffset, lastReset.size);
+          this.starting_window = this.ending_window = bs;
+        }
+        else {
+          this.readingOffset = this.writingOffset;
+          this.starting_window = this.ending_window = 0;
+        }
+
+
+        SerializedData sd = new SerializedData();
+        sd.bytes = this.data;
+        sd.offset = this.readingOffset;
+
+        // the rest of it is just a copy from beginWindow case here to wipe the data - refactor
+        int i = 1;
+        while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
+          i++;
+        }
+
+        if (i <= sd.offset) {
+          sd.size = sd.offset;
+          sd.offset = 0;
+          sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
+          di.wipeData(sd);
+        }
+        else {
+          logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
+        }
+      }
+    }
+
+    public final void add(Message d)
     {
       int size = d.getSerializedSize();
       if (writingOffset + 5 /* for max varint size */ + size > data.length /* this is a fast check */
@@ -480,9 +331,11 @@ public class DataList
         /*
          * Back up the current block, possibly saving some RAM
          */
-        requestStorageOnSecondary(this);
+        release();
 
-        last = next = getDataArray(newblockSize);
+        DataArray temp = new DataArray(newblockSize);
+        temp.acquire();
+        last = next = temp;
         logger.debug("added a new data array {}", next);
 
         /*
@@ -521,35 +374,44 @@ public class DataList
       }
     }
 
-    public void add(Message d)
+    synchronized void acquire()
     {
-      w.lock();
-      try {
-        addUnsafe(d);
+      refcount++;
+
+      if (data == null && storage != null) {
+        new Thread()
+        {
+          @Override
+          public void run()
+          {
+            synchronized (DataArray.this) {
+              data = storage.retrieve(identifier, uniqueIdentifier);
+              readingOffset = 0;
+              writingOffset = data.length;
+            }
+          }
+
+        }.start();
       }
-      finally {
-        w.unlock();
+    }
+
+    synchronized void release()
+    {
+      if (--refcount == 0 && storage != null) {
+        new Thread()
+        {
+          @Override
+          public void run()
+          {
+            synchronized (DataArray.this) {
+              int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset - 1);
+              uniqueIdentifier = i;
+              data = null;
+            }
+          }
+
+        }.start();
       }
-    }
-
-    public void lockWrite()
-    {
-      w.lock();
-    }
-
-    public void unlockWrite()
-    {
-      w.unlock();
-    }
-
-    public void lockRead()
-    {
-      r.lock();
-    }
-
-    public void unlockRead()
-    {
-      r.unlock();
     }
 
   }
@@ -558,8 +420,10 @@ public class DataList
   {
     this.identifier = identifier;
     this.blocksize = blocksize;
-    this.maxliveblocks = maxlivebocks;
-    first = last = getDataArray(blocksize);
+
+    DataArray temp = new DataArray(blocksize);
+    temp.acquire();
+    first = last = temp;
   }
 
   public DataList(String identifier)
@@ -634,31 +498,19 @@ public class DataList
   {
     for (DataArray temp = first; temp != null; temp = temp.next) {
       if (true || temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
-        temp.lockWrite();
-        try {
-          DataListIterator dli = new DataListIterator(temp, di);
-          synchronized (iterators) {
-            iterators.put(identifier, dli);
-          }
-          return dli;
+        DataListIterator dli = new DataListIterator(temp, di);
+        synchronized (iterators) {
+          iterators.put(identifier, dli);
         }
-        finally {
-          temp.unlockWrite();
-        }
+        return dli;
       }
     }
 
-    last.lockRead();
-    try {
-      DataListIterator dli = new DataListIterator(last, di);
-      synchronized (iterators) {
-        iterators.put(identifier, dli);
-      }
-      return dli;
+    DataListIterator dli = new DataListIterator(last, di);
+    synchronized (iterators) {
+      iterators.put(identifier, dli);
     }
-    finally {
-      last.unlockRead();
-    }
+    return dli;
   }
 
   /**
@@ -672,21 +524,15 @@ public class DataList
     boolean released = false;
     if (iterator instanceof DataListIterator) {
       DataListIterator dli = (DataListIterator)iterator;
-      DataArray da = dli.da;
       synchronized (iterator) {
-        da.lockRead();
-        try {
-          for (Entry<String, DataListIterator> e: iterators.entrySet()) {
-            if (e.getValue() == dli) {
-              iterators.remove(e.getKey());
-              released = true;
-              dli.da = null;
-              break;
-            }
+        for (Entry<String, DataListIterator> e: iterators.entrySet()) {
+          if (e.getValue() == dli) {
+            iterators.remove(e.getKey());
+            released = true;
+            dli.da.release();
+            dli.da = null;
+            break;
           }
-        }
-        finally {
-          da.unlockRead();
         }
       }
     }
@@ -704,15 +550,8 @@ public class DataList
     synchronized (iterators) {
       for (DataListIterator dli: iterators.values()) {
         count++;
-
-        DataArray da = dli.da;
-        da.lockRead();
-        try {
-          dli.da = null;
-        }
-        finally {
-          da.unlockRead();
-        }
+        dli.da.release();
+        dli.da = null;
       }
 
       iterators.clear();
