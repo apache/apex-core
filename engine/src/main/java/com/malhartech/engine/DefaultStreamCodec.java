@@ -20,11 +20,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Default implementation of the StreamCodec.
  *
- * Default StreamCodec for streams if nothing is configured. Has no partitioning<p>
- * <br>
- * No partitioning is done and it uses Kryo serializer for serde<br>
- * <br>
+ * This implementation is used no codec is partitioned on the input streams of the operator.
+ * It uses Kryo to serialize and deserialize the tuples and uses the hashcode of the tuple
+ * object to faciliate the partitions.
  *
  * Requires kryo and its dependencies in deployment
  * @param <T>
@@ -48,7 +48,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
       classname = null;
     }
 
-    public ClassIdPair(int id, String classname)
+    ClassIdPair(int id, String classname)
     {
       this.id = id;
       this.classname = classname;
@@ -85,13 +85,11 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
       nextAvailableRegistrationId = firstAvailableRegistrationId;
     }
 
-    public void checkpoint()
+    public void unregisterImplicitlyRegisteredTypes()
     {
-      for (int i = firstAvailableRegistrationId; i < nextAvailableRegistrationId; i++) {
-        unregister(i);
+      while (nextAvailableRegistrationId > firstAvailableRegistrationId) {
+        unregister(--nextAvailableRegistrationId);
       }
-
-      nextAvailableRegistrationId = firstAvailableRegistrationId;
     }
   }
 
@@ -160,7 +158,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   @Override
   public void resetState()
   {
-    classResolver.checkpoint();
+    classResolver.unregisterImplicitlyRegisteredTypes();
   }
 
   @Override

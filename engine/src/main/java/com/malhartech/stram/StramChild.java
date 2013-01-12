@@ -4,8 +4,8 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.*;
 import com.malhartech.api.Operator.Unifier;
+import com.malhartech.api.*;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.*;
