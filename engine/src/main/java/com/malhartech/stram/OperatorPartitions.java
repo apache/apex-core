@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.google.common.collect.Sets;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.InputPortMeta;
 import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.PartitionableOperator;
@@ -183,16 +183,18 @@ public class OperatorPartitions {
       List<Partition> partitions = new ArrayList<Partition>(initialPartitionCnt);
       for (int i=0; i<initialPartitionCnt; i++) {
         Partition p = new PartitionImpl(logicalOperator.getOperator());
-        // default mapping partitions the stream that was first connected in the DAG and send full data to remaining input ports
-        // this gives control over which stream to partition with the default partitioning to the DAG writer
-        Map<InputPortMeta, StreamDecl> inputs = logicalOperator.getInputStreams();
-        if (inputs.size() == 0) {
-          // TODO - allow input operator partitioning?
-          throw new AssertionError("Partitioning configured for operator but no input ports found: " + logicalOperator);
+        if (!(p.getOperator() instanceof InputOperator)) {
+          // default mapping partitions the stream that was first connected in the DAG and send full data to remaining input ports
+          // this gives control over which stream to partition with the default partitioning to the DAG writer
+          Map<InputPortMeta, StreamDecl> inputs = logicalOperator.getInputStreams();
+          if (inputs.size() == 0) {
+            // TODO - allow input operator partitioning?
+            throw new AssertionError("Partitioning configured for operator but no input ports found: " + logicalOperator);
+          }
+          // TODO: work with the port meta object instead as this is what we will be using during plan processing anyways
+          InputPortMeta portMeta = inputs.keySet().iterator().next();
+          p.getPartitionKeys().put(portMeta.getPortObject(), new PartitionKeys(partitionMask, Sets.newHashSet(i)));
         }
-        // TODO: eliminate this and work with the port meta object instead as this is what we will be using during plan processing anyways
-        InputPortMeta portMeta = inputs.keySet().iterator().next();
-        p.getPartitionKeys().put(portMeta.getPortObject(), new PartitionKeys(partitionMask, Sets.newHashSet(i)));
         partitions.add(p);
       }
       return partitions;

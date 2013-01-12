@@ -164,7 +164,7 @@ public class WindowGenerator implements Stream<Object>, Runnable
 
     final long currentTms = ses.getCurrentTimeMillis();
     if (currentWindowMillis < currentTms) {
-      logger.info("Catching up for the time lost from {} to {}", currentWindowMillis, currentTms);
+      logger.info("Catching up from {} to {}", currentWindowMillis, currentTms);
       ses.schedule(
               new Runnable()
               {

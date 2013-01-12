@@ -9,6 +9,7 @@ import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
@@ -525,5 +526,23 @@ public class DAGBuilderTest {
     Assert.assertEquals("o1.myStringProperty", "myStringPropertyValue", o1.getMyStringProperty());
     Assert.assertArrayEquals("o2.stringArrayField", new String[] {"a", "b", "c"}, o2.stringArrayField);
   }
+
+  public class DuplicatePortOperator extends GenericTestModule {
+    @OutputPortFieldAnnotation(name=OPORT1)
+    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+  }
+
+  @Test
+  public void testDuplicatePort() {
+    DAG dag = new DAG();
+    DuplicatePortOperator o1 = dag.addOperator("o1", new DuplicatePortOperator());
+    try {
+      dag.setOutputPortAttribute(o1.outport1, PortContext.BUFFER_SIZE, 0);
+      Assert.fail("Should detect duplicate port");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+  }
+
 
 }

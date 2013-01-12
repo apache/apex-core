@@ -300,6 +300,7 @@ public class DAG implements Serializable, DAGConstants
     {
       private final Map<Operator.InputPort<?>, InputPortMeta> inPortMap = new HashMap<Operator.InputPort<?>, InputPortMeta>();
       private final Map<Operator.OutputPort<?>, OutputPortMeta> outPortMap = new HashMap<Operator.OutputPort<?>, OutputPortMeta>();
+      private final Map<String, Object> portNameMap = new HashMap<String, Object>();
 
       @Override
       public void addInputPort(InputPort<?> portObject, Field field, InputPortFieldAnnotation a)
@@ -309,6 +310,7 @@ public class DAG implements Serializable, DAGConstants
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
         inPortMap.put(portObject, metaPort);
+        checkDuplicateName(metaPort.getPortName(), metaPort);
       }
 
       @Override
@@ -319,6 +321,15 @@ public class DAG implements Serializable, DAGConstants
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
         outPortMap.put(portObject, metaPort);
+        checkDuplicateName(metaPort.getPortName(), metaPort);
+      }
+
+      private void checkDuplicateName(String portName, Object portMeta) {
+        Object existingValue = portNameMap.put(portName, portMeta);
+        if (existingValue != null) {
+          String msg = String.format("Port name %s of %s duplicates %s", portName, portMeta, existingValue);
+          throw new IllegalArgumentException(msg);
+        }
       }
     }
     /**
