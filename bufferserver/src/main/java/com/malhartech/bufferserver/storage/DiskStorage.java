@@ -8,7 +8,6 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +69,7 @@ public class DiskStorage implements Storage
           if (Arrays.equals(stored, identifier.getBytes())) {
             if (uniqueIdentifier == 0) {
               synchronized (this) {
-                uniqueIdentifier = this.uniqueIdentifier++;
+                uniqueIdentifier = ++this.uniqueIdentifier;
               }
             }
           }

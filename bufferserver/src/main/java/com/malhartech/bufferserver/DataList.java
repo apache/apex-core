@@ -18,6 +18,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.awt.UNIXToolkit;
 
 /**
  * Maintains list of data and manages addition and deletion of the data<p>
@@ -62,6 +63,15 @@ public class DataList
     listeners.clear();
     all_listeners.clear();
 
+    if (storage != null) {
+      while (first != null) {
+        if (first.uniqueIdentifier > 0) {
+          storage.discard(identifier, first.uniqueIdentifier);
+        }
+        first = first.next;
+      }
+    }
+
     DataArray temp = new DataArray(blocksize);
     temp.acquire(true);
     first = last = temp;
@@ -80,6 +90,10 @@ public class DataList
 
         first.purge(longWindowId, di);
         break;
+      }
+
+      if (storage != null && temp.uniqueIdentifier > 0) {
+        storage.discard(identifier, temp.uniqueIdentifier);
       }
 
       prev = temp;
