@@ -35,6 +35,9 @@ public class ProtobufDataInspector implements DataIntrospector
           previousMessage = null;
         }
         else {
+          if (data.bytes.length < data.dataOffset + size) {
+            logger.debug("strange");
+          }
           previousMessage = Message.newBuilder().mergeFrom(data.bytes, data.dataOffset, size).build();
         }
       }

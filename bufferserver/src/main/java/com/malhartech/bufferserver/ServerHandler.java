@@ -147,9 +147,9 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     }
     else {
       dl = new DataList(identifier, blockSize, 8);
-      dl.setSecondaryStorage(storage);
       publisherBufffers.put(identifier, dl);
     }
+    dl.setSecondaryStorage(storage);
 
     return dl;
   }

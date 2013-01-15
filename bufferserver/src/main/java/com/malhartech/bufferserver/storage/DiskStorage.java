@@ -8,6 +8,7 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +20,7 @@ public class DiskStorage implements Storage
 {
   private static final Logger logger = LoggerFactory.getLogger(DiskStorage.class);
   final String basePath;
+  int uniqueIdentifier;
 
   public DiskStorage(String baseDirectory)
   {
@@ -28,7 +30,9 @@ public class DiskStorage implements Storage
 
   public DiskStorage() throws IOException
   {
-    basePath = File.createTempFile("tt", "tt").getParent();
+    File tempFile = File.createTempFile("msp", "msp");
+    basePath = tempFile.getParent();
+    tempFile.delete();
     logger.info("using {} as the basepath for spooling temporary files.", basePath);
   }
 
@@ -65,16 +69,8 @@ public class DiskStorage implements Storage
           byte[] stored = Files.toByteArray(identityFile);
           if (Arrays.equals(stored, identifier.getBytes())) {
             if (uniqueIdentifier == 0) {
-              String[] sfiles = directory.list();
-              Arrays.sort(sfiles);
-              for (int j = sfiles.length; j-- > 0;) {
-                if (!sfiles[j].equals("identity")) {
-                  uniqueIdentifier = Integer.parseInt(sfiles[j]) + 1;
-                }
-              }
-
-              if (uniqueIdentifier == 0) {
-                uniqueIdentifier = 1;
+              synchronized (this) {
+                uniqueIdentifier = this.uniqueIdentifier++;
               }
             }
           }
