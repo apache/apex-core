@@ -86,6 +86,7 @@ public class OperatorDeployInfo implements Serializable
         return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
                 .append("portName", this.portName)
                 .append("streamId", this.declaredStreamId)
+                .append("sourceNodeId", this.sourceNodeId)
                 .append("inline", this.isInline())
                 .toString();
     }

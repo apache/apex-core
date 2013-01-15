@@ -653,7 +653,7 @@ public class PhysicalPlan {
 
     List<Partition> addedPartitions = new ArrayList<Partition>();
     Set<PTOperator> undeployOperators = new HashSet<PTOperator>();
-    // determine modifications of partition set, identify affected operator instance
+    // determine modifications of partition set, identify affected operator instance(s)
     for (Partition newPartition : newPartitions) {
       PTOperator op = currentPartitionMap.remove(newPartition);
       if (op == null) {
@@ -672,7 +672,7 @@ public class PhysicalPlan {
 
     // remaining entries represent deprecated partitions
     undeployOperators.addAll(currentPartitionMap.values());
-    // include dependencies that require redeploy
+    // resolve dependencies that require redeploy
     undeployOperators = this.ctx.getDependents(undeployOperators);
 
     // plan updates start here, after all changes were identified
@@ -682,10 +682,12 @@ public class PhysicalPlan {
     newMapping.partitions.addAll(this.logicalToPTOperator.get(n).partitions);
     newMapping.mergeOperators.putAll(this.logicalToPTOperator.get(n).mergeOperators);
 
+    // remove from plan w/o removing dependencies
     for (PTOperator p : undeployOperators) {
-      removePTOperator(p); // TODO: exclude dependencies
-      newMapping.partitions.remove(p);
-      // TODO: remove checkpoint state
+      if (newMapping.partitions.remove(p)) {
+        removePTOperator(p);
+        // TODO: remove checkpoint state
+      }
     }
 
     // add new operators after cleanup complete
@@ -825,6 +827,11 @@ public class PhysicalPlan {
 
   protected List<PTOperator> getOperators(OperatorWrapper logicalOperator) {
     return this.logicalToPTOperator.get(logicalOperator).partitions;
+  }
+
+  // used for recovery, this can go once plan traversal is fully encapsulated
+  protected Map<DAG.OutputPortMeta, PTOperator> getMergeOperators(OperatorWrapper logicalOperator) {
+    return this.logicalToPTOperator.get(logicalOperator).mergeOperators;
   }
 
   protected List<OperatorWrapper> getRootOperators() {
