@@ -13,13 +13,17 @@ import java.io.IOException;
  * The messaging service stores the data in the memory as long as there is sufficient memory. When
  * it runs out of memory, instead of failing the associated containers, it has an option to swap the
  * data to external storage. The following simple interface abstracts such an external storage.
- * 
+ *
+ * The implementation of the storage needs to be threadsafe.
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface Storage
 {
   /**
-   * get an instance of the class which implements Storage interface.
+   * Get an instance of the class which implements Storage interface.
+   * This method is useful if the platform decides that one instance is not enough for it to perform
+   * the secondary storage operations efficiently.
    *
    * @return instance of storage.
    * @throws IOException
@@ -31,8 +35,12 @@ public interface Storage
    * Streaming Platform calls this method to persist the data on secondary storage so the memory
    * can be freed.
    *
-   * @param Identifier - application specific Id, this identifies the data source. Identifier is typically the OperatorId.Portname where OperatorId is numerical Id of the operator who port named Portname is generating the data that gets stored in the
-   * @param uniqueIdentifier - unique identifier of the block that needs to be stored. If this identifier is zero, the instance is free to assign it a unique id. If non zero, the instance should use that id to store the block.
+   * @param Identifier - application specific Id, this identifies the data source. The platform will determine the
+   * value of the value of thie param. Identifier is typically the OperatorId.Portname where OperatorId is numerical
+   * Id of the operator whose port named Portname is generating the data. The platform
+   * @param uniqueIdentifier - unique identifier of the block that needs to be stored. If this identifier is zero,
+   * the instance is free to assign it a unique id. If non zero, the instance should use that id to store the block
+   * and return it.
    * @param bytes - memory represented as byte array
    * @param start - the offset of the first byte in the array
    * @param end - the offset of the last byte in the array.
