@@ -7,7 +7,13 @@ package com.malhartech.bufferserver.storage;
 import java.io.IOException;
 
 /**
+ * Interface used by the internal messaging service to temporarily store the messages.
  *
+ * Streaming Platform uses a messaging service internally to transfer the data among the containers.
+ * The messaging service stores the data in the memory as long as there is sufficient memory. When
+ * it runs out of memory, instead of failing the associated containers, it has an option to swap the
+ * data to external storage. The following simple interface abstracts such an external storage.
+ * 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface Storage
@@ -44,7 +50,7 @@ public interface Storage
 
   /**
    * Discard the block stored from the secondary storage.
-   * 
+   *
    * @param identifier
    * @param uniqueIdentifier
    */
