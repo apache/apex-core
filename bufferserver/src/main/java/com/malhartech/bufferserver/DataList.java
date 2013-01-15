@@ -63,7 +63,7 @@ public class DataList
     all_listeners.clear();
 
     DataArray temp = new DataArray(blocksize);
-    temp.acquire();
+    temp.acquire(true);
     first = last = temp;
   }
 
@@ -331,10 +331,10 @@ public class DataList
         /*
          * Back up the current block, possibly saving some RAM
          */
-        release();
+        release(false);
 
         DataArray temp = new DataArray(newblockSize);
-        temp.acquire();
+        temp.acquire(true);
         last = next = temp;
         logger.debug("added a new data array {}", next);
 
@@ -374,12 +374,12 @@ public class DataList
       }
     }
 
-    synchronized void acquire()
+    synchronized void acquire(boolean wait)
     {
       refcount++;
 
       if (data == null && storage != null) {
-        new Thread()
+        Runnable r = new Runnable()
         {
           @Override
           public void run()
@@ -391,26 +391,40 @@ public class DataList
             }
           }
 
-        }.start();
+        };
+
+        if (wait) {
+          r.run();
+        }
+        else {
+          new Thread(r).start();
+        }
       }
     }
 
-    synchronized void release()
+    synchronized void release(boolean wait)
     {
       if (--refcount == 0 && storage != null) {
-        new Thread()
+        Runnable r = new Runnable()
         {
           @Override
           public void run()
           {
             synchronized (DataArray.this) {
-              int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset - 1);
+              int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
               uniqueIdentifier = i;
               data = null;
             }
           }
 
-        }.start();
+        };
+
+        if (wait) {
+          r.run();
+        }
+        else {
+          new Thread(r).start();
+        }
       }
     }
 
@@ -422,7 +436,7 @@ public class DataList
     this.blocksize = blocksize;
 
     DataArray temp = new DataArray(blocksize);
-    temp.acquire();
+    temp.acquire(true);
     first = last = temp;
   }
 
@@ -529,7 +543,7 @@ public class DataList
           if (e.getValue() == dli) {
             iterators.remove(e.getKey());
             released = true;
-            dli.da.release();
+            dli.da.release(false);
             dli.da = null;
             break;
           }
@@ -550,7 +564,7 @@ public class DataList
     synchronized (iterators) {
       for (DataListIterator dli: iterators.values()) {
         count++;
-        dli.da.release();
+        dli.da.release(false);
         dli.da = null;
       }
 

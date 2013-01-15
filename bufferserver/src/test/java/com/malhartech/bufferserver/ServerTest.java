@@ -393,9 +393,9 @@ public class ServerTest
     bss.deactivate();
   }
 
-  class ResetTuple implements Tuple
+  public static class ResetTuple implements Tuple
   {
-    long id;
+    public long id;
 
     public MessageType getType()
     {
@@ -418,7 +418,7 @@ public class ServerTest
     }
   }
 
-  class BeginTuple extends ResetTuple
+  public static class BeginTuple extends ResetTuple
   {
     @Override
     public MessageType getType()
@@ -427,7 +427,7 @@ public class ServerTest
     }
   }
 
-  class EndTuple extends ResetTuple
+  public static class EndTuple extends ResetTuple
   {
     @Override
     public MessageType getType()

@@ -29,7 +29,7 @@ class DataListIterator implements Iterator<SerializedData>
    */
   DataListIterator(DataList.DataArray da, DataIntrospector di)
   {
-    da.acquire();
+    da.acquire(true);
     this.da = da;
     this.di = di;
 
@@ -41,7 +41,7 @@ class DataListIterator implements Iterator<SerializedData>
    *
    * @return boolean
    */
-  public boolean hasNext()
+  public synchronized boolean hasNext()
   {
     while (true) {
       da.getNextData(current);
@@ -54,8 +54,8 @@ class DataListIterator implements Iterator<SerializedData>
             return false;
           }
 
-          da.release();
-          da.next.acquire();
+          da.release(false);
+          da.next.acquire(true);
           da = da.next;
           current.bytes = da.data;
           current.offset = da.readingOffset;
@@ -75,7 +75,7 @@ class DataListIterator implements Iterator<SerializedData>
   @SuppressWarnings("FinalizeDeclaration")
   protected void finalize() throws Throwable
   {
-    da.release();
+    da.release(false);
     super.finalize();
   }
 

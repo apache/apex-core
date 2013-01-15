@@ -86,7 +86,7 @@ public class LogicalNode implements DataListener
    *
    * @param channel
    */
-  public void addChannel(Channel channel)
+  public synchronized void addChannel(Channel channel)
   {
     PhysicalNode pn = new PhysicalNode(channel);
     if (!physicalNodes.contains(pn)) {
@@ -98,7 +98,7 @@ public class LogicalNode implements DataListener
    *
    * @param channel
    */
-  public void removeChannel(Channel channel)
+  public synchronized void removeChannel(Channel channel)
   {
     for (PhysicalNode pn: physicalNodes) {
       if (pn.getChannel() == channel) {
@@ -113,7 +113,7 @@ public class LogicalNode implements DataListener
    * @param partition
    * @param mask
    */
-  public void addPartition(int partition, int mask)
+  public synchronized void addPartition(int partition, int mask)
   {
     partitions.add(new BitVector(partition, mask));
   }

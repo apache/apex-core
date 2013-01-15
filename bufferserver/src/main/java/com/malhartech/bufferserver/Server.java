@@ -49,7 +49,7 @@ public class Server
 
   public void setSpoolStorage(Storage storage)
   {
-    this.storage = storage;
+    serverInitializer.setSpoolStorage(storage);
   }
   /**
    *

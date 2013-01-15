@@ -8,6 +8,7 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +20,7 @@ public class DiskStorage implements Storage
 {
   private static final Logger logger = LoggerFactory.getLogger(DiskStorage.class);
   final String basePath;
+  int uniqueIdentifier;
 
   public DiskStorage(String baseDirectory)
   {
@@ -28,7 +30,9 @@ public class DiskStorage implements Storage
 
   public DiskStorage() throws IOException
   {
-    basePath = File.createTempFile("tt", "tt").getParent();
+    File tempFile = File.createTempFile("msp", "msp");
+    basePath = tempFile.getParent();
+    tempFile.delete();
     logger.info("using {} as the basepath for spooling temporary files.", basePath);
   }
 
@@ -65,16 +69,8 @@ public class DiskStorage implements Storage
           byte[] stored = Files.toByteArray(identityFile);
           if (Arrays.equals(stored, identifier.getBytes())) {
             if (uniqueIdentifier == 0) {
-              String[] sfiles = directory.list();
-              Arrays.sort(sfiles);
-              for (int j = sfiles.length; j-- > 0;) {
-                if (!sfiles[j].equals("identity")) {
-                  uniqueIdentifier = Integer.parseInt(sfiles[j]) + 1;
-                }
-              }
-
-              if (uniqueIdentifier == 0) {
-                uniqueIdentifier = 1;
+              synchronized (this) {
+                uniqueIdentifier = this.uniqueIdentifier++;
               }
             }
           }
@@ -180,136 +176,6 @@ public class DiskStorage implements Storage
     }
   }
 
-//
-//  private File getNextFileName(String identifier, String filename)
-//  {
-//    String normalizedFileName = normalizeFileName(identifier);
-//    File directory = new File(basePath, normalizedFileName);
-//    if (directory.isDirectory()) {
-//      /* make sure that it's the directory for the current identifier */
-//      }
-//    }
-//
-//    return null;
-//  }
-//
-//  public Block retrieveFirstBlock(final String identifier)
-//  {
-//    final File file = getNextFileName(identifier, "");
-//    return retrieveBlock(file, identifier);
-//  }
-//
-//  public Block retrieveNextBlock(Block block)
-//  {
-//    final File file = getNextFileName(block.getIdentifier(), block.getNumber());
-//    return retrieveBlock(file, block.getIdentifier());
-//  }
-//
-//  @Override
-//  public Block storeFirstBlock(final String identifier, byte[] bytes, int startingOffset, int endingOffset)
-//  {
-//  }
-//
-//  public Block delete(Block block)
-//  {
-//    String normalizedFileName = normalizeFileName(block.getIdentifier());
-//    File directory = new File(basePath, normalizedFileName);
-//    if (directory.exists()) {
-//      final File file = new File(directory, block.getNumber());
-//      if (file.exists()) {
-//        if (file.delete()) {
-//          return block;
-//        }
-//      }
-//    }
-//
-//    return null;
-//  }
-//
-//  public void write(File file, byte[] bytes) throws IOException
-//  {
-//    Files.write(bytes, file);
-//  }
-//
-//  public byte[] read(File file) throws IOException
-//  {
-//    ByteArrayOutputStream ous = new ByteArrayOutputStream();
-//    InputStream ios = new FileInputStream(file);
-//    try {
-//      byte[] buffer = new byte[4096];
-//      int read;
-//      while ((read = ios.read(buffer)) != -1) {
-//        ous.write(buffer, 0, read);
-//      }
-//    }
-//    finally {
-//      try {
-//        if (ous != null) {
-//          ous.close();
-//        }
-//      }
-//      catch (IOException e) {
-//      }
-//
-//      try {
-//        if (ios != null) {
-//          ios.close();
-//        }
-//      }
-//      catch (IOException e) {
-//      }
-//    }
-//    return ous.toByteArray();
-//  }
-//
-//  protected Block retrieveBlock(final File file, final String identifier)
-//  {
-//    try {
-//      final byte[] contents = read(file);
-//      return new Block()
-//      {
-//        public String getIdentifier()
-//        {
-//          return identifier;
-//        }
-//
-//        public String getNumber()
-//        {
-//          return file.getName();
-//        }
-//
-//        public byte[] getBytes()
-//        {
-//          return contents;
-//        }
-//
-//      };
-//    }
-//    catch (IOException ex) {
-//    }
-//
-//    return null;
-//  }
-//
-//  /**
-//   *
-//   * @param block
-//   * @param bytes
-//   * @param startingOffset
-//   * @param endingOffset
-//   * @return
-//   */
-//  public Block storeNextBlock(Block block, byte[] bytes, int startingOffset, int endingOffset)
-//  {
-//    String normalizedFileName = normalizeFileName(block.getIdentifier());
-//    File directory = new File(basePath, normalizedFileName);
-//    if (directory.exists()) {
-//      int i = Integer.parseInt(block.getNumber());
-//      return writeFile(bytes, startingOffset, endingOffset, directory, block.getIdentifier(), String.valueOf(i + 1));
-//    }
-//
-//    return null;
-//  }
   protected int writeFile(byte[] bytes, int startingOffset, int endingOffset, File directory, final int number)
   {
     try {

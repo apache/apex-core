@@ -17,8 +17,8 @@ public class BufferServerPublisher extends AbstractSocketPublisher
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
   private final String id;
-  int baseWindow;
-  int windowId;
+  public int baseWindow;
+  public int windowId;
 
   public BufferServerPublisher(String id)
   {

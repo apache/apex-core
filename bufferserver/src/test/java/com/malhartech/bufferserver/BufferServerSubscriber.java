@@ -28,7 +28,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Mess
   private final String sourceId;
   private final Collection<Integer> partitions;
   private final int mask;
-  AtomicInteger tupleCount = new AtomicInteger(0);
+  public AtomicInteger tupleCount = new AtomicInteger(0);
   Message firstPayload, lastPayload;
   ArrayList<Message> resetPayloads = new ArrayList<Message>();
   long windowId;
