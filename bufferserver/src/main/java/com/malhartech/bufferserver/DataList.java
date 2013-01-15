@@ -14,11 +14,8 @@ import com.malhartech.bufferserver.util.SerializedData;
 import com.malhartech.bufferserver.util.TupleFactory;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.awt.UNIXToolkit;
 
 /**
  * Maintains list of data and manages addition and deletion of the data<p>
