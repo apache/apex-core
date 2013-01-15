@@ -177,15 +177,15 @@ public class PartitioningTest {
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
     input.blockEndStream = true;
 
-    CollectorOperator collector = dag.addOperator("collector", new CollectorOperator());
+    CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = ""+System.identityHashCode(collector);
     dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(20);
     //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(200);
     dag.addStream("fromInput", input.output, collector.input);
 
-    //CollectorOperator merged = dag.addOperator("outputSingle", new CollectorOperator());
-    //dag.addStream("toOutputSingle", collector.output, merged.input);
+    CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
+    dag.addStream("toSingleCollector", collector.output, singleCollector.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
@@ -219,13 +219,13 @@ public class PartitioningTest {
     Assert.assertNotNull(inputDeployed);
 
     // add tuple that matches the partition key and check that each partition receives it
-    ArrayList<Integer> tuples = new ArrayList<Integer>();
+    ArrayList<Integer> inputTuples = new ArrayList<Integer>();
     for (PTOperator p : partitions) {
       // default partitioning has one port mapping with a single partition key
-      tuples.add(p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next());
+      inputTuples.add(p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next());
     }
     inputDeployed.testTuples = Collections.synchronizedList(new ArrayList<List<Integer>>());
-    inputDeployed.testTuples.add(tuples);
+    inputDeployed.testTuples.add(inputTuples);
 
     for (PTOperator p : partitions) {
       Integer expectedTuple = p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next();
@@ -236,15 +236,16 @@ public class PartitioningTest {
       }
       Assert.assertEquals("received " + p, Arrays.asList(expectedTuple), receivedTuples);
     }
-/*
-    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorWrapper(merged));
+
+    // single output operator to receive tuple from each partition
+    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorWrapper(singleCollector));
     Assert.assertEquals("number output operator instances " + operators, 1, operators.size());
     List<Object> receivedTuples;
-    while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + operators.get(0).id)) == null) {
+    while ((receivedTuples = CollectorOperator.receivedTuples.get(singleCollector.prefix + operators.get(0).id)) == null) {
       LOG.debug("Waiting for merge operator tuple: " + operators.get(0));
       Thread.sleep(20);
     }
-*/
+    Assert.assertEquals("output tuples " + receivedTuples, Sets.newHashSet(inputTuples), Sets.newHashSet(receivedTuples));
     lc.shutdown();
 
   }

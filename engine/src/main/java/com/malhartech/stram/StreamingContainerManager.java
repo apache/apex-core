@@ -177,7 +177,7 @@ public class StreamingContainerManager implements PlanContext
     // downstream operators will appear first in map
     LinkedHashSet<PTOperator> checkpoints = new LinkedHashSet<PTOperator>();
     for (PTOperator node : cs.container.operators) {
-      // TODO: traversal needs to include inline upstream operators
+      // TODO: traverse inline upstream operators
       updateRecoveryCheckpoints(node, checkpoints);
     }
 
@@ -439,8 +439,21 @@ public class StreamingContainerManager implements PlanContext
    */
   public long updateRecoveryCheckpoints(PTOperator operator, Set<PTOperator> visited) {
     long maxCheckpoint = operator.getRecentCheckpoint();
+
+    Map<DAG.OutputPortMeta, PTOperator> mergeOps = plan.getMergeOperators(operator.logicalNode);
+
     // find smallest most recent subscriber checkpoint
     for (PTOutput out : operator.outputs) {
+      PTOperator mergeOp = mergeOps.get(out.logicalStream.getSource());
+      if (mergeOp != null && !visited.contains(mergeOp)) {
+        visited.add(mergeOp);
+        // depth-first downstream traversal
+        updateRecoveryCheckpoints(mergeOp, visited);
+        maxCheckpoint = Math.min(maxCheckpoint, mergeOp.recoveryCheckpoint);
+        // everything downstream was handled
+        continue;
+      }
+
       for (DAG.InputPortMeta targetPort : out.logicalStream.getSinks()) {
         OperatorWrapper lDownNode = targetPort.getOperatorWrapper();
         if (lDownNode != null) {
@@ -455,6 +468,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
     }
+
     // find commit point for downstream dependency, remove previous checkpoints
     long c1 = 0;
     synchronized (operator.checkpointWindows) {
@@ -478,10 +492,8 @@ public class StreamingContainerManager implements PlanContext
   }
 
   /**
-   * Visit all operators to update current checkpoint.
-   * Collect checkpoints that may be purged based on updated downstream state.
-   * @param op
-   * @param recentCheckpoint
+   * Visit all operators to update current checkpoint based on updated downstream state.
+   * Purge older checkpoints that are no longer needed.
    */
   private void updateCheckpoints() {
     Set<PTOperator> visitedCheckpoints = new LinkedHashSet<PTOperator>();
