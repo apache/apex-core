@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.*;
 import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -97,7 +98,8 @@ public class StramChild
     try {
       if (ctx.deployBufferServer) {
         // start buffer server, if it was not set externally
-        bufferServer = new Server(0);
+        bufferServer = new Server(0, 64 * 1024 * 1024, 8);
+        bufferServer.setSpoolStorage(new DiskStorage());
         SocketAddress bindAddr = bufferServer.run();
         logger.info("Buffer server started: {}", bindAddr);
         this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));

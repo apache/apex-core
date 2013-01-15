@@ -8,6 +8,7 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.Operator;
 import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.engine.Node;
 import com.malhartech.engine.OperatorContext;
 import com.malhartech.engine.WindowGenerator;
@@ -54,7 +55,9 @@ public class StramLocalCluster implements Runnable
   public interface MockComponentFactory
   {
     WindowGenerator setupWindowGenerator();
+
   }
+
   private MockComponentFactory mockComponentFactory;
 
   private class UmbilicalProtocolLocalImpl implements StreamingContainerUmbilicalProtocol
@@ -122,6 +125,7 @@ public class StramLocalCluster implements Runnable
     {
       throw new RuntimeException("processPartioningDetails not implemented");
     }
+
   }
 
   public static class LocalStramChild extends StramChild
@@ -188,6 +192,7 @@ public class StramLocalCluster implements Runnable
     {
       return nodes;
     }
+
   }
 
   /**
@@ -230,6 +235,7 @@ public class StramLocalCluster implements Runnable
         LOG.info("Container {} terminating.", containerId);
       }
     }
+
   }
 
   public StramLocalCluster(DAG dag) throws Exception
@@ -252,7 +258,8 @@ public class StramLocalCluster implements Runnable
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
     // start buffer server
-    this.bufferServer = new Server(0);
+    this.bufferServer = new Server(0, 1024 * 1024, 8);
+    bufferServer.setSpoolStorage(new DiskStorage());
     SocketAddress bindAddr = this.bufferServer.run();
     this.bufferServerAddress = ((InetSocketAddress)bindAddr);
     LOG.info("Buffer server started: {}", bufferServerAddress);
@@ -301,6 +308,7 @@ public class StramLocalCluster implements Runnable
   /**
    * Return the container that has the given operator deployed.
    * Returns null if the specified operator is not deployed.
+   *
    * @param planOperator
    * @param timeout
    * @return
@@ -310,7 +318,7 @@ public class StramLocalCluster implements Runnable
   {
     LocalStramChild container;
     if (planOperator.container.containerId != null) {
-     if ((container = getContainer(planOperator.container.containerId)) != null) {
+      if ((container = getContainer(planOperator.container.containerId)) != null) {
         if (container.getNodeContext(planOperator.id) != null) {
           return container;
         }
@@ -339,7 +347,8 @@ public class StramLocalCluster implements Runnable
     this.heartbeatMonitoringEnabled = enabled;
   }
 
-  public void setPerContainerBufferServer(boolean perContainerBufferServer) {
+  public void setPerContainerBufferServer(boolean perContainerBufferServer)
+  {
     this.perContainerBufferServer = perContainerBufferServer;
   }
 
@@ -396,4 +405,5 @@ public class StramLocalCluster implements Runnable
     LOG.info("Application finished.");
     bufferServer.shutdown();
   }
+
 }
