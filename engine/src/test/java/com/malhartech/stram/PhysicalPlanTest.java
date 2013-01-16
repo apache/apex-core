@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -153,7 +152,7 @@ public class PhysicalPlanTest {
     Collection<PTOperator> deploy;
 
     @Override
-    public PartitionableOperator readCommitted(PTOperator operatorInstance) throws IOException {
+    public BackupAgent getBackupAgent() {
       throw new UnsupportedOperationException();
     }
 

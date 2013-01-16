@@ -383,14 +383,12 @@ public class PhysicalPlan {
 
 
   interface PlanContext {
+
     /**
-     * Read committed frozen state of the partition.
-     * Dynamic partitioning requires access to committed state so that operators can be split or merged.
-     * @param operatorInstance
-     * @return PartitionableOperator
-     * @throws IOException
+     * Dynamic partitioning requires access to operator state for split or merge.
+     * @return
      */
-    public PartitionableOperator readCommitted(PTOperator operatorInstance) throws IOException;
+    public BackupAgent getBackupAgent();
 
     /**
      * Request deployment changes as sequence of undeploy, container start and deploy groups with dependency.
@@ -624,19 +622,24 @@ public class PhysicalPlan {
     Map<Partition, PTOperator> currentPartitionMap = new HashMap<Partition, PTOperator>(operators.size());
 
     final List<Partition> newPartitions;
+    long minCheckpoint = 0;
     for (PTOperator pOperator : operators) {
       Partition p = pOperator.partition;
       if (p == null) {
         throw new AssertionError("Null partition: " + pOperator);
       }
-      // load recoverable operator state
+      // load operator state
+      // the partitioning logic will have the opportunity to merge/split state
+      // since partitions checkpoint at different windows, processing for new or modified
+      // partitions will start from earliest checkpoint found (at least once semantics)
       Operator partitionedOperator = p.getOperator();
       if (pOperator.recoveryCheckpoint != 0) {
         try {
-          partitionedOperator = ctx.readCommitted(pOperator);
+          partitionedOperator = (Operator)ctx.getBackupAgent().restore(pOperator.id, pOperator.recoveryCheckpoint, StramUtils.getNodeSerDe(null));
+          minCheckpoint = Math.min(minCheckpoint, pOperator.recoveryCheckpoint);
         } catch (IOException e) {
           LOG.warn("Failed to read partition state for " + pOperator, e);
-          return; // TODO
+          return; // TODO: emit to event log
         }
       }
       // assume it does not matter which operator instance's port objects are referenced in mapping
@@ -686,7 +689,7 @@ public class PhysicalPlan {
     for (PTOperator p : undeployOperators) {
       if (newMapping.partitions.remove(p)) {
         removePTOperator(p);
-        // TODO: remove checkpoint state
+        // TODO: remove checkpoint states
       }
     }
 
@@ -699,8 +702,16 @@ public class PhysicalPlan {
       PTOperator p = addPTOperator(newMapping, newPartition);
       addedOperators.add(p);
 
-      // TODO: write checkpoint state
-      // set checkpoint on new operators to pin downstream state
+      // set checkpoint for new operator for deployment
+      p.checkpointWindows.add(minCheckpoint);
+      p.recoveryCheckpoint = minCheckpoint;
+      try {
+        if (false)
+        ctx.getBackupAgent().backup(p.id, minCheckpoint, newPartition.getOperator(), StramUtils.getNodeSerDe(null));
+      } catch (IOException e) {
+        // inconsistent state, no recovery option, requires shutdown
+        throw new IllegalStateException("Failed to write operator state after partition change " + p, e);
+      }
 
       // find container for new operator
       PTContainer c = findContainer(p);

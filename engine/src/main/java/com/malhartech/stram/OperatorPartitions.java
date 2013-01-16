@@ -231,8 +231,6 @@ public class OperatorPartitions {
             PartitionKeys newPks = new PartitionKeys(pks.mask >>> 1, Sets.newHashSet(lookupKey & (pks.mask >>> 1)));
             siblingPartition.getPartitionKeys().entrySet().iterator().next().setValue(newPks);
             // add as new partition
-            // TODO: we should repeat the same check with for the combined partition,
-            // which would catch the case where other branch was combined, too
             newPartitions.add(siblingPartition);
           }
         } else if (load > 0) {
