@@ -596,10 +596,11 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // deploy new containers, depends on above operators stop
-    AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
+    AtomicInteger startContainerDeployCnt = new AtomicInteger();
     for (PTContainer c : startContainers) {
-      undeployAckCountdown.incrementAndGet(); // operator deploy waits for container start
-      ContainerStartRequest dr = new ContainerStartRequest(c, failedContainerDeployCnt, undeployAckCountdown);
+      startContainerDeployCnt.incrementAndGet(); // operator deploy waits for container start
+      undeployAckCountdown.incrementAndGet(); // adjust for extra start count down
+      ContainerStartRequest dr = new ContainerStartRequest(c, startContainerDeployCnt, undeployAckCountdown);
       // launch replacement container, deploy request will be queued with new container agent in assignContainer
       containerStartRequests.add(dr);
     }
@@ -632,7 +633,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
 
-      DeployRequest r = new DeployRequest(redeployAckCountdown, failedContainerDeployCnt);
+      DeployRequest r = new DeployRequest(redeployAckCountdown, startContainerDeployCnt);
       r.setNodes(e.getValue());
       redeployAckCountdown.incrementAndGet();
       StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);

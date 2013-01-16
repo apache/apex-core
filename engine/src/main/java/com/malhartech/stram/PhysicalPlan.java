@@ -706,7 +706,6 @@ public class PhysicalPlan {
       p.checkpointWindows.add(minCheckpoint);
       p.recoveryCheckpoint = minCheckpoint;
       try {
-        if (false)
         ctx.getBackupAgent().backup(p.id, minCheckpoint, newPartition.getOperator(), StramUtils.getNodeSerDe(null));
       } catch (IOException e) {
         // inconsistent state, no recovery option, requires shutdown

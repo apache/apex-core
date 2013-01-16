@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,6 +25,7 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.OperatorCodec;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
@@ -145,15 +147,17 @@ public class PhysicalPlanTest {
 
   }
 
-  private class TestPlanContext implements PlanContext {
+  private class TestPlanContext implements PlanContext, BackupAgent {
     List<Runnable> events = new ArrayList<Runnable>();
     Set<PTOperator> deps;
     Collection<PTOperator> undeploy;
     Collection<PTOperator> deploy;
+    List<Object> backupRequests = new ArrayList<Object>();
+
 
     @Override
     public BackupAgent getBackupAgent() {
-      throw new UnsupportedOperationException();
+      return this;
     }
 
     @Override
@@ -171,6 +175,21 @@ public class PhysicalPlanTest {
     @Override
     public void dispatch(Runnable r) {
       events.add(r);
+    }
+
+    @Override
+    public void backup(int operatorId, long windowId, Object o, OperatorCodec serDe) throws IOException {
+      backupRequests.add(o);
+    }
+
+    @Override
+    public Object restore(int operatorId, long windowId, OperatorCodec serDe) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void delete(int operatorId, long windowId) throws IOException {
+      throw new UnsupportedOperationException();
     }
 
   }
@@ -220,6 +239,7 @@ public class PhysicalPlanTest {
 
     Assert.assertEquals("" + ctx.undeploy, ctx.deps, ctx.undeploy);
     Assert.assertEquals("" + ctx.deploy, ctx.deps, ctx.deploy);
+    Assert.assertEquals("backup " + ctx.backupRequests, 2, ctx.backupRequests.size());
 
   }
 
