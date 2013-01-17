@@ -421,10 +421,20 @@ public class DataList
           @Override
           public void run()
           {
-            synchronized (DataArray.this) {
-              int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
-              uniqueIdentifier = i;
-              data = null;
+            try {
+              synchronized (DataArray.this) {
+                int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
+                if (i == 0) {
+                  logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
+                }
+                else {
+                  uniqueIdentifier = i;
+                  data = null;
+                }
+              }
+            }
+            catch (RuntimeException ex) {
+              logger.warn("Storage failed!", ex);
             }
           }
 
