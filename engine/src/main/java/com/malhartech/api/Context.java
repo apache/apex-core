@@ -69,9 +69,13 @@ public interface Context
     public static final AttributeKey<Integer> PARTITION_TPS_MIN = new AttributeKey<Integer>("partitionTpsMin");
     public static final AttributeKey<Integer> PARTITION_TPS_MAX = new AttributeKey<Integer>("partitionTpsMax");
     /**
-     * Attribute of the operator which conveys to the stram whether the Operator is stateful or stateless.
+     * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
     public static final AttributeKey<Boolean> STATELESS = new AttributeKey<Boolean>("stateless");
+    /**
+     * Attribute of the operator that suggests the ideal RAM that the operator may need for optimal functioning.
+     */
+    public static final AttributeKey<Integer> MEMORY_MB = new AttributeKey<Integer>("memoryMB");
 
     /**
      * Return the operator runtime id.
