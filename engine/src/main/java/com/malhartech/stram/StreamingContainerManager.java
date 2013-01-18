@@ -5,7 +5,6 @@
 package com.malhartech.stram;
 
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,7 +28,6 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DAGConstants;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DAG.StreamDecl;
-import com.malhartech.api.PartitionableOperator;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
@@ -562,12 +560,8 @@ public class StreamingContainerManager implements PlanContext
   }
 
   @Override
-  public PartitionableOperator readCommitted(PTOperator pOperator) throws IOException {
-    BackupAgent ba = new HdfsBackupAgent(new Configuration(), this.checkpointFsPath);
-    if (pOperator.recoveryCheckpoint == 0) {
-      LOG.warn("No commited state for " + pOperator);
-    }
-    return (PartitionableOperator)ba.restore(pOperator.id, pOperator.recoveryCheckpoint, StramUtils.getNodeSerDe(null));
+  public BackupAgent getBackupAgent() {
+    return new HdfsBackupAgent(new Configuration(), this.checkpointFsPath);
   }
 
   private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators) {
@@ -602,10 +596,11 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // deploy new containers, depends on above operators stop
-    AtomicInteger failedContainerDeployCnt = new AtomicInteger(1);
+    AtomicInteger startContainerDeployCnt = new AtomicInteger();
     for (PTContainer c : startContainers) {
-      undeployAckCountdown.incrementAndGet(); // operator deploy waits for container start
-      ContainerStartRequest dr = new ContainerStartRequest(c, failedContainerDeployCnt, undeployAckCountdown);
+      startContainerDeployCnt.incrementAndGet(); // operator deploy waits for container start
+      undeployAckCountdown.incrementAndGet(); // adjust for extra start count down
+      ContainerStartRequest dr = new ContainerStartRequest(c, startContainerDeployCnt, undeployAckCountdown);
       // launch replacement container, deploy request will be queued with new container agent in assignContainer
       containerStartRequests.add(dr);
     }
@@ -638,7 +633,7 @@ public class StreamingContainerManager implements PlanContext
         }
       }
 
-      DeployRequest r = new DeployRequest(redeployAckCountdown, failedContainerDeployCnt);
+      DeployRequest r = new DeployRequest(redeployAckCountdown, startContainerDeployCnt);
       r.setNodes(e.getValue());
       redeployAckCountdown.incrementAndGet();
       StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
