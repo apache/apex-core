@@ -7,6 +7,7 @@ package com.malhartech.bufferserver;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.bufferserver.Buffer.PublisherRequest;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.*;
 import java.util.Collection;
@@ -34,13 +35,12 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
    */
   public static void publish(Channel channel, String identifier, String type, long startingWindowId)
   {
-    Buffer.PublisherRequest.Builder prb = Buffer.PublisherRequest.newBuilder();
-    prb.setIdentifier(identifier).setBaseSeconds((int)(startingWindowId >> 32));
-    prb.setWindowId((int)startingWindowId);
-
+    Buffer.Request.Builder request = Buffer.Request.newBuilder();
+    request.setIdentifier(identifier).setBaseSeconds((int)(startingWindowId >> 32)).setWindowId((int)startingWindowId);
+    request.setExtension(PublisherRequest.request, Buffer.PublisherRequest.getDefaultInstance());
     Message.Builder db = Message.newBuilder();
     db.setType(Message.MessageType.PUBLISHER_REQUEST);
-    db.setPublisherRequest(prb);
+    db.setRequest(request);
 
     final ChannelFutureListener cfl = new ChannelFutureListener()
     {
@@ -84,11 +84,14 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
           Collection<Integer> partitions,
           long startingWindowId)
   {
+    Buffer.Request.Builder request = Buffer.Request.newBuilder();
+    request.setIdentifier(id);
+    request.setBaseSeconds((int)(startingWindowId >> 32));
+    request.setWindowId((int)startingWindowId);
+
     Buffer.SubscriberRequest.Builder srb = Buffer.SubscriberRequest.newBuilder();
-    srb.setIdentifier(id);
     srb.setType(down_type);
     srb.setUpstreamIdentifier(node);
-    srb.setBaseSeconds((int)(startingWindowId >> 32));
 
     if (partitions != null) {
       Buffer.SubscriberRequest.Partitions.Builder bpb = Buffer.SubscriberRequest.Partitions.newBuilder();
@@ -100,11 +103,11 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
       srb.setPartitions(bpb);
     }
     srb.setPolicy(Buffer.SubscriberRequest.PolicyType.ROUND_ROBIN);
-    srb.setWindowId((int)startingWindowId);
 
+    request.setExtension(Buffer.SubscriberRequest.request, srb.build());
     Message.Builder builder = Message.newBuilder();
     builder.setType(Message.MessageType.SUBSCRIBER_REQUEST);
-    builder.setSubscriberRequest(srb);
+    builder.setRequest(request);
 
     channel.write(builder.build()).addListener(new ChannelFutureListener()
     {
@@ -121,26 +124,29 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
 
   public static void purge(Channel channel, String id, long windowId)
   {
-    Buffer.PurgeRequest.Builder prb = Buffer.PurgeRequest.newBuilder();
-    prb.setBaseSeconds((int)(windowId >> 32));
-    prb.setWindowId((int)windowId);
-    prb.setIdentifier(id);
+    Buffer.Request.Builder request = Buffer.Request.newBuilder();
+    request.setBaseSeconds((int)(windowId >> 32));
+    request.setWindowId((int)windowId);
+    request.setIdentifier(id);
+
+    request.setExtension(Buffer.PurgeRequest.request, Buffer.PurgeRequest.getDefaultInstance());
 
     Message.Builder builder = Message.newBuilder();
     builder.setType(MessageType.PURGE_REQUEST);
-    builder.setPurgeRequest(prb);
+    builder.setRequest(request);
 
     channel.write(builder.build());
   }
 
   public static void reset(Channel channel, String id, long windowId)
   {
-    Buffer.ResetRequest.Builder rrb = Buffer.ResetRequest.newBuilder();
-    rrb.setIdentifier(id);
+    Buffer.Request.Builder request = Buffer.Request.newBuilder();
+    request.setIdentifier(id);
+    request.setExtension(Buffer.ResetRequest.request, Buffer.ResetRequest.getDefaultInstance());
 
     Message.Builder builder = Message.newBuilder();
     builder.setType(MessageType.RESET_REQUEST);
-    builder.setResetRequest(rrb);
+    builder.setRequest(request);
 
     channel.write(builder.build());
   }

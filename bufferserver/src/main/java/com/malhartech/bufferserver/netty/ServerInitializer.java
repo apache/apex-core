@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver.netty;
 
+import com.google.protobuf.ExtensionRegistry;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.ServerHandler;
 import com.malhartech.bufferserver.storage.Storage;
@@ -33,11 +34,17 @@ public class ServerInitializer extends ChannelInitializer<SocketChannel>
 
   /**
    *
+   * @param buffersize
+   * @param blockcount 
    */
   public ServerInitializer(int buffersize, int blockcount)
   {
     serverHandler = new ServerHandler(buffersize, blockcount);
-    protobufDecoder = new ProtobufDecoder(Buffer.Message.getDefaultInstance());
+
+    ExtensionRegistry registry = ExtensionRegistry.newInstance();
+    Buffer.registerAllExtensions(registry);
+    protobufDecoder = new ProtobufDecoder(Buffer.Message.getDefaultInstance(), registry);
+
     encoder = new MessageToMessageEncoder<SerializedData, ByteBuf>()
     {
       @Override
