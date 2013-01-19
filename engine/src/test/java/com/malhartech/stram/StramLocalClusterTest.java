@@ -169,7 +169,7 @@ public class StramLocalClusterTest
     wclock.tick(1); // begin window 2
     StramTestSupport.waitForWindowComplete(n1Context, 1);
 
-    backupNode(c0, n1Context); // backup window 2
+    backupNode(c0, n1Context.getId()); // backup window 2
 
     wclock.tick(1); // end window 2
     StramTestSupport.waitForWindowComplete(n1Context, 2);
@@ -181,7 +181,7 @@ public class StramLocalClusterTest
 
     StramTestSupport.waitForWindowComplete(n2Context, 3);
     n2.setMyStringProperty("checkpoint3");
-    backupNode(c2, n2Context); // backup window 4
+    backupNode(c2, n2Context.getId()); // backup window 4
 
     // move window forward, wait until propagated to module,
     // to ensure backup at previous window end was processed
@@ -250,8 +250,8 @@ public class StramLocalClusterTest
     Assert.assertNotNull("node active " + ptNode2, n2Context);
 
     StramTestSupport.waitForWindowComplete(n2Context, 5);
-    backupNode(c0Replaced, n1ReplacedContext); // backup window 6
-    backupNode(c2, n2Context); // backup window 6
+    backupNode(c0Replaced, n1ReplacedContext.getId()); // backup window 6
+    backupNode(c2, n2Context.getId()); // backup window 6
     wclock.tick(1); // end window 6
 
     StramTestSupport.waitForWindowComplete(n1ReplacedContext, 6);
@@ -287,14 +287,14 @@ public class StramLocalClusterTest
     localCluster.shutdown();
   }
 
-  private void backupNode(StramChild c, OperatorContext nodeCtx)
+  private void backupNode(StramChild c, int operatorId)
   {
     StramToNodeRequest backupRequest = new StramToNodeRequest();
-    backupRequest.setNodeId(nodeCtx.getId());
+    backupRequest.setNodeId(operatorId);
     backupRequest.setRequestType(RequestType.CHECKPOINT);
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.nodeRequests = Collections.singletonList(backupRequest);
-    LOG.debug("Requesting backup {} node {}", c.getContainerId(), nodeCtx.getId());
+    LOG.debug("Requesting backup {} node {}", c.getContainerId(), operatorId);
     c.processHeartbeatResponse(rsp);
   }
 }

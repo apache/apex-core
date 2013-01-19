@@ -63,6 +63,7 @@ public class StramChildAgent {
 
     void cancel() {
       if (ackCountdown != null) {
+        //LOG.debug("cancelling: " + this);
         ackCountdown.set(-1);
       }
     }
@@ -189,6 +190,7 @@ public class StramChildAgent {
     if (pendingRequest != null) {
       if (pendingRequest.ackCountdown != null) {
         pendingRequest.ackCountdown.decrementAndGet();
+        //LOG.debug("ack {} {}", pendingRequest.ackCountdown, pendingRequest);
         pendingRequest = null;
       }
     }
@@ -196,7 +198,7 @@ public class StramChildAgent {
 
   public void addRequest(DeployRequest r) {
     this.requests.add(r);
-    LOG.info("Adding request {} {}", container.containerId, r);
+    //LOG.debug("Adding request {} {} ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero, container.containerId, r);
   }
 
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
@@ -214,6 +216,7 @@ public class StramChildAgent {
     if (r.executeWhenZero != null) {
       if (r.executeWhenZero.get() < 0) {
         // cancelled
+        //LOG.debug("cancelled " + this);
         return null;
       } else if (r.executeWhenZero.get() > 0) {
         ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();

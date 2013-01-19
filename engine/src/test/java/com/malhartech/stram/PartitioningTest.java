@@ -1,14 +1,18 @@
 package com.malhartech.stram;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import junit.framework.Assert;
 
+import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +25,7 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.InputOperator;
+import com.malhartech.api.PartitionableOperator;
 import com.malhartech.engine.Node;
 import com.malhartech.stram.PhysicalPlan.PMapping;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -30,6 +35,7 @@ import com.malhartech.stream.StramTestSupport.WaitCondition;
 
 public class PartitioningTest {
   private static final Logger LOG = LoggerFactory.getLogger(PartitioningTest.class);
+  private static final File TEST_OUTPUT_DIR = new File("target", PartitioningTest.class.getName());
 
   public static class CollectorOperator extends BaseOperator
   {
@@ -167,8 +173,21 @@ public class PartitioningTest {
     }
   }
 
+  private List<PTOperator> assertNumberPartitions(final int count, final StramLocalCluster lc, final DAG.OperatorWrapper ow) throws Exception {
+    WaitCondition c = new WaitCondition() {
+      @Override
+      public boolean isComplete() {
+        List<PTOperator> operators = lc.getPlanOperators(ow);
+        return (operators.size() == count);
+      }
+    };
+    StramTestSupport.awaitCompletion(c, 10000);
+    Assert.assertTrue("Number partitions " + ow,  c.isComplete());
+    return lc.getPlanOperators(ow);
+  };
+
   @Test
-  public void testDefaultDynamicPartitioning() throws Exception {
+  public void testDynamicDefaultPartitioning() throws Exception {
 
     DAG dag = new DAG();
 
@@ -250,17 +269,87 @@ public class PartitioningTest {
 
   }
 
-  private List<PTOperator> assertNumberPartitions(final int count, final StramLocalCluster lc, final DAG.OperatorWrapper ow) throws Exception {
-    WaitCondition c = new WaitCondition() {
-      @Override
-      public boolean isComplete() {
-        List<PTOperator> operators = lc.getPlanOperators(ow);
-        return (operators.size() == count);
+  public static class PartitionableInputOperator extends BaseOperator implements InputOperator, PartitionableOperator {
+    String partitionProperty = "partition";
+
+    @Override
+    public void emitTuples() {
+    }
+
+    @Override
+    public List<Partition> definePartitions(List<? extends Partition> partitions) {
+      List<Partition> newPartitions = new ArrayList<Partition>(3);
+      Partition templatePartition = partitions.get(0);
+      for (int i = 0; i < 3; i++) {
+        PartitionableInputOperator op = new PartitionableInputOperator();
+        if (i < partitions.size()) {
+          op.partitionProperty = ((PartitionableInputOperator)partitions.get(i).getOperator()).partitionProperty;
+        }
+        op.partitionProperty += "_" + i;
+        Partition p = templatePartition.getInstance(op);
+        newPartitions.add(p);
       }
-    };
-    StramTestSupport.awaitCompletion(c, 10000);
-    Assert.assertTrue("Number partitions " + ow,  c.isComplete());
-    return lc.getPlanOperators(ow);
-  };
+      return newPartitions;
+    }
+  }
+
+  /**
+   * Tests input operator partitioning with state modification
+   * @throws Exception
+   */
+  @Test
+  public void testInputOperatorPartitioning() throws Exception {
+
+    File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
+    DAG dag = new DAG();
+    dag.getAttributes().attr(DAG.STRAM_STATS_HANDLER).set(PartitionLoadWatch.class.getName());
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).set(checkpointDir.getPath());
+
+    PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.setHeartbeatMonitoringEnabled(false);
+    lc.runAsync();
+
+    List<PTOperator> partitions = assertNumberPartitions(3, lc, dag.getOperatorWrapper(input));
+    Set<String> partProperties = new HashSet<String>();
+    for (PTOperator p : partitions) {
+      LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
+      Map<Integer, Node<?>> nodeMap = c.getNodes();
+      Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
+      PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.id).getOperator();
+      Assert.assertNotNull(inputDeployed);
+      partProperties.add(inputDeployed.partitionProperty);
+      // move to checkpoint to verify that checkpoint state is updated upon repartition
+      p.checkpointWindows.add(10L);
+      p.recoveryCheckpoint = 10L;
+      new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).backup(p.id, 10L, inputDeployed, StramUtils.getNodeSerDe(null));
+    }
+
+    Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);
+
+    PartitionLoadWatch.loadIndicators.put(partitions.get(0), 1);
+    int count = 0;
+    long startMillis = System.currentTimeMillis();
+    while (count == 0 && startMillis > System.currentTimeMillis() - StramTestSupport.DEFAULT_TIMEOUT_MILLIS ) {
+      count += lc.dnmgr.processEvents();
+    }
+    PartitionLoadWatch.loadIndicators.remove(partitions.get(0));
+
+    partitions = assertNumberPartitions(3, lc, dag.getOperatorWrapper(input));
+    partProperties = new HashSet<String>();
+    for (PTOperator p : partitions) {
+      LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
+      Map<Integer, Node<?>> nodeMap = c.getNodes();
+      Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
+      PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.id).getOperator();
+      Assert.assertNotNull(inputDeployed);
+      partProperties.add(inputDeployed.partitionProperty);
+    }
+    Assert.assertEquals("", Sets.newHashSet("partition_0_0", "partition_1_1", "partition_2_2"), partProperties);
+
+    lc.shutdown();
+
+  }
 
 }
