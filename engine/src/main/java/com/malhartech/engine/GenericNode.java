@@ -42,7 +42,7 @@ public class GenericNode extends Node<Operator>
   {
     protected int count;
 
-    public Reservoir()
+    Reservoir()
     {
       super(bufferCapacity);
     }
@@ -67,7 +67,7 @@ public class GenericNode extends Node<Operator>
   {
     final Sink<Object> sink;
 
-    public InputReservoir(Sink<Object> sink)
+    InputReservoir(Sink<Object> sink)
     {
       super();
       this.sink = sink;

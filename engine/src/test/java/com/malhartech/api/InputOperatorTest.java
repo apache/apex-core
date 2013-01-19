@@ -4,20 +4,17 @@
  */
 package com.malhartech.api;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import junit.framework.Assert;
-
-import org.junit.Test;
-
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stream.StramTestSupport;
 import com.malhartech.stream.StramTestSupport.WaitCondition;
 import com.malhartech.util.CircularBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import junit.framework.Assert;
+import org.junit.Test;
 
 /**
  *

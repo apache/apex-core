@@ -7,11 +7,9 @@ package com.malhartech.bufferserver;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
-import com.malhartech.bufferserver.Buffer.Payload;
-import com.malhartech.bufferserver.Buffer.PurgeRequest;
-import com.malhartech.bufferserver.Buffer.ResetRequest;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.Buffer.Payload;
+import com.malhartech.bufferserver.Buffer.Request;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.SerializedData;
@@ -67,18 +65,22 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     MessageBuf<Message> in = ctx.inboundMessageBuffer();
     for (int i = in.size(); i-- > 0;) {
       Message data = in.poll();
+
+      Request request;
       switch (data.getType()) {
         case PUBLISHER_REQUEST:
-          logger.info("Received publisher request: {}", data.getPublisherRequest());
-          dl = handlePublisherRequest(data.getPublisherRequest(), ctx);
-          dl.rewind(data.getPublisherRequest().getBaseSeconds(), data.getPublisherRequest().getWindowId(), new ProtobufDataInspector());
+          request = data.getRequest();
+          logger.info("Received publisher request: {}", request);
+          dl = handlePublisherRequest(request, ctx);
+          dl.rewind(request.getBaseSeconds(), request.getWindowId(), new ProtobufDataInspector());
           ctx.attr(DATA_LIST).set(dl);
           break;
 
         case SUBSCRIBER_REQUEST:
-          logger.info("Received subscriber request: {}", data.getSubscriberRequest());
-          boolean contains = subscriberGroups.containsKey(data.getSubscriberRequest().getType());
-          LogicalNode ln = handleSubscriberRequest(data.getSubscriberRequest(), ctx);
+          request = data.getRequest();
+          logger.info("Received subscriber request: {}", request);
+          boolean contains = subscriberGroups.containsKey(data.getRequest().getExtension(Buffer.SubscriberRequest.request).getType());
+          LogicalNode ln = handleSubscriberRequest(data.getRequest(), ctx);
           if (!contains) {
             ln.catchUp();
           }
@@ -86,13 +88,13 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
           break;
 
         case PURGE_REQUEST:
-          logger.info("Received purge request: {}", data.getPurgeRequest());
-          handlePurgeRequest(data.getPurgeRequest(), ctx);
+          logger.info("Received purge request: {}", data.getRequest());
+          handlePurgeRequest(data.getRequest(), ctx);
           break;
 
         case RESET_REQUEST:
-          logger.info("Received purge all request: {}", data.getResetRequest());
-          handleResetRequest(data.getResetRequest(), ctx);
+          logger.info("Received purge all request: {}", data.getRequest());
+          handleResetRequest(data.getRequest(), ctx);
           break;
 
         default:
@@ -117,7 +119,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @return
    */
-  public synchronized DataList handlePublisherRequest(Buffer.PublisherRequest request, ChannelHandlerContext ctx)
+  public synchronized DataList handlePublisherRequest(Buffer.Request request, ChannelHandlerContext ctx)
   {
     /* we are never going to write to the publisher socket */
 //    if (ctx.channel() instanceof SocketChannel) {
@@ -160,11 +162,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @return
    */
-  public synchronized LogicalNode handleSubscriberRequest(SubscriberRequest request, ChannelHandlerContext ctx)
+  public synchronized LogicalNode handleSubscriberRequest(Buffer.Request request, ChannelHandlerContext ctx)
   {
+    SubscriberRequest subscriberRequest = request.getExtension(SubscriberRequest.request);
     String identifier = request.getIdentifier();
-    String type = request.getType();
-    String upstream_identifier = request.getUpstreamIdentifier();
+    String type = subscriberRequest.getType();
+    String upstream_identifier = subscriberRequest.getUpstreamIdentifier();
     //String upstream_type = request.getUpstreamType();
 
     // Check if there is a logical node of this type, if not create it.
@@ -199,12 +202,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       ln = new LogicalNode(upstream_identifier,
                            type,
                            dl.newIterator(identifier, new ProtobufDataInspector(), request.getWindowId()),
-                           getPolicy(request.getPolicy(), null),
+                           getPolicy(subscriberRequest.getPolicy(), null),
                            (long)request.getBaseSeconds() << 32 | request.getWindowId());
 
-      int mask = request.getPartitions().getMask();
-      if (request.getPartitions().getPartitionCount() > 0) {
-        for (Integer bs: request.getPartitions().getPartitionList()) {
+      int mask = subscriberRequest.getPartitions().getMask();
+      if (subscriberRequest.getPartitions().getPartitionCount() > 0) {
+        for (Integer bs: subscriberRequest.getPartitions().getPartitionList()) {
           ln.addPartition(bs, mask);
         }
       }
@@ -337,7 +340,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     }
   }
 
-  private synchronized void handlePurgeRequest(PurgeRequest request, ChannelHandlerContext ctx)
+  private synchronized void handlePurgeRequest(Buffer.Request request, ChannelHandlerContext ctx)
   {
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
@@ -365,7 +368,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     return Unpooled.messageBuffer();
   }
 
-  private synchronized void handleResetRequest(ResetRequest request, ChannelHandlerContext ctx)
+  private synchronized void handleResetRequest(Buffer.Request request, ChannelHandlerContext ctx)
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());

@@ -28,17 +28,34 @@ message EndStream {
   required uint32 window_id = 1;
 }
 
+message Request {
+  extensions 101 to max;
+
+  enum RequestType {
+     Publisher = 1;
+     Subscriber = 2;
+     Reset = 3;
+     Purge = 4;
+  }
+
+  optional string version = 1 [default = "1.0"];
+  required string identifier = 2;
+  optional uint32 base_seconds = 3 [default = 0];
+  optional uint32 window_id = 4 [default = 0];
+}
+
+
 message PublisherRequest {
-  required string identifier = 1;
-  optional uint32 base_seconds = 2 [default = 0];
-  optional uint32 window_id = 3 [default = 0];
+  extend Request {
+    required PublisherRequest request = 101;
+  }
 }
 
 message SubscriberRequest {
-  required string identifier = 1;
+  extend Request {
+    required SubscriberRequest request = 102;
+  }
   required string type = 2;
-  optional uint32 base_seconds = 3 [default = 0];
-  optional uint32 window_id = 4 [default = 0];
   optional string upstream_identifier = 5;
 
   message Partitions {
@@ -58,13 +75,15 @@ message SubscriberRequest {
 }
 
 message PurgeRequest {
-  required string identifier = 1;
-  optional uint32 base_seconds = 2 [default = 0];
-  optional uint32 window_id = 3 [default = 0];
+  extend Request {
+    required PurgeRequest request = 103;
+  }
 }
 
 message ResetRequest {
-  required string identifier = 1;
+  extend Request {
+    required ResetRequest request = 104;
+  }
 }
 
 message CheckPoint {
@@ -80,12 +99,9 @@ message Message {
   optional BeginWindow begin_window = 3;
   optional EndWindow end_window = 4;
   optional EndStream end_stream = 5;
-  optional PublisherRequest publisher_request = 6;
-  optional SubscriberRequest subscriber_request = 7;
-  optional PurgeRequest purge_request = 8;
-  optional ResetRequest reset_request = 9;
-  optional CheckPoint check_point = 10;
-  optional CodecState codec_state = 11;
+  optional Request request = 6;
+  optional CheckPoint check_point = 7;
+  optional CodecState codec_state = 8;
 
   enum MessageType {
     NO_MESSAGE = 0;
