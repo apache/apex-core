@@ -663,7 +663,8 @@ public class StreamingContainerManager implements PlanContext
     for (StramChildAgent container : this.containers.values()) {
       for (OperatorStatus os : container.operators.values()) {
         OperatorInfo ni = new OperatorInfo();
-        ni.container = os.container.containerId + "@" + os.container.host;
+        ni.container = os.container.containerId;
+        ni.host = os.container.host;
         ni.id = Integer.toString(os.operator.id);
         ni.name = os.operator.getLogicalId();
         StreamingNodeHeartbeat hb = os.lastHeartbeat;
