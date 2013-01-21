@@ -30,6 +30,7 @@ public class OperatorInfo {
   public String id;
   public String name;
   public String container;
+  public String host;
   public long totalTuplesProcessed;
   public long totalTuplesEmitted;
   public long tuplesProcessedPSMA10;
