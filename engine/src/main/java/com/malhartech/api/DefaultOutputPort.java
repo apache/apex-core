@@ -11,22 +11,30 @@ import com.malhartech.api.Operator.Unifier;
  * operator processing logic simply calls emit on the port object. Output ports
  * also define how output from replicated operators is merged.
  *
- * @param <T>
+ * @param <T> - Type of the object emitted by this port.
  */
-public class DefaultOutputPort<T>  implements Operator.OutputPort<T> {
+public class DefaultOutputPort<T> implements Operator.OutputPort<T>
+{
   private final Operator operator;
   private transient Sink<T> sink;
 
-  public DefaultOutputPort(Operator operator) {
+  public DefaultOutputPort(Operator operator)
+  {
     this.operator = operator;
   }
 
   @Override
-  final public Operator getOperator() {
+  final public Operator getOperator()
+  {
     return operator;
   }
 
-  public void emit(T tuple) {
+  /**
+   * Emit the given object as a payload for downstream operators interested in this port.
+   * @param tuple payload which needs to be emitted.
+   */
+  public void emit(T tuple)
+  {
     sink.process(tuple);
   }
 
@@ -36,15 +44,19 @@ public class DefaultOutputPort<T>  implements Operator.OutputPort<T> {
    * @param s
    */
   @Override
-  final public void setSink(Sink<T> s) {
+  final public void setSink(Sink<T> s)
+  {
     this.sink = s;
   }
 
   /**
    * Opportunity for user code to check whether the port is connected, if
    * optional.
+   *
+   * @return true when connected, false otherwise.
    */
-  public boolean isConnected() {
+  public boolean isConnected()
+  {
     return sink != null;
   }
 
@@ -54,10 +66,8 @@ public class DefaultOutputPort<T>  implements Operator.OutputPort<T> {
    * @return Unifier<T>
    */
   @Override
-  public Unifier<T> getUnifier() {
-//    return new BaseOperator() {
-//    };
-//    sink.process(tuple);
+  public Unifier<T> getUnifier()
+  {
     return null;
   }
 
