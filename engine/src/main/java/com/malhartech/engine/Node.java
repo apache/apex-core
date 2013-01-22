@@ -97,6 +97,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
             count = 0;
             return ret;
           }
+
         };
         outputPort.setSink(cs);
         outputs.put(port, cs);
@@ -105,6 +106,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   }
 
   public abstract Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink);
+
   OperatorContext context;
 
   @SuppressWarnings("unchecked")
@@ -162,7 +164,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   @Override
   public String toString()
   {
-    return id + ":" + operator.getClass().getSimpleName();
+    return id;
   }
 
   protected void emitEndStream()
@@ -246,4 +248,5 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     return alive;
   }
+
 }
