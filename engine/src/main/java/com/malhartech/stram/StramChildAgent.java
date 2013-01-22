@@ -20,10 +20,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.OperatorCodec;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
+import com.malhartech.stram.OperatorDeployInfo.OperatorType;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
@@ -373,13 +375,15 @@ public class StramChildAgent {
    */
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator node)
   {
+    OperatorDeployInfo ndi = new OperatorDeployInfo();
     Operator operator = node.getLogicalNode().getOperator();
+    ndi.type = (operator instanceof InputOperator) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
     if (node.merge != null) {
       operator = node.merge;
+      ndi.type = OperatorDeployInfo.OperatorType.UNIFIER;
     } else if (node.partition != null) {
       operator = node.partition.getOperator();
     }
-    OperatorDeployInfo ndi = new OperatorDeployInfo();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     try {
       this.nodeSerDe.write(operator, os);

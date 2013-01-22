@@ -686,10 +686,10 @@ public class StramChild
         }
 
         String nodeid = Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
-        if (foreignObject instanceof InputOperator) {
+        if (foreignObject instanceof InputOperator && ndi.type == OperatorDeployInfo.OperatorType.INPUT) {
           nodes.put(ndi.id, new InputNode(nodeid, (InputOperator)foreignObject));
         }
-        else if (foreignObject instanceof Unifier) {
+        else if (foreignObject instanceof Unifier && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           nodes.put(ndi.id, new UnifierNode(nodeid, (Unifier<Object>)foreignObject));
           massageUnifierDeployInfo(ndi);
         }

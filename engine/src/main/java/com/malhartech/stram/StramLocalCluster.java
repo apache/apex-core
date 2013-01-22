@@ -353,9 +353,16 @@ public class StramLocalCluster implements Runnable
   }
 
   @Override
+  public void run() {
+    run(0);
+  }
+
+
   @SuppressWarnings({"SleepWhileInLoop", "ResultOfObjectAllocationIgnored"})
-  public void run()
+  public void run(long runMillis)
   {
+    long endMillis = System.currentTimeMillis() + runMillis;
+
     while (!appDone) {
 
       for (String containerIdStr: dnmgr.containerStopRequests.values()) {
@@ -387,7 +394,12 @@ public class StramLocalCluster implements Runnable
       if (childContainers.isEmpty() && dnmgr.containerStartRequests.isEmpty()) {
         appDone = true;
       }
-      else {
+
+      if (runMillis > 0 && System.currentTimeMillis() > endMillis) {
+        appDone = true;
+      }
+
+      if (!appDone) {
         try {
           Thread.sleep(1000);
         }

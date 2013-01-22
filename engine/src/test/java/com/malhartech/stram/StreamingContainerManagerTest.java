@@ -24,6 +24,7 @@ import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.TestGeneratorInputModule;
 import com.malhartech.engine.Tuple;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
@@ -40,6 +41,7 @@ public class StreamingContainerManagerTest {
   public void testOperatorDeployInfoSerialization() throws Exception {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ndi.declaredId = "node1";
+    ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
     ndi.id = 1;
     ndi.contextAttributes = new AttributeMap.DefaultAttributeMap<OperatorContext>();
     ndi.contextAttributes.attr(OperatorContext.SPIN_MILLIS).set(100);
@@ -74,7 +76,8 @@ public class StreamingContainerManagerTest {
     Assert.assertNotNull(clone.deployRequest);
     Assert.assertEquals(1, clone.deployRequest.size());
     OperatorDeployInfo ndiClone = clone.deployRequest.get(0);
-    Assert.assertEquals(ndi.declaredId, ndiClone.declaredId);
+    Assert.assertEquals("declaredId", ndi.declaredId, ndiClone.declaredId);
+    Assert.assertEquals("type", ndi.type, ndiClone.type);
 
     String nodeToString = ndi.toString();
     Assert.assertTrue(nodeToString.contains(input.portName));
@@ -89,11 +92,11 @@ public class StreamingContainerManagerTest {
 
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    TestGeneratorInputModule node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
     GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    dag.addStream("n1n2", node1.outport1, node2.inport1);
+    dag.addStream("n1n2", node1.outport, node2.inport1);
 
     dag.addStream("n2n3", node2.outport1, node3.inport1)
       .setInline(true);
@@ -114,6 +117,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("number operators assigned to c1", 1, c1.size());
     OperatorDeployInfo node1DI = getNodeDeployInfo(c1, dag.getOperatorWrapper(node1));
     Assert.assertNotNull(node1.getName() + " assigned to " + container1Id, node1DI);
+    Assert.assertEquals("type " + node1DI, OperatorDeployInfo.OperatorType.INPUT, node1DI.type);
     Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
     Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
     Assert.assertNotNull("serializedNode " + node1DI.declaredId, node1DI.serializedNode);
@@ -140,7 +144,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("portName " + c2n1n2, dag.getOperatorWrapper(node2).getInputPortMeta(node2.inport1).getPortName(), c2n1n2.portName);
     Assert.assertNull("partitionKeys " + c2n1n2, c2n1n2.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n1n2, node1DI.id, c2n1n2.sourceNodeId);
-    Assert.assertEquals("sourcePortName " + c2n1n2, GenericTestModule.OPORT1, c2n1n2.sourcePortName);
+    Assert.assertEquals("sourcePortName " + c2n1n2, TestGeneratorInputModule.OUTPUT_PORT, c2n1n2.sourcePortName);
 
     // inline input node3 from node2
     InputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");
@@ -183,6 +187,7 @@ public class StreamingContainerManagerTest {
 
       // n1n2 in, mergeStream out
       OperatorDeployInfo ndi = cc.get(0);
+      Assert.assertEquals("type " + ndi, OperatorDeployInfo.OperatorType.GENERIC, ndi.type);
       Assert.assertEquals("inputs " + ndi, 1, ndi.inputs.size());
       Assert.assertEquals("outputs " + ndi, 1, ndi.outputs.size());
 
@@ -199,6 +204,7 @@ public class StreamingContainerManagerTest {
 
     OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cUnifier,  dag.getOperatorWrapper(node2));
     Assert.assertNotNull("unifier for " + node2, mergeNodeDI);
+    Assert.assertEquals("type " + mergeNodeDI, OperatorDeployInfo.OperatorType.UNIFIER, mergeNodeDI.type);
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
     List<Integer> sourceNodeIds = new ArrayList<Integer>();
     for (InputDeployInfo nidi : mergeNodeDI.inputs) {
