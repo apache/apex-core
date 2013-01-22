@@ -23,6 +23,10 @@ public class OperatorDeployInfo implements Serializable
 {
   private static final long serialVersionUID = 201208271956L;
 
+  public enum OperatorType {
+    INPUT, UNIFIER, GENERIC
+  }
+
   /**
    * Input to node, either inline or from socket stream.
    */
@@ -35,7 +39,7 @@ public class OperatorDeployInfo implements Serializable
     }
 
     /**
-     * Port name matching the node's port declaration
+     * Port name matching the operator's port declaration
      */
     public String portName;
 
@@ -156,14 +160,20 @@ public class OperatorDeployInfo implements Serializable
    */
   public int id;
 
+	/**
+	 * Type of the operator. Required as single class
+	 * may implement regular operator and unifier.
+	 */
+  public OperatorType type;
+
   /**
-   * Logical node name from the topology declaration.
+   * Logical operator name from DAG.
    */
   public String declaredId;
 
   /**
    * The checkpoint window identifier.
-   * Used to restore node and incoming streams as part of recovery.
+   * Used to restore state and incoming streams as part of recovery.
    * Value 0 indicates fresh initialization, no restart.
    */
   public long checkpointWindowId = 0;
