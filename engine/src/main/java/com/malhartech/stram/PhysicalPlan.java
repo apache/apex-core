@@ -419,6 +419,7 @@ public class PhysicalPlan {
     final private Map<DAG.OutputPortMeta, PTOperator> mergeOperators = new HashMap<DAG.OutputPortMeta, PTOperator>();
     private boolean shouldRedoPartitions = false;
     private List<StatsHandler> statsHandlers;
+    private Set<PTOperator> inlineSet = new HashSet<PTOperator>();
 
     private void addPartition(PTOperator p) {
       partitions.add(p);
@@ -449,8 +450,6 @@ public class PhysicalPlan {
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing for {} containers.", this.maxContainers);
 
-    Map<OperatorWrapper, Set<PTOperator>> inlineGroups = new HashMap<OperatorWrapper, Set<PTOperator>>();
-
     Stack<OperatorWrapper> pendingNodes = new Stack<OperatorWrapper>();
     for (OperatorWrapper n : dag.getAllOperators()) {
       pendingNodes.push(n);
@@ -459,15 +458,15 @@ public class PhysicalPlan {
     while (!pendingNodes.isEmpty()) {
       OperatorWrapper n = pendingNodes.pop();
 
-      if (inlineGroups.containsKey(n)) {
-        // node already processed as upstream dependency
+      if (this.logicalToPTOperator.containsKey(n)) {
+        // already processed as upstream dependency
         continue;
       }
 
       boolean upstreamDeployed = true;
 
       for (StreamDecl s : n.getInputStreams().values()) {
-        if (s.getSource() != null && !inlineGroups.containsKey(s.getSource().getOperatorWrapper())) {
+        if (s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorWrapper())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getOperatorWrapper());
           upstreamDeployed = false;
@@ -479,31 +478,27 @@ public class PhysicalPlan {
         // ready to look at this node
         PMapping pnodes = new PMapping(n);
 
-        // determine partitioning / number of operators
+        // determine partitioning / number operator instances
         initPartitioning(pnodes);
 
-        Set<PTOperator> inlineSet = new HashSet<PTOperator>();
         if (pnodes.partitions.isEmpty()) {
           for (StreamDecl s : n.getInputStreams().values()) {
             if (s.isInline()) {
               // if stream is marked inline, join the upstream operators
-              Set<PTOperator> inlineNodes = inlineGroups.get(s.getSource().getOperatorWrapper());
-              // empty set for partitioned upstream node
-              if (!inlineNodes.isEmpty()) {
+              PMapping m = logicalToPTOperator.get(s.getSource().getOperatorWrapper());
+              if (!m.inlineSet.isEmpty()) {
                 // update group index for each of the member operators
-                for (PTOperator upstreamNode : inlineNodes) {
-                  inlineSet.add(upstreamNode);
-                  inlineGroups.put(upstreamNode.logicalNode, inlineSet);
+                for (PTOperator otherNode : m.inlineSet) {
+                  pnodes.inlineSet.add(otherNode);
+                  logicalToPTOperator.get(otherNode.logicalNode).inlineSet = pnodes.inlineSet;
                 }
               }
             }
           }
           // single instance, no partitions
-          PTOperator pNode = addPTOperator(pnodes, null);
-          inlineSet.add(pNode);
+          addPTOperator(pnodes, null);
         }
 
-        inlineGroups.put(n, inlineSet);
         this.logicalToPTOperator.put(n, pnodes);
       }
     }
@@ -514,12 +509,13 @@ public class PhysicalPlan {
       for (PTOperator node : e.getValue().getAllNodes()) {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          Set<PTOperator> inlineNodes = inlineGroups.get(node.logicalNode);
+          Set<PTOperator> inlineNodes = e.getValue().inlineSet;
           if (!inlineNodes.isEmpty()) {
+            // process inline operators
             for (PTOperator inlineNode : inlineNodes) {
+              assert(inlineNode.container == null);
               inlineNode.container = container;
               container.operators.add(inlineNode);
-              inlineGroups.remove(inlineNode.logicalNode);
             }
           } else {
             node.container = container;
@@ -796,6 +792,9 @@ public class PhysicalPlan {
     }
 
     nodeDecl.addPartition(pOperator);
+    if (partition == null) {
+      nodeDecl.inlineSet.add(pOperator);
+    }
     return pOperator;
   }
 
