@@ -22,7 +22,7 @@ public class TestGeneratorInputModule extends BaseOperator implements InputOpera
   private int remainingSleepTime;
   private final int spinMillis = 50;
   private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
-  @OutputPortFieldAnnotation(name = "outputPort")
+  @OutputPortFieldAnnotation(name = "outputPort", optional=false)
   final public transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>(this);
 
   public int getMaxTuples()

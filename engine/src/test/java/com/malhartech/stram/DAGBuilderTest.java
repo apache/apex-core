@@ -18,6 +18,7 @@ import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.TestOutputModule;
 import com.malhartech.stram.cli.StramClientUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -39,6 +40,9 @@ import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
+
+import jline.ConsoleOperations;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
@@ -256,15 +260,6 @@ public class DAGBuilderTest {
     };
   }
 
-  static class ConsoleOutputModule extends BaseOperator {
-    @InputPortFieldAnnotation(name="echoInputPort")
-    final public transient InputPort<Object> echoInputPort = new DefaultInputPort<Object>(this) {
-      @Override
-      final public void process(Object payload) {
-      }
-    };
-  }
-
   @Test
   public void testJavaBuilder() throws Exception {
 
@@ -463,6 +458,61 @@ public class DAGBuilderTest {
 
   }
 
+  private class TestAnnotationsOperator extends BaseOperator {
+    @OutputPortFieldAnnotation(name="oport1")
+    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+
+    @OutputPortFieldAnnotation(name="oport2", optional=false)
+    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>(this);
+  }
+
+  private class TestAnnotationsOperator2 extends BaseOperator {
+    // multiple ports w/o annotation, one of them must be connected
+    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>(this);
+  }
+
+  private class TestAnnotationsOperator3 extends BaseOperator {
+    // multiple ports w/o annotation, one of them must be connected
+    @OutputPortFieldAnnotation(name="oport1", optional=true)
+    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+    @OutputPortFieldAnnotation(name="oport2", optional=true)
+    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>(this);
+  }
+
+  @Test
+  public void testOutputPortAnnotation() {
+    DAG dag = new DAG();
+    TestAnnotationsOperator ta1 = dag.addOperator("testAnnotationsOperator", new TestAnnotationsOperator());
+
+    try {
+      dag.validate();
+      Assert.fail("should raise: port connection required");
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals("", "Output port connection required: testAnnotationsOperator.oport2", e.getMessage());
+    }
+
+    TestOutputModule o2 = dag.addOperator("sink", new TestOutputModule());
+    dag.addStream("s1", ta1.outport2, o2.inport);
+
+    dag.validate();
+
+    TestAnnotationsOperator2 ta2 = dag.addOperator("multiOutputPorts1", new TestAnnotationsOperator2());
+
+    try {
+      dag.validate();
+      Assert.fail("should raise: At least on output port must be connected");
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals("", "At least on output port must be connected: multiOutputPorts1", e.getMessage());
+    }
+    TestOutputModule o3 = dag.addOperator("o3", new TestOutputModule());
+    dag.addStream("s2", ta2.outport1, o3.inport);
+
+    TestAnnotationsOperator3 ta3 = dag.addOperator("multiOutputPorts3", new TestAnnotationsOperator3());
+    dag.validate();
+
+  }
+
   @Test
   public void testOperatorConfigurationLookup() {
 
@@ -543,6 +593,5 @@ public class DAGBuilderTest {
       // expected
     }
   }
-
 
 }

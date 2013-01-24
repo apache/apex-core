@@ -607,12 +607,18 @@ public class DAG implements Serializable, DAGConstants
           }
         }
       }
+
+      boolean allPortsOptional = true;
       for (OutputPortMeta pm: portMapping.outPortMap.values()) {
         if (!n.outputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
             throw new IllegalArgumentException("Output port connection required: " + n.id + "." + pm.getPortName());
           }
         }
+        allPortsOptional &= (pm.portAnnotation != null && pm.portAnnotation.optional());
+      }
+      if (!allPortsOptional && n.outputStreams.isEmpty()) {
+        throw new IllegalArgumentException("At least on output port must be connected: " + n.id);
       }
     }
     stack = new Stack<OperatorWrapper>();
