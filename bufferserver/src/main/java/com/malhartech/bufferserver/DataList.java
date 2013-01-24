@@ -191,8 +191,7 @@ public class DataList
 
     private synchronized void purge(long longWindowId, DataIntrospector di)
     {
-      logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}",
-                   new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId), this.baseSeconds});
+      logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}", new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId), this.baseSeconds});
       boolean found = false;
       long bs = (long)this.baseSeconds << 32;
       SerializedData lastReset = null;
@@ -225,21 +224,6 @@ public class DataList
                 this.readingOffset = sd.offset;
               }
 
-              // the following code through done may not even be needed. why waste cycles.
-              int i = 1;
-              while (i < Codec.getSizeOfRawVarint32(sd.offset - i)) {
-                i++;
-              }
-
-              if (i <= sd.offset) {
-                sd.size = sd.offset;
-                sd.offset = 0;
-                sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
-                di.wipeData(sd);
-              }
-              else {
-                logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);
-              }
               break done;
             }
         }

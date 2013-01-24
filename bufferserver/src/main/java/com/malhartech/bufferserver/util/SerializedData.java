@@ -43,6 +43,22 @@ public final class SerializedData
     return sd;
   }
 
+  public boolean isEquivalent(SerializedData sd)
+  {
+    if (sd != null) {
+      if (sd.size == size) {
+        for (int i = size; i-- > 0;) {
+          if (sd.bytes[sd.offset + i] != bytes[offset + i]) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+    }
+
+    return false;
+  }
   /**
    *
    * @return String
