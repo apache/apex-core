@@ -125,6 +125,10 @@ public class DAG implements Serializable, DAGConstants
       throw new AssertionError();
     }
 
+    public AttributeMap<PortContext> getAttributes() {
+      return attributes;
+    }
+
     @Override
     public String toString()
     {

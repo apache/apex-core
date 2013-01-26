@@ -21,6 +21,7 @@ import org.junit.Test;
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DefaultInputPort;
@@ -346,24 +347,24 @@ public class PhysicalPlanTest {
 
     int maxContainers = 5;
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
-    PhysicalPlan deployer1 = new PhysicalPlan(dag, null);
-    Assert.assertEquals("number of containers", maxContainers, deployer1.getContainers().size());
-    Assert.assertEquals("operators container 0", 3, deployer1.getContainers().get(0).operators.size());
+    PhysicalPlan plan = new PhysicalPlan(dag, null);
+    Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
+    Assert.assertEquals("operators container 0", 3, plan.getContainers().get(0).operators.size());
 
     Set<OperatorWrapper> c1ExpNodes = Sets.newHashSet(dag.getOperatorWrapper(node1.getName()), dag.getOperatorWrapper(node2.getName()), dag.getOperatorWrapper(node3.getName()));
     Set<OperatorWrapper> c1ActNodes = new HashSet<OperatorWrapper>();
-    for (PTOperator pNode : deployer1.getContainers().get(0).operators) {
+    for (PTOperator pNode : plan.getContainers().get(0).operators) {
       c1ActNodes.add(pNode.getLogicalNode());
     }
     Assert.assertEquals("operators container 0", c1ExpNodes, c1ActNodes);
 
-    Assert.assertEquals("operators container 1", 1, deployer1.getContainers().get(1).operators.size());
-    Assert.assertEquals("operators container 1", dag.getOperatorWrapper(notInlineNode.getName()), deployer1.getContainers().get(1).operators.get(0).getLogicalNode());
+    Assert.assertEquals("operators container 1", 1, plan.getContainers().get(1).operators.size());
+    Assert.assertEquals("operators container 1", dag.getOperatorWrapper(notInlineNode.getName()), plan.getContainers().get(1).operators.get(0).getLogicalNode());
 
     // one container per partition
     for (int cindex = 2; cindex < maxContainers; cindex++) {
-      Assert.assertEquals("operators container" + cindex, 1, deployer1.getContainers().get(cindex).operators.size());
-      Assert.assertEquals("operators container" + cindex, dag.getOperatorWrapper(partNode.getName()), deployer1.getContainers().get(cindex).operators.get(0).getLogicalNode());
+      Assert.assertEquals("operators container" + cindex, 1, plan.getContainers().get(cindex).operators.size());
+      Assert.assertEquals("operators container" + cindex, dag.getOperatorWrapper(partNode.getName()), plan.getContainers().get(cindex).operators.get(0).getLogicalNode());
     }
 
   }
@@ -395,6 +396,59 @@ public class PhysicalPlanTest {
     // per current logic, different container is assigned to second input node
     PTOutput node2Out = deployer.getOperators(dag.getOperatorWrapper(node2)).get(0).outputs.get(0);
     Assert.assertTrue("inline " + node2Out, node2Out.isDownStreamInline());
+
+  }
+
+  @org.junit.Ignore
+  @Test
+  public void testInlinePartitioning() {
+
+    DAG dag = new DAG();
+
+    GenericTestModule o1 = dag.addOperator("o1", GenericTestModule.class);
+
+    GenericTestModule o2 = dag.addOperator("o2", GenericTestModule.class);
+    dag.getOperatorWrapper(o2).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+
+    GenericTestModule o3 = dag.addOperator("o3", GenericTestModule.class);
+
+    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(true);
+
+    dag.addStream("o2Output1", o2.outport1, o3.inport2).setInline(false);
+    dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_INLINE, true);
+
+    int maxContainers = 5;
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, null);
+    Assert.assertEquals("number of containers", 4, plan.getContainers().size());
+
+    PTContainer container1 = plan.getContainers().get(0);
+    Assert.assertEquals("number operators " + container1, 1, container1.operators.size());
+    Assert.assertEquals("operators " + container1, "o1", container1.operators.get(0).getLogicalId());
+
+    for (int i=1; i<3; i++) {
+      PTContainer container2 = plan.getContainers().get(i);
+      Assert.assertEquals("number operators " + container2, 2, container2.operators.size());
+      Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3");
+      Set<String> actualLogicalNames = Sets.newHashSet();
+      for (PTOperator p : container2.operators) {
+        actualLogicalNames.add(p.getLogicalId());
+      }
+      Assert.assertEquals("operator names " + container2, expectedLogicalNames, actualLogicalNames);
+    }
+
+    List<PTOperator> partitionedInstances = plan.getOperators(dag.getOperatorWrapper(o2));
+    Assert.assertEquals("" + partitionedInstances, 2, partitionedInstances.size());
+    for (PTOperator p : partitionedInstances) {
+      Assert.assertEquals("outputs " + p, 1, p.outputs.size());
+      Assert.assertTrue("downstream inline " + p.outputs.get(0), p.outputs.get(0).isDownStreamInline());
+    }
+
+    // TODO: eliminate extra container with node2 merge operator
+
+    PTOutput node1Out = plan.getOperators(dag.getOperatorWrapper(o1)).get(0).outputs.get(0);
+    Assert.assertTrue("inline " + node1Out, node1Out.isDownStreamInline());
 
   }
 

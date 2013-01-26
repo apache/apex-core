@@ -189,7 +189,7 @@ public class OperatorPartitions {
           Map<InputPortMeta, StreamDecl> inputs = logicalOperator.getInputStreams();
           if (inputs.size() == 0) {
             // TODO - allow input operator partitioning?
-            throw new AssertionError("Partitioning configured for operator but no input ports found: " + logicalOperator);
+            throw new AssertionError("Partitioning configured for operator but no input ports connected: " + logicalOperator);
           }
           // TODO: work with the port meta object instead as this is what we will be using during plan processing anyways
           InputPortMeta portMeta = inputs.keySet().iterator().next();

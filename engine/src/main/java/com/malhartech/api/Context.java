@@ -34,6 +34,11 @@ public interface Context
      * Poll period in milliseconds when the port buffer reaches its limits.
      */
     public static final AttributeKey<Integer> SPIN_MILLIS = new AttributeKey<Integer>("spinMillis");
+    /**
+     * Inline this operator with upstream partitions. Defined on a per port
+     * basis to allow for stream to be shared with non-inline sinks.
+     */
+    public static final AttributeKey<Boolean> PARTITION_INLINE = new AttributeKey<Boolean>("partitionInline");
 
     AttributeMap<PortContext> getAttributes();
 
