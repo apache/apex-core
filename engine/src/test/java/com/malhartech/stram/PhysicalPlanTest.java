@@ -34,6 +34,7 @@ import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
+import com.malhartech.stram.PartitioningTest.PartitionableInputOperator;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -67,17 +68,20 @@ public class PhysicalPlanTest {
     };
 
     @Override
-    public List<Partition> definePartitions(List<? extends Partition> partitions) {
-      List<Partition> newPartitions = new ArrayList<Partition>(3);
-      Partition templatePartition = partitions.get(0);
+    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity)
+    {
+      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>(3);
+      @SuppressWarnings("unchecked")
+      Partition<PartitioningTestOperator> templatePartition = (Partition<PartitioningTestOperator>)partitions.iterator().next();
       for (int i=0; i<3; i++) {
-        Partition p = templatePartition.getInstance(new PartitioningTestOperator());
+        Partition<PartitioningTestOperator> p = templatePartition.getInstance(new PartitioningTestOperator());
         p.getPartitionKeys().put(this.inport1, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
         p.getPartitionKeys().put(this.inportWithCodec, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
         newPartitions.add(p);
       }
       return newPartitions;
     }
+
   }
 
   @Test
@@ -132,7 +136,7 @@ public class PhysicalPlanTest {
 
     for (int i=0; i<n2Instances.size(); i++) {
       PTOperator partitionInstance = n2Instances.get(i);
-      Partition p = partitionInstance.partition;
+      Partition<?> p = partitionInstance.partition;
       Assert.assertNotNull("partition null: " + partitionInstance, p);
       Map<InputPort<?>, PartitionKeys> pkeys = p.getPartitionKeys();
       Assert.assertNotNull("partition keys null: " + partitionInstance, pkeys);
@@ -262,18 +266,18 @@ public class PhysicalPlanTest {
         newPartitionKeys("1", "1")
     );
 
-    ArrayList<Partition> partitions = new ArrayList<Partition>();
+    ArrayList<Partition<?>> partitions = new ArrayList<Partition<?>>();
     for (PartitionKeys pks : initialPartitionKeys) {
       Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
       p1Keys.put(operator.inport1, pks);
       partitions.add(new PartitionImpl(operator, p1Keys, 1));
     }
 
-    List<Partition> newPartitions = dp.repartition(partitions);
+    List<Partition<?>> newPartitions = dp.repartition(partitions);
     Assert.assertEquals(""+newPartitions, 4, newPartitions.size());
 
     Set<PartitionKeys> expectedPartitionKeys = Sets.newHashSet(twoBitPartitionKeys);
-    for (Partition p : newPartitions) {
+    for (Partition<?> p : newPartitions) {
       Assert.assertEquals(""+p.getPartitionKeys(), 1, p.getPartitionKeys().size());
       Assert.assertEquals(""+p.getPartitionKeys(), operator.inport1, p.getPartitionKeys().keySet().iterator().next());
       PartitionKeys pks = p.getPartitionKeys().values().iterator().next();
@@ -297,7 +301,7 @@ public class PhysicalPlanTest {
     );
 
     for (Set<PartitionKeys> expectedKeys : mergedKeys) {
-      partitions = new ArrayList<Partition>();
+      partitions = new ArrayList<Partition<?>>();
       for (PartitionKeys pks : twoBitPartitionKeys) {
         Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
         p1Keys.put(operator.inport1, pks);
@@ -308,7 +312,7 @@ public class PhysicalPlanTest {
       newPartitions = dp.repartition(partitions);
       Assert.assertEquals(""+newPartitions, 3, newPartitions.size());
 
-      for (Partition p : newPartitions) {
+      for (Partition<?> p : newPartitions) {
         Assert.assertEquals(""+p.getPartitionKeys(), 1, p.getPartitionKeys().size());
         Assert.assertEquals(""+p.getPartitionKeys(), operator.inport1, p.getPartitionKeys().keySet().iterator().next());
         PartitionKeys pks = p.getPartitionKeys().values().iterator().next();

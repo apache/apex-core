@@ -9,11 +9,21 @@ import java.lang.reflect.Array;
 /**
  * Abstraction for the processing logic or consumption of a data tuple.
  * Implemented by concrete data ports for their processing behavior or by streams.
+ *
+ * @param <T>
  */
 public interface Sink<T>
 {
   @SuppressWarnings("unchecked")
   public static final Sink<Object>[] NO_SINKS = (Sink<Object>[])Array.newInstance(Sink.class, 0);
+  public static final Sink<Object> BLACKHOLE = new Sink<Object>()
+  {
+    @Override
+    public void process(Object tuple)
+    {
+    }
+
+  };
 
   /**
    * Process the payload which can either be user defined object or Tuple.

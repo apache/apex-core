@@ -4,7 +4,7 @@
  */
 package com.malhartech.api;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,12 +19,21 @@ public interface PartitionableOperator extends Operator
    * into multiple copies so that they all collectively can do the work by working on
    * only a partition of the data.
    *
-   * @param partitions - Current partitions, containing at least one entry.
+   * Through definePartitions the operator is also notified of presence of or lack of
+   * the addtionalCapacity the cluster has for more instances of the operator.
+   * If this capacity is positive then the operator can redistribute its load among
+   * the current instances and the newly defined instances.
+   * If this capacity is negative, then the operator should consider scaling down by
+   * releasing a few instances. The number of instances released are ideally at least
+   * equal to absolute value of incrementalCapacity.
+   * If this capacity is zero, then the operator should look at repartitioning among
+   * the existing instances as the current distribution of load is unfair.
    *
-   * @return New partitioning. Partitions from input list which should not be changed can be returned
-   * as they are.
+   * @param partitions - Current set of partitions
+   * @param incrementalCapacity The count of more instances of this operator can the infrastructure support. If this number is positive,
+   * @return New partitioning. Partitions from input list which should not be changed can be returned as they are.
    */
-  public List<Partition> definePartitions(List<? extends Partition> partitions);
+  public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity);
 
   public class PartitionKeys
   {
@@ -37,17 +46,31 @@ public interface PartitionableOperator extends Operator
     }
 
     @Override
-    public boolean equals(Object obj) {
-      if (obj == null || !(obj instanceof PartitionKeys)) {
-        return false;
-      }
-      PartitionKeys pks = (PartitionKeys)obj;
-      return (this.mask == pks.mask && this.partitions.equals(pks.partitions));
+    public int hashCode()
+    {
+      int hash = 7;
+      hash = 79 * hash + this.mask;
+      hash = 79 * hash + (this.partitions != null ? this.partitions.hashCode() : 0);
+      return hash;
     }
 
     @Override
-    public int hashCode() {
-      return mask + partitions.size();
+    public boolean equals(Object obj)
+    {
+      if (obj == null) {
+        return false;
+      }
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+      final PartitionKeys other = (PartitionKeys)obj;
+      if (this.mask != other.mask) {
+        return false;
+      }
+      if (this.partitions != other.partitions && (this.partitions == null || !this.partitions.equals(other.partitions))) {
+        return false;
+      }
+      return true;
     }
 
     @Override
@@ -56,7 +79,7 @@ public interface PartitionableOperator extends Operator
     }
   }
 
-  public interface Partition
+  public interface Partition<OPERATOR extends Operator>
   {
     /**
      * Return the partition keys for this partition.
@@ -82,7 +105,7 @@ public interface PartitionableOperator extends Operator
      *
      * @return frozen operator instance
      */
-    public Operator getOperator();
+    public OPERATOR getOperator();
 
     /**
      * Create a new partition for the given operator. The returned partition
@@ -91,6 +114,6 @@ public interface PartitionableOperator extends Operator
      * @param operator
      * @return Partition
      */
-    public Partition getInstance(PartitionableOperator operator);
+    public Partition<OPERATOR> getInstance(OPERATOR operator);
   }
 }

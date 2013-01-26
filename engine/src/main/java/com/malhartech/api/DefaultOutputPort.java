@@ -18,9 +18,11 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
   private final Operator operator;
   private transient Sink<T> sink;
 
+  @SuppressWarnings("unchecked")
   public DefaultOutputPort(Operator operator)
   {
     this.operator = operator;
+    this.sink = (Sink<T>)Sink.BLACKHOLE;
   }
 
   @Override
@@ -31,6 +33,7 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
 
   /**
    * Emit the given object as a payload for downstream operators interested in this port.
+   *
    * @param tuple payload which needs to be emitted.
    */
   public void emit(T tuple)
@@ -44,9 +47,10 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
    * @param s
    */
   @Override
+  @SuppressWarnings("unchecked")
   final public void setSink(Sink<T> s)
   {
-    this.sink = s;
+    this.sink = s == null? (Sink<T>)Sink.BLACKHOLE: s;
   }
 
   /**
@@ -57,7 +61,7 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
    */
   public boolean isConnected()
   {
-    return sink != null;
+    return sink != Sink.BLACKHOLE;
   }
 
   /**
