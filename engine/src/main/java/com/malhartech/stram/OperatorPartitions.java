@@ -15,6 +15,7 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
+import java.util.*;
 
 public class OperatorPartitions {
 
@@ -39,7 +40,7 @@ public class OperatorPartitions {
   }
 
 
-  public static class PartitionImpl implements PartitionableOperator.Partition {
+  public static class PartitionImpl implements PartitionableOperator.Partition<Operator> {
     private final PartitionPortMap partitionKeys;
     private final Operator operator;
     private final int loadIndicator;
@@ -72,7 +73,7 @@ public class OperatorPartitions {
     }
 
     @Override
-    public Partition getInstance(PartitionableOperator operator) {
+    public Partition<Operator> getInstance(Operator operator) {
       return new PartitionImpl(operator);
     }
 
@@ -168,7 +169,7 @@ public class OperatorPartitions {
    */
   public static class DefaultPartitioner {
 
-    public List<Partition> defineInitialPartitions(DAG.OperatorWrapper logicalOperator, int initialPartitionCnt) {
+    public List<Partition<?>> defineInitialPartitions(DAG.OperatorWrapper logicalOperator, int initialPartitionCnt) {
 
       //int partitionBits = 0;
       //if (initialPartitionCnt > 0) {
@@ -180,14 +181,14 @@ public class OperatorPartitions {
         partitionMask = -1 >>> (Integer.numberOfLeadingZeros(-1)) - partitionBits;
       }
 
-      List<Partition> partitions = new ArrayList<Partition>(initialPartitionCnt);
+      List<Partition<?>> partitions = new ArrayList<Partition<?>>(initialPartitionCnt);
       for (int i=0; i<initialPartitionCnt; i++) {
-        Partition p = new PartitionImpl(logicalOperator.getOperator());
+        Partition<?> p = new PartitionImpl(logicalOperator.getOperator());
         if (!(p.getOperator() instanceof InputOperator)) {
           // default mapping partitions the stream that was first connected in the DAG and send full data to remaining input ports
           // this gives control over which stream to partition with the default partitioning to the DAG writer
           Map<InputPortMeta, StreamDecl> inputs = logicalOperator.getInputStreams();
-          if (inputs.size() == 0) {
+          if (inputs.isEmpty()) {
             // TODO - allow input operator partitioning?
             throw new AssertionError("Partitioning configured for operator but no input ports found: " + logicalOperator);
           }
@@ -210,10 +211,10 @@ public class OperatorPartitions {
      *          List of new partitions
      * @return
      */
-    public List<Partition> repartition(List<? extends Partition> partitions) {
-      List<Partition> newPartitions = new ArrayList<Partition>();
-      HashMap<Integer, Partition> lowLoadPartitions = new HashMap<Integer, Partition>();
-      for (Partition p : partitions) {
+    public List<Partition<?>> repartition(Collection<? extends Partition<?>> partitions) {
+      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>();
+      HashMap<Integer, Partition<?>> lowLoadPartitions = new HashMap<Integer, Partition<?>>();
+      for (Partition<?> p : partitions) {
         int load = p.getLoad();
         if (load < 0) {
           // combine neighboring underutilized partitions
@@ -222,7 +223,7 @@ public class OperatorPartitions {
 
           // look for the sibling partition by flipping leading bit
           int lookupKey = ( ( pks.mask >>> 1 ) & pks.mask ) & partitionKey;
-          Partition siblingPartition = lowLoadPartitions.get(lookupKey);
+          Partition<?> siblingPartition = lowLoadPartitions.get(lookupKey);
           if (siblingPartition == null) {
             lowLoadPartitions.put(partitionKey, p);
           } else {
@@ -242,10 +243,10 @@ public class OperatorPartitions {
           int newMask = (e.getValue().mask << 1) | 1;
           int key2 = (newMask ^ e.getValue().mask) | key;
 
-          Partition p1 = new PartitionImpl(p.getOperator());
+          Partition<?> p1 = new PartitionImpl(p.getOperator());
           p1.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key)));
 
-          Partition p2 = new PartitionImpl(p.getOperator());
+          Partition<?> p2 = new PartitionImpl(p.getOperator());
           p2.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key2)));
 
           newPartitions.add(p1);

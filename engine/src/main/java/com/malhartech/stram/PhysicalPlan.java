@@ -277,7 +277,7 @@ public class PhysicalPlan {
 
     final PhysicalPlan plan;
     DAG.OperatorWrapper logicalNode;
-    Partition partition;
+    Partition<?> partition;
     Operator merge;
     List<PTInput> inputs;
     List<PTOutput> outputs;
@@ -301,8 +301,9 @@ public class PhysicalPlan {
      * @return long
      */
     public long getRecentCheckpoint() {
-      if (checkpointWindows != null && !checkpointWindows.isEmpty())
+      if (checkpointWindows != null && !checkpointWindows.isEmpty()) {
         return checkpointWindows.getLast();
+      }
       return 0;
     }
 
@@ -441,6 +442,7 @@ public class PhysicalPlan {
   /**
    *
    * @param dag
+   * @param ctx
    */
   public PhysicalPlan(DAG dag, PlanContext ctx) {
 
@@ -534,12 +536,12 @@ public class PhysicalPlan {
   private void initPartitioning(PMapping m) {
     Operator operator = m.logicalOperator.getOperator();
 
-    List<Partition> partitions = new ArrayList<Partition>(1);
+    Collection<Partition<?>> partitions = new ArrayList<Partition<?>>(1);
 
     if (operator instanceof PartitionableOperator) {
       // operator to provide initial partitioning
       partitions.add(new PartitionImpl(operator));
-      partitions = ((PartitionableOperator)operator).definePartitions(partitions);
+      partitions = ((PartitionableOperator)operator).definePartitions(partitions, 0);
     } else {
       // partitioning is enabled through initial count attribute
       // if the attribute is not present or set to zero, partitioning is off
@@ -608,7 +610,7 @@ public class PhysicalPlan {
     }
 
     // create operator instance per partition
-    for (Partition p : partitions) {
+    for (Partition<?> p : partitions) {
       addPTOperator(m, p);
     }
 
@@ -619,12 +621,12 @@ public class PhysicalPlan {
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = getOperators(n);
     List<PartitionImpl> currentPartitions = new ArrayList<PartitionImpl>(operators.size());
-    Map<Partition, PTOperator> currentPartitionMap = new HashMap<Partition, PTOperator>(operators.size());
+    Map<Partition<?>, PTOperator> currentPartitionMap = new HashMap<Partition<?>, PTOperator>(operators.size());
 
-    final List<Partition> newPartitions;
+    final Collection<Partition<?>> newPartitions;
     long minCheckpoint = 0;
     for (PTOperator pOperator : operators) {
-      Partition p = pOperator.partition;
+      Partition<?> p = pOperator.partition;
       if (p == null) {
         throw new AssertionError("Null partition: " + pOperator);
       }
@@ -649,15 +651,15 @@ public class PhysicalPlan {
     }
 
     if (n.getOperator() instanceof PartitionableOperator) {
-      newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions);
+      newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions, 0);
     } else {
       newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
     }
 
-    List<Partition> addedPartitions = new ArrayList<Partition>();
+    List<Partition<?>> addedPartitions = new ArrayList<Partition<?>>();
     Set<PTOperator> undeployOperators = new HashSet<PTOperator>();
     // determine modifications of partition set, identify affected operator instance(s)
-    for (Partition newPartition : newPartitions) {
+    for (Partition<?> newPartition : newPartitions) {
       PTOperator op = currentPartitionMap.remove(newPartition);
       if (op == null) {
         addedPartitions.add(newPartition);
@@ -697,7 +699,7 @@ public class PhysicalPlan {
     List<PTOperator> addedOperators = new ArrayList<PTOperator>(addedPartitions.size());
     Set<PTContainer> newContainers = new HashSet<PTContainer>();
 
-    for (Partition newPartition : addedPartitions) {
+    for (Partition<?> newPartition : addedPartitions) {
       // new partition, add operator instance
       PTOperator p = addPTOperator(newMapping, newPartition);
       addedOperators.add(p);
@@ -735,7 +737,7 @@ public class PhysicalPlan {
     return null;
   }
 
-  private PTOperator addPTOperator(PMapping nodeDecl, Partition partition) {
+  private PTOperator addPTOperator(PMapping nodeDecl, Partition<?> partition) {
 
     PTOperator pOperator = new PTOperator(this);
     pOperator.logicalNode = nodeDecl.logicalOperator;
