@@ -157,12 +157,16 @@ public class PhysicalPlan {
 
     /**
      * Determine whether downstream operators are deployed inline.
-     * (all instances of the logical downstream node are in the same container)
+     * (all instances of the downstream operator are in the same container)
      * @return boolean
      */
     protected boolean isDownStreamInline() {
       StreamDecl logicalStream = this.logicalStream;
       for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
+        if (downStreamPort.getAttributes().attrValue(PortContext.PARTITION_INLINE,  false)) {
+          // other ports, if any, determine whether stream is inline or not
+          continue;
+        }
         for (PTOperator downStreamNode : plan.getOperators(downStreamPort.getOperatorWrapper())) {
           if (this.source.container != downStreamNode.container) {
               return false;
@@ -422,11 +426,6 @@ public class PhysicalPlan {
     final private Map<DAG.OutputPortMeta, PTOperator> mergeOperators = new HashMap<DAG.OutputPortMeta, PTOperator>();
     private boolean shouldRedoPartitions = false;
     private List<StatsHandler> statsHandlers;
-    //private Set<PTOperator> inlineSet = new HashSet<PTOperator>();
-    /**
-     * Operators that are inline and will be created per partition
-     */
-    //private final ArrayList<OperatorWrapper> inlineOperators = new ArrayList<OperatorWrapper>();
 
     private void addPartition(PTOperator p) {
       partitions.add(p);
@@ -582,30 +581,6 @@ public class PhysicalPlan {
 
     if (partitions == null || partitions.isEmpty()) {
       throw new IllegalArgumentException("PartitionableOperator must return at least one partition: " + m.logicalOperator);
-    }
-
-    // initialize partition merge
-    for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : m.logicalOperator.getOutputStreams().entrySet()) {
-      // get output ports - we expect exactly one port
-      Unifier<?> unifier = outputEntry.getKey().getUnifier();
-      if (unifier == null) {
-        LOG.debug("Using default unifier for {}", outputEntry.getKey());
-        unifier = new DefaultUnifier();
-      }
-      PortMappingDescriptor mergeDesc = new PortMappingDescriptor();
-      Operators.describe(unifier, mergeDesc);
-      if (mergeDesc.outputPorts.size() != 1) {
-        throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
-      }
-      PTOperator merge;
-      merge = new PTOperator(this);
-      merge.logicalNode = m.logicalOperator;
-      merge.inputs = new ArrayList<PTInput>();
-      merge.outputs = new ArrayList<PTOutput>();
-      merge.id = nodeSequence.incrementAndGet();
-      merge.merge = unifier;
-      merge.outputs.add(new PTOutput(this, mergeDesc.outputPorts.keySet().iterator().next(), outputEntry.getValue(), merge));
-      m.mergeOperators.put(outputEntry.getKey(), merge);
     }
 
     int minTps = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_TPS_MIN, 0);
@@ -788,16 +763,48 @@ public class PhysicalPlan {
       if (streamDecl.getSource() != null) {
         PMapping upstream = logicalToPTOperator.get(streamDecl.getSource().getOperatorWrapper());
         Collection<PTOperator> upstreamNodes = upstream.partitions;
-        if (inputEntry.getKey().getAttributes().attrValue(PortContext.PARTITION_INLINE, false).equals(true)) {
+        if (inputEntry.getKey().getAttributes().attrValue(PortContext.PARTITION_INLINE, false)) {
           if (upstream.partitions.size() < nodeDecl.partitions.size()) {
             throw new AssertionError("Number of partitions don't match in one-to-one mapping");
           }
           // pick upstream partition for new instance to attach to
           upstreamNodes = Collections.singletonList(upstream.partitions.get(nodeDecl.partitions.size()-1));
         }
-        else if (!upstream.mergeOperators.isEmpty()) {
-          // partitioned input with merge operator
-          upstreamNodes = upstream.mergeOperators.values();
+        else if (upstream.partitions.size() > 1) {
+          PTOperator mergeNode = upstream.mergeOperators.get(streamDecl.getSource());
+          if (mergeNode == null) {
+            // create the merge operator
+            Unifier<?> unifier = streamDecl.getSource().getUnifier();
+            if (unifier == null) {
+              LOG.debug("Using default unifier for {}", streamDecl.getSource());
+              unifier = new DefaultUnifier();
+            }
+            PortMappingDescriptor mergeDesc = new PortMappingDescriptor();
+            Operators.describe(unifier, mergeDesc);
+            if (mergeDesc.outputPorts.size() != 1) {
+              throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
+            }
+            mergeNode = new PTOperator(this);
+            mergeNode.logicalNode = upstream.logicalOperator;
+            mergeNode.inputs = new ArrayList<PTInput>();
+            mergeNode.outputs = new ArrayList<PTOutput>();
+            mergeNode.id = nodeSequence.incrementAndGet();
+            mergeNode.merge = unifier;
+            mergeNode.outputs.add(new PTOutput(this, mergeDesc.outputPorts.keySet().iterator().next(), streamDecl, mergeNode));
+            upstream.mergeOperators.put(streamDecl.getSource(), mergeNode);
+
+            // add existing partitions as inputs
+            for (PTOperator upstreamInstance : upstream.partitions) {
+              for (PTOutput upstreamOut : upstreamInstance.outputs) {
+                if (upstreamOut.logicalStream == streamDecl) {
+                  // merge operator input
+                  PTInput input = new PTInput("<merge#" + streamDecl.getSource().getPortName() + ">", streamDecl, mergeNode, null, upstreamOut);
+                  mergeNode.inputs.add(input);
+                }
+              }
+            }
+          }
+          upstreamNodes = Collections.singletonList(mergeNode);
         }
 
         for (PTOperator upNode : upstreamNodes) {
@@ -815,28 +822,24 @@ public class PhysicalPlan {
     return pOperator;
   }
 
-  private PTOperator createInstance(PMapping nodeDecl, Partition partition) {
+  private PTOperator createInstance(PMapping mapping, Partition<?> partition) {
     PTOperator pOperator = new PTOperator(this);
-    pOperator.logicalNode = nodeDecl.logicalOperator;
+    pOperator.logicalNode = mapping.logicalOperator;
     pOperator.inputs = new ArrayList<PTInput>();
     pOperator.outputs = new ArrayList<PTOutput>();
     pOperator.id = nodeSequence.incrementAndGet();
     pOperator.partition = partition;
 
     // output port objects - these could be deferred until inputs are connected
-    for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : nodeDecl.logicalOperator.getOutputStreams().entrySet()) {
+    for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
       PTOutput out = new PTOutput(this, outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
       pOperator.outputs.add(out);
-      // if a unifier is defined, add the new partition to its inputs
-      PTOperator mergeNode = nodeDecl.mergeOperators.get(outputEntry.getKey());
-      if (mergeNode != null) {
-        // merge operator input
-        PTInput input = new PTInput("<merge#" + outputEntry.getKey().getPortName() + ">", outputEntry.getValue(), pOperator, null, out);
-        mergeNode.inputs.add(input);
-      } else {
-        if (!nodeDecl.partitions.isEmpty()) {
-          throw new AssertionError("Multiple partitions w/o merge operator: " + nodeDecl.logicalOperator);
-        }
+
+      PTOperator merge = mapping.mergeOperators.get(outputEntry.getKey());
+      if (merge != null) {
+        // dynamically added partitions need to feed into existing unifier
+        PTInput input = new PTInput("<merge#" + out.portName + ">", out.logicalStream, merge, null, out);
+        merge.inputs.add(input);
       }
     }
     return pOperator;

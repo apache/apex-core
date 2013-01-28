@@ -26,6 +26,7 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorWrapper;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.OperatorCodec;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
@@ -34,7 +35,6 @@ import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
-import com.malhartech.stram.PartitioningTest.PartitionableInputOperator;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -403,7 +403,6 @@ public class PhysicalPlanTest {
 
   }
 
-  @org.junit.Ignore
   @Test
   public void testInlinePartitioning() {
 
@@ -416,16 +415,24 @@ public class PhysicalPlanTest {
 
     GenericTestModule o3 = dag.addOperator("o3", GenericTestModule.class);
 
-    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(true);
+    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(true); // inline o3.inport1 implicit
 
     dag.addStream("o2Output1", o2.outport1, o3.inport2).setInline(false);
     dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_INLINE, true);
+
+    GenericTestModule o4 = dag.addOperator("o4", GenericTestModule.class);
+    dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_INLINE, true);
+    dag.addStream("o3outport1", o3.outport1, o4.inport1).setInline(false); // inline o4.inport1 implicit
+
+    // non inline
+    GenericTestModule o5merge = dag.addOperator("o5merge", GenericTestModule.class);
+    dag.addStream("o4outport1", o4.outport1, o5merge.inport1);
 
     int maxContainers = 5;
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
 
     PhysicalPlan plan = new PhysicalPlan(dag, null);
-    Assert.assertEquals("number of containers", 4, plan.getContainers().size());
+    Assert.assertEquals("number of containers", 5, plan.getContainers().size());
 
     PTContainer container1 = plan.getContainers().get(0);
     Assert.assertEquals("number operators " + container1, 1, container1.operators.size());
@@ -433,8 +440,8 @@ public class PhysicalPlanTest {
 
     for (int i=1; i<3; i++) {
       PTContainer container2 = plan.getContainers().get(i);
-      Assert.assertEquals("number operators " + container2, 2, container2.operators.size());
-      Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3");
+      Assert.assertEquals("number operators " + container2, 3, container2.operators.size());
+      Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3", "o4");
       Set<String> actualLogicalNames = Sets.newHashSet();
       for (PTOperator p : container2.operators) {
         actualLogicalNames.add(p.getLogicalId());
@@ -449,10 +456,25 @@ public class PhysicalPlanTest {
       Assert.assertTrue("downstream inline " + p.outputs.get(0), p.outputs.get(0).isDownStreamInline());
     }
 
-    // TODO: eliminate extra container with node2 merge operator
+    // container 4: merge operator for o4
+    OperatorWrapper o4Meta = dag.getOperatorWrapper(o4);
+    Map<DAG.OutputPortMeta, PTOperator> o4Unifiers = plan.getMergeOperators(o4Meta);
+    Assert.assertEquals("unifier " + o4Meta + ": " + o4Unifiers, 1, o4Unifiers.size());
+    PTContainer container4 = plan.getContainers().get(3);
+    Assert.assertEquals("number operators " + container4, 1, container4.operators.size());
+    Assert.assertEquals("operators " + container4, o4Meta, container4.operators.get(0).logicalNode);
+    Assert.assertTrue("unifier " + o4, container4.operators.get(0).merge instanceof Unifier);
+    Assert.assertEquals("unifier inputs" + container4.operators.get(0).inputs, 2, container4.operators.get(0).inputs.size());
 
-    PTOutput node1Out = plan.getOperators(dag.getOperatorWrapper(o1)).get(0).outputs.get(0);
-    Assert.assertTrue("inline " + node1Out, node1Out.isDownStreamInline());
+    // container 5: o5 taking input from o4 unifier
+    OperatorWrapper o5Meta = dag.getOperatorWrapper(o5merge);
+    PTContainer container5 = plan.getContainers().get(4);
+    Assert.assertEquals("number operators " + container5, 1, container5.operators.size());
+    Assert.assertEquals("operators " + container5, o5Meta, container5.operators.get(0).logicalNode);
+    List<PTOperator> o5Instances = plan.getOperators(o5Meta);
+    Assert.assertEquals("" + o5Instances, 1, o5Instances.size());
+    Assert.assertEquals("inputs" + container5.operators.get(0).inputs, 1, container5.operators.get(0).inputs.size());
+    Assert.assertEquals("inputs" + container5.operators.get(0).inputs, container4.operators.get(0), container5.operators.get(0).inputs.get(0).source.source);
 
   }
 
