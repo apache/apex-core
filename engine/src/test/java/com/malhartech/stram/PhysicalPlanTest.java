@@ -423,19 +423,19 @@ public class PhysicalPlanTest {
 
     // fork parallel partition to two downstream operators
     GenericTestModule o3_1 = dag.addOperator("o3_1", GenericTestModule.class);
-    dag.setInputPortAttribute(o3_1.inport1, PortContext.PARTITION_INLINE, true);
+    dag.setInputPortAttribute(o3_1.inport1, PortContext.PARTITION_PARALLEL, true);
     OperatorWrapper o3_1Meta = dag.getOperatorWrapper(o3_1);
 
     GenericTestModule o3_2 = dag.addOperator("o3_2", GenericTestModule.class);
-    dag.setInputPortAttribute(o3_2.inport1, PortContext.PARTITION_INLINE, true);
+    dag.setInputPortAttribute(o3_2.inport1, PortContext.PARTITION_PARALLEL, true);
     OperatorWrapper o3_2Meta = dag.getOperatorWrapper(o3_2);
 
     dag.addStream("o3outport1", o3.outport1, o3_1.inport1, o3_2.inport1).setInline(false); // inline implicit
 
     // join within parallel partitions
     GenericTestModule o4 = dag.addOperator("o4", GenericTestModule.class);
-    dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_INLINE, true);
-    dag.setInputPortAttribute(o4.inport2, PortContext.PARTITION_INLINE, true);
+    dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_PARALLEL, true);
+    dag.setInputPortAttribute(o4.inport2, PortContext.PARTITION_PARALLEL, true);
     OperatorWrapper o4Meta = dag.getOperatorWrapper(o4);
 
     dag.addStream("o3_1.outport1", o3_1.outport1, o4.inport1).setInline(false); // inline implicit
