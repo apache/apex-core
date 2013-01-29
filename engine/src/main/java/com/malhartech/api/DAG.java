@@ -440,10 +440,11 @@ public class DAG implements Serializable, DAGConstants
   /**
    * Add identified stream for given source and sinks.
    *
+   * @param <T>
    * @param id
    * @param source
    * @param sinks
-   * @return <T> StreamDecl
+   * @return StreamDecl
    */
   public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
@@ -463,7 +464,7 @@ public class DAG implements Serializable, DAGConstants
    * @param id
    * @param source
    * @param sink1
-   * @return <T> StreamDecl
+   * @return StreamDecl
    */
   @SuppressWarnings("unchecked")
   public <T> StreamDecl addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
