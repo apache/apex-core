@@ -25,7 +25,6 @@ import com.malhartech.api.Operator;
 import com.malhartech.api.OperatorCodec;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
-import com.malhartech.stram.OperatorDeployInfo.OperatorType;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
@@ -200,7 +199,7 @@ public class StramChildAgent {
 
   public void addRequest(DeployRequest r) {
     this.requests.add(r);
-    //LOG.debug("Adding request {} {} ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero, container.containerId, r);
+    LOG.info("Adding request {} {}"/*ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero*/, container.containerId, r);
   }
 
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
