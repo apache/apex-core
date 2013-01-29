@@ -121,6 +121,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
     Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
     Assert.assertNotNull("serializedNode " + node1DI.declaredId, node1DI.serializedNode);
+    Assert.assertNotNull("contextAttributes " + node1DI.declaredId, node1DI.contextAttributes);
 
     OutputDeployInfo c1n1n2 = node1DI.outputs.get(0);
     Assert.assertNotNull("stream connection for container1", c1n1n2);
