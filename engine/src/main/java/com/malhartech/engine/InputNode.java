@@ -41,6 +41,7 @@ public class InputNode extends Node<InputOperator>
             logger.debug("Got interrupted while putting {}", payload);
           }
         }
+
       };
     }
 
@@ -52,6 +53,8 @@ public class InputNode extends Node<InputOperator>
   public final void run()
   {
     boolean inWindow = false;
+    int windowCount = 0;
+
     Tuple t = null;
     try {
       while (alive) {
@@ -66,12 +69,17 @@ public class InputNode extends Node<InputOperator>
                 }
                 inWindow = true;
                 currentWindowId = t.getWindowId();
-                operator.beginWindow(currentWindowId);
+                if (windowCount == 0) {
+                  operator.beginWindow(currentWindowId);
+                }
                 operator.emitTuples(); /* give at least one change to emit the tuples */
                 break;
 
               case END_WINDOW:
-                operator.endWindow();
+                if (++windowCount == applicationWindowCount) {
+                  operator.endWindow();
+                  windowCount = 0;
+                }
                 inWindow = false;
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].process(t);
@@ -131,4 +139,5 @@ public class InputNode extends Node<InputOperator>
       }
     }
   }
+
 }

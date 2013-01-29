@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // inflight changes to the port connections should be captured.
@@ -34,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public class GenericNode extends Node<Operator>
 {
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(GenericNode.class);
+  private static final Logger logger = LoggerFactory.getLogger(GenericNode.class);
   protected final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
   protected int deletionId;
 
@@ -76,7 +77,7 @@ public class GenericNode extends Node<Operator>
     @Override
     public final Tuple sweep()
     {
-      int size = size();
+      final int size = size();
       for (int i = 1; i <= size; i++) {
         if (peekUnsafe() instanceof Tuple) {
           count += i;
@@ -152,6 +153,7 @@ public class GenericNode extends Node<Operator>
   public final void run()
   {
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
+    int windowCount = 0;
     int totalQueues = inputs.size();
 
     ArrayList<Reservoir> activeQueues = new ArrayList<Reservoir>();
@@ -179,7 +181,9 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].process(t);
                   }
-                  operator.beginWindow(currentWindowId);
+                  if (windowCount == 0) {
+                    operator.beginWindow(currentWindowId);
+                  }
                   receivedEndWindow = 0;
                 }
                 else if (t.getWindowId() == currentWindowId) {
@@ -195,7 +199,10 @@ public class GenericNode extends Node<Operator>
                 if (t.getWindowId() == currentWindowId) {
                   lastEndWindow = activePort.remove();
                   if (++receivedEndWindow == totalQueues) {
-                    operator.endWindow();
+                    if (++windowCount == applicationWindowCount) {
+                      operator.endWindow();
+                      windowCount = 0;
+                    }
                     for (final Sink<Object> output: outputs.values()) {
                       output.process(t);
                     }

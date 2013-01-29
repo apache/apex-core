@@ -81,6 +81,10 @@ public interface Context
      * Attribute of the operator that suggests the ideal RAM that the operator may need for optimal functioning.
      */
     public static final AttributeKey<Integer> MEMORY_MB = new AttributeKey<Integer>("memoryMB");
+    /**
+     * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
+     */
+    public static final AttributeKey<Integer> APPLICATION_WINDOW_COUNT = new AttributeKey<Integer>("applicationWindowCount");
 
     /**
      * Return the operator runtime id.
@@ -94,9 +98,11 @@ public interface Context
     /**
      * Return the application level attributes.
      * This will be the same set for all operators in the system.
+     *
      * @return
      */
     AttributeMap<DAGConstants> getApplicationAttributes();
+
   }
 
 }
