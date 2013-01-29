@@ -41,6 +41,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
   protected long currentWindowId;
+  protected int applicationWindowCount;
 
   public Node(String id, OPERATOR operator)
   {
@@ -115,8 +116,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     boolean activationListener = operator instanceof ActivationListener;
 
     activateSinks();
-    alive = true;
+    this.alive = true;
     this.context = context;
+    this.applicationWindowCount = context.getAttributes().attr(OperatorContext.APPLICATION_WINDOW_COUNT).setIfAbsent(1);
 
     if (activationListener) {
       ((ActivationListener)operator).activate(context);
