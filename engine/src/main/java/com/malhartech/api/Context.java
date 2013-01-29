@@ -35,8 +35,12 @@ public interface Context
      */
     public static final AttributeKey<Integer> SPIN_MILLIS = new AttributeKey<Integer>("spinMillis");
     /**
-     * Inline this operator with upstream partitions. Defined on a per port
-     * basis to allow for stream to be shared with non-inline sinks.
+     * Extend partitioning of an upstream operator to this port w/o intermediate merge.
+     * Can be used to form parallel partitions that span a groups of operators.
+     * Defined on a per input port basis to allow for stream to be shared with non-partitioned sinks.
+     * If multiple ports of an operator have the setting, incoming streams must track back to
+     * a common root partition, i.e. the operator join forks of the same origin.
+     * At the moment each partition would be deployed to a single container (inline).
      */
     public static final AttributeKey<Boolean> PARTITION_INLINE = new AttributeKey<Boolean>("partitionInline");
 

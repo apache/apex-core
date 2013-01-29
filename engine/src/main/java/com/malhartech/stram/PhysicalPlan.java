@@ -497,7 +497,11 @@ public class PhysicalPlan {
             if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_INLINE, false).equals(true)) {
               // operator partitioned with upstream
               if (upstreamPartitioned != null) {
-                throw new AssertionError("inline with another partition: " + e);
+                // need to have common root
+                if (!upstreamPartitioned.partitions.get(0).inlineSet.contains(m.partitions.get(0))) {
+                  String msg = String.format("operator cannot extend multiple partitions (%s and %s)", upstreamPartitioned.logicalOperator, m.logicalOperator);
+                  throw new AssertionError(msg);
+                }
               }
               upstreamPartitioned = m;
             } else if (e.getValue().isInline()) {

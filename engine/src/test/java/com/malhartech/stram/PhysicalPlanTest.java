@@ -18,6 +18,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
@@ -404,7 +405,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testInlinePartitioning() {
+  public void testParallelPartitioning() {
 
     DAG dag = new DAG();
 
@@ -415,14 +416,30 @@ public class PhysicalPlanTest {
 
     GenericTestModule o3 = dag.addOperator("o3", GenericTestModule.class);
 
-    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(true); // inline o3.inport1 implicit
+    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(true);
 
     dag.addStream("o2Output1", o2.outport1, o3.inport2).setInline(false);
     dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_INLINE, true);
 
+    // fork parallel partition to two downstream operators
+    GenericTestModule o3_1 = dag.addOperator("o3_1", GenericTestModule.class);
+    dag.setInputPortAttribute(o3_1.inport1, PortContext.PARTITION_INLINE, true);
+    OperatorWrapper o3_1Meta = dag.getOperatorWrapper(o3_1);
+
+    GenericTestModule o3_2 = dag.addOperator("o3_2", GenericTestModule.class);
+    dag.setInputPortAttribute(o3_2.inport1, PortContext.PARTITION_INLINE, true);
+    OperatorWrapper o3_2Meta = dag.getOperatorWrapper(o3_2);
+
+    dag.addStream("o3outport1", o3.outport1, o3_1.inport1, o3_2.inport1).setInline(false); // inline implicit
+
+    // join within parallel partitions
     GenericTestModule o4 = dag.addOperator("o4", GenericTestModule.class);
     dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_INLINE, true);
-    dag.addStream("o3outport1", o3.outport1, o4.inport1).setInline(false); // inline o4.inport1 implicit
+    dag.setInputPortAttribute(o4.inport2, PortContext.PARTITION_INLINE, true);
+    OperatorWrapper o4Meta = dag.getOperatorWrapper(o4);
+
+    dag.addStream("o3_1.outport1", o3_1.outport1, o4.inport1).setInline(false); // inline implicit
+    dag.addStream("o3_2.outport1", o3_2.outport1, o4.inport2).setInline(false); // inline implicit
 
     // non inline
     GenericTestModule o5merge = dag.addOperator("o5merge", GenericTestModule.class);
@@ -440,8 +457,8 @@ public class PhysicalPlanTest {
 
     for (int i=1; i<3; i++) {
       PTContainer container2 = plan.getContainers().get(i);
-      Assert.assertEquals("number operators " + container2, 3, container2.operators.size());
-      Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3", "o4");
+      Assert.assertEquals("number operators " + container2, 5, container2.operators.size());
+      Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3", o3_1Meta.getId(), o3_2Meta.getId(), o4Meta.getId());
       Set<String> actualLogicalNames = Sets.newHashSet();
       for (PTOperator p : container2.operators) {
         actualLogicalNames.add(p.getLogicalId());
@@ -449,15 +466,17 @@ public class PhysicalPlanTest {
       Assert.assertEquals("operator names " + container2, expectedLogicalNames, actualLogicalNames);
     }
 
-    List<PTOperator> partitionedInstances = plan.getOperators(dag.getOperatorWrapper(o2));
-    Assert.assertEquals("" + partitionedInstances, 2, partitionedInstances.size());
-    for (PTOperator p : partitionedInstances) {
-      Assert.assertEquals("outputs " + p, 1, p.outputs.size());
-      Assert.assertTrue("downstream inline " + p.outputs.get(0), p.outputs.get(0).isDownStreamInline());
+    List<OperatorWrapper> inlineOperators = Lists.newArrayList(dag.getOperatorWrapper(o2), o3_1Meta, o3_2Meta);
+    for (OperatorWrapper ow : inlineOperators) {
+      List<PTOperator> partitionedInstances = plan.getOperators(ow);
+      Assert.assertEquals("" + partitionedInstances, 2, partitionedInstances.size());
+      for (PTOperator p : partitionedInstances) {
+        Assert.assertEquals("outputs " + p, 1, p.outputs.size());
+        Assert.assertTrue("downstream inline " + p.outputs.get(0), p.outputs.get(0).isDownStreamInline());
+      }
     }
 
     // container 4: merge operator for o4
-    OperatorWrapper o4Meta = dag.getOperatorWrapper(o4);
     Map<DAG.OutputPortMeta, PTOperator> o4Unifiers = plan.getMergeOperators(o4Meta);
     Assert.assertEquals("unifier " + o4Meta + ": " + o4Unifiers, 1, o4Unifiers.size());
     PTContainer container4 = plan.getContainers().get(3);
