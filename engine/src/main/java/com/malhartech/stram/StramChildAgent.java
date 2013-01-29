@@ -393,6 +393,7 @@ public class StramChildAgent {
     }
     ndi.declaredId = node.getLogicalId();
     ndi.id = node.id;
+    ndi.contextAttributes = node.logicalNode.getAttributes();
     return ndi;
   }
 
