@@ -418,10 +418,10 @@ public class PhysicalPlanTest {
     dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(true); // inline o3.inport1 implicit
 
     dag.addStream("o2Output1", o2.outport1, o3.inport2).setInline(false);
-    dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_INLINE, true);
+    dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_PARALLEL, true);
 
     GenericTestModule o4 = dag.addOperator("o4", GenericTestModule.class);
-    dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_INLINE, true);
+    dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.addStream("o3outport1", o3.outport1, o4.inport1).setInline(false); // inline o4.inport1 implicit
 
     // non inline

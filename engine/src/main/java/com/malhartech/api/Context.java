@@ -38,7 +38,7 @@ public interface Context
      * Inline this operator with upstream partitions. Defined on a per port
      * basis to allow for stream to be shared with non-inline sinks.
      */
-    public static final AttributeKey<Boolean> PARTITION_INLINE = new AttributeKey<Boolean>("partitionInline");
+    public static final AttributeKey<Boolean> PARTITION_PARALLEL = new AttributeKey<Boolean>("partitionInline");
 
     AttributeMap<PortContext> getAttributes();
 

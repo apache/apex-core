@@ -163,7 +163,7 @@ public class PhysicalPlan {
     protected boolean isDownStreamInline() {
       StreamDecl logicalStream = this.logicalStream;
       for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
-        if (downStreamPort.getAttributes().attrValue(PortContext.PARTITION_INLINE,  false)) {
+        if (downStreamPort.getAttributes().attrValue(PortContext.PARTITION_PARALLEL,  false)) {
           // other ports, if any, determine whether stream is inline or not
           continue;
         }
@@ -494,7 +494,7 @@ public class PhysicalPlan {
           for (Map.Entry<DAG.InputPortMeta, StreamDecl> e : n.getInputStreams().entrySet()) {
             // if stream is marked inline, join the upstream operators
             PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorWrapper());
-            if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_INLINE, false).equals(true)) {
+            if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false).equals(true)) {
               // operator partitioned with upstream
               if (upstreamPartitioned != null) {
                 throw new AssertionError("inline with another partition: " + e);
@@ -763,7 +763,7 @@ public class PhysicalPlan {
       if (streamDecl.getSource() != null) {
         PMapping upstream = logicalToPTOperator.get(streamDecl.getSource().getOperatorWrapper());
         Collection<PTOperator> upstreamNodes = upstream.partitions;
-        if (inputEntry.getKey().getAttributes().attrValue(PortContext.PARTITION_INLINE, false)) {
+        if (inputEntry.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false)) {
           if (upstream.partitions.size() < nodeDecl.partitions.size()) {
             throw new AssertionError("Number of partitions don't match in one-to-one mapping");
           }
