@@ -122,7 +122,7 @@ public class DAG implements Serializable, DAGConstants
           return e.getKey();
         }
       }
-      throw new AssertionError();
+      throw new AssertionError("Cannot find the port object for " + this);
     }
 
     public AttributeMap<PortContext> getAttributes() {
