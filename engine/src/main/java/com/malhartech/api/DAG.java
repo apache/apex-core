@@ -318,6 +318,17 @@ public class DAG implements Serializable, DAGConstants
       @Override
       public void addInputPort(InputPort<?> portObject, Field field, InputPortFieldAnnotation a)
       {
+        if (!OperatorWrapper.this.inputStreams.isEmpty()) {
+          for (Map.Entry<DAG.InputPortMeta, DAG.StreamDecl> e : OperatorWrapper.this.inputStreams.entrySet()) {
+            DAG.InputPortMeta ipm = e.getKey();
+            if (ipm.operatorWrapper == OperatorWrapper.this && ipm.fieldName.equals(field.getName())) {
+              //LOG.debug("Found existing port meta for: " + field);
+              inPortMap.put(portObject, ipm);
+              checkDuplicateName(ipm.getPortName(), ipm);
+              return;
+            }
+          }
+        }
         InputPortMeta metaPort = new InputPortMeta();
         metaPort.operatorWrapper = OperatorWrapper.this;
         metaPort.fieldName = field.getName();
