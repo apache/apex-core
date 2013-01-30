@@ -523,15 +523,23 @@ public class PhysicalPlan {
             newOperator.inlineSet.add(newOperator);
 
             for (PMapping inlineCandidate : inlineCandidates) {
+              if (inlineCandidate.partitions.size() > 1) {
+                // TODO: check whether operator can be partitioned, even with current count of 1
+                LOG.warn("ignoring inline for partitioned upstream operator " + inlineCandidate.logicalOperator);
+                continue;
+              }
+              // merge inline sets
               for (PTOperator otherNode : inlineCandidate.partitions) {
                 if (!otherNode.inlineSet.isEmpty()) {
-                  // update each operator with combined set
-                  for (PTOperator inlineNode : otherNode.inlineSet) {
-                    newOperator.inlineSet.add(inlineNode);
-                    otherNode.inlineSet = newOperator.inlineSet;
-                  }
+                  newOperator.inlineSet.addAll(otherNode.inlineSet);
                 }
               }
+            }
+
+            // update each operator with merged set
+            for (PTOperator inlineNode : newOperator.inlineSet) {
+              inlineNode.inlineSet = newOperator.inlineSet;
+              //LOG.debug(n.getId() + " " + inlineNode.id + " inlineset: " + newOperator.inlineSet);
             }
           }
         }
@@ -550,6 +558,7 @@ public class PhysicalPlan {
           if (!inlineNodes.isEmpty()) {
             // process inline operators
             for (PTOperator inlineNode : inlineNodes) {
+              //LOG.debug("setting container {} {}", inlineNode, container);
               assert(inlineNode.container == null);
               inlineNode.container = container;
               container.operators.add(inlineNode);
