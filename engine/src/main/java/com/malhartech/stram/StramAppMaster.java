@@ -98,7 +98,7 @@ public class StramAppMaster
   // Configuration
   private final Configuration conf;
   private final YarnClientHelper yarnClient;
-  private DAG topology;
+  private DAG dag;
   // Handle to communicate with the Resource Manager
   private AMRMProtocol resourceManager;
   // Application Attempt Id ( combination of attemptId and fail count )
@@ -271,9 +271,9 @@ public class StramAppMaster
       LOG.error("Error dumping configuration.", e);
     };
 
-    if (topology != null) {
+    if (dag != null) {
       try {
-        LOG.info("Topology: {}", topology.toString());
+        LOG.info("Topology: {}", dag.toString());
       }
       catch (Exception e) {
         LOG.error("Error dumping topology.", e);
@@ -343,14 +343,14 @@ public class StramAppMaster
     //this.topology = b.getTopology();
 
     FileInputStream fis = new FileInputStream("./" + DAG.SER_FILE_NAME);
-    this.topology = DAG.read(fis);
+    this.dag = DAG.read(fis);
     fis.close();
     // "debug" simply dumps all data using LOG.info
-    if (topology.isDebug()) {
+    if (dag.isDebug()) {
       dumpOutDebugInfo();
     }
 
-    this.dnmgr = new StreamingContainerManager(topology);
+    this.dnmgr = new StreamingContainerManager(dag);
 
     // start RPC server
     rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr);
@@ -358,7 +358,7 @@ public class StramAppMaster
     rpcImpl.start();
     LOG.info("Container callback server listening at " + rpcImpl.getAddress());
 
-    LOG.info("Initializing logical topology with {} operators in {} containers", topology.getAllOperators().size(), dnmgr.getNumRequiredContainers());
+    LOG.info("Initializing application with {} operators in {} containers", dag.getAllOperators().size(), dnmgr.getNumRequiredContainers());
 
     StramAppContext appContext = new ClusterAppContextImpl();
     // start web service
@@ -409,7 +409,7 @@ public class StramAppMaster
     // A resource ask has to be atleast the minimum of the capability of the cluster, the value has to be
     // a multiple of the min value and cannot exceed the max.
     // If it is not an exact multiple of min, the RM will allocate to the nearest multiple of min
-    int containerMemory = topology.getContainerMemoryMB();
+    int containerMemory = dag.getContainerMemoryMB();
     if (containerMemory < minMem) {
       LOG.info("Container memory specified below min threshold of cluster. Using min value."
                + ", specified=" + containerMemory
@@ -521,7 +521,7 @@ public class StramAppMaster
           dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), null);
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
-          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, topology, rpcImpl.getAddress());
+          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, dag, rpcImpl.getAddress());
           Thread launchThread = new Thread(runnableLaunchContainer);
           launchThreads.add(launchThread);
           launchThread.start();

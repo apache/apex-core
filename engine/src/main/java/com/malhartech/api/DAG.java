@@ -272,6 +272,15 @@ public class DAG implements Serializable, DAGConstants
 
       return this;
     }
+
+    @Override
+    public String toString()
+    {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+              append("id", this.id).
+              toString();
+    }
+
   }
 
   /**
