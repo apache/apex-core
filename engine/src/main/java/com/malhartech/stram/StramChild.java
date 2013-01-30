@@ -293,7 +293,8 @@ public class StramChild
             if (n instanceof UnifierNode) {
               n.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
             }
-            else {
+            else if (n != null) {
+              // check why null pointer exception gets thrown here during shutdown! - chetan
               n.connectInputPort(nodeport[1], null);
             }
           }
