@@ -627,7 +627,11 @@ public class StreamingContainerManager implements PlanContext
               BufferServerClient bsc = getBufferServerClient(operator);
               // reset publisher (stale operator may still write data until disconnected)
               // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
-              bsc.reset(sourceIdentifier, 0);
+              try {
+                bsc.reset(sourceIdentifier, 0);
+              } catch (Exception ex) {
+                LOG.error("Failed to purge buffer server {} {}", sourceIdentifier, ex);
+              }
             }
           }
         }
