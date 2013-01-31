@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Parameterized and scoped context attribute map that supports serialization.
  * Derived from {@link io.netty.util.AttributeMap}
+ * @param <CONTEXT>
  */
 public interface AttributeMap<CONTEXT> {
 

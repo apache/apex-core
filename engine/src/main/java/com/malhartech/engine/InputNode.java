@@ -133,7 +133,7 @@ public class InputNode extends Node<InputOperator>
 
     if (insideWindow) {
       operator.endWindow();
-      emitEndWindow();
+      //emitEndWindow();
     }
   }
 
