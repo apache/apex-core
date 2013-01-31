@@ -38,7 +38,7 @@ public class RoundRobin extends AbstractPolicy
   public void distribute(Set<PhysicalNode> nodes, SerializedData data)
   {
     int size = nodes.size();
-    if (size > 0) {
+    if (size > 0) { // why do i need to do this check? synchronization issues? because if there is no one interested, the logical group should not exist!
       index %= size;
       int count = index++;
       /*
