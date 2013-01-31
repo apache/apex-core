@@ -14,11 +14,11 @@ import java.util.Set;
  * <br>
  * A round robin load balaning policy. Does not take into account busy/load of a downstream physical node. Extends the base class {@link com.malhartech.bufferserver.policy.AbstractPolicy}<br>
  * <br>
+ *
  * @author chetan
  */
 public class RoundRobin extends AbstractPolicy
 {
-
   int index;
 
   /**
@@ -30,26 +30,30 @@ public class RoundRobin extends AbstractPolicy
   }
 
   /**
-   * 
+   *
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
-   * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send 
+   * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    */
   @Override
   public void distribute(Set<PhysicalNode> nodes, SerializedData data)
   {
-    index %= nodes.size();
-    int count = index++;
-    /*
-     * May need to look at accessing nodes as arrays, so that iteration can be avoided
-     * This matters if say there are 1000+ partitions(?) and this may happen in a Big Message
-     * application
-     * 
-     */
-    for (PhysicalNode node : nodes) {
-      if (count-- == 0) {
-        node.send(data);
-        break;
+    int size = nodes.size();
+    if (size > 0) {
+      index %= size;
+      int count = index++;
+      /*
+       * May need to look at accessing nodes as arrays, so that iteration can be avoided
+       * This matters if say there are 1000+ partitions(?) and this may happen in a Big Message
+       * application
+       *
+       */
+      for (PhysicalNode node: nodes) {
+        if (count-- == 0) {
+          node.send(data);
+          break;
+        }
       }
     }
   }
+
 }
