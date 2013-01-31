@@ -6,6 +6,7 @@ package com.malhartech.engine;
 
 import com.malhartech.api.*;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.util.AttributeMap.DefaultAttributeMap;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.Assert;
@@ -99,7 +100,7 @@ public class GenericNodeTest
       public void run()
       {
         ab.set(true);
-        gn.activate(new OperatorContext(0, this, null, null));
+        gn.activate(new OperatorContext(0, this, new DefaultAttributeMap<com.malhartech.api.Context.OperatorContext>(), null));
       }
 
     };
