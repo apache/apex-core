@@ -52,7 +52,7 @@ public class InputNode extends Node<InputOperator>
   @SuppressWarnings(value = "SleepWhileInLoop")
   public final void run()
   {
-    boolean inWindow = false;
+    boolean insideWindow = false;
     int windowCount = 0;
 
     Tuple t = null;
@@ -67,9 +67,9 @@ public class InputNode extends Node<InputOperator>
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].process(t);
                 }
-                inWindow = true;
                 currentWindowId = t.getWindowId();
                 if (windowCount == 0) {
+                  insideWindow = true;
                   operator.beginWindow(currentWindowId);
                 }
                 operator.emitTuples(); /* give at least one change to emit the tuples */
@@ -78,9 +78,9 @@ public class InputNode extends Node<InputOperator>
               case END_WINDOW:
                 if (++windowCount == applicationWindowCount) {
                   operator.endWindow();
+                  insideWindow = false;
                   windowCount = 0;
                 }
-                inWindow = false;
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].process(t);
                 }
@@ -96,7 +96,7 @@ public class InputNode extends Node<InputOperator>
           }
         }
         else {
-          if (inWindow) {
+          if (insideWindow) {
             int generatedTuples = 0;
 
             for (CounterSink<Object> cs: sinks) {
@@ -131,12 +131,9 @@ public class InputNode extends Node<InputOperator>
       }
     }
 
-    if (inWindow) {
-      EndWindowTuple ewt = new EndWindowTuple();
-      ewt.setWindowId(t.getWindowId());
-      for (final Sink<Object> output: outputs.values()) {
-        output.process(ewt);
-      }
+    if (insideWindow) {
+      operator.endWindow();
+      emitEndWindow();
     }
   }
 

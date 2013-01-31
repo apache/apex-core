@@ -153,6 +153,7 @@ public class GenericNode extends Node<Operator>
   public final void run()
   {
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
+    boolean insideWindow = false;
     int windowCount = 0;
     int totalQueues = inputs.size();
 
@@ -182,6 +183,7 @@ public class GenericNode extends Node<Operator>
                     sinks[s].process(t);
                   }
                   if (windowCount == 0) {
+                    insideWindow = true;
                     operator.beginWindow(currentWindowId);
                   }
                   receivedEndWindow = 0;
@@ -200,9 +202,11 @@ public class GenericNode extends Node<Operator>
                   lastEndWindow = activePort.remove();
                   if (++receivedEndWindow == totalQueues) {
                     if (++windowCount == applicationWindowCount) {
+                      insideWindow = false;
                       operator.endWindow();
                       windowCount = 0;
                     }
+
                     for (final Sink<Object> output: outputs.values()) {
                       output.process(t);
                     }
@@ -270,16 +274,17 @@ public class GenericNode extends Node<Operator>
                 }
                 else if (activeQueues.isEmpty()) {
                   assert (!inputs.isEmpty());
-                  assert (lastEndWindow != null);
                   /*
                    * Do the same sequence as the end window since the current window is not ended.
                    */
                   operator.endWindow();
+                  insideWindow = false;
+
+                  assert (lastEndWindow != null);
                   for (final Sink<Object> output: outputs.values()) {
                     output.process(lastEndWindow);
                   }
 
-                  assert (activeQueues.isEmpty());
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
 
@@ -342,6 +347,11 @@ public class GenericNode extends Node<Operator>
       else {
         throw ex;
       }
+    }
+
+    if (insideWindow) {
+      operator.endWindow();
+      emitEndWindow();
     }
   }
 

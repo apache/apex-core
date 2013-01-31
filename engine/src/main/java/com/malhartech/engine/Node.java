@@ -182,6 +182,15 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
+  protected void emitEndWindow()
+  {
+    EndWindowTuple ewt = new EndWindowTuple();
+    ewt.setWindowId(currentWindowId);
+    for (final Sink<Object> output: outputs.values()) {
+      output.process(ewt);
+    }
+  }
+
   public void emitCheckpoint(long windowId)
   {
     CheckpointTuple ct = new CheckpointTuple();
