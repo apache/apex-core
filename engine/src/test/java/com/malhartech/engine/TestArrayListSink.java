@@ -4,25 +4,19 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.Sink;
 import java.util.ArrayList;
 import java.util.HashMap;
+import org.apache.commons.lang3.mutable.MutableInt;
 
 /**
  * A sink implementation to collect expected test results in a HashMap
  */
+@ShipContainingJars(classes={MutableInt.class})
 public class TestArrayListSink<T> implements Sink<T>
 {
-  public class MutableInteger
-  {
-    public int value;
-
-    public MutableInteger(int i)
-    {
-      value = i;
-    }
-  }
-  public HashMap<Object, MutableInteger> map = new HashMap<Object, MutableInteger>();
+  public HashMap<Object, MutableInt> map = new HashMap<Object, MutableInt>();
   public int count = 0;
 
   /**
@@ -38,9 +32,9 @@ public class TestArrayListSink<T> implements Sink<T>
   public int getCount(T key)
   {
     int ret = -1;
-    MutableInteger val = map.get(key);
+    MutableInt val = map.get(key);
     if (val != null) {
-      ret = val.value;
+      ret = val.intValue();
     }
     return ret;
   }
@@ -51,12 +45,12 @@ public class TestArrayListSink<T> implements Sink<T>
     this.count++;
     ArrayList list = (ArrayList) tuple;
     for (Object o: list) {
-      MutableInteger val = map.get(o);
+      MutableInt val = map.get(o);
       if (val == null) {
-        val = new MutableInteger(0);
+        val = new MutableInt(0);
         map.put(o, val);
       }
-      val.value++;
+      val.increment();
     }
   }
 }
