@@ -164,7 +164,6 @@ public class GenericNode extends Node<Operator>
     int receivedResetTuples = 0;
     int receivedEndWindow = 0;
 
-    Object lastEndWindow = null;
     try {
       do {
         Iterator<Reservoir> buffers = activeQueues.iterator();
@@ -199,7 +198,8 @@ public class GenericNode extends Node<Operator>
 
               case END_WINDOW:
                 if (t.getWindowId() == currentWindowId) {
-                  lastEndWindow = activePort.remove();
+                  activePort.remove();
+
                   if (++receivedEndWindow == totalQueues) {
                     if (++windowCount == applicationWindowCount) {
                       insideWindow = false;
@@ -280,10 +280,7 @@ public class GenericNode extends Node<Operator>
                   operator.endWindow();
                   insideWindow = false;
 
-                  assert (lastEndWindow != null);
-                  for (final Sink<Object> output: outputs.values()) {
-                    output.process(lastEndWindow);
-                  }
+                  emitEndWindow();
 
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();

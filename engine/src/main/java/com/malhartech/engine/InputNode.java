@@ -55,7 +55,7 @@ public class InputNode extends Node<InputOperator>
     boolean insideWindow = false;
     int windowCount = 0;
 
-    Tuple t = null;
+    Tuple t;
     try {
       while (alive) {
         int size;
