@@ -1047,13 +1047,13 @@ public class StramChild
             logger.info("activating {} in container {}", node, containerId);
             node.activate(context);
           }
-          catch (Exception ex) {
+          catch (Throwable ex) {
             logger.error("Node stopped abnormally because of exception", ex);
+          } finally {
+            activeNodes.remove(ndi.id);
+            node.getOperator().teardown();
+            logger.info("deactivated {}", node.id);
           }
-
-          activeNodes.remove(ndi.id);
-          node.getOperator().teardown();
-          logger.info("deactivated {}", node.id);
         }
 
       }.start();
