@@ -453,7 +453,7 @@ public class DataList
     this(identifier, 64 * 1024 * 1024, 8);
   }
 
-  public final void flush()
+  public final synchronized void flush()
   {
     for (DataListener dl: all_listeners) {
       dl.dataAdded();
@@ -579,7 +579,7 @@ public class DataList
     return count;
   }
 
-  public void addDataListener(DataListener dl)
+  public synchronized void addDataListener(DataListener dl)
   {
     all_listeners.add(dl);
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
@@ -610,7 +610,7 @@ public class DataList
     }
   }
 
-  public void removeDataListener(DataListener dl)
+  public synchronized void removeDataListener(DataListener dl)
   {
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
