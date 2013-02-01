@@ -15,23 +15,33 @@ import java.util.Set;
 public interface PartitionableOperator extends Operator
 {
   /**
-   * Give an opportunity to the operator to decide how it would like to clone itself
-   * into multiple copies so that they all collectively can do the work by working on
-   * only a partition of the data.
+   * Give an opportunity to the operator to decide how it would like to clone
+   * itself into multiple copies so that they all collectively can do the work
+   * by working on only a partition of the data.
+   * <p>
+   * Through definePartitions the operator is also notified of presence of or
+   * lack of the addtionalCapacity the cluster has for more instances of the
+   * operator. If this capacity is positive then the operator can redistribute
+   * its load among the current instances and the newly defined instances. If
+   * this capacity is negative, then the operator should consider scaling down
+   * by releasing a few instances. The number of instances released are ideally
+   * at least equal to absolute value of incrementalCapacity. If this capacity
+   * is zero, then the operator should look at repartitioning among the existing
+   * instances as the current distribution of load is unfair.
+   * <p>
+   * The list of existing partitions reflects the last checkpoint state for each
+   * of the operator instances. When creating new partitions, the implementation
+   * has the opportunity to transfer state from these existing operator
+   * instances to new instances. At minimum, properties set at initialization
+   * time on the original operator need to be set on new instances.
    *
-   * Through definePartitions the operator is also notified of presence of or lack of
-   * the addtionalCapacity the cluster has for more instances of the operator.
-   * If this capacity is positive then the operator can redistribute its load among
-   * the current instances and the newly defined instances.
-   * If this capacity is negative, then the operator should consider scaling down by
-   * releasing a few instances. The number of instances released are ideally at least
-   * equal to absolute value of incrementalCapacity.
-   * If this capacity is zero, then the operator should look at repartitioning among
-   * the existing instances as the current distribution of load is unfair.
-   *
-   * @param partitions - Current set of partitions
-   * @param incrementalCapacity The count of more instances of this operator can the infrastructure support. If this number is positive,
-   * @return New partitioning. Partitions from input list which should not be changed can be returned as they are.
+   * @param partitions
+   *          - Current set of partitions
+   * @param incrementalCapacity
+   *          The count of more instances of this operator can the
+   *          infrastructure support. If this number is positive,
+   * @return New partitioning. Partitions from input list which should not be
+   *         changed can be returned as they are.
    */
   public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity);
 
