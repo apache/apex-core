@@ -573,22 +573,24 @@ public class PhysicalPlan {
 
   }
 
-  private void initPartitioning(PMapping m) {
+  private void initPartitioning(PMapping m)  {
+    /*
+     * partitioning is enabled through initial count attribute.
+     * if the attribute is not present or set to zero, partitioning is off
+     */
+    int partitionCnt = m.logicalOperator.getAttributes().attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
+    if (partitionCnt == 0) {
+      return;
+    }
+
     Operator operator = m.logicalOperator.getOperator();
-
     Collection<Partition<?>> partitions = new ArrayList<Partition<?>>(1);
-
     if (operator instanceof PartitionableOperator) {
       // operator to provide initial partitioning
       partitions.add(new PartitionImpl(operator));
-      partitions = ((PartitionableOperator)operator).definePartitions(partitions, 0);
-    } else {
-      // partitioning is enabled through initial count attribute
-      // if the attribute is not present or set to zero, partitioning is off
-      int partitionCnt = m.logicalOperator.getAttributes().attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
-      if (partitionCnt == 0) {
-        return;
-      }
+      partitions = ((PartitionableOperator)operator).definePartitions(partitions, partitionCnt - 1);
+    }
+    else {
       partitions = new OperatorPartitions.DefaultPartitioner().defineInitialPartitions(m.logicalOperator, partitionCnt);
     }
 
@@ -616,17 +618,19 @@ public class PhysicalPlan {
       if (PartitionLoadWatch.class.isAssignableFrom(shClass)) {
         try {
           sh = shClass.getConstructor(m.getClass()).newInstance(m);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
           throw new RuntimeException("Failed to create custom partition load handler.", e);
         }
-      } else {
+      }
+      else {
         sh = StramUtils.newInstance(shClass);
       }
       m.statsHandlers.add(sh);
     }
 
     // create operator instance per partition
-    for (Partition<?> p : partitions) {
+    for (Partition<?> p: partitions) {
       addPTOperator(m, p);
     }
 
@@ -667,7 +671,9 @@ public class PhysicalPlan {
     }
 
     if (n.getOperator() instanceof PartitionableOperator) {
-      newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions, 0);
+      // would like to know here how much more capacity we have here so that definePartitions can act accordingly.
+      final int incrementalCapacity = 0;
+      newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
     } else {
       newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
     }

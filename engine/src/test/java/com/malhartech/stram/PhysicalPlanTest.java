@@ -43,21 +43,19 @@ import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.PhysicalPlan.PlanContext;
 
 public class PhysicalPlanTest {
-
   public static class PartitioningTestStreamCodec extends DefaultStreamCodec<Object> {
     @Override
     public int getPartition(Object o) {
-      return PartitioningTestOperator.PARTITION_KEYS[ o.hashCode() % PartitioningTestOperator.PARTITION_KEYS.length ];
+      return PartitioningTestOperator.PARTITION_KEYS[ o.hashCode() % PartitioningTestOperator.PARTITION_KEYS.length];
     }
+
   }
 
   public static class PartitioningTestOperator extends GenericTestModule implements PartitionableOperator {
-    final static Integer[] PARTITION_KEYS = { 0, 1, 2};
+    final static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
-
-    @InputPortFieldAnnotation(name=INPORT_WITH_CODEC, optional=true)
+    @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
     final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>(this) {
-
       @Override
       public Class<? extends StreamCodec<Object>> getStreamCodec() {
         return PartitioningTestStreamCodec.class;
@@ -66,21 +64,28 @@ public class PhysicalPlanTest {
       @Override
       final public void process(Object payload) {
       }
+
     };
 
     @Override
-    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity)
-    {
-      List<Partition<?>> newPartitions = new ArrayList<Partition<?>>(3);
-      @SuppressWarnings("unchecked")
-      Partition<PartitioningTestOperator> templatePartition = (Partition<PartitioningTestOperator>)partitions.iterator().next();
-      for (int i=0; i<3; i++) {
-        Partition<PartitioningTestOperator> p = templatePartition.getInstance(new PartitioningTestOperator());
-        p.getPartitionKeys().put(this.inport1, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
-        p.getPartitionKeys().put(this.inportWithCodec, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
-        newPartitions.add(p);
+    @SuppressWarnings("unchecked")
+    public Collection<Partition<?>> definePartitions(Collection<? extends Partition<?>> partitions, int incrementalCapacity) {
+      incrementalCapacity += partitions.size();
+      if (incrementalCapacity == partitions.size()) {
+        return (Collection<Partition<?>>)partitions;
       }
-      return newPartitions;
+      else {
+        List<Partition<?>> newPartitions = new ArrayList<Partition<?>>(3);
+        @SuppressWarnings("unchecked")
+        Partition<PartitioningTestOperator> templatePartition = (Partition<PartitioningTestOperator>)partitions.iterator().next();
+        for (int i = 0; i < incrementalCapacity; i++) {
+          Partition<PartitioningTestOperator> p = templatePartition.getInstance(new PartitioningTestOperator());
+          p.getPartitionKeys().put(this.inport1, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
+          p.getPartitionKeys().put(this.inportWithCodec, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
+          newPartitions.add(p);
+        }
+        return newPartitions;
+      }
     }
 
   }
@@ -96,6 +101,7 @@ public class PhysicalPlanTest {
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inportWithCodec);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
+    dag.getOperatorWrapper(node2).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(3);
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
     OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
@@ -106,12 +112,12 @@ public class PhysicalPlanTest {
 
     List<PTOperator> n2Instances = plan.getOperators(node2Decl);
     Assert.assertEquals("partition instances " + n2Instances, PartitioningTestOperator.PARTITION_KEYS.length, n2Instances.size());
-    for (int i=0; i<PartitioningTestOperator.PARTITION_KEYS.length; i++) {
+    for (int i = 0; i < PartitioningTestOperator.PARTITION_KEYS.length; i++) {
       PTOperator po = n2Instances.get(i);
       Map<String, PTInput> inputsMap = new HashMap<String, PTInput>();
-      for (PTInput input : po.inputs) {
+      for (PTInput input: po.inputs) {
         inputsMap.put(input.portName, input);
-        Assert.assertEquals("partitions "+input, Sets.newHashSet(PartitioningTestOperator.PARTITION_KEYS[i]), input.partitions.partitions);
+        Assert.assertEquals("partitions " + input, Sets.newHashSet(PartitioningTestOperator.PARTITION_KEYS[i]), input.partitions.partitions);
         Assert.assertEquals("codec " + input.logicalStream, PartitioningTestStreamCodec.class, input.logicalStream.getCodecClass());
       }
       Assert.assertEquals("number inputs " + inputsMap, Sets.newHashSet(PartitioningTestOperator.IPORT1, PartitioningTestOperator.INPORT_WITH_CODEC), inputsMap.keySet());
@@ -135,7 +141,7 @@ public class PhysicalPlanTest {
     List<PTOperator> n2Instances = plan.getOperators(node2Decl);
     Assert.assertEquals("partition instances " + n2Instances, initialPartitionCount, n2Instances.size());
 
-    for (int i=0; i<n2Instances.size(); i++) {
+    for (int i = 0; i < n2Instances.size(); i++) {
       PTOperator partitionInstance = n2Instances.get(i);
       Partition<?> p = partitionInstance.partition;
       Assert.assertNotNull("partition null: " + partitionInstance, p);
@@ -159,7 +165,6 @@ public class PhysicalPlanTest {
     Collection<PTOperator> undeploy;
     Collection<PTOperator> deploy;
     List<Object> backupRequests = new ArrayList<Object>();
-
 
     @Override
     public BackupAgent getBackupAgent() {
@@ -253,34 +258,32 @@ public class PhysicalPlanTest {
   public void testDefaultRepartitioning() {
 
     List<PartitionKeys> twoBitPartitionKeys = Arrays.asList(
-        newPartitionKeys("11", "00"),
-        newPartitionKeys("11", "10"),
-        newPartitionKeys("11", "01"),
-        newPartitionKeys("11", "11")
-    );
+            newPartitionKeys("11", "00"),
+            newPartitionKeys("11", "10"),
+            newPartitionKeys("11", "01"),
+            newPartitionKeys("11", "11"));
 
     OperatorPartitions.DefaultPartitioner dp = new OperatorPartitions.DefaultPartitioner();
     GenericTestModule operator = new GenericTestModule();
 
     Set<PartitionKeys> initialPartitionKeys = Sets.newHashSet(
-        newPartitionKeys("1", "0"),
-        newPartitionKeys("1", "1")
-    );
+            newPartitionKeys("1", "0"),
+            newPartitionKeys("1", "1"));
 
     ArrayList<Partition<?>> partitions = new ArrayList<Partition<?>>();
-    for (PartitionKeys pks : initialPartitionKeys) {
+    for (PartitionKeys pks: initialPartitionKeys) {
       Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
       p1Keys.put(operator.inport1, pks);
       partitions.add(new PartitionImpl(operator, p1Keys, 1));
     }
 
     List<Partition<?>> newPartitions = dp.repartition(partitions);
-    Assert.assertEquals(""+newPartitions, 4, newPartitions.size());
+    Assert.assertEquals("" + newPartitions, 4, newPartitions.size());
 
     Set<PartitionKeys> expectedPartitionKeys = Sets.newHashSet(twoBitPartitionKeys);
-    for (Partition<?> p : newPartitions) {
-      Assert.assertEquals(""+p.getPartitionKeys(), 1, p.getPartitionKeys().size());
-      Assert.assertEquals(""+p.getPartitionKeys(), operator.inport1, p.getPartitionKeys().keySet().iterator().next());
+    for (Partition<?> p: newPartitions) {
+      Assert.assertEquals("" + p.getPartitionKeys(), 1, p.getPartitionKeys().size());
+      Assert.assertEquals("" + p.getPartitionKeys(), operator.inport1, p.getPartitionKeys().keySet().iterator().next());
       PartitionKeys pks = p.getPartitionKeys().values().iterator().next();
       expectedPartitionKeys.remove(pks);
     }
@@ -289,21 +292,18 @@ public class PhysicalPlanTest {
     // partition merge
     @SuppressWarnings("unchecked")
     List<HashSet<PartitionKeys>> mergedKeys = Arrays.asList(
-        Sets.newHashSet(
-          newPartitionKeys("11", "00"),
-          newPartitionKeys("11", "10"),
-          newPartitionKeys("1", "1")
-        ),
-        Sets.newHashSet(
+            Sets.newHashSet(
+            newPartitionKeys("11", "00"),
+            newPartitionKeys("11", "10"),
+            newPartitionKeys("1", "1")),
+            Sets.newHashSet(
             newPartitionKeys("1", "0"),
             newPartitionKeys("11", "01"),
-            newPartitionKeys("11", "11")
-        )
-    );
+            newPartitionKeys("11", "11")));
 
-    for (Set<PartitionKeys> expectedKeys : mergedKeys) {
+    for (Set<PartitionKeys> expectedKeys: mergedKeys) {
       partitions = new ArrayList<Partition<?>>();
-      for (PartitionKeys pks : twoBitPartitionKeys) {
+      for (PartitionKeys pks: twoBitPartitionKeys) {
         Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
         p1Keys.put(operator.inport1, pks);
         int load = expectedKeys.contains(pks) ? 0 : -1;
@@ -311,11 +311,11 @@ public class PhysicalPlanTest {
       }
 
       newPartitions = dp.repartition(partitions);
-      Assert.assertEquals(""+newPartitions, 3, newPartitions.size());
+      Assert.assertEquals("" + newPartitions, 3, newPartitions.size());
 
-      for (Partition<?> p : newPartitions) {
-        Assert.assertEquals(""+p.getPartitionKeys(), 1, p.getPartitionKeys().size());
-        Assert.assertEquals(""+p.getPartitionKeys(), operator.inport1, p.getPartitionKeys().keySet().iterator().next());
+      for (Partition<?> p: newPartitions) {
+        Assert.assertEquals("" + p.getPartitionKeys(), 1, p.getPartitionKeys().size());
+        Assert.assertEquals("" + p.getPartitionKeys(), operator.inport1, p.getPartitionKeys().keySet().iterator().next());
         PartitionKeys pks = p.getPartitionKeys().values().iterator().next();
         expectedKeys.remove(pks);
       }
@@ -325,7 +325,7 @@ public class PhysicalPlanTest {
   }
 
   private PartitionKeys newPartitionKeys(String mask, String key) {
-    return new PartitionKeys(Integer.parseInt(mask,2), Sets.newHashSet(Integer.parseInt(key,2)));
+    return new PartitionKeys(Integer.parseInt(mask, 2), Sets.newHashSet(Integer.parseInt(key, 2)));
   }
 
   @Test
@@ -341,12 +341,13 @@ public class PhysicalPlanTest {
     GenericTestModule notInlineNode = dag.addOperator("notInlineNode", GenericTestModule.class);
     // partNode has 2 inputs, inline must be ignored with partitioned input
     PartitioningTestOperator partNode = dag.addOperator("partNode", PartitioningTestOperator.class);
+    dag.getOperatorWrapper(partNode).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(3);
 
     dag.addStream("n1Output1", node1.outport1, node2.inport1, node3.inport1, partNode.inport1)
-      .setInline(true);
+            .setInline(true);
 
     dag.addStream("n2Output1", node2.outport1, node3.inport2, notInlineNode.inport1)
-      .setInline(false);
+            .setInline(false);
 
     dag.addStream("n3Output1", node3.outport1, partNode.inport2);
 
@@ -358,7 +359,7 @@ public class PhysicalPlanTest {
 
     Set<OperatorWrapper> c1ExpNodes = Sets.newHashSet(dag.getOperatorWrapper(node1.getName()), dag.getOperatorWrapper(node2.getName()), dag.getOperatorWrapper(node3.getName()));
     Set<OperatorWrapper> c1ActNodes = new HashSet<OperatorWrapper>();
-    for (PTOperator pNode : plan.getContainers().get(0).operators) {
+    for (PTOperator pNode: plan.getContainers().get(0).operators) {
       c1ActNodes.add(pNode.getLogicalNode());
     }
     Assert.assertEquals("operators container 0", c1ExpNodes, c1ActNodes);
@@ -384,10 +385,10 @@ public class PhysicalPlanTest {
     GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
     dag.addStream("n1Output1", node1.outport1, node3.inport1)
-      .setInline(true);
+            .setInline(true);
 
     dag.addStream("n2Output1", node2.outport1, node3.inport2)
-      .setInline(true);
+            .setInline(true);
 
     int maxContainers = 5;
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
@@ -455,22 +456,22 @@ public class PhysicalPlanTest {
     Assert.assertEquals("number operators " + container1, 1, container1.operators.size());
     Assert.assertEquals("operators " + container1, "o1", container1.operators.get(0).getLogicalId());
 
-    for (int i=1; i<3; i++) {
+    for (int i = 1; i < 3; i++) {
       PTContainer container2 = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container2, 5, container2.operators.size());
       Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3", o3_1Meta.getId(), o3_2Meta.getId(), o4Meta.getId());
       Set<String> actualLogicalNames = Sets.newHashSet();
-      for (PTOperator p : container2.operators) {
+      for (PTOperator p: container2.operators) {
         actualLogicalNames.add(p.getLogicalId());
       }
       Assert.assertEquals("operator names " + container2, expectedLogicalNames, actualLogicalNames);
     }
 
     List<OperatorWrapper> inlineOperators = Lists.newArrayList(dag.getOperatorWrapper(o2), o3_1Meta, o3_2Meta);
-    for (OperatorWrapper ow : inlineOperators) {
+    for (OperatorWrapper ow: inlineOperators) {
       List<PTOperator> partitionedInstances = plan.getOperators(ow);
       Assert.assertEquals("" + partitionedInstances, 2, partitionedInstances.size());
-      for (PTOperator p : partitionedInstances) {
+      for (PTOperator p: partitionedInstances) {
         Assert.assertEquals("outputs " + p, 1, p.outputs.size());
         Assert.assertTrue("downstream inline " + p.outputs.get(0), p.outputs.get(0).isDownStreamInline());
       }
