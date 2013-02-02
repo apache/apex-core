@@ -784,7 +784,7 @@ public class PhysicalPlan {
         Collection<PTOperator> upstreamNodes = upstream.partitions;
         if (inputEntry.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false)) {
           if (upstream.partitions.size() < nodeDecl.partitions.size()) {
-            throw new AssertionError("Number of partitions don't match in one-to-one mapping");
+            throw new AssertionError("Number of partitions don't match in parallel mapping");
           }
           // pick upstream partition for new instance to attach to
           upstreamNodes = Collections.singletonList(upstream.partitions.get(nodeDecl.partitions.size()-1));
