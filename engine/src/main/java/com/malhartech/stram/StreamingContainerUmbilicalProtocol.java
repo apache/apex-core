@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.DAGConstants;
+import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.util.AttributeMap;
 
@@ -109,7 +109,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static class StreamingContainerContext extends WritableAdapter {
     private static final long serialVersionUID = 201209071402L;
 
-    public AttributeMap<DAGConstants> applicationAttributes;
+    public AttributeMap<DAGContext> applicationAttributes;
 
     /**
      * Operators should start processing the initial window at this time.

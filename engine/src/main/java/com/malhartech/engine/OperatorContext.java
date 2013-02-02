@@ -5,7 +5,7 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Context;
-import com.malhartech.api.DAGConstants;
+import com.malhartech.api.DAGContext;
 import com.malhartech.api.Operator;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
@@ -45,7 +45,7 @@ public class OperatorContext implements Context.OperatorContext
   private long lastProcessedWindowId;
   private final int id;
   private final AttributeMap<OperatorContext> attributes;
-  private final AttributeMap<DAGConstants> applicationAttributes;
+  private final AttributeMap<DAGContext> applicationAttributes;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
@@ -81,7 +81,7 @@ public class OperatorContext implements Context.OperatorContext
    * @param id the value of id
    * @param attributes the value of attributes
    */
-  public OperatorContext(int id, Thread worker, AttributeMap<OperatorContext> attributes, AttributeMap<DAGConstants> applicationAttributes)
+  public OperatorContext(int id, Thread worker, AttributeMap<OperatorContext> attributes, AttributeMap<DAGContext> applicationAttributes)
   {
     this.id = id;
     this.attributes = attributes;
@@ -96,7 +96,7 @@ public class OperatorContext implements Context.OperatorContext
   }
 
   @Override
-  public AttributeMap<DAGConstants> getApplicationAttributes() {
+  public AttributeMap<DAGContext> getApplicationAttributes() {
     return this.applicationAttributes;
   }
 

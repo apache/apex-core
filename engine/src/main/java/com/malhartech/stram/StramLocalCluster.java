@@ -5,7 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.Operator;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
@@ -291,7 +291,7 @@ public class StramLocalCluster implements Runnable
     this.childContainers.remove(c.getContainerId());
   }
 
-  PTOperator findByLogicalNode(OperatorWrapper logicalNode)
+  PTOperator findByLogicalNode(OperatorMeta logicalNode)
   {
     List<PTOperator> nodes = dnmgr.getPhysicalPlan().getOperators(logicalNode);
     if (nodes.isEmpty()) {
@@ -300,7 +300,7 @@ public class StramLocalCluster implements Runnable
     return nodes.get(0);
   }
 
-  List<PTOperator> getPlanOperators(OperatorWrapper logicalNode)
+  List<PTOperator> getPlanOperators(OperatorMeta logicalNode)
   {
     return dnmgr.getPhysicalPlan().getOperators(logicalNode);
   }

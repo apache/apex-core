@@ -20,7 +20,7 @@ import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultOperatorSerDe;
-import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestModule;
@@ -165,12 +165,13 @@ public class StreamingContainerManagerTest {
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
+    dag.setAttribute(node2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
     GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
-    DAG.StreamDecl n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
-    DAG.StreamDecl n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
+    DAG.StreamMeta n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
+    DAG.StreamMeta n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(6);
+    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, 6);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals("number required containers", 6, dnm.getNumRequiredContainers());
@@ -335,11 +336,11 @@ public class StreamingContainerManagerTest {
 
   }
 
-  private boolean containsNodeContext(List<OperatorDeployInfo> di, OperatorWrapper nodeConf) {
+  private boolean containsNodeContext(List<OperatorDeployInfo> di, OperatorMeta nodeConf) {
     return getNodeDeployInfo(di, nodeConf) != null;
   }
 
-  private static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorWrapper nodeConf) {
+  private static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorMeta nodeConf) {
     for (OperatorDeployInfo ndi : di) {
       if (nodeConf.getId().equals(ndi.declaredId)) {
         return ndi;

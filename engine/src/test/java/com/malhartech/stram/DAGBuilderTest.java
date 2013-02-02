@@ -11,8 +11,8 @@ import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.DAG.OperatorMeta;
+import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
@@ -55,8 +55,8 @@ import org.junit.Test;
 
 public class DAGBuilderTest {
 
-  public static OperatorWrapper assertNode(DAG dag, String id) {
-      OperatorWrapper n = dag.getOperatorWrapper(id);
+  public static OperatorMeta assertNode(DAG dag, String id) {
+      OperatorMeta n = dag.getOperatorWrapper(id);
       assertNotNull("operator exists id=" + id, n);
       return n;
   }
@@ -78,10 +78,10 @@ public class DAGBuilderTest {
 //    Map<String, NodeConf> moduleConfs = tb.getAllOperators();
     assertEquals("number of module confs", 6, dag.getAllOperators().size());
 
-    OperatorWrapper module1 = assertNode(dag, "module1");
-    OperatorWrapper module2 = assertNode(dag, "module2");
-    OperatorWrapper module3 = assertNode(dag, "module3");
-    OperatorWrapper module4 = assertNode(dag, "module4");
+    OperatorMeta module1 = assertNode(dag, "module1");
+    OperatorMeta module2 = assertNode(dag, "module2");
+    OperatorMeta module3 = assertNode(dag, "module3");
+    OperatorMeta module4 = assertNode(dag, "module4");
 
     assertNotNull("moduleConf for root", module1);
     assertEquals("moduleId set", "module1", module1.getId());
@@ -94,7 +94,7 @@ public class DAGBuilderTest {
     // check links
     assertEquals("module1 inputs", 0, module1.getInputStreams().size());
     assertEquals("module1 outputs", 1, module1.getOutputStreams().size());
-    StreamDecl n1n2 = module2.getInputStreams().get(module2.getInputPortMeta(((GenericTestModule)module2.getOperator()).inport1));
+    StreamMeta n1n2 = module2.getInputStreams().get(module2.getInputPortMeta(((GenericTestModule)module2.getOperator()).inport1));
     assertNotNull("n1n2", n1n2);
 
     // output/input stream object same
@@ -108,34 +108,34 @@ public class DAGBuilderTest {
 
     // module 2 streams to module 3 and module 4
     assertEquals("module 2 number of outputs", 1, module2.getOutputStreams().size());
-    StreamDecl fromNode2 = module2.getOutputStreams().values().iterator().next();
+    StreamMeta fromNode2 = module2.getOutputStreams().values().iterator().next();
 
-    Set<OperatorWrapper> targetNodes = new HashSet<OperatorWrapper>();
+    Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
     for (DAG.InputPortMeta ip : fromNode2.getSinks()) {
       targetNodes.add(ip.getOperatorWrapper());
     }
     Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(module3, module4), targetNodes);
 
-    OperatorWrapper module6 = assertNode(dag, "module6");
+    OperatorMeta module6 = assertNode(dag, "module6");
 
-    List<OperatorWrapper> rootNodes = dag.getRootOperators();
+    List<OperatorMeta> rootNodes = dag.getRootOperators();
     assertEquals("number root modules", 2, rootNodes.size());
     assertTrue("root module2", rootNodes.contains(module1));
     assertTrue("root module6", rootNodes.contains(module6));
 
-    for (OperatorWrapper n : rootNodes) {
+    for (OperatorMeta n : rootNodes) {
       printTopology(n, dag, 0);
     }
 
   }
 
-  public void printTopology(OperatorWrapper module, DAG tplg, int level) {
+  public void printTopology(OperatorMeta module, DAG tplg, int level) {
       String prefix = "";
       if (level > 0) {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17);
       }
       System.out.println(prefix + module.getId());
-      for (StreamDecl downStream : module.getOutputStreams().values()) {
+      for (StreamMeta downStream : module.getOutputStreams().values()) {
           if (!downStream.getSinks().isEmpty()) {
             for (DAG.InputPortMeta targetNode : downStream.getSinks()) {
               printTopology(targetNode.getOperatorWrapper(), tplg, level+1);
@@ -162,27 +162,27 @@ public class DAGBuilderTest {
       assertEquals("number of module confs", 5, dag.getAllOperators().size());
       assertEquals("number of root modules", 1, dag.getRootOperators().size());
 
-      StreamDecl s1 = dag.getStream("n1n2");
+      StreamMeta s1 = dag.getStream("n1n2");
       assertNotNull(s1);
       assertTrue("n1n2 inline", s1.isInline());
 
-      OperatorWrapper module3 = dag.getOperatorWrapper("module3");
+      OperatorMeta module3 = dag.getOperatorWrapper("module3");
       assertEquals("module3.classname", GenericTestModule.class, module3.getOperator().getClass());
 
       GenericTestModule dmodule3 = (GenericTestModule)module3.getOperator();
       assertEquals("myStringProperty " + dmodule3, "myStringPropertyValueFromTemplate", dmodule3.getMyStringProperty());
       assertFalse("booleanProperty " + dmodule3, dmodule3.booleanProperty);
 
-      OperatorWrapper module4 = dag.getOperatorWrapper("module4");
+      OperatorMeta module4 = dag.getOperatorWrapper("module4");
       GenericTestModule dmodule4 = (GenericTestModule)module4.getOperator();
       assertEquals("myStringProperty " + dmodule4, "overrideModule4", dmodule4.getMyStringProperty());
       assertEquals("setterOnlyModule4 " + dmodule4, "setterOnlyModule4", dmodule4.propertySetterOnly);
       assertTrue("booleanProperty " + dmodule4, dmodule4.booleanProperty);
 
-      StreamDecl input1 = dag.getStream("inputStream");
+      StreamMeta input1 = dag.getStream("inputStream");
       assertNotNull(input1);
       Assert.assertEquals("input1 source", dag.getOperatorWrapper("inputModule"), input1.getSource().getOperatorWrapper());
-      Set<OperatorWrapper> targetNodes = new HashSet<OperatorWrapper>();
+      Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
       for (DAG.InputPortMeta targetPort : input1.getSinks()) {
         targetNodes.add(targetPort.getOperatorWrapper());
       }
@@ -211,7 +211,7 @@ public class DAGBuilderTest {
      dag.addStream("n4n2", module4.outport1, module2.inport1);
 
      // self referencing module cycle
-     StreamDecl n7n7 = dag.addStream("n7n7", module7.outport1, module7.inport1);
+     StreamMeta n7n7 = dag.addStream("n7n7", module7.outport1, module7.inport1);
      try {
        n7n7.addSink(module7.inport1);
        fail("cannot add to stream again");

@@ -179,7 +179,7 @@ public class PartitioningTest
 
   }
 
-  private static List<PTOperator> assertNumberPartitions(final int count, final StramLocalCluster lc, final DAG.OperatorWrapper ow) throws Exception
+  private static List<PTOperator> assertNumberPartitions(final int count, final StramLocalCluster lc, final DAG.OperatorMeta ow) throws Exception
   {
     WaitCondition c = new WaitCondition()
     {

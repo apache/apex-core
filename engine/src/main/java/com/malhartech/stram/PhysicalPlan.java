@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.DAG.OperatorMeta;
+import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.Unifier;
@@ -95,7 +95,7 @@ public class PhysicalPlan {
    * <br>
    */
   public static class PTInput {
-    final DAG.StreamDecl logicalStream;
+    final DAG.StreamMeta logicalStream;
     final PTComponent target;
     final PartitionKeys partitions;
     final PTOutput source;
@@ -109,7 +109,7 @@ public class PhysicalPlan {
      * @param partitions
      * @param source
      */
-    protected PTInput(String portName, StreamDecl logicalStream, PTComponent target, PartitionKeys partitions, PTOutput source) {
+    protected PTInput(String portName, StreamMeta logicalStream, PTComponent target, PartitionKeys partitions, PTOutput source) {
       this.logicalStream = logicalStream;
       this.target = target;
       this.partitions = partitions;
@@ -138,7 +138,7 @@ public class PhysicalPlan {
    * <br>
    */
   public static class PTOutput {
-    final DAG.StreamDecl logicalStream;
+    final DAG.StreamMeta logicalStream;
     final PTComponent source;
     final String portName;
     final PhysicalPlan plan;
@@ -148,7 +148,7 @@ public class PhysicalPlan {
      * @param logicalStream
      * @param source
      */
-    protected PTOutput(PhysicalPlan plan, String portName, StreamDecl logicalStream, PTComponent source) {
+    protected PTOutput(PhysicalPlan plan, String portName, StreamMeta logicalStream, PTComponent source) {
       this.plan = plan;
       this.logicalStream = logicalStream;
       this.source = source;
@@ -161,7 +161,7 @@ public class PhysicalPlan {
      * @return boolean
      */
     protected boolean isDownStreamInline() {
-      StreamDecl logicalStream = this.logicalStream;
+      StreamMeta logicalStream = this.logicalStream;
       for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
         if (downStreamPort.getAttributes().attrValue(PortContext.PARTITION_PARALLEL,  false)) {
           // other ports, if any, determine whether stream is inline or not
@@ -281,7 +281,7 @@ public class PhysicalPlan {
     }
 
     final PhysicalPlan plan;
-    DAG.OperatorWrapper logicalNode;
+    DAG.OperatorMeta logicalNode;
     Partition<?> partition;
     Operator merge;
     List<PTInput> inputs;
@@ -297,7 +297,7 @@ public class PhysicalPlan {
      *
      * @return Operator
      */
-    public OperatorWrapper getLogicalNode() {
+    public OperatorMeta getLogicalNode() {
       return this.logicalNode;
     }
 
@@ -370,7 +370,7 @@ public class PhysicalPlan {
   }
 
   private final AtomicInteger nodeSequence = new AtomicInteger();
-  private final LinkedHashMap<OperatorWrapper, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorWrapper, PMapping>();
+  private final LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
   private final PlanContext ctx;
@@ -417,11 +417,11 @@ public class PhysicalPlan {
   }
 
   public static class PMapping {
-    private PMapping(OperatorWrapper ow) {
+    private PMapping(OperatorMeta ow) {
       this.logicalOperator = ow;
     }
 
-    final private OperatorWrapper logicalOperator;
+    final private OperatorMeta logicalOperator;
     final private List<PTOperator> partitions = new LinkedList<PTOperator>();
     final private Map<DAG.OutputPortMeta, PTOperator> mergeOperators = new HashMap<DAG.OutputPortMeta, PTOperator>();
     private boolean shouldRedoPartitions = false;
@@ -457,13 +457,13 @@ public class PhysicalPlan {
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing for {} containers.", this.maxContainers);
 
-    Stack<OperatorWrapper> pendingNodes = new Stack<OperatorWrapper>();
-    for (OperatorWrapper n : dag.getAllOperators()) {
+    Stack<OperatorMeta> pendingNodes = new Stack<OperatorMeta>();
+    for (OperatorMeta n : dag.getAllOperators()) {
       pendingNodes.push(n);
     }
 
     while (!pendingNodes.isEmpty()) {
-      OperatorWrapper n = pendingNodes.pop();
+      OperatorMeta n = pendingNodes.pop();
 
       if (this.logicalToPTOperator.containsKey(n)) {
         // already processed as upstream dependency
@@ -472,7 +472,7 @@ public class PhysicalPlan {
 
       boolean upstreamDeployed = true;
 
-      for (StreamDecl s : n.getInputStreams().values()) {
+      for (StreamMeta s : n.getInputStreams().values()) {
         if (s.getSource() != null && !this.logicalToPTOperator.containsKey(s.getSource().getOperatorWrapper())) {
           pendingNodes.push(n);
           pendingNodes.push(s.getSource().getOperatorWrapper());
@@ -491,7 +491,7 @@ public class PhysicalPlan {
         PMapping upstreamPartitioned = null;
         HashSet<PMapping> inlineCandidates = new HashSet<PMapping>();
         if (pnodes.partitions.isEmpty()) {
-          for (Map.Entry<DAG.InputPortMeta, StreamDecl> e : n.getInputStreams().entrySet()) {
+          for (Map.Entry<DAG.InputPortMeta, StreamMeta> e : n.getInputStreams().entrySet()) {
             // if stream is marked inline, join the upstream operators
             PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorWrapper());
             if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false).equals(true)) {
@@ -550,7 +550,7 @@ public class PhysicalPlan {
 
     // assign operators to containers
     int groupCount = 0;
-    for (Map.Entry<OperatorWrapper, PMapping> e : logicalToPTOperator.entrySet()) {
+    for (Map.Entry<OperatorMeta, PMapping> e : logicalToPTOperator.entrySet()) {
       for (PTOperator node : e.getValue().getAllNodes()) {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
@@ -636,7 +636,7 @@ public class PhysicalPlan {
 
   }
 
-  private void redoPartitions(OperatorWrapper n) {
+  private void redoPartitions(OperatorMeta n) {
     // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
     List<PTOperator> operators = getOperators(n);
@@ -776,9 +776,9 @@ public class PhysicalPlan {
       }
     }
 
-    for (Map.Entry<DAG.InputPortMeta, StreamDecl> inputEntry : nodeDecl.logicalOperator.getInputStreams().entrySet()) {
+    for (Map.Entry<DAG.InputPortMeta, StreamMeta> inputEntry : nodeDecl.logicalOperator.getInputStreams().entrySet()) {
       // find upstream node(s), (can be multiple partitions)
-      StreamDecl streamDecl = inputEntry.getValue();
+      StreamMeta streamDecl = inputEntry.getValue();
       if (streamDecl.getSource() != null) {
         PMapping upstream = logicalToPTOperator.get(streamDecl.getSource().getOperatorWrapper());
         Collection<PTOperator> upstreamNodes = upstream.partitions;
@@ -850,7 +850,7 @@ public class PhysicalPlan {
     pOperator.partition = partition;
 
     // output port objects - these could be deferred until inputs are connected
-    for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
+    for (Map.Entry<DAG.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
       PTOutput out = new PTOutput(this, outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
       pOperator.outputs.add(out);
 
@@ -865,9 +865,9 @@ public class PhysicalPlan {
   }
 
   private void removePTOperator(PTOperator node) {
-    OperatorWrapper nodeDecl = node.logicalNode;
+    OperatorMeta nodeDecl = node.logicalNode;
     PMapping mapping = logicalToPTOperator.get(node.logicalNode);
-    for (Map.Entry<DAG.OutputPortMeta, StreamDecl> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
+    for (Map.Entry<DAG.OutputPortMeta, StreamMeta> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
       PTOperator merge = mapping.mergeOperators.get(outputEntry.getKey());
       if (merge != null) {
         List<PTInput> newInputs = new ArrayList<PTInput>(merge.inputs.size());
@@ -878,7 +878,7 @@ public class PhysicalPlan {
         }
         merge.inputs = newInputs;
       } else {
-        StreamDecl streamDecl = outputEntry.getValue();
+        StreamMeta streamDecl = outputEntry.getValue();
         for (DAG.InputPortMeta inp : streamDecl.getSinks()) {
           List<PTOperator> sinkNodes = logicalToPTOperator.get(inp.getOperatorWrapper()).partitions;
           for (PTOperator sinkNode : sinkNodes) {
@@ -900,16 +900,16 @@ public class PhysicalPlan {
     return this.containers;
   }
 
-  protected List<PTOperator> getOperators(OperatorWrapper logicalOperator) {
+  protected List<PTOperator> getOperators(OperatorMeta logicalOperator) {
     return this.logicalToPTOperator.get(logicalOperator).partitions;
   }
 
   // used for recovery, this can go once plan traversal is fully encapsulated
-  protected Map<DAG.OutputPortMeta, PTOperator> getMergeOperators(OperatorWrapper logicalOperator) {
+  protected Map<DAG.OutputPortMeta, PTOperator> getMergeOperators(OperatorMeta logicalOperator) {
     return this.logicalToPTOperator.get(logicalOperator).mergeOperators;
   }
 
-  protected List<OperatorWrapper> getRootOperators() {
+  protected List<OperatorMeta> getRootOperators() {
     return dag.getRootOperators();
   }
 

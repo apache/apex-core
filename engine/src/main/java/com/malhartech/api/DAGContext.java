@@ -12,7 +12,7 @@ import com.malhartech.util.AttributeMap;
 /**
  *
  */
-public interface DAGConstants {
+public interface DAGContext {
 
   /**
    * Internal use only, set by application launcher.
@@ -86,12 +86,12 @@ public interface DAGConstants {
 
   public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
 
-  public class AttributeKey<T> extends AttributeMap.AttributeKey<DAGConstants, T> {
+  public class AttributeKey<T> extends AttributeMap.AttributeKey<DAGContext, T> {
     public final Class<T> attributeType;
     private final static Set<AttributeKey<?>> INSTANCES = new HashSet<AttributeKey<?>>();
 
     private AttributeKey(String name, Class<T> type) {
-      super(DAGConstants.class, name);
+      super(DAGContext.class, name);
       this.attributeType = type;
       INSTANCES.add(this);
     }

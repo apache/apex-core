@@ -24,7 +24,7 @@ import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorWrapper;
+import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.Unifier;
@@ -76,7 +76,6 @@ public class PhysicalPlanTest {
       }
       else {
         List<Partition<?>> newPartitions = new ArrayList<Partition<?>>(3);
-        @SuppressWarnings("unchecked")
         Partition<PartitioningTestOperator> templatePartition = (Partition<PartitioningTestOperator>)partitions.iterator().next();
         for (int i = 0; i < incrementalCapacity; i++) {
           Partition<PartitioningTestOperator> p = templatePartition.getInstance(new PartitioningTestOperator());
@@ -104,7 +103,7 @@ public class PhysicalPlanTest {
     dag.getOperatorWrapper(node2).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(3);
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
-    OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
+    OperatorMeta node2Decl = dag.getOperatorWrapper(node2.getName());
 
     PhysicalPlan plan = new PhysicalPlan(dag, null);
 
@@ -133,7 +132,7 @@ public class PhysicalPlanTest {
     dag.addStream("node1.outport1", node1.outport1, node2.inport2, node2.inport1);
 
     int initialPartitionCount = 5;
-    OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
+    OperatorMeta node2Decl = dag.getOperatorWrapper(node2.getName());
     node2Decl.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(initialPartitionCount);
 
     PhysicalPlan plan = new PhysicalPlan(dag, null);
@@ -218,7 +217,7 @@ public class PhysicalPlanTest {
 
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
-    OperatorWrapper node2Decl = dag.getOperatorWrapper(node2.getName());
+    OperatorMeta node2Decl = dag.getOperatorWrapper(node2.getName());
     node2Decl.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     node2Decl.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(0);
     node2Decl.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
@@ -357,8 +356,8 @@ public class PhysicalPlanTest {
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
     Assert.assertEquals("operators container 0", 3, plan.getContainers().get(0).operators.size());
 
-    Set<OperatorWrapper> c1ExpNodes = Sets.newHashSet(dag.getOperatorWrapper(node1.getName()), dag.getOperatorWrapper(node2.getName()), dag.getOperatorWrapper(node3.getName()));
-    Set<OperatorWrapper> c1ActNodes = new HashSet<OperatorWrapper>();
+    Set<OperatorMeta> c1ExpNodes = Sets.newHashSet(dag.getOperatorWrapper(node1.getName()), dag.getOperatorWrapper(node2.getName()), dag.getOperatorWrapper(node3.getName()));
+    Set<OperatorMeta> c1ActNodes = new HashSet<OperatorMeta>();
     for (PTOperator pNode: plan.getContainers().get(0).operators) {
       c1ActNodes.add(pNode.getLogicalNode());
     }
@@ -425,11 +424,11 @@ public class PhysicalPlanTest {
     // fork parallel partition to two downstream operators
     GenericTestModule o3_1 = dag.addOperator("o3_1", GenericTestModule.class);
     dag.setInputPortAttribute(o3_1.inport1, PortContext.PARTITION_PARALLEL, true);
-    OperatorWrapper o3_1Meta = dag.getOperatorWrapper(o3_1);
+    OperatorMeta o3_1Meta = dag.getOperatorWrapper(o3_1);
 
     GenericTestModule o3_2 = dag.addOperator("o3_2", GenericTestModule.class);
     dag.setInputPortAttribute(o3_2.inport1, PortContext.PARTITION_PARALLEL, true);
-    OperatorWrapper o3_2Meta = dag.getOperatorWrapper(o3_2);
+    OperatorMeta o3_2Meta = dag.getOperatorWrapper(o3_2);
 
     dag.addStream("o3outport1", o3.outport1, o3_1.inport1, o3_2.inport1).setInline(false); // inline implicit
 
@@ -437,7 +436,7 @@ public class PhysicalPlanTest {
     GenericTestModule o4 = dag.addOperator("o4", GenericTestModule.class);
     dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.setInputPortAttribute(o4.inport2, PortContext.PARTITION_PARALLEL, true);
-    OperatorWrapper o4Meta = dag.getOperatorWrapper(o4);
+    OperatorMeta o4Meta = dag.getOperatorWrapper(o4);
 
     dag.addStream("o3_1.outport1", o3_1.outport1, o4.inport1).setInline(false); // inline implicit
     dag.addStream("o3_2.outport1", o3_2.outport1, o4.inport2).setInline(false); // inline implicit
@@ -467,8 +466,8 @@ public class PhysicalPlanTest {
       Assert.assertEquals("operator names " + container2, expectedLogicalNames, actualLogicalNames);
     }
 
-    List<OperatorWrapper> inlineOperators = Lists.newArrayList(dag.getOperatorWrapper(o2), o3_1Meta, o3_2Meta);
-    for (OperatorWrapper ow: inlineOperators) {
+    List<OperatorMeta> inlineOperators = Lists.newArrayList(dag.getOperatorWrapper(o2), o3_1Meta, o3_2Meta);
+    for (OperatorMeta ow: inlineOperators) {
       List<PTOperator> partitionedInstances = plan.getOperators(ow);
       Assert.assertEquals("" + partitionedInstances, 2, partitionedInstances.size());
       for (PTOperator p: partitionedInstances) {
@@ -487,7 +486,7 @@ public class PhysicalPlanTest {
     Assert.assertEquals("unifier inputs" + container4.operators.get(0).inputs, 2, container4.operators.get(0).inputs.size());
 
     // container 5: o5 taking input from o4 unifier
-    OperatorWrapper o5Meta = dag.getOperatorWrapper(o5merge);
+    OperatorMeta o5Meta = dag.getOperatorWrapper(o5merge);
     PTContainer container5 = plan.getContainers().get(4);
     Assert.assertEquals("number operators " + container5, 1, container5.operators.size());
     Assert.assertEquals("operators " + container5, o5Meta, container5.operators.get(0).logicalNode);

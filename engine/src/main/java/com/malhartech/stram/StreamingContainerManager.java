@@ -25,9 +25,9 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAGConstants;
-import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.DAGContext;
+import com.malhartech.api.DAG.OperatorMeta;
+import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
@@ -67,7 +67,7 @@ public class StreamingContainerManager implements PlanContext
   private long windowStartMillis = System.currentTimeMillis();
   private final int heartbeatTimeoutMillis = 30000;
   private final int operatorMaxAttemptCount = 5;
-  private final AttributeMap<DAGConstants> appAttributes;
+  private final AttributeMap<DAGContext> appAttributes;
   private final int checkpointIntervalMillis;
   private final String checkpointFsPath;
 
@@ -453,7 +453,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       for (DAG.InputPortMeta targetPort : out.logicalStream.getSinks()) {
-        OperatorWrapper lDownNode = targetPort.getOperatorWrapper();
+        OperatorMeta lDownNode = targetPort.getOperatorWrapper();
         if (lDownNode != null) {
           List<PTOperator> downNodes = plan.getOperators(lDownNode);
           for (PTOperator downNode : downNodes) {
@@ -495,7 +495,7 @@ public class StreamingContainerManager implements PlanContext
    */
   private void updateCheckpoints() {
     Set<PTOperator> visitedCheckpoints = new LinkedHashSet<PTOperator>();
-    for (OperatorWrapper logicalOperator : plan.getRootOperators()) {
+    for (OperatorMeta logicalOperator : plan.getRootOperators()) {
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator : operators) {
@@ -528,7 +528,7 @@ public class StreamingContainerManager implements PlanContext
       }
       // purge stream state when using buffer server
       for (PTOutput out : operator.outputs) {
-        final StreamDecl streamDecl = out.logicalStream;
+        final StreamMeta streamDecl = out.logicalStream;
         if (!(streamDecl.isInline() && out.isDownStreamInline())) {
           // following needs to match the concat logic in StramChild
           String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
@@ -618,7 +618,7 @@ public class StreamingContainerManager implements PlanContext
       // to reset publishers, clean buffer server past checkpoint so subscribers don't read stale data (including end of stream)
       for (PTOperator operator : e.getValue()) {
         for (PTOutput out : operator.outputs) {
-          final StreamDecl streamDecl = out.logicalStream;
+          final StreamMeta streamDecl = out.logicalStream;
           if (!(streamDecl.isInline() && out.isDownStreamInline())) {
             // following needs to match the concat logic in StramChild
             String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);

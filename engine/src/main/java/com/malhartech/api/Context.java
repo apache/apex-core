@@ -105,7 +105,7 @@ public interface Context
      *
      * @return
      */
-    AttributeMap<DAGConstants> getApplicationAttributes();
+    AttributeMap<DAGContext> getApplicationAttributes();
 
   }
 

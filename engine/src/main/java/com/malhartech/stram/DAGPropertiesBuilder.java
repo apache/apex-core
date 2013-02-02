@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Maps;
 import com.malhartech.api.ApplicationFactory;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorWrapper;
-import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.DAG.OperatorMeta;
+import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.Operator;
 import com.malhartech.engine.Operators;
 
@@ -398,7 +398,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     // wire operators
     for (Map.Entry<String, StreamConf> streamConfEntry : this.streams.entrySet()) {
       StreamConf streamConf = streamConfEntry.getValue();
-      StreamDecl sd = dag.addStream(streamConfEntry.getKey());
+      StreamMeta sd = dag.addStream(streamConfEntry.getKey());
       sd.setInline(streamConf.isInline());
 
       if (streamConf.sourceNode != null) {
@@ -453,7 +453,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
    * @param ow
    * @param appName
    */
-  public Map<String, String> getProperties(OperatorWrapper ow, String appName) {
+  public Map<String, String> getProperties(OperatorMeta ow, String appName) {
     // if there are properties set directly, an entry exists
     // else it will be created so we can evaluate the templates against it
     NodeConf n = getOrAddNode(ow.getId());
@@ -534,7 +534,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
    * @param dag
    */
   public void setOperatorProperties(DAG dag, String applicationName) {
-    for (OperatorWrapper ow : dag.getAllOperators()) {
+    for (OperatorMeta ow : dag.getAllOperators()) {
       Map<String, String> properties = getProperties(ow, applicationName);
       setOperatorProperties(ow.getOperator(), properties);
     }

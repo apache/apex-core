@@ -8,7 +8,7 @@ import java.util.Map;
 import com.google.common.collect.Sets;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.InputPortMeta;
-import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
@@ -19,9 +19,9 @@ import java.util.*;
 
 public class OperatorPartitions {
 
-  final DAG.OperatorWrapper operatorWrapper;
+  final DAG.OperatorMeta operatorWrapper;
 
-  public OperatorPartitions(DAG.OperatorWrapper operator) {
+  public OperatorPartitions(DAG.OperatorMeta operator) {
     this.operatorWrapper = operator;
   }
 
@@ -169,7 +169,7 @@ public class OperatorPartitions {
    */
   public static class DefaultPartitioner {
 
-    public List<Partition<?>> defineInitialPartitions(DAG.OperatorWrapper logicalOperator, int initialPartitionCnt) {
+    public List<Partition<?>> defineInitialPartitions(DAG.OperatorMeta logicalOperator, int initialPartitionCnt) {
 
       //int partitionBits = 0;
       //if (initialPartitionCnt > 0) {
@@ -187,7 +187,7 @@ public class OperatorPartitions {
         if (!(p.getOperator() instanceof InputOperator)) {
           // default mapping partitions the stream that was first connected in the DAG and send full data to remaining input ports
           // this gives control over which stream to partition with the default partitioning to the DAG writer
-          Map<InputPortMeta, StreamDecl> inputs = logicalOperator.getInputStreams();
+          Map<InputPortMeta, StreamMeta> inputs = logicalOperator.getInputStreams();
           if (inputs.isEmpty()) {
             // TODO - allow input operator partitioning?
             throw new AssertionError("Partitioning configured for operator but no input ports connected: " + logicalOperator);

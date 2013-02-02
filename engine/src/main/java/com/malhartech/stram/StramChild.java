@@ -76,7 +76,7 @@ public class StramChild
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
   private com.malhartech.bufferserver.Server bufferServer;
-  private AttributeMap<DAGConstants> applicationAttributes;
+  private AttributeMap<DAGContext> applicationAttributes;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {

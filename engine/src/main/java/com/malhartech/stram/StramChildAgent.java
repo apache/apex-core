@@ -19,7 +19,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.DAG.StreamDecl;
+import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.OperatorCodec;
@@ -290,7 +290,7 @@ public class StramChildAgent {
       ndi.outputs = new ArrayList<OutputDeployInfo>(node.outputs.size());
 
       for (PTOutput out : node.outputs) {
-        final StreamDecl streamDecl = out.logicalStream;
+        final StreamMeta streamDecl = out.logicalStream;
         // buffer server or inline publisher
         OutputDeployInfo portInfo = new OutputDeployInfo();
         portInfo.declaredStreamId = streamDecl.getId();
@@ -318,7 +318,7 @@ public class StramChildAgent {
       OperatorDeployInfo ndi = nodeEntry.getKey();
       PTOperator node = nodeEntry.getValue();
       for (PTInput in : node.inputs) {
-        final StreamDecl streamDecl = in.logicalStream;
+        final StreamMeta streamDecl = in.logicalStream;
         // input from other node(s) OR input adapter
         if (streamDecl.getSource() == null) {
           throw new IllegalStateException("source is null: " + in);
