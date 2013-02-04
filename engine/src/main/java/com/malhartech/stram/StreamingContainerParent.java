@@ -12,8 +12,6 @@ import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.ipc.ProtocolSignature;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.Server;
-import org.apache.hadoop.mapreduce.MRJobConfig;
-import org.apache.hadoop.mapreduce.v2.app.security.authorize.MRAMPolicyProvider;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.security.token.SecretManager;
@@ -22,6 +20,8 @@ import org.apache.hadoop.yarn.YarnException;
 import org.apache.hadoop.yarn.service.CompositeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.DAGContext;
 
 /**
  *
@@ -34,9 +34,9 @@ public class StreamingContainerParent extends CompositeService implements Stream
 
   private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerParent.class);
   private Server server;
-  private SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
+  private final SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;
-  private StreamingContainerManager dnodeManager;
+  private final StreamingContainerManager dnodeManager;
 
   public StreamingContainerParent(String name, StreamingContainerManager dnodeMgr) {
     super(name);
@@ -66,15 +66,14 @@ public class StreamingContainerParent extends CompositeService implements Stream
     try {
       server =
           RPC.getServer(StreamingContainerUmbilicalProtocol.class, this, "0.0.0.0", 0,
-              conf.getInt(MRJobConfig.MR_AM_TASK_LISTENER_THREAD_COUNT, // TODO: config
-                  MRJobConfig.DEFAULT_MR_AM_TASK_LISTENER_THREAD_COUNT),
+              DAGContext.DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT,
               false, conf, tokenSecretManager);
 
       // Enable service authorization?
       if (conf.getBoolean(
           CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION,
           false)) {
-        refreshServiceAcls(conf, new MRAMPolicyProvider());
+        //refreshServiceAcls(conf, new MRAMPolicyProvider());
       }
 
       server.start();

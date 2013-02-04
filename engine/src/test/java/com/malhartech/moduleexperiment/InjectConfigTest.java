@@ -226,11 +226,11 @@ public class InjectConfigTest {
     JsonNode updateTree = mapper.convertValue(properties, JsonNode.class);
     merge(sourceTree, updateTree);
 
-    mapper.readerForUpdating(testBean2).readValue(sourceTree);
-    Assert.assertEquals("preserve existing value", "testBean2", testBean2.string2);
-    Assert.assertEquals("map property", "someValue", testBean2.mapProperty.get("someKey"));
+ //   mapper.readerForUpdating(testBean2).readValue(sourceTree);
+ //   Assert.assertEquals("preserve existing value", "testBean2", testBean2.string2);
+ //   Assert.assertEquals("map property", "someValue", testBean2.mapProperty.get("someKey"));
 
-    System.out.println("testBean cloned: " + mapper.convertValue(testBean2, Map.class));
+ //   System.out.println("testBean cloned: " + mapper.convertValue(testBean2, Map.class));
 
 
     PropertyUtilsBean propertyUtilsBean = BeanUtilsBean.getInstance().getPropertyUtils();

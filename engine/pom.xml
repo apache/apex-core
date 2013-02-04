@@ -225,20 +225,29 @@
       <dependencies>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-client</artifactId>
+          <artifactId>hadoop-common</artifactId>
           <version>${hadoop.version}</version>
         </dependency>
         <dependency>
+          <!-- required for JarFinder -->
           <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-annotations</artifactId>
+          <artifactId>hadoop-common</artifactId>
           <version>${hadoop.version}</version>
+          <type>test-jar</type>
+          <scope>compile</scope>
         </dependency>
+	    <dependency>
+	      <groupId>org.apache.hadoop</groupId>
+	      <artifactId>hadoop-yarn-client</artifactId>
+          <version>${hadoop.version}</version>
+	    </dependency>
         <!-- test deps for hadoop-2.0 profile -->
         <dependency>
           <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-minicluster</artifactId>
+          <artifactId>hadoop-yarn-server-tests</artifactId>
           <version>${hadoop.version}</version>
-          <scope>compile</scope>
+          <type>test-jar</type>
+          <scope>test</scope>
         </dependency>
       </dependencies>
       <build>

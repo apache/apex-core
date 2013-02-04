@@ -26,6 +26,8 @@ public interface DAGContext {
    */
   public static final String STRAM_LAUNCH_MODE = "stram.launchmode";
 
+  public final int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
+
   /**
    * Name under which the application will be shown in the resource manager.
    * If not set, the default is the configuration Java class or property file name.
