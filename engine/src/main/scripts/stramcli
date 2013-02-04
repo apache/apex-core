@@ -42,9 +42,10 @@ if [ "$HADOOP_PREFIX" = "" ]; then
   export CLASSPATH=$STRAM_CLASSPATH
   java $STRAM_CLIENT_OPTS com.malhartech.stram.cli.StramCli 
 else
-  # mask duplicate slf4j binding
-  export HADOOP_CLASSPATH=${HADOOP_CLASSPATH/slf4j-log4j12-1.7.1.jar/slf4j-log4j12-DUPBINDING.jar}
-#  $HADOOP_PREFIX/bin/hadoop classpath
+  # remove hadoop and duplicate slf4j binding (bash replace is too slow)
+#  export HADOOP_CLASSPATH=${HADOOP_CLASSPATH/slf4j-log4j12-1.7.1.jar/slf4j-log4j12-DUPBINDING.jar}
+  export HADOOP_CLASSPATH=$(echo -n $HADOOP_CLASSPATH | tr ":" "\n" | sed "/slf4j-log4j/d" | sed "/org\/apache\/hadoop/d" | tr "\n" ":")
+  #$HADOOP_PREFIX/bin/hadoop classpath
   $HADOOP_PREFIX/bin/hadoop com.malhartech.stram.cli.StramCli
 fi
 
