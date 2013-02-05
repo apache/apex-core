@@ -51,7 +51,10 @@ public class GenericNode extends Node<Operator>
     @Override
     public final void process(Object payload)
     {
-      //logger.debug("{} - {}", GenericNode.this, payload);
+      if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
+        logger.debug("{} - {}", this, payload);
+      }
+
       try {
         put(payload);
       }
@@ -88,11 +91,14 @@ public class GenericNode extends Node<Operator>
       for (int i = 1; i <= size; i++) {
         if (peekUnsafe() instanceof Tuple) {
           count += i;
-          //logger.debug("{} - {}", GenericNode.this, peekUnsafe());
+          if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
+            logger.debug("{} - {}", this, peekUnsafe());
+          }
           return (Tuple)peekUnsafe();
         }
-
-        //logger.debug("{} - {}", GenericNode.this, peekUnsafe());
+        if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
+          logger.debug("{} - {}", this, peekUnsafe());
+        }
         sink.process(pollUnsafe());
       }
 
