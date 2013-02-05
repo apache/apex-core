@@ -25,6 +25,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
   private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
   private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   private long baseSeconds;
+  private int lastWindowId;
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink<Object>[] sinks = NO_SINKS;
   private final StreamCodec<Object> serde;
@@ -75,7 +76,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
 
       case END_WINDOW:
         t = new EndWindowTuple();
-        t.setWindowId(baseSeconds | data.getEndWindow().getWindowId());
+        t.setWindowId(baseSeconds | (lastWindowId = data.getEndWindow().getWindowId()));
         break;
 
       case END_STREAM:
@@ -84,8 +85,11 @@ public class BufferServerInputStream extends SocketInputStream<Message>
         break;
 
       case RESET_WINDOW:
-        t = new ResetWindowTuple();
         baseSeconds = (long)data.getResetWindow().getBaseSeconds() << 32;
+        if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
+          return;
+        }
+        t = new ResetWindowTuple();
         t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
         break;
 
