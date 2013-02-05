@@ -52,7 +52,7 @@ public class GenericNode extends Node<Operator>
     public final void process(Object payload)
     {
       if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
-        logger.debug("{} - {}", this, payload);
+        logger.info("{} - {}", this, payload);
       }
 
       try {
@@ -92,12 +92,12 @@ public class GenericNode extends Node<Operator>
         if (peekUnsafe() instanceof Tuple) {
           count += i;
           if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
-            logger.debug("{} - {}", this, peekUnsafe());
+            logger.info("{} - {}", this, peekUnsafe());
           }
           return (Tuple)peekUnsafe();
         }
         if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
-          logger.debug("{} - {}", this, peekUnsafe());
+          logger.info("{} - {}", this, peekUnsafe());
         }
         sink.process(pollUnsafe());
       }
