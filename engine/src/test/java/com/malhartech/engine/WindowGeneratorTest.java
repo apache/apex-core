@@ -3,18 +3,18 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Sink;
+import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.*;
 import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.engine.Node;
-import com.malhartech.engine.ResetWindowTuple;
-import com.malhartech.engine.Tuple;
-import com.malhartech.engine.WindowGenerator;
 import com.malhartech.stram.ManualScheduledExecutorService;
+import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import junit.framework.Assert;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +63,7 @@ public class WindowGeneratorTest
             break;
         }
       }
+
     });
 
     generator.activate(null);
@@ -89,8 +90,6 @@ public class WindowGeneratorTest
   @Test
   public void testResetWindow()
   {
-    System.out.println("resetWindow");
-
     ManualScheduledExecutorService msse = new ManualScheduledExecutorService(1);
     msse.setCurrentTimeMillis(0xcafebabe * 1000L);
     WindowGenerator generator = new WindowGenerator(msse);
@@ -119,6 +118,7 @@ public class WindowGeneratorTest
           assert (((Tuple)payload).getWindowId() == 0xcafebabe00000000L);
         }
       }
+
     });
 
     generator.activate(null);
@@ -163,12 +163,13 @@ public class WindowGeneratorTest
             break;
         }
       }
+
     };
 
     ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1, "WindowGenerator");
     int windowWidth = 200;
     long firstWindowMillis = stpe.getCurrentTimeMillis();
-    firstWindowMillis = firstWindowMillis - firstWindowMillis % 1000L;
+    firstWindowMillis -= firstWindowMillis % 1000L;
 
     WindowGenerator wg = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"));
     wg.setResetWindow(firstWindowMillis);
@@ -190,4 +191,72 @@ public class WindowGeneratorTest
     Assert.assertTrue("Minimum begin window count", expectedCnt + 1 <= beginWindowCount.get());
     Assert.assertEquals("end window count", beginWindowCount.get() - 1, endWindowCount.get());
   }
+
+  static class RandomNumberGenerator implements InputOperator
+  {
+    public final transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>(this);
+
+    @Override
+    public void emitTuples()
+    {
+      try {
+        Thread.sleep(500);
+      }
+      catch (InterruptedException ex) {
+        logger.debug("interrupted!", ex);
+      }
+
+      output.emit(++count);
+    }
+
+    @Override
+    public void beginWindow(long windowId)
+    {
+    }
+
+    @Override
+    public void endWindow()
+    {
+    }
+
+    @Override
+    public void setup(OperatorContext context)
+    {
+    }
+
+    @Override
+    public void teardown()
+    {
+    }
+
+    int count;
+  }
+
+  static class MyLogger extends BaseOperator
+  {
+    public final transient DefaultInputPort<Integer> input = new DefaultInputPort<Integer>(this)
+    {
+      @Override
+      public void process(Integer tuple)
+      {
+        logger.debug("received {}", tuple);
+      }
+
+    };
+  }
+
+  @Test
+  public void testOutofSequenceError() throws Exception
+  {
+    DAG dag = new DAG(new Configuration());
+
+    RandomNumberGenerator rng = dag.addOperator("random", new RandomNumberGenerator());
+    MyLogger ml = dag.addOperator("logger", new MyLogger());
+
+    dag.addStream("stream", rng.output, ml.input);
+
+    StramLocalCluster lc = new StramLocalCluster(dag);
+    lc.run(10000);
+  }
+
 }

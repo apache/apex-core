@@ -28,8 +28,11 @@ public class WindowGenerator implements Stream<Object>, Runnable
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
-  public static final int MAX_WINDOW_ID = 0x3fff - (0x3fff % 1000) - 1;
-  public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID);
+  public static final int WINDOW_MASK = 0x3fff;
+  public static final int MAX_WINDOW_ID = WINDOW_MASK - (WINDOW_MASK % 1000) - 1;
+//  public static final int WINDOW_MASK = 0xf;
+//  public static final int MAX_WINDOW_ID = WINDOW_MASK - (WINDOW_MASK % 10) - 1;
+  public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID) > 0? (int)(Long.MAX_VALUE / MAX_WINDOW_ID): Integer.MAX_VALUE;
   private final ScheduledExecutorService ses;
   private long firstWindowMillis; // Window start time
   private int windowWidthMillis; // Window size
@@ -61,9 +64,9 @@ public class WindowGenerator implements Stream<Object>, Runnable
     resetWindowMillis = currentWindowMillis - ((currentWindowMillis - resetWindowMillis) % timespanBetween2Resets);
     windowId = (int)((currentWindowMillis - resetWindowMillis) / windowWidthMillis);
 
-//    logger.debug("generating reset -> begin {}", Codec.getStringWindowId(resetWindowMillis));
-
     baseSeconds = (resetWindowMillis / 1000) << 32;
+    //logger.info("generating reset -> begin {}", Codec.getStringWindowId(baseSeconds));
+
     ResetWindowTuple rwt = new ResetWindowTuple();
     rwt.setWindowId(baseSeconds | windowWidthMillis);
 

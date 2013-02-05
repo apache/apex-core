@@ -10,9 +10,7 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.util.CircularBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
 import org.slf4j.Logger;
@@ -42,10 +40,12 @@ public class GenericNode extends Node<Operator>
   protected abstract class Reservoir extends CircularBuffer<Object> implements Sink<Object>
   {
     protected int count;
+    final String portname;
 
-    Reservoir()
+    Reservoir(String portname)
     {
       super(bufferCapacity);
+      this.portname = portname;
     }
 
     @Override
@@ -61,6 +61,12 @@ public class GenericNode extends Node<Operator>
       }
     }
 
+    @Override
+    public String toString()
+    {
+      return GenericNode.this.toString() + '[' + portname + ']';
+    }
+
     public abstract Tuple sweep();
 
   }
@@ -69,9 +75,9 @@ public class GenericNode extends Node<Operator>
   {
     final Sink<Object> sink;
 
-    InputReservoir(Sink<Object> sink)
+    InputReservoir(Sink<Object> sink, String portname)
     {
-      super();
+      super(portname);
       this.sink = sink;
     }
 
@@ -134,7 +140,7 @@ public class GenericNode extends Node<Operator>
         inputPort.setConnected(true);
         Reservoir reservoir = inputs.get(port);
         if (reservoir == null) {
-          reservoir = new InputReservoir(inputPort.getSink());
+          reservoir = new InputReservoir(inputPort.getSink(), port);
           inputs.put(port, reservoir);
         }
         retvalue = reservoir;
@@ -142,6 +148,19 @@ public class GenericNode extends Node<Operator>
     }
 
     return retvalue;
+  }
+
+  class ResetTupleTracker
+  {
+    final ResetWindowTuple tuple;
+    Reservoir[] ports;
+
+    ResetTupleTracker(ResetWindowTuple base, int count)
+    {
+      tuple = base;
+      ports = new Reservoir[count];
+    }
+
   }
 
   /**
@@ -164,8 +183,8 @@ public class GenericNode extends Node<Operator>
     activeQueues.addAll(inputs.values());
 
     int expectingBeginWindow = activeQueues.size();
-    int receivedResetTuples = 0;
     int receivedEndWindow = 0;
+    LinkedList<ResetTupleTracker> resetTupleTracker = new LinkedList<ResetTupleTracker>();
 
     try {
       do {
@@ -236,14 +255,52 @@ public class GenericNode extends Node<Operator>
                  * we will receive tuples which are equal to the number of input streams.
                  */
                 activePort.remove();
+                buffers.remove();
 
-                if (receivedResetTuples++ == 0) {
+                int baseSeconds = ((ResetWindowTuple)t).getBaseSeconds();
+                ResetTupleTracker tracker = null;
+
+                Iterator<ResetTupleTracker> iterator = resetTupleTracker.iterator();
+                while (iterator.hasNext()) {
+                  tracker = iterator.next();
+                  if (tracker.tuple.getBaseSeconds() == baseSeconds) {
+                    break;
+                  }
+                }
+
+                if (tracker == null) {
+                  tracker = new ResetTupleTracker((ResetWindowTuple)t, totalQueues);
+                  resetTupleTracker.add(tracker);
+                }
+
+                int index = 0;
+                while (index < tracker.ports.length) {
+                  if (tracker.ports[index] == null) {
+                    tracker.ports[index++] = activePort;
+                    break;
+                  }
+                  else if (tracker.ports[index] == activePort) {
+                    break;
+                  }
+
+                  index++;
+                }
+
+                if (index == totalQueues) {
+                  iterator = resetTupleTracker.iterator();
+                  while (iterator.hasNext()) {
+                    if (iterator.next().tuple.getBaseSeconds() <= baseSeconds) {
+                      iterator.remove();
+                    }
+                  }
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].process(t);
                   }
-                }
-                else if (receivedResetTuples == activeQueues.size()) {
-                  receivedResetTuples = 0;
+
+                  assert (activeQueues.isEmpty());
+                  activeQueues.addAll(inputs.values());
+                  expectingBeginWindow = activeQueues.size();
+                  break activequeue;
                 }
                 break;
 
@@ -271,9 +328,11 @@ public class GenericNode extends Node<Operator>
                 }
 
                 buffers.remove();
+
+                boolean break_activequeue = false;
                 if (totalQueues == 0) {
                   alive = false;
-                  break activequeue;
+                  break_activequeue = true;
                 }
                 else if (activeQueues.isEmpty()) {
                   assert (!inputs.isEmpty());
@@ -289,6 +348,59 @@ public class GenericNode extends Node<Operator>
                   expectingBeginWindow = activeQueues.size();
 
                   handleRequests(currentWindowId);
+                  break_activequeue = true;
+                }
+
+                /**
+                 * also make sure that we update the reset tuple tracker if this stream had delivered any reset tuples.
+                 * Check all the reset buffers to see if current input port has already delivered reset tuple. If it has
+                 * then we are waiting for something else to deliver the reset tuple, so just clear current reservoir
+                 * from the list of tracked reservoirs. If the current input port has not delivered the reset tuple, and
+                 * it's the only one which has not, then we consider it delivered and release the reset tuple downstream.
+                 */
+                ResetWindowTuple tuple = null;
+                for (iterator = resetTupleTracker.iterator(); iterator.hasNext();) {
+                  tracker = iterator.next();
+
+                  index = 0;
+                  while (index < tracker.ports.length) {
+                    if (tracker.ports[index] == activePort) {
+                      Reservoir[] ports = new Reservoir[totalQueues];
+                      System.arraycopy(tracker.ports, 0, ports, 0, index);
+                      if (index < totalQueues) {
+                        System.arraycopy(tracker.ports, index + 1, ports, index, tracker.ports.length - index - 1);
+                      }
+                      tracker.ports = ports;
+                      break;
+                    }
+                    else if (tracker.ports[index] == null) {
+                      if (index == totalQueues) { /* totalQueues is already adjusted above */
+                        if (tuple == null || tuple.getBaseSeconds() < tracker.tuple.getBaseSeconds()) {
+                          tuple = tracker.tuple;
+                        }
+
+                        iterator.remove();
+                      }
+                      break;
+                    }
+                    else {
+                      tracker.ports = Arrays.copyOf(tracker.ports, totalQueues);
+                    }
+
+                    index++;
+                  }
+                }
+
+                /*
+                 * Since we were waiting for a reset tuple on this stream, we should not any longer.
+                 */
+                if (tuple != null) {
+                  for (int s = sinks.length; s-- > 0;) {
+                    sinks[s].process(tuple);
+                  }
+                }
+
+                if (break_activequeue) {
                   break activequeue;
                 }
                 break;
@@ -353,6 +465,7 @@ public class GenericNode extends Node<Operator>
       operator.endWindow();
 //      emitEndWindow();
     }
+
   }
 
   @Override

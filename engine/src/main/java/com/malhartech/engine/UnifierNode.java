@@ -20,6 +20,12 @@ public class UnifierNode extends GenericNode
 
   private class MergeReservoir extends Reservoir
   {
+
+    MergeReservoir(String portname)
+    {
+      super(portname);
+    }
+
     @Override
     public final Tuple sweep()
     {
@@ -60,7 +66,7 @@ public class UnifierNode extends GenericNode
       retvalue = null;
     }
     else {
-      inputs.put(port, retvalue = new MergeReservoir());
+      inputs.put(port, retvalue = new MergeReservoir(port));
     }
 
     return retvalue;
