@@ -65,7 +65,7 @@ public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
-  private final int heartbeatTimeoutMillis = 30000;
+  private int heartbeatTimeoutMillis = 30000;
   private final int operatorMaxAttemptCount = 5;
   private final AttributeMap<DAGContext> appAttributes;
   private final int checkpointIntervalMillis;
@@ -96,6 +96,7 @@ public class StreamingContainerManager implements PlanContext
 
     appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).setIfAbsent(30000);
     this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).get();
+    this.heartbeatTimeoutMillis = appAttributes.attrValue(DAG.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
     AtomicInteger startupCountDown = new AtomicInteger(plan.getContainers().size());
     // request initial containers
@@ -124,10 +125,10 @@ public class StreamingContainerManager implements PlanContext
        String containerId = cse.getKey();
        StramChildAgent cs = cse.getValue();
        if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
-         // TODO: separate startup timeout handling
-         if (cs.createdMillis + heartbeatTimeoutMillis < currentTms && !cs.hasPendingWork()) {
+         // TODO: startup timeout handling
+         if (cs.lastHeartbeatMillis > 0 && !cs.hasPendingWork()) {
            // request stop as process may still be hanging around (would have been detected by Yarn otherwise)
-           LOG.info("Container {}@{} heartbeat timeout.", containerId, cse.getValue().container.host);
+           LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {containerId, cse.getValue().container.host, currentTms - cs.lastHeartbeatMillis});
            containerStopRequests.put(containerId, containerId);
          }
        }
