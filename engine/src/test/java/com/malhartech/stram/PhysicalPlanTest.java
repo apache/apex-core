@@ -35,6 +35,7 @@ import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.TestGeneratorInputModule;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
@@ -446,7 +447,7 @@ public class PhysicalPlanTest {
     dag.addStream("o4outport1", o4.outport1, o5merge.inport1);
 
     int maxContainers = 5;
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
+    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, maxContainers);
 
     PhysicalPlan plan = new PhysicalPlan(dag, null);
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
@@ -496,5 +497,71 @@ public class PhysicalPlanTest {
     Assert.assertEquals("inputs" + container5.operators.get(0).inputs, container4.operators.get(0), container5.operators.get(0).inputs.get(0).source.source);
 
   }
+
+  /**
+   * When source and sink of a stream are partitioned, a separate unifier is created per downstream instance.
+   */
+  @Test
+  public void testPartitionToPartitionMapping() {
+
+    DAG dag = new DAG();
+
+    TestGeneratorInputModule o1 = dag.addOperator("o1", TestGeneratorInputModule.class);
+    dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    OperatorMeta o1Meta = dag.getOperatorWrapper(o1);
+
+    GenericTestModule o2 = dag.addOperator("o2", GenericTestModule.class);
+    dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    OperatorMeta o2Meta = dag.getOperatorWrapper(o2);
+
+    dag.addStream("o1.outport1", o1.outport, o2.inport1);
+
+    int maxContainers = 10;
+    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, maxContainers);
+
+    PhysicalPlan plan = new PhysicalPlan(dag, null);
+    Assert.assertEquals("number of containers", 5, plan.getContainers().size());
+
+    List<PTOperator> inputOperators = new ArrayList<PTOperator>();
+    for (int i=0; i<2; i++) {
+      PTContainer container = plan.getContainers().get(i);
+      Assert.assertEquals("number operators " + container, 1, container.operators.size());
+      Assert.assertEquals("operators " + container, o1Meta.getId(), container.operators.get(0).getLogicalId());
+      inputOperators.add(container.operators.get(0));
+    }
+
+    for (int i=2; i<5; i++) {
+      PTContainer container = plan.getContainers().get(i);
+      Assert.assertEquals("number operators " + container, 2, container.operators.size());
+      Assert.assertEquals("operators " + container, o2Meta.getId(), container.operators.get(0).getLogicalId());
+      Set<String> expectedLogicalNames = Sets.newHashSet(o1Meta.getId(), o2Meta.getId());
+      Map<String, PTOperator> actualOperators = new HashMap<String, PTOperator>();
+      for (PTOperator p : container.operators) {
+        actualOperators.put(p.getLogicalId(), p);
+      }
+      Assert.assertEquals("", expectedLogicalNames, actualOperators.keySet());
+
+      PTOperator pUnifier = actualOperators.get(o1Meta.getId());
+      Assert.assertNotNull("" + pUnifier, pUnifier.container);
+      Assert.assertTrue("" + pUnifier, pUnifier.merge instanceof Unifier);
+      // input from each upstream partition
+      Assert.assertEquals("" + pUnifier, 2, pUnifier.inputs.size());
+      for (int inputIndex = 0; i < pUnifier.inputs.size(); i++) {
+        PTInput input = pUnifier.inputs.get(inputIndex);
+        Assert.assertEquals("" + pUnifier, "outputPort", input.source.portName);
+        Assert.assertEquals("" + pUnifier, inputOperators.get(inputIndex), input.source.source);
+        Assert.assertEquals("partition keys " + input.partitions, 1, input.partitions.partitions.size());
+      }
+      // output to single downstream partition
+      Assert.assertEquals("" + pUnifier, 1, pUnifier.outputs.size());
+      Assert.assertTrue(""+actualOperators.get(o2Meta.getId()).logicalNode.getOperator(), actualOperators.get(o2Meta.getId()).logicalNode.getOperator() instanceof GenericTestModule);
+
+      PTOperator p = actualOperators.get(o2Meta.getId());
+      Assert.assertEquals("partition inputs " + p.inputs, 1, p.inputs.size());
+      Assert.assertEquals("partition inputs " + p.inputs, pUnifier, p.inputs.get(0).source.source);
+    }
+
+  }
+
 
 }

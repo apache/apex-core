@@ -336,12 +336,6 @@ public class StramAppMaster
 
     requestPriority = Integer.parseInt(cliParser.getOptionValue("priority", "0"));
 
-    // set topology - read from localized dfs location populated by submit client
-    //TopologyBuilder b = new TopologyBuilder(conf);
-    //Properties tplgProperties = readProperties("./stram.properties");
-    //b.addFromProperties(tplgProperties);
-    //this.topology = b.getTopology();
-
     FileInputStream fis = new FileInputStream("./" + DAG.SER_FILE_NAME);
     this.dag = DAG.read(fis);
     fis.close();
