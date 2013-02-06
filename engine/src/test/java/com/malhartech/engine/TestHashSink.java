@@ -6,7 +6,7 @@ package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
 import java.util.HashMap;
-import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.lang.mutable.MutableInt;
 
 /**
  * A sink implementation to collect expected test results in a HashMap
