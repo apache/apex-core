@@ -25,7 +25,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
   private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
   private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   private long baseSeconds;
-  private int lastWindowId;
+  private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink<Object>[] sinks = NO_SINKS;
   private final StreamCodec<Object> serde;
