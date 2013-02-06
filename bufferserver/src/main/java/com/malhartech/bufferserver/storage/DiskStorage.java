@@ -98,6 +98,8 @@ public class DiskStorage implements Storage
       else {
         throw new RuntimeException("directory " + directory.getAbsolutePath() + " could not be created!");
       }
+
+      uniqueIdentifier = ++this.uniqueIdentifier;
     }
 
     return writeFile(bytes, startingOffset, endingOffset, directory, uniqueIdentifier);
