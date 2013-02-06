@@ -84,6 +84,11 @@ public interface DAGContext {
    */
   public static final AttributeKey<Integer> STRAM_HEARTBEAT_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.heartbeatIntervalMillis", Integer.class);
 
+  /**
+   * Timeout for master identify a hung container (full GC etc.). Timeout will result in container restart.
+   */
+  public static final AttributeKey<Integer> STRAM_HEARTBEAT_TIMEOUT_MILLIS = new AttributeKey<Integer>("stram.heartbeatTimeoutMillis", Integer.class);
+
   public static final AttributeKey<String> STRAM_STATS_HANDLER = new AttributeKey<String>("stram.statsHandler", String.class);
 
   public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;

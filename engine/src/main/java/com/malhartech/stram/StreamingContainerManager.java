@@ -65,7 +65,7 @@ public class StreamingContainerManager implements PlanContext
 {
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
-  private final int heartbeatTimeoutMillis = 30000;
+  private int heartbeatTimeoutMillis = 30000;
   private final int operatorMaxAttemptCount = 5;
   private final AttributeMap<DAGContext> appAttributes;
   private final int checkpointIntervalMillis;
@@ -96,6 +96,7 @@ public class StreamingContainerManager implements PlanContext
 
     appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).setIfAbsent(30000);
     this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).get();
+    this.heartbeatTimeoutMillis = appAttributes.attrValue(DAG.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
     AtomicInteger startupCountDown = new AtomicInteger(plan.getContainers().size());
     // request initial containers
