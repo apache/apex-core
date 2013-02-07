@@ -502,7 +502,7 @@ public class PhysicalPlanTest {
    * When source and sink of a stream are partitioned, a separate unifier is created per downstream instance.
    */
   @Test
-  public void testPartitionToPartitionMapping() {
+  public void testUnifierPartitioning() {
 
     DAG dag = new DAG();
 

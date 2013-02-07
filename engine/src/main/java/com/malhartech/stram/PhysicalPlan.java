@@ -840,7 +840,7 @@ public class PhysicalPlan {
             if (pks == null) {
               upstream.mergeOperators.put(streamDecl.getSource(), mergeNode);
             } else {
-              LOG.debug("Partition specific unifier for {} {} {}", new Object[] {pOperator, inputEntry.getKey().getPortName(), pks});
+              LOG.debug("Partitioned unifier for {} {} {}", new Object[] {pOperator, inputEntry.getKey().getPortName(), pks});
               pOperator.upstreamMerge.put(inputEntry.getKey(), mergeNode);
             }
 
