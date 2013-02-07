@@ -20,6 +20,15 @@ import org.slf4j.LoggerFactory;
 /**
  * Encapsulates buffer server control interface, used by the master for purging data.
  */
+/**
+ *
+ */
+/**
+ *
+ */
+/**
+ *
+ */
 @Sharable
 class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
   private final static Logger LOG = LoggerFactory.getLogger(BufferServerClient.class);
@@ -68,11 +77,6 @@ class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
     super.endMessageReceived(ctx);
     //LOG.debug("endMessageReceived");
     ctx.close();
-  }
-
-  @Override
-  public void beginMessageReceived(ChannelHandlerContext ctx) throws Exception {
-    //LOG.debug("beginMessageReceived");
   }
 
 }
