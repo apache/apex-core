@@ -464,7 +464,7 @@ public class DAG implements Serializable, DAGContext
    * @param id
    * @param source
    * @param sinks
-   * @return StreamDecl
+   * @return StreamMeta
    */
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
@@ -484,7 +484,7 @@ public class DAG implements Serializable, DAGContext
    * @param id
    * @param source
    * @param sink1
-   * @return StreamDecl
+   * @return StreamMeta
    */
   @SuppressWarnings("unchecked")
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)

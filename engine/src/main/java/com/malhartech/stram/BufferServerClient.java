@@ -70,9 +70,4 @@ class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
     ctx.close();
   }
 
-  @Override
-  public void beginMessageReceived(ChannelHandlerContext ctx) throws Exception {
-    //LOG.debug("beginMessageReceived");
-  }
-
 }

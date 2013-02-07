@@ -42,7 +42,7 @@ public class SynchronizedCircularBuffer<T> implements UnsafeBlockingQueue<T>
   {
     int i = 1;
     while (i < n) {
-      i = i << 1;
+      i <<= 1;
     }
 
     buffer = (T[])new Object[i];

@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.InputPortMeta;
 import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.Operator;
@@ -292,6 +293,8 @@ public class PhysicalPlan {
     int loadIndicator = 0;
     List<? extends StatsHandler> statsMonitors;
     private Set<PTOperator> inlineSet = new HashSet<PTOperator>();
+
+    private final HashMap<InputPortMeta, PTOperator> upstreamMerge = new HashMap<InputPortMeta, PTOperator>();
 
     /**
      *
@@ -559,18 +562,26 @@ public class PhysicalPlan {
             // process inline operators
             for (PTOperator inlineNode : inlineNodes) {
               //LOG.debug("setting container {} {}", inlineNode, container);
-              assert(inlineNode.container == null);
-              inlineNode.container = container;
-              container.operators.add(inlineNode);
+              setContainer(inlineNode, container);
             }
           } else {
-            node.container = container;
-            container.operators.add(node);
+            setContainer(node, container);
           }
         }
       }
     }
+  }
 
+  private void setContainer(PTOperator pOperator, PTContainer container) {
+    assert(pOperator.container == null);
+    pOperator.container = container;
+    container.operators.add(pOperator);
+    if (!pOperator.upstreamMerge.isEmpty()) {
+      for (Map.Entry<InputPortMeta, PTOperator> mEntry : pOperator.upstreamMerge.entrySet()) {
+        mEntry.getValue().container = container;
+        container.operators.add(mEntry.getValue());
+      }
+    }
   }
 
   private void initPartitioning(PMapping m)  {
@@ -810,18 +821,29 @@ public class PhysicalPlan {
             mergeNode.id = nodeSequence.incrementAndGet();
             mergeNode.merge = unifier;
             mergeNode.outputs.add(new PTOutput(this, mergeDesc.outputPorts.keySet().iterator().next(), streamDecl, mergeNode));
-            upstream.mergeOperators.put(streamDecl.getSource(), mergeNode);
+
+            PartitionKeys pks = partitionKeys.get(inputEntry.getKey());
 
             // add existing partitions as inputs
             for (PTOperator upstreamInstance : upstream.partitions) {
               for (PTOutput upstreamOut : upstreamInstance.outputs) {
                 if (upstreamOut.logicalStream == streamDecl) {
                   // merge operator input
-                  PTInput input = new PTInput("<merge#" + streamDecl.getSource().getPortName() + ">", streamDecl, mergeNode, null, upstreamOut);
+                  PTInput input = new PTInput("<merge#" + streamDecl.getSource().getPortName() + ">", streamDecl, mergeNode, pks, upstreamOut);
                   mergeNode.inputs.add(input);
                 }
               }
             }
+
+            // if this operator is partitioned and upstream is also partitioned,
+            // create separate merge operator per upstream partition
+            if (pks == null) {
+              upstream.mergeOperators.put(streamDecl.getSource(), mergeNode);
+            } else {
+              LOG.debug("Partitioned unifier for {} {} {}", new Object[] {pOperator, inputEntry.getKey().getPortName(), pks});
+              pOperator.upstreamMerge.put(inputEntry.getKey(), mergeNode);
+            }
+
           }
           upstreamNodes = Collections.singletonList(mergeNode);
         }
