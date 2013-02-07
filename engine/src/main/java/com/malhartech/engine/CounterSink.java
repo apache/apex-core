@@ -9,7 +9,8 @@ import com.malhartech.engine.OperatorStats.Counter;
 import java.lang.reflect.Array;
 
 /**
- *
+ * CounterSink counts the objects which are sunk into it.
+ * @param <T> - Type of objects which can be sunk into this sink.
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface CounterSink<T> extends Sink<T>, Counter
