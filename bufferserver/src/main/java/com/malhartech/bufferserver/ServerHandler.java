@@ -13,6 +13,7 @@ import com.malhartech.bufferserver.Buffer.Request;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.SerializedData;
+import io.netty.buffer.ChannelBuf;
 import io.netty.buffer.MessageBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler.Sharable;
@@ -394,6 +395,11 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
 
     ctx.write(SerializedData.getInstanceFrom(db.build()))
             .addListener(ChannelFutureListener.CLOSE);
+  }
+
+  public void freeInboundBuffer(ChannelHandlerContext ctx, ChannelBuf buf) throws Exception
+  {
+    // to see this!
   }
 
 }

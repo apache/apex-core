@@ -10,6 +10,7 @@ import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.ClientHandler;
 import com.malhartech.engine.*;
 import java.lang.reflect.Array;
+import java.util.Collection;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,8 @@ public class BufferServerInputStream extends SocketInputStream<Message>
   private volatile Sink<Object>[] sinks = NO_SINKS;
   private final StreamCodec<Object> serde;
   DataStatePair dsp = new DataStatePair();
+  private int mask;
+  private Collection<Integer> partitions;
 
   public BufferServerInputStream(StreamCodec<Object> serde)
   {
@@ -42,8 +45,11 @@ public class BufferServerInputStream extends SocketInputStream<Message>
     super.activate(context);
     activateSinks();
 
+    mask = context.getPartitionMask();
+    partitions = context.getPartitions();
+
     baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
-    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId()});
+    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions()});
     ClientHandler.subscribe(channel,
                             context.getSinkId(),
                             context.getId() + '/' + context.getSinkId(),
@@ -68,6 +74,10 @@ public class BufferServerInputStream extends SocketInputStream<Message>
 
       case PAYLOAD:
         dsp.data = data.getPayload().getData().toByteArray();
+        if (mask != 0) {
+          assert (data.getPayload().hasPartition());
+          assert (partitions.contains(data.getPayload().getPartition() & mask));
+        }
         Object o = serde.fromByteArray(dsp);
         for (Sink<Object> s: sinks) {
           s.process(o);
