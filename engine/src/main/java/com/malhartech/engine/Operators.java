@@ -17,7 +17,7 @@ import com.malhartech.api.Operator.OutputPort;
 /**
  * Utilities for dealing with {@link Operator} instances.
  */
-public class Operators
+public abstract class Operators
 {
   public interface OperatorDescriptor
   {
