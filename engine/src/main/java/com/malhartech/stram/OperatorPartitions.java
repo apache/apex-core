@@ -184,20 +184,30 @@ public class OperatorPartitions {
       List<Partition<?>> partitions = new ArrayList<Partition<?>>(initialPartitionCnt);
       for (int i=0; i<initialPartitionCnt; i++) {
         Partition<?> p = new PartitionImpl(logicalOperator.getOperator());
-        if (!(p.getOperator() instanceof InputOperator)) {
-          // default mapping partitions the stream that was first connected in the DAG and send full data to remaining input ports
-          // this gives control over which stream to partition with the default partitioning to the DAG writer
-          Map<InputPortMeta, StreamMeta> inputs = logicalOperator.getInputStreams();
-          if (inputs.isEmpty()) {
-            // TODO - allow input operator partitioning?
-            throw new AssertionError("Partitioning configured for operator but no input ports connected: " + logicalOperator);
-          }
-          // TODO: work with the port meta object instead as this is what we will be using during plan processing anyways
-          InputPortMeta portMeta = inputs.keySet().iterator().next();
-          p.getPartitionKeys().put(portMeta.getPortObject(), new PartitionKeys(partitionMask, Sets.newHashSet(i)));
-        }
         partitions.add(p);
       }
+
+      if (!(logicalOperator.getOperator() instanceof InputOperator)) {
+        Map<InputPortMeta, StreamMeta> inputs = logicalOperator.getInputStreams();
+        if (inputs.isEmpty()) {
+          throw new AssertionError("Partitioning configured for operator but no input ports connected: " + logicalOperator);
+        }
+        InputPortMeta portMeta = inputs.keySet().iterator().next();
+
+        for (int i=0; i<=partitionMask; i++) {
+          // partition the stream that was first connected in the DAG and send full data to remaining input ports
+          // this gives control over which stream to partition under default partitioning to the DAG writer
+          Partition<?> p = partitions.get(i % partitions.size());
+          PartitionKeys pks = p.getPartitionKeys().get(portMeta.getPortObject());
+          if (pks == null) {
+            // TODO: work with the port meta object instead as this is what we will be using during plan processing anyways
+            p.getPartitionKeys().put(portMeta.getPortObject(), new PartitionKeys(partitionMask, Sets.newHashSet(i)));
+          } else {
+            pks.partitions.add(i);
+          }
+        }
+      }
+
       return partitions;
     }
 
@@ -219,43 +229,53 @@ public class OperatorPartitions {
         if (load < 0) {
           // combine neighboring underutilized partitions
           PartitionKeys pks = p.getPartitionKeys().values().iterator().next(); // one port partitioned
-          int partitionKey = pks.partitions.iterator().next();
-
-          // look for the sibling partition by flipping leading bit
-          int lookupKey = ( ( pks.mask >>> 1 ) & pks.mask ) & partitionKey;
-          Partition<?> siblingPartition = lowLoadPartitions.get(lookupKey);
-          if (siblingPartition == null) {
-            lowLoadPartitions.put(partitionKey, p);
-          } else {
-            // both of the partitions are low load, combine
-            lowLoadPartitions.remove(lookupKey);
-            PartitionKeys newPks = new PartitionKeys(pks.mask >>> 1, Sets.newHashSet(lookupKey & (pks.mask >>> 1)));
-            siblingPartition.getPartitionKeys().entrySet().iterator().next().setValue(newPks);
-            // add as new partition
-            newPartitions.add(siblingPartition);
+          for (int partitionKey : pks.partitions) {
+            // look for the sibling partition by flipping leading bit
+            int lookupKey = ( ( pks.mask >>> 1 ) & pks.mask ) & partitionKey;
+            Partition<?> siblingPartition = lowLoadPartitions.get(lookupKey);
+            if (siblingPartition == null) {
+              lowLoadPartitions.put(partitionKey, p);
+            } else {
+              // both of the partitions are low load, combine
+              lowLoadPartitions.remove(lookupKey);
+              PartitionKeys newPks = new PartitionKeys(pks.mask >>> 1, Sets.newHashSet(lookupKey & (pks.mask >>> 1)));
+              siblingPartition.getPartitionKeys().entrySet().iterator().next().setValue(newPks);
+              // add as new partition
+              newPartitions.add(siblingPartition);
+            }
           }
         } else if (load > 0) {
           // split bottlenecks
           Map<InputPort<?>, PartitionKeys> keys = p.getPartitionKeys();
           Map.Entry<InputPort<?>, PartitionKeys> e = keys.entrySet().iterator().next();
-          // default partitions always have a single key
-          int key = e.getValue().partitions.iterator().next();
-          int newMask = (e.getValue().mask << 1) | 1;
-          int key2 = (newMask ^ e.getValue().mask) | key;
 
-          Partition<?> p1 = new PartitionImpl(p.getOperator());
-          p1.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key)));
+          final int newMask;
+          final Set<Integer> newKeys;
 
-          Partition<?> p2 = new PartitionImpl(p.getOperator());
-          p2.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key2)));
+          if (e.getValue().partitions.size() == 1) {
+            // split single key
+            newMask = (e.getValue().mask << 1) | 1;
+            int key = e.getValue().partitions.iterator().next();
+            int key2 = (newMask ^ e.getValue().mask) | key;
+            newKeys = Sets.newHashSet(key, key2);
+          } else {
+            // assign keys to separate partitions
+            newMask = e.getValue().mask;
+            newKeys = e.getValue().partitions;
+          }
 
-          newPartitions.add(p1);
-          newPartitions.add(p2);
+          for (int key : newKeys) {
+            Partition<?> newPartition = new PartitionImpl(p.getOperator());
+            newPartition.getPartitionKeys().put(e.getKey(), new PartitionKeys(newMask, Sets.newHashSet(key)));
+            newPartitions.add(newPartition);
+          }
         } else {
           // leave unchanged
           newPartitions.add(p);
         }
       }
+      // put back low load partitions that could not be combined
+      newPartitions.addAll(lowLoadPartitions.values());
       return newPartitions;
     }
 
