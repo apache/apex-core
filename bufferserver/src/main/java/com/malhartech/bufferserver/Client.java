@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.netty.ClientInitializer;
+import com.malhartech.bufferserver.util.NameableThreadFactory;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.socket.nio.NioEventLoopGroup;
@@ -93,7 +94,7 @@ public class Client
   {
     // Set up.
     Bootstrap bootstrap = new Bootstrap();
-    bootstrap.group(new NioEventLoopGroup(1))
+    bootstrap.group(new NioEventLoopGroup(1, new NameableThreadFactory("BSClient")))
             .channel(NioSocketChannel.class)
             //            .option(ChannelOption.ALLOW_HALF_CLOSURE, true)
             .remoteAddress(host, port)
