@@ -93,7 +93,7 @@ public class Client
   {
     // Set up.
     Bootstrap bootstrap = new Bootstrap();
-    bootstrap.group(new NioEventLoopGroup())
+    bootstrap.group(new NioEventLoopGroup(1))
             .channel(NioSocketChannel.class)
             //            .option(ChannelOption.ALLOW_HALF_CLOSURE, true)
             .remoteAddress(host, port)

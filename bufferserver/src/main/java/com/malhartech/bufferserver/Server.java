@@ -61,7 +61,7 @@ public class Server
     // Configure the server.
     bootstrap = new ServerBootstrap();
 
-    bootstrap.group(new NioEventLoopGroup(), new NioEventLoopGroup())
+    bootstrap.group(new NioEventLoopGroup(1), new NioEventLoopGroup(2))
             .channel(NioServerSocketChannel.class)
             .option(ChannelOption.SO_BACKLOG, 100)
             .localAddress(port)
