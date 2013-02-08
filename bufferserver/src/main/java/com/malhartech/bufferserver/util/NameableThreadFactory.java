@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.util;
+package com.malhartech.bufferserver.util;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,7 +21,7 @@ public class NameableThreadFactory implements ThreadFactory
   private final AtomicInteger threadNumber = new AtomicInteger(1);
   private final String namePrefix;
 
-  NameableThreadFactory(String groupname)
+  public NameableThreadFactory(String groupname)
   {
     SecurityManager s = System.getSecurityManager();
     group = (s != null) ? s.getThreadGroup()

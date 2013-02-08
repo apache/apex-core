@@ -6,6 +6,7 @@ package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.netty.ServerInitializer;
 import com.malhartech.bufferserver.storage.Storage;
+import com.malhartech.bufferserver.util.NameableThreadFactory;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
@@ -61,7 +62,7 @@ public class Server
     // Configure the server.
     bootstrap = new ServerBootstrap();
 
-    bootstrap.group(new NioEventLoopGroup(), new NioEventLoopGroup())
+    bootstrap.group(new NioEventLoopGroup(1, new NameableThreadFactory("BSServerSelector")), new NioEventLoopGroup(2, new NameableThreadFactory("BSServerWorker")))
             .channel(NioServerSocketChannel.class)
             .option(ChannelOption.SO_BACKLOG, 100)
             .localAddress(port)
