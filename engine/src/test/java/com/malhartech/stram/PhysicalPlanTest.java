@@ -141,6 +141,8 @@ public class PhysicalPlanTest {
     List<PTOperator> n2Instances = plan.getOperators(node2Decl);
     Assert.assertEquals("partition instances " + n2Instances, initialPartitionCount, n2Instances.size());
 
+    List<Integer> assignedPartitionKeys = Lists.newArrayList();
+
     for (int i = 0; i < n2Instances.size(); i++) {
       PTOperator partitionInstance = n2Instances.get(i);
       Partition<?> p = partitionInstance.partition;
@@ -154,7 +156,15 @@ public class PhysicalPlanTest {
       Assert.assertEquals("partition port: " + pkeys, expectedPort, pkeys.keySet().iterator().next());
 
       Assert.assertEquals("partition mask: " + pkeys, "111", Integer.toBinaryString(pkeys.get(expectedPort).mask));
-      Assert.assertEquals("partition id: " + pkeys, Sets.newHashSet(i), pkeys.get(expectedPort).partitions);
+      Set<Integer> pks = pkeys.get(expectedPort).partitions;
+      Assert.assertTrue("number partition keys: " + pkeys, pks.size() == 1 || pks.size() == 2);
+      assignedPartitionKeys.addAll(pks);
+    }
+
+    int expectedMask = Integer.parseInt("111", 2);
+    Assert.assertEquals("assigned partitions ", expectedMask+1,  assignedPartitionKeys.size());
+    for (int i=0; i<=expectedMask; i++) {
+      Assert.assertTrue(""+assignedPartitionKeys, assignedPartitionKeys.contains(i));
     }
 
   }
@@ -291,17 +301,20 @@ public class PhysicalPlanTest {
 
     // partition merge
     @SuppressWarnings("unchecked")
-    List<HashSet<PartitionKeys>> mergedKeys = Arrays.asList(
-            Sets.newHashSet(
-            newPartitionKeys("11", "00"),
-            newPartitionKeys("11", "10"),
-            newPartitionKeys("1", "1")),
-            Sets.newHashSet(
-            newPartitionKeys("1", "0"),
-            newPartitionKeys("11", "01"),
-            newPartitionKeys("11", "11")));
+    List<HashSet<PartitionKeys>> expectedKeysSets = Arrays.asList(
+        Sets.newHashSet(
+          newPartitionKeys("11", "00"),
+          newPartitionKeys("11", "10"),
+          newPartitionKeys("1", "1")
+        ),
+        Sets.newHashSet(
+          newPartitionKeys("1", "0"),
+          newPartitionKeys("11", "01"),
+          newPartitionKeys("11", "11")
+        )
+    );
 
-    for (Set<PartitionKeys> expectedKeys: mergedKeys) {
+    for (Set<PartitionKeys> expectedKeys: expectedKeysSets) {
       partitions = new ArrayList<Partition<?>>();
       for (PartitionKeys pks: twoBitPartitionKeys) {
         Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
