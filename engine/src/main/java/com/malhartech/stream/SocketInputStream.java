@@ -4,6 +4,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.netty.ClientInitializer;
+import com.malhartech.bufferserver.util.NameableThreadFactory;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 
@@ -50,7 +51,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
   {
     bootstrap = new Bootstrap();
 
-    bootstrap.group(new NioEventLoopGroup())
+    bootstrap.group(new NioEventLoopGroup(1, new NameableThreadFactory("Sink-" + context.getSinkId())))
             .channel(NioSocketChannel.class)
             .remoteAddress(context.getBufferServerAddress())
             .handler(new ClientInitializer(this));

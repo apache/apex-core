@@ -8,6 +8,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.bufferserver.netty.ClientInitializer;
+import com.malhartech.bufferserver.util.NameableThreadFactory;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import io.netty.bootstrap.Bootstrap;
@@ -50,7 +51,7 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   public void activate(StreamContext context)
   {
     bootstrap = new Bootstrap();
-    bootstrap.group(new NioEventLoopGroup())
+    bootstrap.group(new NioEventLoopGroup(1, new NameableThreadFactory("Source-" + context.getSourceId())))
             .channel(NioSocketChannel.class)
             .remoteAddress(context.getBufferServerAddress())
             .handler(new ClientInitializer(this));
