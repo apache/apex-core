@@ -331,7 +331,7 @@ public class DataList
         DataArray temp = new DataArray(newblockSize);
         temp.acquire(true);
         last = next = temp;
-        logger.debug("added a new data array {}", next);
+        //logger.debug("added a new data array {}", next);
 
         /*
          * recursively invoke add on the newly allocated DataArray.
