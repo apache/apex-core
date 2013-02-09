@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
@@ -31,7 +32,7 @@ public class ProtobufDataInspector implements DataIntrospector
       try {
         int size = data.size - data.dataOffset + data.offset;
         if (size < BasicDataMinLength) {
-          logger.debug("since the data is smaller than BasicDataMinLength, assuming it's missing");
+          //logger.debug("since the data is smaller than BasicDataMinLength, assuming it's missing");
           previousMessage = null;
         }
         else {
@@ -120,10 +121,58 @@ public class ProtobufDataInspector implements DataIntrospector
   }
 
   /**
+   * Writes the NO_MESSAGE record if there is room or else returns the size of the data it wrote to the buffer.
+   * @param bytes The array which contains the region to wipe out
+   * @param offset The start offset of th region
+   * @param length The size of the region in bytes
+   */
+  public static void wipeData(byte[] bytes, int offset, int length)
+  {
+    final int[] varIntCapacity = {
+      (int)Math.pow(2, 7),
+      (int)Math.pow(2, 14),
+      (int)Math.pow(2, 21),
+      (int)Math.pow(2, 28),
+      (int)Math.pow(2, 31)
+    };
+
+    if (length >= BasicDataMinLength) {
+      Message.Builder db = Message.newBuilder();
+      int bytelen = length - BasicDataMinLength;
+      if (bytelen == 0) {
+        db.setType(MessageType.NO_MESSAGE);
+      }
+      else if (bytelen == ZeroByteArrayLength) {
+        db.setType(MessageType.NO_MESSAGE);
+        db.setNoMessagePadding(ByteString.EMPTY);
+      }
+      else if (bytelen > ZeroByteArrayLength) {
+        db.setType(MessageType.NO_MESSAGE);
+        bytelen -= ZeroByteArrayLength;
+        // there has to be a better way to get the ByteString of any size without actually allocating!
+        for (int i = 0; i < varIntCapacity.length; i++) {
+          if (bytelen < varIntCapacity[i]) {
+            db.setNoMessagePadding(ByteString.copyFrom(new byte[bytelen]));
+            break;
+          }
+          bytelen--;
+        }
+      }
+      else {
+        db.setType(MessageType.NO_MESSAGE_ODD);
+      }
+
+      Message m = db.build();
+      System.arraycopy(m.toByteArray(), 0, bytes, offset, m.getSerializedSize());
+    }
+  }
+
+  /**
    * Here is a hope that Protobuf implementation is not very different than what small common sense would dictate.
    */
   private static final int BasicDataMinLength;
   private static final byte[] BasicData;
+  private static final int ZeroByteArrayLength;
 
   static {
     Message.Builder db = Message.newBuilder();
@@ -134,6 +183,11 @@ public class ProtobufDataInspector implements DataIntrospector
     if (BasicData.length != BasicDataMinLength) {
       logger.debug("BasicDataMinLength({}) != BasicData.length({})", BasicDataMinLength, BasicData.length);
     }
+
+    db.setNoMessagePadding(ByteString.EMPTY);
+    basic = db.build();
+    ZeroByteArrayLength = basic.getSerializedSize() - BasicDataMinLength;
+    logger.debug("ZeroByteArrayLength = {}", ZeroByteArrayLength);
   }
 
   public int getBaseSeconds(SerializedData data)

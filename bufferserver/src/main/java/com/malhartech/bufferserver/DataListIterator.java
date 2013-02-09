@@ -62,7 +62,7 @@ class DataListIterator implements Iterator<SerializedData>
           break;
 
         default:
-          if (di.getType(current) != MessageType.NO_MESSAGE) {
+          if (di.getType(current) != MessageType.NO_MESSAGE && di.getType(current) != MessageType.NO_MESSAGE_ODD) {
             return true;
           }
           current.offset += current.size;

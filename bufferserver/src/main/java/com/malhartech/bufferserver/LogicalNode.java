@@ -191,6 +191,7 @@ public class LogicalNode implements DataListener
               break;
 
             case NO_MESSAGE:
+            case NO_MESSAGE_ODD:
               break;
 
             case RESET_WINDOW:
@@ -218,6 +219,7 @@ public class LogicalNode implements DataListener
               break;
 
             case NO_MESSAGE:
+            case NO_MESSAGE_ODD:
               break;
 
             case RESET_WINDOW:
