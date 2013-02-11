@@ -966,6 +966,7 @@ public class StramChild
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
+              logger.debug("got simple inline stream from {} to {} - {}", new Object[]{sourceIdentifier, sinkIdentifier, nidi});
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
             }
@@ -974,7 +975,7 @@ public class StramChild
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-
+              logger.debug("got partitions on the inline stream from {} to {} - {}", new Object[]{sourceIdentifier, sinkIdentifier, nidi});
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, s);
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);
