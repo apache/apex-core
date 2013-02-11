@@ -92,6 +92,8 @@ public class OperatorDeployInfo implements Serializable
                 .append("streamId", this.declaredStreamId)
                 .append("sourceNodeId", this.sourceNodeId)
                 .append("inline", this.isInline())
+                .append("partitionMask", this.partitionMask)
+                .append("partitionKeys", this.partitionKeys)
                 .toString();
     }
 
