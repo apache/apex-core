@@ -95,7 +95,7 @@ public class StramCli
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[]{"help", "ls", "cd", "listoperators", "shutdown", "timeout", "kill", "exit"};
+    String[] commandsList = new String[] {"help", "ls", "cd", "listoperators", "shutdown", "timeout", "kill", "startrecordiong", "stoprecording", "exit"};
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -147,6 +147,12 @@ public class StramCli
         else if (line.startsWith("kill")) {
           killApp(line);
         }
+        else if (line.startsWith("startrecording")) {
+          startRecording(line);
+        }
+        else if (line.startsWith("stoprecording")) {
+          stopRecording(line);
+        }
         else if ("exit".equals(line)) {
           System.out.println("Exiting application");
           return;
@@ -180,12 +186,14 @@ public class StramCli
     System.out.println("launch <jarFile> [<configuration>] - Launch application packaged in jar file.");
     System.out.println("timeout <duration> - Wait for completion of current application.");
     System.out.println("kill             - Force termination for current application.");
+    System.out.println("startrecording <operId> - Start recording tuples for the given operator id");
+    System.out.println("stoprecording [<operId>] - Stop recording tuples for the given operator id, all if operator id is not given");
     System.out.println("exit             - Exit the app");
 
   }
 
   private String readLine(ConsoleReader reader, String promtMessage)
-    throws IOException
+          throws IOException
   {
     String line = reader.readLine(promtMessage + "\nstramcli> ");
     return line.trim();
@@ -257,7 +265,7 @@ public class StramCli
 
       SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-      for (ApplicationReport ar : appList) {
+      for (ApplicationReport ar: appList) {
         boolean show;
 
         /*
@@ -280,11 +288,11 @@ public class StramCli
         if (show) {
           StringBuilder sb = new StringBuilder();
           sb.append("startTime: ").append(sdf.format(new java.util.Date(ar.getStartTime()))).
-            append(", id: ").append(ar.getApplicationId().getId()).
-            append(", name: ").append(ar.getName()).
-            append(", state: ").append(ar.getYarnApplicationState().name()).
-            append(", trackingUrl: ").append(ar.getTrackingUrl()).
-            append(", finalStatus: ").append(ar.getFinalApplicationStatus());
+                  append(", id: ").append(ar.getApplicationId().getId()).
+                  append(", name: ").append(ar.getName()).
+                  append(", state: ").append(ar.getYarnApplicationState().name()).
+                  append(", trackingUrl: ").append(ar.getTrackingUrl()).
+                  append(", finalStatus: ").append(ar.getFinalApplicationStatus());
           System.out.println(sb);
           totalCnt++;
           if (ar.getYarnApplicationState() == YarnApplicationState.RUNNING) {
@@ -299,16 +307,18 @@ public class StramCli
     }
   }
 
-  private ApplicationReport assertRunningApp(ApplicationReport app) {
+  private ApplicationReport assertRunningApp(ApplicationReport app)
+  {
     ApplicationReport r;
     try {
       r = rmClient.getApplicationReport(app.getApplicationId());
       if (r.getYarnApplicationState() != YarnApplicationState.RUNNING) {
         String msg = String.format("Application %s not running (status %s)",
-            r.getApplicationId().getId(), r.getYarnApplicationState());
+                                   r.getApplicationId().getId(), r.getYarnApplicationState());
         throw new CliException(msg);
       }
-    } catch (YarnRemoteException rmExc) {
+    }
+    catch (YarnRemoteException rmExc) {
       throw new CliException("Unable to determine application status.", rmExc);
     }
     return r;
@@ -363,7 +373,7 @@ public class StramCli
     int appSeq = Integer.parseInt(args[1]);
 
     List<ApplicationReport> appList = getApplicationList();
-    for (ApplicationReport ar : appList) {
+    for (ApplicationReport ar: appList) {
       if (ar.getApplicationId().getId() == appSeq) {
         currentApp = ar;
         break;
@@ -386,7 +396,8 @@ public class StramCli
     }
     catch (JSONException e) {
       throw new CliException("Error connecting to app " + args[1], e);
-    } finally {
+    }
+    finally {
       if (!connected) {
         //currentApp = null;
         //currentDir = "/";
@@ -400,11 +411,11 @@ public class StramCli
     JSONObject json = rsp.getEntity(JSONObject.class);
 
     if (argv.length > 1) {
-      String singleKey = ""+json.keys().next();
+      String singleKey = "" + json.keys().next();
       JSONArray matches = new JSONArray();
       // filter operators
       JSONArray arr = json.getJSONArray(singleKey);
-      for (int i=0; i<arr.length(); i++) {
+      for (int i = 0; i < arr.length(); i++) {
         Object val = arr.get(i);
         if (val.toString().matches(argv[1])) {
           matches.put(val);
@@ -447,12 +458,12 @@ public class StramCli
           reader.setUseHistory(false);
           @SuppressWarnings("unchecked")
           List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
-          for (Completor c : completors) {
+          for (Completor c: completors) {
             reader.removeCompletor(c);
           }
           String optionLine = reader.readLine("Pick application? ");
           reader.setUseHistory(useHistory);
-          for (Completor c : completors) {
+          for (Completor c: completors) {
             reader.addCompletor(c);
           }
 
@@ -474,7 +485,8 @@ public class StramCli
           this.currentApp = rmClient.getApplicationReport(appId);
           this.currentDir = "" + currentApp.getApplicationId().getId();
           System.out.println(appId);
-        } else {
+        }
+        else {
           submitApp.runLocal(appConfig);
         }
       }
@@ -566,10 +578,74 @@ public class StramCli
 
   }
 
+  private void startRecording(String line)
+  {
+    String[] args = StringUtils.splitByWholeSeparator(line, " ");
+    if (args.length != 2) {
+      System.err.println("Invalid arguments");
+      return;
+    }
+
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+
+    // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
+    currentApp = assertRunningApp(currentApp); // or else "N/A" might be there..
+    String trackingUrl = currentApp.getOriginalTrackingUrl();
+    JSONObject request = new JSONObject();
+    Client wsClient = Client.create();
+    wsClient.setFollowRedirects(true);
+    WebResource r = wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH).path(StramWebServices.PATH_STARTRECORDING);
+
+    try {
+      int operId = Integer.valueOf(args[1]);
+      request.put("operId", operId);
+      JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+      System.out.println("start recording requested: " + response);
+    }
+    catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+
+  private void stopRecording(String line)
+  {
+    String[] args = StringUtils.splitByWholeSeparator(line, " ");
+    if (args.length > 2) {
+      System.err.println("Invalid arguments");
+      return;
+    }
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+
+    // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
+    currentApp = assertRunningApp(currentApp); // or else "N/A" might be there..
+    String trackingUrl = currentApp.getOriginalTrackingUrl();
+    JSONObject request = new JSONObject();
+    Client wsClient = Client.create();
+    wsClient.setFollowRedirects(true);
+    WebResource r = wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH).path(StramWebServices.PATH_STOPRECORDING);
+
+    try {
+      if (args.length == 2) {
+        int operId = Integer.valueOf(args[1]);
+        request.put("operId", operId);
+      }
+      JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+      System.out.println("stop recording requested: " + response);
+    }
+    catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+
   public static void main(String[] args) throws Exception
   {
     StramCli shell = new StramCli();
     shell.init();
     shell.run();
   }
+
 }
