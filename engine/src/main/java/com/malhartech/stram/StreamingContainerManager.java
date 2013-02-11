@@ -480,13 +480,12 @@ public class StreamingContainerManager implements PlanContext
         if (lDownNode != null) {
           List<PTOperator> downNodes = plan.getOperators(lDownNode);
           for (PTOperator downNode : downNodes) {
-            // visit
-            mergeOp = downNode.upstreamMerge.get(targetPort);
-            if (mergeOp != null && !visited.contains(mergeOp)) {
-              updateRecoveryCheckpoints(mergeOp, visited);
-              maxCheckpoint = Math.min(maxCheckpoint, mergeOp.recoveryCheckpoint);
-              continue;
-            }
+            //mergeOp = downNode.upstreamMerge.get(targetPort);
+            //if (mergeOp != null && !visited.contains(mergeOp)) {
+            //  updateRecoveryCheckpoints(mergeOp, visited);
+            //  maxCheckpoint = Math.min(maxCheckpoint, mergeOp.recoveryCheckpoint);
+            //  continue;
+            //}
             if (!visited.contains(downNode)) {
               // downstream traversal
               updateRecoveryCheckpoints(downNode, visited);
