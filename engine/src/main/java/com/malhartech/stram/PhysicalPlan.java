@@ -294,7 +294,7 @@ public class PhysicalPlan {
     List<? extends StatsHandler> statsMonitors;
     private Set<PTOperator> inlineSet = new HashSet<PTOperator>();
 
-    private final HashMap<InputPortMeta, PTOperator> upstreamMerge = new HashMap<InputPortMeta, PTOperator>();
+    final HashMap<InputPortMeta, PTOperator> upstreamMerge = new HashMap<InputPortMeta, PTOperator>();
 
     /**
      *
