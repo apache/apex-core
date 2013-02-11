@@ -285,18 +285,8 @@ public class DataList
 
         if (i + writingOffset <= data.length) {
           writingOffset = Codec.writeRawVarint32(data.length - writingOffset - i, data, writingOffset, i);
-          if (writingOffset < data.length) {
-            Message.Builder db = Message.newBuilder();
-            db.setType(MessageType.NO_MESSAGE);
-
-            Message noData = db.build();
-            int writeSize = data.length - writingOffset;
-            if (writeSize > noData.getSerializedSize()) {
-              writeSize = noData.getSerializedSize();
-            }
-            System.arraycopy(db.build().toByteArray(), 0, data, writingOffset, writeSize);
-            writingOffset = data.length;
-          }
+          ProtobufDataInspector.wipeData(data, writingOffset, data.length - writingOffset);
+          writingOffset = data.length;
         }
 
         /*

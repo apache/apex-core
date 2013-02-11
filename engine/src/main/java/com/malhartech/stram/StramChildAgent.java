@@ -31,6 +31,7 @@ import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
@@ -174,6 +175,7 @@ public class StramChildAgent {
   DeployRequest pendingRequest = null;
 
   private final ConcurrentLinkedQueue<DeployRequest> requests = new ConcurrentLinkedQueue<DeployRequest>();
+  private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
 
   public StreamingContainerContext getInitContext() {
     //ContainerHeartbeatResponse rsp = pollRequest();
@@ -202,8 +204,16 @@ public class StramChildAgent {
     LOG.info("Adding request {} {}"/*ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero*/, container.containerId, r);
   }
 
+  public void addOperatorRequest(StramToNodeRequest r) {
+    this.operatorRequests.add(r);
+  }
+
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
     return this.requests;
+  }
+
+  protected ConcurrentLinkedQueue<StramToNodeRequest> getOperatorRequests() {
+    return this.operatorRequests;
   }
 
   public ContainerHeartbeatResponse pollRequest() {

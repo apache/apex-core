@@ -293,7 +293,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 1L;
 
     enum RequestType {
-      REPORT_PARTION_STATS, CHECKPOINT
+      REPORT_PARTION_STATS, CHECKPOINT, START_RECORDING, STOP_RECORDING
     }
 
     private int nodeId;
