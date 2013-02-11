@@ -89,7 +89,7 @@ public class StramChild
   public void setup(StreamingContainerContext ctx)
   {
     this.applicationAttributes = ctx.applicationAttributes;
-    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_HEARTBEAT_INTERVAL_MILLIS,  1000);
+    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
     windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
 
@@ -327,7 +327,7 @@ public class StramChild
           if (Integer.toString(nodeid).equals(nodeport[0])) {
             stream.setSink(sinkIds[i], null);
             if (node instanceof UnifierNode) {
-             node.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
+              node.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
             }
             else {
               node.connectInputPort(nodeport[1], null);
@@ -607,13 +607,13 @@ public class StramChild
    */
   private void processStramRequest(OperatorContext context, final StramToNodeRequest snr)
   {
+    final Node<?> node = nodes.get(snr.getNodeId());
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
         logger.warn("Ignoring stram request {}", snr);
         break;
 
       case CHECKPOINT:
-        final Node<?> node = nodes.get(snr.getNodeId());
         context.request(new OperatorContext.NodeRequest()
         {
           @Override
@@ -634,8 +634,17 @@ public class StramChild
         });
         break;
 
+      case START_RECORDING:
+        //node.startRecording();
+        break;
+
+      case STOP_RECORDING:
+        //node.stopRecording();
+        break;
+
       default:
-        logger.error("Unknown request from stram {}", snr);
+        logger.error(
+                "Unknown request from stram {}", snr);
     }
   }
 
@@ -762,7 +771,7 @@ public class StramChild
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
-            bssc.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
+            bssc.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
             bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
             BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
@@ -807,7 +816,7 @@ public class StramChild
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
-            bssc.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
+            bssc.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
             bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
             BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
@@ -827,7 +836,7 @@ public class StramChild
 
           context.setSourceId(sourceIdentifier);
           context.setSinkId(sinkIdentifier);
-          context.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
+          context.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
 
           streams.put(sourceIdentifier, new ComponentContextPair<Stream<Object>, StreamContext>(stream, context));
           logger.debug("stored stream {} against key {}", stream, sourceIdentifier);
@@ -887,7 +896,7 @@ public class StramChild
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
-            context.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
+            context.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
 
             @SuppressWarnings("unchecked")
@@ -923,7 +932,7 @@ public class StramChild
               StreamContext context = new StreamContext(nidi.declaredStreamId);
               context.setSourceId(sourceIdentifier);
               context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
-              context.setStartingWindowId(ndi.checkpointWindowId > 0? ndi.checkpointWindowId + 1: 0); // TODO: next window after checkpoint
+              context.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
 
               Stream<Object> stream = new MuxStream();
               stream.setup(context);
@@ -1050,7 +1059,8 @@ public class StramChild
           }
           catch (Throwable ex) {
             logger.error("Node stopped abnormally because of exception", ex);
-          } finally {
+          }
+          finally {
             activeNodes.remove(ndi.id);
             node.getOperator().teardown();
             logger.info("deactivated {}", node.id);

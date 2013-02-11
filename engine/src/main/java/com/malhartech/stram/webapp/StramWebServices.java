@@ -7,6 +7,7 @@ package com.malhartech.stram.webapp;
 import com.google.inject.Inject;
 import com.malhartech.stram.StramAppContext;
 import com.malhartech.stram.StreamingContainerManager;
+import java.util.logging.Level;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -15,6 +16,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +38,8 @@ public class StramWebServices
   public static final String PATH_INFO = "info";
   public static final String PATH_OPERATORS = "operators";
   public static final String PATH_SHUTDOWN = "shutdown";
+  public static final String PATH_STARTRECORDING = "startRecording";
+  public static final String PATH_STOPRECORDING = "stopRecording";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
@@ -111,4 +115,44 @@ public class StramWebServices
     dagManager.shutdownAllContainers("Shutdown requested externally.");
     return new JSONObject();
   }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_STARTRECORDING)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject startRecording(JSONObject request)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      int operId = request.getInt("operId");
+      dagManager.startRecording(operId);
+    }
+    catch (JSONException ex) {
+      try {
+        response.put("error", ex.toString());
+      }
+      catch (JSONException ex1) {
+        java.util.logging.Logger.getLogger(StramWebServices.class.getName()).log(Level.SEVERE, null, ex1);
+      }
+    }
+    return response;
+  }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_STOPRECORDING)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject stopRecording(JSONObject request)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      int operId = request.getInt("operId");
+      dagManager.stopRecording(operId);
+    }
+    catch (JSONException ex) {
+      dagManager.stopAllRecordings();
+    }
+    return response;
+  }
+
 }
