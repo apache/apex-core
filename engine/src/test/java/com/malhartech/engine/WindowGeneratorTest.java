@@ -5,7 +5,6 @@ package com.malhartech.engine;
 
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.*;
-import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.stram.ManualScheduledExecutorService;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
@@ -14,7 +13,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,13 +144,11 @@ public class WindowGeneratorTest
             currentWindow.set(windowId);
             beginWindowCount.incrementAndGet();
             windowXor.set(windowXor.get() ^ windowId);
-            System.out.println("begin: " + Codec.getStringWindowId(windowId) + " (" + Codec.getStringWindowId(System.currentTimeMillis() / 1000) + ")");
             break;
 
           case END_WINDOW:
             endWindowCount.incrementAndGet();
             windowXor.set(windowXor.get() ^ windowId);
-            System.out.println("end  : " + Codec.getStringWindowId(windowId) + " (" + Codec.getStringWindowId(System.currentTimeMillis() / 1000) + ")");
             break;
 
           case RESET_WINDOW:
@@ -182,8 +178,6 @@ public class WindowGeneratorTest
     wg.deactivate();
     long lastWindowMillis = System.currentTimeMillis();
 
-
-    System.out.println("firstWindowMillis: " + firstWindowMillis + " lastWindowMillis: " + lastWindowMillis + " completed windows: " + endWindowCount.get());
     Assert.assertEquals("only last window open", currentWindow.get(), windowXor.get());
 
     long expectedCnt = (lastWindowMillis - firstWindowMillis) / windowWidth;
