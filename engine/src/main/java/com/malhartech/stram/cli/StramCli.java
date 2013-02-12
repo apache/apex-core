@@ -54,8 +54,6 @@ import org.slf4j.LoggerFactory;
  * </table>
  * <br>
  */
-
-
 public class StramCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
@@ -63,6 +61,18 @@ public class StramCli
   private final ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
   private String currentDir = "/";
+
+  protected ApplicationReport getApplication(int appSeq)
+  {
+    List<ApplicationReport> appList = getApplicationList();
+    for (ApplicationReport ar: appList) {
+      if (ar.getApplicationId().getId() == appSeq) {
+        return ar;
+      }
+    }
+
+    return null;
+  }
 
   private class CliException extends RuntimeException
   {
@@ -77,6 +87,7 @@ public class StramCli
     {
       super(msg);
     }
+
   }
 
   public StramCli() throws Exception
@@ -258,6 +269,7 @@ public class StramCli
         {
           return o1.getApplicationId().getId() - o2.getApplicationId().getId();
         }
+
       });
       System.out.println("Applications:");
       int totalCnt = 0;
@@ -370,15 +382,7 @@ public class StramCli
       currentDir = args[1];
     }
 
-    int appSeq = Integer.parseInt(args[1]);
-
-    List<ApplicationReport> appList = getApplicationList();
-    for (ApplicationReport ar: appList) {
-      if (ar.getApplicationId().getId() == appSeq) {
-        currentApp = ar;
-        break;
-      }
-    }
+    currentApp = getApplication(Integer.parseInt(args[1]));
     if (currentApp == null) {
       throw new CliException("Invalid application id: " + args[1]);
     }
@@ -503,18 +507,47 @@ public class StramCli
 
   private void killApp(String line)
   {
-    if (currentApp == null) {
-      throw new CliException("No application selected");
+    String[] args = StringUtils.splitByWholeSeparator(line, " ");
+    if (args.length == 1) {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      else {
+        try {
+          rmClient.killApplication(currentApp.getApplicationId());
+          currentDir = "/";
+          currentApp = null;
+        }
+        catch (YarnRemoteException e) {
+          throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
+        }
+      }
+
+      return;
     }
 
+    ApplicationReport app = null;
+    int i = 0;
     try {
-      rmClient.killApplication(currentApp.getApplicationId());
-      currentDir = "/";
-      currentApp = null;
+      while (++i < args.length) {
+        app = getApplication(Integer.parseInt(args[i]));
+        rmClient.killApplication(app.getApplicationId());
+        if (app == currentApp) {
+          currentDir = "/";
+          currentApp = null;
+        }
+      }
     }
     catch (YarnRemoteException e) {
-      throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
+      throw new CliException("Failed to kill " + app.getApplicationId() + ". Aborting killing of any additional applications.", e);
     }
+    catch (NumberFormatException nfe) {
+      throw new CliException("Invalid application Id " + args[i], nfe);
+    }
+    catch (NullPointerException npe) {
+      throw new CliException("Application with Id " + args[i] + " does not seem to be alive!", npe);
+    }
+
   }
 
   private void shutdownApp(String line)
@@ -564,6 +597,7 @@ public class StramCli
         }
         return false;
       }
+
     };
 
     try {
