@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.Context;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
@@ -55,11 +54,12 @@ public class TupleRecorder implements Operator
   {
     return sinks;
   }
-  
+
   /* defined for json information */
   public static class PortInfo
   {
     public String name;
+    public String streamName;
     public String type;
     public int id;
   }
@@ -96,24 +96,27 @@ public class TupleRecorder implements Operator
     metaFile = name;
   }
 
-  public void addInputPortInfo(String portName)
+  public void addInputPortInfo(String portName, String streamName)
   {
     PortInfo portInfo = new PortInfo();
     portInfo.name = portName;
+    portInfo.streamName = streamName;
     portInfo.type = "input";
     portInfo.id = nextPortIndex++;
     portMap.put(portName, portInfo);
   }
 
-  public void addOutputPortInfo(String portName)
+  public void addOutputPortInfo(String portName, String streamName)
   {
     PortInfo portInfo = new PortInfo();
     portInfo.name = portName;
+    portInfo.streamName = streamName;
     portInfo.type = "output";
     portInfo.id = nextPortIndex++;
     portMap.put(portName, portInfo);
   }
 
+  @Override
   public void teardown()
   {
     if (indexOs != null) {
@@ -134,6 +137,7 @@ public class TupleRecorder implements Operator
     }
   }
 
+  @Override
   public void setup(OperatorContext context)
   {
     try {
@@ -169,6 +173,7 @@ public class TupleRecorder implements Operator
     }
   }
 
+  @Override
   public void beginWindow(long windowId)
   {
     this.windowId = windowId;
@@ -189,6 +194,7 @@ public class TupleRecorder implements Operator
     }
   }
 
+  @Override
   public void endWindow()
   {
     try {
@@ -218,7 +224,7 @@ public class TupleRecorder implements Operator
       bos.write("\n".getBytes());
 
       PortInfo pi = portMap.get(port);
-      String str = "T:" + tupleCount + ":" + pi.id + ":" + bos.size() + ":";
+      String str = "T:" + pi.id + ":" + bos.size() + ":";
       fsOutput.write(str.getBytes());
       fsOutput.write(bos.toByteArray());
       fsOutput.hflush();
@@ -247,7 +253,9 @@ public class TupleRecorder implements Operator
     @Override
     public void process(Object payload)
     {
-      // if it's not a control tuple, then (payload instanceof Tuple) returns false
+      // *** if it's not a control tuple, then (payload instanceof Tuple) returns false
+      // In other words, if it's a regular tuple emitted by operators (payload), payload
+      // is not an instance of Tuple (confusing... I know)
       if (payload instanceof Tuple) {
         Tuple tuple = (Tuple)payload;
         switch (tuple.getType()) {
