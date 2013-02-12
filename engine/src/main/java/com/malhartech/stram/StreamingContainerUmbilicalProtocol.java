@@ -121,7 +121,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-          .append("applicationAttributes", this.applicationAttributes).toString();
+              .append("applicationAttributes", this.applicationAttributes).toString();
     }
   }
 
@@ -299,6 +299,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private int nodeId;
     private RequestType requestType;
     private long recoveryCheckpoint;
+    private String name;
 
     public int getNodeId() {
       return nodeId;
@@ -324,11 +325,20 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.recoveryCheckpoint = recoveryCheckpoint;
     }
 
+    public String getName() {
+      return name;
+    }
+
+    public void setName(String name) {
+      this.name = name;
+    }
+
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-          .append("nodeId", this.nodeId)
-          .append("requestType", this.requestType).toString();
+              .append("nodeId", this.nodeId)
+              .append("requestType", this.requestType)
+              .append("name", this.name).toString();
     }
   }
 
