@@ -5,10 +5,12 @@
 package com.malhartech.bufferserver;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.CodedOutputStream;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
+import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,7 +128,7 @@ public class ProtobufDataInspector implements DataIntrospector
    * @param offset The start offset of th region
    * @param length The size of the region in bytes
    */
-  public static void wipeData(byte[] bytes, int offset, int length)
+  public static void wipeData(byte[] bytes, int offset, int length) throws IOException
   {
     final int[] varIntCapacity = {
       (int)Math.pow(2, 7),
@@ -163,7 +165,7 @@ public class ProtobufDataInspector implements DataIntrospector
       }
 
       Message m = db.build();
-      System.arraycopy(m.toByteArray(), 0, bytes, offset, m.getSerializedSize());
+      m.writeTo(CodedOutputStream.newInstance(bytes, offset, m.getSerializedSize()));
     }
   }
 
