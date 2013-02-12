@@ -83,6 +83,8 @@ public class TupleRecorderTest
 
       ObjectMapper mapper = new ObjectMapper();
       line = is.readLine();
+      Assert.assertEquals("check version", "1.0", line);
+      line = is.readLine();
       PortInfo pi = mapper.readValue(line, PortInfo.class);
       Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).id, pi.id);
       Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).type, pi.type);
