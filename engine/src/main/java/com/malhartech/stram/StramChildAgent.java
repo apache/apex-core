@@ -206,6 +206,7 @@ public class StramChildAgent {
 
   public void addOperatorRequest(StramToNodeRequest r) {
     this.operatorRequests.add(r);
+    LOG.info("Adding operator request {} {}", container.containerId, r);
   }
 
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
