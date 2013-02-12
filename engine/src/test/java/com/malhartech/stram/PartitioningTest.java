@@ -127,6 +127,8 @@ public class PartitioningTest
       {4, 5}
     };
 
+    CollectorOperator.receivedTuples.clear();
+
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
     input.testTuples = new ArrayList<List<Integer>>();
     for (Integer[] tuples: testData) {
@@ -157,7 +159,6 @@ public class PartitioningTest
     List<Object> tuples = CollectorOperator.receivedTuples.get(merged.prefix + pmerged.id);
     Assert.assertNotNull("merged tuples " + pmerged, tuples);
     Assert.assertEquals("merged tuples " + pmerged, Sets.newHashSet(testData[0]), Sets.newHashSet(tuples));
-
   }
 
   public static class PartitionLoadWatch extends PhysicalPlan.PartitionLoadWatch
@@ -204,6 +205,7 @@ public class PartitioningTest
     DAG dag = new DAG();
 
     dag.getAttributes().attr(DAG.STRAM_STATS_HANDLER).set(PartitionLoadWatch.class.getName());
+    CollectorOperator.receivedTuples.clear();
 
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
     input.blockEndStream = true;
