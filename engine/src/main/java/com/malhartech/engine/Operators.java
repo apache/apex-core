@@ -5,7 +5,6 @@
 package com.malhartech.engine;
 
 import java.lang.reflect.Field;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import com.malhartech.annotation.InputPortFieldAnnotation;
