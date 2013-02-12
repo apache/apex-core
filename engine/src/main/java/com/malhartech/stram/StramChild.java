@@ -4,16 +4,15 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.Operator.Unifier;
-import com.malhartech.api.*;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.Operator.Port;
+import com.malhartech.api.Operator.Unifier;
+import com.malhartech.api.*;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.engine.*;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
+import com.malhartech.engine.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -655,12 +654,18 @@ public class StramChild
               HashMap<String, RecorderSink> sinkMap = new HashMap<String, RecorderSink>();
               PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
               for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
-                tupleRecorder.addInputPortInfo(entry.getKey());
-                sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                String streamId = getDeclaredStreamId(operatorId, entry.getKey());
+                if (streamId != null) {
+                  tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
+                  sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                }
               }
               for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
-                tupleRecorder.addOutputPortInfo(entry.getKey());
-                sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                String streamId = getDeclaredStreamId(operatorId, entry.getKey());
+                if (streamId != null) {
+                  tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
+                  sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                }
               }
               node.addSinks(sinkMap);
               tupleRecorder.setup(null);
@@ -892,13 +897,14 @@ public class StramChild
 
   /**
    * If the port is connected, find return the declared stream Id.
+   *
    * @param operatorId id of the operator to which the port belongs.
    * @param portname name of port to which the stream is connected.
    * @return Stream Id if connected, null otherwise.
    */
-  public final String getDeclaredStreamId(String operatorId, String portname)
+  public final String getDeclaredStreamId(int operatorId, String portname)
   {
-    String identifier = operatorId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(portname);
+    String identifier = String.valueOf(operatorId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(portname);
     ComponentContextPair<Stream<Object>, StreamContext> spair = streams.get(identifier);
     if (spair == null) {
       return null;
@@ -1037,7 +1043,7 @@ public class StramChild
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              logger.debug("got simple inline stream from {} to {} - {}", new Object[]{sourceIdentifier, sinkIdentifier, nidi});
+              logger.debug("got simple inline stream from {} to {} - {}", new Object[] {sourceIdentifier, sinkIdentifier, nidi});
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
             }
@@ -1046,7 +1052,7 @@ public class StramChild
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              logger.debug("got partitions on the inline stream from {} to {} - {}", new Object[]{sourceIdentifier, sinkIdentifier, nidi});
+              logger.debug("got partitions on the inline stream from {} to {} - {}", new Object[] {sourceIdentifier, sinkIdentifier, nidi});
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, s);
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);
