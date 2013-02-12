@@ -53,6 +53,11 @@ public class TupleRecorder implements Operator
     return recorderSink;
   }
 
+  HashMap<String, PortInfo> getPortInfoMap()
+  {
+    return portMap;
+  }
+  
   public HashMap<String, RecorderSink> getSinkMap()
   {
     return sinks;
