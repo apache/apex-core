@@ -6,16 +6,21 @@ package com.malhartech.stram;
 
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.*;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.api.Operator.Port;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.*;
+import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.TupleRecorder.RecorderSink;
 import com.malhartech.stream.*;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
@@ -77,6 +82,7 @@ public class StramChild
   private InetSocketAddress bufferServerAddress;
   private com.malhartech.bufferserver.Server bufferServer;
   private AttributeMap<DAGContext> applicationAttributes;
+  protected HashMap<Integer, TupleRecorder> tupleRecorders = new HashMap<Integer, TupleRecorder>();
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -635,16 +641,53 @@ public class StramChild
         break;
 
       case START_RECORDING:
-        //node.startRecording();
+        context.request(new OperatorContext.NodeRequest()
+        {
+          @Override
+          public void execute(Operator operator, int operatorId, long windowId) throws IOException
+          {
+            TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
+            if (tupleRecorder == null) {
+              tupleRecorder = new TupleRecorder();
+              // if i know the port object, put port object instead of string
+              HashMap<String, RecorderSink> sinkMap = new HashMap<String, RecorderSink>();
+              PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
+              for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
+                tupleRecorder.addInputPortInfo(entry.getKey());
+                sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+              }
+              for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
+                tupleRecorder.addOutputPortInfo(entry.getKey());
+                sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+              }
+              node.addSinks(sinkMap);
+              tupleRecorder.setup(null);
+              tupleRecorders.put(operatorId, tupleRecorder);
+            }
+          }
+
+        });
         break;
 
       case STOP_RECORDING:
-        //node.stopRecording();
+        context.request(new OperatorContext.NodeRequest()
+        {
+          @Override
+          public void execute(Operator operator, int operatorId, long windowId) throws IOException
+          {
+
+            TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
+            if (tupleRecorder != null) {
+              node.removeSinks(tupleRecorder.getSinkMap());
+              tupleRecorder.teardown();
+            }
+          }
+
+        });
         break;
 
       default:
-        logger.error(
-                "Unknown request from stram {}", snr);
+        logger.error("Unknown request from stram {}", snr);
     }
   }
 

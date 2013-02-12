@@ -7,11 +7,14 @@ package com.malhartech.engine;
 import com.malhartech.api.ActivationListener;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.api.Operator.Port;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
+import com.malhartech.stram.TupleRecorder.RecorderSink;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
@@ -55,6 +58,11 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public Operator getOperator()
   {
     return operator;
+  }
+
+  public PortMappingDescriptor getPortMappingDescriptor()
+  {
+    return descriptor;
   }
 
   public void connectOutputPort(String port, final Sink<Object> sink)
@@ -260,4 +268,13 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return alive;
   }
 
+  public void addSinks(HashMap<String, RecorderSink> sinkMap)
+  {
+    throw new UnsupportedOperationException("Not yet implemented");
+  }
+
+  public void removeSinks(HashMap<String, RecorderSink> sinkMap)
+  {
+    throw new UnsupportedOperationException("Not yet implemented");
+  }
 }

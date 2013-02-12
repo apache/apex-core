@@ -399,6 +399,7 @@ public class StreamingContainerManager implements PlanContext
         sca.lastCheckpointRequestMillis = currentTimeMillis;
       }
     }
+    /*
     ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = sca.getOperatorRequests();
     while (true) {
       StramToNodeRequest r = operatorRequests.poll();
@@ -408,6 +409,7 @@ public class StreamingContainerManager implements PlanContext
       requests.add(r);
     }
     rsp.nodeRequests = requests;
+    */
     return rsp;
   }
 
@@ -749,7 +751,7 @@ public class StreamingContainerManager implements PlanContext
     StramToNodeRequest request = new StramToNodeRequest();
     request.setNodeId(operId);
     request.setRequestType(RequestType.START_RECORDING);
-    container.addOperatorRequest(request);
+    //container.addOperatorRequest(request);
   }
 
   public void stopRecording(int operId)
@@ -761,7 +763,7 @@ public class StreamingContainerManager implements PlanContext
     StramToNodeRequest request = new StramToNodeRequest();
     request.setNodeId(operId);
     request.setRequestType(RequestType.STOP_RECORDING);
-    container.addOperatorRequest(request);
+    //container.addOperatorRequest(request);
   }
 
   public void stopAllRecordings()

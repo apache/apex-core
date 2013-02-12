@@ -175,7 +175,7 @@ public class StramChildAgent {
   DeployRequest pendingRequest = null;
 
   private final ConcurrentLinkedQueue<DeployRequest> requests = new ConcurrentLinkedQueue<DeployRequest>();
-  private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
+  //private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
 
   public StreamingContainerContext getInitContext() {
     //ContainerHeartbeatResponse rsp = pollRequest();
@@ -203,19 +203,19 @@ public class StramChildAgent {
     this.requests.add(r);
     LOG.info("Adding request {} {}"/*ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero*/, container.containerId, r);
   }
-
+/*
   public void addOperatorRequest(StramToNodeRequest r) {
     this.operatorRequests.add(r);
   }
-
+*/
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
     return this.requests;
   }
-
+/*
   protected ConcurrentLinkedQueue<StramToNodeRequest> getOperatorRequests() {
     return this.operatorRequests;
   }
-
+*/
   public ContainerHeartbeatResponse pollRequest() {
     ackPendingRequest();
     //LOG.debug("Number of pending requests for container {}: {}", this.container.containerId, requests.size());
