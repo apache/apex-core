@@ -123,6 +123,8 @@ public class StramChild
    * after exiting heartbeat loop, deactivate all modules and terminate
    * processing threads.
    *
+   * @param args
+   * @throws Throwable
    */
   public static void main(String[] args) throws Throwable
   {
@@ -289,7 +291,7 @@ public class StramChild
         for (String sinkId: sinkIds) {
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-            Node<?> n = nodes.get(nodeport[0]);
+            Node<?> n = nodes.get(Integer.parseInt(nodeport[0]));
             if (n instanceof UnifierNode) {
               n.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
             }
@@ -845,6 +847,23 @@ public class StramChild
     }
   }
 
+  /**
+   * If the port is connected, find return the declared stream Id.
+   * @param operatorId id of the operator to which the port belongs.
+   * @param portname name of port to which the stream is connected.
+   * @return Stream Id if connected, null otherwise.
+   */
+  public final String getDeclaredStreamId(String operatorId, String portname)
+  {
+    String identifier = operatorId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(portname);
+    ComponentContextPair<Stream<Object>, StreamContext> spair = streams.get(identifier);
+    if (spair == null) {
+      return null;
+    }
+
+    return spair.context.getId();
+  }
+
   private void deployInputStreams(List<OperatorDeployInfo> nodeList) throws Exception
   {
     // collect any input operators along with their smallest window id,
@@ -945,13 +964,13 @@ public class StramChild
                * Lets wire the MuxStream to upstream node.
                */
               String[] nodeport = sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR);
-              Node<?> upstreamNode = nodes.get(nodeport[0]);
+              Node<?> upstreamNode = nodes.get(Integer.parseInt(nodeport[0]));
               upstreamNode.connectOutputPort(nodeport[1], stream);
 
               Sink<Object> existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-                Node<?> anotherNode = nodes.get(np[0]);
+                Node<?> anotherNode = nodes.get(Integer.parseInt(np[0]));
                 existingSink = anotherNode.connectInputPort(np[1], stream);
 
                 /*
