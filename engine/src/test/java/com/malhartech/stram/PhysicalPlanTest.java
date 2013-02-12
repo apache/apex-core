@@ -573,6 +573,7 @@ public class PhysicalPlanTest {
       Assert.assertEquals("partition inputs " + p.inputs, 1, p.inputs.size());
       Assert.assertEquals("partition inputs " + p.inputs, pUnifier, p.inputs.get(0).source.source);
       Assert.assertEquals("input partition keys " + p.inputs, null, p.inputs.get(0).partitions);
+      Assert.assertTrue("partitioned unifier inline " + p.inputs.get(0).source, p.inputs.get(0).source.isDownStreamInline());
     }
 
   }
