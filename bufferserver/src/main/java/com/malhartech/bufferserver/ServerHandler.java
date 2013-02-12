@@ -7,9 +7,9 @@ package com.malhartech.bufferserver;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
-import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.Buffer.Payload;
 import com.malhartech.bufferserver.Buffer.Request;
+import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.SerializedData;
@@ -19,6 +19,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.*;
 import io.netty.util.AttributeKey;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -341,7 +342,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     }
   }
 
-  private synchronized void handlePurgeRequest(Buffer.Request request, ChannelHandlerContext ctx)
+  private synchronized void handlePurgeRequest(Buffer.Request request, ChannelHandlerContext ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
@@ -369,7 +370,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     return Unpooled.messageBuffer();
   }
 
-  private synchronized void handleResetRequest(Buffer.Request request, ChannelHandlerContext ctx)
+  private synchronized void handleResetRequest(Buffer.Request request, ChannelHandlerContext ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());

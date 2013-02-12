@@ -4,7 +4,9 @@
  */
 package com.malhartech.bufferserver.util;
 
+import com.google.protobuf.CodedOutputStream;
 import com.malhartech.bufferserver.Buffer.Message;
+import java.io.IOException;
 
 /**
  * Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying array.<p>
@@ -31,7 +33,7 @@ public final class SerializedData
    */
   public int size;
 
-  public static SerializedData getInstanceFrom(Message d)
+  public static SerializedData getInstanceFrom(Message d) throws IOException
   {
     SerializedData sd = new SerializedData();
     int size = d.getSerializedSize();
@@ -39,7 +41,7 @@ public final class SerializedData
     sd.offset = 0;
     sd.dataOffset = Codec.writeRawVarint32(size, sd.bytes, 0);
     sd.size = sd.dataOffset + d.getSerializedSize();
-    System.arraycopy(d.toByteArray(), 0, sd.bytes, sd.dataOffset, size);
+    d.writeTo(CodedOutputStream.newInstance(sd.bytes, sd.dataOffset, size));
     return sd;
   }
 

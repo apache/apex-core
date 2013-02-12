@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
+import com.google.protobuf.CodedOutputStream;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.Buffer.ResetWindow;
@@ -12,6 +13,8 @@ import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import com.malhartech.bufferserver.util.TupleFactory;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
@@ -34,7 +37,7 @@ public class DataList
   private volatile DataArray last;
   private Storage storage;
 
-  synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di)
+  synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di) throws IOException
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
 
@@ -63,6 +66,7 @@ public class DataList
     if (storage != null) {
       while (first != null) {
         if (first.uniqueIdentifier > 0) {
+          logger.debug("discarding {} {} in reset", identifier, first.uniqueIdentifier);
           storage.discard(identifier, first.uniqueIdentifier);
         }
         first = first.next;
@@ -90,6 +94,8 @@ public class DataList
       }
 
       if (storage != null && temp.uniqueIdentifier > 0) {
+        logger.debug("discarding {} {} in purge", identifier, temp.uniqueIdentifier);
+
         storage.discard(identifier, temp.uniqueIdentifier);
       }
 
@@ -107,6 +113,7 @@ public class DataList
 
   class DataArray
   {
+    private transient ByteArrayOutputStream output;
     /**
      * Any operation on this data array would need read or write lock here.
      */
@@ -269,7 +276,7 @@ public class DataList
       }
     }
 
-    public final void add(Message d)
+    public final void add(Message d) throws IOException
     {
       int size = d.getSerializedSize();
       if (writingOffset + 5 /* for max varint size */ + size > data.length /* this is a fast check */
@@ -333,7 +340,7 @@ public class DataList
       }
       else {
         writingOffset = Codec.writeRawVarint32(size, data, writingOffset);
-        System.arraycopy(d.toByteArray(), 0, data, writingOffset, size);
+        d.writeTo(CodedOutputStream.newInstance(data, writingOffset, size));
         writingOffset += size;
 
         switch (d.getType()) {
@@ -370,6 +377,8 @@ public class DataList
           public void run()
           {
             synchronized (DataArray.this) {
+                        logger.debug("retrieving {} {} in acquire", identifier, first.uniqueIdentifier);
+
               data = storage.retrieve(identifier, uniqueIdentifier);
               readingOffset = 0;
               writingOffset = data.length;
@@ -397,11 +406,13 @@ public class DataList
           {
             try {
               synchronized (DataArray.this) {
+
                 int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
                 if (i == 0) {
                   logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
                 }
                 else {
+                          logger.debug("stored {} {} in release", identifier, i);
                   uniqueIdentifier = i;
                   data = null;
                 }
@@ -455,7 +466,7 @@ public class DataList
     this.storage = storage;
   }
 
-  public final void add(Message d)
+  public final void add(Message d) throws IOException
   {
     last.add(d);
 

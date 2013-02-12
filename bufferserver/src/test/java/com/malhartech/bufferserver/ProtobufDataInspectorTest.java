@@ -7,6 +7,7 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
+import java.io.IOException;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -64,7 +65,7 @@ public class ProtobufDataInspectorTest
   }
 
   @Test
-  public void testWipeData_3args()
+  public void testWipeData_3args() throws IOException
   {
     System.out.println("wipeData");
     byte[] start = null;
