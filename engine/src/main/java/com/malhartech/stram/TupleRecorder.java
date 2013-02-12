@@ -32,8 +32,8 @@ public class TupleRecorder implements Operator
   public static final String VERSION = "1.0";
 
   private transient FSDataOutputStream fsOutput;
-  private FSDataOutputStream indexOs;
-  private int bytesPerFile;
+  private transient FSDataOutputStream indexOs;
+  private int bytesPerFile = 100*1024;
   private String basePath = ".";
   private transient String hdfsFile;
   private int fileParts = 0;
@@ -42,7 +42,7 @@ public class TupleRecorder implements Operator
   private transient long windowId;
   private String recordingName = "Untitled";
   private final long startTime = System.currentTimeMillis();
-  private FileSystem fs;
+  private transient FileSystem fs;
   private static int nextPortIndex = 0;
   private HashMap<String, RecorderSink> sinks = new HashMap<String, RecorderSink>();
 
@@ -98,7 +98,7 @@ public class TupleRecorder implements Operator
   {
     return startTime;
   }
-  
+
   public void addInputPortInfo(String portName, String streamName)
   {
     PortInfo portInfo = new PortInfo();
