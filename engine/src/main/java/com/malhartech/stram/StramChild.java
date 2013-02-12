@@ -614,7 +614,9 @@ public class StramChild
    */
   private void processStramRequest(OperatorContext context, final StramToNodeRequest snr)
   {
-    final Node<?> node = nodes.get(snr.getNodeId());
+    int operatorId = snr.getNodeId();
+    final Node<?> node = nodes.get(operatorId);
+    final String name = snr.getName();
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
         logger.warn("Ignoring stram request {}", snr);
@@ -642,55 +644,70 @@ public class StramChild
         break;
 
       case START_RECORDING:
-        context.request(new OperatorContext.NodeRequest()
-        {
-          @Override
-          public void execute(Operator operator, int operatorId, long windowId) throws IOException
+        if (!tupleRecorders.containsKey(operatorId)) {
+          context.request(new OperatorContext.NodeRequest()
           {
-            TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
-            if (tupleRecorder == null) {
-              tupleRecorder = new TupleRecorder();
-              // if i know the port object, put port object instead of string
-              HashMap<String, RecorderSink> sinkMap = new HashMap<String, RecorderSink>();
-              PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
-              for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
-                String streamId = getDeclaredStreamId(operatorId, entry.getKey());
-                if (streamId != null) {
-                  tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
-                  sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+            @Override
+            public void execute(Operator operator, int operatorId, long windowId) throws IOException
+            {
+              TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
+              if (tupleRecorder == null) {
+                tupleRecorder = new TupleRecorder();
+                if (!name.isEmpty()) {
+                  tupleRecorder.setRecordingName(name);
                 }
-              }
-              for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
-                String streamId = getDeclaredStreamId(operatorId, entry.getKey());
-                if (streamId != null) {
-                  tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
-                  sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                String basePath = "recordings/" + operatorId + "/" + containerId + "/" + tupleRecorder.getStartTime();
+                tupleRecorder.setBasePath(basePath);
+                HashMap<String, RecorderSink> sinkMap = new HashMap<String, RecorderSink>();
+                PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
+                for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
+                  String streamId = getDeclaredStreamId(operatorId, entry.getKey());
+                  if (streamId != null) {
+                    tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
+                    sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                  }
                 }
+                for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
+                  String streamId = getDeclaredStreamId(operatorId, entry.getKey());
+                  if (streamId != null) {
+                    tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
+                    sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                  }
+                }
+                node.addSinks(sinkMap);
+                tupleRecorder.setup(null);
+                tupleRecorders.put(operatorId, tupleRecorder);
               }
-              node.addSinks(sinkMap);
-              tupleRecorder.setup(null);
-              tupleRecorders.put(operatorId, tupleRecorder);
             }
-          }
 
-        });
+          });
+        }
+        else {
+          logger.error("(START_RECORDING) Operator id " + operatorId + " is already being recorded.");
+        }
+
         break;
 
       case STOP_RECORDING:
-        context.request(new OperatorContext.NodeRequest()
-        {
-          @Override
-          public void execute(Operator operator, int operatorId, long windowId) throws IOException
+        if (!tupleRecorders.containsKey(operatorId)) {
+          context.request(new OperatorContext.NodeRequest()
           {
+            @Override
+            public void execute(Operator operator, int operatorId, long windowId) throws IOException
+            {
 
-            TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
-            if (tupleRecorder != null) {
-              node.removeSinks(tupleRecorder.getSinkMap());
-              tupleRecorder.teardown();
+              TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
+              if (tupleRecorder != null) {
+                node.removeSinks(tupleRecorder.getSinkMap());
+                tupleRecorder.teardown();
+              }
             }
-          }
 
-        });
+          });
+        }
+        else {
+          logger.error("(STOP_RECORDING) Operator id " + operatorId + " is not being recorded.");
+        }
         break;
 
       default:
