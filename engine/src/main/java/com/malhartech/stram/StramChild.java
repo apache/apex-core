@@ -644,16 +644,20 @@ public class StramChild
         break;
 
       case START_RECORDING:
+        logger.debug("Received start recording request for " + operatorId);
+
         if (!tupleRecorders.containsKey(operatorId)) {
           context.request(new OperatorContext.NodeRequest()
           {
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
             {
+              logger.debug("Executing start recording request for " + operatorId);
+
               TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
               if (tupleRecorder == null) {
                 tupleRecorder = new TupleRecorder();
-                if (!name.isEmpty()) {
+                if (name != null && !name.isEmpty()) {
                   tupleRecorder.setRecordingName(name);
                 }
                 String basePath = "recordings/" + operatorId + "/" + containerId + "/" + tupleRecorder.getStartTime();
@@ -674,6 +678,7 @@ public class StramChild
                     sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
                   }
                 }
+                logger.debug("Started recording to base path " + basePath);
                 node.addSinks(sinkMap);
                 tupleRecorder.setup(null);
                 tupleRecorders.put(operatorId, tupleRecorder);
@@ -689,17 +694,21 @@ public class StramChild
         break;
 
       case STOP_RECORDING:
+        logger.debug("Received stop recording request for " + operatorId);
+
         if (!tupleRecorders.containsKey(operatorId)) {
           context.request(new OperatorContext.NodeRequest()
           {
             @Override
             public void execute(Operator operator, int operatorId, long windowId) throws IOException
             {
+              logger.debug("Executing stop recording request for " + operatorId);
 
               TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
               if (tupleRecorder != null) {
                 node.removeSinks(tupleRecorder.getSinkMap());
                 tupleRecorder.teardown();
+                logger.debug("Stopped recording for operator id " + operatorId);
               }
             }
 
