@@ -70,14 +70,14 @@ public class TupleRecorderTest
       Path path;
       FSDataInputStream is;
       String line;
-      path = new Path(recorder.getBasePath() + "index.txt");
+      path = new Path(recorder.getBasePath(), TupleRecorder.INDEX_FILE);
       fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
       line = is.readLine();
       //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
       Assert.assertEquals("check index", "B:1000:T:0:" + recorder.getBasePath() + "part0.txt", line);
 
-      path = new Path(recorder.getBasePath(), "meta.txt");
+      path = new Path(recorder.getBasePath(), TupleRecorder.META_FILE);
       fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
 
@@ -101,19 +101,19 @@ public class TupleRecorderTest
       Assert.assertEquals("port size", recorder.getPortInfoMap().size(), 4);
       line = is.readLine();
 
-      path = new Path(recorder.getBasePath() + "part0.txt");
+      path = new Path(recorder.getBasePath(), "part0.txt");
       fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
       line = is.readLine();
       Assert.assertEquals("check part0", "B:1000", line);
       line = is.readLine();
-      Assert.assertEquals("check part0 1", "T:0:0:31:{\"key\":\"speed\",\"value\":\"5m/h\"}", line);
+      Assert.assertEquals("check part0 1", "T:0:31:{\"key\":\"speed\",\"value\":\"5m/h\"}", line);
       line = is.readLine();
-      Assert.assertEquals("check part0 2", "T:1:2:31:{\"key\":\"speed\",\"value\":\"4m/h\"}", line);
+      Assert.assertEquals("check part0 2", "T:2:31:{\"key\":\"speed\",\"value\":\"4m/h\"}", line);
       line = is.readLine();
-      Assert.assertEquals("check part0 3", "T:2:1:31:{\"key\":\"speed\",\"value\":\"6m/h\"}", line);
+      Assert.assertEquals("check part0 3", "T:1:31:{\"key\":\"speed\",\"value\":\"6m/h\"}", line);
       line = is.readLine();
-      Assert.assertEquals("check part0 4", "T:3:3:31:{\"key\":\"speed\",\"value\":\"2m/h\"}", line);
+      Assert.assertEquals("check part0 4", "T:3:31:{\"key\":\"speed\",\"value\":\"2m/h\"}", line);
       line = is.readLine();
       Assert.assertEquals("check part0 5", "E:1000", line);
     }
