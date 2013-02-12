@@ -129,6 +129,8 @@ public class StramChild
    * after exiting heartbeat loop, deactivate all modules and terminate
    * processing threads.
    *
+   * @param args
+   * @throws Throwable
    */
   public static void main(String[] args) throws Throwable
   {
@@ -295,7 +297,7 @@ public class StramChild
         for (String sinkId: sinkIds) {
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-            Node<?> n = nodes.get(nodeport[0]);
+            Node<?> n = nodes.get(Integer.parseInt(nodeport[0]));
             if (n instanceof UnifierNode) {
               n.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
             }
@@ -888,6 +890,23 @@ public class StramChild
     }
   }
 
+  /**
+   * If the port is connected, find return the declared stream Id.
+   * @param operatorId id of the operator to which the port belongs.
+   * @param portname name of port to which the stream is connected.
+   * @return Stream Id if connected, null otherwise.
+   */
+  public final String getDeclaredStreamId(String operatorId, String portname)
+  {
+    String identifier = operatorId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(portname);
+    ComponentContextPair<Stream<Object>, StreamContext> spair = streams.get(identifier);
+    if (spair == null) {
+      return null;
+    }
+
+    return spair.context.getId();
+  }
+
   private void deployInputStreams(List<OperatorDeployInfo> nodeList) throws Exception
   {
     // collect any input operators along with their smallest window id,
@@ -988,13 +1007,13 @@ public class StramChild
                * Lets wire the MuxStream to upstream node.
                */
               String[] nodeport = sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR);
-              Node<?> upstreamNode = nodes.get(nodeport[0]);
+              Node<?> upstreamNode = nodes.get(Integer.parseInt(nodeport[0]));
               upstreamNode.connectOutputPort(nodeport[1], stream);
 
               Sink<Object> existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
-                Node<?> anotherNode = nodes.get(np[0]);
+                Node<?> anotherNode = nodes.get(Integer.parseInt(np[0]));
                 existingSink = anotherNode.connectInputPort(np[1], stream);
 
                 /*
@@ -1018,6 +1037,7 @@ public class StramChild
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
+              logger.debug("got simple inline stream from {} to {} - {}", new Object[]{sourceIdentifier, sinkIdentifier, nidi});
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
             }
@@ -1026,7 +1046,7 @@ public class StramChild
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-
+              logger.debug("got partitions on the inline stream from {} to {} - {}", new Object[]{sourceIdentifier, sinkIdentifier, nidi});
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, s);
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);

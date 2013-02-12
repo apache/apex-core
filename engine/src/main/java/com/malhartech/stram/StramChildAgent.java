@@ -328,15 +328,15 @@ public class StramChildAgent {
       OperatorDeployInfo ndi = nodeEntry.getKey();
       PTOperator node = nodeEntry.getValue();
       for (PTInput in : node.inputs) {
-        final StreamMeta streamDecl = in.logicalStream;
+        final StreamMeta streamMeta = in.logicalStream;
         // input from other node(s) OR input adapter
-        if (streamDecl.getSource() == null) {
+        if (streamMeta.getSource() == null) {
           throw new IllegalStateException("source is null: " + in);
         }
         PTOutput sourceOutput = in.source;
 
         InputDeployInfo inputInfo = new InputDeployInfo();
-        inputInfo.declaredStreamId = streamDecl.getId();
+        inputInfo.declaredStreamId = streamMeta.getId();
         inputInfo.portName = in.portName;
         inputInfo.sourceNodeId = sourceOutput.source.id;
         inputInfo.sourcePortName = sourceOutput.portName;
@@ -345,11 +345,11 @@ public class StramChildAgent {
           inputInfo.partitionMask = in.partitions.mask;
         }
 
-        if (streamDecl.isInline() && sourceOutput.source.container == node.container) {
+        if (streamMeta.isInline() && sourceOutput.source.container == node.container) {
           // inline input (both operators in same container and inline hint set)
-          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.id + "/" + streamDecl.getId());
+          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.id + "/" + streamMeta.getId());
           if (outputInfo == null) {
-            throw new IllegalStateException("Missing publisher for inline stream " + streamDecl);
+            throw new IllegalStateException("Missing publisher for inline stream " + streamMeta);
           }
         } else {
           // buffer server input
@@ -363,8 +363,8 @@ public class StramChildAgent {
           }
           inputInfo.bufferServerHost = addr.getHostName();
           inputInfo.bufferServerPort = addr.getPort();
-          if (streamDecl.getCodecClass() != null) {
-            inputInfo.serDeClassName = streamDecl.getCodecClass().getName();
+          if (streamMeta.getCodecClass() != null) {
+            inputInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
         }
         ndi.inputs.add(inputInfo);

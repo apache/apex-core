@@ -852,7 +852,11 @@ public class PhysicalPlan {
           // link to upstream output(s) for this stream
           for (PTOutput upstreamOut : upNode.outputs) {
             if (upstreamOut.logicalStream == streamDecl) {
-              PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, partitionKeys.get(inputEntry.getKey()), upstreamOut);
+              PartitionKeys pks = partitionKeys.get(inputEntry.getKey());
+              if (pOperator.upstreamMerge.containsKey(inputEntry.getKey())) {
+                pks = null; // partitions applied to unifier input
+              }
+              PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, pks, upstreamOut);
               pOperator.inputs.add(input);
             }
           }
