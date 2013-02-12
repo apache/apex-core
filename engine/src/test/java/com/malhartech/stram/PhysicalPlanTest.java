@@ -572,6 +572,7 @@ public class PhysicalPlanTest {
       PTOperator p = actualOperators.get(o2Meta.getId());
       Assert.assertEquals("partition inputs " + p.inputs, 1, p.inputs.size());
       Assert.assertEquals("partition inputs " + p.inputs, pUnifier, p.inputs.get(0).source.source);
+      Assert.assertEquals("input partition keys " + p.inputs, null, p.inputs.get(0).partitions);
     }
 
   }
