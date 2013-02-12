@@ -4,29 +4,12 @@
  */
 package com.malhartech.stram;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAGContext;
 import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DAG.StreamMeta;
+import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
@@ -48,7 +31,15 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -399,7 +390,6 @@ public class StreamingContainerManager implements PlanContext
         sca.lastCheckpointRequestMillis = currentTimeMillis;
       }
     }
-    /*
     ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = sca.getOperatorRequests();
     while (true) {
       StramToNodeRequest r = operatorRequests.poll();
@@ -409,7 +399,6 @@ public class StreamingContainerManager implements PlanContext
       requests.add(r);
     }
     rsp.nodeRequests = requests;
-    */
     return rsp;
   }
 
@@ -752,7 +741,7 @@ public class StreamingContainerManager implements PlanContext
     StramToNodeRequest request = new StramToNodeRequest();
     request.setNodeId(operId);
     request.setRequestType(RequestType.START_RECORDING);
-    //container.addOperatorRequest(request);
+    container.addOperatorRequest(request);
   }
 
   public void stopRecording(int operId)
@@ -764,7 +753,7 @@ public class StreamingContainerManager implements PlanContext
     StramToNodeRequest request = new StramToNodeRequest();
     request.setNodeId(operId);
     request.setRequestType(RequestType.STOP_RECORDING);
-    //container.addOperatorRequest(request);
+    container.addOperatorRequest(request);
   }
 
   public void stopAllRecordings()
