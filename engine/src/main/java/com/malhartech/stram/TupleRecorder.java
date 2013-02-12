@@ -27,26 +27,29 @@ import org.codehaus.jackson.map.ObjectMapper;
  */
 public class TupleRecorder implements Operator
 {
-  public transient FSDataOutputStream fsOutput;
-  public FSDataOutputStream indexOs;
-  public int bytesPerFile;
-  public String basePath = "";
-  public transient String hdfsFile;
-  public String indexFile = "index.txt";
-  public String metaFile = "meta.txt";
-  public int fileParts = 0;
-  public int tupleCount = 0;
-  public HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
-  public transient long windowId;
-  public RecordInfo recordInfo;
-  FileSystem fs;
-  protected static int nextPortIndex = 0;
-  protected HashMap<String, RecorderSink> sinks = new HashMap<String, RecorderSink>();
+  public static final String INDEX_FILE = "index.txt";
+  public static final String META_FILE = "meta.txt";
+  public static final String VERSION = "1.0";
+
+  private transient FSDataOutputStream fsOutput;
+  private FSDataOutputStream indexOs;
+  private int bytesPerFile;
+  private String basePath = ".";
+  private transient String hdfsFile;
+  private int fileParts = 0;
+  private int tupleCount = 0;
+  private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
+  private transient long windowId;
+  private String recordingName = "Untitled";
+  private final long startTime = System.currentTimeMillis();
+  private FileSystem fs;
+  private static int nextPortIndex = 0;
+  private HashMap<String, RecorderSink> sinks = new HashMap<String, RecorderSink>();
 
   RecorderSink newSink(String key)
   {
     RecorderSink recorderSink = new RecorderSink(key);
-    sinks.put(key,recorderSink);
+    sinks.put(key, recorderSink);
     return recorderSink;
   }
 
@@ -71,6 +74,11 @@ public class TupleRecorder implements Operator
     public String recordingName;
   }
 
+  public void setRecordingName(String recordingName)
+  {
+    this.recordingName = recordingName;
+  }
+
   public void setBytesPerFile(int bytes)
   {
     bytesPerFile = bytes;
@@ -86,16 +94,11 @@ public class TupleRecorder implements Operator
     return basePath;
   }
 
-  public void setIndexFile(String name)
+  public long getStartTime()
   {
-    indexFile = name;
+    return startTime;
   }
-
-  public void setMetaFile(String name)
-  {
-    metaFile = name;
-  }
-
+  
   public void addInputPortInfo(String portName, String streamName)
   {
     PortInfo portInfo = new PortInfo();
@@ -141,22 +144,22 @@ public class TupleRecorder implements Operator
   public void setup(OperatorContext context)
   {
     try {
-      Path pa = new Path(basePath + metaFile);
+      Path pa = new Path(basePath, META_FILE);
       fs = FileSystem.get(pa.toUri(), new Configuration());
       FSDataOutputStream metaOs = fs.create(pa);
 
       ObjectMapper mapper = new ObjectMapper();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      bos.write("1.0\n".getBytes());
+      bos.write((VERSION+"\n").getBytes());
 
       for (PortInfo pi: portMap.values()) {
         mapper.writeValue(bos, pi);
         bos.write("\n".getBytes());
       }
 
-      recordInfo = new RecordInfo();
-      recordInfo.startTime = System.currentTimeMillis();
-      recordInfo.recordingName = "somename";
+      RecordInfo recordInfo = new RecordInfo();
+      recordInfo.startTime = startTime;
+      recordInfo.recordingName = recordingName;
       mapper.writeValue(bos, recordInfo);
       bos.write("\n".getBytes());
 
@@ -164,7 +167,7 @@ public class TupleRecorder implements Operator
       metaOs.hflush();
       metaOs.close();
 
-      pa = new Path(basePath + indexFile);
+      pa = new Path(basePath, INDEX_FILE);
 //      indexOs = fs.create(pa, true, 10);
       indexOs = fs.create(pa);
     }
@@ -267,7 +270,8 @@ public class TupleRecorder implements Operator
             endWindow();
             break;
         }
-      } else {
+      }
+      else {
         writeTuple(payload, portName);
       }
     }
