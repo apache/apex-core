@@ -470,7 +470,7 @@ public class StreamingContainerManager implements PlanContext
         OperatorMeta lDownNode = targetPort.getOperatorWrapper();
         if (lDownNode != null) {
           List<PTOperator> downNodes = plan.getOperators(lDownNode);
-          for (PTOperator downNode : downNodes) {
+          for (PTOperator downNode: downNodes) {
             mergeOp = downNode.upstreamMerge.get(targetPort);
             if (mergeOp != null && !visited.contains(mergeOp)) {
               visited.add(mergeOp);
@@ -734,26 +734,30 @@ public class StreamingContainerManager implements PlanContext
 
   public void startRecording(int operId)
   {
-    StramChildAgent container = getContainerFromOperatorId(operId);
-    if (container == null) {
-      throw new NotFoundException("Operator ID "+operId+" not found");
+    ArrayList<StramChildAgent> matchedContainers = getContainersFromOperatorId(operId);
+    if (matchedContainers.isEmpty()) {
+      throw new NotFoundException("Operator ID " + operId + " not found");
     }
-    StramToNodeRequest request = new StramToNodeRequest();
-    request.setNodeId(operId);
-    request.setRequestType(RequestType.START_RECORDING);
-    container.addOperatorRequest(request);
+    for (StramChildAgent container: matchedContainers) {
+      StramToNodeRequest request = new StramToNodeRequest();
+      request.setNodeId(operId);
+      request.setRequestType(RequestType.START_RECORDING);
+      container.addOperatorRequest(request);
+    }
   }
 
   public void stopRecording(int operId)
   {
-    StramChildAgent container = getContainerFromOperatorId(operId);
-    if (container == null) {
-      throw new NotFoundException("Operator ID "+operId+" not found");
+    ArrayList<StramChildAgent> matchedContainers = getContainersFromOperatorId(operId);
+    if (matchedContainers.isEmpty()) {
+      throw new NotFoundException("Operator ID " + operId + " not found");
     }
-    StramToNodeRequest request = new StramToNodeRequest();
-    request.setNodeId(operId);
-    request.setRequestType(RequestType.STOP_RECORDING);
-    container.addOperatorRequest(request);
+    for (StramChildAgent container: matchedContainers) {
+      StramToNodeRequest request = new StramToNodeRequest();
+      request.setNodeId(operId);
+      request.setRequestType(RequestType.STOP_RECORDING);
+      container.addOperatorRequest(request);
+    }
   }
 
   public void stopAllRecordings()
@@ -764,13 +768,16 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  protected StramChildAgent getContainerFromOperatorId(int operatorId) {
+  protected ArrayList<StramChildAgent> getContainersFromOperatorId(int operatorId)
+  {
     // Thomas, please change it when you get a chance.  -- David
-    for (StramChildAgent container : containers.values()) {
+    ArrayList<StramChildAgent> retContainers = new ArrayList<StramChildAgent>();
+    for (StramChildAgent container: containers.values()) {
       if (container.operators.containsKey(operatorId)) {
-        return container;
+        retContainers.add(container);
       }
     }
-    return null;
+    return retContainers;
   }
+
 }
