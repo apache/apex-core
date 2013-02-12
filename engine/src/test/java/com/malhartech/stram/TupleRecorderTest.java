@@ -5,8 +5,9 @@
 package com.malhartech.stram;
 
 import com.malhartech.stram.TupleRecorder.PortInfo;
-import com.malhartech.stram.TupleRecorder.RecordInfo;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -70,53 +71,60 @@ public class TupleRecorderTest
       Path path;
       FSDataInputStream is;
       String line;
+      BufferedReader br;
+
       path = new Path(recorder.getBasePath(), TupleRecorder.INDEX_FILE);
       fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
-      line = is.readLine();
+      br = new BufferedReader(new InputStreamReader(is));
+
+      line = br.readLine();
       //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
       Assert.assertEquals("check index", "B:1000:T:0:" + recorder.getBasePath() + "part0.txt", line);
 
       path = new Path(recorder.getBasePath(), TupleRecorder.META_FILE);
       fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
+      br = new BufferedReader(new InputStreamReader(is));
 
       ObjectMapper mapper = new ObjectMapper();
-      line = is.readLine();
+      line = br.readLine();
       Assert.assertEquals("check version", "1.0", line);
-      line = is.readLine();
+      line = br.readLine();
       PortInfo pi = mapper.readValue(line, PortInfo.class);
       Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).id, pi.id);
       Assert.assertEquals("port1", recorder.getPortInfoMap().get(pi.name).type, pi.type);
-      line = is.readLine();
+      line = br.readLine();
       pi = mapper.readValue(line, PortInfo.class);
       Assert.assertEquals("port2", recorder.getPortInfoMap().get(pi.name).id, pi.id);
       Assert.assertEquals("port2", recorder.getPortInfoMap().get(pi.name).type, pi.type);
-      line = is.readLine();
+      line = br.readLine();
       pi = mapper.readValue(line, PortInfo.class);
       Assert.assertEquals("port3", recorder.getPortInfoMap().get(pi.name).id, pi.id);
       Assert.assertEquals("port3", recorder.getPortInfoMap().get(pi.name).type, pi.type);
-      line = is.readLine();
+      line = br.readLine();
       pi = mapper.readValue(line, PortInfo.class);
       Assert.assertEquals("port4", recorder.getPortInfoMap().get(pi.name).id, pi.id);
       Assert.assertEquals("port4", recorder.getPortInfoMap().get(pi.name).type, pi.type);
       Assert.assertEquals("port size", recorder.getPortInfoMap().size(), 4);
-      line = is.readLine();
+      //line = br.readLine();
 
       path = new Path(recorder.getBasePath(), "part0.txt");
       fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
-      line = is.readLine();
+      br = new BufferedReader(new InputStreamReader(is));
+
+      line = br.readLine();
       Assert.assertEquals("check part0", "B:1000", line);
-      line = is.readLine();
+      line = br.readLine();
       Assert.assertEquals("check part0 1", "T:0:31:{\"key\":\"speed\",\"value\":\"5m/h\"}", line);
-      line = is.readLine();
+      line = br.readLine();
       Assert.assertEquals("check part0 2", "T:2:31:{\"key\":\"speed\",\"value\":\"4m/h\"}", line);
-      line = is.readLine();
+      line = br.readLine();
       Assert.assertEquals("check part0 3", "T:1:31:{\"key\":\"speed\",\"value\":\"6m/h\"}", line);
-      line = is.readLine();
+      line = br.readLine();
       Assert.assertEquals("check part0 4", "T:3:31:{\"key\":\"speed\",\"value\":\"2m/h\"}", line);
-      line = is.readLine();
+      line = br.readLine();
       Assert.assertEquals("check part0 5", "E:1000", line);
     }
     catch (IOException ex) {
