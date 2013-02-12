@@ -331,7 +331,7 @@ public class StramChildAgent {
         final StreamMeta streamMeta = in.logicalStream;
         // input from other node(s) OR input adapter
         if (streamMeta.getSource() == null) {
-          throw new IllegalStateException("source is null: " + in);
+          throw new AssertionError("source is null: " + in);
         }
         PTOutput sourceOutput = in.source;
 
@@ -349,7 +349,7 @@ public class StramChildAgent {
           // inline input (both operators in same container and inline hint set)
           OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.id + "/" + streamMeta.getId());
           if (outputInfo == null) {
-            throw new IllegalStateException("Missing publisher for inline stream " + streamMeta);
+            throw new AssertionError("Missing publisher for inline stream " + streamMeta);
           }
         } else {
           // buffer server input
