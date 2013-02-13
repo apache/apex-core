@@ -530,6 +530,12 @@ public class StramChild
         if (backupWindowId != null) {
           hb.setLastBackupWindowId(backupWindowId);
         }
+        TupleRecorder tupleRecorder = tupleRecorders.get(e.getKey());
+        if (tupleRecorder == null) {
+          hb.setRecordingName(null);
+        } else {
+          hb.setRecordingName(tupleRecorder.getRecordingName());
+        }
         heartbeats.add(hb);
       }
       msg.setDnodeEntries(heartbeats);
@@ -644,7 +650,7 @@ public class StramChild
         break;
 
       case START_RECORDING:
-        logger.debug("Received start recording request for " + operatorId);
+        logger.debug("Received start recording request for " + operatorId + " with name " + name);
 
         if (!tupleRecorders.containsKey(operatorId)) {
           context.request(new OperatorContext.NodeRequest()

@@ -353,6 +353,7 @@ public class StreamingContainerManager implements PlanContext
           addCheckpoint(status.operator, shb.getLastBackupWindowId());
         }
       }
+      status.recordingName = shb.getRecordingName();
     }
 
     sca.lastHeartbeatMillis = currentTimeMillis;
@@ -718,6 +719,7 @@ public class StreamingContainerManager implements PlanContext
           ni.failureCount = os.operator.failureCount;
           ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
           ni.currentWindowId = os.currentWindowId & 0xFFFF;
+          ni.recordingName = os.recordingName;
         }
         else {
           // TODO: proper node status tracking
@@ -732,7 +734,7 @@ public class StreamingContainerManager implements PlanContext
     return nodeInfoList;
   }
 
-  public void startRecording(int operId)
+  public void startRecording(int operId, String name)
   {
     ArrayList<StramChildAgent> matchedContainers = getContainersFromOperatorId(operId);
     if (matchedContainers.isEmpty()) {
@@ -741,6 +743,7 @@ public class StreamingContainerManager implements PlanContext
     for (StramChildAgent container: matchedContainers) {
       StramToNodeRequest request = new StramToNodeRequest();
       request.setNodeId(operId);
+      request.setName(name);
       request.setRequestType(RequestType.START_RECORDING);
       container.addOperatorRequest(request);
     }

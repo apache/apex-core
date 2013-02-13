@@ -236,6 +236,16 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public void setLastBackupWindowId(long lastBackupWindowId) {
       this.lastBackupWindowId = lastBackupWindowId;
     }
+
+    private String recordingName;
+
+    public String getRecordingName() {
+      return recordingName;
+    }
+
+    public void setRecordingName(String recordingName) {
+      this.recordingName = recordingName;
+    }
   }
 
   /**
