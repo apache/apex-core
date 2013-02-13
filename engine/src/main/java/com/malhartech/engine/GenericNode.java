@@ -37,6 +37,18 @@ public class GenericNode extends Node<Operator>
   protected final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
   protected int deletionId;
 
+  @Override
+  public void addSinks(Map<String, Sink<Object>> sinks)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void removeSinks(Map<String, Sink<Object>> sinks)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
   protected abstract class Reservoir extends CircularBuffer<Object> implements Sink<Object>
   {
     protected int count;
@@ -51,10 +63,6 @@ public class GenericNode extends Node<Operator>
     @Override
     public final void process(Object payload)
     {
-      //if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
-      //  logger.info("process {} - {}", this, payload);
-      //}
-
       try {
         put(payload);
       }
@@ -91,14 +99,8 @@ public class GenericNode extends Node<Operator>
       for (int i = 1; i <= size; i++) {
         if (peekUnsafe() instanceof Tuple) {
           count += i;
-          //if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
-          //  logger.info("sweep {} - {}", this, peekUnsafe());
-          //}
           return (Tuple)peekUnsafe();
         }
-        //if ("8/Ratio:Division".equals(GenericNode.this.toString())) {
-        //  logger.info("sweep {} - {}", this, peekUnsafe());
-        //}
         sink.process(pollUnsafe());
       }
 
