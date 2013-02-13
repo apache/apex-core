@@ -169,8 +169,12 @@ public class PhysicalPlan {
           continue;
         }
         for (PTOperator downStreamNode : plan.getOperators(downStreamPort.getOperatorWrapper())) {
-          if (this.source.container != downStreamNode.container) {
-              return false;
+          for (PTInput input : downStreamNode.inputs) {
+            if (input.source == this) {
+              if (this.source.container != downStreamNode.container) {
+                  return false;
+              }
+            }
           }
         }
       }
