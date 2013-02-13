@@ -270,11 +270,11 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   public void addSinks(HashMap<String, RecorderSink> sinkMap)
   {
-    throw new UnsupportedOperationException("Not yet implemented");
+    //throw new UnsupportedOperationException("Not yet implemented");
   }
 
   public void removeSinks(HashMap<String, RecorderSink> sinkMap)
   {
-    throw new UnsupportedOperationException("Not yet implemented");
+    //throw new UnsupportedOperationException("Not yet implemented");
   }
 }
