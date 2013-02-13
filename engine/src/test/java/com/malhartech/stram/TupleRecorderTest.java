@@ -36,8 +36,10 @@ public class TupleRecorderTest
   public void testSomeMethod()
   {
     // skip this test for now
-    System.exit(0);
-    
+    if (true) {
+      return;
+    }
+
     try {
       TupleRecorder recorder = new TupleRecorder();
       recorder.setBytesPerFile(4096);
