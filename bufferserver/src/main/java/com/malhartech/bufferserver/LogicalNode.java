@@ -127,44 +127,50 @@ public class LogicalNode implements DataListener
     int intervalMillis;
 
 //    logger.debug("catching up {}->{}", upstream, group);
-    /*
-     * fast forward to catch up with the windowId without consuming
-     */
-    outer:
-    while (iterator.hasNext()) {
-      SerializedData data = iterator.next();
-      switch (iterator.getType()) {
-        case RESET_WINDOW:
-          Message resetWindow = (Message)iterator.getData();
-          baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
-          intervalMillis = resetWindow.getResetWindow().getWidth();
-          if (intervalMillis <= 0) {
-            logger.warn("Interval value set to non positive value = {}", intervalMillis);
-          }
-          GiveAll.getInstance().distribute(physicalNodes, data);
-          break;
 
-        case BEGIN_WINDOW:
-          logger.debug("{}->{} condition {} =? {}",
-                       new Object[] {
-                    upstream,
-                    group,
-                    Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
-                    Codec.getStringWindowId(windowId)
-                  });
-          if ((baseSeconds | iterator.getWindowId()) >= windowId) {
-            logger.debug("caught up {}->{}", upstream, group);
+    try {
+      /*
+       * fast forward to catch up with the windowId without consuming
+       */
+      outer:
+      while (iterator.hasNext()) {
+        SerializedData data = iterator.next();
+        switch (iterator.getType()) {
+          case RESET_WINDOW:
+            Message resetWindow = (Message)iterator.getData();
+            baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
+            intervalMillis = resetWindow.getResetWindow().getWidth();
+            if (intervalMillis <= 0) {
+              logger.warn("Interval value set to non positive value = {}", intervalMillis);
+            }
             GiveAll.getInstance().distribute(physicalNodes, data);
-            caughtup = true;
-            break outer;
-          }
-          break;
+            break;
 
-        case CHECKPOINT:
-        case CODEC_STATE:
-          GiveAll.getInstance().distribute(physicalNodes, data);
-          break;
+          case BEGIN_WINDOW:
+            logger.debug("{}->{} condition {} =? {}",
+                         new Object[] {
+                      upstream,
+                      group,
+                      Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
+                      Codec.getStringWindowId(windowId)
+                    });
+            if ((baseSeconds | iterator.getWindowId()) >= windowId) {
+              logger.debug("caught up {}->{}", upstream, group);
+              GiveAll.getInstance().distribute(physicalNodes, data);
+              caughtup = true;
+              break outer;
+            }
+            break;
+
+          case CHECKPOINT:
+          case CODEC_STATE:
+            GiveAll.getInstance().distribute(physicalNodes, data);
+            break;
+        }
       }
+    }
+    catch (InterruptedException ie) {
+      throw new RuntimeException(ie);
     }
 
     if (iterator.hasNext()) {
@@ -179,58 +185,63 @@ public class LogicalNode implements DataListener
   public synchronized void dataAdded()
   {
     if (caughtup) {
-      /*
-       * consume as much data as you can before running out of steam
-       */
-      if (partitions.isEmpty()) {
-        while (iterator.hasNext()) {
-          SerializedData data = iterator.next();
-          switch (iterator.getType()) {
-            case PAYLOAD:
-              policy.distribute(physicalNodes, data);
-              break;
+      try {
+        /*
+         * consume as much data as you can before running out of steam
+         */
+        if (partitions.isEmpty()) {
+          while (iterator.hasNext()) {
+            SerializedData data = iterator.next();
+            switch (iterator.getType()) {
+              case PAYLOAD:
+                policy.distribute(physicalNodes, data);
+                break;
 
-            case NO_MESSAGE:
-            case NO_MESSAGE_ODD:
-              break;
+              case NO_MESSAGE:
+              case NO_MESSAGE_ODD:
+                break;
 
-            case RESET_WINDOW:
-              Message resetWindow = (Message)iterator.getData();
-              baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
+              case RESET_WINDOW:
+                Message resetWindow = (Message)iterator.getData();
+                baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
 
-            default:
-              GiveAll.getInstance().distribute(physicalNodes, data);
-              break;
+              default:
+                GiveAll.getInstance().distribute(physicalNodes, data);
+                break;
+            }
+          }
+        }
+        else {
+          while (iterator.hasNext()) {
+            SerializedData data = iterator.next();
+            switch (iterator.getType()) {
+              case PAYLOAD:
+                int value = ((Message)iterator.getData()).getPayload().getPartition();
+                for (BitVector bv: partitions) {
+                  if (bv.matches(value)) {
+                    policy.distribute(physicalNodes, data);
+                    break;
+                  }
+                }
+                break;
+
+              case NO_MESSAGE:
+              case NO_MESSAGE_ODD:
+                break;
+
+              case RESET_WINDOW:
+                Message resetWindow = (Message)iterator.getData();
+                baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
+
+              default:
+                GiveAll.getInstance().distribute(physicalNodes, data);
+                break;
+            }
           }
         }
       }
-      else {
-        while (iterator.hasNext()) {
-          SerializedData data = iterator.next();
-          switch (iterator.getType()) {
-            case PAYLOAD:
-              int value = ((Message)iterator.getData()).getPayload().getPartition();
-              for (BitVector bv: partitions) {
-                if (bv.matches(value)) {
-                  policy.distribute(physicalNodes, data);
-                  break;
-                }
-              }
-              break;
-
-            case NO_MESSAGE:
-            case NO_MESSAGE_ODD:
-              break;
-
-            case RESET_WINDOW:
-              Message resetWindow = (Message)iterator.getData();
-              baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
-
-            default:
-              GiveAll.getInstance().distribute(physicalNodes, data);
-              break;
-          }
-        }
+      catch (InterruptedException ie) {
+        throw new RuntimeException(ie);
       }
     }
     else {

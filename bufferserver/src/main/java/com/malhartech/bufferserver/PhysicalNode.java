@@ -7,6 +7,8 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.util.SerializedData;
 import com.malhartech.bufferserver.util.WaitingChannelFutureListener;
 import io.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -14,12 +16,11 @@ import io.netty.channel.Channel;
  */
 public class PhysicalNode
 {
-  public static final int BUFFER_SIZE = 64 * 1024;
+  public static final int BUFFER_SIZE = 512 * 1024;
   private int writtenBytes;
   private final long starttime;
   private final Channel channel;
   private long processedMessageCount;
-
 
   /**
    *
@@ -50,42 +51,18 @@ public class PhysicalNode
     return System.currentTimeMillis() - starttime;
   }
 
-  final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
   /**
    *
    * @param d
    */
-  public void send(SerializedData d)
+  public void send(SerializedData d) throws InterruptedException
   {
-    if (BUFFER_SIZE - writtenBytes > d.size) {
-      channel.write(d);
-      writtenBytes += d.size;
+    if (BUFFER_SIZE - writtenBytes < d.size) {
+      channel.flush().await(15);
+      writtenBytes = 0;
     }
-    else {
-      synchronized (wcfl) {
-        if (wcfl.isAdded()) {
-          try {
-            wcfl.wait();
-            if (d.size < BUFFER_SIZE) {
-              channel.write(d);
-            }
-            else {
-              wcfl.setAdded(true);
-              channel.write(d).addListener(wcfl);
-            }
-          }
-          catch (InterruptedException ex) {
-            throw new RuntimeException(ex);
-          }
-        }
-        else {
-          wcfl.setAdded(true);
-          channel.write(d).addListener(wcfl);
-        }
-
-        writtenBytes = d.size;
-      }
-    }
+    channel.write(d);
+    writtenBytes += d.size;
     processedMessageCount++;
   }
 
@@ -135,4 +112,6 @@ public class PhysicalNode
   {
     return channel;
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(PhysicalNode.class);
 }
