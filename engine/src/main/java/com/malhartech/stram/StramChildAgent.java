@@ -56,7 +56,7 @@ public class StramChildAgent {
   public static class DeployRequest {
     final AtomicInteger ackCountdown;
     final AtomicInteger executeWhenZero;
-    private List<PTOperator> nodes;
+    private List<PTOperator> deployOperators;
 
     public DeployRequest(AtomicInteger ackCountdown, AtomicInteger executeWhenZero) {
       this.ackCountdown = ackCountdown;
@@ -74,15 +74,19 @@ public class StramChildAgent {
       ackCountdown.decrementAndGet();
     }
 
-    void setNodes(List<PTOperator> nodes) {
-      this.nodes = nodes;
+    void setOperators(List<PTOperator> operators) {
+      this.deployOperators = operators;
+    }
+
+    List<PTOperator> getOperators() {
+      return this.deployOperators;
     }
 
     @Override
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-        .append("operators", this.nodes)
+        .append("operators", this.deployOperators)
         //.append("streams", this.streams)
         .append("executeWhenZero", this.executeWhenZero)
         .toString();
@@ -178,10 +182,6 @@ public class StramChildAgent {
   private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
 
   public StreamingContainerContext getInitContext() {
-    //ContainerHeartbeatResponse rsp = pollRequest();
-    //if (rsp != null && rsp.deployRequest != null) {
-    //  initCtx.nodeList = rsp.deployRequest;
-    //}
     return initCtx;
   }
 
@@ -245,12 +245,12 @@ public class StramChildAgent {
 
     this.pendingRequest = r;
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
-    if (r.nodes != null) {
+    if (r.deployOperators != null) {
       if (r instanceof UndeployRequest) {
-        List<OperatorDeployInfo> nodeList = getDeployInfoList(r.nodes);
+        List<OperatorDeployInfo> nodeList = getDeployInfoList(r.deployOperators);
         rsp.undeployRequest = nodeList;
       } else {
-        List<OperatorDeployInfo> nodeList = getDeployInfoList(r.nodes);
+        List<OperatorDeployInfo> nodeList = getDeployInfoList(r.deployOperators);
         rsp.deployRequest = nodeList;
       }
     }
