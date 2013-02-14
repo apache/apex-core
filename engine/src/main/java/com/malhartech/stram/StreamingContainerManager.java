@@ -720,7 +720,7 @@ public class StreamingContainerManager implements PlanContext
     for (StramChildAgent container: this.containers.values()) {
       Set<PTOperator> deploying = Collections.emptySet();
       DeployRequest dr = container.pendingRequest;
-      if ((dr = container.pendingRequest) != null) {
+      if (dr != null && dr.getOperators() != null) {
         // show appropriate operator status
         deploying = Sets.newHashSet(dr.getOperators());
       }
