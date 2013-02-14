@@ -82,7 +82,7 @@ public class TupleRecorder implements Operator
   {
     return recordingName;
   }
-  
+
   public void setRecordingName(String recordingName)
   {
     this.recordingName = recordingName;

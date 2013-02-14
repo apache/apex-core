@@ -72,6 +72,7 @@ public class StramChild
   private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
   private String checkpointFsPath;
+  private String appPath;
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
@@ -99,6 +100,7 @@ public class StramChild
     windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
 
     this.checkpointFsPath = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_DIR, "checkpoint-dfs-path-not-configured");
+    this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
 
     try {
       if (ctx.deployBufferServer) {
@@ -666,7 +668,7 @@ public class StramChild
                 if (name != null && !name.isEmpty()) {
                   tupleRecorder.setRecordingName(name);
                 }
-                String basePath = "recordings/" + operatorId + "/" + containerId + "/" + tupleRecorder.getStartTime();
+                String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
                 tupleRecorder.setBasePath(basePath);
                 HashMap<String, RecorderSink> sinkMap = new HashMap<String, RecorderSink>();
                 PortMappingDescriptor descriptor = node.getPortMappingDescriptor();

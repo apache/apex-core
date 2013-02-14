@@ -164,6 +164,9 @@ public class StramCli
         else if (line.startsWith("stoprecording")) {
           stopRecording(line);
         }
+        else if (line.startsWith("getapppath")) {
+          getAppPath(null);
+        }
         else if ("exit".equals(line)) {
           System.out.println("Exiting application");
           return;
@@ -429,6 +432,13 @@ public class StramCli
     }
 
     System.out.println(json.toString(2));
+  }
+
+  private void getAppPath(String[] argv) throws JSONException
+  {
+    ClientResponse rsp = getResource(StramWebServices.PATH_APPPATH);
+    JSONObject json = rsp.getEntity(JSONObject.class);
+    System.out.println(json.toString());
   }
 
   private void launchApp(String line, ConsoleReader reader)
