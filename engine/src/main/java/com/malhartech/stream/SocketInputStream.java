@@ -73,7 +73,7 @@ public abstract class SocketInputStream<T> extends ChannelInboundMessageHandlerA
   @Override
   public void deactivate()
   {
-    channel.close().awaitUninterruptibly();
+    channel.close();
     bootstrap.shutdown();
   }
 }
