@@ -12,11 +12,10 @@ import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.Builder;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.bufferserver.util.WaitingChannelFutureListener;
 import com.malhartech.engine.ResetWindowTuple;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,14 +47,14 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
     }
     else {
       synchronized (wcfl) {
-        if (wcfl.added) {
+        if (wcfl.isAdded()) {
           try {
             wcfl.wait();
             if (d.getSerializedSize() < BUFFER_SIZE) {
               channel.write(d);
             }
             else {
-              wcfl.added = true;
+              wcfl.setAdded(true);
               channel.write(d).addListener(wcfl);
             }
           }
@@ -64,26 +63,13 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
           }
         }
         else {
-          wcfl.added = true;
+          wcfl.setAdded(true);
           channel.write(d).addListener(wcfl);
         }
 
         writtenBytes = d.getSerializedSize();
       }
     }
-  }
-
-  class WaitingChannelFutureListener implements ChannelFutureListener
-  {
-    volatile boolean added;
-
-    @Override
-    public synchronized void operationComplete(ChannelFuture future) throws Exception
-    {
-      added = false;
-      notify();
-    }
-
   }
 
   final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
@@ -165,6 +151,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
 
   /**
    *
+   * @param context
    */
   @Override
   public void activate(StreamContext context)
