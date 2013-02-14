@@ -461,7 +461,7 @@ public class StreamingContainerManager implements PlanContext
   {
     long maxCheckpoint = operator.getRecentCheckpoint();
 
-    Map<DAG.OutputPortMeta, PTOperator> mergeOps = plan.getMergeOperators(operator.logicalNode);
+    //Map<DAG.OutputPortMeta, PTOperator> mergeOps = plan.getMergeOperators(operator.logicalNode);
 
     // find smallest most recent subscriber checkpoint
     for (PTOutput out: operator.outputs) {
