@@ -13,7 +13,7 @@ import java.util.Set;
  * Implements load balancing by sending the tuple to the least busy partition<p>
  * <br>
  * Basic load balancing policy. Extends the base class {@link com.malhartech.bufferserver.policy.AbstractPolicy}<br>
- * 
+ *
  * @author chetan
  */
 public class LeastBusy extends AbstractPolicy
@@ -22,7 +22,7 @@ public class LeastBusy extends AbstractPolicy
   static final LeastBusy instance = new LeastBusy();
 
   /**
-   * 
+   *
    * @return {@link com.malhartech.bufferserver.policy.LeastBusy}
    */
   public static LeastBusy getInstance()
@@ -38,13 +38,13 @@ public class LeastBusy extends AbstractPolicy
   }
 
   /**
-   * 
+   *
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
-   * 
+   *
    */
   @Override
-  public void distribute(Set<PhysicalNode> nodes, SerializedData data)
+  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     PhysicalNode theOne = null;
 
