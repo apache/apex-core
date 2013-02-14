@@ -20,7 +20,6 @@ public class PhysicalNode
   private final Channel channel;
   private long processedMessageCount;
 
-
   /**
    *
    * @param channel
@@ -51,41 +50,19 @@ public class PhysicalNode
   }
 
   final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
+
   /**
    *
    * @param d
    */
-  public void send(SerializedData d)
+  public void send(SerializedData d) throws InterruptedException
   {
-    if (BUFFER_SIZE - writtenBytes > d.size) {
-      channel.write(d);
-      writtenBytes += d.size;
+    if (BUFFER_SIZE - writtenBytes < d.size) {
+      channel.flush().await(15);
+      writtenBytes = 0;
     }
-    else {
-      synchronized (wcfl) {
-        if (wcfl.isAdded()) {
-          try {
-            wcfl.wait();
-            if (d.size < BUFFER_SIZE) {
-              channel.write(d);
-            }
-            else {
-              wcfl.setAdded(true);
-              channel.write(d).addListener(wcfl);
-            }
-          }
-          catch (InterruptedException ex) {
-            throw new RuntimeException(ex);
-          }
-        }
-        else {
-          wcfl.setAdded(true);
-          channel.write(d).addListener(wcfl);
-        }
-
-        writtenBytes = d.size;
-      }
-    }
+    channel.write(d);
+    writtenBytes += d.size;
     processedMessageCount++;
   }
 
@@ -135,4 +112,5 @@ public class PhysicalNode
   {
     return channel;
   }
+
 }
