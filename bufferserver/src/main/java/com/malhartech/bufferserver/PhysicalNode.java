@@ -7,6 +7,8 @@ package com.malhartech.bufferserver;
 import com.malhartech.bufferserver.util.SerializedData;
 import com.malhartech.bufferserver.util.WaitingChannelFutureListener;
 import io.netty.channel.Channel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -58,6 +60,7 @@ public class PhysicalNode
   public void send(SerializedData d) throws InterruptedException
   {
     if (BUFFER_SIZE - writtenBytes < d.size) {
+      logger.info("since wrote {} bytes - waiting now", writtenBytes);
       channel.flush().await(15);
       writtenBytes = 0;
     }
@@ -113,4 +116,5 @@ public class PhysicalNode
     return channel;
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(PhysicalNode.class);
 }
