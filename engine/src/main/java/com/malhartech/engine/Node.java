@@ -79,42 +79,22 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         outputs.remove(port);
       }
       else {
-        /*
-         * if streams implemented CounterSink, this would not get called.
-         */
-        CounterSink<Object> cs = new CounterSink<Object>()
-        {
-          int count;
-
-          @Override
-          public void process(Object tuple)
-          {
-            count++;
-            sink.process(tuple);
-          }
-
-          @Override
-          public int getCount()
-          {
-            return count;
-          }
-
-          @Override
-          public int resetCount()
-          {
-            int ret = count;
-            count = 0;
-            return ret;
-          }
-
-        };
+        InternalCounterSink cs = new InternalCounterSink(sink);
         outputPort.setSink(cs);
         outputs.put(port, cs);
       }
     }
   }
 
+  public void addOutputSinks(Map<String, Sink<Object>> sinks)
+  {
+  }
+
   public abstract Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink);
+
+  public abstract void addSinks(Map<String, Sink<Object>> sinks);
+
+  public abstract void removeSinks(Map<String, Sink<Object>> sinks);
 
   OperatorContext context;
 
@@ -146,7 +126,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public void deactivate()
   {
     alive = false;
-    //logger.info("deactivated", new Exception());
   }
 
   @Override
@@ -277,4 +256,38 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     //throw new UnsupportedOperationException("Not yet implemented");
   }
+
+  public static class InternalCounterSink implements CounterSink<Object>
+  {
+    int count;
+    private final Sink<Object> sink;
+
+    public InternalCounterSink(Sink<Object> sink)
+    {
+      this.sink = sink;
+    }
+
+    @Override
+    public void process(Object tuple)
+    {
+      count++;
+      sink.process(tuple);
+    }
+
+    @Override
+    public int getCount()
+    {
+      return count;
+    }
+
+    @Override
+    public int resetCount()
+    {
+      int ret = count;
+      count = 0;
+      return ret;
+    }
+
+  }
+
 }

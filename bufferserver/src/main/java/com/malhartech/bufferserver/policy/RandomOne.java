@@ -18,11 +18,11 @@ import java.util.Set;
 public class RandomOne extends AbstractPolicy
 {
 
-    
+
   static final RandomOne instance = new RandomOne();
 
   /**
-   * 
+   *
    * @return {@link com.malhartech.bufferserver.policy.RandomOne}
    */
   public static RandomOne getInstance()
@@ -38,18 +38,18 @@ public class RandomOne extends AbstractPolicy
   }
 
   /**
-   * 
+   *
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    */
   @Override
-  public void distribute(Set<PhysicalNode> nodes, SerializedData data)
+  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     int count = (int) (Math.random() * nodes.size());
-    /* 
+    /*
      * Should look at accessing nodes within the Set as array. Will save iteration through all the
      * physical nodes.
-     * 
+     *
      */
     for (PhysicalNode node : nodes) {
       if (count-- == 0) {

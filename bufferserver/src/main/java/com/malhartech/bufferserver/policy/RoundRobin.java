@@ -35,7 +35,7 @@ public class RoundRobin extends AbstractPolicy
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    */
   @Override
-  public void distribute(Set<PhysicalNode> nodes, SerializedData data)
+  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     int size = nodes.size();
     if (size > 0) { // why do i need to do this check? synchronization issues? because if there is no one interested, the logical group should not exist!

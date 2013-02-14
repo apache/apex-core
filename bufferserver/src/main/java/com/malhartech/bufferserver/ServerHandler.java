@@ -328,11 +328,13 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
   {
     if (cause instanceof java.nio.channels.ClosedChannelException) {
+      logger.info("Channel was closed by client {}", ctx.channel());
     }
     else if (cause instanceof java.io.IOException) {
+      logger.info("IO Exception on channel {}", ctx.channel());
     }
     else {
-      logger.info("unexpected exception", cause);
+      logger.info("unexpected exception {} on {}", cause, cause);
     }
 
     try {

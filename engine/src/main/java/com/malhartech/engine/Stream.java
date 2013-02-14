@@ -13,6 +13,7 @@ import com.malhartech.api.Sink;
  * Base interface for all streams in the streaming platform<p>
  * <br>
  *
+ * @param <T> type of the object which are carried by this stream
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 /*
@@ -23,4 +24,5 @@ public interface Stream<T> extends Component<StreamContext>, ActivationListener<
   public boolean isMultiSinkCapable();
 
   public void setSink(String sinkId, Sink<T> sink);
+
 }

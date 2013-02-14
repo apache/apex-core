@@ -34,6 +34,8 @@ import java.util.Map.Entry;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSError;
 import org.apache.hadoop.ipc.RPC;
@@ -595,12 +597,19 @@ public class StramChild
       }
       catch (Exception e) {
         logger.error("deploy request failed due to {}", e);
-        // report it to stram
+        // TODO: report it to stram?
+        try {
+          umbilical.log(this.containerId, "deploy request failed: " + rsp.deployRequest + " " + ExceptionUtils.getStackTrace(e));
+        } catch (IOException ioe) {
+          // ignore
+        }
+        this.exitHeartbeatLoop = true;
+        throw new IllegalStateException("Deploy request failed: " + rsp.deployRequest, e);
       }
     }
 
     if (rsp.nodeRequests != null) {
-      // extended processing per node
+      // processing of per operator requests
       for (StramToNodeRequest req: rsp.nodeRequests) {
         OperatorContext nc = activeNodes.get(req.getNodeId());
         if (nc == null) {

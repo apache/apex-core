@@ -308,13 +308,14 @@ public class StramChildAgent {
         portInfo.declaredStreamId = streamDecl.getId();
         portInfo.portName = out.portName;
 
-        if (!(streamDecl.isInline() && out.isDownStreamInline())) {
+        if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
           portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
           if (streamDecl.getCodecClass() != null) {
             portInfo.serDeClassName = streamDecl.getCodecClass().getName();
           }
         } else {
+          LOG.debug("Inline stream {}", out);
           // target set below
           //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
         }

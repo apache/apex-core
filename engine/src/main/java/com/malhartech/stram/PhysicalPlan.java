@@ -116,6 +116,7 @@ public class PhysicalPlan {
       this.partitions = partitions;
       this.source = source;
       this.portName = portName;
+      this.source.sinks.add(this);
     }
 
     /**
@@ -143,6 +144,7 @@ public class PhysicalPlan {
     final PTComponent source;
     final String portName;
     final PhysicalPlan plan;
+    final List<PTInput> sinks;
 
     /**
      * Constructor
@@ -154,6 +156,7 @@ public class PhysicalPlan {
       this.logicalStream = logicalStream;
       this.source = source;
       this.portName = portName;
+      this.sinks = new ArrayList<PTInput>();
     }
 
     /**
@@ -162,13 +165,18 @@ public class PhysicalPlan {
      * @return boolean
      */
     protected boolean isDownStreamInline() {
-      StreamMeta logicalStream = this.logicalStream;
+//      StreamMeta logicalStream = this.logicalStream;
+/*
       for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
         if (downStreamPort.getAttributes().attrValue(PortContext.PARTITION_PARALLEL,  false)) {
           // other ports, if any, determine whether stream is inline or not
           continue;
         }
         for (PTOperator downStreamNode : plan.getOperators(downStreamPort.getOperatorWrapper())) {
+          PTOperator mergeOp = downStreamNode.upstreamMerge.get(downStreamPort);
+          if (mergeOp != null) {
+            downStreamNode = mergeOp;
+          }
           for (PTInput input : downStreamNode.inputs) {
             if (input.source == this) {
               if (this.source.container != downStreamNode.container) {
@@ -176,6 +184,12 @@ public class PhysicalPlan {
               }
             }
           }
+        }
+      }
+*/
+      for (PTInput sink : this.sinks) {
+        if (this.source.container != sink.target.container) {
+          return false;
         }
       }
       return true;
@@ -917,6 +931,8 @@ public class PhysicalPlan {
             for (PTInput sinkIn : sinkNode.inputs) {
               if (sinkIn.source.source != node) {
                 newInputs.add(sinkIn);
+              } else {
+                sinkIn.source.sinks.remove(sinkIn);
               }
             }
             sinkNode.inputs = newInputs;
