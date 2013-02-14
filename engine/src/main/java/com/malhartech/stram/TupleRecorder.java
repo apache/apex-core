@@ -42,7 +42,7 @@ public class TupleRecorder implements Operator
   private transient long windowId;
   private String recordingName = "Untitled";
   private final long startTime = System.currentTimeMillis();
-  private static int nextPortIndex = 0;
+  private int nextPortIndex = 0;
   private HashMap<String, RecorderSink> sinks = new HashMap<String, RecorderSink>();
   private transient long endWindowTuplesProcessed = 0;
 
