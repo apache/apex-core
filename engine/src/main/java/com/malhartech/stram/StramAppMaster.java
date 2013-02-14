@@ -151,8 +151,10 @@ public class StramAppMaster
     @Override
     public String getApplicationName()
     {
-      // TODO get from the app master env / ClientRMProtocol
-      return "TODO: application name";
+      if (dag != null) {
+        return dag.getAttributes().attr(DAG.STRAM_APPNAME).get();
+      }
+      return "unknown";
     }
 
     @Override
@@ -164,8 +166,7 @@ public class StramAppMaster
     @Override
     public CharSequence getUser()
     {
-      // TODO get from the app master env / ClientRMProtocol
-      return "TODO: user";
+      return System.getenv(ApplicationConstants.Environment.USER.toString());
     }
 
     @Override
@@ -273,7 +274,7 @@ public class StramAppMaster
 
     if (dag != null) {
       try {
-        LOG.info("Topology: {}", dag.toString());
+        LOG.info("DAG: {}", dag.toString());
       }
       catch (Exception e) {
         LOG.error("Error dumping topology.", e);

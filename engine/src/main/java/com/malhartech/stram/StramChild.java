@@ -582,12 +582,14 @@ public class StramChild
       }
       catch (Exception e) {
         logger.error("deploy request failed due to {}", e);
-        // report it to stram
+        // TODO: report it to stram?
+        this.exitHeartbeatLoop = true;
+        throw new IllegalStateException("Deploy request failed: " + rsp.deployRequest, e);
       }
     }
 
     if (rsp.nodeRequests != null) {
-      // extended processing per node
+      // processing of per operator requests
       for (StramToNodeRequest req: rsp.nodeRequests) {
         OperatorContext nc = activeNodes.get(req.getNodeId());
         if (nc == null) {

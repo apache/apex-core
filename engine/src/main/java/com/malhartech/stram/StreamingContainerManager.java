@@ -465,6 +465,7 @@ public class StreamingContainerManager implements PlanContext
 
     // find smallest most recent subscriber checkpoint
     for (PTOutput out: operator.outputs) {
+      /*
       PTOperator mergeOp = mergeOps.get(out.logicalStream.getSource());
       if (mergeOp != null && !visited.contains(mergeOp)) {
         visited.add(mergeOp);
@@ -494,6 +495,15 @@ public class StreamingContainerManager implements PlanContext
             maxCheckpoint = Math.min(maxCheckpoint, downNode.recoveryCheckpoint);
           }
         }
+      }
+      */
+      for (PhysicalPlan.PTInput sink : out.sinks) {
+        PTOperator sinkOperator = (PTOperator)sink.target;
+        if (!visited.contains(sinkOperator)) {
+          // downstream traversal
+          updateRecoveryCheckpoints(sinkOperator, visited);
+        }
+        maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.recoveryCheckpoint);
       }
     }
 
@@ -563,8 +573,7 @@ public class StreamingContainerManager implements PlanContext
       }
       // purge stream state when using buffer server
       for (PTOutput out: operator.outputs) {
-        final StreamMeta streamDecl = out.logicalStream;
-        if (!(streamDecl.isInline() && out.isDownStreamInline())) {
+        if (!out.isDownStreamInline()) {
           // following needs to match the concat logic in StramChild
           String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
           // purge everything from buffer server prior to new checkpoint
@@ -659,7 +668,7 @@ public class StreamingContainerManager implements PlanContext
       for (PTOperator operator: e.getValue()) {
         for (PTOutput out: operator.outputs) {
           final StreamMeta streamDecl = out.logicalStream;
-          if (!(streamDecl.isInline() && out.isDownStreamInline())) {
+          if (!out.isDownStreamInline()) {
             // following needs to match the concat logic in StramChild
             String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
             // TODO: find way to mock this when testing rest of logic
