@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  */
 public class PhysicalNode
 {
-  public static final int BUFFER_SIZE = 64 * 1024;
+  public static final int BUFFER_SIZE = 512 * 1024;
   private int writtenBytes;
   private final long starttime;
   private final Channel channel;
@@ -51,8 +51,6 @@ public class PhysicalNode
     return System.currentTimeMillis() - starttime;
   }
 
-  final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
-
   /**
    *
    * @param d
@@ -60,7 +58,6 @@ public class PhysicalNode
   public void send(SerializedData d) throws InterruptedException
   {
     if (BUFFER_SIZE - writtenBytes < d.size) {
-      logger.info("since wrote {} bytes - waiting now", writtenBytes);
       channel.flush().await(15);
       writtenBytes = 0;
     }
