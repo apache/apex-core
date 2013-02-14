@@ -44,6 +44,7 @@ public class TupleRecorder implements Operator
   private final long startTime = System.currentTimeMillis();
   private static int nextPortIndex = 0;
   private HashMap<String, RecorderSink> sinks = new HashMap<String, RecorderSink>();
+  private transient long endWindowTuplesProcessed = 0;
 
   RecorderSink newSink(String key)
   {
@@ -161,16 +162,16 @@ public class TupleRecorder implements Operator
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       bos.write((VERSION + "\n").getBytes());
 
-      for (PortInfo pi: portMap.values()) {
-        mapper.writeValue(bos, pi);
-        bos.write("\n".getBytes());
-      }
-
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
       recordInfo.recordingName = recordingName;
       mapper.writeValue(bos, recordInfo);
       bos.write("\n".getBytes());
+
+      for (PortInfo pi: portMap.values()) {
+        mapper.writeValue(bos, pi);
+        bos.write("\n".getBytes());
+      }
 
       metaOs.write(bos.toByteArray());
       metaOs.hflush();
@@ -188,42 +189,47 @@ public class TupleRecorder implements Operator
   @Override
   public void beginWindow(long windowId)
   {
-    this.windowId = windowId;
-    try {
-      if (fsOutput == null || fsOutput.getPos() > bytesPerFile) {
-        hdfsFile = basePath + "part" + fileParts + ".txt";
-        Path path = new Path(hdfsFile);
-        fsOutput = fs.create(path);
-        fileParts++;
-        indexOs.write(("B:" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
-        indexOs.hflush();
+    if (this.windowId != windowId) {
+      this.windowId = windowId;
+      endWindowTuplesProcessed = 0;
+      try {
+        if (fsOutput == null || fsOutput.getPos() > bytesPerFile) {
+          hdfsFile = "part" + fileParts + ".txt";
+          Path path = new Path(basePath, hdfsFile);
+          fsOutput = fs.create(path);
+          fileParts++;
+          indexOs.write(("B:" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
+          indexOs.hflush();
+        }
+        fsOutput.write(("B:" + windowId + "\n").getBytes());
+        fsOutput.hflush();
       }
-      fsOutput.write(("B:" + windowId + "\n").getBytes());
-      fsOutput.hflush();
-    }
-    catch (IOException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      catch (IOException ex) {
+        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      }
     }
   }
 
   @Override
   public void endWindow()
   {
-    try {
-      fsOutput.write(("E:" + windowId + "\n").getBytes());
-      fsOutput.hflush();
-      if (fsOutput.getPos() > bytesPerFile) {
-        fsOutput.close();
+    if (++endWindowTuplesProcessed == portMap.size()) {
+      try {
+        fsOutput.write(("E:" + windowId + "\n").getBytes());
+        fsOutput.hflush();
+        if (fsOutput.getPos() > bytesPerFile) {
+          fsOutput.close();
+        }
       }
-    }
-    catch (JsonGenerationException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
-    }
-    catch (JsonMappingException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
-    }
-    catch (IOException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      catch (JsonGenerationException ex) {
+        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      }
+      catch (JsonMappingException ex) {
+        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      }
+      catch (IOException ex) {
+        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      }
     }
   }
 

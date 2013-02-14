@@ -13,10 +13,10 @@ import org.apache.hadoop.yarn.event.EventHandler;
 
 
 /**
- * 
+ *
  * Context interface for sharing information across components in YARN App<p>
  * <br>
- * 
+ *
  */
 @InterfaceAudience.Private
 public interface StramAppContext {
@@ -29,10 +29,12 @@ public interface StramAppContext {
 
   long getStartTime();
 
+  String getApplicationPath();
+
   CharSequence getUser();
 
   Clock getClock();
-  
+
   EventHandler<?> getEventHandler();
 
   ClusterInfo getClusterInfo();

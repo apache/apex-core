@@ -63,6 +63,7 @@ public class StramWebServicesTest extends JerseyTest {
   static class TestAppContext implements StramAppContext {
     final ApplicationAttemptId appAttemptID;
     final ApplicationId appID;
+    final String appPath = "/testPath";
     final String userId = "testUser";
     final long startTime = System.currentTimeMillis();
 
@@ -86,6 +87,12 @@ public class StramWebServicesTest extends JerseyTest {
     @Override
     public ApplicationId getApplicationID() {
       return appID;
+    }
+
+    @Override
+    public String getApplicationPath()
+    {
+      return appPath;
     }
 
     @Override

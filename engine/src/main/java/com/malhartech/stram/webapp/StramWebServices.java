@@ -40,7 +40,6 @@ public class StramWebServices
   public static final String PATH_SHUTDOWN = "shutdown";
   public static final String PATH_STARTRECORDING = "startRecording";
   public static final String PATH_STOPRECORDING = "stopRecording";
-  public static final String PATH_APPPATH = "appPath";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
@@ -125,7 +124,7 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     try {
-      int operId = request.getInt("operId");
+      int operId = Integer.valueOf(request.getString("operId"));
       String name = request.optString("name");
       dagManager.startRecording(operId, name);
     }
@@ -155,17 +154,6 @@ public class StramWebServices
       dagManager.stopAllRecordings();
     }
     return response;
-  }
-
-  @GET
-  @Path(PATH_APPPATH)
-  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public String getAppPath() throws Exception
-  {
-    init();
-    //LOG.info("DAGManager: {}", dagManager);
-    String appPath = dagManager.getAppPath();
-    return appPath;
   }
 
 }

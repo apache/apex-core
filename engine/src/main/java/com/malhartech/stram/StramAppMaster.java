@@ -151,14 +151,25 @@ public class StramAppMaster
     @Override
     public String getApplicationName()
     {
-      // TODO get from the app master env / ClientRMProtocol
-      return "TODO: application name";
+      if (dag != null) {
+        return dag.getAttributes().attr(DAG.STRAM_APPNAME).get();
+      }
+      return "unknown";
     }
 
     @Override
     public long getStartTime()
     {
       return startTime;
+    }
+
+    @Override
+    public String getApplicationPath()
+    {
+      if (dag != null) {
+        return dag.getAttributes().attr(DAG.STRAM_APP_PATH).get();
+      }
+      return "unknown";
     }
 
     @Override

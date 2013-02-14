@@ -61,7 +61,6 @@ public class StreamingContainerManager implements PlanContext
   private final AttributeMap<DAGContext> appAttributes;
   private final int checkpointIntervalMillis;
   private final String checkpointFsPath;
-  private final String appPath;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
@@ -87,7 +86,6 @@ public class StreamingContainerManager implements PlanContext
     appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).setIfAbsent(30000);
     this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).get();
     this.heartbeatTimeoutMillis = appAttributes.attrValue(DAG.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
-    this.appPath = appAttributes.attr(DAG.STRAM_APP_PATH).get();
 
     AtomicInteger startupCountDown = new AtomicInteger(plan.getContainers().size());
     // request initial containers
@@ -771,11 +769,6 @@ public class StreamingContainerManager implements PlanContext
     for (StramChildAgent container: this.containers.values()) {
       // TBD
     }
-  }
-
-  public String getAppPath()
-  {
-    return appPath;
   }
 
   protected ArrayList<StramChildAgent> getContainersFromOperatorId(int operatorId)
