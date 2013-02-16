@@ -5,8 +5,12 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.*;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.util.AttributeMap;
+import com.malhartech.util.AttributeMap.AttributeKey;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
+import io.netty.util.Attribute;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.Assert;
@@ -71,9 +75,9 @@ public class GenericNodeTest
 
   @Test
   @SuppressWarnings("SleepWhileInLoop")
-  public void testSomeMethod() throws InterruptedException
+  public void testSynchingLogic() throws InterruptedException
   {
-    long sleeptime = 20L;
+    long sleeptime = 25L;
     final ArrayList<Object> list = new ArrayList<Object>();
     GenericOperator go = new GenericOperator();
     final GenericNode gn = new GenericNode("GenericNode", go);
@@ -87,11 +91,26 @@ public class GenericNodeTest
 
     };
 
+    AttributeMap<PortContext> attributes = new AttributeMap<PortContext>() {
+
+      @Override
+      public <T> Attribute<T> attr(AttributeKey<PortContext, T> key)
+      {
+        return null;
+      }
+
+      @Override
+      public <T> T attrValue(AttributeKey<PortContext, T> key, T defaultValue)
+      {
+        return defaultValue;
+      }
+
+    };
     @SuppressWarnings("unchecked")
-    Sink<Object> input1 = gn.connectInputPort("ip1", output);
+    Sink<Object> input1 = gn.connectInputPort("ip1", attributes, output);
     @SuppressWarnings("unchecked")
-    Sink<Object> input2 = gn.connectInputPort("ip2", output);
-    gn.connectOutputPort("op", output);
+    Sink<Object> input2 = gn.connectInputPort("ip2", attributes, output);
+    gn.connectOutputPort("op", attributes, output);
 
     final AtomicBoolean ab = new AtomicBoolean(false);
     Thread t = new Thread()

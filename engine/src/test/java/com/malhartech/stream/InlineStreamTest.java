@@ -4,8 +4,11 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.*;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.engine.*;
 import com.malhartech.util.AttributeMap;
+import com.malhartech.util.AttributeMap.AttributeKey;
+import io.netty.util.Attribute;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,7 +22,6 @@ import org.slf4j.LoggerFactory;
  */
 public class InlineStreamTest
 {
-  private static final Logger LOG = LoggerFactory.getLogger(InlineStreamTest.class);
   private Object prev;
 
   @Test
@@ -41,9 +43,24 @@ public class InlineStreamTest
     InlineStream stream = new InlineStream();
     stream.setup(streamContext);
 
-    node1.connectOutputPort("output", stream);
+    AttributeMap<PortContext> attributes = new AttributeMap<PortContext>()
+    {
+      @Override
+      public <T> Attribute<T> attr(AttributeKey<PortContext, T> key)
+      {
+        return null;
+      }
 
-    Sink s = node2.connectInputPort("input", stream);
+      @Override
+      public <T> T attrValue(AttributeKey<PortContext, T> key, T defaultValue)
+      {
+        return defaultValue;
+      }
+
+    };
+    node1.connectOutputPort("output", attributes, stream);
+
+    Sink s = node2.connectInputPort("input", attributes, stream);
     stream.setSink("node2.input", s);
 
     Sink<Object> sink = new Sink<Object>()
@@ -79,16 +96,18 @@ public class InlineStreamTest
           }
         }
       }
-    };
-    node2.connectOutputPort("output", sink);
 
-    sink = node1.connectInputPort("input", new Sink()
+    };
+    node2.connectOutputPort("output", attributes, sink);
+
+    sink = node1.connectInputPort("input", attributes, new Sink()
     {
       @Override
       public void process(Object tuple)
       {
         throw new UnsupportedOperationException("Not supported yet.");
       }
+
     });
 
     sink.process(StramTestSupport.generateBeginWindowTuple("irrelevant", 0));
@@ -128,6 +147,7 @@ public class InlineStreamTest
 
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
+
   final AtomicInteger counter = new AtomicInteger(0);
 
   private void launchNodeThread(final Node node, final Map<Integer, Node> activeNodes)
@@ -143,6 +163,7 @@ public class InlineStreamTest
         node.activate(ctx);
         activeNodes.remove(ctx.getId());
       }
+
     };
 
     Thread launchThread = new Thread(nodeRunnable);
@@ -161,6 +182,7 @@ public class InlineStreamTest
       {
         output.emit(tuple);
       }
+
     };
     public final DefaultOutputPort<T> output = new DefaultOutputPort(this);
     private boolean logMessages = false;
@@ -174,5 +196,7 @@ public class InlineStreamTest
     {
       this.logMessages = logMessages;
     }
+
   }
+
 }

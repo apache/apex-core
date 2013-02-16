@@ -4,8 +4,10 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Sink;
+import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -27,7 +29,7 @@ public class InputNode extends Node<InputOperator>
   }
 
   @Override
-  public Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink)
+  public Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, Sink<? extends Object> sink)
   {
     if (Node.INPUT.equals(port)) {
       return new Sink<Object>()
@@ -134,7 +136,6 @@ public class InputNode extends Node<InputOperator>
 
     if (insideWindow) {
       operator.endWindow();
-      //emitEndWindow();
     }
   }
 

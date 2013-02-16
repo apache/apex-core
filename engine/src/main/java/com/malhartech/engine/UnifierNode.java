@@ -4,8 +4,10 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.Sink;
+import com.malhartech.util.AttributeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,12 +20,11 @@ public class UnifierNode extends GenericNode
   private static final Logger logger = LoggerFactory.getLogger(UnifierNode.class);
   final Unifier<Object> unifier;
 
-  private class MergeReservoir extends Reservoir
+  private class MergeReservoir extends AbstractReservoir
   {
-
-    MergeReservoir(String portname)
+    MergeReservoir(String portname, int bufferSize, int spinMillis)
     {
-      super(portname);
+      super(portname, bufferSize, spinMillis);
     }
 
     @Override
@@ -52,12 +53,12 @@ public class UnifierNode extends GenericNode
   }
 
   @Override
-  public Sink<Object> connectInputPort(String port, Sink<? extends Object> sink)
+  public Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, Sink<? extends Object> sink)
   {
     MergeReservoir retvalue;
 
     if (sink == null) {
-      Reservoir reservoir = inputs.remove(port);
+      AbstractReservoir reservoir = inputs.remove(port);
       if (reservoir != null) {
         inputs.put(port.concat(".").concat(String.valueOf(deletionId++)), reservoir);
         reservoir.process(new EndStreamTuple());
@@ -66,7 +67,9 @@ public class UnifierNode extends GenericNode
       retvalue = null;
     }
     else {
-      inputs.put(port, retvalue = new MergeReservoir(port));
+      inputs.put(port, retvalue = new MergeReservoir(port,
+                                                     attributes == null ? 1024 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024 * 1024),
+                                                     attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15)));
     }
 
     return retvalue;

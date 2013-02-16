@@ -295,11 +295,11 @@ public class StramChild
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
             Node<?> n = nodes.get(Integer.parseInt(nodeport[0]));
             if (n instanceof UnifierNode) {
-              n.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
+              n.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null, null);
             }
             else if (n != null) {
               // check why null pointer exception gets thrown here during shutdown! - chetan
-              n.connectInputPort(nodeport[1], null);
+              n.connectInputPort(nodeport[1], null, null);
             }
           }
           else if (stream.isMultiSinkCapable()) {
@@ -331,10 +331,10 @@ public class StramChild
           if (Integer.toString(nodeid).equals(nodeport[0])) {
             stream.setSink(sinkIds[i], null);
             if (node instanceof UnifierNode) {
-              node.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null);
+              node.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null, null);
             }
             else {
-              node.connectInputPort(nodeport[1], null);
+              node.connectInputPort(nodeport[1], null, null);
             }
             sinkIds[i] = null;
           }
@@ -383,7 +383,7 @@ public class StramChild
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
       chosen1.setSink(Integer.toString(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), null);
-      node.connectInputPort(Node.INPUT, null);
+      node.connectInputPort(Node.INPUT, null, null);
 
       int count = 0;
       for (WindowGenerator wg: generators.values()) {
@@ -843,7 +843,7 @@ public class StramChild
         }
 
         if (!streams.containsKey(sourceIdentifier)) {
-          node.connectOutputPort(nodi.portName, stream);
+          node.connectOutputPort(nodi.portName, nodi.contextAttributes, stream);
 
           context.setSourceId(sourceIdentifier);
           context.setSinkId(sinkIdentifier);
@@ -932,7 +932,7 @@ public class StramChild
             stream.setup(context);
             logger.debug("deployed buffer input stream {}", stream);
 
-            Sink<Object> s = node.connectInputPort(nidi.portName, stream);
+            Sink<Object> s = node.connectInputPort(nidi.portName, nidi.contextAttributes, stream);
             stream.setSink(sinkIdentifier,
                            ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(stream, sinkIdentifier, s, ndi.checkpointWindowId) : s);
 
@@ -945,11 +945,11 @@ public class StramChild
 
             Sink<Object> s;
             if (streamSinkId == null) {
-              s = node.connectInputPort(nidi.portName, pair.component);
+              s = node.connectInputPort(nidi.portName, nidi.contextAttributes, pair.component);
               pair.context.setSinkId(sinkIdentifier);
             }
             else if (pair.component.isMultiSinkCapable()) {
-              s = node.connectInputPort(nidi.portName, pair.component);
+              s = node.connectInputPort(nidi.portName, nidi.contextAttributes, pair.component);
               pair.context.setSinkId(streamSinkId.concat(", ").concat(sinkIdentifier));
             }
             else {
@@ -965,7 +965,7 @@ public class StramChild
               Stream<Object> stream = new MuxStream();
               stream.setup(context);
               logger.debug("deployed input mux stream {}", stream);
-              s = node.connectInputPort(nidi.portName, stream);
+              s = node.connectInputPort(nidi.portName, nidi.contextAttributes, stream);
               streams.put(sourceIdentifier, new ComponentContextPair<Stream<Object>, StreamContext>(stream, context));
               logger.debug("stored input stream {} against key {}", stream, sourceIdentifier);
 
@@ -974,13 +974,13 @@ public class StramChild
                */
               String[] nodeport = sourceIdentifier.split(NODE_PORT_SPLIT_SEPARATOR);
               Node<?> upstreamNode = nodes.get(Integer.parseInt(nodeport[0]));
-              upstreamNode.connectOutputPort(nodeport[1], stream);
+              upstreamNode.connectOutputPort(nodeport[1], nidi.contextAttributes, stream);
 
               Sink<Object> existingSink;
               if (pair.component instanceof InlineStream) {
                 String[] np = streamSinkId.split(NODE_PORT_SPLIT_SEPARATOR);
                 Node<?> anotherNode = nodes.get(Integer.parseInt(np[0]));
-                existingSink = anotherNode.connectInputPort(np[1], stream);
+                existingSink = anotherNode.connectInputPort(np[1], nidi.contextAttributes, stream); // the context object here is probably wrong
 
                 /*
                  * we do not need to do this but looks bad if leave it in limbo.
@@ -1028,7 +1028,7 @@ public class StramChild
         generators.put(ndi.id, windowGenerator);
 
         Node<?> node = nodes.get(ndi.id);
-        Sink<Object> s = node.connectInputPort(Node.INPUT, windowGenerator);
+        Sink<Object> s = node.connectInputPort(Node.INPUT, null, windowGenerator);
         windowGenerator.setSink(Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT),
                                 ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(windowGenerator, Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT), s, ndi.checkpointWindowId) : s);
       }

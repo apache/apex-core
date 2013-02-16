@@ -5,10 +5,12 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.ActivationListener;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
+import com.malhartech.util.AttributeMap;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,7 +39,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile CounterSink<Object>[] sinks = CounterSink.NO_SINKS;
   protected final int spinMillis = 10;
-  protected final int bufferCapacity = 1024 * 1024;
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
@@ -58,7 +59,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return operator;
   }
 
-  public void connectOutputPort(String port, final Sink<Object> sink)
+  public void connectOutputPort(String port, AttributeMap<PortContext> attributes, final Sink<Object> sink)
   {
     @SuppressWarnings("unchecked")
     OutputPort<Object> outputPort = (OutputPort<Object>)descriptor.outputPorts.get(port);
@@ -83,7 +84,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
   }
 
-  public abstract Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink);
+  public abstract Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, final Sink<? extends Object> sink);
 
   public abstract void addSinks(Map<String, Sink<Object>> sinks);
 
