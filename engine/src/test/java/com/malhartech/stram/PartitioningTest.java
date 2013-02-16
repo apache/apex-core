@@ -140,7 +140,7 @@ public class PartitioningTest
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
-    merged.prefix = "" + System.identityHashCode(collector);
+    merged.prefix = "" + System.identityHashCode(merged);
     dag.addStream("toMerged", collector.output, merged.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
