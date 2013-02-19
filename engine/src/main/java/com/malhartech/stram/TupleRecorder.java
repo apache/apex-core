@@ -39,6 +39,7 @@ public class TupleRecorder implements Operator
   private int tupleCount = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private transient long windowId;
+  private transient long indexBeginWindowId;
   private String recordingName = "Untitled";
   private final long startTime = System.currentTimeMillis();
   private int nextPortIndex = 0;
@@ -46,7 +47,6 @@ public class TupleRecorder implements Operator
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
-  private long indexBeginWindowId;
 
   public RecorderSink newSink(String key)
   {
@@ -139,21 +139,19 @@ public class TupleRecorder implements Operator
   @Override
   public void teardown()
   {
-    if (indexOs != null) {
-      try {
+    try {
+      if (fsOutput != null) {
+        fsOutput.close();
+        if (indexOs != null) {
+          indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
+        }
+      }
+      if (indexOs != null) {
         indexOs.close();
       }
-      catch (IOException ex) {
-        logger.error(ex.toString());
-      }
     }
-    if (fsOutput != null) {
-      try {
-        fsOutput.close();
-      }
-      catch (IOException ex) {
-        logger.error(ex.toString());
-      }
+    catch (IOException ex) {
+      logger.error(ex.toString());
     }
   }
 
@@ -162,6 +160,9 @@ public class TupleRecorder implements Operator
   {
     try {
       Path pa = new Path(basePath, META_FILE);
+      if (basePath.startsWith("file:")) {
+        isLocalMode = true;
+      }
       if (isLocalMode) {
         fs = LocalFileSystem.get(pa.toUri(), new Configuration());
         System.out.println(pa.toUri().toString());
@@ -235,7 +236,8 @@ public class TupleRecorder implements Operator
         fsOutput.flush();
         if (fsOutput.getPos() > bytesPerFile) {
           fsOutput.close();
-          indexOs.write(("F:" + ":" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
+          fsOutput = null;
+          indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
           indexOs.hflush();
           indexOs.flush();
           logger.info("Closing current part file because it's full");
@@ -277,6 +279,8 @@ public class TupleRecorder implements Operator
     }
     catch (IOException ex) {
       logger.error(ex.toString());
+
+
     }
   }
 
