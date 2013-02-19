@@ -18,6 +18,7 @@ import org.apache.hadoop.fs.*;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -44,6 +45,7 @@ public class TupleRecorder implements Operator
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
 
   public RecorderSink newSink(String key)
   {
@@ -141,7 +143,7 @@ public class TupleRecorder implements Operator
         indexOs.close();
       }
       catch (IOException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
     }
     if (fsOutput != null) {
@@ -149,7 +151,7 @@ public class TupleRecorder implements Operator
         fsOutput.close();
       }
       catch (IOException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
     }
   }
@@ -192,7 +194,7 @@ public class TupleRecorder implements Operator
       indexOs = fs.create(pa);
     }
     catch (IOException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(ex.toString());
     }
   }
 
@@ -206,16 +208,18 @@ public class TupleRecorder implements Operator
         if (fsOutput == null || fsOutput.getPos() > bytesPerFile) {
           hdfsFile = "part" + fileParts + ".txt";
           Path path = new Path(basePath, hdfsFile);
+          logger.info("Opening new part file: {}", hdfsFile);
           fsOutput = fs.create(path);
           fileParts++;
           indexOs.write(("B:" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
           indexOs.hflush();
         }
+        logger.info("Writing begin window (id: {}) to tuple recorder", windowId);
         fsOutput.write(("B:" + windowId + "\n").getBytes());
-        fsOutput.hflush();
+        //fsOutput.hflush();
       }
       catch (IOException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
     }
   }
@@ -226,19 +230,21 @@ public class TupleRecorder implements Operator
     if (++endWindowTuplesProcessed == portMap.size()) {
       try {
         fsOutput.write(("E:" + windowId + "\n").getBytes());
+        logger.info("Got last end window tuple.  Flushing...");
         fsOutput.hflush();
         if (fsOutput.getPos() > bytesPerFile) {
           fsOutput.close();
+          logger.info("Closing current part file because it's full");
         }
       }
       catch (JsonGenerationException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
       catch (JsonMappingException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
       catch (IOException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
     }
   }
@@ -255,17 +261,18 @@ public class TupleRecorder implements Operator
       String str = "T:" + pi.id + ":" + bos.size() + ":";
       fsOutput.write(str.getBytes());
       fsOutput.write(bos.toByteArray());
-      fsOutput.hflush();
+      logger.info("Writing tuple for port id {}", pi.id);
+      //fsOutput.hflush();
       ++tupleCount;
     }
     catch (JsonGenerationException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(ex.toString());
     }
     catch (JsonMappingException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(ex.toString());
     }
     catch (IOException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(ex.toString());
     }
   }
 

@@ -20,6 +20,35 @@ public class TappedReservoir implements Reservoir
   public final Reservoir reservoir;
   public final Sink<Object> stackedSink;
 
+  public class Iterator<T> implements java.util.Iterator<T> {
+    protected java.util.Iterator<T> it;
+    protected T obj;
+    
+    protected Iterator(java.util.Iterator<T> it) {
+      this.it = it;
+    }
+
+    @Override
+    public boolean hasNext()
+    {
+      return it.hasNext();
+    }
+
+    @Override
+    public T next()
+    {
+      obj = it.next();
+      return obj;
+    }
+
+    @Override
+    public void remove()
+    {
+      stackedSink.process(obj);
+      it.remove();
+    }
+  }
+
   public TappedReservoir(Reservoir original, Sink<Object> sink)
   {
     reservoir = original;
@@ -165,7 +194,7 @@ public class TappedReservoir implements Reservoir
   @Override
   public Iterator<Object> iterator()
   {
-    return reservoir.iterator();
+    return new Iterator<Object>(reservoir.iterator());
   }
 
   @Override
@@ -196,7 +225,7 @@ public class TappedReservoir implements Reservoir
   public boolean removeAll(Collection<?> c)
   {
     boolean retValue = false;
-    Iterator<Object> iterator = reservoir.iterator();
+    java.util.Iterator<Object> iterator = reservoir.iterator();
 
     while (iterator.hasNext()) {
       Object o = iterator.next();
@@ -213,7 +242,7 @@ public class TappedReservoir implements Reservoir
   public boolean retainAll(Collection<?> c)
   {
     boolean retValue = false;
-    Iterator<Object> iterator = reservoir.iterator();
+    java.util.Iterator<Object> iterator = reservoir.iterator();
 
     while (iterator.hasNext()) {
       Object o = iterator.next();
