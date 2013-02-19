@@ -8,7 +8,6 @@ import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorMeta;
-import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
@@ -228,7 +227,7 @@ public class StreamingContainerManager implements PlanContext
     sca.addRequest(initReq);
 
     DeployRequest deployRequest = new DeployRequest(cdr.ackCountdown, cdr.executeWhenZero);
-    deployRequest.setNodes(container.operators);
+    deployRequest.setOperators(container.operators);
     sca.addRequest(deployRequest);
   }
 
@@ -629,7 +628,7 @@ public class StreamingContainerManager implements PlanContext
     for (Map.Entry<PTContainer, List<PTOperator>> e: undeployGroups.entrySet()) {
       if (!startContainers.contains(e.getKey())) {
         UndeployRequest r = new UndeployRequest(e.getKey(), undeployAckCountdown, null);
-        r.setNodes(e.getValue());
+        r.setOperators(e.getValue());
         undeployAckCountdown.incrementAndGet();
         StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
         downstreamContainer.addRequest(r);
@@ -659,7 +658,6 @@ public class StreamingContainerManager implements PlanContext
       // to reset publishers, clean buffer server past checkpoint so subscribers don't read stale data (including end of stream)
       for (PTOperator operator: e.getValue()) {
         for (PTOutput out: operator.outputs) {
-          final StreamMeta streamDecl = out.logicalStream;
           if (!out.isDownStreamInline()) {
             // following needs to match the concat logic in StramChild
             String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
@@ -680,7 +678,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       DeployRequest r = new DeployRequest(redeployAckCountdown, startContainerDeployCnt);
-      r.setNodes(e.getValue());
+      r.setOperators(e.getValue());
       redeployAckCountdown.incrementAndGet();
       StramChildAgent downstreamContainer = getContainerAgent(e.getKey().containerId);
       downstreamContainer.addRequest(r);
@@ -709,7 +707,15 @@ public class StreamingContainerManager implements PlanContext
   public ArrayList<OperatorInfo> getNodeInfoList()
   {
     ArrayList<OperatorInfo> nodeInfoList = new ArrayList<OperatorInfo>();
+
     for (StramChildAgent container: this.containers.values()) {
+      Set<PTOperator> deploying = Collections.emptySet();
+      DeployRequest dr = container.pendingRequest;
+      if (dr != null && dr.getOperators() != null) {
+        // show appropriate operator status
+        deploying = Sets.newHashSet(dr.getOperators());
+      }
+
       for (OperatorStatus os: container.operators.values()) {
         OperatorInfo ni = new OperatorInfo();
         ni.container = os.container.containerId;
@@ -718,8 +724,14 @@ public class StreamingContainerManager implements PlanContext
         ni.name = os.operator.getLogicalId();
         StreamingNodeHeartbeat hb = os.lastHeartbeat;
         if (hb != null) {
-          // initial heartbeat not yet received
           ni.status = hb.getState();
+          if (deploying.contains(os.operator)) {
+            if (dr instanceof UndeployRequest) {
+              ni.status = "UNDEPLOY";
+            } else {
+              ni.status = "DEPLOY";
+            }
+          }
           ni.totalTuplesProcessed = os.totalTuplesProcessed;
           ni.totalTuplesEmitted = os.totalTuplesEmitted;
           ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
@@ -731,6 +743,7 @@ public class StreamingContainerManager implements PlanContext
           ni.recordingName = os.recordingName;
         }
         else {
+          // initial heartbeat not yet received
           // TODO: proper node status tracking
           StramChildAgent cs = containers.get(os.container.containerId);
           if (cs != null) {

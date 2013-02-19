@@ -49,7 +49,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
     partitions = context.getPartitions();
 
     baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
-    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions()});
+    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
     ClientHandler.subscribe(channel,
                             context.getSinkId(),
                             context.getId() + '/' + context.getSinkId(),
@@ -128,7 +128,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
       }
     }
     else {
-      outputs.put(id, (Sink<Object>)(Sink)sink);
+      outputs.put(id, (Sink)sink);
       if (sinks != NO_SINKS) {
         activateSinks();
       }

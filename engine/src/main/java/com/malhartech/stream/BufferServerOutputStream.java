@@ -157,7 +157,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   public void activate(StreamContext context)
   {
     super.activate(context);
-    logger.debug("registering publisher: {} {} windowId={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId()});
+    logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
     ClientHandler.publish(channel, context.getSourceId(), context.getId(), context.getStartingWindowId());
   }
 

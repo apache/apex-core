@@ -250,7 +250,7 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
   }
 
   @Override
-  public final T poll()
+  public T poll()
   {
     if (head > tail) {
       T t = buffer[(int)(tail & buffermask)];
@@ -262,7 +262,7 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
   }
 
   @Override
-  public final T pollUnsafe()
+  public T pollUnsafe()
   {
     T t = buffer[(int)tail & buffermask];
     tail++;
@@ -309,6 +309,7 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
       {
         buffer[(int)(tail - 1) & buffermask] = null;
       }
+
     };
   }
 
@@ -335,6 +336,7 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
       public void remove()
       {
       }
+
     };
   }
 
@@ -404,4 +406,5 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
   {
     return buffer[(int)(tail & buffermask)];
   }
+
 }

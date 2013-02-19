@@ -450,6 +450,7 @@ public class StramAppMaster
       loopCounter++;
 
       // log current state
+      /*
       LOG.info("Current application state: loop=" + loopCounter
                + ", appDone=" + appDone
                + ", total=" + numTotalContainers
@@ -457,7 +458,7 @@ public class StramAppMaster
                + ", completed=" + numCompletedContainers
                + ", failed=" + numFailedContainers
                + ", currentAllocated=" + this.allAllocatedContainers.size());
-
+      */
       // Sleep before each loop when asking RM for containers
       // to avoid flooding RM with spurious requests when it
       // need not have any available containers

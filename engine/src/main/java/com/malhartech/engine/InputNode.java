@@ -4,10 +4,11 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Sink;
+import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +28,7 @@ public class InputNode extends Node<InputOperator>
   }
 
   @Override
-  public Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink)
+  public Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, Sink<? extends Object> sink)
   {
     if (Node.INPUT.equals(port)) {
       return new Sink<Object>()
@@ -100,13 +101,13 @@ public class InputNode extends Node<InputOperator>
           if (insideWindow) {
             int generatedTuples = 0;
 
-            for (CounterSink<Object> cs: sinks) {
+            for (InternalCounterSink cs: sinks) {
               generatedTuples -= cs.getCount();
             }
 
             operator.emitTuples();
 
-            for (CounterSink<Object> cs: sinks) {
+            for (InternalCounterSink cs: sinks) {
               generatedTuples += cs.getCount();
             }
 
@@ -134,20 +135,7 @@ public class InputNode extends Node<InputOperator>
 
     if (insideWindow) {
       operator.endWindow();
-      //emitEndWindow();
     }
-  }
-
-  @Override
-  public void addSinks(Map<String, Sink<Object>> sinks)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public void removeSinks(Map<String, Sink<Object>> sinks)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 
 }

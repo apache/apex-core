@@ -167,6 +167,10 @@ public class DAG implements Serializable, DAGContext
       return null;
     }
 
+    public AttributeMap<PortContext> getAttributes() {
+      return this.attributes;
+    }
+
     @Override
     public String toString()
     {

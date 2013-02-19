@@ -11,13 +11,6 @@ import java.util.ArrayList;
 public class OperatorStats implements Serializable {
   private static final long serialVersionUID = 1L;
 
-  public interface Counter
-  {
-    public int getCount();
-
-    public int resetCount();
-  }
-
   public static class PortStats implements Serializable
   {
     private static final long serialVersionUID = 1L;

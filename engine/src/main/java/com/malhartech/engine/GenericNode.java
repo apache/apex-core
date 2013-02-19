@@ -4,12 +4,14 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
+import com.malhartech.debug.StackedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
-import com.malhartech.util.CircularBuffer;
+import com.malhartech.util.AttributeMap;
 import java.util.*;
 import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
@@ -37,58 +39,40 @@ public class GenericNode extends Node<Operator>
   protected final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
   protected int deletionId;
 
+  // make sure that the cascading logic works here, right now it does not!
   @Override
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+      Reservoir original = inputs.get(e.getKey());
+      inputs.put(e.getKey(), new StackedReservoir(original, e.getValue()));
+    }
+
+    super.addSinks(sinks);
   }
 
   @Override
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  protected abstract class Reservoir extends CircularBuffer<Object> implements Sink<Object>
-  {
-    protected int count;
-    final String portname;
-
-    Reservoir(String portname)
-    {
-      super(bufferCapacity);
-      this.portname = portname;
-    }
-
-    @Override
-    public final void process(Object payload)
-    {
-      try {
-        put(payload);
-      }
-      catch (InterruptedException ex) {
-        logger.warn("Abandoning processing of the payload {} due to an interrupt", payload);
-        throw new RuntimeException(ex);
+    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+      Reservoir someReservoir = inputs.get(e.getKey());
+      if (someReservoir instanceof StackedReservoir) {
+        StackedReservoir sr = (StackedReservoir)someReservoir;
+        assert (sr.stackedSink == e.getValue());
+        inputs.put(e.getKey(), sr.reservoir);
       }
     }
 
-    @Override
-    public String toString()
-    {
-      return GenericNode.this.toString() + '[' + portname + ']';
-    }
-
-    public abstract Tuple sweep();
-
+    super.removeSinks(sinks);
   }
 
-  private class InputReservoir extends Reservoir
+  private class InputReservoir extends AbstractReservoir
   {
     final Sink<Object> sink;
 
-    InputReservoir(Sink<Object> sink, String portname)
+    InputReservoir(Sink<Object> sink, String portname, int bufferSize, int spinMillis)
     {
-      super(portname);
+      super(portname, bufferSize, spinMillis);
       this.sink = sink;
     }
 
@@ -115,12 +99,8 @@ public class GenericNode extends Node<Operator>
     super(id, operator);
   }
 
-  public void handleIdleTimeout()
-  {
-  }
-
   @Override
-  public Sink<Object> connectInputPort(String port, final Sink<? extends Object> sink)
+  public Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, final Sink<? extends Object> sink)
   {
     Sink<Object> retvalue;
 
@@ -148,7 +128,10 @@ public class GenericNode extends Node<Operator>
         inputPort.setConnected(true);
         Reservoir reservoir = inputs.get(port);
         if (reservoir == null) {
-          reservoir = new InputReservoir(inputPort.getSink(), port);
+          // get the attributes here and replace the hardcoded number down here
+          int bufferCapacity = attributes == null ? 1024 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024 * 1024);
+          int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
+          reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
           inputs.put(port, reservoir);
         }
         retvalue = reservoir;
@@ -243,10 +226,10 @@ public class GenericNode extends Node<Operator>
 
                     buffers.remove();
                     assert (activeQueues.isEmpty());
+                    handleRequests(currentWindowId);
+
                     activeQueues.addAll(inputs.values());
                     expectingBeginWindow = activeQueues.size();
-
-                    handleRequests(currentWindowId);
                     break activequeue;
                   }
                   else {
@@ -373,7 +356,7 @@ public class GenericNode extends Node<Operator>
                   index = 0;
                   while (index < tracker.ports.length) {
                     if (tracker.ports[index] == activePort) {
-                      Reservoir[] ports = new Reservoir[totalQueues];
+                      AbstractReservoir[] ports = new AbstractReservoir[totalQueues];
                       System.arraycopy(tracker.ports, 0, ports, 0, index);
                       if (index < totalQueues) {
                         System.arraycopy(tracker.ports, index + 1, ports, index, tracker.ports.length - index - 1);
@@ -471,7 +454,6 @@ public class GenericNode extends Node<Operator>
 
     if (insideWindow) {
       operator.endWindow();
-//      emitEndWindow();
     }
 
   }
@@ -482,8 +464,16 @@ public class GenericNode extends Node<Operator>
     super.reportStats(stats);
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
     for (Entry<String, Reservoir> e: inputs.entrySet()) {
-      ipstats.add(new PortStats(e.getKey(), e.getValue().count));
-      e.getValue().count = 0;
+      AbstractReservoir ar;
+      Reservoir r = e.getValue();
+      if (r instanceof StackedReservoir) {
+        ar = (AbstractReservoir)((StackedReservoir)r).reservoir;
+      }
+      else {
+        ar = (AbstractReservoir)r;
+      }
+      ipstats.add(new PortStats(e.getKey(), ar.count));
+      ar.count = 0;
     }
 
     stats.inputPorts = ipstats;

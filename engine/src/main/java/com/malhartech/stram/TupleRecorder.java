@@ -14,9 +14,7 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -43,24 +41,30 @@ public class TupleRecorder implements Operator
   private String recordingName = "Untitled";
   private final long startTime = System.currentTimeMillis();
   private int nextPortIndex = 0;
-  private HashMap<String, RecorderSink> sinks = new HashMap<String, RecorderSink>();
+  private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
+  private boolean isLocalMode = false;
 
-  RecorderSink newSink(String key)
+  public RecorderSink newSink(String key)
   {
     RecorderSink recorderSink = new RecorderSink(key);
     sinks.put(key, recorderSink);
     return recorderSink;
   }
 
-  HashMap<String, PortInfo> getPortInfoMap()
+  public HashMap<String, PortInfo> getPortInfoMap()
   {
     return portMap;
   }
 
-  public HashMap<String, RecorderSink> getSinkMap()
+  public HashMap<String, Sink<Object>> getSinkMap()
   {
     return sinks;
+  }
+
+  public void setLocalMode(boolean isLocalMode)
+  {
+    this.isLocalMode = isLocalMode;
   }
 
   /* defined for json information */
@@ -155,7 +159,13 @@ public class TupleRecorder implements Operator
   {
     try {
       Path pa = new Path(basePath, META_FILE);
-      fs = FileSystem.get(pa.toUri(), new Configuration());
+      if (isLocalMode) {
+        fs = LocalFileSystem.get(pa.toUri(), new Configuration());
+        System.out.println(pa.toUri().toString());
+      }
+      else {
+        fs = FileSystem.get(pa.toUri(), new Configuration());
+      }
       FSDataOutputStream metaOs = fs.create(pa);
 
       ObjectMapper mapper = new ObjectMapper();
