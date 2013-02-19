@@ -59,6 +59,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
     this.storage = storage;
   }
 
+  // ENTRY POINT: called every single time the buffer server receives a message from anyone
   @Override
   public final void inboundBufferUpdated(ChannelHandlerContext ctx) throws Exception
   {

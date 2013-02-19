@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
  * <b>User Name</b><br>
  * <b>Start Time</b><br>
  * <b>Elapsed Time</b><br>
+ * <b>Application Path</b><br>
  * <br>
  *
  */
@@ -38,6 +39,7 @@ public class AppInfo {
   protected String user;
   protected long startedOn;
   protected long elapsedTime;
+  protected String appPath;
 
   /**
    *
@@ -56,6 +58,7 @@ public class AppInfo {
     this.user = context.getUser().toString();
     this.startedOn = context.getStartTime();
     this.elapsedTime = Times.elapsed(this.startedOn, 0);
+    this.appPath = context.getApplicationPath();
   }
 
   /**
@@ -98,4 +101,7 @@ public class AppInfo {
     return this.elapsedTime;
   }
 
+  public String getAppPath() {
+    return this.appPath;
+  }
 }

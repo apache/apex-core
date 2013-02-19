@@ -124,8 +124,9 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     try {
-      int operId = request.getInt("operId");
-      dagManager.startRecording(operId);
+      int operId = Integer.valueOf(request.getString("operId"));
+      String name = request.optString("name");
+      dagManager.startRecording(operId, name);
     }
     catch (JSONException ex) {
       try {

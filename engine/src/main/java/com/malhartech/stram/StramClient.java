@@ -387,6 +387,7 @@ public class StramClient
     LOG.info("libjars: {}", libJarsCsv);
     dag.getAttributes().attr(DAG.STRAM_LIBJARS).set(libJarsCsv);
     dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).set(new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
+    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(new Path(fs.getHomeDirectory(), pathSuffix).toString());
 
     // set local resources for the application master
     // local files or archives as needed

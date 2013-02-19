@@ -164,6 +164,15 @@ public class StramAppMaster
     }
 
     @Override
+    public String getApplicationPath()
+    {
+      if (dag != null) {
+        return dag.getAttributes().attr(DAG.STRAM_APP_PATH).get();
+      }
+      return "unknown";
+    }
+
+    @Override
     public CharSequence getUser()
     {
       return System.getenv(ApplicationConstants.Environment.USER.toString());

@@ -4,11 +4,14 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.*;
 import com.malhartech.bufferserver.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.engine.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -16,6 +19,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.TupleRecorder.RecorderSink;
 import com.malhartech.stream.*;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
@@ -70,6 +74,7 @@ public class StramChild
   private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
   private String checkpointFsPath;
+  private String appPath;
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
@@ -79,6 +84,7 @@ public class StramChild
   private InetSocketAddress bufferServerAddress;
   private com.malhartech.bufferserver.Server bufferServer;
   private AttributeMap<DAGContext> applicationAttributes;
+  protected HashMap<Integer, TupleRecorder> tupleRecorders = new HashMap<Integer, TupleRecorder>();
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -96,6 +102,7 @@ public class StramChild
     windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
 
     this.checkpointFsPath = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_DIR, "checkpoint-dfs-path-not-configured");
+    this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
 
     try {
       if (ctx.deployBufferServer) {
@@ -527,6 +534,12 @@ public class StramChild
         if (backupWindowId != null) {
           hb.setLastBackupWindowId(backupWindowId);
         }
+        TupleRecorder tupleRecorder = tupleRecorders.get(e.getKey());
+        if (tupleRecorder == null) {
+          hb.setRecordingName(null);
+        } else {
+          hb.setRecordingName(tupleRecorder.getRecordingName());
+        }
         heartbeats.add(hb);
       }
       msg.setDnodeEntries(heartbeats);
@@ -618,7 +631,9 @@ public class StramChild
    */
   private void processStramRequest(OperatorContext context, final StramToNodeRequest snr)
   {
-    final Node<?> node = nodes.get(snr.getNodeId());
+    int operatorId = snr.getNodeId();
+    final Node<?> node = nodes.get(operatorId);
+    final String name = snr.getName();
     switch (snr.getRequestType()) {
       case REPORT_PARTION_STATS:
         logger.warn("Ignoring stram request {}", snr);
@@ -646,16 +661,83 @@ public class StramChild
         break;
 
       case START_RECORDING:
-        //node.startRecording();
+        logger.debug("Received start recording request for " + operatorId + " with name " + name);
+
+        if (!tupleRecorders.containsKey(operatorId)) {
+          context.request(new OperatorContext.NodeRequest()
+          {
+            @Override
+            public void execute(Operator operator, int operatorId, long windowId) throws IOException
+            {
+              logger.debug("Executing start recording request for " + operatorId);
+
+              TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
+              if (tupleRecorder == null) {
+                tupleRecorder = new TupleRecorder();
+                if (name != null && !name.isEmpty()) {
+                  tupleRecorder.setRecordingName(name);
+                }
+                String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
+                tupleRecorder.setBasePath(basePath);
+                HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
+                PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
+                for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
+                  String streamId = getDeclaredStreamId(operatorId, entry.getKey());
+                  if (streamId != null) {
+                    tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
+                    sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                  }
+                }
+                for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
+                  String streamId = getDeclaredStreamId(operatorId, entry.getKey());
+                  if (streamId != null) {
+                    tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
+                    sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+                  }
+                }
+                logger.debug("Started recording to base path " + basePath);
+                node.addSinks(sinkMap);
+                tupleRecorder.setup(null);
+                tupleRecorders.put(operatorId, tupleRecorder);
+              }
+            }
+
+          });
+        }
+        else {
+          logger.error("(START_RECORDING) Operator id " + operatorId + " is already being recorded.");
+        }
+
         break;
 
       case STOP_RECORDING:
-        //node.stopRecording();
+        logger.debug("Received stop recording request for " + operatorId);
+
+        if (!tupleRecorders.containsKey(operatorId)) {
+          context.request(new OperatorContext.NodeRequest()
+          {
+            @Override
+            public void execute(Operator operator, int operatorId, long windowId) throws IOException
+            {
+              logger.debug("Executing stop recording request for " + operatorId);
+
+              TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
+              if (tupleRecorder != null) {
+                node.removeSinks(tupleRecorder.getSinkMap());
+                tupleRecorder.teardown();
+                logger.debug("Stopped recording for operator id " + operatorId);
+              }
+            }
+
+          });
+        }
+        else {
+          logger.error("(STOP_RECORDING) Operator id " + operatorId + " is not being recorded.");
+        }
         break;
 
       default:
-        logger.error(
-                "Unknown request from stram {}", snr);
+        logger.error("Unknown request from stram {}", snr);
     }
   }
 
@@ -858,13 +940,14 @@ public class StramChild
 
   /**
    * If the port is connected, find return the declared stream Id.
+   *
    * @param operatorId id of the operator to which the port belongs.
    * @param portname name of port to which the stream is connected.
    * @return Stream Id if connected, null otherwise.
    */
-  public final String getDeclaredStreamId(String operatorId, String portname)
+  public final String getDeclaredStreamId(int operatorId, String portname)
   {
-    String identifier = operatorId.concat(NODE_PORT_CONCAT_SEPARATOR).concat(portname);
+    String identifier = String.valueOf(operatorId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(portname);
     ComponentContextPair<Stream<Object>, StreamContext> spair = streams.get(identifier);
     if (spair == null) {
       return null;
@@ -1003,7 +1086,7 @@ public class StramChild
             }
 
             if (nidi.partitionKeys == null || nidi.partitionKeys.isEmpty()) {
-              logger.debug("got simple inline stream from {} to {} - {}", new Object[]{sourceIdentifier, sinkIdentifier, nidi});
+              logger.debug("got simple inline stream from {} to {} - {}", new Object[] {sourceIdentifier, sinkIdentifier, nidi});
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, s, ndi.checkpointWindowId) : s);
             }
@@ -1012,7 +1095,7 @@ public class StramChild
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              logger.debug("got partitions on the inline stream from {} to {} - {}", new Object[]{sourceIdentifier, sinkIdentifier, nidi});
+              logger.debug("got partitions on the inline stream from {} to {} - {}", new Object[] {sourceIdentifier, sinkIdentifier, nidi});
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, s);
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);

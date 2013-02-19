@@ -144,6 +144,7 @@ public class StramChildAgent {
     long currentWindowId;
     MovingAverage tuplesProcessedPSMA10 = new MovingAverage(10);
     MovingAverage tuplesEmittedPSMA10 = new MovingAverage(10);
+    String recordingName; // null if recording is not in progress
 
     private OperatorStatus(PTContainer container, PTOperator operator) {
       this.operator = operator;
@@ -207,6 +208,7 @@ public class StramChildAgent {
 
   public void addOperatorRequest(StramToNodeRequest r) {
     this.operatorRequests.add(r);
+    LOG.info("Adding operator request {} {}", container.containerId, r);
   }
 
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {

@@ -8,8 +8,10 @@ import com.malhartech.api.ActivationListener;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.api.Operator.Port;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
+import com.malhartech.stram.TupleRecorder.RecorderSink;
 import com.malhartech.util.AttributeMap;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -57,6 +59,11 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public Operator getOperator()
   {
     return operator;
+  }
+
+  public PortMappingDescriptor getPortMappingDescriptor()
+  {
+    return descriptor;
   }
 
   public void connectOutputPort(String port, AttributeMap<PortContext> attributes, final Sink<Object> sink)

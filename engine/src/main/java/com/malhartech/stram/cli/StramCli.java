@@ -197,7 +197,7 @@ public class StramCli
     System.out.println("launch <jarFile> [<configuration>] - Launch application packaged in jar file.");
     System.out.println("timeout <duration> - Wait for completion of current application.");
     System.out.println("kill             - Force termination for current application.");
-    System.out.println("startrecording <operId> - Start recording tuples for the given operator id");
+    System.out.println("startrecording <operId> [<recordingName>] - Start recording tuples for the given operator id");
     System.out.println("stoprecording [<operId>] - Stop recording tuples for the given operator id, all if operator id is not given");
     System.out.println("exit             - Exit the app");
 
@@ -615,7 +615,7 @@ public class StramCli
   private void startRecording(String line)
   {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
-    if (args.length != 2) {
+    if (args.length != 2 && args.length != 3) {
       System.err.println("Invalid arguments");
       return;
     }
@@ -633,8 +633,10 @@ public class StramCli
     WebResource r = wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH).path(StramWebServices.PATH_STARTRECORDING);
 
     try {
-      int operId = Integer.valueOf(args[1]);
-      request.put("operId", operId);
+      request.put("operId", args[1]);
+      if (args.length == 3) {
+        request.put("name", args[2]);
+      }
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
       System.out.println("start recording requested: " + response);
     }

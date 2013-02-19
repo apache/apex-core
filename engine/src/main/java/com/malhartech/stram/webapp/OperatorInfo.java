@@ -40,6 +40,7 @@ public class OperatorInfo {
   public long failureCount;
   public long recoveryWindowId;
   public long currentWindowId;
+  public String recordingName; // null if recording is not happening
 
   public OperatorInfo() {
   }
