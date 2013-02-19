@@ -157,6 +157,7 @@ public class TupleRecorder implements Operator
   @Override
   public void teardown()
   {
+    logger.info("Closing down tuple recorder.");
     try {
       if (fsOutput != null) {
         fsOutput.close();
@@ -258,8 +259,7 @@ public class TupleRecorder implements Operator
         fsOutput.write(("E:" + windowId + "\n").getBytes());
         logger.info("Got last end window tuple.  Flushing...");
         fsOutput.hflush();
-        fsOutput.hsync();
-        fsOutput.getWrappedStream().flush();
+        //fsOutput.hsync();
         if (fsOutput.getPos() > bytesPerFile) {
           fsOutput.close();
           logger.info("Writing index file for windows {} to {}", indexBeginWindowId, windowId);
@@ -330,12 +330,13 @@ public class TupleRecorder implements Operator
       }
       countStr += "}";
       bos.write(countStr.getBytes());
+      tupleCount = 0;
 
       indexOs.write((String.valueOf(bos.size())+":").getBytes());
       indexOs.write(bos.toByteArray());
       indexOs.write((":"+hdfsFile + "\n").getBytes());
       indexOs.hflush();
-      indexOs.flush();
+      indexOs.hsync();
     }
     catch (IOException ex) {
       logger.error(ex.toString());

@@ -178,7 +178,7 @@ public class TupleRecorderTest
 
     Thread.sleep(10000);
     localCluster.dnmgr.stopRecording(ptOp2.id);
-    Thread.sleep(1000);
+    Thread.sleep(5000);
     localCluster.shutdown();
   }
 }
