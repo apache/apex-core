@@ -39,6 +39,7 @@ public class TupleRecorder implements Operator
   private int tupleCount = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private transient long windowId;
+  private transient long indexBeginWindowId;
   private String recordingName = "Untitled";
   private final long startTime = System.currentTimeMillis();
   private int nextPortIndex = 0;
@@ -138,21 +139,19 @@ public class TupleRecorder implements Operator
   @Override
   public void teardown()
   {
-    if (indexOs != null) {
-      try {
+    try {
+      if (fsOutput != null) {
+        fsOutput.close();
+        if (indexOs != null) {
+          indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
+        }
+      }
+      if (indexOs != null) {
         indexOs.close();
       }
-      catch (IOException ex) {
-        logger.error(ex.toString());
-      }
     }
-    if (fsOutput != null) {
-      try {
-        fsOutput.close();
-      }
-      catch (IOException ex) {
-        logger.error(ex.toString());
-      }
+    catch (IOException ex) {
+      logger.error(ex.toString());
     }
   }
 
@@ -161,6 +160,9 @@ public class TupleRecorder implements Operator
   {
     try {
       Path pa = new Path(basePath, META_FILE);
+      if (basePath.startsWith("file:")) {
+        isLocalMode = true;
+      }
       if (isLocalMode) {
         fs = LocalFileSystem.get(pa.toUri(), new Configuration());
         System.out.println(pa.toUri().toString());
@@ -211,8 +213,7 @@ public class TupleRecorder implements Operator
           logger.info("Opening new part file: {}", hdfsFile);
           fsOutput = fs.create(path);
           fileParts++;
-          indexOs.write(("B:" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
-          indexOs.hflush();
+          indexBeginWindowId = windowId;
         }
         logger.info("Writing begin window (id: {}) to tuple recorder", windowId);
         fsOutput.write(("B:" + windowId + "\n").getBytes());
@@ -232,8 +233,13 @@ public class TupleRecorder implements Operator
         fsOutput.write(("E:" + windowId + "\n").getBytes());
         logger.info("Got last end window tuple.  Flushing...");
         fsOutput.hflush();
+        fsOutput.flush();
         if (fsOutput.getPos() > bytesPerFile) {
           fsOutput.close();
+          fsOutput = null;
+          indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
+          indexOs.hflush();
+          indexOs.flush();
           logger.info("Closing current part file because it's full");
         }
       }
@@ -273,6 +279,8 @@ public class TupleRecorder implements Operator
     }
     catch (IOException ex) {
       logger.error(ex.toString());
+
+
     }
   }
 
