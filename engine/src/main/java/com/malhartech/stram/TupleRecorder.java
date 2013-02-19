@@ -294,10 +294,14 @@ public class TupleRecorder implements Operator
           case END_WINDOW:
             endWindow();
             break;
+
+          case PAYLOAD:
+            writeTuple(payload, portName);
+            break;
         }
       }
       else {
-        writeTuple(payload, portName);
+        //writeTuple(payload, portName);
       }
     }
 
