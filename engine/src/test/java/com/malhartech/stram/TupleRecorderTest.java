@@ -4,9 +4,16 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.DAG;
+import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.TupleRecorder.PortInfo;
 import com.malhartech.stram.TupleRecorder.RecordInfo;
+import com.malhartech.stream.StramTestSupport;
+
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.logging.Level;
@@ -145,5 +152,37 @@ public class TupleRecorderTest
     }
 
   }
+
+  private static File testWorkDir = new File("target", TupleRecorderTest.class.getName());
+
+  @Test
+  public void testRecording() throws Exception {
+
+    DAG dag = new DAG();
+
+    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(testWorkDir.getPath());
+
+    TestGeneratorInputModule op1 = dag.addOperator("op1", TestGeneratorInputModule.class);
+    GenericTestModule op2 = dag.addOperator("op2", GenericTestModule.class);
+    dag.addStream("stream1", op1.outport, op2.inport1);
+
+    StramLocalCluster localCluster = new StramLocalCluster(dag);
+    localCluster.setPerContainerBufferServer(true);
+    localCluster.runAsync();
+
+    PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getOperatorWrapper(op2));
+    StramTestSupport.waitForActivation(localCluster, ptOp2);
+
+    localCluster.dnmgr.startRecording(ptOp2.id, "doesNotMatter");
+
+    Thread.sleep(10000);
+
+    localCluster.shutdown();
+
+
+  }
+
+
+
 
 }
