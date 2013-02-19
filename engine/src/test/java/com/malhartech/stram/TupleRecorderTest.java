@@ -160,7 +160,7 @@ public class TupleRecorderTest
 
     DAG dag = new DAG();
 
-    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(testWorkDir.getPath());
+    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set("file://"+testWorkDir.getAbsolutePath());
 
     TestGeneratorInputModule op1 = dag.addOperator("op1", TestGeneratorInputModule.class);
     GenericTestModule op2 = dag.addOperator("op2", GenericTestModule.class);
