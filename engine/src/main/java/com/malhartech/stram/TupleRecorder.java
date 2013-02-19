@@ -308,8 +308,6 @@ public class TupleRecorder implements Operator
     }
     catch (IOException ex) {
       logger.error(ex.toString());
-
-
     }
   }
 
@@ -320,11 +318,15 @@ public class TupleRecorder implements Operator
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       int i=0;
       String countStr = "{";
-      for( Entry<String, PortCount> e: portCountMap.entrySet() ) {
+      for( String key : portCountMap.keySet() ) {
+        PortCount pc = portCountMap.get(key);
         if( i!= 0)
           countStr += ",";
-        countStr += "\""+e.getValue().id+"\""+":"+e.getValue().count;
+        countStr += "\""+pc.id+"\""+":"+pc.count;
         i++;
+
+        pc.count = 0;
+        portCountMap.put(key, pc);
       }
       countStr += "}";
       bos.write(countStr.getBytes());
@@ -334,7 +336,6 @@ public class TupleRecorder implements Operator
       indexOs.write((":"+hdfsFile + "\n").getBytes());
       indexOs.hflush();
       indexOs.flush();
-
     }
     catch (IOException ex) {
       logger.error(ex.toString());
