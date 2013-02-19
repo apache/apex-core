@@ -9,7 +9,6 @@ import com.malhartech.api.InputOperator;
 import com.malhartech.api.Sink;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,18 +136,6 @@ public class InputNode extends Node<InputOperator>
     if (insideWindow) {
       operator.endWindow();
     }
-  }
-
-  @Override
-  public void addSinks(Map<String, Sink<Object>> sinks)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public void removeSinks(Map<String, Sink<Object>> sinks)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 
 }
