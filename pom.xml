@@ -42,7 +42,7 @@
     <module>stram</module>
     <module>library</module>
     <module>demos</module>
-    <!-- module>examples/wordcount</module -->
+    <module>poc</module>
     <module>contrib</module>
     <module>dist</module>
   </modules>
