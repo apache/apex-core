@@ -70,6 +70,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
 
       case CODEC_STATE:
         dsp.state = data.getCodecState().getData().toByteArray();
+        logger.debug("received codec state {}", dsp.state);
         return;
 
       case PAYLOAD:
