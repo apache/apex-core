@@ -46,6 +46,7 @@ public class TupleRecorder implements Operator
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
+  private long indexBeginWindowId;
 
   public RecorderSink newSink(String key)
   {
@@ -211,8 +212,7 @@ public class TupleRecorder implements Operator
           logger.info("Opening new part file: {}", hdfsFile);
           fsOutput = fs.create(path);
           fileParts++;
-          indexOs.write(("B:" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
-          indexOs.hflush();
+          indexBeginWindowId = windowId;
         }
         logger.info("Writing begin window (id: {}) to tuple recorder", windowId);
         fsOutput.write(("B:" + windowId + "\n").getBytes());
@@ -232,8 +232,12 @@ public class TupleRecorder implements Operator
         fsOutput.write(("E:" + windowId + "\n").getBytes());
         logger.info("Got last end window tuple.  Flushing...");
         fsOutput.hflush();
+        fsOutput.flush();
         if (fsOutput.getPos() > bytesPerFile) {
           fsOutput.close();
+          indexOs.write(("F:" + ":" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
+          indexOs.hflush();
+          indexOs.flush();
           logger.info("Closing current part file because it's full");
         }
       }
