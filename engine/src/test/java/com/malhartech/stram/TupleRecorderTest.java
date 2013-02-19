@@ -50,7 +50,8 @@ public class TupleRecorderTest
       TupleRecorder recorder = new TupleRecorder();
       recorder.setBytesPerFile(4096);
       recorder.setLocalMode(true);
-      recorder.setBasePath("file:///tmp/TupleRecorderTest");
+      recorder.setBasePath("file://"+testWorkDir.getAbsolutePath()+"/recordings");
+
       recorder.addInputPortInfo("ip1", "str1");
       recorder.addInputPortInfo("ip2", "str2");
       recorder.addInputPortInfo("ip3", "str3");
@@ -98,7 +99,7 @@ public class TupleRecorderTest
 
       line = br.readLine();
       //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
-      Assert.assertEquals("check index", "F:1000:1000:T:4:part0.txt", line);
+      Assert.assertEquals("check index", "F:1000:1000:T:4:25:{\"3\":1,\"1\":1,\"0\":1,\"2\":1}:part0.txt", line);
 
       path = new Path(recorder.getBasePath(), TupleRecorder.META_FILE);
       //fs = FileSystem.get(path.toUri(), new Configuration());
@@ -176,13 +177,8 @@ public class TupleRecorderTest
     localCluster.dnmgr.startRecording(ptOp2.id, "doesNotMatter");
 
     Thread.sleep(10000);
-
+    localCluster.dnmgr.stopRecording(ptOp2.id);
+    Thread.sleep(1000);
     localCluster.shutdown();
-
-
   }
-
-
-
-
 }

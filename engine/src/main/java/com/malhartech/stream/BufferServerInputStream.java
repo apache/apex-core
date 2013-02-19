@@ -66,6 +66,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
     switch (data.getType()) {
       case CHECKPOINT:
         serde.resetState();
+        logger.debug("received checkpoint on {}", ctx.channel());
         return;
 
       case CODEC_STATE:
@@ -88,15 +89,18 @@ public class BufferServerInputStream extends SocketInputStream<Message>
       case END_WINDOW:
         t = new EndWindowTuple();
         t.setWindowId(baseSeconds | (lastWindowId = data.getEndWindow().getWindowId()));
+        logger.debug("received endwindow {} on {}", lastWindowId, ctx.channel());
         break;
 
       case END_STREAM:
         t = new EndStreamTuple();
         t.setWindowId(baseSeconds | data.getEndStream().getWindowId());
+        logger.debug("received endstream {} on {}", data.getEndStream().getWindowId(), ctx.channel());
         break;
 
       case RESET_WINDOW:
         baseSeconds = (long)data.getResetWindow().getBaseSeconds() << 32;
+        logger.debug("received reset_window {} on {}", data.getResetWindow().getBaseSeconds(), ctx.channel());
         if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
           return;
         }
@@ -105,6 +109,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
         break;
 
       case BEGIN_WINDOW:
+        logger.debug("received begin_window {} on {}", data.getBeginWindow().getWindowId(), ctx.channel());
         t = new Tuple(data.getType());
         t.setWindowId(baseSeconds | data.getBeginWindow().getWindowId());
         break;
@@ -145,6 +150,8 @@ public class BufferServerInputStream extends SocketInputStream<Message>
 
   private void activateSinks()
   {
+    logger.debug("activating sinks = {} on {}", outputs, channel);
+
     @SuppressWarnings("unchecked")
     Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, outputs.size());
     int i = 0;

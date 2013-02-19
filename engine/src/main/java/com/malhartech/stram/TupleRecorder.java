@@ -10,9 +10,11 @@ import com.malhartech.api.Sink;
 import com.malhartech.engine.Tuple;
 import java.io.*;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -39,6 +41,7 @@ public class TupleRecorder implements Operator
   private int fileParts = 0;
   private int tupleCount = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
+  private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long windowId;
   private transient long indexBeginWindowId;
   private String recordingName = "Untitled";
@@ -79,7 +82,13 @@ public class TupleRecorder implements Operator
     public String type;
     public int id;
   }
-  /* defined for json information */
+
+  /* defined for written tuple count of each port recorded in index file */
+  public static class PortCount
+  {
+    public int id;
+    public long count;
+  }
 
   public static class RecordInfo
   {
@@ -125,6 +134,10 @@ public class TupleRecorder implements Operator
     portInfo.type = "input";
     portInfo.id = nextPortIndex++;
     portMap.put(portName, portInfo);
+    PortCount pc = new PortCount();
+    pc.id = portInfo.id;
+    pc.count = 0;
+    portCountMap.put(portName, pc);
   }
 
   public void addOutputPortInfo(String portName, String streamName)
@@ -135,6 +148,10 @@ public class TupleRecorder implements Operator
     portInfo.type = "output";
     portInfo.id = nextPortIndex++;
     portMap.put(portName, portInfo);
+    PortCount pc = new PortCount();
+    pc.id = portInfo.id;
+    pc.count = 0;
+    portCountMap.put(portName, pc);
   }
 
   @Override
@@ -144,7 +161,7 @@ public class TupleRecorder implements Operator
       if (fsOutput != null) {
         fsOutput.close();
         if (indexOs != null) {
-          indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
+          writeIndex();
         }
       }
       if (indexOs != null) {
@@ -189,7 +206,6 @@ public class TupleRecorder implements Operator
       metaOs.close();
 
       pa = new Path(basePath, INDEX_FILE);
-//      indexOs = fs.create(pa, true, 10);
       if (isLocalMode) {
         localIndexOutput = new FileOutputStream(localBasePath + "/" + INDEX_FILE);
         indexOs = new FSDataOutputStream(localIndexOutput, null);
@@ -248,9 +264,7 @@ public class TupleRecorder implements Operator
           fsOutput.close();
           logger.info("Writing index file for windows {} to {}", indexBeginWindowId, windowId);
           fsOutput = null;
-          indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
-          indexOs.hflush();
-          indexOs.hsync();
+          writeIndex();
           logger.info("Closing current part file because it's full");
         }
       }
@@ -276,6 +290,10 @@ public class TupleRecorder implements Operator
 
       PortInfo pi = portMap.get(port);
       String str = "T:" + pi.id + ":" + bos.size() + ":";
+      PortCount pc = portCountMap.get(port);
+      pc.count++;
+      portCountMap.put(port, pc);
+
       fsOutput.write(str.getBytes());
       fsOutput.write(bos.toByteArray());
       logger.info("Writing tuple for port id {}", pi.id);
@@ -293,6 +311,35 @@ public class TupleRecorder implements Operator
 
 
     }
+  }
+
+  public void writeIndex() {
+    try {
+      indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":").getBytes());
+
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      int i=0;
+      String countStr = "{";
+      for( Entry<String, PortCount> e: portCountMap.entrySet() ) {
+        if( i!= 0)
+          countStr += ",";
+        countStr += "\""+e.getValue().id+"\""+":"+e.getValue().count;
+        i++;
+      }
+      countStr += "}";
+      bos.write(countStr.getBytes());
+
+      indexOs.write((String.valueOf(bos.size())+":").getBytes());
+      indexOs.write(bos.toByteArray());
+      indexOs.write((":"+hdfsFile + "\n").getBytes());
+      indexOs.hflush();
+      indexOs.flush();
+
+    }
+    catch (IOException ex) {
+      logger.error(ex.toString());
+    }
+
   }
 
   public class RecorderSink implements Sink<Object>
