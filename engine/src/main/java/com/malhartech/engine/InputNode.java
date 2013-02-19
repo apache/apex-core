@@ -102,13 +102,13 @@ public class InputNode extends Node<InputOperator>
           if (insideWindow) {
             int generatedTuples = 0;
 
-            for (CounterSink<Object> cs: sinks) {
+            for (InternalCounterSink cs: sinks) {
               generatedTuples -= cs.getCount();
             }
 
             operator.emitTuples();
 
-            for (CounterSink<Object> cs: sinks) {
+            for (InternalCounterSink cs: sinks) {
               generatedTuples += cs.getCount();
             }
 

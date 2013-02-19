@@ -58,7 +58,7 @@ public class UnifierNode extends GenericNode
     MergeReservoir retvalue;
 
     if (sink == null) {
-      AbstractReservoir reservoir = inputs.remove(port);
+      Reservoir reservoir = inputs.remove(port);
       if (reservoir != null) {
         inputs.put(port.concat(".").concat(String.valueOf(deletionId++)), reservoir);
         reservoir.process(new EndStreamTuple());

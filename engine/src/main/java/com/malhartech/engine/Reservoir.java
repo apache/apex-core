@@ -4,13 +4,14 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.api.Sink;
 import com.malhartech.util.UnsafeBlockingQueue;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public interface Reservoir extends UnsafeBlockingQueue<Object>
+public interface Reservoir extends UnsafeBlockingQueue<Object>, Sink<Object>
 {
   public abstract Tuple sweep();
 

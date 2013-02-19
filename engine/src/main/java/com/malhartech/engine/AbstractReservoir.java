@@ -4,7 +4,6 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Sink;
 import com.malhartech.util.CircularBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +12,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractReservoir extends CircularBuffer<Object> implements Reservoir, Sink<Object>
+public abstract class AbstractReservoir extends CircularBuffer<Object> implements Reservoir
 {
   protected int count;
   final String portname;

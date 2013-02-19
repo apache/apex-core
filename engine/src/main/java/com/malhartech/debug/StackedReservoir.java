@@ -15,12 +15,12 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-class StackedReservoir implements Reservoir
+public class StackedReservoir implements Reservoir
 {
-  Reservoir reservoir;
-  Sink<Object> stackedSink;
+  public final Reservoir reservoir;
+  public final Sink<Object> stackedSink;
 
-  StackedReservoir(Reservoir original, Sink<Object> sink)
+  public StackedReservoir(Reservoir original, Sink<Object> sink)
   {
     reservoir = original;
     stackedSink = sink;
@@ -206,6 +206,12 @@ class StackedReservoir implements Reservoir
 
   @Override
   public void clear()
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void process(Object tuple)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
