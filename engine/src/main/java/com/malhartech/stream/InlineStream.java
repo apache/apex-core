@@ -69,7 +69,6 @@ public class InlineStream implements Stream<Object>
   @Override
   public void teardown()
   {
-    current = null;
   }
 
   /**
