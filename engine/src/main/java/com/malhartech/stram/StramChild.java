@@ -684,6 +684,7 @@ public class StramChild
                 for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
                   String streamId = getDeclaredStreamId(operatorId, entry.getKey());
                   if (streamId != null) {
+                    logger.info("Adding recorder sink to input port {}, stream {}", entry.getKey(), streamId);
                     tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
                     sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
                   }
@@ -691,6 +692,7 @@ public class StramChild
                 for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
                   String streamId = getDeclaredStreamId(operatorId, entry.getKey());
                   if (streamId != null) {
+                    logger.info("Adding recorder sink to output port {}, stream {}", entry.getKey(), streamId);
                     tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
                     sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
                   }
