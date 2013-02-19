@@ -80,10 +80,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  public void addOutputSinks(Map<String, Sink<Object>> sinks)
-  {
-  }
-
   public abstract Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, final Sink<? extends Object> sink);
 
   public void addSinks(Map<String, Sink<Object>> sinks)
