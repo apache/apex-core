@@ -15,12 +15,41 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class StackedReservoir implements Reservoir
+public class TappedReservoir implements Reservoir
 {
   public final Reservoir reservoir;
   public final Sink<Object> stackedSink;
 
-  public StackedReservoir(Reservoir original, Sink<Object> sink)
+  public class Iterator<T> implements java.util.Iterator<T> {
+    protected java.util.Iterator<T> it;
+    protected T obj;
+    
+    protected Iterator(java.util.Iterator<T> it) {
+      this.it = it;
+    }
+
+    @Override
+    public boolean hasNext()
+    {
+      return it.hasNext();
+    }
+
+    @Override
+    public T next()
+    {
+      obj = it.next();
+      return obj;
+    }
+
+    @Override
+    public void remove()
+    {
+      stackedSink.process(obj);
+      it.remove();
+    }
+  }
+
+  public TappedReservoir(Reservoir original, Sink<Object> sink)
   {
     reservoir = original;
     stackedSink = sink;
@@ -165,7 +194,7 @@ public class StackedReservoir implements Reservoir
   @Override
   public Iterator<Object> iterator()
   {
-    return reservoir.iterator();
+    return new Iterator<Object>(reservoir.iterator());
   }
 
   @Override
@@ -196,7 +225,7 @@ public class StackedReservoir implements Reservoir
   public boolean removeAll(Collection<?> c)
   {
     boolean retValue = false;
-    Iterator<Object> iterator = reservoir.iterator();
+    java.util.Iterator<Object> iterator = reservoir.iterator();
 
     while (iterator.hasNext()) {
       Object o = iterator.next();
@@ -213,7 +242,7 @@ public class StackedReservoir implements Reservoir
   public boolean retainAll(Collection<?> c)
   {
     boolean retValue = false;
-    Iterator<Object> iterator = reservoir.iterator();
+    java.util.Iterator<Object> iterator = reservoir.iterator();
 
     while (iterator.hasNext()) {
       Object o = iterator.next();
@@ -237,7 +266,7 @@ public class StackedReservoir implements Reservoir
   @Override
   public void process(Object tuple)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    reservoir.process(tuple);
   }
 
 }

@@ -11,6 +11,7 @@ import com.malhartech.engine.Tuple;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.hadoop.conf.Configuration;
@@ -18,6 +19,7 @@ import org.apache.hadoop.fs.*;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -37,13 +39,16 @@ public class TupleRecorder implements Operator
   private int fileParts = 0;
   private int tupleCount = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
+  private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long windowId;
+  private transient long indexBeginWindowId;
   private String recordingName = "Untitled";
   private final long startTime = System.currentTimeMillis();
   private int nextPortIndex = 0;
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
 
   public RecorderSink newSink(String key)
   {
@@ -75,7 +80,13 @@ public class TupleRecorder implements Operator
     public String type;
     public int id;
   }
-  /* defined for json information */
+
+  /* defined for written tuple count of each port recorded in index file */
+  public static class PortCount
+  {
+    public int id;
+    public long count;
+  }
 
   public static class RecordInfo
   {
@@ -121,6 +132,10 @@ public class TupleRecorder implements Operator
     portInfo.type = "input";
     portInfo.id = nextPortIndex++;
     portMap.put(portName, portInfo);
+    PortCount pc = new PortCount();
+    pc.id = portInfo.id;
+    pc.count = 0;
+    portCountMap.put(portName, pc);
   }
 
   public void addOutputPortInfo(String portName, String streamName)
@@ -131,26 +146,28 @@ public class TupleRecorder implements Operator
     portInfo.type = "output";
     portInfo.id = nextPortIndex++;
     portMap.put(portName, portInfo);
+    PortCount pc = new PortCount();
+    pc.id = portInfo.id;
+    pc.count = 0;
+    portCountMap.put(portName, pc);
   }
 
   @Override
   public void teardown()
   {
-    if (indexOs != null) {
-      try {
+    try {
+      if (fsOutput != null) {
+        fsOutput.close();
+        if (indexOs != null) {
+          writeIndex();
+        }
+      }
+      if (indexOs != null) {
         indexOs.close();
       }
-      catch (IOException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
-      }
     }
-    if (fsOutput != null) {
-      try {
-        fsOutput.close();
-      }
-      catch (IOException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
-      }
+    catch (IOException ex) {
+      logger.error(ex.toString());
     }
   }
 
@@ -159,6 +176,9 @@ public class TupleRecorder implements Operator
   {
     try {
       Path pa = new Path(basePath, META_FILE);
+      if (basePath.startsWith("file:")) {
+        isLocalMode = true;
+      }
       if (isLocalMode) {
         fs = LocalFileSystem.get(pa.toUri(), new Configuration());
         System.out.println(pa.toUri().toString());
@@ -188,11 +208,11 @@ public class TupleRecorder implements Operator
       metaOs.close();
 
       pa = new Path(basePath, INDEX_FILE);
-//      indexOs = fs.create(pa, true, 10);
+      //      indexOs = fs.create(pa, true, 10);
       indexOs = fs.create(pa);
     }
     catch (IOException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(ex.toString());
     }
   }
 
@@ -206,16 +226,17 @@ public class TupleRecorder implements Operator
         if (fsOutput == null || fsOutput.getPos() > bytesPerFile) {
           hdfsFile = "part" + fileParts + ".txt";
           Path path = new Path(basePath, hdfsFile);
+          logger.info("Opening new part file: {}", hdfsFile);
           fsOutput = fs.create(path);
           fileParts++;
-          indexOs.write(("B:" + windowId + ":T:" + tupleCount + ":" + hdfsFile + "\n").getBytes());
-          indexOs.hflush();
+          indexBeginWindowId = windowId;
         }
+        logger.info("Writing begin window (id: {}) to tuple recorder", windowId);
         fsOutput.write(("B:" + windowId + "\n").getBytes());
-        fsOutput.hflush();
+        //fsOutput.hflush();
       }
       catch (IOException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
     }
   }
@@ -226,19 +247,24 @@ public class TupleRecorder implements Operator
     if (++endWindowTuplesProcessed == portMap.size()) {
       try {
         fsOutput.write(("E:" + windowId + "\n").getBytes());
+        logger.info("Got last end window tuple.  Flushing...");
         fsOutput.hflush();
+        fsOutput.flush();
         if (fsOutput.getPos() > bytesPerFile) {
           fsOutput.close();
+          fsOutput = null;
+          writeIndex();
+          logger.info("Closing current part file because it's full");
         }
       }
       catch (JsonGenerationException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
       catch (JsonMappingException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
       catch (IOException ex) {
-        Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+        logger.error(ex.toString());
       }
     }
   }
@@ -253,20 +279,57 @@ public class TupleRecorder implements Operator
 
       PortInfo pi = portMap.get(port);
       String str = "T:" + pi.id + ":" + bos.size() + ":";
+      PortCount pc = portCountMap.get(port);
+      pc.count++;
+      portCountMap.put(port, pc);
+
       fsOutput.write(str.getBytes());
       fsOutput.write(bos.toByteArray());
-      fsOutput.hflush();
+      logger.info("Writing tuple for port id {}", pi.id);
+      //fsOutput.hflush();
       ++tupleCount;
     }
     catch (JsonGenerationException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(ex.toString());
     }
     catch (JsonMappingException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(ex.toString());
     }
     catch (IOException ex) {
-      Logger.getLogger(TupleRecorder.class.getName()).log(Level.SEVERE, null, ex);
+      logger.error(ex.toString());
     }
+  }
+
+  public void writeIndex() {
+    try {
+      indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":").getBytes());
+
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      int i=0;
+      String countStr = "{";
+      for( String key : portCountMap.keySet() ) {
+        PortCount pc = portCountMap.get(key);
+        if( i!= 0)
+          countStr += ",";
+        countStr += "\""+pc.id+"\""+":"+pc.count;
+        i++;
+
+        pc.count = 0;
+        portCountMap.put(key, pc);
+      }
+      countStr += "}";
+      bos.write(countStr.getBytes());
+
+      indexOs.write((String.valueOf(bos.size())+":").getBytes());
+      indexOs.write(bos.toByteArray());
+      indexOs.write((":"+hdfsFile + "\n").getBytes());
+      indexOs.hflush();
+      indexOs.flush();
+    }
+    catch (IOException ex) {
+      logger.error(ex.toString());
+    }
+
   }
 
   public class RecorderSink implements Sink<Object>

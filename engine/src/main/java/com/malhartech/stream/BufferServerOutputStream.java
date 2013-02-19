@@ -132,6 +132,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
        * if there is any state write that for the subscriber before we write the data.
        */
       if (dsp.state != null) {
+        logger.debug("sedning codec state {}", dsp.state);
         write(Buffer.Message.newBuilder().setType(MessageType.CODEC_STATE)
                 .setCodecState(Buffer.CodecState.newBuilder().setData(ByteString.copyFrom(dsp.state))));
       }

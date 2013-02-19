@@ -9,7 +9,7 @@ import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.debug.StackedReservoir;
+import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.util.AttributeMap;
 import java.util.*;
@@ -45,7 +45,7 @@ public class GenericNode extends Node<Operator>
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
       Reservoir original = inputs.get(e.getKey());
-      inputs.put(e.getKey(), new StackedReservoir(original, e.getValue()));
+      inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
     }
 
     super.addSinks(sinks);
@@ -56,8 +56,8 @@ public class GenericNode extends Node<Operator>
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
       Reservoir someReservoir = inputs.get(e.getKey());
-      if (someReservoir instanceof StackedReservoir) {
-        StackedReservoir sr = (StackedReservoir)someReservoir;
+      if (someReservoir instanceof TappedReservoir) {
+        TappedReservoir sr = (TappedReservoir)someReservoir;
         assert (sr.stackedSink == e.getValue());
         inputs.put(e.getKey(), sr.reservoir);
       }
@@ -466,8 +466,8 @@ public class GenericNode extends Node<Operator>
     for (Entry<String, Reservoir> e: inputs.entrySet()) {
       AbstractReservoir ar;
       Reservoir r = e.getValue();
-      if (r instanceof StackedReservoir) {
-        ar = (AbstractReservoir)((StackedReservoir)r).reservoir;
+      if (r instanceof TappedReservoir) {
+        ar = (AbstractReservoir)((TappedReservoir)r).reservoir;
       }
       else {
         ar = (AbstractReservoir)r;

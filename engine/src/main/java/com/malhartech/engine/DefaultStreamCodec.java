@@ -75,6 +75,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
         nextAvailableRegistrationId++;
       }
 
+      logger.debug("adding new classid pair {} => {}", nextAvailableRegistrationId, type.getName());
       pairs.add(new ClassIdPair(nextAvailableRegistrationId, type.getName()));
       return register(new Registration(type, kryo.getDefaultSerializer(type), nextAvailableRegistrationId++));
     }
@@ -112,6 +113,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
         input.setBuffer(dspair.state);
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
+          logger.debug("registering class {} => {}", pair.classname, pair.id);
           register(Class.forName(pair.classname, false, getClassLoader()), pair.id);
         }
       }
