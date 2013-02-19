@@ -18,6 +18,7 @@ import org.junit.Test;
 
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.DAG.OperatorMeta;
@@ -38,7 +39,7 @@ import com.malhartech.util.AttributeMap;
 public class StreamingContainerManagerTest {
 
   @Test
-  public void testOperatorDeployInfoSerialization() throws Exception {
+  public void testDeployInfoSerialization() throws Exception {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
     ndi.declaredId = "node1";
     ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
@@ -97,6 +98,7 @@ public class StreamingContainerManagerTest {
     GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
 
     dag.addStream("n1n2", node1.outport, node2.inport1);
+    dag.setOutputPortAttribute(node1.outport, PortContext.SPIN_MILLIS, 99);
 
     dag.addStream("n2n3", node2.outport1, node3.inport1)
       .setInline(true);
@@ -129,6 +131,8 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("stream connects to upstream host", container1Id + "Host", c1n1n2.bufferServerHost);
     Assert.assertEquals("stream connects to upstream port", 9001, c1n1n2.bufferServerPort);
     Assert.assertFalse("stream inline", c1n1n2.isInline());
+    Assert.assertNotNull("contextAttributes " + c1n1n2, c1n1n2.contextAttributes);
+    Assert.assertEquals("contextAttributes " + c1n1n2,  Integer.valueOf(99), c1n1n2.contextAttributes.attr(PortContext.SPIN_MILLIS).get());
 
     List<OperatorDeployInfo> c2 = dnm.assignContainerForTest(container2Id, InetSocketAddress.createUnresolved(container2Id+"Host", 9002)).getDeployInfo();
     Assert.assertEquals("number operators assigned to container", 2, c2.size());
@@ -146,6 +150,7 @@ public class StreamingContainerManagerTest {
     Assert.assertNull("partitionKeys " + c2n1n2, c2n1n2.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n1n2, node1DI.id, c2n1n2.sourceNodeId);
     Assert.assertEquals("sourcePortName " + c2n1n2, TestGeneratorInputModule.OUTPUT_PORT, c2n1n2.sourcePortName);
+    Assert.assertNotNull("contextAttributes " + c2n1n2, c2n1n2.contextAttributes);
 
     // inline input node3 from node2
     InputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");

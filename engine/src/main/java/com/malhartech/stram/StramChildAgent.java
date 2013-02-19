@@ -19,6 +19,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.api.DAG.InputPortMeta;
 import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
@@ -300,26 +301,27 @@ public class StramChildAgent {
       ndi.outputs = new ArrayList<OutputDeployInfo>(node.outputs.size());
 
       for (PTOutput out : node.outputs) {
-        final StreamMeta streamDecl = out.logicalStream;
+        final StreamMeta streamMeta = out.logicalStream;
         // buffer server or inline publisher
         OutputDeployInfo portInfo = new OutputDeployInfo();
-        portInfo.declaredStreamId = streamDecl.getId();
+        portInfo.declaredStreamId = streamMeta.getId();
         portInfo.portName = out.portName;
+        portInfo.contextAttributes = streamMeta.getSource().getAttributes();
 
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
           portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
-          if (streamDecl.getCodecClass() != null) {
-            portInfo.serDeClassName = streamDecl.getCodecClass().getName();
+          if (streamMeta.getCodecClass() != null) {
+            portInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
         } else {
-          LOG.debug("Inline stream {}", out);
+          //LOG.debug("Inline stream {}", out);
           // target set below
           //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
         }
 
         ndi.outputs.add(portInfo);
-        publishers.put(node.id + "/" + streamDecl.getId(), portInfo);
+        publishers.put(node.id + "/" + streamMeta.getId(), portInfo);
       }
     }
 
@@ -339,6 +341,11 @@ public class StramChildAgent {
         InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamMeta.getId();
         inputInfo.portName = in.portName;
+        for (Map.Entry<InputPortMeta, StreamMeta> e : node.logicalNode.getInputStreams().entrySet()) {
+          if (e.getValue() == streamMeta) {
+            inputInfo.contextAttributes = e.getKey().getAttributes();
+          }
+        }
         inputInfo.sourceNodeId = sourceOutput.source.id;
         inputInfo.sourcePortName = sourceOutput.portName;
         if (in.partitions != null) {
