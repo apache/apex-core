@@ -141,73 +141,97 @@ class StackedReservoir implements Reservoir
   @Override
   public Object element()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.element();
   }
 
   @Override
   public Object peek()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.peek();
   }
 
   @Override
   public int size()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.size();
   }
 
   @Override
   public boolean isEmpty()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.isEmpty();
   }
 
   @Override
   public Iterator<Object> iterator()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.iterator();
   }
 
   @Override
   public Object[] toArray()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.toArray();
   }
 
   @Override
   public <T> T[] toArray(T[] a)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.toArray(a);
   }
 
   @Override
   public boolean containsAll(Collection<?> c)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.containsAll(c);
   }
 
   @Override
   public boolean addAll(Collection<? extends Object> c)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.addAll(c);
   }
 
   @Override
   public boolean removeAll(Collection<?> c)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    boolean retValue = false;
+    Iterator<Object> iterator = reservoir.iterator();
+
+    while (iterator.hasNext()) {
+      Object o = iterator.next();
+      if (c.contains(o)) {
+        stackedSink.process(o);
+        iterator.remove();
+        retValue = true;
+      }
+    }
+    return retValue;
   }
 
   @Override
   public boolean retainAll(Collection<?> c)
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    boolean retValue = false;
+    Iterator<Object> iterator = reservoir.iterator();
+
+    while (iterator.hasNext()) {
+      Object o = iterator.next();
+      if (!c.contains(o)) {
+        stackedSink.process(o);
+        iterator.remove();
+        retValue = true;
+      }
+    }
+    return retValue;
   }
 
   @Override
   public void clear()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    while (!isEmpty()) {
+      this.poll();
+    }
   }
 
 }
