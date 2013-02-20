@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.engine.Tuple;
 import java.io.*;
 import java.util.HashMap;
@@ -384,16 +385,14 @@ public class TupleRecorder implements Operator
       // is not an instance of Tuple (confusing... I know)
       if (payload instanceof Tuple) {
         Tuple tuple = (Tuple)payload;
-        switch (tuple.getType()) {
-          case BEGIN_WINDOW:
-            beginWindow(tuple.getWindowId());
-            break;
-
-          case END_WINDOW:
-            endWindow();
-            break;
+        MessageType messageType = tuple.getType();
+        if (messageType == MessageType.BEGIN_WINDOW) {
+          beginWindow(tuple.getWindowId());
         }
         writeControlTuple(tuple, portName);
+        if (messageType == MessageType.END_WINDOW) {
+          endWindow();
+        }
       }
       else {
         writeTuple(payload, portName);
