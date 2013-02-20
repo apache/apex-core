@@ -224,7 +224,7 @@ public class TupleRecorder implements Operator
   {
     hdfsFile = "part" + fileParts + ".txt";
     Path path = new Path(basePath, hdfsFile);
-    logger.info("Opening new part file: {}", hdfsFile);
+    logger.debug("Opening new part file: {}", hdfsFile);
     if (isLocalMode) {
       localDataOutput = new FileOutputStream(localBasePath + "/" + hdfsFile);
       partOutStr = new FSDataOutputStream(localDataOutput, null);
@@ -248,7 +248,7 @@ public class TupleRecorder implements Operator
         if (partOutStr == null || partOutStr.getPos() > bytesPerFile) {
           openNewPartFile();
         }
-        logger.info("Writing begin window (id: {}) to tuple recorder", windowId);
+        logger.debug("Writing begin window (id: {}) to tuple recorder", windowId);
         partOutStr.write(("B:" + windowId + "\n").getBytes());
         //fsOutput.hflush();
       }
@@ -264,16 +264,16 @@ public class TupleRecorder implements Operator
     if (++endWindowTuplesProcessed == portMap.size()) {
       try {
         partOutStr.write(("E:" + currentWindowId + "\n").getBytes());
-        logger.info("Got last end window tuple.  Flushing...");
+        logger.debug("Got last end window tuple.  Flushing...");
         partOutStr.hflush();
         //fsOutput.hsync();
         if (partOutStr.getPos() > bytesPerFile) {
           partOutStr.close();
-          logger.info("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
+          logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
           writeIndex();
           openNewPartFile();
           partBeginWindowId = -1;
-          logger.info("Closing current part file because it's full");
+          logger.debug("Closing current part file because it's full");
         }
       }
       catch (JsonGenerationException ex) {
@@ -304,7 +304,7 @@ public class TupleRecorder implements Operator
 
       partOutStr.write(str.getBytes());
       partOutStr.write(bos.toByteArray());
-      logger.info("Writing tuple for port id {}", pi.id);
+      //logger.debug("Writing tuple for port id {}", pi.id);
       //fsOutput.hflush();
       ++tupleCount;
     }
