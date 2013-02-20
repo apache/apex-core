@@ -44,7 +44,7 @@ public class LeastBusy extends AbstractPolicy
    *
    */
   @Override
-  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
+  public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     PhysicalNode theOne = null;
 
@@ -56,7 +56,9 @@ public class LeastBusy extends AbstractPolicy
     }
 
     if (theOne != null) {
-      theOne.send(data);
+      return theOne.send(data);
     }
+
+    return false;
   }
 }

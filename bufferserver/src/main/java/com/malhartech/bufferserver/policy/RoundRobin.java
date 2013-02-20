@@ -35,7 +35,7 @@ public class RoundRobin extends AbstractPolicy
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    */
   @Override
-  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
+  public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     int size = nodes.size();
     if (size > 0) { // why do i need to do this check? synchronization issues? because if there is no one interested, the logical group should not exist!
@@ -49,11 +49,12 @@ public class RoundRobin extends AbstractPolicy
        */
       for (PhysicalNode node: nodes) {
         if (count-- == 0) {
-          node.send(data);
-          break;
+          return node.send(data);
         }
       }
     }
+    
+    return false;
   }
 
 }
