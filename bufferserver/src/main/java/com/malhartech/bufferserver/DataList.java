@@ -377,8 +377,7 @@ public class DataList
           public void run()
           {
             synchronized (DataArray.this) {
-                        logger.debug("retrieving {} {} in acquire", identifier, first.uniqueIdentifier);
-
+              //logger.debug("retrieving {} {} in acquire", identifier, first.uniqueIdentifier);
               data = storage.retrieve(identifier, uniqueIdentifier);
               readingOffset = 0;
               writingOffset = data.length;
@@ -412,7 +411,7 @@ public class DataList
                   logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
                 }
                 else {
-                          logger.debug("stored {} {} in release", identifier, i);
+                  //logger.debug("stored {} {} in release", identifier, i);
                   uniqueIdentifier = i;
                   data = null;
                 }

@@ -23,7 +23,7 @@ public class AbstractPolicy implements Policy
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    */
-  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
+  public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }

@@ -5,8 +5,10 @@
 package com.malhartech.bufferserver;
 
 import com.malhartech.bufferserver.util.SerializedData;
-import com.malhartech.bufferserver.util.WaitingChannelFutureListener;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureAggregator;
+import io.netty.channel.ChannelFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,10 +19,18 @@ import org.slf4j.LoggerFactory;
 public class PhysicalNode
 {
   public static final int BUFFER_SIZE = 512 * 1024;
-  private int writtenBytes;
+  private volatile int writtenBytes;
   private final long starttime;
   private final Channel channel;
   private long processedMessageCount;
+  private final ChannelFutureListener cfl = new ChannelFutureListener()
+  {
+    public void operationComplete(ChannelFuture future) throws Exception
+    {
+      writtenBytes = 0;
+    }
+
+  };
 
   /**
    *
@@ -54,16 +64,24 @@ public class PhysicalNode
   /**
    *
    * @param d
+   * @throws InterruptedException
    */
-  public void send(SerializedData d) throws InterruptedException
+  public boolean send(SerializedData d) throws InterruptedException
   {
-    if (BUFFER_SIZE - writtenBytes < d.size) {
-      channel.flush().await(15);
-      writtenBytes = 0;
-    }
     channel.write(d);
     writtenBytes += d.size;
     processedMessageCount++;
+    if (writtenBytes > BUFFER_SIZE) {
+      channel.flush().addListener(cfl);
+      return true;
+    }
+
+    return false;
+  }
+
+  public boolean isBlocked()
+  {
+    return writtenBytes > BUFFER_SIZE;
   }
 
   /**

@@ -12,7 +12,6 @@ import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.Builder;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.bufferserver.util.WaitingChannelFutureListener;
 import com.malhartech.engine.ResetWindowTuple;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
@@ -38,41 +37,19 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   protected void write(Builder db) throws RuntimeException
   {
     Message d = db.build();
-    //
-    // we should find a place for the following code in the base class.
-    //
-    if (BUFFER_SIZE - writtenBytes > d.getSerializedSize()) {
-      channel.write(d);
-      writtenBytes += d.getSerializedSize();
-    }
-    else {
-      synchronized (wcfl) {
-        if (wcfl.isAdded()) {
-          try {
-            wcfl.wait();
-            if (d.getSerializedSize() < BUFFER_SIZE) {
-              channel.write(d);
-            }
-            else {
-              wcfl.setAdded(true);
-              channel.write(d).addListener(wcfl);
-            }
-          }
-          catch (InterruptedException ex) {
-            throw new RuntimeException(ex);
-          }
-        }
-        else {
-          wcfl.setAdded(true);
-          channel.write(d).addListener(wcfl);
-        }
-
-        writtenBytes = d.getSerializedSize();
+    if (writtenBytes > BUFFER_SIZE) {
+      try {
+        channel.flush().await();
+        writtenBytes = 0;
+      }
+      catch (InterruptedException ie) {
+        throw new RuntimeException(ie);
       }
     }
-  }
 
-  final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
+    channel.write(d);
+    writtenBytes += d.getSerializedSize();
+  }
 
   public BufferServerOutputStream(StreamCodec<Object> serde)
   {
@@ -93,6 +70,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
 
       switch (t.getType()) {
         case CHECKPOINT:
+          logger.debug("sending checkpoint over {}", channel);
           serde.resetState();
           break;
 
@@ -100,18 +78,21 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
           Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
           bw.setWindowId(windowId = (int)t.getWindowId());
           db.setBeginWindow(bw);
+          logger.debug("sending begin_window {} over {}", windowId, channel);
           break;
 
         case END_WINDOW:
           Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
           ew.setWindowId(windowId = (int)t.getWindowId());
           db.setEndWindow(ew);
+          logger.debug("sending end_widnow {} over {}", windowId, channel);
           break;
 
         case END_STREAM:
           Buffer.EndStream.Builder es = Buffer.EndStream.newBuilder();
           es.setWindowId(windowId = (int)t.getWindowId());
           db.setEndStream(es);
+          logger.debug("sending end_stream {} over {}", windowId, channel);
           break;
 
         case RESET_WINDOW:
@@ -119,6 +100,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
           rw.setWidth(((ResetWindowTuple)t).getIntervalMillis());
           rw.setBaseSeconds(((ResetWindowTuple)t).getBaseSeconds());
           db.setResetWindow(rw);
+          logger.debug("sending reset_window {} over {}", rw.getBaseSeconds(), channel);
           break;
 
         default:

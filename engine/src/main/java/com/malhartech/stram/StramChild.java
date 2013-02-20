@@ -27,6 +27,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.security.PrivilegedExceptionAction;
@@ -837,6 +838,10 @@ public class StramChild
            */
           assert (nodi.isInline() == false);
           context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+
+          if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
+            context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
+          }
 
           stream = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
           stream.setup(context);

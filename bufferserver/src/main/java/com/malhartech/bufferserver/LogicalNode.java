@@ -38,6 +38,7 @@ public class LogicalNode implements DataListener
   private final long windowId;
   private long baseSeconds;
   private boolean caughtup;
+  private boolean blocked;
 
   /**
    *
@@ -118,6 +119,20 @@ public class LogicalNode implements DataListener
     partitions.add(new BitVector(partition, mask));
   }
 
+  public boolean isReady()
+  {
+    if (blocked) {
+      for (PhysicalNode pn: physicalNodes) {
+        if (pn.isBlocked()) {
+          return false;
+        }
+      }
+      blocked = false;
+    }
+
+    return true;
+  }
+
   // make it run a lot faster by tracking faster!
   /**
    *
@@ -126,55 +141,60 @@ public class LogicalNode implements DataListener
   {
     int intervalMillis;
 
+    if (isReady()) {
 //    logger.debug("catching up {}->{}", upstream, group);
+      try {
+        /*
+         * fast forward to catch up with the windowId without consuming
+         */
+        outer:
+        while (iterator.hasNext()) {
+          SerializedData data = iterator.next();
+          switch (iterator.getType()) {
+            case RESET_WINDOW:
+              Message resetWindow = (Message)iterator.getData();
+              baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
+              intervalMillis = resetWindow.getResetWindow().getWidth();
+              if (intervalMillis <= 0) {
+                logger.warn("Interval value set to non positive value = {}", intervalMillis);
+              }
+              blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+              break;
 
-    try {
-      /*
-       * fast forward to catch up with the windowId without consuming
-       */
-      outer:
-      while (iterator.hasNext()) {
-        SerializedData data = iterator.next();
-        switch (iterator.getType()) {
-          case RESET_WINDOW:
-            Message resetWindow = (Message)iterator.getData();
-            baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
-            intervalMillis = resetWindow.getResetWindow().getWidth();
-            if (intervalMillis <= 0) {
-              logger.warn("Interval value set to non positive value = {}", intervalMillis);
-            }
-            GiveAll.getInstance().distribute(physicalNodes, data);
-            break;
+            case BEGIN_WINDOW:
+              logger.debug("{}->{} condition {} =? {}",
+                           new Object[] {
+                        upstream,
+                        group,
+                        Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
+                        Codec.getStringWindowId(windowId)
+                      });
+              if ((baseSeconds | iterator.getWindowId()) >= windowId) {
+                logger.debug("caught up {}->{}", upstream, group);
+                blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+                caughtup = true;
+                break outer;
+              }
+              break;
 
-          case BEGIN_WINDOW:
-            logger.debug("{}->{} condition {} =? {}",
-                         new Object[] {
-                      upstream,
-                      group,
-                      Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
-                      Codec.getStringWindowId(windowId)
-                    });
-            if ((baseSeconds | iterator.getWindowId()) >= windowId) {
-              logger.debug("caught up {}->{}", upstream, group);
-              GiveAll.getInstance().distribute(physicalNodes, data);
-              caughtup = true;
-              break outer;
-            }
-            break;
+            case CHECKPOINT:
+            case CODEC_STATE:
+              blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+              break;
+          }
 
-          case CHECKPOINT:
-          case CODEC_STATE:
-            GiveAll.getInstance().distribute(physicalNodes, data);
+          if (blocked) {
             break;
+          }
         }
       }
-    }
-    catch (InterruptedException ie) {
-      throw new RuntimeException(ie);
-    }
+      catch (InterruptedException ie) {
+        throw new RuntimeException(ie);
+      }
 
-    if (iterator.hasNext()) {
-      dataAdded();
+      if (iterator.hasNext()) {
+        dataAdded();
+      }
     }
   }
 
@@ -184,68 +204,78 @@ public class LogicalNode implements DataListener
   @SuppressWarnings("fallthrough")
   public synchronized void dataAdded()
   {
-    if (caughtup) {
-      try {
-        /*
-         * consume as much data as you can before running out of steam
-         */
-        if (partitions.isEmpty()) {
-          while (iterator.hasNext()) {
-            SerializedData data = iterator.next();
-            switch (iterator.getType()) {
-              case PAYLOAD:
-                policy.distribute(physicalNodes, data);
-                break;
+    if (isReady()) {
+      if (caughtup) {
+        try {
+          /*
+           * consume as much data as you can before running out of steam
+           */
+          if (partitions.isEmpty()) {
+            while (iterator.hasNext()) {
+              SerializedData data = iterator.next();
+              switch (iterator.getType()) {
+                case PAYLOAD:
+                  blocked = policy.distribute(physicalNodes, data);
+                  break;
 
-              case NO_MESSAGE:
-              case NO_MESSAGE_ODD:
-                break;
+                case NO_MESSAGE:
+                case NO_MESSAGE_ODD:
+                  break;
 
-              case RESET_WINDOW:
-                Message resetWindow = (Message)iterator.getData();
-                baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
+                case RESET_WINDOW:
+                  Message resetWindow = (Message)iterator.getData();
+                  baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
 
-              default:
-                GiveAll.getInstance().distribute(physicalNodes, data);
+                default:
+                  blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+                  break;
+              }
+
+              if (blocked) {
                 break;
+              }
             }
           }
-        }
-        else {
-          while (iterator.hasNext()) {
-            SerializedData data = iterator.next();
-            switch (iterator.getType()) {
-              case PAYLOAD:
-                int value = ((Message)iterator.getData()).getPayload().getPartition();
-                for (BitVector bv: partitions) {
-                  if (bv.matches(value)) {
-                    policy.distribute(physicalNodes, data);
-                    break;
+          else {
+            while (iterator.hasNext()) {
+              SerializedData data = iterator.next();
+              switch (iterator.getType()) {
+                case PAYLOAD:
+                  int value = ((Message)iterator.getData()).getPayload().getPartition();
+                  for (BitVector bv: partitions) {
+                    if (bv.matches(value)) {
+                      blocked = policy.distribute(physicalNodes, data);
+                      break;
+                    }
                   }
-                }
-                break;
+                  break;
 
-              case NO_MESSAGE:
-              case NO_MESSAGE_ODD:
-                break;
+                case NO_MESSAGE:
+                case NO_MESSAGE_ODD:
+                  break;
 
-              case RESET_WINDOW:
-                Message resetWindow = (Message)iterator.getData();
-                baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
+                case RESET_WINDOW:
+                  Message resetWindow = (Message)iterator.getData();
+                  baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
 
-              default:
-                GiveAll.getInstance().distribute(physicalNodes, data);
+                default:
+                  blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+                  break;
+              }
+
+              if (blocked) {
                 break;
+              }
             }
           }
         }
+        catch (InterruptedException ie) {
+          throw new RuntimeException(ie);
+        }
       }
-      catch (InterruptedException ie) {
-        throw new RuntimeException(ie);
+      else {
+        catchUp();
       }
-    }
-    else {
-      catchUp();
     }
   }
 

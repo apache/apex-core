@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -212,7 +213,11 @@ public class LaunchContainerRunnable implements Runnable
 
     String jvmOpts = dag.getAttributes().attrValue(DAG.STRAM_CONTAINER_JVM_OPTS, null);
     if (jvmOpts != null) {
-      vargs.add(jvmOpts);
+      Map<String, String> params = new HashMap<String, String>();
+      params.put("applicationId", "TBD");
+      params.put("containerId", Integer.toString(container.getId().getId()));
+      StrSubstitutor sub = new StrSubstitutor(params, "%(", ")");
+      vargs.add(sub.replace(jvmOpts));
     }
     else {
       // default Xmx based on total allocated memory size
