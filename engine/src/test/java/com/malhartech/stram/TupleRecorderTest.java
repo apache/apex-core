@@ -167,7 +167,6 @@ public class TupleRecorderTest
     dag.addStream("stream1", op1.outport, op2.inport1);
 
     StramLocalCluster localCluster = new StramLocalCluster(dag);
-    localCluster.setPerContainerBufferServer(true);
     localCluster.runAsync();
 
     PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getOperatorWrapper(op2));
