@@ -45,7 +45,9 @@ public class GenericNode extends Node<Operator>
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
       Reservoir original = inputs.get(e.getKey());
-      inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
+      if (original != null) {
+        inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
+      }
     }
 
     super.addSinks(sinks);
