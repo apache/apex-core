@@ -311,18 +311,33 @@ public class TupleRecorder implements Operator
     }
   }
 
-  public void writeIndex() {
+  public void writeControlTuple(Tuple tuple, String port)
+  {
+    try {
+      PortInfo pi = portMap.get(port);
+      String str = "C:" + pi.id; // to be completed when Tuple is externalizable
+      fsOutput.write(str.getBytes());
+      fsOutput.write("\n".getBytes());
+    }
+    catch (IOException ex) {
+      logger.error(ex.toString());
+    }
+  }
+
+  public void writeIndex()
+  {
     try {
       indexOs.write(("F:" + indexBeginWindowId + ":" + windowId + ":T:" + tupleCount + ":").getBytes());
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      int i=0;
+      int i = 0;
       String countStr = "{";
-      for( String key : portCountMap.keySet() ) {
+      for (String key: portCountMap.keySet()) {
         PortCount pc = portCountMap.get(key);
-        if( i!= 0)
+        if (i != 0) {
           countStr += ",";
-        countStr += "\""+pc.id+"\""+":"+pc.count;
+        }
+        countStr += "\"" + pc.id + "\"" + ":" + pc.count;
         i++;
 
         pc.count = 0;
@@ -332,9 +347,9 @@ public class TupleRecorder implements Operator
       bos.write(countStr.getBytes());
       tupleCount = 0;
 
-      indexOs.write((String.valueOf(bos.size())+":").getBytes());
+      indexOs.write((String.valueOf(bos.size()) + ":").getBytes());
       indexOs.write(bos.toByteArray());
-      indexOs.write((":"+hdfsFile + "\n").getBytes());
+      indexOs.write((":" + hdfsFile + "\n").getBytes());
       indexOs.hflush();
       indexOs.hsync();
     }
@@ -369,16 +384,11 @@ public class TupleRecorder implements Operator
           case END_WINDOW:
             endWindow();
             break;
-
-          case PAYLOAD:
-            logger.info("writing data tuple...");
-            writeTuple(payload, portName);
-            break;
         }
+        writeControlTuple(tuple, portName);
       }
       else {
-        //writeTuple(payload, portName);
-        logger.info("not writing data tuple...");
+        writeTuple(payload, portName);
       }
     }
 
