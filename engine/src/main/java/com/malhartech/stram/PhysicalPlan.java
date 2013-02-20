@@ -76,6 +76,10 @@ public class PhysicalPlan {
       return container;
     }
 
+    public int getId() {
+      return id;
+    }
+
     /**
      *
      * @return String
