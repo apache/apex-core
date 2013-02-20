@@ -171,25 +171,10 @@ public class LaunchContainerRunnable implements Runnable
       // TODO do we need to release this container?
     }
 
-    // Get container status?
-    // Left commented out as the shell scripts are short lived
-    // and we are relying on the status for completed containers from RM to detect status
-
-    //    GetContainerStatusRequest statusReq = Records.newRecord(GetContainerStatusRequest.class);
-    //    statusReq.setContainerId(container.getId());
-    //    GetContainerStatusResponse statusResp;
-    //try {
-    //statusResp = cm.getContainerStatus(statusReq);
-    //    LOG.info("Container Status"
-    //    + ", id=" + container.getId()
-    //    + ", status=" +statusResp.getStatus());
-    //} catch (YarnRemoteException e) {
-    //e.printStackTrace();
-    //}
   }
 
   /**
-   * Build the command to launch the child VM in the container TODO: Build based on streaming node configuration
+   * Build the command to launch the child VM in the container
    *
    * @param jvmID
    * @return List<CharSequence>
@@ -214,7 +199,7 @@ public class LaunchContainerRunnable implements Runnable
     String jvmOpts = dag.getAttributes().attrValue(DAG.STRAM_CONTAINER_JVM_OPTS, null);
     if (jvmOpts != null) {
       Map<String, String> params = new HashMap<String, String>();
-      params.put("applicationId", "TBD");
+      params.put("applicationId", Integer.toString(container.getId().getApplicationAttemptId().getApplicationId().getId()));
       params.put("containerId", Integer.toString(container.getId().getId()));
       StrSubstitutor sub = new StrSubstitutor(params, "%(", ")");
       vargs.add(sub.replace(jvmOpts));

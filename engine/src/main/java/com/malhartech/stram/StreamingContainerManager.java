@@ -115,7 +115,7 @@ public class StreamingContainerManager implements PlanContext
       String containerId = cse.getKey();
       StramChildAgent cs = cse.getValue();
       if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
-        // TODO: startup timeout handling
+        // TODO: handle containers hung in deploy requests
         if (cs.lastHeartbeatMillis > 0 && !cs.hasPendingWork()) {
           // request stop as process may still be hanging around (would have been detected by Yarn otherwise)
           LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {containerId, cse.getValue().container.host, currentTms - cs.lastHeartbeatMillis});
@@ -452,42 +452,8 @@ public class StreamingContainerManager implements PlanContext
   {
     long maxCheckpoint = operator.getRecentCheckpoint();
 
-    //Map<DAG.OutputPortMeta, PTOperator> mergeOps = plan.getMergeOperators(operator.logicalNode);
-
     // find smallest most recent subscriber checkpoint
     for (PTOutput out: operator.outputs) {
-      /*
-      PTOperator mergeOp = mergeOps.get(out.logicalStream.getSource());
-      if (mergeOp != null && !visited.contains(mergeOp)) {
-        visited.add(mergeOp);
-        // depth-first downstream traversal
-        updateRecoveryCheckpoints(mergeOp, visited);
-        maxCheckpoint = Math.min(maxCheckpoint, mergeOp.recoveryCheckpoint);
-        // everything downstream was handled
-        continue;
-      }
-
-      for (DAG.InputPortMeta targetPort: out.logicalStream.getSinks()) {
-        OperatorMeta lDownNode = targetPort.getOperatorWrapper();
-        if (lDownNode != null) {
-          List<PTOperator> downNodes = plan.getOperators(lDownNode);
-          for (PTOperator downNode: downNodes) {
-            mergeOp = downNode.upstreamMerge.get(targetPort);
-            if (mergeOp != null && !visited.contains(mergeOp)) {
-              visited.add(mergeOp);
-              updateRecoveryCheckpoints(mergeOp, visited);
-              maxCheckpoint = Math.min(maxCheckpoint, mergeOp.recoveryCheckpoint);
-              continue;
-            }
-            if (!visited.contains(downNode)) {
-              // downstream traversal
-              updateRecoveryCheckpoints(downNode, visited);
-            }
-            maxCheckpoint = Math.min(maxCheckpoint, downNode.recoveryCheckpoint);
-          }
-        }
-      }
-      */
       for (PhysicalPlan.PTInput sink : out.sinks) {
         PTOperator sinkOperator = (PTOperator)sink.target;
         if (!visited.contains(sinkOperator)) {
@@ -788,9 +754,6 @@ public class StreamingContainerManager implements PlanContext
   public void stopAllRecordings()
   {
     // Not Supported yet
-    for (StramChildAgent container: this.containers.values()) {
-      // TBD
-    }
   }
 
   protected ArrayList<StramChildAgent> getContainersFromOperatorId(int operatorId)
