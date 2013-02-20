@@ -270,6 +270,11 @@ public class StramLocalCluster implements Runnable
     return this.childContainers.get(id);
   }
 
+  public StreamingContainerManager getStreamingContainerManager()
+  {
+    return dnmgr;
+  }
+
   public StramLocalCluster(DAG dag, MockComponentFactory mcf) throws Exception
   {
     this(dag);
@@ -291,7 +296,7 @@ public class StramLocalCluster implements Runnable
     this.childContainers.remove(c.getContainerId());
   }
 
-  PTOperator findByLogicalNode(OperatorMeta logicalNode)
+  public PTOperator findByLogicalNode(OperatorMeta logicalNode)
   {
     List<PTOperator> nodes = dnmgr.getPhysicalPlan().getOperators(logicalNode);
     if (nodes.isEmpty()) {
