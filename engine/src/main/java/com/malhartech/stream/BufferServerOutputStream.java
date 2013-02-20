@@ -12,7 +12,6 @@ import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.Builder;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.bufferserver.util.WaitingChannelFutureListener;
 import com.malhartech.engine.ResetWindowTuple;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
@@ -38,41 +37,19 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   protected void write(Builder db) throws RuntimeException
   {
     Message d = db.build();
-    //
-    // we should find a place for the following code in the base class.
-    //
-    if (BUFFER_SIZE - writtenBytes > d.getSerializedSize()) {
-      channel.write(d);
-      writtenBytes += d.getSerializedSize();
-    }
-    else {
-      synchronized (wcfl) {
-        if (wcfl.isAdded()) {
-          try {
-            wcfl.wait();
-            if (d.getSerializedSize() < BUFFER_SIZE) {
-              channel.write(d);
-            }
-            else {
-              wcfl.setAdded(true);
-              channel.write(d).addListener(wcfl);
-            }
-          }
-          catch (InterruptedException ex) {
-            throw new RuntimeException(ex);
-          }
-        }
-        else {
-          wcfl.setAdded(true);
-          channel.write(d).addListener(wcfl);
-        }
-
-        writtenBytes = d.getSerializedSize();
+    if (writtenBytes > BUFFER_SIZE) {
+      try {
+        channel.flush().await();
+        writtenBytes = 0;
+      }
+      catch (InterruptedException ie) {
+        throw new RuntimeException(ie);
       }
     }
-  }
 
-  final WaitingChannelFutureListener wcfl = new WaitingChannelFutureListener();
+    channel.write(d);
+    writtenBytes += d.getSerializedSize();
+  }
 
   public BufferServerOutputStream(StreamCodec<Object> serde)
   {
