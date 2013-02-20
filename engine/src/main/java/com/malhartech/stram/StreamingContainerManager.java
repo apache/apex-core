@@ -115,7 +115,7 @@ public class StreamingContainerManager implements PlanContext
       String containerId = cse.getKey();
       StramChildAgent cs = cse.getValue();
       if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
-        // TODO: startup timeout handling
+        // TODO: handle containers hung in deploy requests
         if (cs.lastHeartbeatMillis > 0 && !cs.hasPendingWork()) {
           // request stop as process may still be hanging around (would have been detected by Yarn otherwise)
           LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {containerId, cse.getValue().container.host, currentTms - cs.lastHeartbeatMillis});
