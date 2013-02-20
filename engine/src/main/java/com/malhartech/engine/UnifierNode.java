@@ -43,6 +43,12 @@ public class UnifierNode extends GenericNode
       count += size;
       return null;
     }
+    
+    @Override
+    public void consume(Object payload)
+    {
+      unifier.merge(payload);
+    }
 
   }
 

@@ -716,7 +716,7 @@ public class StramChild
       case STOP_RECORDING:
         logger.debug("Received stop recording request for " + operatorId);
 
-        if (!tupleRecorders.containsKey(operatorId)) {
+        if (tupleRecorders.containsKey(operatorId)) {
           context.request(new OperatorContext.NodeRequest()
           {
             @Override

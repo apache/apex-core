@@ -50,7 +50,8 @@ public class TupleRecorderTest
       TupleRecorder recorder = new TupleRecorder();
       recorder.setBytesPerFile(4096);
       recorder.setLocalMode(true);
-      recorder.setBasePath("file:///tmp/TupleRecorderTest");
+      recorder.setBasePath("file://"+testWorkDir.getAbsolutePath()+"/recordings");
+
       recorder.addInputPortInfo("ip1", "str1");
       recorder.addInputPortInfo("ip2", "str2");
       recorder.addInputPortInfo("ip3", "str3");
@@ -160,7 +161,7 @@ public class TupleRecorderTest
 
     DAG dag = new DAG();
 
-    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(testWorkDir.getPath());
+    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set("file://"+testWorkDir.getAbsolutePath());
 
     TestGeneratorInputModule op1 = dag.addOperator("op1", TestGeneratorInputModule.class);
     GenericTestModule op2 = dag.addOperator("op2", GenericTestModule.class);
@@ -175,13 +176,8 @@ public class TupleRecorderTest
     localCluster.dnmgr.startRecording(ptOp2.id, "doesNotMatter");
 
     Thread.sleep(10000);
-
+    localCluster.dnmgr.stopRecording(ptOp2.id);
+    Thread.sleep(5000);
     localCluster.shutdown();
-
-
   }
-
-
-
-
 }

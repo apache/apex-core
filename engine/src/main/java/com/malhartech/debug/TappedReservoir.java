@@ -20,11 +20,19 @@ public class TappedReservoir implements Reservoir
   public final Reservoir reservoir;
   public final Sink<Object> stackedSink;
 
-  public class Iterator<T> implements java.util.Iterator<T> {
+  @Override
+  public void consume(Object payload)
+  {
+    stackedSink.process(payload);
+  }
+
+  public class Iterator<T> implements java.util.Iterator<T>
+  {
     protected java.util.Iterator<T> it;
     protected T obj;
-    
-    protected Iterator(java.util.Iterator<T> it) {
+
+    protected Iterator(java.util.Iterator<T> it)
+    {
       this.it = it;
     }
 
@@ -47,6 +55,7 @@ public class TappedReservoir implements Reservoir
       stackedSink.process(obj);
       it.remove();
     }
+
   }
 
   public TappedReservoir(Reservoir original, Sink<Object> sink)
@@ -74,8 +83,15 @@ public class TappedReservoir implements Reservoir
   @Override
   public Tuple sweep()
   {
-    Tuple t = reservoir.sweep();
-    return t;
+    final int size = size();
+    for (int i = 1; i <= size; i++) {
+      if (peekUnsafe() instanceof Tuple) {
+        return (Tuple)peekUnsafe();
+      }
+      reservoir.consume(pollUnsafe());
+    }
+
+    return null;
   }
 
   @Override
