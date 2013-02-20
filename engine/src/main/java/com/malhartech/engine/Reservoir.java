@@ -15,4 +15,6 @@ public interface Reservoir extends UnsafeBlockingQueue<Object>, Sink<Object>
 {
   public abstract Tuple sweep();
 
+  public abstract void consume(Object payload);
+
 }

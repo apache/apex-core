@@ -66,9 +66,9 @@
   <profiles>
     <profile>
     <id>release</id>
-      <modules>
+      <!--modules>
         <module>contrib</module>
-      </modules>
+      </modules-->
       <build>
         <plugins>
           <plugin>

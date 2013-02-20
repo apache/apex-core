@@ -92,6 +92,13 @@ public class GenericNode extends Node<Operator>
       return null;
     }
 
+    @Override
+    public void consume(Object payload)
+    {
+      sink.process(payload);
+    }
+
+
   }
 
   public GenericNode(String id, Operator operator)
