@@ -94,7 +94,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
       InternalCounterSink ics = outputs.get(e.getKey());
       if (ics != null) {
-        outputs.put(e.getKey(), new InternalCounterSink(new ForkingSink(ics.sink, e.getValue())));
+        ics.sink = new ForkingSink(ics.sink, e.getValue());
       }
     }
 
@@ -105,8 +105,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
       InternalCounterSink ics = outputs.get(e.getKey());
       if (ics != null && ics.sink instanceof ForkingSink) {
-        assert(((ForkingSink)ics.sink).second == e.getValue());
-        outputs.put(e.getKey(), new InternalCounterSink(((ForkingSink)ics.sink).first));
+        assert (((ForkingSink)ics.sink).second == e.getValue());
+        ics.sink = ((ForkingSink)ics.sink).first;
       }
     }
   }
@@ -287,7 +287,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     @SuppressWarnings({"FieldNameHidesFieldInSuperclass", "VolatileArrayField"})
     public static final InternalCounterSink[] NO_SINKS = new InternalCounterSink[0];
     int count;
-    public final Sink<Object> sink;
+    Sink<Object> sink;
 
     InternalCounterSink(Sink<Object> sink)
     {
