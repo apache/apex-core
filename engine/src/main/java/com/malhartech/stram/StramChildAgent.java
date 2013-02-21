@@ -36,6 +36,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.webapp.ContainerInfo;
 
 /**
  *
@@ -415,6 +416,14 @@ public class StramChildAgent {
     ndi.id = node.id;
     ndi.contextAttributes = node.logicalNode.getAttributes();
     return ndi;
+  }
+
+  public ContainerInfo getContainerInfo() {
+    ContainerInfo ci = new ContainerInfo();
+    ci.id = container.containerId;
+    ci.numOperators = container.operators.size();
+    ci.lastHeartbeat = lastHeartbeatMillis;
+    return ci;
   }
 
 }

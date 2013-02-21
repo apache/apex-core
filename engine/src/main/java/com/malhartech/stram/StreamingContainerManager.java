@@ -248,6 +248,10 @@ public class StreamingContainerManager implements PlanContext
     return cs;
   }
 
+  public Collection<StramChildAgent> getContainerAgents() {
+    return this.containers.values();
+  }
+
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
     boolean containerIdle = true;
@@ -766,6 +770,10 @@ public class StreamingContainerManager implements PlanContext
       }
     }
     return retContainers;
+  }
+
+  public void stopContainer(String containerId) {
+    this.containerStopRequests.put(containerId, containerId);
   }
 
 }

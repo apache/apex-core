@@ -43,10 +43,9 @@ import org.slf4j.LoggerFactory;
  * <tr align=center><th width=10%><b>Command</b></th><th width=20%><b>Parameters</b></th><th width=70%><b>Description</b></th></tr>
  * </thead><tbody>
  * <tr><td><b>help</b></td><td></td><td>prints help on all cli commands</td></tr>
- * <tr><td><b>ls</b></td><td></td><td>lists all current running applications</td></tr>
- * <tr><td><b>connect</b></td><td>appId</td><td>Connects to the given application</td></tr>
- * <tr><td><b>listoperators</b></td><td></td><td>Lists deployed streaming operators</td></tr>
- * <tr><td><b>launch</b></td><td>jarFile [, topologyFile ]</td><td>Launch topology packaged in jar file</td></tr>
+ * <tr><td><b>ls</b></td><td></td><td>list applications or operators</td></tr>
+ * <tr><td><b>cd</b></td><td>appId</td><td>connect to the given application</td></tr>
+ * <tr><td><b>launch</b></td><td>jarFile</td><td>Launch application packaged in jar file</td></tr>
  * <tr><td><b>timeout</b></td><td>duration</td><td>Wait for completion of current application</td></tr>
  * <tr><td><b>kill</b></td><td></td><td>Force termination for current application</td></tr>
  * <tr><td><b>exit</b></td><td></td><td>Exit the app</td></tr>
@@ -106,7 +105,7 @@ public class StramCli
     ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[] {"help", "ls", "cd", "listoperators", "shutdown", "timeout", "kill", "startrecordiong", "stoprecording", "exit"};
+    String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill", "startrecording", "stoprecording", "exit"};
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -140,7 +139,7 @@ public class StramCli
         else if (line.startsWith("ls")) {
           ls(line);
         }
-        else if (line.startsWith("connect") || line.startsWith("cd")) {
+        else if (line.startsWith("cd")) {
           connect(line);
         }
         else if (line.startsWith("listoperators")) {
@@ -157,6 +156,9 @@ public class StramCli
         }
         else if (line.startsWith("kill")) {
           killApp(line);
+        }
+        else if (line.startsWith("container-kill")) {
+          killContainer(line);
         }
         else if (line.startsWith("startrecording")) {
           startRecording(line);
@@ -191,9 +193,8 @@ public class StramCli
   private void printHelp()
   {
     System.out.println("help             - Show help");
-    System.out.println("ls               - Show running applications");
+    System.out.println("ls               - List applications or operators");
     System.out.println("connect <appId>  - Connect to running streaming application");
-    System.out.println("listoperators        - List deployed streaming operators");
     System.out.println("launch <jarFile> [<configuration>] - Launch application packaged in jar file.");
     System.out.println("timeout <duration> - Wait for completion of current application.");
     System.out.println("kill             - Force termination for current application.");
@@ -249,10 +250,13 @@ public class StramCli
       args[i] = args[i].trim();
     }
 
-    if (args.length == 2 && args[1].equals("/") || currentDir.equals("/")) {
+    String context = (args.length == 2 ? args[1] : currentDir);
+    if (context.equals("/")) {
       listApplications(args);
     }
-    else {
+    else if (context.equals("containers")) {
+      listContainers();
+    } else {
       listOperators(args);
     }
   }
@@ -379,10 +383,10 @@ public class StramCli
       return;
     }
     else {
-      currentDir = args[1];
+        currentDir = args[1];
     }
 
-    currentApp = getApplication(Integer.parseInt(args[1]));
+    currentApp = getApplication(Integer.parseInt(currentDir));
     if (currentApp == null) {
       throw new CliException("Invalid application id: " + args[1]);
     }
@@ -428,6 +432,13 @@ public class StramCli
       json.put(singleKey, matches);
     }
 
+    System.out.println(json.toString(2));
+  }
+
+  private void listContainers() throws JSONException
+  {
+    ClientResponse rsp = getResource(StramWebServices.PATH_CONTAINERS);
+    JSONObject json = rsp.getEntity(JSONObject.class);
     System.out.println(json.toString(2));
   }
 
@@ -550,19 +561,22 @@ public class StramCli
 
   }
 
-  private void shutdownApp(String line)
-  {
+  private WebResource getPostResource() {
     if (currentApp == null) {
       throw new CliException("No application selected");
     }
-
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
     currentApp = assertRunningApp(currentApp); // or else "N/A" might be there..
     String trackingUrl = currentApp.getOriginalTrackingUrl();
 
     Client wsClient = Client.create();
     wsClient.setFollowRedirects(true);
-    WebResource r = wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH).path(StramWebServices.PATH_SHUTDOWN);
+    return wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
+  }
+
+  private void shutdownApp(String line)
+  {
+    WebResource r = getPostResource().path(StramWebServices.PATH_SHUTDOWN);
     try {
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class);
       System.out.println("shutdown requested: " + response);
@@ -612,6 +626,22 @@ public class StramCli
 
   }
 
+  private void killContainer(String line)
+  {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    String[] args = assertArgs(line, 2, "no container id specified.");
+    WebResource r = getPostResource().path(StramWebServices.PATH_CONTAINERS).path(args[1]).path("kill");
+    try {
+      JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, new JSONObject());
+      System.out.println("container stop requested: " + response);
+    }
+    catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+
   private void startRecording(String line)
   {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
@@ -620,18 +650,8 @@ public class StramCli
       return;
     }
 
-    if (currentApp == null) {
-      throw new CliException("No application selected");
-    }
-
-    // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
-    currentApp = assertRunningApp(currentApp); // or else "N/A" might be there..
-    String trackingUrl = currentApp.getOriginalTrackingUrl();
+    WebResource r = getPostResource().path(StramWebServices.PATH_STARTRECORDING);
     JSONObject request = new JSONObject();
-    Client wsClient = Client.create();
-    wsClient.setFollowRedirects(true);
-    WebResource r = wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH).path(StramWebServices.PATH_STARTRECORDING);
-
     try {
       request.put("operId", args[1]);
       if (args.length == 3) {
@@ -652,17 +672,9 @@ public class StramCli
       System.err.println("Invalid arguments");
       return;
     }
-    if (currentApp == null) {
-      throw new CliException("No application selected");
-    }
 
-    // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
-    currentApp = assertRunningApp(currentApp); // or else "N/A" might be there..
-    String trackingUrl = currentApp.getOriginalTrackingUrl();
+    WebResource r = getPostResource().path(StramWebServices.PATH_STOPRECORDING);
     JSONObject request = new JSONObject();
-    Client wsClient = Client.create();
-    wsClient.setFollowRedirects(true);
-    WebResource r = wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH).path(StramWebServices.PATH_STOPRECORDING);
 
     try {
       if (args.length == 2) {

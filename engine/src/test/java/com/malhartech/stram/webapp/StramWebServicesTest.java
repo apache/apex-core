@@ -96,6 +96,11 @@ public class StramWebServicesTest extends JerseyTest {
     }
 
     @Override
+    public String getAppMasterTrackingUrl() {
+      return "unknown";
+    }
+
+    @Override
     public CharSequence getUser() {
       return userId;
     }
