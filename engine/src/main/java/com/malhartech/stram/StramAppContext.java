@@ -33,7 +33,7 @@ public interface StramAppContext {
 
   /**
    * The direct URL to access the app master web services.
-   * This is to allow requests other then POST - see YARN-156
+   * This is to allow requests other then GET - see YARN-156
    * @return
    */
   String getAppMasterTrackingUrl();
