@@ -14,6 +14,7 @@ import com.malhartech.stream.StramTestSupport;
 import com.malhartech.stream.StramTestSupport.WaitCondition;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -154,6 +155,7 @@ public class TupleRecorderTest
   }
 
   private static File testWorkDir = new File("target", TupleRecorderTest.class.getName());
+  private static int testTupleCount = 100;
 
   @Test
   public void testRecording() throws Exception
@@ -167,6 +169,8 @@ public class TupleRecorderTest
     TestGeneratorInputModule op1 = dag.addOperator("op1", TestGeneratorInputModule.class);
     GenericTestModule op2 = dag.addOperator("op2", GenericTestModule.class);
     GenericTestModule op3 = dag.addOperator("op3", GenericTestModule.class);
+
+    op1.setEmitInterval(200); // emit every 200 msec
     dag.addStream("stream1", op1.outport, op2.inport1);
     dag.addStream("stream2", op2.outport1, op3.inport1);
 
@@ -184,12 +188,12 @@ public class TupleRecorderTest
       public boolean isComplete()
       {
         TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
-        return (tupleRecorder != null) && (tupleRecorder.getTotalTupleCount() >= 20);
+        return (tupleRecorder != null) && (tupleRecorder.getTotalTupleCount() >= testTupleCount);
       }
 
     };
 
-    StramTestSupport.awaitCompletion(c, 15000);
+    Assert.assertTrue("Should record more than " + testTupleCount + " tuples within 15 seconds", StramTestSupport.awaitCompletion(c, 15000));
 
     TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
     long startTime = tupleRecorder.getStartTime();
@@ -205,7 +209,7 @@ public class TupleRecorderTest
       }
 
     };
-    StramTestSupport.awaitCompletion(c, 5000);
+    Assert.assertTrue("Tuple recorder shouldn't exist any more after stopping", StramTestSupport.awaitCompletion(c, 5000));
 
     BufferedReader br;
     String line;
@@ -227,24 +231,26 @@ public class TupleRecorderTest
     file = new File(dir, "index.txt");
     Assert.assertTrue("index file should exist", file.exists());
     br = new BufferedReader(new FileReader(file));
-    line = br.readLine();
-    Assert.assertTrue("index file line should start with F:", line.startsWith("F:"));
-    Assert.assertTrue("index file line should end with :part0.txt", line.endsWith(":part0.txt"));
-    line = br.readLine();
-    Assert.assertTrue("index file line should start with F:", line.startsWith("F:"));
-    Assert.assertTrue("index file line should end with :part1.txt", line.endsWith(":part1.txt"));
+
+    ArrayList<String> partFiles = new ArrayList<String>();
+    int indexCount = 0;
+    while ((line = br.readLine()) != null) {
+      String partFile = "part" + indexCount + ".txt";
+      Assert.assertTrue("index file line should start with F:", line.startsWith("F:"));
+      Assert.assertTrue("index file line should end with :part" + indexCount + ".txt", line.endsWith(":" + partFile));
+      partFiles.add(partFile);
+      indexCount++;
+    }
 
     int tupleCount0 = 0;
     int tupleCount1 = 0;
     boolean beginWindowExists = false;
     boolean endWindowExists = false;
 
-    String[] partFiles = {"part0.txt", "part1.txt"};
-
     for (String partFile: partFiles) {
       file = new File(dir, partFile);
-      if (partFile == "part0.txt") {
-        Assert.assertTrue("part0.txt should be greater than 1KB", file.length() >= 1024);
+      if (partFile != partFiles.get(partFiles.size()-1)) {
+        Assert.assertTrue(partFile + " should be greater than 1KB", file.length() >= 1024);
       }
       Assert.assertTrue(partFile + " should exist", file.exists());
       br = new BufferedReader(new FileReader(file));
@@ -267,7 +273,7 @@ public class TupleRecorderTest
     Assert.assertTrue("end window should exist", endWindowExists);
     Assert.assertTrue("tuple exists for port 0", tupleCount0 > 0);
     Assert.assertTrue("tuple exists for port 1", tupleCount1 > 0);
-    Assert.assertTrue("total tuple count >= 20", tupleCount0 + tupleCount1 >= 20);
+    Assert.assertTrue("total tuple count >= " + testTupleCount, tupleCount0 + tupleCount1 >= testTupleCount);
     localCluster.shutdown();
   }
 

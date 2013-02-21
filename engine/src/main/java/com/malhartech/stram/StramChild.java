@@ -737,6 +737,7 @@ public class StramChild
                 node.removeSinks(tupleRecorder.getSinkMap());
                 tupleRecorder.teardown();
                 logger.debug("Stopped recording for operator id " + operatorId);
+                tupleRecorders.remove(operatorId);
               }
             }
 
