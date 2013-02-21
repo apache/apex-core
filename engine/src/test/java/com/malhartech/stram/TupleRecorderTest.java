@@ -167,6 +167,8 @@ public class TupleRecorderTest
     TestGeneratorInputModule op1 = dag.addOperator("op1", TestGeneratorInputModule.class);
     GenericTestModule op2 = dag.addOperator("op2", GenericTestModule.class);
     GenericTestModule op3 = dag.addOperator("op3", GenericTestModule.class);
+
+    op1.setEmitInterval(200); // emit every 200 msec
     dag.addStream("stream1", op1.outport, op2.inport1);
     dag.addStream("stream2", op2.outport1, op3.inport1);
 
@@ -184,12 +186,12 @@ public class TupleRecorderTest
       public boolean isComplete()
       {
         TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
-        return (tupleRecorder != null) && (tupleRecorder.getTotalTupleCount() >= 20);
+        return (tupleRecorder != null) && (tupleRecorder.getTotalTupleCount() >= 100);
       }
 
     };
 
-    StramTestSupport.awaitCompletion(c, 15000);
+    Assert.assertTrue("Should record more than 100 tuples within 15 seconds", StramTestSupport.awaitCompletion(c, 15000));
 
     TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
     long startTime = tupleRecorder.getStartTime();
@@ -205,7 +207,7 @@ public class TupleRecorderTest
       }
 
     };
-    StramTestSupport.awaitCompletion(c, 5000);
+    Assert.assertTrue("Tuple recorder shouldn't exist any more after stopping", StramTestSupport.awaitCompletion(c, 5000));
 
     BufferedReader br;
     String line;
