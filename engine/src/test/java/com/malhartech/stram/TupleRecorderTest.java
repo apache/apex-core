@@ -43,8 +43,8 @@ public class TupleRecorderTest
     public String value;
   }
 
-  //@Test
-  public void testSomeMethod()
+  @Test
+  public void testRecorder()
   {
     try {
       TupleRecorder recorder = new TupleRecorder();
@@ -158,7 +158,7 @@ public class TupleRecorderTest
   private static int testTupleCount = 100;
 
   @Test
-  public void testRecording() throws Exception
+  public void testRecordingFlow() throws Exception
   {
 
     DAG dag = new DAG();
