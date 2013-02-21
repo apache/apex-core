@@ -11,11 +11,10 @@ import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.TupleRecorder.PortInfo;
 import com.malhartech.stram.TupleRecorder.RecordInfo;
 import com.malhartech.stream.StramTestSupport;
+import com.malhartech.stream.StramTestSupport.WaitCondition;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import junit.framework.Assert;
@@ -43,14 +42,14 @@ public class TupleRecorderTest
     public String value;
   }
 
-  @Test
+  //@Test
   public void testSomeMethod()
   {
     try {
       TupleRecorder recorder = new TupleRecorder();
-      recorder.setBytesPerFile(4096);
+      recorder.setBytesPerPartFile(4096);
       recorder.setLocalMode(true);
-      recorder.setBasePath("file://"+testWorkDir.getAbsolutePath()+"/recordings");
+      recorder.setBasePath("file://" + testWorkDir.getAbsolutePath() + "/recordings");
 
       recorder.addInputPortInfo("ip1", "str1");
       recorder.addInputPortInfo("ip2", "str2");
@@ -157,27 +156,119 @@ public class TupleRecorderTest
   private static File testWorkDir = new File("target", TupleRecorderTest.class.getName());
 
   @Test
-  public void testRecording() throws Exception {
+  public void testRecording() throws Exception
+  {
 
     DAG dag = new DAG();
 
-    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set("file://"+testWorkDir.getAbsolutePath());
+    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set("file://" + testWorkDir.getAbsolutePath());
+    dag.getAttributes().attr(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE).set(1024);  // 1KB per part
 
     TestGeneratorInputModule op1 = dag.addOperator("op1", TestGeneratorInputModule.class);
     GenericTestModule op2 = dag.addOperator("op2", GenericTestModule.class);
+    GenericTestModule op3 = dag.addOperator("op3", GenericTestModule.class);
     dag.addStream("stream1", op1.outport, op2.inport1);
+    dag.addStream("stream2", op2.outport1, op3.inport1);
 
-    StramLocalCluster localCluster = new StramLocalCluster(dag);
+    final StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.runAsync();
 
-    PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getOperatorWrapper(op2));
+    final PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getOperatorWrapper(op2));
     StramTestSupport.waitForActivation(localCluster, ptOp2);
 
     localCluster.dnmgr.startRecording(ptOp2.id, "doesNotMatter");
 
-    Thread.sleep(10000);
+    WaitCondition c = new WaitCondition()
+    {
+      @Override
+      public boolean isComplete()
+      {
+        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
+        return (tupleRecorder != null) && (tupleRecorder.getTotalTupleCount() >= 20);
+      }
+
+    };
+
+    StramTestSupport.awaitCompletion(c, 15000);
+
+    TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
+    long startTime = tupleRecorder.getStartTime();
+
     localCluster.dnmgr.stopRecording(ptOp2.id);
-    Thread.sleep(5000);
+    c = new WaitCondition()
+    {
+      @Override
+      public boolean isComplete()
+      {
+        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
+        return (tupleRecorder == null);
+      }
+
+    };
+    StramTestSupport.awaitCompletion(c, 5000);
+
+    BufferedReader br;
+    String line;
+    File dir = new File(testWorkDir, "recordings/" + ptOp2.id + "/" + startTime);
+    File file;
+
+    file = new File(dir, "meta.txt");
+    Assert.assertTrue("meta file should exist", file.exists());
+    br = new BufferedReader(new FileReader(file));
+    line = br.readLine();
+    Assert.assertEquals("version should be 1.0", line, "1.0");
+    line = br.readLine();
+    Assert.assertTrue("should contain start time", line.contains("\"startTime\""));
+    line = br.readLine();
+    Assert.assertTrue("should contain name, streamName, type and id", line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
+    line = br.readLine();
+    Assert.assertTrue("should contain name, streamName, type and id", line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
+
+    file = new File(dir, "index.txt");
+    Assert.assertTrue("index file should exist", file.exists());
+    br = new BufferedReader(new FileReader(file));
+    line = br.readLine();
+    Assert.assertTrue("index file line should start with F:", line.startsWith("F:"));
+    Assert.assertTrue("index file line should end with :part0.txt", line.endsWith(":part0.txt"));
+    line = br.readLine();
+    Assert.assertTrue("index file line should start with F:", line.startsWith("F:"));
+    Assert.assertTrue("index file line should end with :part1.txt", line.endsWith(":part1.txt"));
+
+    int tupleCount0 = 0;
+    int tupleCount1 = 0;
+    boolean beginWindowExists = false;
+    boolean endWindowExists = false;
+
+    String[] partFiles = {"part0.txt", "part1.txt"};
+
+    for (String partFile: partFiles) {
+      file = new File(dir, partFile);
+      if (partFile == "part0.txt") {
+        Assert.assertTrue("part0.txt should be greater than 1KB", file.length() >= 1024);
+      }
+      Assert.assertTrue(partFile + " should exist", file.exists());
+      br = new BufferedReader(new FileReader(file));
+      while ((line = br.readLine()) != null) {
+        if (line.startsWith("B:")) {
+          beginWindowExists = true;
+        }
+        else if (line.startsWith("E:")) {
+          endWindowExists = true;
+        }
+        else if (line.startsWith("T:0:")) {
+          tupleCount0++;
+        }
+        else if (line.startsWith("T:1")) {
+          tupleCount1++;
+        }
+      }
+    }
+    Assert.assertTrue("begin window should exist", beginWindowExists);
+    Assert.assertTrue("end window should exist", endWindowExists);
+    Assert.assertTrue("tuple exists for port 0", tupleCount0 > 0);
+    Assert.assertTrue("tuple exists for port 1", tupleCount1 > 0);
+    Assert.assertTrue("total tuple count >= 20", tupleCount0 + tupleCount1 >= 20);
     localCluster.shutdown();
   }
+
 }

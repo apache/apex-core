@@ -86,6 +86,7 @@ public class StramChild
   private com.malhartech.bufferserver.Server bufferServer;
   private AttributeMap<DAGContext> applicationAttributes;
   protected HashMap<Integer, TupleRecorder> tupleRecorders = new HashMap<Integer, TupleRecorder>();
+  private int tupleRecordingPartFileSize;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -104,6 +105,7 @@ public class StramChild
 
     this.checkpointFsPath = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_DIR, "checkpoint-dfs-path-not-configured");
     this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
+    this.tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100*1024);
 
     try {
       if (ctx.deployBufferServer) {
@@ -123,6 +125,11 @@ public class StramChild
   public String getContainerId()
   {
     return this.containerId;
+  }
+
+  public TupleRecorder getTupleRecorder(int operId)
+  {
+    return tupleRecorders.get(operId);
   }
 
   /**
@@ -680,6 +687,7 @@ public class StramChild
                 }
                 String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
                 tupleRecorder.setBasePath(basePath);
+                tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
                 HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
                 PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
                 for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
