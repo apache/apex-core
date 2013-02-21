@@ -84,7 +84,7 @@ abstract public class StramTestSupport
       }
       Thread.sleep(50);
     }
-    return false;
+    return c.isComplete();
   }
 
   /**
