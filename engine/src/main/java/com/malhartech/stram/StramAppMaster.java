@@ -195,6 +195,12 @@ public class StramAppMaster
     {
       return null;
     }
+
+    @Override
+    public String getAppMasterTrackingUrl() {
+      return appMasterTrackingUrl;
+    }
+
   }
 
   /**

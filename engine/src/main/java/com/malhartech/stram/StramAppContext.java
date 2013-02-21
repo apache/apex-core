@@ -31,6 +31,13 @@ public interface StramAppContext {
 
   String getApplicationPath();
 
+  /**
+   * The direct URL to access the app master web services.
+   * This is to allow requests other then POST - see YARN-156
+   * @return
+   */
+  String getAppMasterTrackingUrl();
+
   CharSequence getUser();
 
   Clock getClock();
@@ -38,4 +45,5 @@ public interface StramAppContext {
   EventHandler<?> getEventHandler();
 
   ClusterInfo getClusterInfo();
+
 }
