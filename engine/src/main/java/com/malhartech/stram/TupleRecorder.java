@@ -346,6 +346,9 @@ public class TupleRecorder implements Operator
 
   public void writeIndex()
   {
+    if (partBeginWindowId < 0) {
+      return;
+    }
     try {
       indexOutStr.write(("F:" + partBeginWindowId + ":" + currentWindowId + ":T:" + partFileTupleCount + ":").getBytes());
 
