@@ -337,6 +337,7 @@ public class StramMiniClusterTest
     }
 
     client.startApplication();
+    client.setClientTimeout(120000);
 
     boolean result = client.monitorApplication();
 
@@ -345,7 +346,7 @@ public class StramMiniClusterTest
 
     ApplicationReport ar = client.getApplicationReport();
     Assert.assertEquals("should fail", FinalApplicationStatus.FAILED, ar.getFinalApplicationStatus());
-    // unable to get the diagnostics message set by the AM here
+    // unable to get the diagnostics message set by the AM here - see YARN-208
     //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
   }
 
