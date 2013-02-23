@@ -68,6 +68,8 @@ public class StramMiniClusterTest
     LOG.info("Starting up YARN cluster");
     conf.setInt(YarnConfiguration.RM_SCHEDULER_MINIMUM_ALLOCATION_MB, 128);
     conf.setInt("yarn.nodemanager.vmem-pmem-ratio", 20); // workaround to avoid containers being killed because java allocated too much vmem
+    conf.setStrings("yarn.scheduler.capacity.root.queues", "default");
+    conf.setStrings("yarn.scheduler.capacity.root.default.capacity", "100");
 
     StringBuilder adminEnv = new StringBuilder();
     if (System.getenv("JAVA_HOME") == null) {
