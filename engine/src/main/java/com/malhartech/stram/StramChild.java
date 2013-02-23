@@ -105,7 +105,7 @@ public class StramChild
 
     this.checkpointFsPath = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_DIR, "checkpoint-dfs-path-not-configured");
     this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
-    this.tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100*1024);
+    this.tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
 
     try {
       if (ctx.deployBufferServer) {
@@ -545,7 +545,8 @@ public class StramChild
         TupleRecorder tupleRecorder = tupleRecorders.get(e.getKey());
         if (tupleRecorder == null) {
           hb.setRecordingName(null);
-        } else {
+        }
+        else {
           hb.setRecordingName(tupleRecorder.getRecordingName());
         }
         heartbeats.add(hb);
@@ -608,7 +609,8 @@ public class StramChild
         // TODO: report it to stram?
         try {
           umbilical.log(this.containerId, "deploy request failed: " + rsp.deployRequest + " " + ExceptionUtils.getStackTrace(e));
-        } catch (IOException ioe) {
+        }
+        catch (IOException ioe) {
           // ignore
         }
         this.exitHeartbeatLoop = true;
@@ -682,10 +684,14 @@ public class StramChild
               TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
               if (tupleRecorder == null) {
                 tupleRecorder = new TupleRecorder();
+                String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
                 if (name != null && !name.isEmpty()) {
                   tupleRecorder.setRecordingName(name);
                 }
-                String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
+                else {
+                  String defaultName = StramChild.this.containerId + "_" + operatorId + "_" + tupleRecorder.getStartTime();
+                  tupleRecorder.setRecordingName(defaultName);
+                }
                 tupleRecorder.setBasePath(basePath);
                 tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
                 HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
@@ -708,6 +714,7 @@ public class StramChild
                 }
                 logger.debug("Started recording to base path " + basePath);
                 node.addSinks(sinkMap);
+
                 tupleRecorder.setup(null);
                 tupleRecorders.put(operatorId, tupleRecorder);
               }
