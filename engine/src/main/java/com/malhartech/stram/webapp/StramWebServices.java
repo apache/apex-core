@@ -4,22 +4,34 @@
  */
 package com.malhartech.stram.webapp;
 
-import com.google.inject.Inject;
-import com.malhartech.stram.StramAppContext;
-import com.malhartech.stram.StreamingContainerManager;
+import java.util.Collection;
+import java.util.List;
 import java.util.logging.Level;
+
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
+
 import org.apache.hadoop.security.UserGroupInformation;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.inject.Inject;
+import com.malhartech.stram.StramAppContext;
+import com.malhartech.stram.StramChildAgent;
+import com.malhartech.stram.StreamingContainerManager;
 
 /**
  *
@@ -40,6 +52,7 @@ public class StramWebServices
   public static final String PATH_SHUTDOWN = "shutdown";
   public static final String PATH_STARTRECORDING = "startRecording";
   public static final String PATH_STOPRECORDING = "stopRecording";
+  public static final String PATH_CONTAINERS = "containers";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
@@ -101,7 +114,6 @@ public class StramWebServices
   public OperatorsInfo getOperatorsInfo() throws Exception
   {
     init();
-    //LOG.info("DAGManager: {}", dagManager);
     OperatorsInfo nodeList = new OperatorsInfo();
     nodeList.operators = dagManager.getNodeInfoList();
     return nodeList;
@@ -153,6 +165,31 @@ public class StramWebServices
     catch (JSONException ex) {
       dagManager.stopAllRecordings();
     }
+    return response;
+  }
+
+  @GET
+  @Path(PATH_CONTAINERS)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public List<ContainerInfo> listContainers() throws Exception
+  {
+    init();
+    Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
+    List<ContainerInfo> l = new java.util.ArrayList<ContainerInfo>(containerAgents.size());
+    for (StramChildAgent sca : containerAgents) {
+      l.add(sca.getContainerInfo());
+    }
+    return l;
+  }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_CONTAINERS + "/{containerId}/kill")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject killContainer(JSONObject request, @PathParam("containerId") String containerId)
+  {
+    JSONObject response = new JSONObject();
+    dagManager.stopContainer(containerId);
     return response;
   }
 

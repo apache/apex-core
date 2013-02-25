@@ -20,6 +20,7 @@ public class TestGeneratorInputModule extends BaseOperator implements InputOpera
   private int maxTuples = -1;
   private int generatedTuples = 0;
   private int remainingSleepTime;
+  private int emitInterval = 1000;
   private final int spinMillis = 50;
   private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
   @OutputPortFieldAnnotation(name = "outputPort", optional=false)
@@ -28,6 +29,11 @@ public class TestGeneratorInputModule extends BaseOperator implements InputOpera
   public int getMaxTuples()
   {
     return maxTuples;
+  }
+
+  public void setEmitInterval(int emitInterval)
+  {
+    this.emitInterval = emitInterval;
   }
 
   public void setMaxTuples(int maxNumbers)
@@ -70,10 +76,10 @@ public class TestGeneratorInputModule extends BaseOperator implements InputOpera
       if (maxTuples > 0 && maxTuples < generatedTuples) {
         throw new RuntimeException(new InterruptedException("done emitting all."));
       }
-      remainingSleepTime = 1000;
+      remainingSleepTime = emitInterval;
     }
     else {
-      remainingSleepTime = 1000;
+      remainingSleepTime = emitInterval;
     }
   }
 

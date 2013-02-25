@@ -541,6 +541,10 @@ public class StramClient
     this.rmClient.killApplication(this.appId);
   }
 
+  public void setClientTimeout(long timeoutMillis) {
+    this.clientTimeout = timeoutMillis;
+  }
+
   /**
    * Monitor the submitted application for completion. Kill application if time expires.
    *

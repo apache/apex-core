@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
+import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.engine.Tuple;
 import java.io.*;
 import java.util.HashMap;
@@ -35,11 +36,12 @@ public class TupleRecorder implements Operator
   private transient OutputStream localDataOutput;
   private transient OutputStream localIndexOutput;
   private transient String localBasePath;
-  private int bytesPerFile = 100 * 1024;
+  private int bytesPerPartFile = 100 * 1024;
   private String basePath = ".";
   private transient String hdfsFile;
   private int fileParts = 0;
-  private int tupleCount = 0;
+  private int partFileTupleCount = 0;
+  private int totalTupleCount = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = -1;
@@ -62,6 +64,11 @@ public class TupleRecorder implements Operator
   public HashMap<String, PortInfo> getPortInfoMap()
   {
     return portMap;
+  }
+
+  public int getTotalTupleCount()
+  {
+    return totalTupleCount;
   }
 
   public HashMap<String, Sink<Object>> getSinkMap()
@@ -106,9 +113,9 @@ public class TupleRecorder implements Operator
     this.recordingName = recordingName;
   }
 
-  public void setBytesPerFile(int bytes)
+  public void setBytesPerPartFile(int bytes)
   {
-    bytesPerFile = bytes;
+    bytesPerPartFile = bytes;
   }
 
   public void setBasePath(String path)
@@ -160,8 +167,10 @@ public class TupleRecorder implements Operator
     logger.info("Closing down tuple recorder.");
     try {
       if (partOutStr != null) {
+        logger.debug("Closing part file");
         partOutStr.close();
         if (indexOutStr != null) {
+          logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
           writeIndex();
         }
       }
@@ -245,7 +254,7 @@ public class TupleRecorder implements Operator
       }
       endWindowTuplesProcessed = 0;
       try {
-        if (partOutStr == null || partOutStr.getPos() > bytesPerFile) {
+        if (partOutStr == null || partOutStr.getPos() > bytesPerPartFile) {
           openNewPartFile();
         }
         logger.debug("Writing begin window (id: {}) to tuple recorder", windowId);
@@ -267,11 +276,10 @@ public class TupleRecorder implements Operator
         logger.debug("Got last end window tuple.  Flushing...");
         partOutStr.hflush();
         //fsOutput.hsync();
-        if (partOutStr.getPos() > bytesPerFile) {
+        if (partOutStr.getPos() > bytesPerPartFile) {
           partOutStr.close();
           logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
           writeIndex();
-          openNewPartFile();
           partBeginWindowId = -1;
           logger.debug("Closing current part file because it's full");
         }
@@ -306,7 +314,8 @@ public class TupleRecorder implements Operator
       partOutStr.write(bos.toByteArray());
       //logger.debug("Writing tuple for port id {}", pi.id);
       //fsOutput.hflush();
-      ++tupleCount;
+      ++partFileTupleCount;
+      ++totalTupleCount;
     }
     catch (JsonGenerationException ex) {
       logger.error(ex.toString());
@@ -324,6 +333,9 @@ public class TupleRecorder implements Operator
     try {
       PortInfo pi = portMap.get(port);
       String str = "C:" + pi.id; // to be completed when Tuple is externalizable
+      if (partOutStr == null) {
+        openNewPartFile();
+      }
       partOutStr.write(str.getBytes());
       partOutStr.write("\n".getBytes());
     }
@@ -334,8 +346,11 @@ public class TupleRecorder implements Operator
 
   public void writeIndex()
   {
+    if (partBeginWindowId < 0) {
+      return;
+    }
     try {
-      indexOutStr.write(("F:" + partBeginWindowId + ":" + currentWindowId + ":T:" + tupleCount + ":").getBytes());
+      indexOutStr.write(("F:" + partBeginWindowId + ":" + currentWindowId + ":T:" + partFileTupleCount + ":").getBytes());
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       int i = 0;
@@ -353,7 +368,7 @@ public class TupleRecorder implements Operator
       }
       countStr += "}";
       bos.write(countStr.getBytes());
-      tupleCount = 0;
+      partFileTupleCount = 0;
 
       indexOutStr.write((String.valueOf(bos.size()) + ":").getBytes());
       indexOutStr.write(bos.toByteArray());
@@ -384,16 +399,14 @@ public class TupleRecorder implements Operator
       // is not an instance of Tuple (confusing... I know)
       if (payload instanceof Tuple) {
         Tuple tuple = (Tuple)payload;
-        switch (tuple.getType()) {
-          case BEGIN_WINDOW:
-            beginWindow(tuple.getWindowId());
-            break;
-
-          case END_WINDOW:
-            endWindow();
-            break;
+        MessageType messageType = tuple.getType();
+        if (messageType == MessageType.BEGIN_WINDOW) {
+          beginWindow(tuple.getWindowId());
         }
         writeControlTuple(tuple, portName);
+        if (messageType == MessageType.END_WINDOW) {
+          endWindow();
+        }
       }
       else {
         writeTuple(payload, portName);

@@ -40,6 +40,7 @@ public class AppInfo {
   protected long startedOn;
   protected long elapsedTime;
   protected String appPath;
+  public String appMasterTrackingUrl;
 
   /**
    *
@@ -59,6 +60,7 @@ public class AppInfo {
     this.startedOn = context.getStartTime();
     this.elapsedTime = Times.elapsed(this.startedOn, 0);
     this.appPath = context.getApplicationPath();
+    this.appMasterTrackingUrl = context.getAppMasterTrackingUrl();
   }
 
   /**
