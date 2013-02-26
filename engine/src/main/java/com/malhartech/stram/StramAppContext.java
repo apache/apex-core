@@ -6,10 +6,10 @@ package com.malhartech.stram;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.yarn.Clock;
-import org.apache.hadoop.yarn.ClusterInfo;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.event.EventHandler;
+
+import com.malhartech.stram.webapp.AppInfo;
 
 
 /**
@@ -42,8 +42,6 @@ public interface StramAppContext {
 
   Clock getClock();
 
-  EventHandler<?> getEventHandler();
-
-  ClusterInfo getClusterInfo();
+  AppInfo.AppStats getStats();
 
 }

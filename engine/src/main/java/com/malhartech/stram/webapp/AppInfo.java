@@ -5,14 +5,15 @@
 
 package com.malhartech.stram.webapp;
 
-import com.malhartech.stram.StramAppContext;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
+
 import org.apache.hadoop.yarn.util.Times;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.stram.StramAppContext;
 
 /**
  *
@@ -41,11 +42,39 @@ public class AppInfo {
   protected long elapsedTime;
   protected String appPath;
   public String appMasterTrackingUrl;
+  public AppStats stats;
 
   /**
-   *
+   * Default constructor for serialization
    */
   public AppInfo() {
+  }
+
+
+  @XmlRootElement
+  @XmlAccessorType(XmlAccessType.FIELD)
+  public static class AppStats {
+    @javax.xml.bind.annotation.XmlElement
+    public int getAllocatedContainers() {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public int getRequestedContainers() {
+      return 0;
+    }
+
+    @javax.xml.bind.annotation.XmlElement
+    public int getPlannedContainers() {
+      return 0;
+    }
+
+    public int containerMemory;
+
+    @javax.xml.bind.annotation.XmlElement
+    public int getNumOperators() {
+      return 0;
+    }
   }
 
   /**
@@ -61,6 +90,7 @@ public class AppInfo {
     this.elapsedTime = Times.elapsed(this.startedOn, 0);
     this.appPath = context.getApplicationPath();
     this.appMasterTrackingUrl = context.getAppMasterTrackingUrl();
+    this.stats = context.getStats();
   }
 
   /**
