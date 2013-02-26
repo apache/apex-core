@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
-public class LogicalNode implements DataListener
+public class LogicalNode implements DataListener, Runnable
 {
   private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);
   private final String upstream;
@@ -87,7 +87,7 @@ public class LogicalNode implements DataListener
    *
    * @param channel
    */
-  public synchronized void addChannel(Channel channel)
+  public void addChannel(Channel channel)
   {
     PhysicalNode pn = new PhysicalNode(channel);
     if (!physicalNodes.contains(pn)) {
@@ -99,7 +99,7 @@ public class LogicalNode implements DataListener
    *
    * @param channel
    */
-  public synchronized void removeChannel(Channel channel)
+  public void removeChannel(Channel channel)
   {
     for (PhysicalNode pn: physicalNodes) {
       if (pn.getChannel() == channel) {
@@ -114,7 +114,7 @@ public class LogicalNode implements DataListener
    * @param partition
    * @param mask
    */
-  public synchronized void addPartition(int partition, int mask)
+  public void addPartition(int partition, int mask)
   {
     partitions.add(new BitVector(partition, mask));
   }
@@ -137,7 +137,7 @@ public class LogicalNode implements DataListener
   /**
    *
    */
-  public synchronized void catchUp()
+  public void catchUp()
   {
     int intervalMillis;
 
@@ -198,11 +198,20 @@ public class LogicalNode implements DataListener
     }
   }
 
+
+  public void dataAdded()
+  {
+    @SuppressWarnings("LocalVariableHidesMemberVariable")
+    Iterator<PhysicalNode> iterator = physicalNodes.iterator();
+    if (iterator.hasNext()) {
+      iterator.next().getChannel().eventLoop().execute(this);
+    }
+  }
   /**
    *
    */
   @SuppressWarnings("fallthrough")
-  public synchronized void dataAdded()
+  public void run()
   {
     if (isReady()) {
       if (caughtup) {

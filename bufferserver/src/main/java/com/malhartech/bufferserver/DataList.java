@@ -278,21 +278,22 @@ public class DataList
 
     public final void add(Message d) throws IOException
     {
+      int newWritingOffset = writingOffset;
       int size = d.getSerializedSize();
-      if (writingOffset + 5 /* for max varint size */ + size > data.length /* this is a fast check */
-              && writingOffset + Codec.getSizeOfRawVarint32(size) + size > data.length /* this is a slower check */) {
+      if (newWritingOffset + 5 /* for max varint size */ + size > data.length /* this is a fast check */
+              && newWritingOffset + Codec.getSizeOfRawVarint32(size) + size > data.length /* this is a slower check */) {
         /*
          * The remaining space in the current data array is not sufficient to save the message.
          * We mark the remaining space unusable and allocate a new byte array to store the data.
          */
         int i = 1;
-        while (i < Codec.getSizeOfRawVarint32(data.length - writingOffset - i)) {
+        while (i < Codec.getSizeOfRawVarint32(data.length - newWritingOffset - i)) {
           i++;
         }
 
-        if (i + writingOffset <= data.length) {
-          writingOffset = Codec.writeRawVarint32(data.length - writingOffset - i, data, writingOffset, i);
-          ProtobufDataInspector.wipeData(data, writingOffset, data.length - writingOffset);
+        if (i + newWritingOffset <= data.length) {
+          newWritingOffset = Codec.writeRawVarint32(data.length - newWritingOffset - i, data, newWritingOffset, i);
+          ProtobufDataInspector.wipeData(data, newWritingOffset, data.length - newWritingOffset);
           writingOffset = data.length;
         }
 
@@ -339,9 +340,9 @@ public class DataList
         next.add(d);
       }
       else {
-        writingOffset = Codec.writeRawVarint32(size, data, writingOffset);
-        d.writeTo(CodedOutputStream.newInstance(data, writingOffset, size));
-        writingOffset += size;
+        newWritingOffset = Codec.writeRawVarint32(size, data, newWritingOffset);
+        d.writeTo(CodedOutputStream.newInstance(data, newWritingOffset, size));
+        newWritingOffset += size;
 
         switch (d.getType()) {
           case BEGIN_WINDOW:
@@ -363,6 +364,8 @@ public class DataList
             ending_window = (long)baseSeconds << 32;
             break;
         }
+
+        writingOffset = newWritingOffset;
       }
     }
 
