@@ -70,7 +70,6 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
 
       switch (t.getType()) {
         case CHECKPOINT:
-          logger.debug("sending checkpoint over {}", channel);
           serde.resetState();
           break;
 
@@ -78,21 +77,18 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
           Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
           bw.setWindowId(windowId = (int)t.getWindowId());
           db.setBeginWindow(bw);
-          logger.debug("sending begin_window {} over {}", windowId, channel);
           break;
 
         case END_WINDOW:
           Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
           ew.setWindowId(windowId = (int)t.getWindowId());
           db.setEndWindow(ew);
-          logger.debug("sending end_widnow {} over {}", windowId, channel);
           break;
 
         case END_STREAM:
           Buffer.EndStream.Builder es = Buffer.EndStream.newBuilder();
           es.setWindowId(windowId = (int)t.getWindowId());
           db.setEndStream(es);
-          logger.debug("sending end_stream {} over {}", windowId, channel);
           break;
 
         case RESET_WINDOW:
@@ -100,7 +96,6 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
           rw.setWidth(((ResetWindowTuple)t).getIntervalMillis());
           rw.setBaseSeconds(((ResetWindowTuple)t).getBaseSeconds());
           db.setResetWindow(rw);
-          logger.debug("sending reset_window {} over {}", rw.getBaseSeconds(), channel);
           break;
 
         default:
@@ -114,7 +109,6 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
        * if there is any state write that for the subscriber before we write the data.
        */
       if (dsp.state != null) {
-        logger.debug("sedning codec state {}", dsp.state);
         write(Buffer.Message.newBuilder().setType(MessageType.CODEC_STATE)
                 .setCodecState(Buffer.CodecState.newBuilder().setData(ByteString.copyFrom(dsp.state))));
       }
