@@ -570,10 +570,17 @@ public class StramAppMaster
         int exitStatus = containerStatus.getExitStatus();
         LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
         if (0 != exitStatus) {
-          // StramChild failure or process killed (externally or via stop request by AM)
-          numFailedContainers.incrementAndGet();
-          LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
-          dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
+          if (exitStatus == 1) {
+            // StramChild failure
+            numFailedContainers.incrementAndGet();
+            appDone = true;
+            LOG.info("Exiting due to unrecoverable failure in container {}", containerStatus.getContainerId());
+          } else {
+            // Recoverable failure or process killed (externally or via stop request by AM)
+            numFailedContainers.incrementAndGet();
+            LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
+            dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
+          }
         }
         else {
           // container completed successfully
