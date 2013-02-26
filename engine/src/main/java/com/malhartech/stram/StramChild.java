@@ -119,6 +119,7 @@ public class StramChild
     }
     catch (Exception ex) {
       logger.warn("deploy request failed due to {}", ex);
+      throw new IllegalStateException("Failed to deploy buffer server", ex);
     }
   }
 
@@ -178,6 +179,7 @@ public class StramChild
 
     logger.debug("PID: " + System.getenv().get("JVM_PID"));
     UserGroupInformation childUGI;
+    int exitStatus = 1;
 
     try {
       childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
@@ -207,10 +209,7 @@ public class StramChild
         }
 
       });
-    }
-    catch (FSError e) {
-      logger.error("FSError from child", e);
-      umbilical.log(childId, e.getMessage());
+      exitStatus = 0;
     }
     catch (Exception exception) {
       logger.warn("Exception running child : "
@@ -237,6 +236,11 @@ public class StramChild
       // there is no more logging done.
       LogManager.shutdown();
     }
+
+    if (exitStatus != 0) {
+      System.exit(exitStatus);
+    }
+
   }
 
   public synchronized void deactivate()
