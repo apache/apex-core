@@ -47,7 +47,7 @@ public class StramWebApp extends WebApp {
   @Provider
   public static class JAXBContextResolver implements ContextResolver<JAXBContext> {
 
-    private JAXBContext context;
+    private final JAXBContext context;
     private final Set<Class<?>> types;
 
     // you have to specify all the dao classes here

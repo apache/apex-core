@@ -4,11 +4,37 @@
  */
 package com.malhartech.stram.webapp;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.StringReader;
+import java.util.logging.Level;
+
+import javax.ws.rs.core.MediaType;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.Clock;
+import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
+import org.apache.hadoop.yarn.util.Records;
+import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.junit.Before;
+import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceServletContextListener;
 import com.google.inject.servlet.ServletModule;
-
 import com.google.inject.util.Providers;
 import com.malhartech.stram.StramAppContext;
 import com.malhartech.stram.StreamingContainerManager;
@@ -21,31 +47,6 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
-import java.io.StringReader;
-import java.util.logging.Level;
-import javax.ws.rs.core.MediaType;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.Clock;
-import org.apache.hadoop.yarn.ClusterInfo;
-import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.event.EventHandler;
-import org.apache.hadoop.yarn.util.Records;
-import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import org.junit.Before;
-import org.junit.Test;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
 
 /**
  * Test the application master web services api's.
@@ -106,11 +107,6 @@ public class StramWebServicesTest extends JerseyTest {
     }
 
     @Override
-    public EventHandler<?> getEventHandler() {
-      return null;
-    }
-
-    @Override
     public Clock getClock() {
       return null;
     }
@@ -126,9 +122,14 @@ public class StramWebServicesTest extends JerseyTest {
     }
 
     @Override
-    public ClusterInfo getClusterInfo() {
-      return null;
+    public AppInfo.AppStats getStats() {
+      return new AppInfo.AppStats() {
+      };
     }
+  }
+
+  public static class SomeStats {
+    public int field1 = 2;
   }
 
   public static class GuiceServletConfig extends GuiceServletContextListener {
@@ -315,7 +316,7 @@ public class StramWebServicesTest extends JerseyTest {
 
   void verifyAMInfo(JSONObject info, TestAppContext ctx)
       throws JSONException {
-    assertEquals("incorrect number of elements", 7, info.length());
+    assertEquals("incorrect number of elements", 8, info.length());
 
     verifyAMInfoGeneric(ctx, info.getString("appId"), info.getString("user"),
         info.getString("name"), info.getLong("startedOn"),

@@ -25,7 +25,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.yarn.Clock;
-import org.apache.hadoop.yarn.ClusterInfo;
 import org.apache.hadoop.yarn.SystemClock;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -49,7 +48,6 @@ import org.apache.hadoop.yarn.api.records.Priority;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.ResourceRequest;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.apache.hadoop.yarn.event.EventHandler;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
@@ -59,8 +57,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
+import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
 
 /**
@@ -133,6 +133,36 @@ public class StramAppMaster
   private StreamingContainerManager dnmgr;
   private final Clock clock = new SystemClock();
   private final long startTime = clock.getTime();
+  private final ClusterAppStats stats = new ClusterAppStats();
+
+  /**
+   * Overrides getters to pull live info.
+   */
+  protected class ClusterAppStats extends AppInfo.AppStats {
+    @Override
+    public int getAllocatedContainers() {
+      return allAllocatedContainers.size();
+    }
+
+    @Override
+    public int getRequestedContainers() {
+      return dnmgr.getNumRequiredContainers();
+    }
+
+    @Override
+    public int getPlannedContainers() {
+      return dnmgr.getPhysicalPlan().getContainers().size();
+    }
+
+    @Override
+    public int getNumOperators() {
+      int num = 0;
+      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+        num += c.operators.size();
+      }
+      return num;
+    }
+  }
 
   private class ClusterAppContextImpl implements StramAppContext
   {
@@ -185,20 +215,13 @@ public class StramAppMaster
     }
 
     @Override
-    public EventHandler<?> getEventHandler()
-    {
-      return null;
-    }
-
-    @Override
-    public ClusterInfo getClusterInfo()
-    {
-      return null;
-    }
-
-    @Override
     public String getAppMasterTrackingUrl() {
       return appMasterTrackingUrl;
+    }
+
+    @Override
+    public ClusterAppStats getStats() {
+      return stats;
     }
 
   }
@@ -432,6 +455,7 @@ public class StramAppMaster
                + ", max=" + maxMem);
       containerMemory = maxMem;
     }
+    stats.containerMemory = containerMemory;
 
     // Setup heartbeat emitter
     // TODO poll RM every now and then with an empty request to let RM know that we are alive
