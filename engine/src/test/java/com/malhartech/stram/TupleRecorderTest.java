@@ -15,9 +15,6 @@ import com.malhartech.stream.StramTestSupport.WaitCondition;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -149,7 +146,7 @@ public class TupleRecorderTest
       Assert.assertEquals("check part0 5", "E:1000", line);
     }
     catch (IOException ex) {
-      Logger.getLogger(TupleRecorderTest.class.getName()).log(Level.SEVERE, null, ex);
+      throw new RuntimeException(ex);
     }
 
   }

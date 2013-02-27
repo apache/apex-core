@@ -6,7 +6,6 @@ package com.malhartech.stram.webapp;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Level;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -145,7 +144,7 @@ public class StramWebServices
         response.put("error", ex.toString());
       }
       catch (JSONException ex1) {
-        java.util.logging.Logger.getLogger(StramWebServices.class.getName()).log(Level.SEVERE, null, ex1);
+        throw new RuntimeException(ex1);
       }
     }
     return response;
