@@ -172,6 +172,7 @@ public class TupleRecorder implements Operator
         if (indexOutStr != null) {
           logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
           writeIndex();
+          writeIndexEnd();
         }
       }
       if (indexOutStr != null) {
@@ -380,6 +381,17 @@ public class TupleRecorder implements Operator
       logger.error(ex.toString());
     }
 
+  }
+
+  public void writeIndexEnd()
+  {
+    try {
+    indexOutStr.write(("E\n").getBytes());
+    indexOutStr.hflush();
+    indexOutStr.hsync();
+    } catch (IOException ex) {
+      logger.error(ex.toString());
+    }
   }
 
   public class RecorderSink implements Sink<Object>
