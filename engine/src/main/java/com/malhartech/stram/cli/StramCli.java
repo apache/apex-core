@@ -3,21 +3,28 @@
  */
 package com.malhartech.stram.cli;
 
-import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
-import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
-import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.webapp.StramWebServices;
-import com.malhartech.util.VersionInfo;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+
 import javax.ws.rs.core.MediaType;
-import jline.*;
+
+import jline.ArgumentCompletor;
+import jline.Completor;
+import jline.ConsoleReader;
+import jline.FileNameCompletor;
+import jline.History;
+import jline.MultiCompletor;
+import jline.SimpleCompletor;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
@@ -32,6 +39,15 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
+import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
+import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.webapp.StramWebServices;
+import com.malhartech.util.VersionInfo;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 
 /**
  *
@@ -99,10 +115,95 @@ public class StramCli
   {
   }
 
+  /**
+   * Why reinvent the wheel?
+   * JLine 2.x supports search and more.. but it uses the same package as JLine 1.x
+   * Hadoop bundles and forces 1.x into our class path (when CLI is launched via hadoop command).
+   */
+  private class ConsoleReaderExt extends ConsoleReader {
+    private final char REVERSE_SEARCH_KEY = (char)31;
+
+    ConsoleReaderExt() throws IOException {
+      // CTRL-? since CTRL-R already mapped to redisplay
+      addTriggeredAction(REVERSE_SEARCH_KEY, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+          try {
+           searchHistory();
+          } catch (IOException ex) {
+            return; // ignore
+          }
+        }
+      });
+    }
+
+    public int searchBackwards(CharSequence searchTerm, int startIndex) {
+      @SuppressWarnings("unchecked")
+      List<String> history = getHistory().getHistoryList();
+      if (startIndex < 0) {
+        startIndex = history.size();
+      }
+      for (int i=startIndex; --i > 0;) {
+        String line = history.get(i);
+        if (line.contains(searchTerm)) {
+          return i;
+        }
+      }
+      return -1;
+  }
+
+    private void searchHistory() throws IOException {
+      final String prompt = "reverse-search: ";
+      StringBuilder searchTerm = new StringBuilder();
+      String matchingCmd = null;
+      int historyIndex = -1;
+      while (true) {
+        while (backspace());
+        String line = prompt + searchTerm;
+        if (matchingCmd != null) {
+          line = line.concat(": ").concat(matchingCmd);
+        }
+        this.putString(line);
+
+        int c = this.readVirtualKey();
+        if (c == 8) {
+          if (searchTerm.length() > 0) {
+            searchTerm.deleteCharAt(searchTerm.length()-1);
+          }
+        } else if (c == REVERSE_SEARCH_KEY) {
+          int newIndex = searchBackwards(searchTerm, historyIndex);
+          if (newIndex >= 0) {
+            historyIndex = newIndex;
+            matchingCmd = (String)getHistory().getHistoryList().get(historyIndex);
+          }
+        } else if (!Character.isISOControl(c)) {
+          searchTerm.append(Character.toChars(c));
+          int newIndex = searchBackwards(searchTerm, -1);
+          if (newIndex >= 0) {
+            historyIndex = newIndex;
+            matchingCmd = (String)getHistory().getHistoryList().get(historyIndex);
+          }
+        } else {
+          while (backspace());
+          //if (c == 10) { // enter
+            if (!StringUtils.isBlank(matchingCmd)) {
+              this.putString(matchingCmd);
+              this.flushConsole();
+            }
+            return;
+          //}
+        }
+      }
+    }
+
+  }
+
+
+
   public void run() throws IOException
   {
     printWelcomeMessage();
-    ConsoleReader reader = new ConsoleReader();
+    ConsoleReader reader = new ConsoleReaderExt();
     reader.setBellEnabled(false);
 
     String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill", "startrecording", "stoprecording", "exit"};
