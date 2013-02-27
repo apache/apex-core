@@ -481,6 +481,11 @@ public class StramChild
 
     nodes.clear();
 
+    for (TupleRecorder entry : tupleRecorders.values()) {
+      entry.teardown();
+    }
+    tupleRecorders.clear();
+
     HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
     gens.addAll(generators.values());
     generators.clear();
