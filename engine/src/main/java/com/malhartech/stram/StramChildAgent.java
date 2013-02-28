@@ -264,6 +264,10 @@ public class StramChildAgent {
   }
 
   boolean isIdle() {
+    if (this.hasPendingWork()) {
+      // container may have no active operators but deploy request pending
+      return false;
+    }
     for (OperatorStatus operatorStatus : this.operators.values()) {
       if (!operatorStatus.isIdle()) {
         return false;
