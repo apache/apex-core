@@ -15,9 +15,6 @@ import com.malhartech.stream.StramTestSupport.WaitCondition;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -149,7 +146,7 @@ public class TupleRecorderTest
       Assert.assertEquals("check part0 5", "E:1000", line);
     }
     catch (IOException ex) {
-      Logger.getLogger(TupleRecorderTest.class.getName()).log(Level.SEVERE, null, ex);
+      throw new RuntimeException(ex);
     }
 
   }
@@ -236,10 +233,16 @@ public class TupleRecorderTest
     int indexCount = 0;
     while ((line = br.readLine()) != null) {
       String partFile = "part" + indexCount + ".txt";
-      Assert.assertTrue("index file line should start with F:", line.startsWith("F:"));
-      Assert.assertTrue("index file line should end with :part" + indexCount + ".txt", line.endsWith(":" + partFile));
-      partFiles.add(partFile);
-      indexCount++;
+      if (line.startsWith("F:")) {
+        Assert.assertTrue("index file line should end with :part" + indexCount + ".txt", line.endsWith(":" + partFile));
+        partFiles.add(partFile);
+        indexCount++;
+      } else if (line.startsWith("E")) {
+        Assert.assertEquals("index file should end after E line", br.readLine(), null);
+        break;
+      } else {
+        Assert.fail("index file line is not starting with F or E");
+      }
     }
 
     int tupleCount0 = 0;
@@ -247,9 +250,9 @@ public class TupleRecorderTest
     boolean beginWindowExists = false;
     boolean endWindowExists = false;
 
-    for (String partFile: partFiles) {
+    for (String partFile : partFiles) {
       file = new File(dir, partFile);
-      if (partFile != partFiles.get(partFiles.size()-1)) {
+      if (partFile != partFiles.get(partFiles.size() - 1)) {
         Assert.assertTrue(partFile + " should be greater than 1KB", file.length() >= 1024);
       }
       Assert.assertTrue(partFile + " should exist", file.exists());

@@ -172,6 +172,7 @@ public class TupleRecorder implements Operator
         if (indexOutStr != null) {
           logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
           writeIndex();
+          writeIndexEnd();
         }
       }
       if (indexOutStr != null) {
@@ -206,7 +207,7 @@ public class TupleRecorder implements Operator
       mapper.writeValue(bos, recordInfo);
       bos.write("\n".getBytes());
 
-      for (PortInfo pi: portMap.values()) {
+      for (PortInfo pi : portMap.values()) {
         mapper.writeValue(bos, pi);
         bos.write("\n".getBytes());
       }
@@ -355,7 +356,7 @@ public class TupleRecorder implements Operator
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       int i = 0;
       String countStr = "{";
-      for (String key: portCountMap.keySet()) {
+      for (String key : portCountMap.keySet()) {
         PortCount pc = portCountMap.get(key);
         if (i != 0) {
           countStr += ",";
@@ -380,6 +381,18 @@ public class TupleRecorder implements Operator
       logger.error(ex.toString());
     }
 
+  }
+
+  public void writeIndexEnd()
+  {
+    try {
+      indexOutStr.write(("E\n").getBytes());
+      indexOutStr.hflush();
+      indexOutStr.hsync();
+    }
+    catch (IOException ex) {
+      logger.error(ex.toString());
+    }
   }
 
   public class RecorderSink implements Sink<Object>
