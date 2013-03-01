@@ -96,7 +96,7 @@ public class TupleRecorderTest
 
       line = br.readLine();
       //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
-      Assert.assertEquals("check index", "F:1000:1000:T:4:25:{\"3\":1,\"1\":1,\"0\":1,\"2\":1}:part0.txt", line);
+      Assert.assertEquals("check index", "F:1000-1000:T:4:25:{\"3\":1,\"1\":1,\"0\":1,\"2\":1}:part0.txt", line);
 
       path = new Path(recorder.getBasePath(), TupleRecorder.META_FILE);
       //fs = FileSystem.get(path.toUri(), new Configuration());
