@@ -10,7 +10,9 @@ import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.engine.Tuple;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map.Entry;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -45,7 +47,8 @@ public class TupleRecorder implements Operator
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = -1;
-  private transient long partBeginWindowId = -1;
+  private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
+  //private transient long partBeginWindowId = -1;
   private String recordingName = "Untitled";
   private final long startTime = System.currentTimeMillis();
   private int nextPortIndex = 0;
@@ -101,6 +104,19 @@ public class TupleRecorder implements Operator
   {
     public long startTime;
     public String recordingName;
+  }
+
+  private static class Range
+  {
+    public long low = -1;
+    public long high = -1;
+
+    @Override
+    public String toString()
+    {
+      return "[" + String.valueOf(low) + "," + String.valueOf(high) + "]";
+    }
+
   }
 
   public String getRecordingName()
@@ -170,7 +186,6 @@ public class TupleRecorder implements Operator
         logger.debug("Closing part file");
         partOutStr.close();
         if (indexOutStr != null) {
-          logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
           writeIndex();
           writeIndexEnd();
         }
@@ -249,10 +264,20 @@ public class TupleRecorder implements Operator
   public void beginWindow(long windowId)
   {
     if (this.currentWindowId != windowId) {
-      this.currentWindowId = windowId;
-      if (partBeginWindowId < 0) {
-        partBeginWindowId = windowId;
+      if (windowId != this.currentWindowId + 1) {
+        if (!windowIdRanges.isEmpty()) {
+          windowIdRanges.get(windowIdRanges.size() - 1).high = this.currentWindowId;
+        }
+        Range range = new Range();
+        range.low = windowId;
+        windowIdRanges.add(range);
       }
+      if (windowIdRanges.isEmpty()) {
+        Range range = new Range();
+        range.low = windowId;
+        windowIdRanges.add(range);
+      }
+      this.currentWindowId = windowId;
       endWindowTuplesProcessed = 0;
       try {
         if (partOutStr == null || partOutStr.getPos() > bytesPerPartFile) {
@@ -279,9 +304,7 @@ public class TupleRecorder implements Operator
         //fsOutput.hsync();
         if (partOutStr.getPos() > bytesPerPartFile) {
           partOutStr.close();
-          logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
           writeIndex();
-          partBeginWindowId = -1;
           logger.debug("Closing current part file because it's full");
         }
       }
@@ -345,13 +368,30 @@ public class TupleRecorder implements Operator
     }
   }
 
+  private static String convertToString(List<Range> ranges)
+  {
+    String result = "";
+    int i = 0;
+    for (Range range : ranges) {
+      if (i++ > 0) {
+        result += ",";
+      }
+      result += String.valueOf(range.low);
+      result += "-";
+      result += String.valueOf(range.high);
+    }
+    return result;
+  }
+
   public void writeIndex()
   {
-    if (partBeginWindowId < 0) {
+    if (windowIdRanges.isEmpty()) {
       return;
     }
+    windowIdRanges.get(windowIdRanges.size() - 1).high = this.currentWindowId;
+    logger.debug("Writing index file for windows {}", windowIdRanges);
     try {
-      indexOutStr.write(("F:" + partBeginWindowId + ":" + currentWindowId + ":T:" + partFileTupleCount + ":").getBytes());
+      indexOutStr.write(("F:" + convertToString(windowIdRanges) + ":T:" + partFileTupleCount + ":").getBytes());
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       int i = 0;
@@ -380,7 +420,7 @@ public class TupleRecorder implements Operator
     catch (IOException ex) {
       logger.error(ex.toString());
     }
-
+    windowIdRanges.clear();
   }
 
   public void writeIndexEnd()
