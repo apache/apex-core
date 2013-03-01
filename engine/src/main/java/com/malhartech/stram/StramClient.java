@@ -367,7 +367,7 @@ public class StramClient
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
-    String pathSuffix = DEFAULT_APPNAME + "/" + appId.getId();
+    String pathSuffix = DEFAULT_APPNAME + "/" + appId.toString();
 
     // copy required jar files to dfs, to be localized for containers
     FileSystem fs = FileSystem.get(conf);
@@ -386,7 +386,6 @@ public class StramClient
 
     LOG.info("libjars: {}", libJarsCsv);
     dag.getAttributes().attr(DAG.STRAM_LIBJARS).set(libJarsCsv);
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).set(new Path(fs.getHomeDirectory(), pathSuffix + "/checkpoints").toString());
     dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(new Path(fs.getHomeDirectory(), pathSuffix).toString());
 
     // set local resources for the application master

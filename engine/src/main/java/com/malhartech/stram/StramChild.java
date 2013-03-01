@@ -103,8 +103,8 @@ public class StramChild
     firstWindowMillis = ctx.startWindowMillis;
     windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
 
-    this.checkpointFsPath = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_DIR, "checkpoint-dfs-path-not-configured");
     this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
+    this.checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
     this.tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
 
     try {

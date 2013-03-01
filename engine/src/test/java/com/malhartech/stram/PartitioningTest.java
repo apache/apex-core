@@ -324,7 +324,7 @@ public class PartitioningTest
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
       DAG dag = new DAG();
       dag.getAttributes().attr(DAG.STRAM_STATS_HANDLER).set(PartitionLoadWatch.class.getName());
-      dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).set(checkpointDir.getPath());
+      dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
 

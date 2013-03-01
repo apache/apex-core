@@ -79,8 +79,8 @@ public class StreamingContainerManager implements PlanContext
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
 
-    appAttributes.attr(DAG.STRAM_CHECKPOINT_DIR).setIfAbsent("stram/" + System.currentTimeMillis() + "/checkpoints");
-    this.checkpointFsPath = appAttributes.attr(DAG.STRAM_CHECKPOINT_DIR).get();
+    appAttributes.attr(DAG.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
+    this.checkpointFsPath = appAttributes.attr(DAG.STRAM_APP_PATH).get() + "/" + DAG.SUBDIR_CHECKPOINTS;
 
     appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).setIfAbsent(30000);
     this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).get();

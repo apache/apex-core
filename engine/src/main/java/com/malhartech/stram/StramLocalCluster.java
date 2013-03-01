@@ -253,7 +253,7 @@ public class StramLocalCluster implements Runnable
     }
 
     dag.getAttributes().attr(DAG.STRAM_APP_ID).set("app_local_" + System.currentTimeMillis());
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).setIfAbsent(pathUri);
+    dag.getAttributes().attr(DAG.STRAM_APP_PATH).setIfAbsent(pathUri);
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 

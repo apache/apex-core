@@ -48,7 +48,7 @@ public class VersionInfo {
         gitInfo.load(resources.nextElement().openStream());
         String commitAbbrev = gitInfo.getProperty("git.commit.id.abbrev", "unknown");
         String branch = gitInfo.getProperty("git.branch", "unknown");
-        VersionInfo.revision = "branch: " + branch + " rev:" + commitAbbrev;
+        VersionInfo.revision = "rev: " + commitAbbrev + " branch: " + branch;
         break;
       }
 
