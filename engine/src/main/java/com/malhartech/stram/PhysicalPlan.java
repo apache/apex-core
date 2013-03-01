@@ -63,8 +63,9 @@ public class PhysicalPlan {
    *
    */
   public abstract static class PTComponent {
-    int id;
     PTContainer container;
+
+    abstract int getId();
 
     /**
      *
@@ -74,22 +75,6 @@ public class PhysicalPlan {
 
     public PTContainer getContainer() {
       return container;
-    }
-
-    public int getId() {
-      return id;
-    }
-
-    /**
-     *
-     * @return String
-     */
-    @Override
-    public String toString() {
-      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-          append("id", id).
-          append("logicalId", getLogicalId()).
-          toString();
     }
 
   }
@@ -169,28 +154,6 @@ public class PhysicalPlan {
      * @return boolean
      */
     protected boolean isDownStreamInline() {
-//      StreamMeta logicalStream = this.logicalStream;
-/*
-      for (DAG.InputPortMeta downStreamPort : logicalStream.getSinks()) {
-        if (downStreamPort.getAttributes().attrValue(PortContext.PARTITION_PARALLEL,  false)) {
-          // other ports, if any, determine whether stream is inline or not
-          continue;
-        }
-        for (PTOperator downStreamNode : plan.getOperators(downStreamPort.getOperatorWrapper())) {
-          PTOperator mergeOp = downStreamNode.upstreamMerge.get(downStreamPort);
-          if (mergeOp != null) {
-            downStreamNode = mergeOp;
-          }
-          for (PTInput input : downStreamNode.inputs) {
-            if (input.source == this) {
-              if (this.source.container != downStreamNode.container) {
-                  return false;
-              }
-            }
-          }
-        }
-      }
-*/
       for (PTInput sink : this.sinks) {
         if (this.source.container != sink.target.container) {
           return false;
@@ -299,12 +262,16 @@ public class PhysicalPlan {
 
     State state = State.NEW;
 */
-    PTOperator(PhysicalPlan plan) {
+    PTOperator(PhysicalPlan plan, int id, String name) {
       this.plan = plan;
+      this.name = name;
+      this.id = id;
     }
 
-    final PhysicalPlan plan;
-    DAG.OperatorMeta logicalNode;
+    private final PhysicalPlan plan;
+    private DAG.OperatorMeta logicalNode;
+    private final int id;
+    private final String name;
     Partition<?> partition;
     Operator merge;
     List<PTInput> inputs;
@@ -322,7 +289,7 @@ public class PhysicalPlan {
      *
      * @return Operator
      */
-    public OperatorMeta getLogicalNode() {
+    public OperatorMeta getOperatorMeta() {
       return this.logicalNode;
     }
 
@@ -357,9 +324,30 @@ public class PhysicalPlan {
       return logicalNode.getId();
     }
 
+    @Override
+    public int getId() {
+      return id;
+    }
+
+    public String getName() {
+      return name;
+    }
+
     public PhysicalPlan getPlan() {
       return plan;
     }
+
+    /**
+    *
+    * @return String
+    */
+   @Override
+   public String toString() {
+     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+         append("id", id).
+         append("name", name).
+         toString();
+   }
 
   }
 
@@ -836,11 +824,10 @@ public class PhysicalPlan {
             if (mergeDesc.outputPorts.size() != 1) {
               throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
             }
-            mergeNode = new PTOperator(this);
+            mergeNode = new PTOperator(this, nodeSequence.incrementAndGet(), upstream.logicalOperator.getId() + "#merge");
             mergeNode.logicalNode = upstream.logicalOperator;
             mergeNode.inputs = new ArrayList<PTInput>();
             mergeNode.outputs = new ArrayList<PTOutput>();
-            mergeNode.id = nodeSequence.incrementAndGet();
             mergeNode.merge = unifier;
             mergeNode.outputs.add(new PTOutput(this, mergeDesc.outputPorts.keySet().iterator().next(), streamDecl, mergeNode));
 
@@ -890,11 +877,10 @@ public class PhysicalPlan {
   }
 
   private PTOperator createInstance(PMapping mapping, Partition<?> partition) {
-    PTOperator pOperator = new PTOperator(this);
+    PTOperator pOperator = new PTOperator(this, nodeSequence.incrementAndGet(), mapping.logicalOperator.getId());
     pOperator.logicalNode = mapping.logicalOperator;
     pOperator.inputs = new ArrayList<PTInput>();
     pOperator.outputs = new ArrayList<PTOutput>();
-    pOperator.id = nodeSequence.incrementAndGet();
     pOperator.partition = partition;
 
     // output port objects - these could be deferred until inputs are connected

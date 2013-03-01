@@ -297,7 +297,7 @@ public class StreamingContainerManager implements PlanContext
         if (previousHeartbeat == null || DNodeState.FAILED.name().compareTo(previousHeartbeat.getState()) != 0) {
           status.operator.failureCount++;
           LOG.warn("Operator failure: {} count: {}", status.operator, status.operator.failureCount);
-          Integer maxAttempts = status.operator.logicalNode.getAttributes().attrValue(OperatorContext.RECOVERY_ATTEMPTS, this.operatorMaxAttemptCount);
+          Integer maxAttempts = status.operator.getOperatorMeta().getAttributes().attrValue(OperatorContext.RECOVERY_ATTEMPTS, this.operatorMaxAttemptCount);
           if (status.operator.failureCount <= maxAttempts) {
             // restart entire container in attempt to recover operator
             // in the future a more sophisticated recovery strategy could
@@ -385,7 +385,7 @@ public class StreamingContainerManager implements PlanContext
         for (OperatorStatus os: sca.operators.values()) {
           if (os.lastHeartbeat != null && os.lastHeartbeat.getState().compareTo(DNodeState.ACTIVE.name()) == 0) {
             StramToNodeRequest backupRequest = new StramToNodeRequest();
-            backupRequest.setNodeId(os.operator.id);
+            backupRequest.setNodeId(os.operator.getId());
             backupRequest.setRequestType(RequestType.CHECKPOINT);
             backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
             requests.add(backupRequest);
@@ -476,7 +476,7 @@ public class StreamingContainerManager implements PlanContext
           long c2 = 0;
           while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
             operator.checkpointWindows.removeFirst();
-            LOG.debug("Checkpoint to purge: operator={} windowId={}", operator.id, c1);
+            LOG.debug("Checkpoint to purge: operator={} windowId={}", operator.getId(), c1);
             this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
             c1 = c2;
           }
@@ -527,7 +527,7 @@ public class StreamingContainerManager implements PlanContext
     for (Pair<PTOperator, Long> p: purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       try {
-        ba.delete(operator.id, p.getSecond());
+        ba.delete(operator.getId(), p.getSecond());
       }
       catch (Exception e) {
         LOG.error("Failed to purge checkpoint " + p, e);
@@ -536,7 +536,7 @@ public class StreamingContainerManager implements PlanContext
       for (PTOutput out: operator.outputs) {
         if (!out.isDownStreamInline()) {
           // following needs to match the concat logic in StramChild
-          String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+          String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
           // purge everything from buffer server prior to new checkpoint
           BufferServerClient bsc = getBufferServerClient(operator);
           try {
@@ -630,7 +630,7 @@ public class StreamingContainerManager implements PlanContext
         for (PTOutput out: operator.outputs) {
           if (!out.isDownStreamInline()) {
             // following needs to match the concat logic in StramChild
-            String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+            String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
             // TODO: find way to mock this when testing rest of logic
             if (operator.container.bufferServerAddress.getPort() != 0) {
               BufferServerClient bsc = getBufferServerClient(operator);
@@ -674,7 +674,7 @@ public class StreamingContainerManager implements PlanContext
     return visited;
   }
 
-  public ArrayList<OperatorInfo> getNodeInfoList()
+  public ArrayList<OperatorInfo> getOperatorInfoList()
   {
     ArrayList<OperatorInfo> nodeInfoList = new ArrayList<OperatorInfo>();
 
@@ -690,8 +690,8 @@ public class StreamingContainerManager implements PlanContext
         OperatorInfo ni = new OperatorInfo();
         ni.container = os.container.containerId;
         ni.host = os.container.host;
-        ni.id = Integer.toString(os.operator.id);
-        ni.name = os.operator.getLogicalId();
+        ni.id = Integer.toString(os.operator.getId());
+        ni.name = os.operator.getName();
         StreamingNodeHeartbeat hb = os.lastHeartbeat;
         if (hb != null) {
           ni.status = hb.getState();

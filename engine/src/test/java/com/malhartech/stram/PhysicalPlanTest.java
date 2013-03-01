@@ -373,17 +373,17 @@ public class PhysicalPlanTest {
     Set<OperatorMeta> c1ExpNodes = Sets.newHashSet(dag.getOperatorWrapper(node1.getName()), dag.getOperatorWrapper(node2.getName()), dag.getOperatorWrapper(node3.getName()));
     Set<OperatorMeta> c1ActNodes = new HashSet<OperatorMeta>();
     for (PTOperator pNode: plan.getContainers().get(0).operators) {
-      c1ActNodes.add(pNode.getLogicalNode());
+      c1ActNodes.add(pNode.getOperatorMeta());
     }
     Assert.assertEquals("operators container 0", c1ExpNodes, c1ActNodes);
 
     Assert.assertEquals("operators container 1", 1, plan.getContainers().get(1).operators.size());
-    Assert.assertEquals("operators container 1", dag.getOperatorWrapper(notInlineNode.getName()), plan.getContainers().get(1).operators.get(0).getLogicalNode());
+    Assert.assertEquals("operators container 1", dag.getOperatorWrapper(notInlineNode.getName()), plan.getContainers().get(1).operators.get(0).getOperatorMeta());
 
     // one container per partition
     for (int cindex = 2; cindex < maxContainers; cindex++) {
       Assert.assertEquals("operators container" + cindex, 1, plan.getContainers().get(cindex).operators.size());
-      Assert.assertEquals("operators container" + cindex, dag.getOperatorWrapper(partNode.getName()), plan.getContainers().get(cindex).operators.get(0).getLogicalNode());
+      Assert.assertEquals("operators container" + cindex, dag.getOperatorWrapper(partNode.getName()), plan.getContainers().get(cindex).operators.get(0).getOperatorMeta());
     }
 
   }
@@ -467,7 +467,7 @@ public class PhysicalPlanTest {
 
     PTContainer container1 = plan.getContainers().get(0);
     Assert.assertEquals("number operators " + container1, 1, container1.operators.size());
-    Assert.assertEquals("operators " + container1, "o1", container1.operators.get(0).getLogicalId());
+    Assert.assertEquals("operators " + container1, "o1", container1.operators.get(0).getOperatorMeta().getId());
 
     for (int i = 1; i < 3; i++) {
       PTContainer container2 = plan.getContainers().get(i);
@@ -475,7 +475,7 @@ public class PhysicalPlanTest {
       Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3", o3_1Meta.getId(), o3_2Meta.getId(), o4Meta.getId());
       Set<String> actualLogicalNames = Sets.newHashSet();
       for (PTOperator p: container2.operators) {
-        actualLogicalNames.add(p.getLogicalId());
+        actualLogicalNames.add(p.getOperatorMeta().getId());
       }
       Assert.assertEquals("operator names " + container2, expectedLogicalNames, actualLogicalNames);
     }
@@ -495,7 +495,7 @@ public class PhysicalPlanTest {
     Assert.assertEquals("unifier " + o4Meta + ": " + o4Unifiers, 1, o4Unifiers.size());
     PTContainer container4 = plan.getContainers().get(3);
     Assert.assertEquals("number operators " + container4, 1, container4.operators.size());
-    Assert.assertEquals("operators " + container4, o4Meta, container4.operators.get(0).logicalNode);
+    Assert.assertEquals("operators " + container4, o4Meta, container4.operators.get(0).getOperatorMeta());
     Assert.assertTrue("unifier " + o4, container4.operators.get(0).merge instanceof Unifier);
     Assert.assertEquals("unifier inputs" + container4.operators.get(0).inputs, 2, container4.operators.get(0).inputs.size());
 
@@ -503,7 +503,7 @@ public class PhysicalPlanTest {
     OperatorMeta o5Meta = dag.getOperatorWrapper(o5merge);
     PTContainer container5 = plan.getContainers().get(4);
     Assert.assertEquals("number operators " + container5, 1, container5.operators.size());
-    Assert.assertEquals("operators " + container5, o5Meta, container5.operators.get(0).logicalNode);
+    Assert.assertEquals("operators " + container5, o5Meta, container5.operators.get(0).getOperatorMeta());
     List<PTOperator> o5Instances = plan.getOperators(o5Meta);
     Assert.assertEquals("" + o5Instances, 1, o5Instances.size());
     Assert.assertEquals("inputs" + container5.operators.get(0).inputs, 1, container5.operators.get(0).inputs.size());
@@ -539,18 +539,18 @@ public class PhysicalPlanTest {
     for (int i=0; i<2; i++) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 1, container.operators.size());
-      Assert.assertEquals("operators " + container, o1Meta.getId(), container.operators.get(0).getLogicalId());
+      Assert.assertEquals("operators " + container, o1Meta.getId(), container.operators.get(0).getOperatorMeta().getId());
       inputOperators.add(container.operators.get(0));
     }
 
     for (int i=2; i<5; i++) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 2, container.operators.size());
-      Assert.assertEquals("operators " + container, o2Meta.getId(), container.operators.get(0).getLogicalId());
+      Assert.assertEquals("operators " + container, o2Meta.getId(), container.operators.get(0).getOperatorMeta().getId());
       Set<String> expectedLogicalNames = Sets.newHashSet(o1Meta.getId(), o2Meta.getId());
       Map<String, PTOperator> actualOperators = new HashMap<String, PTOperator>();
       for (PTOperator p : container.operators) {
-        actualOperators.put(p.getLogicalId(), p);
+        actualOperators.put(p.getOperatorMeta().getId(), p);
       }
       Assert.assertEquals("", expectedLogicalNames, actualOperators.keySet());
 
@@ -567,7 +567,7 @@ public class PhysicalPlanTest {
       }
       // output to single downstream partition
       Assert.assertEquals("" + pUnifier, 1, pUnifier.outputs.size());
-      Assert.assertTrue(""+actualOperators.get(o2Meta.getId()).logicalNode.getOperator(), actualOperators.get(o2Meta.getId()).logicalNode.getOperator() instanceof GenericTestModule);
+      Assert.assertTrue(""+actualOperators.get(o2Meta.getId()).getOperatorMeta().getOperator(), actualOperators.get(o2Meta.getId()).getOperatorMeta().getOperator() instanceof GenericTestModule);
 
       PTOperator p = actualOperators.get(o2Meta.getId());
       Assert.assertEquals("partition inputs " + p.inputs, 1, p.inputs.size());

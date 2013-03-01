@@ -82,7 +82,7 @@ public class StramLocalClusterTest
       // sink to collect tuples emitted by the input module
       sink = new TestSink<Message>();
       String streamName = "testSinkStream";
-      String sourceId = Integer.toString(publisherOperator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(TestGeneratorInputModule.OUTPUT_PORT);
+      String sourceId = Integer.toString(publisherOperator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(TestGeneratorInputModule.OUTPUT_PORT);
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
@@ -147,13 +147,13 @@ public class StramLocalClusterTest
     LocalStramChild c0 = StramTestSupport.waitForActivation(localCluster, ptNode1);
     Map<Integer, Node<?>> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
-    TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.id).getOperator();
+    TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.getId()).getOperator();
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = StramTestSupport.waitForActivation(localCluster, ptNode2);
     Map<Integer, Node<?>> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
-    GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorWrapper(node2)).id).getOperator();
+    GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorWrapper(node2)).getId()).getOperator();
     Assert.assertNotNull(n2);
 
     // sink to collect tuples emitted by the input module
@@ -163,7 +163,7 @@ public class StramLocalClusterTest
     String window0Tuple = "window0Tuple";
     n1.addTuple(window0Tuple);
 
-    OperatorContext n1Context = c0.getNodeContext(ptNode1.id);
+    OperatorContext n1Context = c0.getNodeContext(ptNode1.getId());
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
     wclock.tick(1); // begin window 1
     wclock.tick(1); // begin window 2
@@ -174,7 +174,7 @@ public class StramLocalClusterTest
     wclock.tick(1); // end window 2
     StramTestSupport.waitForWindowComplete(n1Context, 2);
 
-    OperatorContext n2Context = c2.getNodeContext(ptNode2.id);
+    OperatorContext n2Context = c2.getNodeContext(ptNode2.getId());
     Assert.assertNotNull("context " + ptNode2);
 
     wclock.tick(1); // end window 3
@@ -230,15 +230,15 @@ public class StramLocalClusterTest
     Assert.assertEquals("downstream operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify downstream node was replaced in same container
     Assert.assertEquals("active " + ptNode2, c2, StramTestSupport.waitForActivation(localCluster, ptNode2));
-    GenericTestModule n2Replaced = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorWrapper(node2)).id).getOperator();
+    GenericTestModule n2Replaced = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorWrapper(node2)).getId()).getOperator();
     Assert.assertNotNull("redeployed " + ptNode2, n2Replaced);
     Assert.assertNotSame("new instance " + ptNode2, n2, n2Replaced);
     Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());
 
-    TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)c0Replaced.getNodes().get(ptNode1.id).getOperator();
+    TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)c0Replaced.getNodes().get(ptNode1.getId()).getOperator();
     Assert.assertNotNull(n1Replaced);
 
-    OperatorContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.id);
+    OperatorContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.getId());
     Assert.assertNotNull("node active " + ptNode1, n1ReplacedContext);
     // should node context should reflect last processed window (the backup window)?
     //Assert.assertEquals("initial window id", 1, n1ReplacedContext.getLastProcessedWindowId());
@@ -246,7 +246,7 @@ public class StramLocalClusterTest
     StramTestSupport.waitForWindowComplete(n1ReplacedContext, 5);
 
     // refresh n2 context after operator was re-deployed
-    n2Context = c2.getNodeContext(ptNode2.id);
+    n2Context = c2.getNodeContext(ptNode2.getId());
     Assert.assertNotNull("node active " + ptNode2, n2Context);
 
     StramTestSupport.waitForWindowComplete(n2Context, 5);

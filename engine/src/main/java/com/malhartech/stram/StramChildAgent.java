@@ -166,7 +166,7 @@ public class StramChildAgent {
     this.initCtx = initCtx;
     this.operators = new HashMap<Integer, OperatorStatus>(container.operators.size());
     for (PTOperator operator : container.operators) {
-      this.operators.put(operator.id, new OperatorStatus(container, operator));
+      this.operators.put(operator.getId(), new OperatorStatus(container, operator));
     }
   }
 
@@ -300,7 +300,7 @@ public class StramChildAgent {
       OperatorDeployInfo ndi = createOperatorDeployInfo(node);
       long checkpointWindowId = node.getRecoveryCheckpoint();
       if (checkpointWindowId > 0) {
-        LOG.debug("Operator {} recovery checkpoint {}", node.id, Codec.getStringWindowId(checkpointWindowId));
+        LOG.debug("Operator {} recovery checkpoint {}", node.getId(), Codec.getStringWindowId(checkpointWindowId));
         ndi.checkpointWindowId = checkpointWindowId;
       }
       nodes.put(ndi, node);
@@ -328,7 +328,7 @@ public class StramChildAgent {
         }
 
         ndi.outputs.add(portInfo);
-        publishers.put(node.id + "/" + streamMeta.getId(), portInfo);
+        publishers.put(node.getId() + "/" + streamMeta.getId(), portInfo);
       }
     }
 
@@ -348,12 +348,12 @@ public class StramChildAgent {
         InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamMeta.getId();
         inputInfo.portName = in.portName;
-        for (Map.Entry<InputPortMeta, StreamMeta> e : node.logicalNode.getInputStreams().entrySet()) {
+        for (Map.Entry<InputPortMeta, StreamMeta> e : node.getOperatorMeta().getInputStreams().entrySet()) {
           if (e.getValue() == streamMeta) {
             inputInfo.contextAttributes = e.getKey().getAttributes();
           }
         }
-        inputInfo.sourceNodeId = sourceOutput.source.id;
+        inputInfo.sourceNodeId = sourceOutput.source.getId();
         inputInfo.sourcePortName = sourceOutput.portName;
         if (in.partitions != null) {
           inputInfo.partitionKeys = in.partitions.partitions;
@@ -362,7 +362,7 @@ public class StramChildAgent {
 
         if (streamMeta.isInline() && sourceOutput.source.container == node.container) {
           // inline input (both operators in same container and inline hint set)
-          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.id + "/" + streamMeta.getId());
+          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getId());
           if (outputInfo == null) {
             throw new AssertionError("Missing publisher for inline stream " + streamMeta);
           }
@@ -400,7 +400,7 @@ public class StramChildAgent {
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator node)
   {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
-    Operator operator = node.getLogicalNode().getOperator();
+    Operator operator = node.getOperatorMeta().getOperator();
     ndi.type = (operator instanceof InputOperator) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
     if (node.merge != null) {
       operator = node.merge;
@@ -416,9 +416,9 @@ public class StramChildAgent {
     } catch (Exception e) {
       throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getClass() + ")", e);
     }
-    ndi.declaredId = node.getLogicalId();
-    ndi.id = node.id;
-    ndi.contextAttributes = node.logicalNode.getAttributes();
+    ndi.declaredId = node.getOperatorMeta().getId();
+    ndi.id = node.getId();
+    ndi.contextAttributes = node.getOperatorMeta().getAttributes();
     return ndi;
   }
 

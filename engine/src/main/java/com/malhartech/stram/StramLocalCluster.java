@@ -324,7 +324,7 @@ public class StramLocalCluster implements Runnable
     LocalStramChild container;
     if (planOperator.container.containerId != null) {
       if ((container = getContainer(planOperator.container.containerId)) != null) {
-        if (container.getNodeContext(planOperator.id) != null) {
+        if (container.getNodeContext(planOperator.getId()) != null) {
           return container;
         }
       }

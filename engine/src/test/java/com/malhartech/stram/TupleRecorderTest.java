@@ -177,14 +177,14 @@ public class TupleRecorderTest
     final PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getOperatorWrapper(op2));
     StramTestSupport.waitForActivation(localCluster, ptOp2);
 
-    localCluster.dnmgr.startRecording(ptOp2.id, "doesNotMatter");
+    localCluster.dnmgr.startRecording(ptOp2.getId(), "doesNotMatter");
 
     WaitCondition c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
+        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
         return (tupleRecorder != null) && (tupleRecorder.getTotalTupleCount() >= testTupleCount);
       }
 
@@ -192,16 +192,16 @@ public class TupleRecorderTest
 
     Assert.assertTrue("Should record more than " + testTupleCount + " tuples within 15 seconds", StramTestSupport.awaitCompletion(c, 15000));
 
-    TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
+    TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
     long startTime = tupleRecorder.getStartTime();
 
-    localCluster.dnmgr.stopRecording(ptOp2.id);
+    localCluster.dnmgr.stopRecording(ptOp2.getId());
     c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.id);
+        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
         return (tupleRecorder == null);
       }
 
@@ -210,7 +210,7 @@ public class TupleRecorderTest
 
     BufferedReader br;
     String line;
-    File dir = new File(testWorkDir, "recordings/" + ptOp2.id + "/" + startTime);
+    File dir = new File(testWorkDir, "recordings/" + ptOp2.getId() + "/" + startTime);
     File file;
 
     file = new File(dir, "meta.txt");

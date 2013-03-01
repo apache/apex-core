@@ -114,7 +114,7 @@ public class StramWebServices
   {
     init();
     OperatorsInfo nodeList = new OperatorsInfo();
-    nodeList.operators = dagManager.getNodeInfoList();
+    nodeList.operators = dagManager.getOperatorInfoList();
     return nodeList;
   }
 
