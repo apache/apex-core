@@ -45,6 +45,7 @@
     <module>poc</module>
     <module>contrib</module>
     <module>dist</module>
+    <module>daemon</module>
   </modules>
 
   <build>
