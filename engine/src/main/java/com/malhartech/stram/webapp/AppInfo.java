@@ -69,6 +69,11 @@ public class AppInfo {
       return 0;
     }
 
+    @javax.xml.bind.annotation.XmlElement
+    public int getFailedContainers() {
+      return 0;
+    }
+
     public int containerMemory;
 
     @javax.xml.bind.annotation.XmlElement

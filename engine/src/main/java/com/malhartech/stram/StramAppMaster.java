@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.xml.bind.annotation.XmlElement;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -152,6 +154,12 @@ public class StramAppMaster
     @Override
     public int getPlannedContainers() {
       return dnmgr.getPhysicalPlan().getContainers().size();
+    }
+
+    @Override
+    @XmlElement
+    public int getFailedContainers() {
+      return numFailedContainers.get();
     }
 
     @Override
