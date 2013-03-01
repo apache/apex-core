@@ -18,7 +18,7 @@ public class ServerConnection {
 		return new Connection();
 	}
 
-	ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+	public final ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
 	SelectionKey selectionKey;
 
 	/**
