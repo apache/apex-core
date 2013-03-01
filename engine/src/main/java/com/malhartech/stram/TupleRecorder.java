@@ -106,10 +106,20 @@ public class TupleRecorder implements Operator
     public String recordingName;
   }
 
-  private static class Range
+  public static class Range
   {
     public long low = -1;
     public long high = -1;
+
+    public Range()
+    {
+    }
+
+    public Range(long low, long high)
+    {
+      this.low = low;
+      this.high = high;
+    }
 
     @Override
     public String toString()
@@ -401,7 +411,7 @@ public class TupleRecorder implements Operator
         if (i != 0) {
           countStr += ",";
         }
-        countStr += "\"" + pc.id + "\"" + ":" + pc.count;
+        countStr += "\"" + pc.id + "\"" + ":\"" + pc.count + "\"";
         i++;
 
         pc.count = 0;
