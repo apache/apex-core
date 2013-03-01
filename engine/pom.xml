@@ -198,11 +198,6 @@
       <artifactId>malhar-bufferserver</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <!--dependency>
-      <groupId>com.esotericsoftware.kryo</groupId>
-      <artifactId>kryo</artifactId>
-      <version>2.21-SNAPSHOT</version>
-    </dependency-->
   </dependencies>
 
 
@@ -262,6 +257,45 @@
         <test.excludedGroups></test.excludedGroups>
       </properties>
     </profile>
+
+	<profile>
+	  <!--  version info profile to generate exactly once after clean -->
+	  <id>generate-version-info</id>
+	  <activation>
+	    <file>
+	      <!-- 
+	        ${project.artifactId} does not work - see https://jira.codehaus.org/browse/MNG-5418 
+	        (required to use this for all modules from parent project)
+	      -->
+	      <missing>target/classes/malhar-stram-git.properties</missing>
+	    </file>
+	  </activation>
+      <build>
+        <plugins>
+          <plugin>
+	        <groupId>pl.project13.maven</groupId>
+	        <artifactId>git-commit-id-plugin</artifactId>
+	        <version>2.1.4</version>
+	        <executions>
+	          <execution>
+	          <id>create-git-version-info</id>
+	          <phase>generate-resources</phase>
+	          <goals>
+	            <goal>revision</goal>
+	          </goals>
+	          </execution>
+	        </executions>
+	        <configuration>
+              <verbose>true</verbose>
+              <prefix>git</prefix>
+              <generateGitPropertiesFile>true</generateGitPropertiesFile>
+	          <generateGitPropertiesFilename>target/classes/malhar-stram-git.properties</generateGitPropertiesFilename>
+	        </configuration>       
+          </plugin>
+        </plugins>
+      </build>
+	</profile>
+
   </profiles>
 
 

@@ -288,7 +288,7 @@ public class StramCli
 
   private void printWelcomeMessage()
   {
-    System.out.println("Stram CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate());
+    System.out.println("Stram CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
   }
 
   private void printHelp()
