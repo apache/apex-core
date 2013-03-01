@@ -1,0 +1,125 @@
+<html>
+  <body>
+    <object id="ZLibSocket" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"
+        codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=9,0,0,0"
+        border="0" width="0" height="0">
+      <param name="allowScriptAccess" value="always">
+      <param name="movie" value="ZLibSocket.swf">
+      <embed name="ZLibSocket" src="ZLibSocket.swf" border="0" width="0" height="0"
+          allowscriptaccess="always" type="application/x-shockwave-flash"
+          pluginspage="http://www.macromedia.com/go/getflashplayer" />
+    </object>
+    <script language="javascript"><!--
+var ZLibSocket = document["ZLibSocket"];
+var status = 0;
+
+function setStatus(s) {
+  status = s;
+  if (s == 1) {
+    btnConnect.disabled = true;
+    return;
+  }
+  btnConnect.disabled = false;
+  if (s == 0) {
+    btnConnect.value = "Connect";
+    btnSend.disabled = true;
+  } else {
+    btnConnect.value = "Disconnect";
+    btnSend.disabled = false;
+  }
+}
+
+function get00(n) {
+  return (n < 10 ? "0" : "") + n;
+}
+
+function getTimeString() {
+   var d = new Date();
+   var hh = d.getHours();
+   var mm = d.getMinutes();
+   var ss = d.getSeconds();
+   return get00(hh) + ":" + get00(mm) + ":" + get00(ss);
+}
+
+function ZLibSocket_Recv(s) {
+  txtRecv.value += s;
+  txtRecv.scrollTop = txtRecv.scrollHeight;
+}
+
+function ZLibSocket_Connect() {
+  setStatus(2);
+  if (!chkAnonymous.checked) {
+    ZLibSocket.send("[" + txtMyName.value + " Connected at " + getTimeString() + "]\r\n");
+  }
+}
+
+function ZLibSocket_Disconnect() {
+  alert("Server Disconnected");
+  setStatus(0);
+}
+
+function ZLibSocket_Error(s) {
+  alert(s);
+  setStatus(0);
+}
+
+function btnConnect_Click() {
+  if (status == 0) {
+    var port = parseInt(txtPort.value);
+    if (port > 0 && port < 65536) {
+      ZLibSocket.connect(txtHost.value, port);
+      setStatus(1);
+    } else {
+      alert("Invalid Port");
+    }
+  } else {
+    if (!chkAnonymous.checked) {
+      ZLibSocket.send("[" + txtMyName.value + " Disconnected at " + getTimeString() + "]\r\n");
+    }
+    ZLibSocket.disconnect();
+    setStatus(0);
+  }
+}
+
+function chkAnonymous_Click() {
+  txtMyName.disabled = chkAnonymous.checked;
+}
+
+function btnSend_Click() {
+  if (chkAnonymous.checked) {
+    ZLibSocket.send(txtSend.value);
+  } else {
+    ZLibSocket.send("[" + txtMyName.value + " Sent at " + getTimeString() + "]\r\n" + txtSend.value + "\r\n");
+  }
+  txtSend.value = "";
+}
+
+function btnClear_Click() {
+  txtRecv.value = "";
+}
+    --></script>
+    <table>
+      <tr>
+        <td nowrap>Host Name</td>
+        <td nowrap><input type="text" id="txtHost" value="localhost" size="10"></td>
+        <td nowrap>Port <input type="text" id="txtPort" value="23" size="5">
+            <input type="button" id="btnConnect" value="Connect" onclick="btnConnect_Click()"></td>
+      </tr>
+      <tr>
+        <td nowrap>My Name</td>
+        <td nowrap><input type="text" id="txtMyName" value="My Name" size="10"></td>
+        <td nowrap><input type="checkbox" id="chkAnonymous" onclick="chkAnonymous_Click()"><label for="chkAnonymous">Anonymous</label></td>
+      </tr>
+      <tr>
+        <td colspan="3"><textarea id="txtRecv" rows="6" cols="44" readonly></textarea></td>
+      </tr>
+      <tr>
+        <td colspan="3"><textarea id="txtSend" rows="3" cols="44"></textarea></td>
+      </tr>
+      <tr>
+        <td colspan="3" align="center"><input type="button" id="btnSend" value="Send" disabled onclick="btnSend_Click()">
+            <input type="button" id="btnClear" value="Clear" onclick="btnClear_Click()"></td>
+      </tr>
+    </table>
+  </body>
+</html>
