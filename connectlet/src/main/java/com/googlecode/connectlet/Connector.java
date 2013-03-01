@@ -34,7 +34,7 @@ public class Connector implements AutoCloseable {
 	}
 
 	private int bufferSize = MAX_BUFFER_SIZE;
-	private byte[] buffer = new byte[MAX_BUFFER_SIZE];
+  private ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
 	private ArrayList<FilterFactory> filterFactories = new ArrayList<FilterFactory>();
 	private AbstractCollection<Event> events = new AbstractCollection<Event>() {
 		@Override
@@ -207,9 +207,9 @@ public class Connector implements AutoCloseable {
 			try {
 				if (key.isReadable()) {
 					int bytesRead = connection.socketChannel.
-							read(ByteBuffer.wrap(buffer, 0, bufferSize));
+							read(connection.getBuffer());
 					if (bytesRead > 0) {
-						connection.netFilter.onRecv(buffer, 0, bytesRead);
+						connection.netFilter.onRecv(connection.buffer.array(), 0, bytesRead);
 					} else if (bytesRead < 0) {
 						connection.dispatchEvent(-1);
 					}
