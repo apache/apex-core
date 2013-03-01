@@ -708,8 +708,8 @@ public class StreamingContainerManager implements PlanContext
           ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
           ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           ni.failureCount = os.operator.failureCount;
-          ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
-          ni.currentWindowId = os.currentWindowId & 0xFFFF;
+          ni.recoveryWindowId = os.operator.recoveryCheckpoint;
+          ni.currentWindowId = os.currentWindowId;
           ni.recordingName = os.recordingName;
         }
         else {
