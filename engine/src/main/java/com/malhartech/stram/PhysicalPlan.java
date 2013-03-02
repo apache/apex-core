@@ -824,7 +824,7 @@ public class PhysicalPlan {
             if (mergeDesc.outputPorts.size() != 1) {
               throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
             }
-            mergeNode = new PTOperator(this, nodeSequence.incrementAndGet(), upstream.logicalOperator.getId() + "#merge");
+            mergeNode = new PTOperator(this, nodeSequence.incrementAndGet(), upstream.logicalOperator.getId() + "#merge#" + streamDecl.getSource().getPortName());
             mergeNode.logicalNode = upstream.logicalOperator;
             mergeNode.inputs = new ArrayList<PTInput>();
             mergeNode.outputs = new ArrayList<PTOutput>();
