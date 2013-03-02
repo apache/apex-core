@@ -33,11 +33,11 @@ public class DataList
   private final Integer blocksize;
   private HashMap<BitVector, HashSet<DataListener>> listeners = new HashMap<BitVector, HashSet<DataListener>>();
   private HashSet<DataListener> all_listeners = new HashSet<DataListener>();
-  private volatile DataArray first;
-  private volatile DataArray last;
+  private DataArray first;
+  private DataArray last;
   private Storage storage;
 
-  synchronized void rewind(int baseSeconds, int windowId, DataIntrospector di) throws IOException
+  public void rewind(int baseSeconds, int windowId, DataIntrospector di) throws IOException
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
 
@@ -78,7 +78,7 @@ public class DataList
     first = last = temp;
   }
 
-  synchronized void purge(int baseSeconds, int windowId, DataIntrospector di)
+  public void purge(int baseSeconds, int windowId, DataIntrospector di)
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
 
@@ -111,7 +111,7 @@ public class DataList
     return identifier;
   }
 
-  class DataArray
+  public class DataArray
   {
     private transient ByteArrayOutputStream output;
     /**
@@ -158,6 +158,10 @@ public class DataList
       Arrays.fill(data = new byte[blocksize], Byte.MIN_VALUE);
     }
 
+    public byte[] array()
+    {
+      return data;
+    }
     void getNextData(SerializedData current)
     {
       if (current.offset < writingOffset) {
@@ -442,10 +446,6 @@ public class DataList
   {
     this.identifier = identifier;
     this.blocksize = blocksize;
-
-    DataArray temp = new DataArray(blocksize);
-    temp.acquire(true);
-    first = last = temp;
   }
 
   public DataList(String identifier)
@@ -458,7 +458,7 @@ public class DataList
 
   public final synchronized void flush()
   {
-    for (DataListener dl: all_listeners) {
+    for (DataListener dl : all_listeners) {
       dl.dataAdded();
     }
   }
@@ -468,52 +468,30 @@ public class DataList
     this.storage = storage;
   }
 
-  public final void add(Message d) throws IOException
+  /**
+   *
+   * @return
+   */
+  public DataArray getDataArray()
   {
-    last.add(d);
+    DataArray temp = new DataArray(blocksize);
+    temp.acquire(true);
 
-    // here somehow we need to let the other thread know that we are ready
-    // to write w/o writing all the data since that comes with the danger
-    // of getting blocked. May be it's enough for us to write just one byte
-    // of data.
-    // netty 4alpha5 provides it.
+    if (first == null) {
+      first = temp;
+      last = first;
+    }
+    else {
+      last.next = temp;
+      last = temp;
+    }
 
-//    ByteBuffer bytebuffer = null;
-//    switch (d.getType()) {
-//      case PARTITIONED_DATA:
-//        bytebuffer = d.getPartitionedData().getPartition().asReadOnlyByteBuffer();
-//        if (listeners.containsKey(bytebuffer)) {
-//          Set<DataListener> interested = listeners.get(bytebuffer);
-//          for (DataListener dl: interested) {
-//            dl.dataAdded(bytebuffer);
-//          }
-//        }
-//      /*
-//       * fall through here since we also want to give data to all the listeners who do not have preference for the partition.
-//       */
-//      case SIMPLE_DATA:
-//        if (listeners.containsKey(DataListener.NULL_PARTITION)) {
-//          if (bytebuffer == null) {
-//            bytebuffer = DataListener.NULL_PARTITION;
-//          }
-//          Set<DataListener> interested = listeners.get(DataListener.NULL_PARTITION);
-//          for (DataListener dl: interested) {
-//            dl.dataAdded(bytebuffer);
-//          }
-//        }
-//        break;
-//
-//      default:
-//        for (DataListener dl: all_listeners) {
-//          dl.dataAdded(DataListener.NULL_PARTITION);
-//        }
-//        break;
-//    }
+    return temp;
   }
-
   /*
    * Iterator related functions.
    */
+
   private final HashMap<String, DataListIterator> iterators = new HashMap<String, DataListIterator>();
 
   public Iterator<SerializedData> newIterator(String identifier, DataIntrospector di, long windowId)
@@ -547,7 +525,7 @@ public class DataList
     if (iterator instanceof DataListIterator) {
       DataListIterator dli = (DataListIterator)iterator;
       synchronized (iterator) {
-        for (Entry<String, DataListIterator> e: iterators.entrySet()) {
+        for (Entry<String, DataListIterator> e : iterators.entrySet()) {
           if (e.getValue() == dli) {
             iterators.remove(e.getKey());
             released = true;
@@ -570,7 +548,7 @@ public class DataList
     int count = 0;
 
     synchronized (iterators) {
-      for (DataListIterator dli: iterators.values()) {
+      for (DataListIterator dli : iterators.values()) {
         count++;
         dli.da.release(false);
         dli.da = null;
@@ -582,12 +560,12 @@ public class DataList
     return count;
   }
 
-  public synchronized void addDataListener(DataListener dl)
+  public  void addDataListener(DataListener dl)
   {
     all_listeners.add(dl);
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (BitVector partition: partitions) {
+      for (BitVector partition : partitions) {
         HashSet<DataListener> set;
         if (listeners.containsKey(partition)) {
           set = listeners.get(partition);
@@ -617,7 +595,7 @@ public class DataList
   {
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (BitVector partition: partitions) {
+      for (BitVector partition : partitions) {
         if (listeners.containsKey(partition)) {
           listeners.get(partition).remove(dl);
         }

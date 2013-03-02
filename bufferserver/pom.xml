@@ -57,16 +57,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-common</artifactId>
-      <version>4.0.0.Alpha5</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-transport</artifactId>
-      <version>4.0.0.Alpha5</version>
-    </dependency>
-    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <version>1.7.1</version>
@@ -86,16 +76,6 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava-io</artifactId>
       <version>r03</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-buffer</artifactId>
-      <version>4.0.0.Alpha5</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-codec</artifactId>
-      <version>4.0.0.Alpha5</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>

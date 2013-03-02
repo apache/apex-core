@@ -14,17 +14,37 @@ import java.util.Collection;
 public class Connection
 {
   private static final InetSocketAddress NULL_ADDRESS = new InetSocketAddress(0);
-  ByteBuffer buffer;
+  protected ByteBuffer buffer;
 
-  public void setBuffer(byte[] bytes)
+  public Connection()
   {
-    buffer = ByteBuffer.wrap(bytes);
+    buffer = ByteBuffer.allocate(Connector.MAX_BUFFER_SIZE);
+  }
+
+  public Connection(byte[] byteArray)
+  {
+    buffer = ByteBuffer.wrap(byteArray);
+  }
+
+  public Connection(ByteBuffer buffer)
+  {
+    this.buffer = buffer;
   }
 
   public ByteBuffer getBuffer()
   {
     buffer.clear();
     return buffer;
+  }
+
+  public void onRecv(int bytesRead)
+  {
+    netFilter.onRecv(buffer.array(), buffer.position() - bytesRead, bytesRead);
+  }
+
+  public  SocketChannel getSocketChannel()
+  {
+    return socketChannel;
   }
 
   /**
@@ -171,7 +191,7 @@ public class Connection
 
   }
 
-  Filter netFilter = new Filter()
+  protected Filter netFilter = new Filter()
   {
     @Override
     protected void send(byte[] b, int off, int len)
@@ -354,8 +374,8 @@ public class Connection
   }
 
   // the following fields and methods are available to non-virtual connections only
-  SocketChannel socketChannel;
-  SelectionKey selectionKey;
+  protected SocketChannel socketChannel;
+  protected SelectionKey selectionKey;
   private static final int STATUS_IDLE = 0;
   private static final int STATUS_BUSY = 1;
   private static final int STATUS_DISCONNECTING = 2;

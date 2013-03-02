@@ -4,11 +4,9 @@
  */
 package com.malhartech.bufferserver;
 
+import com.googlecode.connectlet.Connection;
 import com.malhartech.bufferserver.util.SerializedData;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureAggregator;
-import io.netty.channel.ChannelFutureListener;
+import java.nio.channels.SocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,27 +17,18 @@ import org.slf4j.LoggerFactory;
  */
 public class PhysicalNode
 {
-  public static final int BUFFER_SIZE = 512 * 1024;
-  private volatile int writtenBytes;
+  public static final int BUFFER_SIZE = 8 * 1024;
   private final long starttime;
-  private final Channel channel;
+  private final Connection connection;
   private long processedMessageCount;
-  private final ChannelFutureListener cfl = new ChannelFutureListener()
-  {
-    public void operationComplete(ChannelFuture future) throws Exception
-    {
-      writtenBytes = 0;
-    }
-
-  };
 
   /**
    *
    * @param channel
    */
-  public PhysicalNode(Channel channel)
+  public PhysicalNode(Connection channel)
   {
-    this.channel = channel;
+    this.connection = channel;
     starttime = System.currentTimeMillis();
     processedMessageCount = 0;
   }
@@ -65,24 +54,12 @@ public class PhysicalNode
   /**
    *
    * @param d
+   * @return
    * @throws InterruptedException
    */
-  public boolean send(SerializedData d) throws InterruptedException
+  public void send(SerializedData d) throws InterruptedException
   {
-    channel.write(d);
-    writtenBytes += d.size;
-    processedMessageCount++;
-    if (writtenBytes > BUFFER_SIZE) {
-      channel.flush().addListener(cfl);
-      return true;
-    }
-
-    return false;
-  }
-
-  public boolean isBlocked()
-  {
-    return writtenBytes > BUFFER_SIZE;
+    connection.send(d.bytes, d.offset, d.size);
   }
 
   /**
@@ -111,7 +88,7 @@ public class PhysicalNode
    */
   public final int getId()
   {
-    return getChannel().id();
+    return connection.hashCode();
   }
 
   /**
@@ -121,15 +98,15 @@ public class PhysicalNode
   @Override
   public final int hashCode()
   {
-    return getChannel().id();
+    return connection.hashCode();
   }
 
   /**
    * @return the channel
    */
-  public Channel getChannel()
+  public Connection getConnection()
   {
-    return channel;
+    return connection;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(PhysicalNode.class);

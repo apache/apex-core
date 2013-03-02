@@ -34,17 +34,15 @@ public class GiveAll extends AbstractPolicy
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    * @return true if blocked, false otherwise
+   * @throws InterruptedException
    */
   @Override
-  public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
+  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     boolean retval = false;
     for (PhysicalNode node : nodes) {
-      if (node.send(data)) {
-        retval = true;
-      }
+      node.send(data);
     }
-
-    return retval;
   }
+
 }

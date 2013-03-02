@@ -38,6 +38,7 @@
   </dependencies>
 
   <modules>
+    <module>connectlet</module>
     <module>bufferserver</module>
     <module>stram</module>
     <module>library</module>

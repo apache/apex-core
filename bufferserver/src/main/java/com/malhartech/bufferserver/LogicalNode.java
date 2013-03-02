@@ -4,13 +4,14 @@
  */
 package com.malhartech.bufferserver;
 
+import com.googlecode.connectlet.Connection;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
 import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
-import io.netty.channel.Channel;
+import java.nio.channels.SocketChannel;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -38,7 +39,6 @@ public class LogicalNode implements DataListener, Runnable
   private final long windowId;
   private long baseSeconds;
   private boolean caughtup;
-  private boolean blocked;
 
   /**
    *
@@ -46,8 +46,9 @@ public class LogicalNode implements DataListener, Runnable
    * @param group
    * @param iterator
    * @param policy
+   * @param startingWindowId 
    */
-  LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy, long startingWindowId)
+  public LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy, long startingWindowId)
   {
     this.upstream = upstream;
     this.group = group;
@@ -85,11 +86,11 @@ public class LogicalNode implements DataListener, Runnable
 
   /**
    *
-   * @param channel
+   * @param connection
    */
-  public void addChannel(Channel channel)
+  public void addConnection(Connection connection)
   {
-    PhysicalNode pn = new PhysicalNode(channel);
+    PhysicalNode pn = new PhysicalNode(connection);
     if (!physicalNodes.contains(pn)) {
       physicalNodes.add(pn);
     }
@@ -97,12 +98,12 @@ public class LogicalNode implements DataListener, Runnable
 
   /**
    *
-   * @param channel
+   * @param connection
    */
-  public void removeChannel(Channel channel)
+  public void removeChannel(Connection connection)
   {
     for (PhysicalNode pn: physicalNodes) {
-      if (pn.getChannel() == channel) {
+      if (pn.getConnection() == connection) {
         physicalNodes.remove(pn);
         break;
       }
@@ -121,14 +122,14 @@ public class LogicalNode implements DataListener, Runnable
 
   public boolean isReady()
   {
-    if (blocked) {
-      for (PhysicalNode pn: physicalNodes) {
-        if (pn.isBlocked()) {
-          return false;
-        }
-      }
-      blocked = false;
-    }
+//    if (blocked) {
+//      for (PhysicalNode pn: physicalNodes) {
+//        if (pn.isBlocked()) {
+//          return false;
+//        }
+//      }
+//      blocked = false;
+//    }
 
     return true;
   }
@@ -158,7 +159,7 @@ public class LogicalNode implements DataListener, Runnable
               if (intervalMillis <= 0) {
                 logger.warn("Interval value set to non positive value = {}", intervalMillis);
               }
-              blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+              GiveAll.getInstance().distribute(physicalNodes, data);
               break;
 
             case BEGIN_WINDOW:
@@ -171,7 +172,7 @@ public class LogicalNode implements DataListener, Runnable
                       });
               if ((baseSeconds | iterator.getWindowId()) >= windowId) {
                 logger.debug("caught up {}->{}", upstream, group);
-                blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+                GiveAll.getInstance().distribute(physicalNodes, data);
                 caughtup = true;
                 break outer;
               }
@@ -179,12 +180,8 @@ public class LogicalNode implements DataListener, Runnable
 
             case CHECKPOINT:
             case CODEC_STATE:
-              blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+              GiveAll.getInstance().distribute(physicalNodes, data);
               break;
-          }
-
-          if (blocked) {
-            break;
           }
         }
       }
@@ -199,18 +196,16 @@ public class LogicalNode implements DataListener, Runnable
   }
 
 
+  @Override
   public void dataAdded()
   {
-    @SuppressWarnings("LocalVariableHidesMemberVariable")
-    Iterator<PhysicalNode> iterator = physicalNodes.iterator();
-    if (iterator.hasNext()) {
-      iterator.next().getChannel().eventLoop().execute(this);
-    }
+    run();
   }
   /**
    *
    */
   @SuppressWarnings("fallthrough")
+  @Override
   public void run()
   {
     if (isReady()) {
@@ -224,7 +219,7 @@ public class LogicalNode implements DataListener, Runnable
               SerializedData data = iterator.next();
               switch (iterator.getType()) {
                 case PAYLOAD:
-                  blocked = policy.distribute(physicalNodes, data);
+                  policy.distribute(physicalNodes, data);
                   break;
 
                 case NO_MESSAGE:
@@ -236,12 +231,8 @@ public class LogicalNode implements DataListener, Runnable
                   baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
 
                 default:
-                  blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+                  GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
-              }
-
-              if (blocked) {
-                break;
               }
             }
           }
@@ -253,7 +244,7 @@ public class LogicalNode implements DataListener, Runnable
                   int value = ((Message)iterator.getData()).getPayload().getPartition();
                   for (BitVector bv: partitions) {
                     if (bv.matches(value)) {
-                      blocked = policy.distribute(physicalNodes, data);
+                      policy.distribute(physicalNodes, data);
                       break;
                     }
                   }
@@ -268,12 +259,8 @@ public class LogicalNode implements DataListener, Runnable
                   baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
 
                 default:
-                  blocked = GiveAll.getInstance().distribute(physicalNodes, data);
+                  GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
-              }
-
-              if (blocked) {
-                break;
               }
             }
           }
@@ -293,6 +280,7 @@ public class LogicalNode implements DataListener, Runnable
    * @param partitions
    * @return int
    */
+  @Override
   public int getPartitions(Collection<BitVector> partitions)
   {
     partitions.addAll(this.partitions);

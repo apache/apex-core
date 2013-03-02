@@ -18,7 +18,6 @@ import java.util.Set;
  */
 public class LeastBusy extends AbstractPolicy
 {
-
   static final LeastBusy instance = new LeastBusy();
 
   /**
@@ -44,21 +43,20 @@ public class LeastBusy extends AbstractPolicy
    *
    */
   @Override
-  public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
+  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     PhysicalNode theOne = null;
 
     for (PhysicalNode node : nodes) {
       if (theOne == null
-          || node.getProcessedMessageCount() < theOne.getProcessedMessageCount()) {
+              || node.getProcessedMessageCount() < theOne.getProcessedMessageCount()) {
         theOne = node;
       }
     }
 
     if (theOne != null) {
-      return theOne.send(data);
+      theOne.send(data);
     }
-
-    return false;
   }
+
 }

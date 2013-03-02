@@ -122,49 +122,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
    * @param ctx
    * @return
    */
-  public synchronized DataList handlePublisherRequest(Buffer.Request request, ChannelHandlerContext ctx)
-  {
-    /* we are never going to write to the publisher socket */
-//    if (ctx.channel() instanceof SocketChannel) {
-//      ((SocketChannel)ctx.channel()).shutdownOutput().addListener(new ChannelFutureListener() {
-//
-//        public void operationComplete(ChannelFuture future) throws Exception
-//        {
-//          logger.debug("future = {}", future.isSuccess());
-//        }
-//      });
-//    }
-
-    String identifier = request.getIdentifier();
-
-    DataList dl;
-
-    if (publisherBufffers.containsKey(identifier)) {
-      /*
-       * close previous connection with the same identifier which is guaranteed to be unique.
-       */
-      Channel previous = publisherChannels.put(identifier, ctx.channel());
-      if (previous != null && previous.id() != ctx.channel().id()) {
-        previous.close();
-      }
-
-      dl = publisherBufffers.get(identifier);
-    }
-    else {
-      dl = new DataList(identifier, blockSize, 8);
-      publisherBufffers.put(identifier, dl);
-    }
-    dl.setSecondaryStorage(storage);
-
-    return dl;
-  }
-
-  /**
-   *
-   * @param request
-   * @param ctx
-   * @return
-   */
   public synchronized LogicalNode handleSubscriberRequest(Buffer.Request request, ChannelHandlerContext ctx)
   {
     SubscriberRequest subscriberRequest = request.getExtension(SubscriberRequest.request);
@@ -185,7 +142,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       }
 
       ln = subscriberGroups.get(type);
-      ln.addChannel(ctx.channel());
+      ln.addConnection(ctx.channel());
     }
     else {
       /*
@@ -216,7 +173,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter implements Chann
       }
 
       subscriberGroups.put(type, ln);
-      ln.addChannel(ctx.channel());
+      ln.addConnection(ctx.channel());
       dl.addDataListener(ln);
     }
 
