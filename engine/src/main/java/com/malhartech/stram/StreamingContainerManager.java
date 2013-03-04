@@ -195,7 +195,7 @@ public class StreamingContainerManager implements PlanContext
         container.bufferServerAddress = bufferServerAddress;
         StreamingContainerContext scc = newStreamingContainerContext();
         StramChildAgent ca = new StramChildAgent(container, scc);
-        containers.put(containerId, new StramChildAgent(container, scc));
+        containers.put(containerId, ca);
         return ca;
       }
     }

@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -165,9 +166,6 @@ public class StramChildAgent {
     this.container = container;
     this.initCtx = initCtx;
     this.operators = new HashMap<Integer, OperatorStatus>(container.operators.size());
-    for (PTOperator operator : container.operators) {
-      this.operators.put(operator.getId(), new OperatorStatus(container, operator));
-    }
   }
 
   boolean shutdownRequested = false;
@@ -176,7 +174,7 @@ public class StramChildAgent {
   long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
-  final Map<Integer, OperatorStatus> operators;
+  Map<Integer, OperatorStatus> operators;
   final StreamingContainerContext initCtx;
   private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
   DeployRequest pendingRequest = null;
@@ -204,7 +202,21 @@ public class StramChildAgent {
 
   public void addRequest(DeployRequest r) {
     this.requests.add(r);
-    LOG.info("Adding request {} {}"/*ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero*/, container.containerId, r);
+    if (r.deployOperators != null) {
+      // currently deployed operators copy on write
+      HashMap<Integer, OperatorStatus> newDeployedOperators = new HashMap<Integer, OperatorStatus>(this.operators);
+      if (r instanceof UndeployRequest) {
+        for (PTOperator operator : r.deployOperators) {
+            newDeployedOperators.remove(operator.getId());
+        }
+      } else {
+        for (PTOperator operator : r.deployOperators) {
+          newDeployedOperators.put(operator.getId(), new OperatorStatus(container, operator));
+        }
+      }
+      this.operators = Collections.unmodifiableMap(newDeployedOperators);
+    }
+    LOG.info("Added request {} {}"/*ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero*/, container.containerId, r);
   }
 
   public void addOperatorRequest(StramToNodeRequest r) {
@@ -251,7 +263,7 @@ public class StramChildAgent {
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (r.deployOperators != null) {
       if (r instanceof UndeployRequest) {
-        List<OperatorDeployInfo> nodeList = getDeployInfoList(r.deployOperators);
+        List<OperatorDeployInfo> nodeList = getUndeployInfoList(r.deployOperators);
         rsp.undeployRequest = nodeList;
       } else {
         List<OperatorDeployInfo> nodeList = getDeployInfoList(r.deployOperators);
@@ -282,12 +294,10 @@ public class StramChildAgent {
 
   /**
    * Create deploy info for StramChild.
-   * @param container
-   * @param deployNodes
-   * @param checkpoints
+   * @param operators
    * @return StreamingContainerContext
    */
-  private List<OperatorDeployInfo> getDeployInfoList(List<PTOperator> deployNodes) {
+  private List<OperatorDeployInfo> getDeployInfoList(List<PTOperator> operators) {
 
     if (container.bufferServerAddress == null) {
       throw new IllegalStateException("No buffer server address assigned");
@@ -296,7 +306,7 @@ public class StramChildAgent {
     Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
     Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
 
-    for (PTOperator node : deployNodes) {
+    for (PTOperator node : operators) {
       OperatorDeployInfo ndi = createOperatorDeployInfo(node);
       long checkpointWindowId = node.getRecoveryCheckpoint();
       if (checkpointWindowId > 0) {
@@ -364,7 +374,7 @@ public class StramChildAgent {
           // inline input (both operators in same container and inline hint set)
           OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getId());
           if (outputInfo == null) {
-            throw new AssertionError("Missing publisher for inline stream " + streamMeta);
+            throw new AssertionError("Missing publisher for inline stream " + sourceOutput);
           }
         } else {
           // buffer server input
@@ -372,7 +382,7 @@ public class StramChildAgent {
           InetSocketAddress addr = sourceOutput.source.container.bufferServerAddress;
           if (addr == null) {
             // TODO: occurs during undeploy
-            LOG.warn("upstream address not assigned: " + in.source);
+            LOG.warn("upstream address not assigned: " + sourceOutput);
             addr = container.bufferServerAddress;
             //throw new IllegalStateException("upstream address not assigned: " + in.source);
           }
@@ -387,6 +397,29 @@ public class StramChildAgent {
     }
 
     return new ArrayList<OperatorDeployInfo>(nodes.keySet());
+  }
+
+  /**
+   * Create operator undeploy request for StramChild. Since the physical plan
+   * could have been modified (dynamic partitioning etc.), stream information
+   * cannot be provided. StramChild keeps track of connected streams and removes
+   * them along with the operator instance.
+   *
+   * @param operators
+   * @return
+   */
+  private List<OperatorDeployInfo> getUndeployInfoList(List<PTOperator> operators) {
+    List<OperatorDeployInfo> undeployList = new ArrayList<OperatorDeployInfo>(operators.size());
+    for (PTOperator node : operators) {
+      OperatorDeployInfo ndi = createOperatorDeployInfo(node);
+      long checkpointWindowId = node.getRecoveryCheckpoint();
+      if (checkpointWindowId > 0) {
+        LOG.debug("Operator {} recovery checkpoint {}", node.getId(), Codec.getStringWindowId(checkpointWindowId));
+        ndi.checkpointWindowId = checkpointWindowId;
+      }
+      undeployList.add(ndi);
+    }
+    return undeployList;
   }
 
   /**

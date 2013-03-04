@@ -65,6 +65,7 @@ public class CheckpointTest
 
     String containerId = "container1";
     StramChildAgent cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
+
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
     WindowGenerator wingen = StramTestSupport.setupWindowGenerator(mses);
     LocalStramChild container = new LocalStramChild(containerId, null, wingen);
@@ -73,6 +74,11 @@ public class CheckpointTest
     List<OperatorDeployInfo> deployInfo = cc.getDeployInfo();
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.deployRequest = deployInfo;
+
+    StramChildAgent.DeployRequest dr = new StramChildAgent.DeployRequest(null, null);
+    dr.setOperators(cc.container.operators);
+    cc.addRequest(dr);
+
     container.processHeartbeatResponse(rsp);
 
 //    mses.tick(1); // begin window 0
