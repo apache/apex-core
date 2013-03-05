@@ -284,6 +284,7 @@ public class StramCli
       }
       out.flush();
     }
+    System.out.println("exit");
   }
 
   private void printWelcomeMessage()
@@ -309,6 +310,9 @@ public class StramCli
           throws IOException
   {
     String line = reader.readLine(promtMessage + "\nstramcli> ");
+    if (line == null) {
+      return null;
+    }
     return line.trim();
   }
 
