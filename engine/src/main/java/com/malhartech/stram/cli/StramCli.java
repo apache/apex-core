@@ -284,6 +284,7 @@ public class StramCli
       }
       out.flush();
     }
+    System.out.println("exit");
   }
 
   private void printWelcomeMessage()
