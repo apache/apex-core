@@ -19,7 +19,6 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.TupleRecorder.RecorderSink;
 import com.malhartech.stream.*;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
@@ -38,7 +37,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSError;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
@@ -861,7 +859,7 @@ public class StramChild
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
            */
-          assert (nodi.isInline() == false);
+          assert (nodi.isInline() == false) : "output should not be inline: " + nodi;
           context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
           if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {

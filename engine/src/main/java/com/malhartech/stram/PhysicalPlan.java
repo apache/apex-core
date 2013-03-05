@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -416,14 +417,6 @@ public class PhysicalPlan {
      */
     public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy);
 
-    /**
-     * Get all operator instances that depend on the specified operator instance(s).
-     * Added here to reuse recovery checkpoint traversal logic although knowledge of the plan is sufficient.
-     * @param p
-     * @return
-     */
-    public Set<PTOperator> getDependents(Collection<PTOperator> p);
-
     // TODO: pass events through pub/sub and present context as command parameter
     public void dispatch(Runnable r);
 
@@ -666,6 +659,8 @@ public class PhysicalPlan {
 
     final Collection<Partition<?>> newPartitions;
     long minCheckpoint = 0;
+    PTContainer inlineContainer = null;
+
     for (PTOperator pOperator : operators) {
       Partition<?> p = pOperator.partition;
       if (p == null) {
@@ -689,6 +684,16 @@ public class PhysicalPlan {
       PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
+
+      // track inline, new partitions will need to adhere to it (publishers are not switched dynamically)
+      if (inlineContainer == null) {
+        for (PTInput in : pOperator.inputs) {
+          if (in.source.isDownStreamInline()) {
+            inlineContainer = in.source.source.container;
+            break;
+          }
+        }
+      }
     }
 
     if (n.getOperator() instanceof PartitionableOperator) {
@@ -721,7 +726,7 @@ public class PhysicalPlan {
     // remaining entries represent deprecated partitions
     undeployOperators.addAll(currentPartitionMap.values());
     // resolve dependencies that require redeploy
-    undeployOperators = this.ctx.getDependents(undeployOperators);
+    undeployOperators = this.getDependents(undeployOperators);
 
     // plan updates start here, after all changes were identified
     // remove obsolete operators first, any freed resources
@@ -734,6 +739,7 @@ public class PhysicalPlan {
     for (PTOperator p : undeployOperators) {
       if (newMapping.partitions.remove(p)) {
         removePTOperator(p);
+        p.container.operators.remove(p); // TODO: thread safety
         // TODO: remove checkpoint states
       }
     }
@@ -758,17 +764,22 @@ public class PhysicalPlan {
       }
 
       // find container for new operator
-      PTContainer c = findContainer(p);
+      PTContainer c = inlineContainer;
       if (c == null) {
-        // get new container
-        c = new PTContainer();
-        newContainers.add(c);
+        c = findContainer(p);
+        if (c == null) {
+          // get new container
+          LOG.debug("New container for partition: " + p);
+          c = new PTContainer();
+          newContainers.add(c);
+        }
       }
+
       p.container = c;
       p.container.operators.add(p); // TODO: thread safety
     }
 
-    Set<PTOperator> deployOperators = this.ctx.getDependents(addedOperators);
+    Set<PTOperator> deployOperators = this.getDependents(addedOperators);
     ctx.redeploy(undeployOperators, newContainers, deployOperators);
 
     this.logicalToPTOperator.put(n, newMapping);  // TODO: thread safety
@@ -930,6 +941,10 @@ public class PhysicalPlan {
         }
       }
     }
+    // remove from upstream operators
+    for (PTInput in : node.inputs) {
+      in.source.sinks.remove(in);
+    }
   }
 
   protected List<PTContainer> getContainers() {
@@ -947,6 +962,44 @@ public class PhysicalPlan {
 
   protected List<OperatorMeta> getRootOperators() {
     return dag.getRootOperators();
+  }
+
+  private void getDeps(PTOperator operator, Set<PTOperator> visited) {
+    visited.add(operator);
+    for (PTInput in : operator.inputs) {
+      if (in.source.isDownStreamInline()) {
+        PTOperator sourceOperator = (PTOperator)in.source.source;
+        if (!visited.contains(sourceOperator)) {
+          getDeps(sourceOperator, visited);
+        }
+      }
+    }
+    // downstream traversal
+    for (PTOutput out: operator.outputs) {
+      for (PhysicalPlan.PTInput sink : out.sinks) {
+        PTOperator sinkOperator = (PTOperator)sink.target;
+        if (!visited.contains(sinkOperator)) {
+          getDeps(sinkOperator, visited);
+        }
+      }
+    }
+  }
+
+  /**
+   * Get all operator instances that depend on the specified operator instance(s).
+   * Dependencies are all downstream and upstream inline operators.
+   * @param p
+   * @return
+   */
+  public Set<PTOperator> getDependents(Collection<PTOperator> operators)
+  {
+    Set<PTOperator> visited = new LinkedHashSet<PTOperator>();
+    if (operators != null) {
+      for (PTOperator operator: operators) {
+        getDeps(operator, visited);
+      }
+    }
+    return visited;
   }
 
 }

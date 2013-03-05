@@ -241,7 +241,11 @@ public class StramClient
     LinkedHashSet<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
 
     for (Class<?> jarClass : jarClasses) {
-      localJarFiles.add(JarFinder.getJar(jarClass));
+      String jar = JarFinder.getJar(jarClass);
+      if (jar == null) {
+        throw new IllegalArgumentException("Cannot resolve jar file for " + jarClass);
+      }
+      localJarFiles.add(jar);
       // check for annotated dependencies in class and super classes
       for (Class<?> c = jarClass; c != Object.class && c != null; c = c.getSuperclass()) {
         try {
@@ -249,7 +253,11 @@ public class StramClient
           ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
           if (shipJars != null) {
             for (Class<?> depClass : shipJars.classes()) {
-              localJarFiles.add(JarFinder.getJar(depClass));
+              String depJar = JarFinder.getJar(depClass);
+              if (depJar == null) {
+                throw new IllegalArgumentException("Cannot resolve jar file for " + depClass);
+              }
+              localJarFiles.add(depJar);
               LOG.info("Including {} as dependency of {}", depClass, jarClass);
             }
           }

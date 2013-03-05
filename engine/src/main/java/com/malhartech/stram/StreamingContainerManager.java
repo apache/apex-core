@@ -12,6 +12,7 @@ import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
+import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.PhysicalPlan.PlanContext;
@@ -662,17 +663,6 @@ public class StreamingContainerManager implements PlanContext
     this.eventQueue.add(r);
   }
 
-  @Override
-  public Set<PTOperator> getDependents(Collection<PTOperator> operators)
-  {
-    Set<PTOperator> visited = new LinkedHashSet<PTOperator>();
-    if (operators != null) {
-      for (PTOperator operator: operators) {
-        updateRecoveryCheckpoints(operator, visited);
-      }
-    }
-    return visited;
-  }
 
   public ArrayList<OperatorInfo> getOperatorInfoList()
   {

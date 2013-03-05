@@ -146,13 +146,21 @@ public class StramLocalCluster implements Runnable
     {
       LOG.debug("Got context: " + ctx);
       stramChild.setup(ctx);
+      boolean hasError = true;
       try {
         // main thread enters heartbeat loop
         stramChild.monitorHeartbeat();
+        hasError = false;
       }
       finally {
         // teardown
-        stramChild.teardown();
+        try {
+          stramChild.teardown();
+        } catch (Exception e) {
+          if (!hasError) {
+            throw e;
+          }
+        }
       }
     }
 

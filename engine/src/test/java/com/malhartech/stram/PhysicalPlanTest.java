@@ -171,7 +171,6 @@ public class PhysicalPlanTest {
 
   private class TestPlanContext implements PlanContext, BackupAgent {
     List<Runnable> events = new ArrayList<Runnable>();
-    Set<PTOperator> deps;
     Collection<PTOperator> undeploy;
     Collection<PTOperator> deploy;
     List<Object> backupRequests = new ArrayList<Object>();
@@ -185,12 +184,6 @@ public class PhysicalPlanTest {
     public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
       this.undeploy = undeploy;
       this.deploy = deploy;
-    }
-
-    @Override
-    public Set<PTOperator> getDependents(Collection<PTOperator> p) {
-      Assert.assertNotNull("dependencies not set", deps);
-      return deps;
     }
 
     @Override
@@ -228,23 +221,26 @@ public class PhysicalPlanTest {
 
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
-    OperatorMeta node2Decl = dag.getOperatorWrapper(node2.getName());
-    node2Decl.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
-    node2Decl.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(0);
-    node2Decl.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
+    OperatorMeta node2Meta = dag.getOperatorWrapper(node2.getName());
+    node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(0);
+    node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
 
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
-    ctx.deps = Sets.newHashSet(plan.getOperators(dag.getOperatorWrapper(mergeNode)));
-
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
 
-    List<PTOperator> n2Instances = plan.getOperators(node2Decl);
+    List<PTOperator> n2Instances = plan.getOperators(node2Meta);
     Assert.assertEquals("partition instances " + n2Instances, 2, n2Instances.size());
+    PTOperator po = n2Instances.get(0);
+    PTOperator po2 = n2Instances.get(1);
+
+    Set<PTOperator> expUndeploy = Sets.newHashSet(plan.getOperators(dag.getOperatorWrapper(mergeNode)));
+    expUndeploy.add(po);
+    expUndeploy.addAll(plan.getMergeOperators(node2Meta).values());
 
     // verify load update generates expected events per configuration
-    PTOperator po = n2Instances.get(0);
     Assert.assertEquals("stats handlers " + po, 1, po.statsMonitors.size());
     PhysicalPlan.StatsHandler sm = po.statsMonitors.get(0);
     Assert.assertTrue("stats handlers " + po.statsMonitors, sm instanceof PhysicalPlan.PartitionLoadWatch);
@@ -258,8 +254,14 @@ public class PhysicalPlanTest {
     Runnable r = ctx.events.remove(0);
     r.run();
 
-    Assert.assertEquals("" + ctx.undeploy, ctx.deps, ctx.undeploy);
-    Assert.assertEquals("" + ctx.deploy, ctx.deps, ctx.deploy);
+    Assert.assertEquals("" + ctx.undeploy, expUndeploy, ctx.undeploy);
+
+    Set<PTOperator> expDeploy = Sets.newHashSet(plan.getOperators(dag.getOperatorWrapper(mergeNode)));
+    expDeploy.addAll(plan.getOperators(node2Meta));
+    expDeploy.remove(po2);
+    expDeploy.addAll(plan.getMergeOperators(node2Meta).values());
+
+    Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
     Assert.assertEquals("backup " + ctx.backupRequests, 2, ctx.backupRequests.size());
 
   }
