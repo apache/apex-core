@@ -309,6 +309,9 @@ public class StramCli
           throws IOException
   {
     String line = reader.readLine(promtMessage + "\nstramcli> ");
+    if (line == null) {
+      return null;
+    }
     return line.trim();
   }
 
