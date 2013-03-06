@@ -52,6 +52,8 @@ public class StramWebServices
   public static final String PATH_STARTRECORDING = "startRecording";
   public static final String PATH_STOPRECORDING = "stopRecording";
   public static final String PATH_CONTAINERS = "containers";
+  public static final String PATH_LOGICAL_PLAN_OPERATORS = "logicalPlan/operators";
+
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
@@ -162,7 +164,7 @@ public class StramWebServices
       dagManager.stopRecording(operId);
     }
     catch (JSONException ex) {
-      dagManager.stopAllRecordings();
+      ex.printStackTrace();
     }
     return response;
   }
@@ -189,6 +191,24 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     dagManager.stopContainer(containerId);
+    return response;
+  }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/setProperty")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject setOperatorProperty(JSONObject request, @PathParam("operatorId") String operatorId)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      String propertyName = request.getString("propertyName");
+      String propertyValue = request.getString("propertyValue");
+      dagManager.setOperatorProperty(operatorId, propertyName, propertyValue);
+    }
+    catch (JSONException ex) {
+      ex.printStackTrace();
+    }
     return response;
   }
 

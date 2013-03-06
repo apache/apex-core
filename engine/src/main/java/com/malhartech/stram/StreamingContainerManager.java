@@ -4,6 +4,25 @@
  */
 package com.malhartech.stram;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
@@ -12,7 +31,6 @@ import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.PhysicalPlan.PlanContext;
@@ -31,15 +49,6 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -386,7 +395,7 @@ public class StreamingContainerManager implements PlanContext
         for (OperatorStatus os: sca.operators.values()) {
           if (os.lastHeartbeat != null && os.lastHeartbeat.getState().compareTo(DNodeState.ACTIVE.name()) == 0) {
             StramToNodeRequest backupRequest = new StramToNodeRequest();
-            backupRequest.setNodeId(os.operator.getId());
+            backupRequest.setOperatorId(os.operator.getId());
             backupRequest.setRequestType(RequestType.CHECKPOINT);
             backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
             requests.add(backupRequest);
@@ -718,52 +727,55 @@ public class StreamingContainerManager implements PlanContext
 
   public void startRecording(int operId, String name)
   {
-    ArrayList<StramChildAgent> matchedContainers = getContainersFromOperatorId(operId);
-    if (matchedContainers.isEmpty()) {
-      throw new NotFoundException("Operator ID " + operId + " not found");
-    }
-    for (StramChildAgent container: matchedContainers) {
-      StramToNodeRequest request = new StramToNodeRequest();
-      request.setNodeId(operId);
-      request.setName(name);
-      request.setRequestType(RequestType.START_RECORDING);
-      container.addOperatorRequest(request);
-    }
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    request.setName(name);
+    request.setRequestType(RequestType.START_RECORDING);
+    sca.addOperatorRequest(request);
   }
 
   public void stopRecording(int operId)
   {
-    ArrayList<StramChildAgent> matchedContainers = getContainersFromOperatorId(operId);
-    if (matchedContainers.isEmpty()) {
-      throw new NotFoundException("Operator ID " + operId + " not found");
-    }
-    for (StramChildAgent container: matchedContainers) {
-      StramToNodeRequest request = new StramToNodeRequest();
-      request.setNodeId(operId);
-      request.setRequestType(RequestType.STOP_RECORDING);
-      container.addOperatorRequest(request);
-    }
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    request.setRequestType(RequestType.STOP_RECORDING);
+    sca.addOperatorRequest(request);
   }
 
-  public void stopAllRecordings()
-  {
-    // Not Supported yet
-  }
-
-  protected ArrayList<StramChildAgent> getContainersFromOperatorId(int operatorId)
+  private StramChildAgent getContainerAgentFromOperatorId(int operatorId)
   {
     // Thomas, please change it when you get a chance.  -- David
-    ArrayList<StramChildAgent> retContainers = new ArrayList<StramChildAgent>();
     for (StramChildAgent container: containers.values()) {
       if (container.operators.containsKey(operatorId)) {
-        retContainers.add(container);
+        return container;
       }
     }
-    return retContainers;
+    throw new AssertionError("Operator ID " + operatorId + " not found");
   }
 
   public void stopContainer(String containerId) {
     this.containerStopRequests.put(containerId, containerId);
+  }
+
+  public void setOperatorProperty(String operatorId, String propertyName, String propertyValue) {
+    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    if (logicalOperator == null) {
+      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+    }
+
+    List<PTOperator> operators = plan.getOperators(logicalOperator);
+    for (PTOperator o : operators) {
+      StramChildAgent sca = getContainerAgent(o.getContainer().containerId);
+      StramToNodeRequest request = new StramToNodeRequest();
+      request.setOperatorId(o.getId());
+      request.setPropertyKey = propertyName;
+      request.setPropertyValue = propertyValue;
+      request.setRequestType(RequestType.SET_PROPERTY);
+      sca.addOperatorRequest(request);
+    }
+
   }
 
 }

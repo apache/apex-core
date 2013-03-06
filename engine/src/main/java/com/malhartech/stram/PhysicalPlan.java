@@ -947,6 +947,10 @@ public class PhysicalPlan {
     }
   }
 
+  public DAG getDAG() {
+    return this.dag;
+  }
+
   protected List<PTContainer> getContainers() {
     return this.containers;
   }

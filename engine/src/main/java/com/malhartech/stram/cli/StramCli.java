@@ -267,6 +267,9 @@ public class StramCli
         else if (line.startsWith("stoprecording")) {
           stopRecording(line);
         }
+        else if (line.startsWith("operator-property-set")) {
+          setOperatorProperty(line);
+        }
         else if ("exit".equals(line)) {
           System.out.println("Exiting application");
           return;
@@ -788,6 +791,25 @@ public class StramCli
       }
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
       System.out.println("stop recording requested: " + response);
+    }
+    catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+
+  private void setOperatorProperty(String line)
+  {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    String[] args = assertArgs(line, 4, "required arguments: <operatorName> <propertyName> <propertyValue>");
+    WebResource r = getPostResource().path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("setProperty");
+    try {
+      JSONObject request = new JSONObject();
+      request.put("propertyName", args[2]);
+      request.put("propertyValue", args[3]);
+      JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+      System.out.println("request submitted: " + response);
     }
     catch (Exception e) {
       throw new CliException("Failed to request " + r.getURI(), e);

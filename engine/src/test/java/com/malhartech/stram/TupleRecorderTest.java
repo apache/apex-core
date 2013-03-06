@@ -174,7 +174,7 @@ public class TupleRecorderTest
     final StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.runAsync();
 
-    final PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getOperatorWrapper(op2));
+    final PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getOperatorMeta(op2));
     StramTestSupport.waitForActivation(localCluster, ptOp2);
 
     localCluster.dnmgr.startRecording(ptOp2.getId(), "doesNotMatter");

@@ -303,20 +303,23 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 1L;
 
     enum RequestType {
-      REPORT_PARTION_STATS, CHECKPOINT, START_RECORDING, STOP_RECORDING
+      REPORT_PARTION_STATS, CHECKPOINT, START_RECORDING, STOP_RECORDING, SET_PROPERTY
     }
 
-    private int nodeId;
+    private int operatorId;
     private RequestType requestType;
     private long recoveryCheckpoint;
     private String name;
 
-    public int getNodeId() {
-      return nodeId;
+    public String setPropertyKey;
+    public String setPropertyValue;
+
+    public int getOperatorId() {
+      return operatorId;
     }
 
-    public void setNodeId(int nodeId) {
-      this.nodeId = nodeId;
+    public void setOperatorId(int id) {
+      this.operatorId = id;
     }
 
     public RequestType getRequestType() {
@@ -346,7 +349,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-              .append("nodeId", this.nodeId)
+              .append("operatorId", this.operatorId)
               .append("requestType", this.requestType)
               .append("name", this.name).toString();
     }
@@ -403,13 +406,4 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    */
   ContainerHeartbeatResponse pollRequest(String containerId);
 
-  /**
-   * Reporting of partitioning stats - requested by stram for operators that
-   * participate in partitioning when the basic heartbeat indicates a
-   * bottleneck. The details would then be used by stram to split or merge operators
-   * to re-balance load.
-   *
-   * @return {com.malhartech.stram.StramToNodeRequest}
-   */
-  StramToNodeRequest processPartioningDetails();
 }

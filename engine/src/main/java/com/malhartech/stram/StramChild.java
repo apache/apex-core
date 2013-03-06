@@ -628,9 +628,9 @@ public class StramChild
     if (rsp.nodeRequests != null) {
       // processing of per operator requests
       for (StramToNodeRequest req: rsp.nodeRequests) {
-        OperatorContext nc = activeNodes.get(req.getNodeId());
+        OperatorContext nc = activeNodes.get(req.getOperatorId());
         if (nc == null) {
-          logger.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
+          logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);
         }
         else {
           logger.debug("Stram request: {}", req);
@@ -648,7 +648,7 @@ public class StramChild
    */
   private void processStramRequest(OperatorContext context, final StramToNodeRequest snr)
   {
-    int operatorId = snr.getNodeId();
+    int operatorId = snr.getOperatorId();
     final Node<?> node = nodes.get(operatorId);
     final String name = snr.getName();
     switch (snr.getRequestType()) {
@@ -762,8 +762,21 @@ public class StramChild
         }
         break;
 
+      case SET_PROPERTY:
+        context.request(new OperatorContext.NodeRequest()
+        {
+          @Override
+          public void execute(Operator operator, int id, long windowId) throws IOException
+          {
+            final Map<String, String> properties = Collections.singletonMap(snr.setPropertyKey, snr.setPropertyValue);
+            logger.info("Setting property {} on operator {}", properties, operator);
+            DAGPropertiesBuilder.setOperatorProperties(operator, properties);
+          }
+        });
+        break;
+
       default:
-        logger.error("Unknown request from stram {}", snr);
+        logger.error("Unknown request {}", snr);
     }
   }
 

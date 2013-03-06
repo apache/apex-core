@@ -120,12 +120,6 @@ public class StramLocalCluster implements Runnable
       return sca.pollRequest();
     }
 
-    @Override
-    public StramToNodeRequest processPartioningDetails()
-    {
-      throw new RuntimeException("processPartioningDetails not implemented");
-    }
-
   }
 
   public static class LocalStramChild extends StramChild
