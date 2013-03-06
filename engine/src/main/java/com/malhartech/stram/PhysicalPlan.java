@@ -206,7 +206,12 @@ public class PhysicalPlan {
       this(mapping, 0, 0);
     }
 
-    protected int getLoadIndicator(PTOperator operatorInstance, long tps) {
+    protected int getLoadIndicator(PTOperator operator, long tps) {
+//if (operator.getId() == 3) return 1;
+//if (operator.getId() == 4) return 1;
+//if (operator.getId() >=6 && operator.getId() <=9) {
+//  return -1;
+//}
       if ((tps < tpsMin && lastTps > tps) || tps > tpsMax) {
         lastTps = tps;
         return (tps < tpsMin) ? -1 : 1;
@@ -217,6 +222,7 @@ public class PhysicalPlan {
 
     @Override
     public void onThroughputUpdate(final PTOperator operatorInstance, long tps) {
+      //LOG.debug("onThroughputUpdate " + operatorInstance);
       operatorInstance.loadIndicator = getLoadIndicator(operatorInstance, tps);
       if (operatorInstance.loadIndicator != 0) {
         if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
@@ -224,16 +230,19 @@ public class PhysicalPlan {
           synchronized (m) {
             // concurrent heartbeat processing
             if (m.shouldRedoPartitions) {
+              LOG.debug("Skipping partition update for {} tps: {}", operatorInstance, tps);
               return;
             }
             m.shouldRedoPartitions = true;
-            LOG.debug("Scheduling partitioning update for {}", m);
+            LOG.debug("Scheduling partitioning update for {} {}", m.logicalOperator, operatorInstance.loadIndicator);
             // hand over to monitor thread
             Runnable r = new Runnable() {
               @Override
               public void run() {
-                operatorInstance.getPlan().redoPartitions(m.logicalOperator);
-                m.shouldRedoPartitions = false;
+                operatorInstance.getPlan().redoPartitions(m);
+                synchronized (m) {
+                  m.shouldRedoPartitions = false;
+                }
               }
             };
             operatorInstance.getPlan().ctx.dispatch(r);
@@ -428,9 +437,9 @@ public class PhysicalPlan {
     }
 
     final private OperatorMeta logicalOperator;
-    final private List<PTOperator> partitions = new LinkedList<PTOperator>();
-    final private Map<DAG.OutputPortMeta, PTOperator> mergeOperators = new HashMap<DAG.OutputPortMeta, PTOperator>();
-    private boolean shouldRedoPartitions = false;
+    private List<PTOperator> partitions = new LinkedList<PTOperator>();
+    private Map<DAG.OutputPortMeta, PTOperator> mergeOperators = new HashMap<DAG.OutputPortMeta, PTOperator>();
+    volatile private boolean shouldRedoPartitions = false;
     private List<StatsHandler> statsHandlers;
 
     private void addPartition(PTOperator p) {
@@ -650,10 +659,10 @@ public class PhysicalPlan {
 
   }
 
-  private void redoPartitions(OperatorMeta n) {
+  private void redoPartitions(PMapping currentMapping) {
     // collect current partitions with committed operator state
     // those will be needed by the partitioner for split/merge
-    List<PTOperator> operators = getOperators(n);
+    List<PTOperator> operators = currentMapping.partitions;
     List<PartitionImpl> currentPartitions = new ArrayList<PartitionImpl>(operators.size());
     Map<Partition<?>, PTOperator> currentPartitionMap = new HashMap<Partition<?>, PTOperator>(operators.size());
 
@@ -696,11 +705,14 @@ public class PhysicalPlan {
       }
     }
 
-    if (n.getOperator() instanceof PartitionableOperator) {
+    if (currentMapping.logicalOperator.getOperator() instanceof PartitionableOperator) {
       // would like to know here how much more capacity we have here so that definePartitions can act accordingly.
       final int incrementalCapacity = 0;
-      newPartitions = ((PartitionableOperator)n.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
+      newPartitions = ((PartitionableOperator)currentMapping.logicalOperator.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
     } else {
+      for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
+        LOG.debug("partition load: {} {}", e.getValue(), e.getKey().getLoad());
+      }
       newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
     }
 
@@ -731,17 +743,17 @@ public class PhysicalPlan {
     // plan updates start here, after all changes were identified
     // remove obsolete operators first, any freed resources
     // can subsequently be used for new/modified partitions
-    PMapping newMapping = new PMapping(n);
-    newMapping.partitions.addAll(this.logicalToPTOperator.get(n).partitions);
-    newMapping.mergeOperators.putAll(this.logicalToPTOperator.get(n).mergeOperators);
+    PMapping newMapping = new PMapping(currentMapping.logicalOperator);
+    newMapping.partitions.addAll(currentMapping.partitions);
+    newMapping.mergeOperators.putAll(currentMapping.mergeOperators);
+    newMapping.statsHandlers = currentMapping.statsHandlers;
 
-    // remove from plan w/o removing dependencies
-    for (PTOperator p : undeployOperators) {
-      if (newMapping.partitions.remove(p)) {
-        removePTOperator(p);
-        p.container.operators.remove(p); // TODO: thread safety
-        // TODO: remove checkpoint states
-      }
+    // remove deprecated partitions from plan
+    for (PTOperator p : currentPartitionMap.values()) {
+      newMapping.partitions.remove(p);
+      removePTOperator(p);
+      p.container.operators.remove(p); // TODO: thread safety
+      // TODO: remove checkpoint states
     }
 
     // add new operators after cleanup complete
@@ -782,7 +794,10 @@ public class PhysicalPlan {
     Set<PTOperator> deployOperators = this.getDependents(addedOperators);
     ctx.redeploy(undeployOperators, newContainers, deployOperators);
 
-    this.logicalToPTOperator.put(n, newMapping);  // TODO: thread safety
+    // keep mapping reference as that is where stats monitors point to
+    currentMapping.mergeOperators = newMapping.mergeOperators;
+    currentMapping.partitions = newMapping.partitions;
+    //this.logicalToPTOperator.put(currentMapping.logicalOperator, newMapping);
 
   }
 

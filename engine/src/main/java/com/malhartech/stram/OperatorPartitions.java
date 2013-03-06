@@ -25,21 +25,6 @@ public class OperatorPartitions {
     this.operatorWrapper = operator;
   }
 
-  private Map<DAG.InputPortMeta, PartitionKeys> convertMapping(Map<InputPort<?>, PartitionKeys> keys) {
-    Map<DAG.InputPortMeta, PartitionKeys> partitionKeys;
-    partitionKeys = new HashMap<DAG.InputPortMeta, PartitionKeys>(keys.size());
-    Map<InputPort<?>, PartitionKeys> partKeys = keys;
-    for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
-      DAG.InputPortMeta pportMeta = operatorWrapper.getInputPortMeta(portEntry.getKey());
-      if (pportMeta == null) {
-        throw new IllegalArgumentException("Invalid port reference " + portEntry);
-      }
-      partitionKeys.put(pportMeta, portEntry.getValue());
-    }
-    return partitionKeys;
-  }
-
-
   public static class PartitionImpl implements PartitionableOperator.Partition<Operator> {
     private final PartitionPortMap partitionKeys;
     private final Operator operator;
@@ -239,7 +224,9 @@ public class OperatorPartitions {
               // both of the partitions are low load, combine
               lowLoadPartitions.remove(lookupKey);
               PartitionKeys newPks = new PartitionKeys(pks.mask >>> 1, Sets.newHashSet(lookupKey & (pks.mask >>> 1)));
-              siblingPartition.getPartitionKeys().entrySet().iterator().next().setValue(newPks);
+              // put new value so the map gets marked as modified
+              InputPort<?> port = siblingPartition.getPartitionKeys().keySet().iterator().next();
+              siblingPartition.getPartitionKeys().put(port, newPks);
               // add as new partition
               newPartitions.add(siblingPartition);
             }

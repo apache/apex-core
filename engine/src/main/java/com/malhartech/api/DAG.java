@@ -236,7 +236,7 @@ public class DAG implements Serializable, DAGContext
       }
       this.source = portMeta;
       if (op.outputStreams.containsKey(portMeta)) {
-        String msg = String.format("Node %s already connected to %s", op.id, op.outputStreams.get(portMeta).id);
+        String msg = String.format("Operator %s already connected to %s", op.id, op.outputStreams.get(portMeta).id);
         throw new IllegalArgumentException(msg);
       }
       op.outputStreams.put(portMeta, this);
