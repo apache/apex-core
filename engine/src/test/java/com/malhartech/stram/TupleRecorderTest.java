@@ -168,8 +168,8 @@ public class TupleRecorderTest
     GenericTestModule op3 = dag.addOperator("op3", GenericTestModule.class);
 
     op1.setEmitInterval(200); // emit every 200 msec
-    dag.addStream("stream1", op1.outport, op2.inport1);
-    dag.addStream("stream2", op2.outport1, op3.inport1);
+    dag.addStream("stream1", op1.outport, op2.inport1);//.setInline(true);
+    dag.addStream("stream2", op2.outport1, op3.inport1);//.setInline(true);
 
     final StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.runAsync();
@@ -185,15 +185,42 @@ public class TupleRecorderTest
       public boolean isComplete()
       {
         TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
-        return (tupleRecorder != null) && (tupleRecorder.getTotalTupleCount() >= testTupleCount);
+        return tupleRecorder != null;
+      }
+
+    };
+    Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 2000));
+    TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
+    long startTime = tupleRecorder.getStartTime();
+    BufferedReader br;
+    String line;
+    File dir = new File(testWorkDir, "recordings/" + ptOp2.getId() + "/" + startTime);
+    File file;
+
+    file = new File(dir, "meta.txt");
+    Assert.assertTrue("meta file should exist", file.exists());
+    br = new BufferedReader(new FileReader(file));
+    line = br.readLine();
+    Assert.assertEquals("version should be 1.0", line, "1.0");
+    line = br.readLine();
+    Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
+    line = br.readLine();
+    Assert.assertTrue("should contain name, streamName, type and id", line != null && line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
+    line = br.readLine();
+    Assert.assertTrue("should contain name, streamName, type and id", line != null && line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
+
+    c = new WaitCondition()
+    {
+      @Override
+      public boolean isComplete()
+      {
+        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
+        return (tupleRecorder.getTotalTupleCount() >= testTupleCount);
       }
 
     };
 
     Assert.assertTrue("Should record more than " + testTupleCount + " tuples within 15 seconds", StramTestSupport.awaitCompletion(c, 15000));
-
-    TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
-    long startTime = tupleRecorder.getStartTime();
 
     localCluster.dnmgr.stopRecording(ptOp2.getId());
     c = new WaitCondition()
@@ -208,23 +235,6 @@ public class TupleRecorderTest
     };
     Assert.assertTrue("Tuple recorder shouldn't exist any more after stopping", StramTestSupport.awaitCompletion(c, 5000));
 
-    BufferedReader br;
-    String line;
-    File dir = new File(testWorkDir, "recordings/" + ptOp2.getId() + "/" + startTime);
-    File file;
-
-    file = new File(dir, "meta.txt");
-    Assert.assertTrue("meta file should exist", file.exists());
-    br = new BufferedReader(new FileReader(file));
-    line = br.readLine();
-    Assert.assertEquals("version should be 1.0", line, "1.0");
-    line = br.readLine();
-    Assert.assertTrue("should contain start time", line.contains("\"startTime\""));
-    line = br.readLine();
-    Assert.assertTrue("should contain name, streamName, type and id", line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
-    line = br.readLine();
-    Assert.assertTrue("should contain name, streamName, type and id", line.contains("\"name\"") && line.contains("\"streamName\"") && line.contains("\"type\"") && line.contains("\"id\""));
-
     file = new File(dir, "index.txt");
     Assert.assertTrue("index file should exist", file.exists());
     br = new BufferedReader(new FileReader(file));
@@ -237,10 +247,12 @@ public class TupleRecorderTest
         Assert.assertTrue("index file line should end with :part" + indexCount + ".txt", line.endsWith(":" + partFile));
         partFiles.add(partFile);
         indexCount++;
-      } else if (line.startsWith("E")) {
+      }
+      else if (line.startsWith("E")) {
         Assert.assertEquals("index file should end after E line", br.readLine(), null);
         break;
-      } else {
+      }
+      else {
         Assert.fail("index file line is not starting with F or E");
       }
     }
@@ -250,7 +262,7 @@ public class TupleRecorderTest
     boolean beginWindowExists = false;
     boolean endWindowExists = false;
 
-    for (String partFile : partFiles) {
+    for (String partFile: partFiles) {
       file = new File(dir, partFile);
       if (partFile != partFiles.get(partFiles.size() - 1)) {
         Assert.assertTrue(partFile + " should be greater than 1KB", file.length() >= 1024);
