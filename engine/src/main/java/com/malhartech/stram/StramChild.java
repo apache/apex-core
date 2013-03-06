@@ -652,9 +652,6 @@ public class StramChild
     final Node<?> node = nodes.get(operatorId);
     final String name = snr.getName();
     switch (snr.getRequestType()) {
-      case REPORT_PARTION_STATS:
-        logger.warn("Ignoring stram request {}", snr);
-        break;
 
       case CHECKPOINT:
         context.request(new OperatorContext.NodeRequest()

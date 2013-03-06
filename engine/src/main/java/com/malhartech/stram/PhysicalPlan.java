@@ -292,6 +292,7 @@ public class PhysicalPlan {
     int loadIndicator = 0;
     List<? extends StatsHandler> statsMonitors;
     private Set<PTOperator> inlineSet = new HashSet<PTOperator>();
+    List<StreamingContainerUmbilicalProtocol.StramToNodeRequest> deployRequests = Collections.emptyList();
 
     final HashMap<InputPortMeta, PTOperator> upstreamMerge = new HashMap<InputPortMeta, PTOperator>();
 

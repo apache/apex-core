@@ -20,6 +20,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.malhartech.api.DAG.InputPortMeta;
 import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.InputOperator;
@@ -220,8 +221,16 @@ public class StramChildAgent {
   }
 
   public void addOperatorRequest(StramToNodeRequest r) {
-    this.operatorRequests.add(r);
     LOG.info("Adding operator request {} {}", container.containerId, r);
+    this.operatorRequests.add(r);
+    OperatorStatus os = operators.get(r.getOperatorId());
+    if (os == null) {
+      LOG.warn("Cannot find operator for request {}", r);
+      return;
+    }
+    List<StramToNodeRequest> cloneRequests = Lists.newArrayList(os.operator.deployRequests);
+    cloneRequests.add(r);
+    os.operator.deployRequests = Collections.unmodifiableList(cloneRequests);
   }
 
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
@@ -268,6 +277,10 @@ public class StramChildAgent {
       } else {
         List<OperatorDeployInfo> nodeList = getDeployInfoList(r.deployOperators);
         rsp.deployRequest = nodeList;
+        rsp.nodeRequests = Lists.newArrayList();
+        for (PTOperator o : r.deployOperators) {
+          rsp.nodeRequests.addAll(o.deployRequests);
+        }
       }
     }
 

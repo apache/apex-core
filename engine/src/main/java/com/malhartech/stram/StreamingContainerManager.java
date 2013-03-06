@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -388,7 +387,7 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
+    List<StramToNodeRequest> requests = rsp.nodeRequests != null ? rsp.nodeRequests : new ArrayList<StramToNodeRequest>();
     if (checkpointIntervalMillis > 0) {
       if (sca.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
         //System.out.println("\n\n*** sending checkpoint to " + cs.container.containerId + " at " + currentTimeMillis);
