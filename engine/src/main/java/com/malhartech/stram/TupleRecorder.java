@@ -62,6 +62,13 @@ public class TupleRecorder implements Operator
     return recorderSink;
   }
 
+  /**
+   * Sets the stream codec for serialization to write to the files
+   * The serialization method must not produce newlines.
+   * For serializations that produces binary, base64 is recommended.
+   *
+   * @param streamCodec
+   */
   public void setStreamCodec(StreamCodec<Object> streamCodec)
   {
     this.streamCodec = streamCodec;
