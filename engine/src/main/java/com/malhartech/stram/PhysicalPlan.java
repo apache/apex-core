@@ -706,14 +706,14 @@ public class PhysicalPlan {
       }
     }
 
+    for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
+      LOG.debug("partition load: {} {} {}", new Object[] {e.getValue(), e.getKey().getPartitionKeys(), e.getKey().getLoad()});
+    }
     if (currentMapping.logicalOperator.getOperator() instanceof PartitionableOperator) {
       // would like to know here how much more capacity we have here so that definePartitions can act accordingly.
       final int incrementalCapacity = 0;
       newPartitions = ((PartitionableOperator)currentMapping.logicalOperator.getOperator()).definePartitions(currentPartitions, incrementalCapacity);
     } else {
-      for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
-        LOG.debug("partition load: {} {}", e.getValue(), e.getKey().getLoad());
-      }
       newPartitions = new OperatorPartitions.DefaultPartitioner().repartition(currentPartitions);
     }
 
