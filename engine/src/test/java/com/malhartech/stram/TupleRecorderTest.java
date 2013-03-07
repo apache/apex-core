@@ -12,7 +12,6 @@ import com.malhartech.stram.TupleRecorder.PortInfo;
 import com.malhartech.stram.TupleRecorder.RecordInfo;
 import com.malhartech.stream.StramTestSupport;
 import com.malhartech.stream.StramTestSupport.WaitCondition;
-
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;

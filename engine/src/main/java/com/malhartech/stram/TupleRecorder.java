@@ -13,12 +13,12 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.codehaus.jackson.JsonGenerationException;
+import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.LoggerFactory;
@@ -55,6 +55,7 @@ public class TupleRecorder implements Operator
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
+  private ObjectMapper mapper;
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
 
   public RecorderSink newSink(String key)
@@ -213,6 +214,9 @@ public class TupleRecorder implements Operator
   public void setup(OperatorContext context)
   {
     try {
+      mapper = new ObjectMapper();
+      mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
+
       Path pa = new Path(basePath, META_FILE);
       if (basePath.startsWith("file:")) {
         isLocalMode = true;
@@ -222,7 +226,6 @@ public class TupleRecorder implements Operator
       fs = FileSystem.get(pa.toUri(), new Configuration());
       FSDataOutputStream metaOs = fs.create(pa);
 
-      ObjectMapper mapper = new ObjectMapper();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       bos.write((VERSION + "\n").getBytes());
 
@@ -232,7 +235,7 @@ public class TupleRecorder implements Operator
       mapper.writeValue(bos, recordInfo);
       bos.write("\n".getBytes());
 
-      for (PortInfo pi : portMap.values()) {
+      for (PortInfo pi: portMap.values()) {
         mapper.writeValue(bos, pi);
         bos.write("\n".getBytes());
       }
@@ -333,7 +336,6 @@ public class TupleRecorder implements Operator
   public void writeTuple(Object obj, String port)
   {
     try {
-      ObjectMapper mapper = new ObjectMapper();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       mapper.writeValue(bos, obj);
       bos.write("\n".getBytes());
@@ -382,7 +384,7 @@ public class TupleRecorder implements Operator
   {
     String result = "";
     int i = 0;
-    for (Range range : ranges) {
+    for (Range range: ranges) {
       if (i++ > 0) {
         result += ",";
       }
@@ -406,7 +408,7 @@ public class TupleRecorder implements Operator
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       int i = 0;
       String countStr = "{";
-      for (String key : portCountMap.keySet()) {
+      for (String key: portCountMap.keySet()) {
         PortCount pc = portCountMap.get(key);
         if (i != 0) {
           countStr += ",";
