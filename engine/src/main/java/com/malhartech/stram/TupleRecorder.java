@@ -54,7 +54,8 @@ public class TupleRecorder implements Operator
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
-  private StreamCodec<Object> streamCodec = new JsonStreamCodec<Object>();
+  private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
+  private transient StreamCodec<Object> streamCodec;
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
 
   public RecorderSink newSink(String key)
@@ -69,11 +70,11 @@ public class TupleRecorder implements Operator
    * The serialization method must not produce newlines.
    * For serializations that produces binary, base64 is recommended.
    *
-   * @param streamCodec
+   * @param streamCodecClass
    */
-  public void setStreamCodec(StreamCodec<Object> streamCodec)
+  public void setStreamCodec(Class<? extends StreamCodec<Object>> streamCodecClass)
   {
-    this.streamCodec = streamCodec;
+    this.streamCodecClass = streamCodecClass;
   }
 
   public HashMap<String, PortInfo> getPortInfoMap()
@@ -227,10 +228,11 @@ public class TupleRecorder implements Operator
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void setup(OperatorContext context)
   {
     try {
-
+      streamCodec = streamCodecClass.newInstance();
       Path pa = new Path(basePath, META_FILE);
       if (basePath.startsWith("file:")) {
         isLocalMode = true;
@@ -267,8 +269,8 @@ public class TupleRecorder implements Operator
         indexOutStr = fs.create(pa);
       }
     }
-    catch (IOException ex) {
-      logger.error(ex.toString());
+    catch (Exception ex) {
+      logger.error("Trouble setting up tuple recorder", ex);
     }
   }
 
