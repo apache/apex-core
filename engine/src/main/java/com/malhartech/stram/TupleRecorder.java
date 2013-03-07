@@ -36,11 +36,13 @@ public class TupleRecorder implements Operator
   private transient OutputStream localIndexOutput;
   private transient String localBasePath;
   private int bytesPerPartFile = 100 * 1024;
+  private long millisPerPartFile = 30 * 60 * 1000; // 30 minutes
   private String basePath = ".";
   private transient String hdfsFile;
   private int fileParts = 0;
   private int partFileTupleCount = 0;
   private int totalTupleCount = 0;
+  private long currentPartFileTimeStamp = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = -1;
@@ -151,12 +153,17 @@ public class TupleRecorder implements Operator
 
   public void setBytesPerPartFile(int bytes)
   {
-    bytesPerPartFile = bytes;
+    this.bytesPerPartFile = bytes;
+  }
+
+  public void setMillisPerPartFile(long millis)
+  {
+    this.millisPerPartFile = millis;
   }
 
   public void setBasePath(String path)
   {
-    basePath = path;
+    this.basePath = path;
   }
 
   public String getBasePath()
@@ -278,6 +285,8 @@ public class TupleRecorder implements Operator
       partOutStr = fs.create(path);
     }
     fileParts++;
+    currentPartFileTimeStamp = System.currentTimeMillis();
+    partFileTupleCount = 0;
   }
 
   @Override
@@ -300,7 +309,7 @@ public class TupleRecorder implements Operator
       this.currentWindowId = windowId;
       endWindowTuplesProcessed = 0;
       try {
-        if (partOutStr == null || partOutStr.getPos() > bytesPerPartFile) {
+        if (partOutStr == null) {
           openNewPartFile();
         }
         logger.debug("Writing begin window (id: {}) to tuple recorder", windowId);
@@ -322,8 +331,9 @@ public class TupleRecorder implements Operator
         logger.debug("Got last end window tuple.  Flushing...");
         partOutStr.hflush();
         //fsOutput.hsync();
-        if (partOutStr.getPos() > bytesPerPartFile) {
+        if ((partOutStr.getPos() > bytesPerPartFile) || (currentPartFileTimeStamp + millisPerPartFile < System.currentTimeMillis())) {
           partOutStr.close();
+          partOutStr = null;
           writeIndex();
           logger.debug("Closing current part file because it's full");
         }
