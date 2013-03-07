@@ -27,7 +27,14 @@ import org.slf4j.LoggerFactory;
 
 /**
  * DAG contains the logical declarations of operators and streams.
- * It will be serialized and deployed to the cluster, where it is translated into the physical plan.
+ * <p>
+ * Operators have ports that are connected through streams. Ports can be
+ * mandatory or optional with respect to their need to connect a stream to it.
+ * Each port can be connected to a single stream only. A stream has to be
+ * connected to one output port and can go to multiple input ports.
+ * <p>
+ * The DAG will be serialized and deployed to the cluster, where it is translated
+ * into the physical plan.
  */
 public class DAG implements Serializable, DAGContext
 {
@@ -182,6 +189,9 @@ public class DAG implements Serializable, DAGContext
     }
   }
 
+  /**
+   * Representation of streams in the logical layer. Instances are created through {@link DAG.addStream}.
+   */
   public final class StreamMeta implements Serializable
   {
     private static final long serialVersionUID = 1L;
@@ -462,7 +472,14 @@ public class DAG implements Serializable, DAGContext
   }
 
   /**
-   * Add identified stream for given source and sinks.
+   * Add identified stream for given source and sinks. Multiple sinks can be
+   * connected to a stream, but each port can only be connected to a single
+   * stream. Attempt to add stream to an already connected port will throw an
+   * error.
+   * <p>
+   * This method allows to connect all interested ports to a stream at
+   * once. Alternatively, use the returned {@link StreamMeta} builder object to
+   * add more sinks and set other stream properties.
    *
    * @param <T>
    * @param id
