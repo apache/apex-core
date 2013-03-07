@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.engine.Tuple;
 import java.io.*;
@@ -17,10 +18,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -55,7 +52,7 @@ public class TupleRecorder implements Operator
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
-  private ObjectMapper mapper;
+  private StreamCodec<Object> streamCodec = new JsonStreamCodec<Object>();
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
 
   public RecorderSink newSink(String key)
@@ -63,6 +60,11 @@ public class TupleRecorder implements Operator
     RecorderSink recorderSink = new RecorderSink(key);
     sinks.put(key, recorderSink);
     return recorderSink;
+  }
+
+  public void setStreamCodec(StreamCodec<Object> streamCodec)
+  {
+    this.streamCodec = streamCodec;
   }
 
   public HashMap<String, PortInfo> getPortInfoMap()
@@ -214,8 +216,6 @@ public class TupleRecorder implements Operator
   public void setup(OperatorContext context)
   {
     try {
-      mapper = new ObjectMapper();
-      mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
 
       Path pa = new Path(basePath, META_FILE);
       if (basePath.startsWith("file:")) {
@@ -232,11 +232,11 @@ public class TupleRecorder implements Operator
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
       recordInfo.recordingName = recordingName;
-      mapper.writeValue(bos, recordInfo);
+      bos.write(streamCodec.toByteArray(recordInfo).data);
       bos.write("\n".getBytes());
 
       for (PortInfo pi: portMap.values()) {
-        mapper.writeValue(bos, pi);
+        bos.write(streamCodec.toByteArray(pi).data);
         bos.write("\n".getBytes());
       }
 
@@ -321,12 +321,6 @@ public class TupleRecorder implements Operator
           logger.debug("Closing current part file because it's full");
         }
       }
-      catch (JsonGenerationException ex) {
-        logger.error(ex.toString());
-      }
-      catch (JsonMappingException ex) {
-        logger.error(ex.toString());
-      }
       catch (IOException ex) {
         logger.error(ex.toString());
       }
@@ -337,7 +331,7 @@ public class TupleRecorder implements Operator
   {
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      mapper.writeValue(bos, obj);
+      bos.write(streamCodec.toByteArray(obj).data);
       bos.write("\n".getBytes());
 
       PortInfo pi = portMap.get(port);
@@ -352,12 +346,6 @@ public class TupleRecorder implements Operator
       //fsOutput.hflush();
       ++partFileTupleCount;
       ++totalTupleCount;
-    }
-    catch (JsonGenerationException ex) {
-      logger.error(ex.toString());
-    }
-    catch (JsonMappingException ex) {
-      logger.error(ex.toString());
     }
     catch (IOException ex) {
       logger.error(ex.toString());
