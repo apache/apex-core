@@ -209,7 +209,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testRepartitioning() {
+  public void testRepartitioningScaleUp() {
     DAG dag = new DAG();
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
@@ -262,7 +262,76 @@ public class PhysicalPlanTest {
     expDeploy.addAll(plan.getMergeOperators(node2Meta).values());
 
     Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
-    Assert.assertEquals("backup " + ctx.backupRequests, 2, ctx.backupRequests.size());
+    Assert.assertEquals("backup for new operators" + ctx.backupRequests, 2, ctx.backupRequests.size());
+
+  }
+
+  @Test
+  public void testRepartitioningScaleDown() {
+    DAG dag = new DAG();
+
+    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
+    GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
+
+    dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
+    dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
+
+    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+
+    OperatorMeta node2Meta = dag.getOperatorMeta(node2.getName());
+    node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(4);
+    node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(3);
+    node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+
+    Assert.assertEquals("number of containers", 2, plan.getContainers().size());
+
+    List<PTOperator> n2Instances = plan.getOperators(node2Meta);
+    Assert.assertEquals("partition instances " + n2Instances, 4, n2Instances.size());
+    PTOperator po = n2Instances.get(0);
+    PTOperator po2 = n2Instances.get(1);
+
+    Set<PTOperator> expUndeploy = Sets.newHashSet(plan.getOperators(dag.getOperatorMeta(mergeNode)));
+    expUndeploy.addAll(n2Instances);
+    expUndeploy.addAll(plan.getMergeOperators(node2Meta).values());
+
+    // verify load update generates expected events per configuration
+    Assert.assertEquals("stats handlers " + po, 1, po.statsMonitors.size());
+    PhysicalPlan.StatsHandler sm = po.statsMonitors.get(0);
+    ((PhysicalPlan.PartitionLoadWatch)sm).evalIntervalMillis = -1; // no delay
+
+    Assert.assertTrue("stats handlers " + po.statsMonitors, sm instanceof PhysicalPlan.PartitionLoadWatch);
+    sm.onThroughputUpdate(po, 5);
+    Assert.assertEquals("load upper bound", 0, ctx.events.size());
+    sm.onThroughputUpdate(po, 3);
+    Assert.assertEquals("load lower bound", 0, ctx.events.size());
+    sm.onThroughputUpdate(po, 2);
+    Assert.assertEquals("load below min", 1, ctx.events.size());
+
+    Runnable r = ctx.events.remove(0);
+    r.run();
+
+    // expect operators unchanged
+    Assert.assertEquals("partitions unchanged", Sets.newHashSet(n2Instances), Sets.newHashSet(plan.getOperators(node2Meta)));
+
+    for (PTOperator o : n2Instances) {
+      sm.onThroughputUpdate(o, 2);
+    }
+    Assert.assertEquals("load below min", 1, ctx.events.size());
+    ctx.events.remove(0).run();
+    Assert.assertEquals("partitions merged", 2, plan.getOperators(node2Meta).size());
+
+    Assert.assertEquals("" + ctx.undeploy, expUndeploy, ctx.undeploy);
+
+    Set<PTOperator> expDeploy = Sets.newHashSet(plan.getOperators(dag.getOperatorMeta(mergeNode)));
+    expDeploy.addAll(plan.getOperators(node2Meta));
+    expDeploy.addAll(plan.getMergeOperators(node2Meta).values());
+
+    Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
+    Assert.assertEquals("backup for new operators " + ctx.backupRequests, 0, ctx.backupRequests.size());
 
   }
 

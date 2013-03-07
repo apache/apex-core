@@ -215,7 +215,7 @@ public class OperatorPartitions {
           // combine neighboring underutilized partitions
           PartitionKeys pks = p.getPartitionKeys().values().iterator().next(); // one port partitioned
           for (int partitionKey : pks.partitions) {
-            // look for the sibling partition by flipping leading bit
+            // look for the sibling partition by excluding leading bit
             int lookupKey = ( ( pks.mask >>> 1 ) & pks.mask ) & partitionKey;
             Partition<?> siblingPartition = lowLoadPartitions.get(lookupKey);
             if (siblingPartition == null) {

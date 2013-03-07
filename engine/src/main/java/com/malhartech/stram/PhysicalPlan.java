@@ -212,7 +212,7 @@ public class PhysicalPlan {
 //if (operator.getId() >=6 && operator.getId() <=9) {
 //  return -1;
 //}
-      if ((tps < tpsMin && lastTps > tps) || tps > tpsMax) {
+      if ((tps < tpsMin && lastTps != 0) || tps > tpsMax) {
         lastTps = tps;
         return (tps < tpsMin) ? -1 : 1;
       }
@@ -719,6 +719,7 @@ public class PhysicalPlan {
 
     List<Partition<?>> addedPartitions = new ArrayList<Partition<?>>();
     Set<PTOperator> undeployOperators = new HashSet<PTOperator>();
+    Set<PTOperator> deployOperators = new HashSet<PTOperator>();
     // determine modifications of partition set, identify affected operator instance(s)
     for (Partition<?> newPartition : newPartitions) {
       PTOperator op = currentPartitionMap.remove(newPartition);
@@ -729,7 +730,8 @@ public class PhysicalPlan {
         for (PartitionImpl pi : currentPartitions) {
           if (pi == newPartition && pi.isModified()) {
             // existing partition was changed
-            addedPartitions.add(newPartition);
+            op.partition = newPartition;
+            deployOperators.add(op);
             undeployOperators.add(op);
           }
         }
@@ -758,13 +760,12 @@ public class PhysicalPlan {
     }
 
     // add new operators after cleanup complete
-    List<PTOperator> addedOperators = new ArrayList<PTOperator>(addedPartitions.size());
     Set<PTContainer> newContainers = new HashSet<PTContainer>();
 
     for (Partition<?> newPartition : addedPartitions) {
       // new partition, add operator instance
       PTOperator p = addPTOperator(newMapping, newPartition);
-      addedOperators.add(p);
+      deployOperators.add(p);
 
       // set checkpoint for new operator for deployment
       p.checkpointWindows.add(minCheckpoint);
@@ -792,7 +793,7 @@ public class PhysicalPlan {
       p.container.operators.add(p); // TODO: thread safety
     }
 
-    Set<PTOperator> deployOperators = this.getDependents(addedOperators);
+    deployOperators = this.getDependents(deployOperators);
     ctx.redeploy(undeployOperators, newContainers, deployOperators);
 
     // keep mapping reference as that is where stats monitors point to
