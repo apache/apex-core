@@ -677,12 +677,12 @@ public class StramChild
       case START_RECORDING:
         logger.debug("Received start recording request for " + operatorId + " with name " + name);
 
-        if (!tupleRecorders.containsKey(operatorId)) {
-          context.request(new OperatorContext.NodeRequest()
+        context.request(new OperatorContext.NodeRequest()
+        {
+          @Override
+          public void execute(Operator operator, int operatorId, long windowId) throws IOException
           {
-            @Override
-            public void execute(Operator operator, int operatorId, long windowId) throws IOException
-            {
+            if (!tupleRecorders.containsKey(operatorId)) {
               logger.debug("Executing start recording request for " + operatorId);
 
               TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
@@ -723,24 +723,22 @@ public class StramChild
                 tupleRecorders.put(operatorId, tupleRecorder);
               }
             }
-
-          });
-        }
-        else {
-          logger.error("(START_RECORDING) Operator id " + operatorId + " is already being recorded.");
-        }
-
+            else {
+              logger.error("(START_RECORDING) Operator id " + operatorId + " is already being recorded.");
+            }
+          }
+        });
         break;
 
       case STOP_RECORDING:
         logger.debug("Received stop recording request for " + operatorId);
 
-        if (tupleRecorders.containsKey(operatorId)) {
-          context.request(new OperatorContext.NodeRequest()
+        context.request(new OperatorContext.NodeRequest()
+        {
+          @Override
+          public void execute(Operator operator, int operatorId, long windowId) throws IOException
           {
-            @Override
-            public void execute(Operator operator, int operatorId, long windowId) throws IOException
-            {
+            if (tupleRecorders.containsKey(operatorId)) {
               logger.debug("Executing stop recording request for " + operatorId);
 
               TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
@@ -751,12 +749,11 @@ public class StramChild
                 tupleRecorders.remove(operatorId);
               }
             }
-
-          });
-        }
-        else {
-          logger.error("(STOP_RECORDING) Operator id " + operatorId + " is not being recorded.");
-        }
+            else {
+              logger.error("(STOP_RECORDING) Operator id " + operatorId + " is not being recorded.");
+            }
+          }
+        });
         break;
 
       case SET_PROPERTY:
@@ -869,7 +866,7 @@ public class StramChild
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
            */
-          assert (nodi.isInline() == false) : "output should not be inline: " + nodi;
+          assert (nodi.isInline() == false): "output should not be inline: " + nodi;
           context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
 
           if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
