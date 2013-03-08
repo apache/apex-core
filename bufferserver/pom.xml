@@ -78,9 +78,9 @@
       <version>r03</version>
     </dependency>
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>malhar-connectlet</artifactId>
-      <version>${project.version}</version>
+      <groupId>malhar</groupId>
+      <artifactId>netlet</artifactId>
+      <version>1.0-SNAPSHOT</version>
     </dependency>
   </dependencies>
 

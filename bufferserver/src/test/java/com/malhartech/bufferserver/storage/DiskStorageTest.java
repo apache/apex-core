@@ -7,7 +7,7 @@ package com.malhartech.bufferserver.storage;
 import com.malhartech.bufferserver.BufferServerController;
 import com.malhartech.bufferserver.BufferServerPublisher;
 import com.malhartech.bufferserver.BufferServerSubscriber;
-import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.ServerTest.BeginTuple;
 import com.malhartech.bufferserver.ServerTest.EndTuple;
 import java.net.InetSocketAddress;

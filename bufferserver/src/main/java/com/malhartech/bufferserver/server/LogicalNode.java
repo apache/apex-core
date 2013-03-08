@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.server;
 
 import com.googlecode.connectlet.Connection;
 import com.malhartech.bufferserver.Buffer.Message;

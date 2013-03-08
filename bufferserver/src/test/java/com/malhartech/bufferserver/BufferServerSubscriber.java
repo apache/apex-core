@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
+import com.malhartech.bufferserver.client.ClientHandler;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import java.util.ArrayList;

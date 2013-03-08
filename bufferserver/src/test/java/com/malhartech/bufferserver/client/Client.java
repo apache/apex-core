@@ -2,17 +2,13 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.client;
 
-import com.malhartech.bufferserver.netty.ClientInitializer;
-import com.malhartech.bufferserver.util.NameableThreadFactory;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.socket.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sends a list of continent/city pairs to a LocalTimeServer to get the local times of the specified cities<p>
@@ -40,6 +36,7 @@ public class Client
    * @param type
    * @param id
    * @param down_type
+   * @param mask
    * @param partitions
    */
   public Client(String host, int port, String node, String type, String id, String down_type, int mask, Collection<Integer> partitions)
@@ -92,26 +89,26 @@ public class Client
    */
   public void run() throws Exception
   {
-    // Set up.
-    Bootstrap bootstrap = new Bootstrap();
-    bootstrap.group(new NioEventLoopGroup(1, new NameableThreadFactory("BSClient")))
-            .channel(NioSocketChannel.class)
-            //            .option(ChannelOption.ALLOW_HALF_CLOSURE, true)
-            .remoteAddress(host, port)
-            .handler(new ClientInitializer(new ClientHandler()));
-
-    // Make a new connection.
-    Channel channel = bootstrap.connect().sync().channel();
-
-    if (purge) {
-      ClientHandler.purge(channel, id, windowId);
-    }
-    else if (id == null) {
-      ClientHandler.publish(channel, node, type, 0L);
-    }
-    else {
-      ClientHandler.subscribe(channel, id, down_type, node, mask, partitions, 0L);
-    }
+//    // Set up.
+//    Bootstrap bootstrap = new Bootstrap();
+//    bootstrap.group(new NioEventLoopGroup(1, new NameableThreadFactory("BSClient")))
+//            .channel(NioSocketChannel.class)
+//            //            .option(ChannelOption.ALLOW_HALF_CLOSURE, true)
+//            .remoteAddress(host, port)
+//            .handler(new ClientInitializer(new ClientHandler()));
+//
+//    // Make a new connection.
+//    Channel channel = bootstrap.connect().sync().channel();
+//
+//    if (purge) {
+//      ClientHandler.purge(channel, id, windowId);
+//    }
+//    else if (id == null) {
+//      ClientHandler.publish(channel, node, type, 0L);
+//    }
+//    else {
+//      ClientHandler.subscribe(channel, id, down_type, node, mask, partitions, 0L);
+//    }
   }
 
   /**
@@ -149,13 +146,13 @@ public class Client
 
   private static void printUsage()
   {
-    System.err.println(
+    logger.info(
             "Usage: " + Client.class.getSimpleName()
             + " <host> <port> upstream_node_id upstream_node_type [downstream_node_id downstream_node_type [partitions ...]]");
-    System.err.println(
+    logger.info(
             "Upstream Example: " + Client.class.getSimpleName()
             + " localhost 8080 map1 mapper");
-    System.err.println(
+    logger.info(
             "Downstream Example: " + Client.class.getSimpleName()
             + " localhost 8080 map1 mapper reduce1 reduce 1 5 7");
   }
@@ -168,4 +165,6 @@ public class Client
     }
     return partitions;
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(Client.class);
 }

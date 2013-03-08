@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
+import com.malhartech.bufferserver.client.ClientHandler;
 import com.google.protobuf.ByteString;
 import java.util.concurrent.RejectedExecutionException;
 import org.slf4j.Logger;

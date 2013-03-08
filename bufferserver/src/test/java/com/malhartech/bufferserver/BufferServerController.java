@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver;
 
+import com.malhartech.bufferserver.client.ClientHandler;
 import com.malhartech.bufferserver.Buffer.Message;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;

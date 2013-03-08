@@ -2,7 +2,7 @@
  * Copyright (c) 2012 Malhar, Inc.
  * All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.server;
 
 import com.malhartech.bufferserver.netty.ServerInitializer;
 import com.malhartech.bufferserver.storage.Storage;

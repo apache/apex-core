@@ -9,5 +9,5 @@
  * <br>
  */
 
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.server;
 

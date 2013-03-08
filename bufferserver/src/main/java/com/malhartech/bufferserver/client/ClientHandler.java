@@ -2,16 +2,13 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.client;
 
-import com.google.protobuf.ByteString;
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.Buffer.PublisherRequest;
-import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.*;
 import java.util.Collection;
-import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,19 +18,18 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
-@Sharable
-public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
+public class ClientHandler
 {
   private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
 
   /**
    *
-   * @param channel
    * @param identifier
    * @param type
    * @param startingWindowId
+   * @return
    */
-  public static void publish(Channel channel, String identifier, String type, long startingWindowId)
+  public static byte[] getPublishRequest(String identifier, String type, long startingWindowId)
   {
     Buffer.Request.Builder request = Buffer.Request.newBuilder();
     request.setIdentifier(identifier).setBaseSeconds((int)(startingWindowId >> 32)).setWindowId((int)startingWindowId);
@@ -41,42 +37,20 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     Message.Builder db = Message.newBuilder();
     db.setType(Message.MessageType.PUBLISHER_REQUEST);
     db.setRequest(request);
-
-    final ChannelFutureListener cfl = new ChannelFutureListener()
-    {
-      public void operationComplete(ChannelFuture cf) throws Exception
-      {
-        Buffer.Payload.Builder pdb = Buffer.Payload.newBuilder();
-        pdb.setData(ByteString.EMPTY);
-
-        pdb.setPartition(new Random().nextInt());
-
-
-        Buffer.Message.Builder db = Message.newBuilder();
-        db.setType(Message.MessageType.PAYLOAD);
-        db.setPayload(pdb);
-
-        Thread.sleep(500);
-        cf.channel().write(db).addListener(this);
-      }
-
-    };
-
-    channel.write(db.build());//.addListener(cfl);
+    return db.build().toByteArray();
   }
 
   /**
    *
-   * @param channel
    * @param id
    * @param down_type
    * @param node
    * @param mask
    * @param partitions
    * @param startingWindowId
+   * @return
    */
-  public static void subscribe(
-          final Channel channel,
+  public static byte[] getSubscribeRequest(
           String id,
           String down_type,
           String node,
@@ -96,7 +70,7 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     if (partitions != null) {
       Buffer.SubscriberRequest.Partitions.Builder bpb = Buffer.SubscriberRequest.Partitions.newBuilder();
       bpb.setMask(mask);
-      for (Integer c: partitions) {
+      for (Integer c : partitions) {
         bpb.addPartition(c);
       }
 
@@ -109,20 +83,10 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     builder.setType(Message.MessageType.SUBSCRIBER_REQUEST);
     builder.setRequest(request);
 
-    channel.write(builder.build()).addListener(new ChannelFutureListener()
-    {
-      public void operationComplete(ChannelFuture future) throws Exception
-      {
-//        /* subscriber never writes to the channel after initial request */
-//        if (channel instanceof SocketChannel) {
-//          ((SocketChannel)channel).shutdownOutput();
-//        }
-      }
-
-    });
+    return builder.build().toByteArray();
   }
 
-  public static void purge(Channel channel, String id, long windowId)
+  public static byte[] getPurgeRequest(String id, long windowId)
   {
     Buffer.Request.Builder request = Buffer.Request.newBuilder();
     request.setBaseSeconds((int)(windowId >> 32));
@@ -135,10 +99,10 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     builder.setType(MessageType.PURGE_REQUEST);
     builder.setRequest(request);
 
-    channel.write(builder.build());
+    return builder.build().toByteArray();
   }
 
-  public static void reset(Channel channel, String id, long windowId)
+  public static byte[] getResetRequest(String id, long windowId)
   {
     Buffer.Request.Builder request = Buffer.Request.newBuilder();
     request.setIdentifier(id);
@@ -148,36 +112,6 @@ public class ClientHandler extends ChannelInboundMessageHandlerAdapter<Object>
     builder.setType(MessageType.RESET_REQUEST);
     builder.setRequest(request);
 
-    channel.write(builder.build());
+    return builder.build().toByteArray();
   }
-
-  /**
-   *
-   * @param arg0
-   * @param arg1
-   * @throws Exception
-   */
-  @Override
-  public void messageReceived(ChannelHandlerContext arg0, Object arg1) throws Exception
-  {
-    logger.info("received message {}", arg1);
-  }
-
-  /**
-   *
-   * @param ctx
-   * @param cause
-   */
-  @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
-  {
-    logger.info("Unexpected exception {}", cause.getCause());
-
-    try {
-      ctx.channel().close();
-    }
-    catch (Exception e) {
-    }
-  }
-
 }

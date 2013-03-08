@@ -2,15 +2,16 @@
  * Copyright (c) 2012 Malhar, Inc.
  * All Rights Reserved.
  */
-package com.malhartech.bufferserver.connectlet;
+package com.malhartech.bufferserver.netlet;
 
+import com.malhartech.bufferserver.server.ServerHandler;
+import com.malhartech.bufferserver.server.ProtobufDataInspector;
+import com.malhartech.bufferserver.server.LogicalNode;
+import com.malhartech.bufferserver.server.DataList;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.googlecode.connectlet.Connection;
-import com.googlecode.connectlet.Connector;
-import com.googlecode.connectlet.ServerConnection;
-import com.malhartech.bufferserver.*;
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import static com.malhartech.bufferserver.Buffer.Message.MessageType.*;
@@ -18,22 +19,20 @@ import com.malhartech.bufferserver.Buffer.Payload;
 import com.malhartech.bufferserver.Buffer.Request;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import static com.malhartech.bufferserver.Buffer.SubscriberRequest.PolicyType.*;
-import com.malhartech.bufferserver.connectlet.Server;
+import com.malhartech.bufferserver.client.Client;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.storage.Storage;
-import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.bufferserver.util.NameableThreadFactory;
 import com.malhartech.bufferserver.util.SerializedData;
-import com.sun.org.apache.xerces.internal.impl.xs.identity.Selector;
 import java.io.IOException;
-import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
+import malhar.netlet.EventLoop;
+import malhar.netlet.Listener.ServerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +42,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class Server
+public class Server implements ServerListener
 {
   public static final int DEFAULT_PORT = 9080;
   public static final int DEFAULT_BUFFER_SIZE = 64 * 1024 * 1024;
@@ -51,6 +50,7 @@ public class Server
   private final int port;
   private String identity;
   private Storage storage;
+  EventLoop eventloop;
 
   /**
    * @param port - port number to bind to or 0 to auto select a free port
@@ -63,40 +63,31 @@ public class Server
   public Server(int port, int blocksize, int blockcount)
   {
     this.port = port;
+    this.blockSize = blocksize;
+    this.blockCount = blockcount;
+    try {
+      eventloop = new EventLoop("server");
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   public void setSpoolStorage(Storage storage)
   {
-    serverInitializer.setSpoolStorage(storage);
+    this.storage = storage;
   }
 
-  /**
-   *
-   * @return {@link java.net.SocketAddress}
-   * @throws Exception
-   */
-  public SocketAddress run() throws Exception
+  @Override
+  public void started(SelectionKey key)
   {
-    ServerConnection server = new ServerConnection(port)
-    {
-      @Override
-      protected Connection createConnection()
-      {
-        return new UnidentifiedClient();
-      }
-
-    };
-
-    return server.serverSocketChannel.getLocalAddress();
+    logger.info("server started listening at {}", key.channel());
   }
 
-  /**
-   *
-   */
-  public void shutdown()
+  @Override
+  public void stopped(SelectionKey key)
   {
-    logger.info("Server instance {} being shutdown", identity);
-    Bootstrap.shutdown();
+    logger.info("Server stopped listening at {}", key.channel());
   }
 
   /**
@@ -113,7 +104,10 @@ public class Server
     else {
       port = DEFAULT_PORT;
     }
-    new Server(port).run();
+
+    EventLoop eventloop = new EventLoop("alone");
+    eventloop.start(null, port, new Server(port));
+    new Thread(eventloop).start();
   }
 
   @Override
@@ -131,8 +125,8 @@ public class Server
 
   private final HashMap<String, DataList> publisherBufffers = new HashMap<String, DataList>();
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
-  private final ConcurrentHashMap<String, Connection> publisherChannels = new ConcurrentHashMap<String, Connection>();
-  private final ConcurrentHashMap<String, Connection> subscriberChannels = new ConcurrentHashMap<String, Connection>();
+  private final ConcurrentHashMap<String, Client> publisherChannels = new ConcurrentHashMap<String, Client>();
+  private final ConcurrentHashMap<String, Client> subscriberChannels = new ConcurrentHashMap<String, Client>();
   private final int blockSize;
   private final int blockCount;
 
@@ -182,7 +176,8 @@ public class Server
 
     return p;
   }
-  private synchronized void handleResetRequest(Buffer.Request request, Connection ctx) throws IOException
+
+  private synchronized void handleResetRequest(Buffer.Request request, Client ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());
@@ -193,10 +188,10 @@ public class Server
       sdb.setData(ByteString.copyFromUtf8("Invalid identifier '" + request.getIdentifier() + "'"));
     }
     else {
-      Connection channel = publisherChannels.remove(request.getIdentifier());
+      Client channel = publisherChannels.remove(request.getIdentifier());
       if (channel != null) {
-        channel.flush().awaitUninterruptibly();
-        channel.close();
+        eventloop.disconnect(channel);
+        // how do we wait here?
       }
       dl.reset();
       sdb.setData(ByteString.copyFromUtf8("Reset request sent for processing"));
@@ -206,8 +201,8 @@ public class Server
     db.setType(MessageType.PAYLOAD);
     db.setPayload(sdb);
 
-    ctx.write(SerializedData.getInstanceFrom(db.build()))
-            .addListener(ChannelFutureListener.CLOSE);
+    ctx.write(db.build().toByteArray());
+    eventloop.disconnect(ctx);
   }
 
   /**
@@ -216,7 +211,7 @@ public class Server
    * @param connection
    * @return
    */
-  public LogicalNode handleSubscriberRequest(Buffer.Request request, Connection connection)
+  public LogicalNode handleSubscriberRequest(Buffer.Request request, Client connection)
   {
     SubscriberRequest subscriberRequest = request.getExtension(SubscriberRequest.request);
     String identifier = request.getIdentifier();
@@ -230,14 +225,9 @@ public class Server
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      Connection previous = subscriberChannels.put(identifier, connection);
+      Client previous = subscriberChannels.put(identifier, connection);
       if (previous != null) {
-        try {
-          previous.getSocketChannel().close();
-        }
-        catch (IOException ie) {
-          logger.debug("exception while closing old subscriber connection!", ie);
-        }
+        eventloop.disconnect(previous);
       }
 
       ln = subscriberGroups.get(type);
@@ -279,7 +269,7 @@ public class Server
     return ln;
   }
 
-  public void handlePurgeRequest(Buffer.Request request, Connection ctx) throws IOException
+  public void handlePurgeRequest(Buffer.Request request, Client ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
@@ -298,8 +288,8 @@ public class Server
     db.setType(MessageType.PAYLOAD);
     db.setPayload(sdb);
 
-    ctx.write(SerializedData.getInstanceFrom(db.build()))
-            .addListener(ChannelFutureListener.CLOSE);
+    ctx.write(db.build().toByteArray());
+    eventloop.disconnect(ctx);
   }
 
   /**
@@ -308,7 +298,7 @@ public class Server
    * @param connection
    * @return
    */
-  public DataList handlePublisherRequest(Buffer.Request request, Connection connection)
+  public DataList handlePublisherRequest(Buffer.Request request, Client connection)
   {
     String identifier = request.getIdentifier();
 
@@ -318,14 +308,9 @@ public class Server
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      Connection previous = publisherChannels.put(identifier, connection);
+      Client previous = publisherChannels.put(identifier, connection);
       if (previous != null) {
-        try {
-          previous.getSocketChannel().close();
-        }
-        catch (IOException io) {
-          logger.info("Problem closing previous channel", io);
-        }
+        eventloop.disconnect(previous);
       }
 
       dl = publisherBufffers.get(identifier);
@@ -339,83 +324,8 @@ public class Server
     return dl;
   }
 
-  class BaseConnection extends Connection
+  class UnidentifiedClient extends Client
   {
-    int size = 0;
-    byte[] readBuffer;
-    int readOffset;
-    int writeOffset;
-
-    BaseConnection(byte[] buffer)
-    {
-      super(buffer);
-      readBuffer = buffer;
-    }
-
-    // -ve number is no var int
-    public int readVarInt()
-    {
-      if (readOffset < writeOffset) {
-        int offset = readOffset;
-
-        byte tmp = readBuffer[readOffset++];
-        if (tmp >= 0) {
-          return tmp;
-        }
-        else if (readOffset < writeOffset) {
-          int integer = tmp & 0x7f;
-          tmp = readBuffer[readOffset++];
-          if (tmp >= 0) {
-            return integer | tmp << 7;
-          }
-          else if (readOffset < writeOffset) {
-            integer |= (tmp & 0x7f) << 7;
-            tmp = readBuffer[readOffset++];
-
-            if (tmp >= 0) {
-              return integer | tmp << 14;
-            }
-            else if (readOffset < writeOffset) {
-              integer |= (tmp & 0x7f) << 14;
-              tmp = readBuffer[readOffset++];
-              if (tmp >= 0) {
-                return integer | tmp << 21;
-              }
-              else if (readOffset < writeOffset) {
-                integer |= (tmp & 0x7f) << 21;
-                tmp = readBuffer[readOffset++];
-                if (tmp >= 0) {
-                  return integer | tmp << 28;
-                }
-                else {
-                  throw new NumberFormatException("Invalid varint at location " + offset + " => "
-                          + Arrays.toString(Arrays.copyOfRange(readBuffer, offset, readOffset)));
-                }
-              }
-            }
-          }
-        }
-
-        readOffset = offset;
-      }
-      return -1;
-    }
-
-    @Override
-    public ByteBuffer getBuffer()
-    {
-      return buffer;
-    }
-
-  }
-
-  class UnidentifiedClient extends BaseConnection
-  {
-    UnidentifiedClient()
-    {
-      super(new byte[Connector.MAX_BUFFER_SIZE]);
-    }
-
     public void onMessage(Message message) throws IOException
     {
       Request request = message.getRequest();
@@ -462,7 +372,6 @@ public class Server
     // to byte array and the offset within the byte array as we track it
     // separately in this class.
 
-    @Override
     protected void onRecv(byte[] b, int off, int len)
     {
       writeOffset += len;
@@ -531,7 +440,7 @@ public class Server
 
   }
 
-  class PublisherConnection extends Connection
+  class PublisherConnection extends Client
   {
     int size = 0;
     byte[] readBuffer = new byte[64 * 1024 * 1024];
@@ -555,7 +464,7 @@ public class Server
 
   }
 
-  class SubscriberConnection extends Connection
+  class SubscriberConnection extends Client
   {
     /*
      * readBuffer to receive the incoming data, if this is publisher, connection then the data gets replaced with the huge readBuffer.
@@ -571,24 +480,6 @@ public class Server
       return super.buffer;
     }
 
-    @Override
-    public void onRecv(int len)
-    {
-      onRecv(readBuffer, writeOffset, len);
-      writeOffset += len;
-    }
-
-    @Override
-    protected void onRecv(byte[] b, int off, int len)
-    {
-      super.onRecv(b, off, len); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    protected void onDisconnect()
-    {
-      super.onDisconnect(); //To change body of generated methods, choose Tools | Templates.
-    }
 
   }
 

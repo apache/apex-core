@@ -2,9 +2,10 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.server;
 
 import com.google.protobuf.ByteString;
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.Buffer.Payload;
