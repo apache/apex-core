@@ -756,6 +756,31 @@ public class StramChild
         });
         break;
 
+      case SYNC_RECORDING:
+        logger.debug("Received sync recording request for " + operatorId);
+
+        context.request(new OperatorContext.NodeRequest()
+        {
+          @Override
+          public void execute(Operator operator, int operatorId, long windowId) throws IOException
+          {
+            if (tupleRecorders.containsKey(operatorId)) {
+              logger.debug("Executing sync recording request for " + operatorId);
+
+              TupleRecorder tupleRecorder = tupleRecorders.get(operatorId);
+              if (tupleRecorder != null) {
+                tupleRecorder.requestSync();
+                logger.debug("Requested sync recording for operator id " + operatorId);
+              }
+            }
+            else {
+              logger.error("(SYNC_RECORDING) Operator id " + operatorId + " is not being recorded.");
+            }
+          }
+
+        });
+        break;
+
       case SET_PROPERTY:
         context.request(new OperatorContext.NodeRequest()
         {

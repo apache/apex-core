@@ -51,9 +51,9 @@ public class StramWebServices
   public static final String PATH_SHUTDOWN = "shutdown";
   public static final String PATH_STARTRECORDING = "startRecording";
   public static final String PATH_STOPRECORDING = "stopRecording";
+  public static final String PATH_SYNCRECORDING = "syncRecording";
   public static final String PATH_CONTAINERS = "containers";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = "logicalPlan/operators";
-
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
@@ -169,6 +169,23 @@ public class StramWebServices
     return response;
   }
 
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_SYNCRECORDING)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject syncRecording(JSONObject request)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      int operId = request.getInt("operId");
+      dagManager.syncRecording(operId);
+    }
+    catch (JSONException ex) {
+      ex.printStackTrace();
+    }
+    return response;
+  }
+
   @GET
   @Path(PATH_CONTAINERS)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
@@ -177,7 +194,7 @@ public class StramWebServices
     init();
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
     List<ContainerInfo> l = new java.util.ArrayList<ContainerInfo>(containerAgents.size());
-    for (StramChildAgent sca : containerAgents) {
+    for (StramChildAgent sca: containerAgents) {
       l.add(sca.getContainerInfo());
     }
     return l;

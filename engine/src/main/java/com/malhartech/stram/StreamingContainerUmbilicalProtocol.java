@@ -303,7 +303,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 1L;
 
     enum RequestType {
-      CHECKPOINT, START_RECORDING, STOP_RECORDING, SET_PROPERTY
+      CHECKPOINT, START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY
     }
 
     private int operatorId;

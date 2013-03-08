@@ -57,6 +57,7 @@ public class TupleRecorder implements Operator
   private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
   private transient StreamCodec<Object> streamCodec;
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
+  private boolean syncRequested = false;
 
   public RecorderSink newSink(String key)
   {
@@ -332,18 +333,23 @@ public class TupleRecorder implements Operator
         partOutStr.write(("E:" + currentWindowId + "\n").getBytes());
         logger.debug("Got last end window tuple.  Flushing...");
         partOutStr.hflush();
-        //fsOutput.hsync();
-        if ((partOutStr.getPos() > bytesPerPartFile) || (currentPartFileTimeStamp + millisPerPartFile < System.currentTimeMillis())) {
+        if (syncRequested || (partOutStr.getPos() > bytesPerPartFile) || (currentPartFileTimeStamp + millisPerPartFile < System.currentTimeMillis())) {
           partOutStr.close();
           partOutStr = null;
           writeIndex();
-          logger.debug("Closing current part file because it's full");
+          syncRequested = false;
+          logger.debug("Closing current part file.");
         }
       }
       catch (IOException ex) {
         logger.error(ex.toString());
       }
     }
+  }
+
+  public void requestSync()
+  {
+    syncRequested = true;
   }
 
   public void writeTuple(Object obj, String port)

@@ -257,7 +257,8 @@ public class StreamingContainerManager implements PlanContext
     return cs;
   }
 
-  public Collection<StramChildAgent> getContainerAgents() {
+  public Collection<StramChildAgent> getContainerAgents()
+  {
     return this.containers.values();
   }
 
@@ -467,7 +468,7 @@ public class StreamingContainerManager implements PlanContext
 
     // find smallest most recent subscriber checkpoint
     for (PTOutput out: operator.outputs) {
-      for (PhysicalPlan.PTInput sink : out.sinks) {
+      for (PhysicalPlan.PTInput sink: out.sinks) {
         PTOperator sinkOperator = (PTOperator)sink.target;
         if (!visited.contains(sinkOperator)) {
           // downstream traversal
@@ -671,7 +672,6 @@ public class StreamingContainerManager implements PlanContext
     this.eventQueue.add(r);
   }
 
-
   public ArrayList<OperatorInfo> getOperatorInfoList()
   {
     ArrayList<OperatorInfo> nodeInfoList = new ArrayList<OperatorInfo>();
@@ -696,7 +696,8 @@ public class StreamingContainerManager implements PlanContext
           if (deploying.contains(os.operator)) {
             if (dr instanceof UndeployRequest) {
               ni.status = "UNDEPLOY";
-            } else {
+            }
+            else {
               ni.status = "DEPLOY";
             }
           }
@@ -743,6 +744,15 @@ public class StreamingContainerManager implements PlanContext
     sca.addOperatorRequest(request);
   }
 
+  public void syncRecording(int operId)
+  {
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    request.setRequestType(RequestType.SYNC_RECORDING);
+    sca.addOperatorRequest(request);
+  }
+
   private StramChildAgent getContainerAgentFromOperatorId(int operatorId)
   {
     // Thomas, please change it when you get a chance.  -- David
@@ -754,18 +764,20 @@ public class StreamingContainerManager implements PlanContext
     throw new AssertionError("Operator ID " + operatorId + " not found");
   }
 
-  public void stopContainer(String containerId) {
+  public void stopContainer(String containerId)
+  {
     this.containerStopRequests.put(containerId, containerId);
   }
 
-  public void setOperatorProperty(String operatorId, String propertyName, String propertyValue) {
+  public void setOperatorProperty(String operatorId, String propertyName, String propertyValue)
+  {
     OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
 
     List<PTOperator> operators = plan.getOperators(logicalOperator);
-    for (PTOperator o : operators) {
+    for (PTOperator o: operators) {
       StramChildAgent sca = getContainerAgent(o.getContainer().containerId);
       StramToNodeRequest request = new StramToNodeRequest();
       request.setOperatorId(o.getId());

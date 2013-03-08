@@ -120,39 +120,47 @@ public class StramCli
    * JLine 2.x supports search and more.. but it uses the same package as JLine 1.x
    * Hadoop bundles and forces 1.x into our class path (when CLI is launched via hadoop command).
    */
-  private class ConsoleReaderExt extends ConsoleReader {
+  private class ConsoleReaderExt extends ConsoleReader
+  {
     private final char REVERSE_SEARCH_KEY = (char)31;
 
-    ConsoleReaderExt() throws IOException {
+    ConsoleReaderExt() throws IOException
+    {
       // CTRL-? since CTRL-R already mapped to redisplay
-      addTriggeredAction(REVERSE_SEARCH_KEY, new ActionListener() {
+      addTriggeredAction(REVERSE_SEARCH_KEY, new ActionListener()
+      {
         @Override
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(ActionEvent e)
+        {
           try {
-           searchHistory();
-          } catch (IOException ex) {
+            searchHistory();
+          }
+          catch (IOException ex) {
             return; // ignore
           }
         }
+
       });
     }
 
-    public int searchBackwards(CharSequence searchTerm, int startIndex) {
+    public int searchBackwards(CharSequence searchTerm, int startIndex)
+    {
       @SuppressWarnings("unchecked")
       List<String> history = getHistory().getHistoryList();
       if (startIndex < 0) {
         startIndex = history.size();
       }
-      for (int i=startIndex; --i > 0;) {
+      for (int i = startIndex; --i > 0;) {
         String line = history.get(i);
         if (line.contains(searchTerm)) {
           return i;
         }
       }
       return -1;
-  }
+    }
 
-    private void searchHistory() throws IOException {
+    private void searchHistory() throws IOException
+    {
       final String prompt = "reverse-search: ";
       StringBuilder searchTerm = new StringBuilder();
       String matchingCmd = null;
@@ -168,29 +176,32 @@ public class StramCli
         int c = this.readVirtualKey();
         if (c == 8) {
           if (searchTerm.length() > 0) {
-            searchTerm.deleteCharAt(searchTerm.length()-1);
+            searchTerm.deleteCharAt(searchTerm.length() - 1);
           }
-        } else if (c == REVERSE_SEARCH_KEY) {
+        }
+        else if (c == REVERSE_SEARCH_KEY) {
           int newIndex = searchBackwards(searchTerm, historyIndex);
           if (newIndex >= 0) {
             historyIndex = newIndex;
             matchingCmd = (String)getHistory().getHistoryList().get(historyIndex);
           }
-        } else if (!Character.isISOControl(c)) {
+        }
+        else if (!Character.isISOControl(c)) {
           searchTerm.append(Character.toChars(c));
           int newIndex = searchBackwards(searchTerm, -1);
           if (newIndex >= 0) {
             historyIndex = newIndex;
             matchingCmd = (String)getHistory().getHistoryList().get(historyIndex);
           }
-        } else {
+        }
+        else {
           while (backspace());
           //if (c == 10) { // enter
-            if (!StringUtils.isBlank(matchingCmd)) {
-              this.putString(matchingCmd);
-              this.flushConsole();
-            }
-            return;
+          if (!StringUtils.isBlank(matchingCmd)) {
+            this.putString(matchingCmd);
+            this.flushConsole();
+          }
+          return;
           //}
         }
       }
@@ -198,15 +209,13 @@ public class StramCli
 
   }
 
-
-
   public void run() throws IOException
   {
     printWelcomeMessage();
     ConsoleReader reader = new ConsoleReaderExt();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill", "startrecording", "stoprecording", "exit"};
+    String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill", "startrecording", "stoprecording", "syncrecording", "operator-property-set", "exit"};
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -267,6 +276,9 @@ public class StramCli
         else if (line.startsWith("stoprecording")) {
           stopRecording(line);
         }
+        else if (line.startsWith("syncrecording")) {
+          syncRecording(line);
+        }
         else if (line.startsWith("operator-property-set")) {
           setOperatorProperty(line);
         }
@@ -304,7 +316,8 @@ public class StramCli
     System.out.println("timeout <duration> - Wait for completion of current application.");
     System.out.println("kill             - Force termination for current application.");
     System.out.println("startrecording <operId> [<recordingName>] - Start recording tuples for the given operator id");
-    System.out.println("stoprecording [<operId>] - Stop recording tuples for the given operator id, all if operator id is not given");
+    System.out.println("stoprecording <operId> - Stop recording tuples for the given operator id");
+    System.out.println("syncrecording <operId> - Sync recording tuples for the given operator id");
     System.out.println("exit             - Exit the app");
 
   }
@@ -364,7 +377,8 @@ public class StramCli
     }
     else if (context.equals("containers")) {
       listContainers();
-    } else {
+    }
+    else {
       listOperators(args);
     }
   }
@@ -491,7 +505,7 @@ public class StramCli
       return;
     }
     else {
-        currentDir = args[1];
+      currentDir = args[1];
     }
 
     currentApp = getApplication(Integer.parseInt(currentDir));
@@ -669,7 +683,8 @@ public class StramCli
 
   }
 
-  private WebResource getPostResource() {
+  private WebResource getPostResource()
+  {
     if (currentApp == null) {
       throw new CliException("No application selected");
     }
@@ -791,6 +806,30 @@ public class StramCli
       }
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
       System.out.println("stop recording requested: " + response);
+    }
+    catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+
+  private void syncRecording(String line)
+  {
+    String[] args = StringUtils.splitByWholeSeparator(line, " ");
+    if (args.length > 2) {
+      System.err.println("Invalid arguments");
+      return;
+    }
+
+    WebResource r = getPostResource().path(StramWebServices.PATH_SYNCRECORDING);
+    JSONObject request = new JSONObject();
+
+    try {
+      if (args.length == 2) {
+        int operId = Integer.valueOf(args[1]);
+        request.put("operId", operId);
+      }
+      JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+      System.out.println("sync recording requested: " + response);
     }
     catch (Exception e) {
       throw new CliException("Failed to request " + r.getURI(), e);
