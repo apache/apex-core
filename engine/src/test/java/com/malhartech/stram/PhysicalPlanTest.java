@@ -280,7 +280,7 @@ public class PhysicalPlanTest {
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(node2.getName());
-    node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(4);
+    node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(8);
     node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(3);
     node2Meta.getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(5);
 
@@ -290,9 +290,8 @@ public class PhysicalPlanTest {
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
 
     List<PTOperator> n2Instances = plan.getOperators(node2Meta);
-    Assert.assertEquals("partition instances " + n2Instances, 4, n2Instances.size());
+    Assert.assertEquals("partition instances " + n2Instances, 8, n2Instances.size());
     PTOperator po = n2Instances.get(0);
-    PTOperator po2 = n2Instances.get(1);
 
     Set<PTOperator> expUndeploy = Sets.newHashSet(plan.getOperators(dag.getOperatorMeta(mergeNode)));
     expUndeploy.addAll(n2Instances);
@@ -322,7 +321,7 @@ public class PhysicalPlanTest {
     }
     Assert.assertEquals("load below min", 1, ctx.events.size());
     ctx.events.remove(0).run();
-    Assert.assertEquals("partitions merged", 2, plan.getOperators(node2Meta).size());
+    Assert.assertEquals("partitions merged", 4, plan.getOperators(node2Meta).size());
 
     Assert.assertEquals("" + ctx.undeploy, expUndeploy, ctx.undeploy);
 

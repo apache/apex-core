@@ -17,6 +17,9 @@ import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class OperatorPartitions {
 
   final DAG.OperatorMeta operatorWrapper;
@@ -153,6 +156,7 @@ public class OperatorPartitions {
    * DAG.
    */
   public static class DefaultPartitioner {
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultPartitioner.class);
 
     public List<Partition<?>> defineInitialPartitions(DAG.OperatorMeta logicalOperator, int initialPartitionCnt) {
 
@@ -216,14 +220,15 @@ public class OperatorPartitions {
           PartitionKeys pks = p.getPartitionKeys().values().iterator().next(); // one port partitioned
           for (int partitionKey : pks.partitions) {
             // look for the sibling partition by excluding leading bit
-            int lookupKey = ( ( pks.mask >>> 1 ) & pks.mask ) & partitionKey;
-            Partition<?> siblingPartition = lowLoadPartitions.get(lookupKey);
+            int reducedMask = pks.mask >>> 1;
+            String lookupKey = Integer.valueOf(reducedMask) + "-" + Integer.valueOf(partitionKey & reducedMask);
+            LOG.debug("pks {} lookupKey {}", pks, lookupKey);
+            Partition<?> siblingPartition = lowLoadPartitions.remove(partitionKey & reducedMask);
             if (siblingPartition == null) {
-              lowLoadPartitions.put(partitionKey, p);
+              lowLoadPartitions.put(partitionKey & reducedMask, p);
             } else {
               // both of the partitions are low load, combine
-              lowLoadPartitions.remove(lookupKey);
-              PartitionKeys newPks = new PartitionKeys(pks.mask >>> 1, Sets.newHashSet(lookupKey & (pks.mask >>> 1)));
+              PartitionKeys newPks = new PartitionKeys(reducedMask, Sets.newHashSet(partitionKey & reducedMask));
               // put new value so the map gets marked as modified
               InputPort<?> port = siblingPartition.getPartitionKeys().keySet().iterator().next();
               siblingPartition.getPartitionKeys().put(port, newPks);
