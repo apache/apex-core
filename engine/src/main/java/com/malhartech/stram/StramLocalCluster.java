@@ -7,7 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.Operator;
-import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.engine.Node;
 import com.malhartech.engine.OperatorContext;

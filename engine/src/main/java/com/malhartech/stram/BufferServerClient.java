@@ -4,15 +4,8 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.bufferserver.ClientHandler;
-import com.malhartech.bufferserver.netty.ClientInitializer;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
-import io.netty.channel.socket.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioSocketChannel;
+import com.malhartech.bufferserver.client.ClientHandler;
+import com.malhartech.bufferserver.client.Client;
 import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,54 +13,39 @@ import org.slf4j.LoggerFactory;
 /**
  * Encapsulates buffer server control interface, used by the master for purging data.
  */
-@Sharable
-class BufferServerClient extends ChannelInboundMessageHandlerAdapter<Object> {
-  private final static Logger LOG = LoggerFactory.getLogger(BufferServerClient.class);
-
+class BufferServerClient extends Client
+{
   /**
    * Use a single thread group for all buffer server interactions.
    */
-  final static NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup();
-  final Bootstrap bootstrap = new Bootstrap();
   final InetSocketAddress addr;
 
-  BufferServerClient(InetSocketAddress addr) {
-    // need to use resolved address
+  BufferServerClient(InetSocketAddress addr)
+  {
     this.addr = new InetSocketAddress(addr.getHostName(), addr.getPort());
-    bootstrap.group(eventLoopGroup)
-    .channel(NioSocketChannel.class)
-    .remoteAddress(this.addr)
-    .handler(new ClientInitializer(this));
   }
 
-  void purge(String sourceIdentifier, long windowId) {
-    LOG.debug("Purging sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
-    Channel channel = bootstrap.connect().syncUninterruptibly().channel();
-    ClientHandler.purge(channel, sourceIdentifier, windowId);
+  void purge(String sourceIdentifier, long windowId)
+  {
+    StramChild.eventloop.connect(this.addr, this);
+
+    logger.debug("Purging sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
+    write(ClientHandler.getPurgeRequest(sourceIdentifier, windowId));
   }
 
-  void reset(String sourceIdentifier, long windowId) {
-    LOG.debug("Reset sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
-    Channel channel = bootstrap.connect().syncUninterruptibly().channel();
-    ClientHandler.reset(channel, sourceIdentifier, windowId);
-  }
+  void reset(String sourceIdentifier, long windowId)
+  {
+    StramChild.eventloop.connect(this.addr, this);
 
-  @Override
-  public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
-    //LOG.debug("messageReceived: " + msg);
+    logger.debug("Reset sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
+    write(ClientHandler.getResetRequest(sourceIdentifier, windowId));
   }
 
   @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-    LOG.error("Buffer server request failed", cause);
-    ctx.close();
+  public void onMessage(byte[] buffer, int offset, int size)
+  {
+    StramChild.eventloop.disconnect(this);
   }
 
-  @Override
-  public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
-    super.endMessageReceived(ctx);
-    //LOG.debug("endMessageReceived");
-    ctx.close();
-  }
-
+  private static final Logger logger = LoggerFactory.getLogger(BufferServerClient.class);
 }

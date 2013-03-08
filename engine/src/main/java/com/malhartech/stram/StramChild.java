@@ -8,7 +8,7 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.*;
-import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
@@ -19,7 +19,6 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.TupleRecorder.RecorderSink;
 import com.malhartech.stream.*;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
@@ -35,10 +34,10 @@ import java.util.Map.Entry;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import malhar.netlet.EventLoop;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSError;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
@@ -76,6 +75,16 @@ public class StramChild
   private final Object heartbeatTrigger = new Object();
   private String checkpointFsPath;
   private String appPath;
+  public static final EventLoop eventloop;
+  static {
+    try {
+      eventloop = new EventLoop("alone");
+    }
+    catch (IOException io) {
+      throw new RuntimeException(io);
+    }
+  }
+
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
@@ -83,7 +92,7 @@ public class StramChild
   private long firstWindowMillis;
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
-  private com.malhartech.bufferserver.Server bufferServer;
+  private com.malhartech.bufferserver.server.Server bufferServer;
   private AttributeMap<DAGContext> applicationAttributes;
   protected HashMap<Integer, TupleRecorder> tupleRecorders = new HashMap<Integer, TupleRecorder>();
   private int tupleRecordingPartFileSize;
@@ -184,7 +193,7 @@ public class StramChild
     try {
       childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
       // Add tokens to new user so that it may execute its task correctly.
-      for (Token<?> token: UserGroupInformation.getCurrentUser().getTokens()) {
+      for (Token<?> token : UserGroupInformation.getCurrentUser().getTokens()) {
         childUGI.addToken(token);
       }
 
@@ -248,7 +257,7 @@ public class StramChild
     ArrayList<Thread> activeThreads = new ArrayList<Thread>();
     ArrayList<Integer> activeOperators = new ArrayList<Integer>();
 
-    for (Entry<Integer, Node<?>> e: nodes.entrySet()) {
+    for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
       OperatorContext oc = activeNodes.get(e.getKey());
       if (oc == null) {
         disconnectNode(e.getKey());
@@ -262,7 +271,7 @@ public class StramChild
 
     try {
       Iterator<Integer> iterator = activeOperators.iterator();
-      for (Thread t: activeThreads) {
+      for (Thread t : activeThreads) {
         t.join();
         disconnectNode(iterator.next());
       }
@@ -272,12 +281,12 @@ public class StramChild
       logger.info("Aborting wait for for operators to get deactivated as got interrupted with {}", ex);
     }
 
-    for (WindowGenerator wg: activeGenerators.keySet()) {
+    for (WindowGenerator wg : activeGenerators.keySet()) {
       wg.deactivate();
     }
     activeGenerators.clear();
 
-    for (Stream<?> stream: activeStreams.keySet()) {
+    for (Stream<?> stream : activeStreams.keySet()) {
       stream.deactivate();
     }
     activeStreams.clear();
@@ -290,7 +299,7 @@ public class StramChild
 
     Set<String> removableStreams = new HashSet<String>(); // temporary fix - find out why List does not work.
     // with the logic i have in here, the list should not contain repeated streams. but it does and that causes problem.
-    for (Entry<String, ComponentContextPair<Stream<Object>, StreamContext>> entry: streams.entrySet()) {
+    for (Entry<String, ComponentContextPair<Stream<Object>, StreamContext>> entry : streams.entrySet()) {
       String indexingKey = entry.getKey();
       Stream<?> stream = entry.getValue().component;
       StreamContext context = entry.getValue().context;
@@ -309,7 +318,7 @@ public class StramChild
         removableStreams.add(sourceIdentifier);
 
         String[] sinkIds = sinkIdentifier.split(", ");
-        for (String sinkId: sinkIds) {
+        for (String sinkId : sinkIds) {
           if (!sinkId.startsWith("tcp://")) {
             String[] nodeport = sinkId.split(NODE_PORT_SPLIT_SEPARATOR);
             Node<?> n = nodes.get(Integer.parseInt(nodeport[0]));
@@ -388,7 +397,7 @@ public class StramChild
       }
     }
 
-    for (String streamId: removableStreams) {
+    for (String streamId : removableStreams) {
       logger.debug("removing stream {}", streamId);
       // need to check why control comes here twice to remove the stream which was deleted before.
       // is it because of multiSinkCapableStream ?
@@ -405,7 +414,7 @@ public class StramChild
       node.connectInputPort(Node.INPUT, null, null);
 
       int count = 0;
-      for (WindowGenerator wg: generators.values()) {
+      for (WindowGenerator wg : generators.values()) {
         if (chosen1 == wg) {
           count++;
         }
@@ -426,7 +435,7 @@ public class StramChild
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
     HashMap<Integer, Node<?>> toUndeploy = new HashMap<Integer, Node<?>>();
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       Node<?> node = nodes.get(ndi.id);
       if (node == null) {
         throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
@@ -444,7 +453,7 @@ public class StramChild
 
     ArrayList<Thread> joinList = new ArrayList<Thread>();
     ArrayList<Integer> discoList = new ArrayList<Integer>();
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       OperatorContext oc = activeNodes.get(ndi.id);
       if (oc == null) {
         disconnectNode(ndi.id);
@@ -458,7 +467,7 @@ public class StramChild
 
     try {
       Iterator<Integer> iterator = discoList.iterator();
-      for (Thread t: joinList) {
+      for (Thread t : joinList) {
         t.join();
         disconnectNode(iterator.next());
       }
@@ -468,7 +477,7 @@ public class StramChild
       logger.warn("Aborted waiting for the deactivate to finish!");
     }
 
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       nodes.remove(ndi.id);
     }
   }
@@ -484,7 +493,7 @@ public class StramChild
     HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
     gens.addAll(generators.values());
     generators.clear();
-    for (WindowGenerator wg: gens) {
+    for (WindowGenerator wg : gens) {
       wg.teardown();
     }
 
@@ -528,7 +537,7 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all operators
-      for (Map.Entry<Integer, Node<?>> e: nodes.entrySet()) {
+      for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
@@ -624,7 +633,7 @@ public class StramChild
 
     if (rsp.nodeRequests != null) {
       // processing of per operator requests
-      for (StramToNodeRequest req: rsp.nodeRequests) {
+      for (StramToNodeRequest req : rsp.nodeRequests) {
         OperatorContext nc = activeNodes.get(req.getNodeId());
         if (nc == null) {
           logger.warn("Received request with invalid node id {} ({})", req.getNodeId(), req);
@@ -700,7 +709,7 @@ public class StramChild
                 tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
                 HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
                 PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
-                for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
+                for (Map.Entry<String, InputPort<?>> entry : descriptor.inputPorts.entrySet()) {
                   String streamId = getDeclaredStreamId(operatorId, entry.getKey());
                   if (streamId != null) {
                     logger.info("Adding recorder sink to input port {}, stream {}", entry.getKey(), streamId);
@@ -708,7 +717,7 @@ public class StramChild
                     sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
                   }
                 }
-                for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
+                for (Map.Entry<String, OutputPort<?>> entry : descriptor.outputPorts.entrySet()) {
                   String streamId = getDeclaredStreamId(operatorId, entry.getKey());
                   if (streamId != null) {
                     logger.info("Adding recorder sink to output port {}, stream {}", entry.getKey(), streamId);
@@ -769,7 +778,7 @@ public class StramChild
     /*
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
      */
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       if (nodes.containsKey(ndi.id)) {
         throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
       }
@@ -778,7 +787,7 @@ public class StramChild
     deployNodes(nodeList);
 
     HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       groupInputStreams(groupedInputStreams, ndi);
     }
     deployOutputStreams(nodeList, groupedInputStreams);
@@ -790,7 +799,7 @@ public class StramChild
 
   private void massageUnifierDeployInfo(OperatorDeployInfo odi)
   {
-    for (OperatorDeployInfo.InputDeployInfo idi: odi.inputs) {
+    for (OperatorDeployInfo.InputDeployInfo idi : odi.inputs) {
       idi.portName += "(" + idi.sourceNodeId + NODE_PORT_CONCAT_SEPARATOR + idi.sourcePortName + ")";
     }
   }
@@ -800,7 +809,7 @@ public class StramChild
   {
     OperatorCodec operatorSerDe = StramUtils.getNodeSerDe(null);
     BackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
@@ -839,10 +848,10 @@ public class StramChild
      * share the output port with other inline streams are mapped against the Buffer Server port to
      * avoid collision and at the same time keep track of these buffer streams.
      */
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       Node<?> node = nodes.get(ndi.id);
 
-      for (OperatorDeployInfo.OutputDeployInfo nodi: ndi.outputs) {
+      for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
         String sinkIdentifier;
 
@@ -998,7 +1007,7 @@ public class StramChild
      * other streams,and many such streams may exist, we hash them against buffer server
      * info as we did for outputs but throw in the sinkid in the mix as well.
      */
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         /**
          * This has to be InputNode, so let's hook the WindowGenerator to it.
@@ -1016,7 +1025,7 @@ public class StramChild
       else {
         Node<?> node = nodes.get(ndi.id);
 
-        for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
+        for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
@@ -1134,7 +1143,7 @@ public class StramChild
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestCheckpointedWindowId);
-      for (OperatorDeployInfo ndi: inputNodes) {
+      for (OperatorDeployInfo ndi : inputNodes) {
         generators.put(ndi.id, windowGenerator);
 
         Node<?> node = nodes.get(ndi.id);
@@ -1170,7 +1179,7 @@ public class StramChild
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void activate(List<OperatorDeployInfo> nodeList)
   {
-    for (ComponentContextPair<Stream<Object>, StreamContext> pair: streams.values()) {
+    for (ComponentContextPair<Stream<Object>, StreamContext> pair : streams.values()) {
       if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
@@ -1178,7 +1187,7 @@ public class StramChild
     }
 
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
-    for (final OperatorDeployInfo ndi: nodeList) {
+    for (final OperatorDeployInfo ndi : nodeList) {
       final Node<?> node = nodes.get(ndi.id);
       assert (!activeNodes.containsKey(ndi.id));
       new Thread(node.id)
@@ -1221,14 +1230,14 @@ public class StramChild
       logger.debug(ex.getLocalizedMessage());
     }
 
-    for (ComponentContextPair<Stream<Object>, StreamContext> pair: streams.values()) {
+    for (ComponentContextPair<Stream<Object>, StreamContext> pair : streams.values()) {
       if (pair.component instanceof SocketInputStream && !activeStreams.containsKey(pair.component)) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
       }
     }
 
-    for (WindowGenerator wg: generators.values()) {
+    for (WindowGenerator wg : generators.values()) {
       if (!activeGenerators.containsKey(wg)) {
         activeGenerators.put(wg, generators);
         wg.activate(null);
@@ -1238,7 +1247,7 @@ public class StramChild
 
   private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, OperatorDeployInfo ndi)
   {
-    for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
+    for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
       String source = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
       /*

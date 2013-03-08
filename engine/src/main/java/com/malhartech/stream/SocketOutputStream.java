@@ -7,18 +7,10 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.netty.ClientInitializer;
-import com.malhartech.bufferserver.util.NameableThreadFactory;
+import com.malhartech.bufferserver.client.Client;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandler.Sharable;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelOutboundMessageHandlerAdapter;
-import io.netty.channel.socket.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioSocketChannel;
+import com.malhartech.stram.StramChild;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,15 +20,11 @@ import org.slf4j.LoggerFactory;
  * Most likely users would not use it to write to a socket by themselves. Is used in adapters and by BufferServerOutputStream<br>
  * <br>
  *
+ * @param <T> 
  * @author chetan
  */
-@Sharable
-public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandlerAdapter<Object> implements Stream<Object>
+public abstract class SocketOutputStream<T> extends Client implements Stream<Object>
 {
-  private static final Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
-  protected Bootstrap bootstrap;
-  protected Channel channel;
-
   @Override
   public void setup(StreamContext context)
   {
@@ -50,36 +38,14 @@ public abstract class SocketOutputStream<T> extends ChannelOutboundMessageHandle
   @Override
   public void activate(StreamContext context)
   {
-    bootstrap = new Bootstrap();
-    bootstrap.group(new NioEventLoopGroup(1, new NameableThreadFactory("Source-" + context.getSourceId())))
-            .channel(NioSocketChannel.class)
-            .remoteAddress(context.getBufferServerAddress())
-            .handler(new ClientInitializer(this));
-    channel = bootstrap.connect().syncUninterruptibly().channel();
-  }
-
-  @Override
-  public void flush(ChannelHandlerContext ctx, ChannelFuture future) throws Exception
-  {
-    ctx.outboundMessageBuffer().drainTo(ctx.nextOutboundMessageBuffer());
-    ctx.flush(future);
-  }
-
-  @Override
-  public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
-  {
-    if (!(cause instanceof java.nio.channels.ClosedChannelException)) {
-      super.exceptionCaught(ctx, cause);
-    }
+    StramChild.eventloop.connect(context.getBufferServerAddress(), this);
   }
 
   @Override
   public void deactivate()
   {
-    if (channel != null) {
-      channel.flush().awaitUninterruptibly();
-      channel.close().awaitUninterruptibly();
-    }
-    bootstrap.shutdown();
+    StramChild.eventloop.disconnect(this);
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(SocketOutputStream.class);
 }

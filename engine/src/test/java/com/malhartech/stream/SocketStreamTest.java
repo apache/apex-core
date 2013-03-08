@@ -4,7 +4,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.server.Server;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.StreamContext;

@@ -11,7 +11,7 @@ import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.Builder;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
-import com.malhartech.bufferserver.ClientHandler;
+import com.malhartech.bufferserver.client.ClientHandler;
 import com.malhartech.engine.ResetWindowTuple;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
@@ -33,23 +33,6 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   StreamCodec<Object> serde;
   int windowId;
   int writtenBytes;
-
-  protected void write(Builder db) throws RuntimeException
-  {
-    Message d = db.build();
-    if (writtenBytes > BUFFER_SIZE) {
-      try {
-        channel.flush().await();
-        writtenBytes = 0;
-      }
-      catch (InterruptedException ie) {
-        throw new RuntimeException(ie);
-      }
-    }
-
-    channel.write(d);
-    writtenBytes += d.getSerializedSize();
-  }
 
   public BufferServerOutputStream(StreamCodec<Object> serde)
   {
@@ -110,7 +93,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
        */
       if (dsp.state != null) {
         write(Buffer.Message.newBuilder().setType(MessageType.CODEC_STATE)
-                .setCodecState(Buffer.CodecState.newBuilder().setData(ByteString.copyFrom(dsp.state))));
+                .setCodecState(Buffer.CodecState.newBuilder().setData(ByteString.copyFrom(dsp.state))).build().toByteArray());
       }
 
       /*
@@ -123,7 +106,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
       db.setPayload(pdb);
     }
 
-    write(db);
+    write(db.build().toByteArray());
   }
 
   /**
@@ -135,7 +118,7 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   {
     super.activate(context);
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
-    ClientHandler.publish(channel, context.getSourceId(), context.getId(), context.getStartingWindowId());
+    write(ClientHandler.getPublishRequest(context.getSourceId(), context.getId(), context.getStartingWindowId()));
   }
 
   @Override
@@ -148,6 +131,11 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   public boolean isMultiSinkCapable()
   {
     return false;
+  }
+
+  @Override
+  public void onMessage(byte[] buffer, int offset, int size)
+  {
   }
 
 }

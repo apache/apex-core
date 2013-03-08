@@ -3,12 +3,17 @@
  */
 package com.malhartech.stream;
 
+import com.google.protobuf.ExtensionRegistry;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Message;
-import com.malhartech.bufferserver.ClientHandler;
+import static com.malhartech.bufferserver.Buffer.Message.MessageType.*;
+import com.malhartech.bufferserver.client.ClientHandler;
 import com.malhartech.engine.*;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Collection;
 import java.util.HashMap;
@@ -33,6 +38,11 @@ public class BufferServerInputStream extends SocketInputStream<Message>
   DataStatePair dsp = new DataStatePair();
   private int mask;
   private Collection<Integer> partitions;
+  static final ExtensionRegistry registry = ExtensionRegistry.newInstance();
+
+  static {
+    Buffer.registerAllExtensions(registry);
+  }
 
   public BufferServerInputStream(StreamCodec<Object> serde)
   {
@@ -50,71 +60,84 @@ public class BufferServerInputStream extends SocketInputStream<Message>
 
     baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-    ClientHandler.subscribe(channel,
-                            context.getSinkId(),
-                            context.getId() + '/' + context.getSinkId(),
-                            context.getSourceId(),
-                            context.getPartitionMask(),
-                            context.getPartitions(),
-                            context.getStartingWindowId());
+    byte[] request = ClientHandler.getSubscribeRequest(
+            context.getSinkId(),
+            context.getId() + '/' + context.getSinkId(),
+            context.getSourceId(),
+            context.getPartitionMask(),
+            context.getPartitions(),
+            context.getStartingWindowId());
+    write(request, 0, request.length);
   }
 
   @Override
-  public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Message data) throws Exception
+  public void onMessage(byte[] buffer, int offset, int size)
   {
-    Tuple t;
-    switch (data.getType()) {
-      case CHECKPOINT:
-        serde.resetState();
-        return;
-
-      case CODEC_STATE:
-        dsp.state = data.getCodecState().getData().toByteArray();
-        return;
-
-      case PAYLOAD:
-        dsp.data = data.getPayload().getData().toByteArray();
-        if (mask != 0) {
-          assert (data.getPayload().hasPartition());
-          assert (partitions.contains(data.getPayload().getPartition() & mask));
-        }
-        Object o = serde.fromByteArray(dsp);
-        for (Sink<Object> s: sinks) {
-          s.process(o);
-        }
-        return;
-
-      case END_WINDOW:
-        t = new EndWindowTuple();
-        t.setWindowId(baseSeconds | (lastWindowId = data.getEndWindow().getWindowId()));
-        break;
-
-      case END_STREAM:
-        t = new EndStreamTuple();
-        t.setWindowId(baseSeconds | data.getEndStream().getWindowId());
-        break;
-
-      case RESET_WINDOW:
-        baseSeconds = (long)data.getResetWindow().getBaseSeconds() << 32;
-        if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
+    try {
+      Message data = Message.newBuilder().mergeFrom(buffer, offset, size, registry).build();
+      Tuple t;
+      switch (data.getType()) {
+        case CHECKPOINT:
+          serde.resetState();
           return;
-        }
-        t = new ResetWindowTuple();
-        t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
-        break;
 
-      case BEGIN_WINDOW:
-        t = new Tuple(data.getType());
-        t.setWindowId(baseSeconds | data.getBeginWindow().getWindowId());
-        break;
+        case CODEC_STATE:
+          dsp.state = data.getCodecState().getData().toByteArray();
+          return;
 
-      default:
-        throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
+        case PAYLOAD:
+          dsp.data = data.getPayload().getData().toByteArray();
+          if (mask != 0) {
+            assert (data.getPayload().hasPartition());
+            assert (partitions.contains(data.getPayload().getPartition() & mask));
+          }
+          Object o = serde.fromByteArray(dsp);
+          for (Sink<Object> s : sinks) {
+            s.process(o);
+          }
+          return;
+
+        case END_WINDOW:
+          t = new EndWindowTuple();
+          t.setWindowId(baseSeconds | (lastWindowId = data.getEndWindow().getWindowId()));
+          break;
+
+        case END_STREAM:
+          t = new EndStreamTuple();
+          t.setWindowId(baseSeconds | data.getEndStream().getWindowId());
+          break;
+
+        case RESET_WINDOW:
+          baseSeconds = (long)data.getResetWindow().getBaseSeconds() << 32;
+          if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
+            return;
+          }
+          t = new ResetWindowTuple();
+          t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
+          break;
+
+        case BEGIN_WINDOW:
+          t = new Tuple(data.getType());
+          t.setWindowId(baseSeconds | data.getBeginWindow().getWindowId());
+          break;
+
+        default:
+          throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
+      }
+
+      for (int i = sinks.length; i-- > 0;) {
+        sinks[i].process(t);
+      }
+    }
+    catch (InvalidProtocolBufferException ex) {
+      logger.debug("parse error", ex);
+      throw new RuntimeException(ex);
+    }
+    catch (IOException ex) {
+      logger.debug("IO exception", ex);
+      throw new RuntimeException(ex);
     }
 
-    for (int i = sinks.length; i-- > 0;) {
-      sinks[i].process(t);
-    }
   }
 
   @Override
@@ -144,12 +167,12 @@ public class BufferServerInputStream extends SocketInputStream<Message>
 
   private void activateSinks()
   {
-    logger.debug("activating sinks = {} on {}", outputs, channel);
+    logger.debug("activating sinks = {} on {}", outputs);
 
     @SuppressWarnings("unchecked")
     Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, outputs.size());
     int i = 0;
-    for (final Sink<Object> s: outputs.values()) {
+    for (final Sink<Object> s : outputs.values()) {
       newSinks[i++] = s;
     }
     sinks = newSinks;
