@@ -234,6 +234,7 @@ public class OperatorPartitions {
               siblingPartition.getPartitionKeys().put(port, newPks);
               // add as new partition
               newPartitions.add(siblingPartition);
+              //LOG.debug("partition keys after merge {}", siblingPartition.getPartitionKeys());
             }
           }
         } else if (load > 0) {

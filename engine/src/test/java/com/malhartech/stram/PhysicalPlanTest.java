@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -322,6 +323,19 @@ public class PhysicalPlanTest {
     Assert.assertEquals("load below min", 1, ctx.events.size());
     ctx.events.remove(0).run();
     Assert.assertEquals("partitions merged", 4, plan.getOperators(node2Meta).size());
+    for (PTOperator p : plan.getOperators(node2Meta)) {
+      PartitionKeys pks = p.partition.getPartitionKeys().values().iterator().next();
+      Assert.assertEquals("partition mask " + p, 3, pks.mask);
+      Assert.assertEquals("inputs " + p, 2, p.inputs.size());
+      boolean portConnected = false;
+      for (PTInput input : p.inputs) {
+        if (GenericTestModule.IPORT1.equals(input.portName)) {
+          portConnected = true;
+          Assert.assertEquals("partition mask " + input, pks, input.partitions);
+        }
+        Assert.assertTrue("connected " + GenericTestModule.IPORT1, portConnected);
+      }
+    }
 
     Assert.assertEquals("" + ctx.undeploy, expUndeploy, ctx.undeploy);
 
@@ -330,7 +344,7 @@ public class PhysicalPlanTest {
     expDeploy.addAll(plan.getMergeOperators(node2Meta).values());
 
     Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
-    Assert.assertEquals("backup for new operators " + ctx.backupRequests, 0, ctx.backupRequests.size());
+    Assert.assertEquals("backup for merged operators " + ctx.backupRequests, 4, ctx.backupRequests.size());
 
   }
 
@@ -357,7 +371,25 @@ public class PhysicalPlanTest {
       partitions.add(new PartitionImpl(operator, p1Keys, 1));
     }
 
-    List<Partition<?>> newPartitions = dp.repartition(partitions);
+    ArrayList<Partition<?>> lowLoadPartitions = new ArrayList<Partition<?>>();
+    for (Partition<?> p : partitions) {
+      lowLoadPartitions.add(new PartitionImpl(p.getOperator(), p.getPartitionKeys(), -1));
+    }
+    // merge to single partition
+    List<Partition<?>> newPartitions = dp.repartition(lowLoadPartitions);
+    Assert.assertEquals("" + newPartitions, 1, newPartitions.size());
+    Assert.assertEquals("" + newPartitions.get(0).getPartitionKeys(), 0, newPartitions.get(0).getPartitionKeys().values().iterator().next().mask);
+
+    newPartitions = dp.repartition(Collections.singletonList(new PartitionImpl(operator, newPartitions.get(0).getPartitionKeys(), -1)));
+    Assert.assertEquals("" + newPartitions, 1, newPartitions.size());
+
+    // split back into two
+    newPartitions = dp.repartition(Collections.singletonList(new PartitionImpl(operator, newPartitions.get(0).getPartitionKeys(), 1)));
+    Assert.assertEquals("" + newPartitions, 2, newPartitions.size());
+
+
+    // split partitions
+    newPartitions = dp.repartition(partitions);
     Assert.assertEquals("" + newPartitions, 4, newPartitions.size());
 
     Set<PartitionKeys> expectedPartitionKeys = Sets.newHashSet(twoBitPartitionKeys);

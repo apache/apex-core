@@ -18,10 +18,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.annotation.Nullable;
+
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
@@ -725,32 +730,38 @@ public class StreamingContainerManager implements PlanContext
     return nodeInfoList;
   }
 
-  public void startRecording(int operId, String name)
-  {
-    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
-    StramToNodeRequest request = new StramToNodeRequest();
-    request.setOperatorId(operId);
-    request.setName(name);
-    request.setRequestType(RequestType.START_RECORDING);
-    sca.addOperatorRequest(request);
+  private static class RecordingRequestFilter implements Predicate<StramToNodeRequest> {
+    final static Set<StramToNodeRequest.RequestType> MATCH_TYPES = Sets.newHashSet(RequestType.START_RECORDING, RequestType.STOP_RECORDING);
+    @Override
+    public boolean apply(@Nullable StramToNodeRequest input) {
+      return MATCH_TYPES.contains(input.getRequestType());
+    }
   }
 
-  public void stopRecording(int operId)
-  {
-    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
-    StramToNodeRequest request = new StramToNodeRequest();
-    request.setOperatorId(operId);
-    request.setRequestType(RequestType.STOP_RECORDING);
-    sca.addOperatorRequest(request);
+  private class SetOperatorPropertyRequestFilter implements Predicate<StramToNodeRequest> {
+    final String propertyKey;
+    SetOperatorPropertyRequestFilter(String key) {
+      this.propertyKey = key;
+    }
+    @Override
+    public boolean apply(@Nullable StramToNodeRequest input) {
+      return input.getRequestType() == RequestType.SET_PROPERTY && input.setPropertyKey.equals(propertyKey);
+    }
   }
 
-  public void syncRecording(int operId)
-  {
-    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
-    StramToNodeRequest request = new StramToNodeRequest();
-    request.setOperatorId(operId);
-    request.setRequestType(RequestType.SYNC_RECORDING);
-    sca.addOperatorRequest(request);
+  private void updateOnDeployRequests(PTOperator p, Predicate<StramToNodeRequest> superseded, StramToNodeRequest newRequest) {
+    // filter existing requests
+    List<StramToNodeRequest> cloneRequests = Lists.newArrayList(p.deployRequests);
+    for (StramToNodeRequest existingRequest : p.deployRequests) {
+      if (!superseded.apply(existingRequest)) {
+        cloneRequests.add(existingRequest);
+      }
+    }
+    // add new request, if any
+    if (newRequest != null) {
+      cloneRequests.add(newRequest);
+    }
+    p.deployRequests = Collections.unmodifiableList(cloneRequests);
   }
 
   private StramChildAgent getContainerAgentFromOperatorId(int operatorId)
@@ -761,7 +772,46 @@ public class StreamingContainerManager implements PlanContext
         return container;
       }
     }
-    throw new AssertionError("Operator ID " + operatorId + " not found");
+    // throw exception that propagates to web client
+    throw new NotFoundException("Operator ID " + operatorId + " not found");
+  }
+
+  public void startRecording(int operId, String name)
+  {
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    request.setName(name);
+    request.setRequestType(RequestType.START_RECORDING);
+    sca.addOperatorRequest(request);
+    OperatorStatus os = sca.operators.get(operId);
+    if (os != null) {
+      // restart on deploy
+      updateOnDeployRequests(os.operator, new RecordingRequestFilter(), request);
+    }
+  }
+
+  public void stopRecording(int operId)
+  {
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    request.setRequestType(RequestType.STOP_RECORDING);
+    sca.addOperatorRequest(request);
+    OperatorStatus os = sca.operators.get(operId);
+    if (os != null) {
+      // no stop on deploy, but remove existing start
+      updateOnDeployRequests(os.operator, new RecordingRequestFilter(), null);
+    }
+  }
+
+  public void syncRecording(int operId)
+  {
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    request.setRequestType(RequestType.SYNC_RECORDING);
+    sca.addOperatorRequest(request);
   }
 
   public void stopContainer(String containerId)
@@ -785,6 +835,8 @@ public class StreamingContainerManager implements PlanContext
       request.setPropertyValue = propertyValue;
       request.setRequestType(RequestType.SET_PROPERTY);
       sca.addOperatorRequest(request);
+      // restart on deploy
+      updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
 
   }

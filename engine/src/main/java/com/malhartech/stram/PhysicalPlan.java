@@ -729,10 +729,10 @@ public class PhysicalPlan {
         // check whether mapping was changed
         for (PartitionImpl pi : currentPartitions) {
           if (pi == newPartition && pi.isModified()) {
-            // existing partition was changed
-            op.partition = newPartition;
-            deployOperators.add(op);
-            undeployOperators.add(op);
+            // existing partition changed (operator or partition keys)
+            // remove/add to update subscribers and state
+            currentPartitionMap.put(newPartition, op);
+            addedPartitions.add(newPartition);
           }
         }
       }

@@ -223,14 +223,6 @@ public class StramChildAgent {
   public void addOperatorRequest(StramToNodeRequest r) {
     LOG.info("Adding operator request {} {}", container.containerId, r);
     this.operatorRequests.add(r);
-    OperatorStatus os = operators.get(r.getOperatorId());
-    if (os == null) {
-      LOG.warn("Cannot find operator for request {}", r);
-      return;
-    }
-    List<StramToNodeRequest> cloneRequests = Lists.newArrayList(os.operator.deployRequests);
-    cloneRequests.add(r);
-    os.operator.deployRequests = Collections.unmodifiableList(cloneRequests);
   }
 
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
@@ -265,7 +257,7 @@ public class StramChildAgent {
 
     // process
     if (!requests.remove(r)) {
-        return null;
+      return null;
     }
 
     this.pendingRequest = r;
