@@ -43,16 +43,19 @@ import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
 
 /**
+ * Translates the logical DAG into physical model. Is the initial query planner
+ * and performs dynamic changes.
+ * <p>
+ * Attributes in the logical DAG affect how the physical plan is derived.
+ * Examples include partitioning schemes, resource allocation, recovery
+ * semantics etc.<br>
  *
- * Derives the physical model from the logical dag and assigned to hadoop container. Is the initial query planner<p>
- * <br>
- * Does the static binding of dag to physical operators. Parse the dag and figures out the topology. The upstream
- * dependencies are deployed first. Static partitions are defined by the dag are enforced. Stram an later on do
- * dynamic optimization.<br>
- * In current implementation optimization is not done with number of containers. The number provided in the dag
- * specification is treated as minimum as well as maximum. Once the optimization layer is built this would change<br>
- * DAG deployment thus blocks successful running of a streaming job in the current version of the streaming platform<br>
- * <br>
+ * The current implementation does not dynamically change or optimize allocation
+ * of containers. The maximum number of containers and container size can be
+ * specified per application, but all containers are requested at the same size
+ * and execution will block until all containers were allocated by the resource
+ * manager. Future enhancements will allow to define resource constraints at the
+ * operator level and elasticity in resource allocation.<br>
  */
 public class PhysicalPlan {
 
@@ -388,7 +391,7 @@ public class PhysicalPlan {
     }
   }
 
-  private final AtomicInteger nodeSequence = new AtomicInteger();
+  private final AtomicInteger idSequence = new AtomicInteger();
   private final LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
@@ -854,7 +857,7 @@ public class PhysicalPlan {
             if (mergeDesc.outputPorts.size() != 1) {
               throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
             }
-            mergeNode = new PTOperator(this, nodeSequence.incrementAndGet(), upstream.logicalOperator.getId() + "#merge#" + streamDecl.getSource().getPortName());
+            mergeNode = new PTOperator(this, idSequence.incrementAndGet(), upstream.logicalOperator.getId() + "#merge#" + streamDecl.getSource().getPortName());
             mergeNode.logicalNode = upstream.logicalOperator;
             mergeNode.inputs = new ArrayList<PTInput>();
             mergeNode.outputs = new ArrayList<PTOutput>();
@@ -906,7 +909,7 @@ public class PhysicalPlan {
   }
 
   private PTOperator createInstance(PMapping mapping, Partition<?> partition) {
-    PTOperator pOperator = new PTOperator(this, nodeSequence.incrementAndGet(), mapping.logicalOperator.getId());
+    PTOperator pOperator = new PTOperator(this, idSequence.incrementAndGet(), mapping.logicalOperator.getId());
     pOperator.logicalNode = mapping.logicalOperator;
     pOperator.inputs = new ArrayList<PTInput>();
     pOperator.outputs = new ArrayList<PTOutput>();
