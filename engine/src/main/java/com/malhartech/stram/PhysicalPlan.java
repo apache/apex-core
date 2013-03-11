@@ -207,11 +207,6 @@ public class PhysicalPlan {
     }
 
     protected int getLoadIndicator(PTOperator operator, long tps) {
-//if (operator.getId() == 3) return 1;
-//if (operator.getId() == 4) return 1;
-//if (operator.getId() >=6 && operator.getId() <=9) {
-//  return -1;
-//}
       if ((tps < tpsMin && lastTps != 0) || tps > tpsMax) {
         lastTps = tps;
         return (tps < tpsMin) ? -1 : 1;
@@ -459,6 +454,12 @@ public class PhysicalPlan {
       }
       return c;
     }
+
+    private boolean isPartitionable() {
+      int partitionCnt = logicalOperator.getAttributes().attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
+      return (partitionCnt > 0);
+    }
+
   }
 
   /**
@@ -502,7 +503,9 @@ public class PhysicalPlan {
         PMapping pnodes = new PMapping(n);
 
         // determine partitioning / number operator instances
-        initPartitioning(pnodes);
+        if (pnodes.isPartitionable()) {
+          initPartitioning(pnodes);
+        }
 
         PMapping upstreamPartitioned = null;
         HashSet<PMapping> inlineCandidates = new HashSet<PMapping>();
@@ -539,8 +542,7 @@ public class PhysicalPlan {
             newOperator.inlineSet.add(newOperator);
 
             for (PMapping inlineCandidate : inlineCandidates) {
-              if (inlineCandidate.partitions.size() > 1) {
-                // TODO: check whether operator can be partitioned, even with current count of 1
+              if (inlineCandidate.isPartitionable()) {
                 LOG.warn("ignoring inline for partitioned upstream operator " + inlineCandidate.logicalOperator);
                 continue;
               }
@@ -604,7 +606,7 @@ public class PhysicalPlan {
      */
     int partitionCnt = m.logicalOperator.getAttributes().attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
     if (partitionCnt == 0) {
-      return;
+      throw new AssertionError("operator not partitionable " + m.logicalOperator);
     }
 
     Operator operator = m.logicalOperator.getOperator();
@@ -718,8 +720,6 @@ public class PhysicalPlan {
     }
 
     List<Partition<?>> addedPartitions = new ArrayList<Partition<?>>();
-    Set<PTOperator> undeployOperators = new HashSet<PTOperator>();
-    Set<PTOperator> deployOperators = new HashSet<PTOperator>();
     // determine modifications of partition set, identify affected operator instance(s)
     for (Partition<?> newPartition : newPartitions) {
       PTOperator op = currentPartitionMap.remove(newPartition);
@@ -738,6 +738,8 @@ public class PhysicalPlan {
       }
     }
 
+    Set<PTOperator> undeployOperators = new HashSet<PTOperator>();
+    Set<PTOperator> deployOperators = new HashSet<PTOperator>();
     // remaining entries represent deprecated partitions
     undeployOperators.addAll(currentPartitionMap.values());
     // resolve dependencies that require redeploy
@@ -872,11 +874,10 @@ public class PhysicalPlan {
               }
             }
 
-            // if this operator is partitioned and upstream is also partitioned,
-            // create separate merge operator per upstream partition
             if (pks == null) {
               upstream.mergeOperators.put(streamDecl.getSource(), mergeNode);
             } else {
+              // NxM partitioning: create unifier per upstream partition
               LOG.debug("Partitioned unifier for {} {} {}", new Object[] {pOperator, inputEntry.getKey().getPortName(), pks});
               pOperator.upstreamMerge.put(inputEntry.getKey(), mergeNode);
             }
