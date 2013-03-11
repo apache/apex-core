@@ -673,7 +673,7 @@ public class PhysicalPlan {
     Map<Partition<?>, PTOperator> currentPartitionMap = new HashMap<Partition<?>, PTOperator>(operators.size());
 
     final Collection<Partition<?>> newPartitions;
-    long minCheckpoint = 0;
+    long minCheckpoint = -1;
     PTContainer inlineContainer = null;
 
     for (PTOperator pOperator : operators) {
@@ -689,7 +689,11 @@ public class PhysicalPlan {
       if (pOperator.recoveryCheckpoint != 0) {
         try {
           partitionedOperator = (Operator)ctx.getBackupAgent().restore(pOperator.id, pOperator.recoveryCheckpoint, StramUtils.getNodeSerDe(null));
-          minCheckpoint = Math.min(minCheckpoint, pOperator.recoveryCheckpoint);
+          if (minCheckpoint < 0) {
+            minCheckpoint = pOperator.recoveryCheckpoint;
+          } else {
+            minCheckpoint = Math.min(minCheckpoint, pOperator.recoveryCheckpoint);
+          }
         } catch (IOException e) {
           LOG.warn("Failed to read partition state for " + pOperator, e);
           return; // TODO: emit to event log
