@@ -689,16 +689,18 @@ public class PhysicalPlan {
       if (pOperator.recoveryCheckpoint != 0) {
         try {
           partitionedOperator = (Operator)ctx.getBackupAgent().restore(pOperator.id, pOperator.recoveryCheckpoint, StramUtils.getNodeSerDe(null));
-          if (minCheckpoint < 0) {
-            minCheckpoint = pOperator.recoveryCheckpoint;
-          } else {
-            minCheckpoint = Math.min(minCheckpoint, pOperator.recoveryCheckpoint);
-          }
         } catch (IOException e) {
           LOG.warn("Failed to read partition state for " + pOperator, e);
           return; // TODO: emit to event log
         }
       }
+
+      if (minCheckpoint < 0) {
+        minCheckpoint = pOperator.recoveryCheckpoint;
+      } else {
+        minCheckpoint = Math.min(minCheckpoint, pOperator.recoveryCheckpoint);
+      }
+
       // assume it does not matter which operator instance's port objects are referenced in mapping
       PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator);
       currentPartitions.add(partition);
