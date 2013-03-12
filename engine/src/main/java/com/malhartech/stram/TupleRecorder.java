@@ -10,14 +10,20 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.engine.Tuple;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.WebResource;
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import javax.ws.rs.core.MediaType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -58,6 +64,10 @@ public class TupleRecorder implements Operator
   private transient StreamCodec<Object> streamCodec;
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
   private boolean syncRequested = false;
+  private Client client = Client.create();
+  private URI postToUrl = null;
+  private URI getNumSubscribersUrl = null;
+  private int numSubscribers = 0;
 
   public RecorderSink newSink(String key)
   {
@@ -76,6 +86,16 @@ public class TupleRecorder implements Operator
   public void setStreamCodec(Class<? extends StreamCodec<Object>> streamCodecClass)
   {
     this.streamCodecClass = streamCodecClass;
+  }
+
+  public void setPostToUrl(String postToUrl) throws URISyntaxException
+  {
+    this.postToUrl = new URI(postToUrl);
+  }
+
+  public void setGetNumSubscribersUrl(String getNumSubscribersUrl) throws URISyntaxException
+  {
+    this.getNumSubscribersUrl = new URI(getNumSubscribersUrl);
   }
 
   public HashMap<String, PortInfo> getPortInfoMap()
@@ -340,6 +360,7 @@ public class TupleRecorder implements Operator
           syncRequested = false;
           logger.debug("Closing current part file.");
         }
+        updateNumSubscribers();
       }
       catch (IOException ex) {
         logger.error(ex.toString());
@@ -369,6 +390,9 @@ public class TupleRecorder implements Operator
       partOutStr.write(bos.toByteArray());
       //logger.debug("Writing tuple for port id {}", pi.id);
       //fsOutput.hflush();
+      if (numSubscribers > 0) {
+        postTupleData(pi.id, obj);
+      }
       ++partFileTupleCount;
       ++totalTupleCount;
     }
@@ -457,6 +481,37 @@ public class TupleRecorder implements Operator
     }
     catch (IOException ex) {
       logger.error(ex.toString());
+    }
+  }
+
+  private void postTupleData(int portId, Object obj)
+  {
+    try {
+      if (postToUrl != null) {
+        JSONObject json = new JSONObject();
+        json.put("portId", String.valueOf(portId));
+        json.put("data", obj);
+        WebResource wr = client.resource(postToUrl);
+        wr.type(MediaType.APPLICATION_JSON).post(JSONObject.class, json);
+      }
+    }
+    catch (Exception ex) {
+      logger.warn("Error posting to URL", ex);
+    }
+  }
+
+  public void updateNumSubscribers()
+  {
+    try {
+      if (getNumSubscribersUrl != null) {
+        WebResource wr = client.resource(getNumSubscribersUrl);
+        JSONObject response = wr.get(JSONObject.class);
+        numSubscribers = response.getInt("num");
+      }
+    }
+    catch (Exception ex) {
+      numSubscribers = 0;
+      logger.warn("Error getting number of subscribers");
     }
   }
 
