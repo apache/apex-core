@@ -496,7 +496,7 @@ public class TupleRecorder implements Operator
       }
     }
     catch (Exception ex) {
-      logger.warn("Error posting to URL", ex);
+      logger.warn("Error posting to URL {}", postToUrl, ex);
     }
   }
 
@@ -511,7 +511,7 @@ public class TupleRecorder implements Operator
     }
     catch (Exception ex) {
       numSubscribers = 0;
-      logger.warn("Error getting number of subscribers");
+      logger.warn("Error getting number of subscribers from URL {}", getNumSubscribersUrl, ex);
     }
   }
 

@@ -29,6 +29,8 @@ import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.security.PrivilegedExceptionAction;
 import java.util.Map.Entry;
 import java.util.*;
@@ -85,6 +87,7 @@ public class StramChild
   private AttributeMap<DAGContext> applicationAttributes;
   protected HashMap<Integer, TupleRecorder> tupleRecorders = new HashMap<Integer, TupleRecorder>();
   private int tupleRecordingPartFileSize;
+  private String daemonUrl;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -104,6 +107,7 @@ public class StramChild
     this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
     this.checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
     this.tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
+    this.daemonUrl = ctx.applicationAttributes.attrValue(DAG.STRAM_DAEMON_URL, null);
 
     try {
       if (ctx.deployBufferServer) {
@@ -698,6 +702,16 @@ public class StramChild
                 }
                 tupleRecorder.setBasePath(basePath);
                 tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
+                if (StramChild.this.daemonUrl != null) {
+                  String url = StramChild.this.daemonUrl + "/channel/tr_" + URLEncoder.encode(tupleRecorder.getRecordingName(), "UTF-8");
+                  try {
+                    tupleRecorder.setPostToUrl(url);
+                    tupleRecorder.setGetNumSubscribersUrl(url + "/numSubscribers");
+                  }
+                  catch (URISyntaxException ex) {
+                    logger.warn("URL {} is not valid. NOT posting live tuples to daemon.", url, ex);
+                  }
+                }
                 HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
                 PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
                 for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
