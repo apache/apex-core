@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  * Is an application
  */
-public class Client
+public class ClientTest
 {
   private final String host;
   private final int port;
@@ -39,7 +39,7 @@ public class Client
    * @param mask
    * @param partitions
    */
-  public Client(String host, int port, String node, String type, String id, String down_type, int mask, Collection<Integer> partitions)
+  public ClientTest(String host, int port, String node, String type, String id, String down_type, int mask, Collection<Integer> partitions)
   {
     this.host = host;
     this.port = port;
@@ -55,7 +55,7 @@ public class Client
   }
 
   // publisher
-  private Client(String host, int port, String node, String type)
+  private ClientTest(String host, int port, String node, String type)
   {
     this.host = host;
     this.port = port;
@@ -69,7 +69,7 @@ public class Client
     purge = false;
   }
 
-  private Client(String host, int port, String publisher_id, long lastWindowId)
+  private ClientTest(String host, int port, String publisher_id, long lastWindowId)
   {
     this.mask = 0;
     partitions = null;
@@ -133,27 +133,27 @@ public class Client
 
 
     if (args.length == 4) { // upstream node
-      new Client(host, port, node, type).run();
+      new ClientTest(host, port, node, type).run();
     }
     else { // downstream node
       String identifier = args[4];
       String down_type = args[5];
       int mask = Integer.parseInt(args[6]);
       Collection<Integer> partitions = parsePartitions(args, 7);
-      new Client(host, port, node, type, identifier, down_type, mask, partitions).run();
+      new ClientTest(host, port, node, type, identifier, down_type, mask, partitions).run();
     }
   }
 
   private static void printUsage()
   {
     logger.info(
-            "Usage: " + Client.class.getSimpleName()
+            "Usage: " + ClientTest.class.getSimpleName()
             + " <host> <port> upstream_node_id upstream_node_type [downstream_node_id downstream_node_type [partitions ...]]");
     logger.info(
-            "Upstream Example: " + Client.class.getSimpleName()
+            "Upstream Example: " + ClientTest.class.getSimpleName()
             + " localhost 8080 map1 mapper");
     logger.info(
-            "Downstream Example: " + Client.class.getSimpleName()
+            "Downstream Example: " + ClientTest.class.getSimpleName()
             + " localhost 8080 map1 mapper reduce1 reduce 1 5 7");
   }
 
@@ -166,5 +166,5 @@ public class Client
     return partitions;
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(Client.class);
+  private static final Logger logger = LoggerFactory.getLogger(ClientTest.class);
 }

@@ -2,11 +2,13 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.internal;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.malhartech.bufferserver.Buffer.Message;
 import junit.framework.TestCase;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -33,6 +35,7 @@ public class BufferTest extends TestCase
 
   public void testSerDe() throws InvalidProtocolBufferException
   {
+    logger.info("testSerDe");
     Message.Builder db = Message.newBuilder();
     db.setType(Message.MessageType.NO_MESSAGE);
 
@@ -46,4 +49,5 @@ public class BufferTest extends TestCase
     assertEquals(d, d1);
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(BufferTest.class);
 }

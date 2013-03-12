@@ -4,19 +4,20 @@
  */
 package com.malhartech.bufferserver.storage;
 
-import com.malhartech.bufferserver.BufferServerController;
-import com.malhartech.bufferserver.BufferServerPublisher;
-import com.malhartech.bufferserver.BufferServerSubscriber;
+import com.malhartech.bufferserver.client.BufferServerController;
+import com.malhartech.bufferserver.client.BufferServerPublisher;
+import com.malhartech.bufferserver.client.BufferServerSubscriber;
+import com.malhartech.bufferserver.internal.ServerTest.BeginTuple;
+import com.malhartech.bufferserver.internal.ServerTest.EndTuple;
 import com.malhartech.bufferserver.server.Server;
-import com.malhartech.bufferserver.ServerTest.BeginTuple;
-import com.malhartech.bufferserver.ServerTest.EndTuple;
+import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import malhar.netlet.EventLoop;
 import static org.testng.Assert.assertEquals;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
 
 /**
  *
@@ -24,6 +25,7 @@ import org.testng.annotations.Test;
  */
 public class DiskStorageTest
 {
+  static EventLoop eventloop;
   static Server instance;
   static BufferServerPublisher bsp;
   static BufferServerSubscriber bss;
@@ -33,10 +35,13 @@ public class DiskStorageTest
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
+    eventloop = new EventLoop("server");
+    eventloop.start();
+
     instance = new Server(0, 1024, 10);
     instance.setSpoolStorage(new DiskStorage());
 
-    SocketAddress result = instance.run();
+    SocketAddress result = instance.run(eventloop);
     assert (result instanceof InetSocketAddress);
     String host = ((InetSocketAddress)result).getHostName();
     int port = ((InetSocketAddress)result).getPort();
@@ -57,7 +62,8 @@ public class DiskStorageTest
     bsc.teardown();
     bss.teardown();
     bsp.teardown();
-    instance.shutdown();
+    eventloop.stop(instance);
+    eventloop.stop();
   }
 
   @Test
@@ -94,7 +100,7 @@ public class DiskStorageTest
     bsp.publishMessage(et1);
 
     for (int i = 0; i < spinCount; i++) {
-      Thread.sleep(10);
+      sleep(10);
       if (bss.tupleCount.get() > 2003) {
         break;
       }

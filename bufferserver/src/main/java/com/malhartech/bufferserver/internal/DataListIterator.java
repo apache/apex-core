@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.server;
+package com.malhartech.bufferserver.internal;
 
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 class DataListIterator implements Iterator<SerializedData>
 {
   private static final Logger logger = LoggerFactory.getLogger(DataListIterator.class);
-  DataList.DataArray da;
+  Block da;
   final DataIntrospector di;
   SerializedData previous = null;
   SerializedData current = new SerializedData();
@@ -27,7 +27,7 @@ class DataListIterator implements Iterator<SerializedData>
    * @param da
    * @param di
    */
-  DataListIterator(DataList.DataArray da, DataIntrospector di)
+  DataListIterator(Block da, DataIntrospector di)
   {
     da.acquire(true);
     this.da = da;
@@ -41,6 +41,7 @@ class DataListIterator implements Iterator<SerializedData>
    *
    * @return boolean
    */
+  @Override
   public synchronized boolean hasNext()
   {
     while (true) {
@@ -83,6 +84,7 @@ class DataListIterator implements Iterator<SerializedData>
    *
    * @return {@link com.malhartech.bufferserver.util.SerializedData}
    */
+  @Override
   public SerializedData next()
   {
     previous = current;
@@ -97,6 +99,7 @@ class DataListIterator implements Iterator<SerializedData>
    * next. The behavior of an iterator is unspecified if the underlying collection is modified while the iteration is in progress in any way other than by
    * calling this method.
    */
+  @Override
   public void remove()
   {
     if (previous == null) {

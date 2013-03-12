@@ -2,9 +2,9 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.client;
 
-import com.malhartech.bufferserver.client.ClientHandler;
+import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import java.util.ArrayList;
@@ -30,10 +30,9 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Mess
   private final Collection<Integer> partitions;
   private final int mask;
   public AtomicInteger tupleCount = new AtomicInteger(0);
-  Message firstPayload, lastPayload;
-  ArrayList<Message> resetPayloads = new ArrayList<Message>();
-  long windowId;
-
+  public Message firstPayload, lastPayload;
+  public final ArrayList<Message> resetPayloads = new ArrayList<Message>();
+  public long windowId;
 
   public BufferServerSubscriber(String sourceId, int mask, Collection<Integer> partitions)
   {
@@ -49,17 +48,17 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Mess
     firstPayload = lastPayload = null;
     resetPayloads.clear();
     super.activate();
-    ClientHandler.subscribe(channel,
-                            "BufferServerSubscriber",
-                            "BufferServerOutput/BufferServerSubscriber",
-                            sourceId,
-                            mask,
-                            partitions,
-                            windowId);
+    write(ClientHandler.getSubscribeRequest(
+            "BufferServerSubscriber",
+            "BufferServerOutput/BufferServerSubscriber",
+            sourceId,
+            mask,
+            partitions,
+            windowId));
   }
 
   @Override
-  public void messageReceived(io.netty.channel.ChannelHandlerContext ctx, Message data) throws Exception
+  public void onMessage(Message data)
   {
     if (data.getType() == Message.MessageType.RESET_WINDOW) {
       resetPayloads.add(data);
@@ -74,4 +73,5 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Mess
       }
     }
   }
+
 }

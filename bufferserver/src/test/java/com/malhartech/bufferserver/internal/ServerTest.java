@@ -2,12 +2,17 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.internal;
 
+import com.malhartech.bufferserver.client.BufferServerSubscriber;
+import com.malhartech.bufferserver.client.BufferServerController;
+import com.malhartech.bufferserver.client.BufferServerPublisher;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import malhar.netlet.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -29,13 +34,21 @@ public class ServerTest
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
   static int spinCount = 500;
+  static EventLoop eventloop;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
-    instance = new Server(0, 4096, 10);
+    try {
+      eventloop = new EventLoop("Server");
+    }
+    catch (IOException ioe) {
+      throw new RuntimeException(ioe);
+    }
+    eventloop.start();
 
-    SocketAddress result = instance.run();
+    instance = new Server(0, 4096, 10);
+    SocketAddress result = instance.run(eventloop);
     assert (result instanceof InetSocketAddress);
     String host = ((InetSocketAddress)result).getHostName();
     int port = ((InetSocketAddress)result).getPort();
@@ -56,7 +69,8 @@ public class ServerTest
     bsc.teardown();
     bss.teardown();
     bsp.teardown();
-    instance.shutdown();
+    eventloop.stop(instance);
+    eventloop.stop();
   }
 
   @Test
@@ -398,25 +412,30 @@ public class ServerTest
   {
     public long id;
 
+    @Override
     public MessageType getType()
     {
       return MessageType.RESET_WINDOW;
     }
 
+    @Override
     public long getWindowId()
     {
       return id;
     }
 
+    @Override
     public int getIntervalMillis()
     {
       return (int)id;
     }
 
+    @Override
     public int getBaseSeconds()
     {
       return (int)(id >> 32);
     }
+
   }
 
   public static class BeginTuple extends ResetTuple
@@ -426,6 +445,7 @@ public class ServerTest
     {
       return MessageType.BEGIN_WINDOW;
     }
+
   }
 
   public static class EndTuple extends ResetTuple
@@ -435,5 +455,7 @@ public class ServerTest
     {
       return MessageType.END_WINDOW;
     }
+
   }
+
 }

@@ -2,11 +2,11 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.client;
 
-import com.malhartech.bufferserver.client.ClientHandler;
 import com.google.protobuf.ByteString;
-import java.util.concurrent.RejectedExecutionException;
+import com.malhartech.bufferserver.Buffer;
+import com.malhartech.bufferserver.internal.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerPublisher extends AbstractSocketPublisher
 {
-  private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
   private final String id;
   public int baseWindow;
   public int windowId;
@@ -73,12 +72,7 @@ public class BufferServerPublisher extends AbstractSocketPublisher
     }
 
 //    logger.debug("write with data {}", db.build());
-    try {
-      channel.write(db.build());
-    }
-    catch (RejectedExecutionException ree) {
-
-    }
+    write(db.build().toByteArray());
   }
 
   /**
@@ -88,7 +82,8 @@ public class BufferServerPublisher extends AbstractSocketPublisher
   public void activate()
   {
     super.activate();
-//    logger.debug("registering publisher: {}", id);
-    ClientHandler.publish(channel, id, "BufferServerPublisher", (long)baseWindow << 32 | windowId);
+    write(ClientHandler.getPublishRequest(id, "BufferServerPublisher", (long)baseWindow << 32 | windowId));
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
 }

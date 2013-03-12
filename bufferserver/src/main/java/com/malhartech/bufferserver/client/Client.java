@@ -75,35 +75,40 @@ public abstract class Client extends malhar.netlet.Client
     return -1;
   }
 
+  /**
+   * Upon reading the data from the socket into the buffer, this method is called.
+   *
+   * @param len - length of the data in number of bytes read into the buffer during the most recent read.
+   */
   @Override
   public void read(int len)
   {
     writeOffset += len;
-    while (size == 0) {
-      size = readVarInt();
-      if (size == -1) {
-        if (writeOffset == readBuffer.length) {
-          if (readOffset > writeOffset - 5) {
-            logger.info("hit the boundary while reading varint!");
-            /*
-             * we may be reading partial varint, adjust the buffers so that we have enough space to read the full data.
-             */
-            System.arraycopy(readBuffer, readOffset, readBuffer, 0, writeOffset - readOffset);
-            writeOffset -= readOffset;
-            buffer.position(writeOffset);
-            readOffset = 0;
+    do {
+      while (size == 0) {
+        size = readVarInt();
+        if (size == -1) {
+          if (writeOffset == readBuffer.length) {
+            if (readOffset > writeOffset - 5) {
+              logger.info("hit the boundary while reading varint!");
+              /*
+               * we may be reading partial varint, adjust the buffers so that we have enough space to read the full data.
+               */
+              System.arraycopy(readBuffer, readOffset, readBuffer, 0, writeOffset - readOffset);
+              writeOffset -= readOffset;
+              buffer.position(writeOffset);
+              readOffset = 0;
+            }
           }
-        }
-        else {
+          size = 0;
           return;
         }
       }
-    }
 
-    if (size > 0) {
       if (writeOffset - readOffset >= size) {
         onMessage(readBuffer, readOffset, size);
         readOffset += size;
+        size = 0;
       }
       else if (writeOffset == readBuffer.length) {
         if (size > readBuffer.length) {
@@ -127,8 +132,11 @@ public abstract class Client extends malhar.netlet.Client
           buffer.position(writeOffset);
         }
       }
-      /* else need to read more */
+      else {       /* need to read more */
+        return;
+      }
     }
+    while (true);
   }
 
   public void write(byte[] message)
@@ -142,6 +150,7 @@ public abstract class Client extends malhar.netlet.Client
 
   public void write(byte[] message, int offset, int size)
   {
+    logger.debug("writing {}", Arrays.toString(Arrays.copyOfRange(message, offset, offset + size)));
     if (intOffset > INT_ARRAY_SIZE) {
       intBuffer = new byte[INT_ARRAY_SIZE + 5];
       intOffset = 0;

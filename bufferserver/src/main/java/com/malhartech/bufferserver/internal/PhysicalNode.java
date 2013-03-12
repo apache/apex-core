@@ -2,11 +2,10 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.server;
+package com.malhartech.bufferserver.internal;
 
-import com.googlecode.connectlet.Connection;
+import com.malhartech.bufferserver.client.Client;
 import com.malhartech.bufferserver.util.SerializedData;
-import java.nio.channels.SocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,14 +18,14 @@ public class PhysicalNode
 {
   public static final int BUFFER_SIZE = 8 * 1024;
   private final long starttime;
-  private final Connection connection;
+  private final Client connection;
   private long processedMessageCount;
 
   /**
    *
    * @param channel
    */
-  public PhysicalNode(Connection channel)
+  public PhysicalNode(Client channel)
   {
     this.connection = channel;
     starttime = System.currentTimeMillis();
@@ -54,7 +53,6 @@ public class PhysicalNode
   /**
    *
    * @param d
-   * @return
    * @throws InterruptedException
    */
   public void send(SerializedData d) throws InterruptedException
@@ -104,7 +102,7 @@ public class PhysicalNode
   /**
    * @return the channel
    */
-  public Connection getConnection()
+  public Client getConnection()
   {
     return connection;
   }

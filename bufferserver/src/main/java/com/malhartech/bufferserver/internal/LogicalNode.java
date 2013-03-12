@@ -2,16 +2,16 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.server;
+package com.malhartech.bufferserver.internal;
 
-import com.googlecode.connectlet.Connection;
 import com.malhartech.bufferserver.Buffer.Message;
+import static com.malhartech.bufferserver.Buffer.Message.MessageType.*;
+import com.malhartech.bufferserver.client.Client;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
 import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
-import java.nio.channels.SocketChannel;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
-public class LogicalNode implements DataListener, Runnable
+public class LogicalNode implements DataListener
 {
   private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);
   private final String upstream;
@@ -46,7 +46,7 @@ public class LogicalNode implements DataListener, Runnable
    * @param group
    * @param iterator
    * @param policy
-   * @param startingWindowId 
+   * @param startingWindowId
    */
   public LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy, long startingWindowId)
   {
@@ -88,7 +88,7 @@ public class LogicalNode implements DataListener, Runnable
    *
    * @param connection
    */
-  public void addConnection(Connection connection)
+  public void addConnection(Client connection)
   {
     PhysicalNode pn = new PhysicalNode(connection);
     if (!physicalNodes.contains(pn)) {
@@ -100,9 +100,9 @@ public class LogicalNode implements DataListener, Runnable
    *
    * @param connection
    */
-  public void removeChannel(Connection connection)
+  public void removeChannel(Client connection)
   {
-    for (PhysicalNode pn: physicalNodes) {
+    for (PhysicalNode pn : physicalNodes) {
       if (pn.getConnection() == connection) {
         physicalNodes.remove(pn);
         break;
@@ -165,11 +165,11 @@ public class LogicalNode implements DataListener, Runnable
             case BEGIN_WINDOW:
               logger.debug("{}->{} condition {} =? {}",
                            new Object[] {
-                        upstream,
-                        group,
-                        Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
-                        Codec.getStringWindowId(windowId)
-                      });
+                upstream,
+                group,
+                Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
+                Codec.getStringWindowId(windowId)
+              });
               if ((baseSeconds | iterator.getWindowId()) >= windowId) {
                 logger.debug("caught up {}->{}", upstream, group);
                 GiveAll.getInstance().distribute(physicalNodes, data);
@@ -195,18 +195,9 @@ public class LogicalNode implements DataListener, Runnable
     }
   }
 
-
-  @Override
-  public void dataAdded()
-  {
-    run();
-  }
-  /**
-   *
-   */
   @SuppressWarnings("fallthrough")
   @Override
-  public void run()
+  public void dataAdded()
   {
     if (isReady()) {
       if (caughtup) {
@@ -242,7 +233,7 @@ public class LogicalNode implements DataListener, Runnable
               switch (iterator.getType()) {
                 case PAYLOAD:
                   int value = ((Message)iterator.getData()).getPayload().getPartition();
-                  for (BitVector bv: partitions) {
+                  for (BitVector bv : partitions) {
                     if (bv.matches(value)) {
                       policy.distribute(physicalNodes, data);
                       break;

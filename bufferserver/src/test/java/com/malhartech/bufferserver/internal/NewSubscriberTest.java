@@ -2,20 +2,23 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.internal;
 
+import com.malhartech.bufferserver.client.BufferServerSubscriber;
+import com.malhartech.bufferserver.client.BufferServerController;
+import com.malhartech.bufferserver.client.BufferServerPublisher;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.Codec;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
+import malhar.netlet.EventLoop;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -32,23 +35,36 @@ public class NewSubscriberTest
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
   static int spinCount = 500;
+  static EventLoop eventloop;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
+    try {
+      eventloop = new EventLoop("server");
+    }
+    catch (IOException ioe) {
+      throw new RuntimeException(ioe);
+    }
+
+    eventloop.start();
+
     instance = new Server(0);
-    SocketAddress result = instance.run();
+    SocketAddress result = instance.run(eventloop);
     assert (result instanceof InetSocketAddress);
     String host = ((InetSocketAddress)result).getHostName();
     int port = ((InetSocketAddress)result).getPort();
 
     bsp = new BufferServerPublisher("MyPublisher");
+    bsp.eventloop = eventloop;
     bsp.setup(host, port);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss.eventloop = eventloop;
     bss.setup(host, port);
 
     bsc = new BufferServerController("MyPublisher");
+    bsc.eventloop = eventloop;
     bsc.setup(host, port);
   }
 
@@ -58,13 +74,15 @@ public class NewSubscriberTest
     bsc.teardown();
     bss.teardown();
     bsp.teardown();
-    instance.shutdown();
+    eventloop.stop(instance);
+    eventloop.stop();
   }
 
   @Test
   @SuppressWarnings("SleepWhileInLoop")
   public void test() throws InterruptedException
   {
+    logger.debug("test");
     bsp.baseWindow = 0x7afebabe;
     bsp.windowId = 00000000;
     bsp.activate();
@@ -108,6 +126,7 @@ public class NewSubscriberTest
           logger.debug("publisher the middle of window = {}", Codec.getStringWindowId(windowId));
         }
       }
+
     }.start();
 
 
@@ -131,6 +150,7 @@ public class NewSubscriberTest
           logger.debug("subscriber received first = {} and last = {}", bss.firstPayload, bss.lastPayload);
         }
       }
+
     }.start();
 
     do {
@@ -141,7 +161,8 @@ public class NewSubscriberTest
         }
       }
       Thread.sleep(10);
-    } while (true);
+    }
+    while (true);
 
     publisherRun.set(false);
     subscriberRun.set(false);
@@ -178,7 +199,7 @@ public class NewSubscriberTest
             bsp.publishMessage(bt);
 
             Thread.sleep(5);
-            bsp.publishMessage(new byte[]{'a'});
+            bsp.publishMessage(new byte[] {'a'});
             Thread.sleep(5);
 
             EndTuple et = new EndTuple();
@@ -194,6 +215,7 @@ public class NewSubscriberTest
           logger.debug("publisher the middle of window = {}", Codec.getStringWindowId(windowId));
         }
       }
+
     }.start();
 
     bss.windowId = 0x7afebabe00000008L;
@@ -217,6 +239,7 @@ public class NewSubscriberTest
           logger.debug("subscriber received first = {} and last = {}", bss.firstPayload, bss.lastPayload);
         }
       }
+
     }.start();
 
     do {
@@ -225,7 +248,8 @@ public class NewSubscriberTest
         break;
       }
       Thread.sleep(10);
-    } while (true);
+    }
+    while (true);
 
     publisherRun.set(false);
     subscriberRun.set(false);
@@ -233,32 +257,37 @@ public class NewSubscriberTest
     bsp.deactivate();
     bss.deactivate();
 
-    Assert.assertTrue((bss.lastPayload.getBeginWindow().getWindowId() - 8) * 3 <  bss.tupleCount.get());
+    Assert.assertTrue((bss.lastPayload.getBeginWindow().getWindowId() - 8) * 3 < bss.tupleCount.get());
   }
 
   class ResetTuple implements Tuple
   {
     long id;
 
+    @Override
     public MessageType getType()
     {
       return MessageType.RESET_WINDOW;
     }
 
+    @Override
     public long getWindowId()
     {
       return id;
     }
 
+    @Override
     public int getIntervalMillis()
     {
       return (int)id;
     }
 
+    @Override
     public int getBaseSeconds()
     {
       return (int)(id >> 32);
     }
+
   }
 
   class BeginTuple extends ResetTuple
@@ -268,6 +297,7 @@ public class NewSubscriberTest
     {
       return MessageType.BEGIN_WINDOW;
     }
+
   }
 
   class EndTuple extends ResetTuple
@@ -277,5 +307,7 @@ public class NewSubscriberTest
     {
       return MessageType.END_WINDOW;
     }
+
   }
+
 }

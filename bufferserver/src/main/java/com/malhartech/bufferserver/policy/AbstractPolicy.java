@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.policy;
 
-import com.malhartech.bufferserver.server.PhysicalNode;
+import com.malhartech.bufferserver.internal.PhysicalNode;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Set;
 

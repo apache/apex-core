@@ -2,15 +2,17 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver;
+package com.malhartech.bufferserver.internal;
 
-import com.malhartech.bufferserver.server.ProtobufDataInspector;
+import com.malhartech.bufferserver.internal.ProtobufDataInspector;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.io.IOException;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -25,7 +27,7 @@ public class ProtobufDataInspectorTest
 
   public void testGetType()
   {
-    System.out.println("getType");
+    logger.info("testGetType");
     SerializedData data = null;
     ProtobufDataInspector instance = new ProtobufDataInspector();
     MessageType expResult = null;
@@ -87,4 +89,5 @@ public class ProtobufDataInspectorTest
     fail("The test case is a prototype.");
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(ProtobufDataInspectorTest.class);
 }
