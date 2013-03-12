@@ -751,7 +751,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void updateOnDeployRequests(PTOperator p, Predicate<StramToNodeRequest> superseded, StramToNodeRequest newRequest) {
     // filter existing requests
-    List<StramToNodeRequest> cloneRequests = Lists.newArrayList(p.deployRequests);
+    List<StramToNodeRequest> cloneRequests = new ArrayList<StramToNodeRequest>(p.deployRequests.size());
     for (StramToNodeRequest existingRequest : p.deployRequests) {
       if (!superseded.apply(existingRequest)) {
         cloneRequests.add(existingRequest);
