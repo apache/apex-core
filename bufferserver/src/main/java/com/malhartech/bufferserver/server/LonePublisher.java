@@ -8,6 +8,7 @@ import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.client.ProtoBufClient;
 import com.malhartech.bufferserver.internal.DataList;
 import java.nio.ByteBuffer;
+import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,12 +18,12 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-class Publisher extends ProtoBufClient
+class LonePublisher extends ProtoBufClient
 {
   private final DataList datalist;
   boolean dirty;
 
-  Publisher(DataList dl)
+  LonePublisher(DataList dl)
   {
     this.datalist = dl;
 
@@ -115,5 +116,11 @@ class Publisher extends ProtoBufClient
     datalist.addBuffer(readBuffer);
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(Publisher.class);
+  @Override
+  public void handleException(Exception cce, DefaultEventLoop el)
+  {
+    super.handleException(cce, el); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(LonePublisher.class);
 }

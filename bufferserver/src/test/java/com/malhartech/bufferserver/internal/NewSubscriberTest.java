@@ -31,6 +31,8 @@ public class NewSubscriberTest
 {
   private static final Logger logger = LoggerFactory.getLogger(NewSubscriberTest.class);
   static Server instance;
+  static String host;
+  static int port;
   static BufferServerPublisher bsp;
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
@@ -46,22 +48,13 @@ public class NewSubscriberTest
     catch (IOException ioe) {
       throw new RuntimeException(ioe);
     }
-
     eventloop.start();
 
     instance = new Server(0);
     SocketAddress result = instance.run(eventloop);
     assert (result instanceof InetSocketAddress);
-    String host = ((InetSocketAddress)result).getHostName();
-    int port = ((InetSocketAddress)result).getPort();
-
-    bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloop;
-    bsp.setup(host, port);
-
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloop;
-    bss.setup(host, port);
+    host = ((InetSocketAddress)result).getHostName();
+    port = ((InetSocketAddress)result).getPort();
 
     bsc = new BufferServerController("MyPublisher");
     bsc.eventloop = eventloop;
@@ -72,8 +65,6 @@ public class NewSubscriberTest
   public static void teardownServerAndClients()
   {
     bsc.teardown();
-    bss.teardown();
-    bsp.teardown();
     eventloop.stop(instance);
     eventloop.stop();
   }
@@ -83,6 +74,15 @@ public class NewSubscriberTest
   public void test() throws InterruptedException
   {
     logger.debug("test");
+
+    bsp = new BufferServerPublisher("MyPublisher");
+    bsp.eventloop = eventloop;
+    bsp.setup(host, port);
+
+    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss.eventloop = eventloop;
+    bss.setup(host, port);
+
     bsp.baseWindow = 0x7afebabe;
     bsp.windowId = 00000000;
     bsp.activate();
@@ -170,12 +170,23 @@ public class NewSubscriberTest
     bsp.deactivate();
     bss.deactivate();
 
+    bss.teardown();
+    bsp.teardown();
+
     /*
      * At this point, we know that both the publishers and the subscribers have gotten at least window Id 10.
      * So we go ahead and make the publisher publish from 5 onwards with different data and have subscriber
      * subscribe from 8 onwards. What we should see is that subscriber gets the new data from 8 onwards.
      */
+    bsp = new BufferServerPublisher("MyPublisher");
+    bsp.eventloop = eventloop;
+    bsp.setup(host, port);
 
+    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss.eventloop = eventloop;
+    bss.setup(host, port);
+
+    bsp.baseWindow = 0x7afebabe;
     bsp.windowId = 5;
     bsp.activate();
     Thread.sleep(500);
@@ -256,6 +267,9 @@ public class NewSubscriberTest
 
     bsp.deactivate();
     bss.deactivate();
+
+    bss.teardown();
+    bsp.teardown();
 
     Assert.assertTrue((bss.lastPayload.getBeginWindow().getWindowId() - 8) * 3 < bss.tupleCount.get());
   }

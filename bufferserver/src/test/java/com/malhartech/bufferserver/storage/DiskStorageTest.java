@@ -38,7 +38,7 @@ public class DiskStorageTest
     eventloop = new DefaultEventLoop("server");
     eventloop.start();
 
-    instance = new Server(0, 1024, 10);
+    instance = new Server(0, 1024);
     instance.setSpoolStorage(new DiskStorage());
 
     SocketAddress result = instance.run(eventloop);
@@ -67,6 +67,7 @@ public class DiskStorageTest
   }
 
   @Test
+  @SuppressWarnings("SleepWhileInLoop")
   public void testStorage() throws InterruptedException
   {
     bss.activate();

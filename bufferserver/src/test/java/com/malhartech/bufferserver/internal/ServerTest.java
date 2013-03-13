@@ -47,7 +47,7 @@ public class ServerTest
     }
     eventloop.start();
 
-    instance = new Server(0, 4096, 10);
+    instance = new Server(0, 4096);
     SocketAddress result = instance.run(eventloop);
     assert (result instanceof InetSocketAddress);
     String host = ((InetSocketAddress)result).getHostName();

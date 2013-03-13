@@ -10,6 +10,7 @@ import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Message;
 import java.io.IOException;
 import java.util.Arrays;
+import malhar.netlet.DefaultEventLoop;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -39,6 +40,14 @@ public abstract class ProtoBufClient extends VarIntLengthPrependerClient
       throw new RuntimeException(ex);
     }
   }
+
+  @Override
+  public void handleException(Exception cce, DefaultEventLoop el)
+  {
+    super.handleException(cce, el); //To change body of generated methods, choose Tools | Templates.
+  }
+
+
 
   public abstract void onMessage(Message msg);
 

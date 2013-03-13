@@ -23,11 +23,14 @@ import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.storage.Storage;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import malhar.netlet.DefaultEventLoop;
 import malhar.netlet.Listener.ServerListener;
@@ -42,9 +45,7 @@ import org.slf4j.LoggerFactory;
  */
 public class Server implements ServerListener
 {
-  public static final int DEFAULT_PORT = 9080;
   public static final int DEFAULT_BUFFER_SIZE = 64 * 1024 * 1024;
-  public static final int DEFAULT_BLOCK_COUNT = 8;
   private final int port;
   private String identity;
   private Storage storage;
@@ -56,14 +57,13 @@ public class Server implements ServerListener
    */
   public Server(int port)
   {
-    this(port, DEFAULT_BUFFER_SIZE, DEFAULT_BLOCK_COUNT);
+    this(port, DEFAULT_BUFFER_SIZE);
   }
 
-  public Server(int port, int blocksize, int blockcount)
+  public Server(int port, int blocksize)
   {
     this.port = port;
     this.blockSize = blocksize;
-    this.blockCount = blockcount;
   }
 
   public void setSpoolStorage(Storage storage)
@@ -112,7 +112,7 @@ public class Server implements ServerListener
       port = Integer.parseInt(args[0]);
     }
     else {
-      port = DEFAULT_PORT;
+      port = 0;
     }
 
     DefaultEventLoop eventloop = new DefaultEventLoop("alone");
@@ -138,7 +138,6 @@ public class Server implements ServerListener
   private final ConcurrentHashMap<String, VarIntLengthPrependerClient> publisherChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
   private final ConcurrentHashMap<String, VarIntLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
   private final int blockSize;
-  private final int blockCount;
 
   /**
    *
@@ -363,6 +362,7 @@ public class Server implements ServerListener
     @Override
     public void onMessage(Message message)
     {
+      logger.debug("listener = {}, message = {}", this, message);
       if (ignore) {
         return;
       }
@@ -370,6 +370,10 @@ public class Server implements ServerListener
       Request request = message.getRequest();
       switch (message.getType()) {
         case PUBLISHER_REQUEST:
+          /*
+           * unregister the unidentified client since its job is done!
+           */
+          unregistered(key);
           logger.info("Received publisher request: {}", request);
 
           DataList dl = handlePublisherRequest(request, this);
@@ -380,31 +384,35 @@ public class Server implements ServerListener
             logger.debug("exception while rewiding", ie);
           }
 
-          unregistered(key);
           Publisher publisher = new Publisher(dl);
           publisher.registered(key);
           publisher.transferBuffer(readBuffer, readOffset + size, writeOffset - readOffset - size);
+          ignore = true;
 
           logger.debug("registering the channel for read operation {}", publisher);
           key.attach(publisher);
           key.interestOps(SelectionKey.OP_READ);
-          ignore = true;
           break;
 
         case SUBSCRIBER_REQUEST:
-          logger.info("Received subscriber request: {}", request);
-          boolean contains = subscriberGroups.containsKey(request.getExtension(Buffer.SubscriberRequest.request).getType());
-
+          /*
+           * unregister the unidentified client since its job is done!
+           */
           unregistered(key);
-          VarIntLengthPrependerClient newSubscriber = new Subscriber();
-          newSubscriber.registered(key);
+          logger.info("Received subscriber request: {}", request);
 
-          key.attach(newSubscriber);
-          key.interestOps(SelectionKey.OP_READ);
+          SubscriberRequest subscriberRequest = request.getExtension(SubscriberRequest.request);
+
+          VarIntLengthPrependerClient subscriber = new Subscriber(subscriberRequest.getType());
+          subscriber.registered(key);
           ignore = true;
 
-          LogicalNode ln = handleSubscriberRequest(request, newSubscriber);
-          if (!contains) {
+          key.attach(subscriber);
+          key.interestOps(SelectionKey.OP_WRITE);
+
+          boolean need2cathcup = !subscriberGroups.containsKey(subscriberRequest.getType());
+          LogicalNode ln = handleSubscriberRequest(request, subscriber);
+          if (need2cathcup) {
             ln.catchUp();
           }
           break;
@@ -430,19 +438,193 @@ public class Server implements ServerListener
           break;
 
         default:
-          throw new RuntimeException("unexpected message");
+          throw new RuntimeException("unexpected message: " + message.toString());
       }
+    }
 
+    @Override
+    public void handleException(Exception cce, DefaultEventLoop el)
+    {
+      el.disconnect(this);
     }
 
   }
 
   class Subscriber extends VarIntLengthPrependerClient
   {
+    private final String type;
+
+    Subscriber(String type)
+    {
+      this.type = type;
+    }
+
     @Override
     public void onMessage(byte[] buffer, int offset, int size)
     {
       logger.warn("Received data when no data is expected: {}", Arrays.toString(Arrays.copyOfRange(buffer, offset, offset + size)));
+    }
+
+    @Override
+    public void registered(SelectionKey key)
+    {
+      super.registered(key); //To change body of generated methods, choose Tools | Templates.
+      logger.debug("registered {} with key {}", this, key);
+    }
+
+    @Override
+    public void handleException(Exception cce, DefaultEventLoop el)
+    {
+      LogicalNode ln = subscriberGroups.get(type);
+      if (ln != null) {
+        if (subscriberChannels.containsValue(this)) {
+          final Iterator<Entry<String, VarIntLengthPrependerClient>> i = subscriberChannels.entrySet().iterator();
+          while (i.hasNext()) {
+            if (i.next().getValue() == this) {
+              i.remove();
+              break;
+            }
+          }
+        }
+
+        ln.removeChannel(this);
+        if (ln.getPhysicalNodeCount() == 0) {
+          DataList dl = publisherBufffers.get(ln.getUpstream());
+          if (dl != null) {
+            dl.removeDataListener(ln);
+            dl.delIterator(ln.getIterator());
+          }
+          subscriberGroups.remove(ln.getGroup());
+        }
+      }
+
+      el.disconnect(this);
+    }
+
+  }
+
+  /**
+   * When the publisher connects to the server and starts publishing the data,
+   * this is the end on the server side which handles all the communication.
+   *
+   * @author Chetan Narsude <chetan@malhar-inc.com>
+   */
+  class Publisher extends ProtoBufClient
+  {
+    private final DataList datalist;
+    boolean dirty;
+
+    Publisher(DataList dl)
+    {
+      this.datalist = dl;
+
+      readBuffer = datalist.getBufer();
+      buffer = ByteBuffer.wrap(readBuffer);
+      buffer.position(datalist.getPosition());
+    }
+
+    public void transferBuffer(byte[] array, int offset, int len)
+    {
+      System.arraycopy(array, offset, readBuffer, writeOffset, len);
+      buffer.position(len);
+      read(len);
+    }
+
+    @Override
+    public void onMessage(Message msg)
+    {
+      dirty = true;
+    }
+
+    @Override
+    public void read(int len)
+    {
+      //logger.debug("read {} bytes", len);
+      writeOffset += len;
+      do {
+        if (size <= 0) {
+          switch (size = readVarInt()) {
+            case -1:
+              if (writeOffset == readBuffer.length) {
+                if (readOffset > writeOffset - 5) {
+                  /*
+                   * if the data is not corrupt, we are limited by space to receive full varint.
+                   * so we allocate a new buffer and copy over the partially written data to the
+                   * new buffer and start as if we always had full room but not enough data.
+                   */
+                  logger.info("hit the boundary while reading varint!");
+                  switchToNewBuffer(readBuffer, readOffset);
+                }
+              }
+
+              if (dirty) {
+                dirty = false;
+                datalist.flush(writeOffset);
+              }
+              return;
+
+            case 0:
+              continue;
+          }
+        }
+
+        if (writeOffset - readOffset >= size) {
+          onMessage(readBuffer, readOffset, size);
+          readOffset += size;
+          size = 0;
+        }
+        else if (writeOffset == readBuffer.length) {
+          /*
+           * hit wall while writing serialized data, so have to allocate a new buffer.
+           */
+          switchToNewBuffer(null, 0);
+        }
+        else {
+          if (dirty) {
+            dirty = false;
+            datalist.flush(writeOffset);
+          }
+          return;
+        }
+      }
+      while (true);
+    }
+
+    public void switchToNewBuffer(byte[] array, int offset)
+    {
+      byte[] newBuffer = new byte[datalist.getBlockSize()];
+      buffer = ByteBuffer.wrap(newBuffer);
+      if (array == null || array.length - offset == 0) {
+        writeOffset = 0;
+      }
+      else {
+        writeOffset = array.length - offset;
+        System.arraycopy(readBuffer, offset, newBuffer, 0, writeOffset);
+        buffer.position(writeOffset);
+      }
+      readBuffer = newBuffer;
+      readOffset = 0;
+      datalist.addBuffer(readBuffer);
+    }
+
+    @Override
+    public void handleException(Exception cce, DefaultEventLoop el)
+    {
+      /**
+       * since the publisher server died, the queue which it was using would stop pumping the data unless a new publisher comes up with the same name. We leave
+       * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
+       */
+      if (publisherChannels.containsValue(this)) {
+        final Iterator<Entry<String, VarIntLengthPrependerClient>> i = publisherChannels.entrySet().iterator();
+        while (i.hasNext()) {
+          if (i.next().getValue() == this) {
+            i.remove();
+            break;
+          }
+        }
+      }
+
+      el.disconnect(this);
     }
 
   }
