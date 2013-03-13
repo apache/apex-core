@@ -12,7 +12,7 @@ import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import malhar.netlet.EventLoop;
+import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -34,13 +34,13 @@ public class ServerTest
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
   static int spinCount = 500;
-  static EventLoop eventloop;
+  static DefaultEventLoop eventloop;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
     try {
-      eventloop = new EventLoop("Server");
+      eventloop = new DefaultEventLoop("Server");
     }
     catch (IOException ioe) {
       throw new RuntimeException(ioe);

@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
-import malhar.netlet.EventLoop;
+import malhar.netlet.DefaultEventLoop;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,13 +35,13 @@ public class NewSubscriberTest
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
   static int spinCount = 500;
-  static EventLoop eventloop;
+  static DefaultEventLoop eventloop;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
     try {
-      eventloop = new EventLoop("server");
+      eventloop = new DefaultEventLoop("server");
     }
     catch (IOException ioe) {
       throw new RuntimeException(ioe);

@@ -13,7 +13,7 @@ import com.malhartech.bufferserver.server.Server;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import malhar.netlet.EventLoop;
+import malhar.netlet.DefaultEventLoop;
 import static org.testng.Assert.assertEquals;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -25,7 +25,7 @@ import org.testng.annotations.Test;
  */
 public class DiskStorageTest
 {
-  static EventLoop eventloop;
+  static DefaultEventLoop eventloop;
   static Server instance;
   static BufferServerPublisher bsp;
   static BufferServerSubscriber bss;
@@ -35,7 +35,7 @@ public class DiskStorageTest
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
-    eventloop = new EventLoop("server");
+    eventloop = new DefaultEventLoop("server");
     eventloop.start();
 
     instance = new Server(0, 1024, 10);

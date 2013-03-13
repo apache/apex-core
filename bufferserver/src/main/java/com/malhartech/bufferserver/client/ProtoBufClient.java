@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class ProtoBufClient extends Client
+public abstract class ProtoBufClient extends VarIntLengthPrependerClient
 {
   static final ExtensionRegistry registry = ExtensionRegistry.newInstance();
 
@@ -27,8 +27,6 @@ public abstract class ProtoBufClient extends Client
   @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
-    logger.debug("read {} from {}", Arrays.toString(Arrays.copyOfRange(readBuffer, writeOffset, writeOffset + size)), readBuffer);
-
     try {
       onMessage(Message.newBuilder().mergeFrom(buffer, offset, size, registry).build());
     }

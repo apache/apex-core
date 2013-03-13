@@ -49,29 +49,30 @@ class Publisher extends ProtoBufClient
   {
     logger.debug("read {} bytes", len);
     writeOffset += len;
-    while (true) {
-      while (size <= 0) {
-        size = readVarInt();
-        if (size == -1) {
-          if (writeOffset == readBuffer.length) {
-            if (readOffset > writeOffset - 5) {
-              /*
-               * if the data is not corrupt, we are limited by space to receive full varint.
-               * so we allocate a new buffer and copy over the partially written data to the
-               * new buffer and start as if we always had full room but not enough data.
-               */
-              logger.info("hit the boundary while reading varint!");
-              switchToNewBuffer(readBuffer, readOffset);
+    do {
+      if (size <= 0) {
+        switch (size = readVarInt()) {
+          case -1:
+            if (writeOffset == readBuffer.length) {
+              if (readOffset > writeOffset - 5) {
+                /*
+                 * if the data is not corrupt, we are limited by space to receive full varint.
+                 * so we allocate a new buffer and copy over the partially written data to the
+                 * new buffer and start as if we always had full room but not enough data.
+                 */
+                logger.info("hit the boundary while reading varint!");
+                switchToNewBuffer(readBuffer, readOffset);
+              }
             }
-          }
-          /*
-           * we actually read only a few bytes from the valid varint on the socket.
-           */
-          if (dirty) {
-            dirty = false;
-            datalist.flush();
-          }
-          return;
+
+            if (dirty) {
+              dirty = false;
+              datalist.flush();
+            }
+            return;
+
+          case 0:
+            continue;
         }
       }
 
@@ -94,6 +95,7 @@ class Publisher extends ProtoBufClient
         return;
       }
     }
+    while (true);
   }
 
   public void switchToNewBuffer(byte[] array, int offset)

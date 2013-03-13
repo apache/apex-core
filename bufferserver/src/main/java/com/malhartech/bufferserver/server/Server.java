@@ -17,7 +17,7 @@ import com.malhartech.bufferserver.Buffer.Payload;
 import com.malhartech.bufferserver.Buffer.Request;
 import com.malhartech.bufferserver.Buffer.SubscriberRequest;
 import static com.malhartech.bufferserver.Buffer.SubscriberRequest.PolicyType.*;
-import com.malhartech.bufferserver.client.Client;
+import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
 import com.malhartech.bufferserver.client.ProtoBufClient;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.storage.Storage;
@@ -29,7 +29,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import malhar.netlet.EventLoop;
+import malhar.netlet.DefaultEventLoop;
 import malhar.netlet.Listener.ServerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +48,7 @@ public class Server implements ServerListener
   private final int port;
   private String identity;
   private Storage storage;
-  EventLoop eventloop;
+  DefaultEventLoop eventloop;
   private InetSocketAddress address;
 
   /**
@@ -64,12 +64,6 @@ public class Server implements ServerListener
     this.port = port;
     this.blockSize = blocksize;
     this.blockCount = blockcount;
-    try {
-      eventloop = new EventLoop("server");
-    }
-    catch (IOException ex) {
-      throw new RuntimeException(ex);
-    }
   }
 
   public void setSpoolStorage(Storage storage)
@@ -78,20 +72,21 @@ public class Server implements ServerListener
   }
 
   @Override
-  public synchronized void started(SelectionKey key)
+  public synchronized void registered(SelectionKey key)
   {
-    logger.info("server started listening at {}", key.channel());
-    address = (InetSocketAddress)((ServerSocketChannel)key.channel()).socket().getLocalSocketAddress();
+    ServerSocketChannel channel = (ServerSocketChannel)key.channel();
+    logger.info("server started listening at {}", channel);
+    address = (InetSocketAddress)channel.socket().getLocalSocketAddress();
     notifyAll();
   }
 
   @Override
-  public void stopped(SelectionKey key)
+  public void unregistered(SelectionKey key)
   {
     logger.info("Server stopped listening at {}", key.channel());
   }
 
-  public synchronized InetSocketAddress run(EventLoop eventloop)
+  public synchronized InetSocketAddress run(DefaultEventLoop eventloop)
   {
     eventloop.start(null, port, this);
     try {
@@ -101,6 +96,7 @@ public class Server implements ServerListener
       throw new RuntimeException(ex);
     }
 
+    this.eventloop = eventloop;
     return address;
   }
 
@@ -119,7 +115,7 @@ public class Server implements ServerListener
       port = DEFAULT_PORT;
     }
 
-    EventLoop eventloop = new EventLoop("alone");
+    DefaultEventLoop eventloop = new DefaultEventLoop("alone");
     eventloop.start(null, port, new Server(port));
     new Thread(eventloop).start();
   }
@@ -139,8 +135,8 @@ public class Server implements ServerListener
 
   private final HashMap<String, DataList> publisherBufffers = new HashMap<String, DataList>();
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
-  private final ConcurrentHashMap<String, Client> publisherChannels = new ConcurrentHashMap<String, Client>();
-  private final ConcurrentHashMap<String, Client> subscriberChannels = new ConcurrentHashMap<String, Client>();
+  private final ConcurrentHashMap<String, VarIntLengthPrependerClient> publisherChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
+  private final ConcurrentHashMap<String, VarIntLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
   private final int blockSize;
   private final int blockCount;
 
@@ -191,7 +187,7 @@ public class Server implements ServerListener
     return p;
   }
 
-  private synchronized void handleResetRequest(Buffer.Request request, Client ctx) throws IOException
+  private synchronized void handleResetRequest(Buffer.Request request, VarIntLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());
@@ -202,7 +198,7 @@ public class Server implements ServerListener
       sdb.setData(ByteString.copyFromUtf8("Invalid identifier '" + request.getIdentifier() + "'"));
     }
     else {
-      Client channel = publisherChannels.remove(request.getIdentifier());
+      VarIntLengthPrependerClient channel = publisherChannels.remove(request.getIdentifier());
       if (channel != null) {
         eventloop.disconnect(channel);
         // how do we wait here?
@@ -225,7 +221,7 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public LogicalNode handleSubscriberRequest(Buffer.Request request, Client connection)
+  public LogicalNode handleSubscriberRequest(Buffer.Request request, VarIntLengthPrependerClient connection)
   {
     SubscriberRequest subscriberRequest = request.getExtension(SubscriberRequest.request);
     String identifier = request.getIdentifier();
@@ -239,7 +235,7 @@ public class Server implements ServerListener
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      Client previous = subscriberChannels.put(identifier, connection);
+      VarIntLengthPrependerClient previous = subscriberChannels.put(identifier, connection);
       if (previous != null) {
         eventloop.disconnect(previous);
       }
@@ -283,7 +279,7 @@ public class Server implements ServerListener
     return ln;
   }
 
-  public void handlePurgeRequest(Buffer.Request request, Client ctx) throws IOException
+  public void handlePurgeRequest(Buffer.Request request, VarIntLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
@@ -312,7 +308,7 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public DataList handlePublisherRequest(Buffer.Request request, Client connection)
+  public DataList handlePublisherRequest(Buffer.Request request, VarIntLengthPrependerClient connection)
   {
     String identifier = request.getIdentifier();
 
@@ -322,7 +318,7 @@ public class Server implements ServerListener
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      Client previous = publisherChannels.put(identifier, connection);
+      VarIntLengthPrependerClient previous = publisherChannels.put(identifier, connection);
       if (previous != null) {
         eventloop.disconnect(previous);
       }
@@ -341,11 +337,11 @@ public class Server implements ServerListener
   @Override
   public ClientListener getClientConnection(SocketChannel sc, ServerSocketChannel ssc)
   {
-    return new UnidentifiedClient();
+    return new UnidentifiedClient(sc);
   }
 
   @Override
-  public void handleException(Exception cce, EventLoop el)
+  public void handleException(Exception cce, DefaultEventLoop el)
   {
     if (cce instanceof RuntimeException) {
       throw (RuntimeException)cce;
@@ -354,16 +350,15 @@ public class Server implements ServerListener
     throw new RuntimeException(cce);
   }
 
-  @Override
-  public void accepted(SocketChannel sc)
-  {
-    logger.debug("accepted {}", sc);
-  }
-
   class UnidentifiedClient extends ProtoBufClient
   {
     SocketChannel channel;
     boolean ignore;
+
+    public UnidentifiedClient(SocketChannel channel)
+    {
+      this.channel = channel;
+    }
 
     @Override
     public void onMessage(Message message)
@@ -376,7 +371,6 @@ public class Server implements ServerListener
       switch (message.getType()) {
         case PUBLISHER_REQUEST:
           logger.info("Received publisher request: {}", request);
-          eventloop.unregister(channel);
 
           DataList dl = handlePublisherRequest(request, this);
           try {
@@ -386,20 +380,29 @@ public class Server implements ServerListener
             logger.debug("exception while rewiding", ie);
           }
 
+          unregistered(key);
           Publisher publisher = new Publisher(dl);
+          publisher.registered(key);
+          publisher.transferBuffer(readBuffer, readOffset + size, writeOffset - readOffset);
+
           logger.debug("registering the channel for read operation {}", publisher);
-          eventloop.register(channel, SelectionKey.OP_READ, publisher);
-          publisher.transferBuffer(readBuffer, readOffset, writeOffset - readOffset);
+          key.attach(publisher);
+          key.interestOps(SelectionKey.OP_READ);
           ignore = true;
           break;
 
         case SUBSCRIBER_REQUEST:
           logger.info("Received subscriber request: {}", request);
           boolean contains = subscriberGroups.containsKey(request.getExtension(Buffer.SubscriberRequest.request).getType());
-          eventloop.unregister(channel);
 
-          Client newSubscriber = new Subscriber();
-          eventloop.register(channel, SelectionKey.OP_READ, newSubscriber);
+          unregistered(key);
+          VarIntLengthPrependerClient newSubscriber = new Subscriber();
+          newSubscriber.registered(key);
+
+          key.attach(newSubscriber);
+          key.interestOps(SelectionKey.OP_READ);
+          ignore = true;
+
           LogicalNode ln = handleSubscriberRequest(request, newSubscriber);
           if (!contains) {
             ln.catchUp();
@@ -434,7 +437,7 @@ public class Server implements ServerListener
 
   }
 
-  class Subscriber extends Client
+  class Subscriber extends VarIntLengthPrependerClient
   {
     @Override
     public void onMessage(byte[] buffer, int offset, int size)

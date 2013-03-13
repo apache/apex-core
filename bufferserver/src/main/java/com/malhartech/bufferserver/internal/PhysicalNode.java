@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import com.malhartech.bufferserver.client.Client;
+import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
 import com.malhartech.bufferserver.util.SerializedData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,14 +18,14 @@ public class PhysicalNode
 {
   public static final int BUFFER_SIZE = 8 * 1024;
   private final long starttime;
-  private final Client connection;
+  private final VarIntLengthPrependerClient connection;
   private long processedMessageCount;
 
   /**
    *
    * @param channel
    */
-  public PhysicalNode(Client channel)
+  public PhysicalNode(VarIntLengthPrependerClient channel)
   {
     this.connection = channel;
     starttime = System.currentTimeMillis();
@@ -102,7 +102,7 @@ public class PhysicalNode
   /**
    * @return the channel
    */
-  public Client getConnection()
+  public VarIntLengthPrependerClient getConnection()
   {
     return connection;
   }

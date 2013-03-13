@@ -5,7 +5,7 @@
 package com.malhartech.bufferserver.client;
 
 import java.net.InetSocketAddress;
-import malhar.netlet.EventLoop;
+import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +18,7 @@ public abstract class AbstractSocketSubscriber<T> extends ProtoBufClient
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractSocketSubscriber.class);
   InetSocketAddress address;
-  public EventLoop eventloop;
+  public DefaultEventLoop eventloop;
 
   public void setup(String host, int port)
   {
