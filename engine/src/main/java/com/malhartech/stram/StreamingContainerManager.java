@@ -372,7 +372,7 @@ public class StreamingContainerManager implements PlanContext
           addCheckpoint(status.operator, shb.getLastBackupWindowId());
         }
       }
-      status.recordingName = shb.getRecordingName();
+      status.recordingNames = shb.getRecordingNames();
     }
 
     sca.lastHeartbeatMillis = currentTimeMillis;
@@ -715,7 +715,7 @@ public class StreamingContainerManager implements PlanContext
           ni.failureCount = os.operator.failureCount;
           ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
           ni.currentWindowId = os.currentWindowId & 0xFFFF;
-          ni.recordingName = os.recordingName;
+          ni.recordingNames = os.recordingNames;
         }
         else {
           // initial heartbeat not yet received

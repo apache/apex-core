@@ -483,7 +483,7 @@ public class StramChild
 
     nodes.clear();
 
-    for (TupleRecorder entry : tupleRecorders.values()) {
+    for (TupleRecorder entry: tupleRecorders.values()) {
       entry.teardown();
     }
     tupleRecorders.clear();
@@ -553,12 +553,22 @@ public class StramChild
         if (backupWindowId != null) {
           hb.setLastBackupWindowId(backupWindowId);
         }
-        TupleRecorder tupleRecorder = tupleRecorders.get(e.getKey());
-        if (tupleRecorder == null) {
-          hb.setRecordingName(null);
+        TupleRecorder tupleRecorder = tupleRecorders.get(String.valueOf(e.getKey()));
+        if (tupleRecorder != null) {
+          hb.addRecordingName(tupleRecorder.getRecordingName());
         }
-        else {
-          hb.setRecordingName(tupleRecorder.getRecordingName());
+        PortMappingDescriptor portMappingDescriptor = e.getValue().getPortMappingDescriptor();
+        for (String portName : portMappingDescriptor.inputPorts.keySet()) {
+          tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
+          if (tupleRecorder != null) {
+            hb.addRecordingName(tupleRecorder.getRecordingName());
+          }
+        }
+        for (String portName : portMappingDescriptor.outputPorts.keySet()) {
+          tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
+          if (tupleRecorder != null) {
+            hb.addRecordingName(tupleRecorder.getRecordingName());
+          }
         }
         heartbeats.add(hb);
       }
@@ -649,10 +659,12 @@ public class StramChild
     final Node<?> node;
     final StramToNodeRequest snr;
 
-    AbstractNodeRequest(OperatorContext context, final StramToNodeRequest snr) {
+    AbstractNodeRequest(OperatorContext context, final StramToNodeRequest snr)
+    {
       this.node = nodes.get(context.getId());
       this.snr = snr;
     }
+
   };
 
   /**
@@ -783,6 +795,7 @@ public class StramChild
               logger.error("Operator id {} is already being recorded.", operatorPortName);
             }
           }
+
         });
       }
       break;
@@ -812,6 +825,7 @@ public class StramChild
               logger.error("Operator/port {} is not being recorded.", operatorPortName);
             }
           }
+
         });
       }
       break;
@@ -854,6 +868,7 @@ public class StramChild
             logger.info("Setting property {} on operator {}", properties, operator);
             DAGPropertiesBuilder.setOperatorProperties(operator, properties);
           }
+
         });
         break;
 
