@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.daemon;
+package com.malhartech.util;
 
 /**
  *
@@ -13,7 +13,7 @@ public class ObjectMapperString
 {
   public String string;
 
-  ObjectMapperString(String string)
+  public ObjectMapperString(String string)
   {
     this.string = string;
   }

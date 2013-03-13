@@ -2,9 +2,8 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.daemon.resources;
+package com.malhartech.util;
 
-import com.malhartech.daemon.ObjectMapperString;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.ext.ContextResolver;
@@ -13,7 +12,7 @@ import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.module.SimpleModule;
-import org.codehaus.jackson.map.ser.std.RawSerializer;
+import org.codehaus.jackson.map.ser.impl.RawSerializer;
 
 /**
  *
