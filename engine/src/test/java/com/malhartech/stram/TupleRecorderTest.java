@@ -176,20 +176,20 @@ public class TupleRecorderTest
     final PTOperator ptOp2 = localCluster.findByLogicalNode(dag.getOperatorMeta(op2));
     StramTestSupport.waitForActivation(localCluster, ptOp2);
 
-    localCluster.dnmgr.startRecording(ptOp2.getId(), "doesNotMatter");
+    localCluster.dnmgr.startRecording(ptOp2.getId(), null);
 
     WaitCondition c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
+        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
         return tupleRecorder != null;
       }
 
     };
     Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 2000));
-    TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
+    TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;
     String line;
@@ -213,7 +213,7 @@ public class TupleRecorderTest
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
+        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
         return (tupleRecorder.getTotalTupleCount() >= testTupleCount);
       }
 
@@ -221,13 +221,13 @@ public class TupleRecorderTest
 
     Assert.assertTrue("Should record more than " + testTupleCount + " tuples within 15 seconds", StramTestSupport.awaitCompletion(c, 15000));
 
-    localCluster.dnmgr.stopRecording(ptOp2.getId());
+    localCluster.dnmgr.stopRecording(ptOp2.getId(), null);
     c = new WaitCondition()
     {
       @Override
       public boolean isComplete()
       {
-        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId());
+        TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
         return (tupleRecorder == null);
       }
 
