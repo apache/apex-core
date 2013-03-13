@@ -640,6 +640,17 @@ public class StramChild
     }
   }
 
+  abstract private class AbstractNodeRequest implements OperatorContext.NodeRequest
+  {
+    final Node<?> node;
+    final StramToNodeRequest snr;
+
+    AbstractNodeRequest(OperatorContext context, final StramToNodeRequest snr) {
+      this.node = nodes.get(context.getId());
+      this.snr = snr;
+    }
+  };
+
   /**
    * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)
    *
@@ -648,13 +659,22 @@ public class StramChild
    */
   private void processStramRequest(OperatorContext context, final StramToNodeRequest snr)
   {
-    int operatorId = snr.getOperatorId();
-    final Node<?> node = nodes.get(operatorId);
+    final Node<?> node = nodes.get(context.getId());
     final String name = snr.getName();
     switch (snr.getRequestType()) {
 
       case CHECKPOINT:
-        context.request(new OperatorContext.NodeRequest()
+        // avoid filling queue with checkpoint requests that would write same state multiple times
+        OperatorContext.NodeRequest nr = context.getRequests().peek();
+        if (nr != null && nr instanceof AbstractNodeRequest) {
+          AbstractNodeRequest aor = (AbstractNodeRequest)nr;
+          if (aor.snr.getRequestType() == StramToNodeRequest.RequestType.CHECKPOINT) {
+            aor.snr.setRecoveryCheckpoint(snr.getRecoveryCheckpoint());
+            logger.debug("Duplicates queued request, skipping {}", snr);
+            return;
+          }
+        }
+        context.request(new AbstractNodeRequest(context, snr)
         {
           @Override
           public void execute(Operator operator, int id, long windowId) throws IOException
@@ -675,7 +695,7 @@ public class StramChild
         break;
 
       case START_RECORDING:
-        logger.debug("Received start recording request for " + operatorId + " with name " + name);
+        logger.debug("Received start recording request for " + node.id + " with name " + name);
 
         context.request(new OperatorContext.NodeRequest()
         {
@@ -731,7 +751,7 @@ public class StramChild
         break;
 
       case STOP_RECORDING:
-        logger.debug("Received stop recording request for " + operatorId);
+        logger.debug("Received stop recording request for " + node.id);
 
         context.request(new OperatorContext.NodeRequest()
         {
@@ -757,7 +777,7 @@ public class StramChild
         break;
 
       case SYNC_RECORDING:
-        logger.debug("Received sync recording request for " + operatorId);
+        logger.debug("Received sync recording request for " + node.id);
 
         context.request(new OperatorContext.NodeRequest()
         {
@@ -893,7 +913,6 @@ public class StramChild
            */
           assert (nodi.isInline() == false): "output should not be inline: " + nodi;
           context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
-
           if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
             context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
           }
@@ -928,6 +947,9 @@ public class StramChild
             bssc.setSinkId(sinkIdentifier);
             bssc.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
             bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+            if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
+              bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
+            }
 
             BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
             bsos.setup(bssc);
@@ -1071,6 +1093,9 @@ public class StramChild
             context.setSinkId(sinkIdentifier);
             context.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
+            if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
+              context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
+            }
 
             @SuppressWarnings("unchecked")
             Stream<Object> stream = (Stream)new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
