@@ -53,6 +53,9 @@ public class Block
   {
     if (current.offset < writingOffset) {
       Codec.readRawVarInt32(current);
+      if (current.offset + current.size >= writingOffset) {
+        current.size = 0;
+      }
     }
     else {
       current.size = 0;

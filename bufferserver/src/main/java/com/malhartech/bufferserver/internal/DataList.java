@@ -117,8 +117,9 @@ public class DataList
     this(identifier, 64 * 1024 * 1024);
   }
 
-  public final synchronized void flush()
+  public final synchronized void flush(int writeOffset)
   {
+    last.writingOffset = writeOffset;
     for (DataListener dl : all_listeners) {
       dl.dataAdded();
     }

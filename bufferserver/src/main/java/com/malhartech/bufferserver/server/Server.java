@@ -355,7 +355,7 @@ public class Server implements ServerListener
     SocketChannel channel;
     boolean ignore;
 
-    public UnidentifiedClient(SocketChannel channel)
+    UnidentifiedClient(SocketChannel channel)
     {
       this.channel = channel;
     }
@@ -383,7 +383,7 @@ public class Server implements ServerListener
           unregistered(key);
           Publisher publisher = new Publisher(dl);
           publisher.registered(key);
-          publisher.transferBuffer(readBuffer, readOffset + size, writeOffset - readOffset);
+          publisher.transferBuffer(readBuffer, readOffset + size, writeOffset - readOffset - size);
 
           logger.debug("registering the channel for read operation {}", publisher);
           key.attach(publisher);

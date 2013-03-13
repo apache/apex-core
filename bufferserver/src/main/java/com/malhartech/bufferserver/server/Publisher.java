@@ -47,7 +47,7 @@ class Publisher extends ProtoBufClient
   @Override
   public void read(int len)
   {
-    logger.debug("read {} bytes", len);
+    //logger.debug("read {} bytes", len);
     writeOffset += len;
     do {
       if (size <= 0) {
@@ -67,7 +67,7 @@ class Publisher extends ProtoBufClient
 
             if (dirty) {
               dirty = false;
-              datalist.flush();
+              datalist.flush(writeOffset);
             }
             return;
 
@@ -90,7 +90,7 @@ class Publisher extends ProtoBufClient
       else {
         if (dirty) {
           dirty = false;
-          datalist.flush();
+          datalist.flush(writeOffset);
         }
         return;
       }
