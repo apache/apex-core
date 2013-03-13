@@ -138,8 +138,8 @@ public class StramWebServices
     JSONObject response = new JSONObject();
     try {
       int operId = Integer.valueOf(request.getString("operId"));
-      String name = request.optString("name");
-      dagManager.startRecording(operId, name);
+      String portName = request.optString("portName");
+      dagManager.startRecording(operId, portName);
     }
     catch (JSONException ex) {
       try {
@@ -161,7 +161,8 @@ public class StramWebServices
     JSONObject response = new JSONObject();
     try {
       int operId = request.getInt("operId");
-      dagManager.stopRecording(operId);
+      String portName = request.optString("portName");
+      dagManager.stopRecording(operId, portName);
     }
     catch (JSONException ex) {
       ex.printStackTrace();
@@ -178,7 +179,8 @@ public class StramWebServices
     JSONObject response = new JSONObject();
     try {
       int operId = request.getInt("operId");
-      dagManager.syncRecording(operId);
+      String portName = request.optString("portName");
+      dagManager.syncRecording(operId, portName);
     }
     catch (JSONException ex) {
       ex.printStackTrace();

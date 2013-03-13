@@ -237,14 +237,17 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.lastBackupWindowId = lastBackupWindowId;
     }
 
-    private String recordingName;
+    private List<String> recordingNames = null;
 
-    public String getRecordingName() {
-      return recordingName;
+    public List<String> getRecordingNames() {
+      return recordingNames;
     }
 
-    public void setRecordingName(String recordingName) {
-      this.recordingName = recordingName;
+    public void addRecordingName(String recordingName) {
+      if (this.recordingNames == null) {
+        this.recordingNames = new ArrayList<String>();
+      }
+      this.recordingNames.add(recordingName);
     }
   }
 
@@ -309,7 +312,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private int operatorId;
     private RequestType requestType;
     private long recoveryCheckpoint;
-    private String name;
+    private String portName;
 
     public String setPropertyKey;
     public String setPropertyValue;
@@ -338,12 +341,12 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.recoveryCheckpoint = recoveryCheckpoint;
     }
 
-    public String getName() {
-      return name;
+    public String getPortName() {
+      return portName;
     }
 
-    public void setName(String name) {
-      this.name = name;
+    public void setPortName(String portName) {
+      this.portName = portName;
     }
 
     @Override
@@ -351,7 +354,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
               .append("operatorId", this.operatorId)
               .append("requestType", this.requestType)
-              .append("name", this.name).toString();
+              .append("portName", this.portName).toString();
     }
   }
 

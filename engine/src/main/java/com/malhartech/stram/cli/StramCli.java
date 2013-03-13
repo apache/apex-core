@@ -69,6 +69,7 @@ import com.sun.jersey.api.client.WebResource;
  * </table>
  * <br>
  */
+@SuppressWarnings("UseOfSystemOutOrSystemErr")
 public class StramCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
@@ -315,9 +316,9 @@ public class StramCli
     System.out.println("launch <jarFile> [<configuration>] - Launch application packaged in jar file.");
     System.out.println("timeout <duration> - Wait for completion of current application.");
     System.out.println("kill             - Force termination for current application.");
-    System.out.println("startrecording <operId> [<recordingName>] - Start recording tuples for the given operator id");
-    System.out.println("stoprecording <operId> - Stop recording tuples for the given operator id");
-    System.out.println("syncrecording <operId> - Sync recording tuples for the given operator id");
+    System.out.println("startrecording <operId> [<portName>] - Start recording tuples for the given operator id");
+    System.out.println("stoprecording <operId> [<portName>] - Stop recording tuples for the given operator id");
+    System.out.println("syncrecording <operId> [<portName>] - Sync recording tuples for the given operator id");
     System.out.println("exit             - Exit the app");
 
   }
@@ -778,7 +779,7 @@ public class StramCli
     try {
       request.put("operId", args[1]);
       if (args.length == 3) {
-        request.put("name", args[2]);
+        request.put("portName", args[2]);
       }
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
       System.out.println("start recording requested: " + response);
@@ -791,7 +792,7 @@ public class StramCli
   private void stopRecording(String line)
   {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
-    if (args.length > 2) {
+    if (args.length != 2 && args.length != 3) {
       System.err.println("Invalid arguments");
       return;
     }
@@ -800,9 +801,9 @@ public class StramCli
     JSONObject request = new JSONObject();
 
     try {
-      if (args.length == 2) {
-        int operId = Integer.valueOf(args[1]);
-        request.put("operId", operId);
+      request.put("operId", args[1]);
+      if (args.length == 3) {
+        request.put("portName", args[2]);
       }
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
       System.out.println("stop recording requested: " + response);
@@ -815,7 +816,7 @@ public class StramCli
   private void syncRecording(String line)
   {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
-    if (args.length > 2) {
+    if (args.length != 2 && args.length != 3) {
       System.err.println("Invalid arguments");
       return;
     }
@@ -824,9 +825,9 @@ public class StramCli
     JSONObject request = new JSONObject();
 
     try {
-      if (args.length == 2) {
-        int operId = Integer.valueOf(args[1]);
-        request.put("operId", operId);
+      request.put("operId", args[1]);
+      if (args.length == 3) {
+        request.put("portName", args[2]);
       }
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
       System.out.println("sync recording requested: " + response);

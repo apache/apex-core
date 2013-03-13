@@ -53,6 +53,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
+import org.apache.commons.lang.StringUtils;
 
 /**
  *
@@ -371,7 +372,7 @@ public class StreamingContainerManager implements PlanContext
           addCheckpoint(status.operator, shb.getLastBackupWindowId());
         }
       }
-      status.recordingName = shb.getRecordingName();
+      status.recordingNames = shb.getRecordingNames();
     }
 
     sca.lastHeartbeatMillis = currentTimeMillis;
@@ -714,7 +715,7 @@ public class StreamingContainerManager implements PlanContext
           ni.failureCount = os.operator.failureCount;
           ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
           ni.currentWindowId = os.currentWindowId & 0xFFFF;
-          ni.recordingName = os.recordingName;
+          ni.recordingNames = os.recordingNames;
         }
         else {
           // initial heartbeat not yet received
@@ -731,7 +732,7 @@ public class StreamingContainerManager implements PlanContext
   }
 
   private static class RecordingRequestFilter implements Predicate<StramToNodeRequest> {
-    final static Set<StramToNodeRequest.RequestType> MATCH_TYPES = Sets.newHashSet(RequestType.START_RECORDING, RequestType.STOP_RECORDING);
+    final static Set<StramToNodeRequest.RequestType> MATCH_TYPES = Sets.newHashSet(RequestType.START_RECORDING, RequestType.STOP_RECORDING, RequestType.SYNC_RECORDING);
     @Override
     public boolean apply(@Nullable StramToNodeRequest input) {
       return MATCH_TYPES.contains(input.getRequestType());
@@ -776,12 +777,14 @@ public class StreamingContainerManager implements PlanContext
     throw new NotFoundException("Operator ID " + operatorId + " not found");
   }
 
-  public void startRecording(int operId, String name)
+  public void startRecording(int operId, String portName)
   {
     StramChildAgent sca = getContainerAgentFromOperatorId(operId);
     StramToNodeRequest request = new StramToNodeRequest();
     request.setOperatorId(operId);
-    request.setName(name);
+    if (!StringUtils.isBlank(portName)) {
+      request.setPortName(portName);
+    }
     request.setRequestType(RequestType.START_RECORDING);
     sca.addOperatorRequest(request);
     OperatorStatus os = sca.operators.get(operId);
@@ -791,11 +794,14 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  public void stopRecording(int operId)
+  public void stopRecording(int operId, String portName)
   {
     StramChildAgent sca = getContainerAgentFromOperatorId(operId);
     StramToNodeRequest request = new StramToNodeRequest();
     request.setOperatorId(operId);
+    if (!StringUtils.isBlank(portName)) {
+      request.setPortName(portName);
+    }
     request.setRequestType(RequestType.STOP_RECORDING);
     sca.addOperatorRequest(request);
     OperatorStatus os = sca.operators.get(operId);
@@ -805,11 +811,14 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  public void syncRecording(int operId)
+  public void syncRecording(int operId, String portName)
   {
     StramChildAgent sca = getContainerAgentFromOperatorId(operId);
     StramToNodeRequest request = new StramToNodeRequest();
     request.setOperatorId(operId);
+    if (!StringUtils.isBlank(portName)) {
+      request.setPortName(portName);
+    }
     request.setRequestType(RequestType.SYNC_RECORDING);
     sca.addOperatorRequest(request);
   }
