@@ -501,6 +501,7 @@ public class TupleRecorder implements Operator
       if (postToUrl != null) {
         JSONObject json = new JSONObject();
         json.put("portId", String.valueOf(portId));
+        json.put("windowId", currentWindowId);
         json.put("data", new JSONObject(new String(jsonStreamCodec.toByteArray(obj).data)));
         WebResource wr = client.resource(postToUrl);
         wr.type(MediaType.APPLICATION_JSON).post(json);
