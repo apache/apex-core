@@ -7,9 +7,11 @@ package com.malhartech.bufferserver.client;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
+import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +73,17 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Mess
       else if (data.getType() == MessageType.BEGIN_WINDOW || data.getType() == MessageType.RESET_WINDOW) {
         lastPayload = data;
       }
+    }
+  }
+
+  @Override
+  public void handleException(Exception cce, DefaultEventLoop el)
+  {
+    if (cce instanceof IOException) {
+      el.disconnect(this);
+    }
+    else {
+      throw new RuntimeException(cce);
     }
   }
 

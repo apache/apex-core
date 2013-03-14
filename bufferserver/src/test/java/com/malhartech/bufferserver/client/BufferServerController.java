@@ -5,6 +5,8 @@
 package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.Buffer.Message;
+import java.io.IOException;
+import malhar.netlet.DefaultEventLoop;
 
 /**
  *
@@ -37,6 +39,17 @@ public class BufferServerController extends AbstractSocketSubscriber<Message>
   public void onMessage(Message data)
   {
     this.data = data;
+  }
+
+  @Override
+  public void handleException(Exception cce, DefaultEventLoop el)
+  {
+    if (cce instanceof IOException) {
+      el.disconnect(this);
+    }
+    else {
+      throw new RuntimeException(cce);
+    }
   }
 
 }

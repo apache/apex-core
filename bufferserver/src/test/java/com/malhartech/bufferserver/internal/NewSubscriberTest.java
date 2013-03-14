@@ -5,7 +5,6 @@
 package com.malhartech.bufferserver.internal;
 
 import com.malhartech.bufferserver.client.BufferServerSubscriber;
-import com.malhartech.bufferserver.client.BufferServerController;
 import com.malhartech.bufferserver.client.BufferServerPublisher;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.Buffer.Message;
@@ -33,9 +32,6 @@ public class NewSubscriberTest
   static Server instance;
   static String host;
   static int port;
-  static BufferServerPublisher bsp;
-  static BufferServerSubscriber bss;
-  static BufferServerController bsc;
   static int spinCount = 500;
   static DefaultEventLoop eventloop;
 
@@ -55,16 +51,11 @@ public class NewSubscriberTest
     assert (result instanceof InetSocketAddress);
     host = ((InetSocketAddress)result).getHostName();
     port = ((InetSocketAddress)result).getPort();
-
-    bsc = new BufferServerController("MyPublisher");
-    bsc.eventloop = eventloop;
-    bsc.setup(host, port);
   }
 
   @AfterClass
   public static void teardownServerAndClients()
   {
-    bsc.teardown();
     eventloop.stop(instance);
     eventloop.stop();
   }
@@ -75,18 +66,18 @@ public class NewSubscriberTest
   {
     logger.debug("test");
 
-    bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloop;
-    bsp.setup(host, port);
+    final BufferServerPublisher bsp1 = new BufferServerPublisher("MyPublisher");
+    bsp1.eventloop = eventloop;
+    bsp1.setup(host, port);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloop;
-    bss.setup(host, port);
+    final BufferServerSubscriber bss1 = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss1.eventloop = eventloop;
+    bss1.setup(host, port);
 
-    bsp.baseWindow = 0x7afebabe;
-    bsp.windowId = 00000000;
-    bsp.activate();
-    bss.activate();
+    bsp1.baseWindow = 0x7afebabe;
+    bsp1.windowId = 00000000;
+    bsp1.activate();
+    bss1.activate();
 
     Thread.sleep(500);
 
@@ -99,7 +90,7 @@ public class NewSubscriberTest
       {
         ResetTuple rt = new ResetTuple();
         rt.id = 0x7afebabe000000faL;
-        bsp.publishMessage(rt);
+        bsp1.publishMessage(rt);
 
         long windowId = 0x7afebabe00000000L;
         try {
@@ -107,15 +98,15 @@ public class NewSubscriberTest
 
             BeginTuple bt = new BeginTuple();
             bt.id = windowId;
-            bsp.publishMessage(bt);
+            bsp1.publishMessage(bt);
 
             Thread.sleep(5);
-            bsp.publishMessage(new byte[0]);
+            bsp1.publishMessage(new byte[0]);
             Thread.sleep(5);
 
             EndTuple et = new EndTuple();
             et.id = windowId;
-            bsp.publishMessage(et);
+            bsp1.publishMessage(et);
 
             windowId++;
           }
@@ -147,14 +138,14 @@ public class NewSubscriberTest
         catch (InterruptedException ex) {
         }
         finally {
-          logger.debug("subscriber received first = {} and last = {}", bss.firstPayload, bss.lastPayload);
+          logger.debug("subscriber received first = {} and last = {}", bss1.firstPayload, bss1.lastPayload);
         }
       }
 
     }.start();
 
     do {
-      Message message = bss.lastPayload;
+      Message message = bss1.lastPayload;
       if (message != null) {
         if (message.getType() == MessageType.BEGIN_WINDOW && message.getBeginWindow().getWindowId() > 9) {
           break;
@@ -167,28 +158,28 @@ public class NewSubscriberTest
     publisherRun.set(false);
     subscriberRun.set(false);
 
-    bsp.deactivate();
-    bss.deactivate();
+    bsp1.deactivate();
+    bss1.deactivate();
 
-    bss.teardown();
-    bsp.teardown();
+    bss1.teardown();
+    bsp1.teardown();
 
     /*
      * At this point, we know that both the publishers and the subscribers have gotten at least window Id 10.
      * So we go ahead and make the publisher publish from 5 onwards with different data and have subscriber
      * subscribe from 8 onwards. What we should see is that subscriber gets the new data from 8 onwards.
      */
-    bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloop;
-    bsp.setup(host, port);
+    final BufferServerPublisher bsp2 = new BufferServerPublisher("MyPublisher");
+    bsp2.eventloop = eventloop;
+    bsp2.setup(host, port);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloop;
-    bss.setup(host, port);
+    final BufferServerSubscriber bss2 = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss2.eventloop = eventloop;
+    bss2.setup(host, port);
 
-    bsp.baseWindow = 0x7afebabe;
-    bsp.windowId = 5;
-    bsp.activate();
+    bsp2.baseWindow = 0x7afebabe;
+    bsp2.windowId = 5;
+    bsp2.activate();
     Thread.sleep(500);
 
     publisherRun.set(true);
@@ -198,24 +189,20 @@ public class NewSubscriberTest
       @SuppressWarnings("SleepWhileInLoop")
       public void run()
       {
-//        ResetTuple rt = new ResetTuple();
-//        rt.id = 0x7afebabe000000faL;
-//        bsp.publishMessage(rt);
-
         long windowId = 0x7afebabe00000005L;
         try {
           while (publisherRun.get()) {
             BeginTuple bt = new BeginTuple();
             bt.id = windowId;
-            bsp.publishMessage(bt);
+            bsp2.publishMessage(bt);
 
             Thread.sleep(5);
-            bsp.publishMessage(new byte[] {'a'});
+            bsp2.publishMessage(new byte[] {'a'});
             Thread.sleep(5);
 
             EndTuple et = new EndTuple();
             et.id = windowId;
-            bsp.publishMessage(et);
+            bsp2.publishMessage(et);
 
             windowId++;
           }
@@ -229,8 +216,8 @@ public class NewSubscriberTest
 
     }.start();
 
-    bss.windowId = 0x7afebabe00000008L;
-    bss.activate();
+    bss2.windowId = 0x7afebabe00000008L;
+    bss2.activate();
     subscriberRun.set(true);
 
     new Thread("subscriber")
@@ -247,14 +234,14 @@ public class NewSubscriberTest
         catch (InterruptedException ex) {
         }
         finally {
-          logger.debug("subscriber received first = {} and last = {}", bss.firstPayload, bss.lastPayload);
+          logger.debug("subscriber received first = {} and last = {}", bss2.firstPayload, bss2.lastPayload);
         }
       }
 
     }.start();
 
     do {
-      Message message = bss.lastPayload;
+      Message message = bss2.lastPayload;
       if (message != null && message.getBeginWindow().getWindowId() > 14) {
         break;
       }
@@ -265,13 +252,13 @@ public class NewSubscriberTest
     publisherRun.set(false);
     subscriberRun.set(false);
 
-    bsp.deactivate();
-    bss.deactivate();
+    bsp2.deactivate();
+    bss2.deactivate();
 
-    bss.teardown();
-    bsp.teardown();
+    bss2.teardown();
+    bsp2.teardown();
 
-    Assert.assertTrue((bss.lastPayload.getBeginWindow().getWindowId() - 8) * 3 < bss.tupleCount.get());
+    Assert.assertTrue((bss2.lastPayload.getBeginWindow().getWindowId() - 8) * 3 < bss2.tupleCount.get());
   }
 
   class ResetTuple implements Tuple

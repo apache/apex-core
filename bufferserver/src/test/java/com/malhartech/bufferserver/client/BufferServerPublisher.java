@@ -7,6 +7,8 @@ package com.malhartech.bufferserver.client;
 import com.google.protobuf.ByteString;
 import com.malhartech.bufferserver.Buffer;
 import com.malhartech.bufferserver.internal.Tuple;
+import java.io.IOException;
+import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,6 +85,17 @@ public class BufferServerPublisher extends AbstractSocketPublisher
   {
     super.activate();
     write(ClientHandler.getPublishRequest(id, "BufferServerPublisher", (long)baseWindow << 32 | windowId));
+  }
+
+  @Override
+  public void handleException(Exception cce, DefaultEventLoop el)
+  {
+    if (cce instanceof IOException) {
+      el.disconnect(this);
+    }
+    else {
+      throw new RuntimeException(cce);
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
