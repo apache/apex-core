@@ -10,8 +10,11 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.engine.Tuple;
+import com.malhartech.util.JacksonObjectMapperProvider;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.config.ClientConfig;
+import com.sun.jersey.api.client.config.DefaultClientConfig;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -62,12 +65,20 @@ public class TupleRecorder implements Operator
   private boolean isLocalMode = false;
   private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
   private transient StreamCodec<Object> streamCodec;
+  private transient JsonStreamCodec<Object> jsonStreamCodec = new JsonStreamCodec<Object>();
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
   private boolean syncRequested = false;
-  private Client client = Client.create();
+  private Client client;
   private URI postToUrl = null;
   private URI getNumSubscribersUrl = null;
   private int numSubscribers = 0;
+
+  public TupleRecorder()
+  {
+    ClientConfig cc = new DefaultClientConfig();
+    cc.getClasses().add(JacksonObjectMapperProvider.class);
+    client = Client.create(cc);
+  }
 
   public RecorderSink newSink(String key)
   {
@@ -490,9 +501,10 @@ public class TupleRecorder implements Operator
       if (postToUrl != null) {
         JSONObject json = new JSONObject();
         json.put("portId", String.valueOf(portId));
-        json.put("data", obj);
+        json.put("windowId", currentWindowId);
+        json.put("data", new JSONObject(new String(jsonStreamCodec.toByteArray(obj).data)));
         WebResource wr = client.resource(postToUrl);
-        wr.type(MediaType.APPLICATION_JSON).post(JSONObject.class, json);
+        wr.type(MediaType.APPLICATION_JSON).post(json);
       }
     }
     catch (Exception ex) {
@@ -507,6 +519,7 @@ public class TupleRecorder implements Operator
         WebResource wr = client.resource(getNumSubscribersUrl);
         JSONObject response = wr.get(JSONObject.class);
         numSubscribers = response.getInt("num");
+        logger.info("Number of subscribers is {}", numSubscribers);
       }
     }
     catch (Exception ex) {

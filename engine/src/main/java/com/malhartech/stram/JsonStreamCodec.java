@@ -5,9 +5,13 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.StreamCodec;
+import com.malhartech.util.ObjectMapperString;
 import java.io.*;
 import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.module.SimpleModule;
+import org.codehaus.jackson.map.ser.impl.RawSerializer;
 
 /**
  *
@@ -22,6 +26,9 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   {
     mapper = new ObjectMapper();
     mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
+    SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
+    module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
+    mapper.registerModule(module);
   }
 
   @Override

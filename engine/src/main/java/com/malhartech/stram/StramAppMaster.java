@@ -232,6 +232,15 @@ public class StramAppMaster
       return stats;
     }
 
+    @Override
+    public String getDaemonUrl()
+    {
+      if (dag != null) {
+        return dag.getAttributes().attr(DAG.STRAM_DAEMON_URL).get();
+      }
+      return "unknown";
+    }
+
   }
 
   /**
