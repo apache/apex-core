@@ -4,15 +4,21 @@
  */
 package com.malhartech.engine;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.Serializable;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.engine.DefaultStreamCodec.ClassIdPair;
-import org.junit.Assert;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.malhartech.util.JdkSerializer;
 
 /**
  *
@@ -20,7 +26,6 @@ import org.slf4j.LoggerFactory;
  */
 public class DefaultStreamCodecTest
 {
-  private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodecTest.class);
 
   static class TestClass
   {
@@ -86,7 +91,7 @@ public class DefaultStreamCodecTest
 
     Input input = new Input();
     input.setBuffer(output.toBytes());
-    ClassIdPair clone = (ClassIdPair)decoder.readClassAndObject(input);
+    decoder.readClassAndObject(input);
   }
 
   @Test
@@ -149,6 +154,34 @@ public class DefaultStreamCodecTest
     DataStatePair dsp = c.toByteArray(t1);
     TestTuple t2 = (TestTuple)c.fromByteArray(dsp);
     Assert.assertEquals("", t1.finalField, t2.finalField);
+  }
+
+   @DefaultSerializer(JdkSerializer.class)
+   public static class OuterClass implements Serializable {
+    private static final long serialVersionUID = -3128672061060284420L;
+
+     @DefaultSerializer(JdkSerializer.class)
+     public class InnerClass implements Serializable {
+      private static final long serialVersionUID = -7176523451391231326L;
+     }
+   }
+
+  @Test
+  public void testInnerClassSerialization() throws Exception
+  {
+    OuterClass outer = new OuterClass();
+    Object inner = outer.new InnerClass();
+
+    for (Object o : new Object[] {outer, inner}) {
+      DefaultStreamCodec<Object> c = new DefaultStreamCodec<Object>();
+      DataStatePair dsp = c.toByteArray(o);
+      c.fromByteArray(dsp);
+
+      DefaultOperatorSerDe os = new DefaultOperatorSerDe();
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      os.write(o, bos);
+      os.read(new ByteArrayInputStream(bos.toByteArray()));
+    }
   }
 
 }

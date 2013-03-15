@@ -4,32 +4,24 @@
  */
 package com.malhartech.stram;
 
-import com.google.common.collect.Sets;
-import com.malhartech.annotation.InputPortFieldAnnotation;
-import com.malhartech.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorMeta;
-import com.malhartech.api.DAG.StreamMeta;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.Operator;
-import com.malhartech.engine.GenericTestModule;
-import com.malhartech.engine.TestGeneratorInputModule;
-import com.malhartech.engine.TestOutputModule;
-import com.malhartech.stram.cli.StramClientUtils;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import javax.validation.Valid;
@@ -41,17 +33,32 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 
-import jline.ConsoleOperations;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Test;
+
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.google.common.collect.Sets;
+import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.BaseOperator;
+import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.Context.PortContext;
+import com.malhartech.api.DAG;
+import com.malhartech.api.DAG.OperatorMeta;
+import com.malhartech.api.DAG.StreamMeta;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
+import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.TestOutputModule;
+import com.malhartech.stram.cli.StramClientUtils;
+import com.malhartech.util.JdkSerializer;
 
 public class DAGBuilderTest {
 
@@ -592,6 +599,62 @@ public class DAGBuilderTest {
     } catch (IllegalArgumentException e) {
       // expected
     }
+  }
+
+  /**
+   * Operator that can be used with default Java serialization instead of Kryo
+   */
+  @DefaultSerializer(JdkSerializer.class)
+  public static class JdkSerializableOperator extends BaseOperator implements Serializable {
+    private static final long serialVersionUID = -4024202339520027097L;
+
+    public abstract class SerializableInputPort<T> implements InputPort<T>, Sink<T>, java.io.Serializable {
+      private static final long serialVersionUID = 1L;
+
+      @Override
+      public Operator getOperator() {
+        return JdkSerializableOperator.this;
+      }
+
+      @Override
+      public Sink<T> getSink() {
+        return this;
+      }
+
+      @Override
+      public void setConnected(boolean connected) {
+      }
+
+      @Override
+      public Class<? extends StreamCodec<T>> getStreamCodec() {
+        return null;
+      }
+    }
+
+    @InputPortFieldAnnotation(name="", optional=true)
+    final public InputPort<Object> inport1 = new SerializableInputPort<Object>() {
+      private static final long serialVersionUID = 1L;
+
+      @Override
+      final public void process(Object payload) {
+      }
+    };
+  }
+
+  @Test
+  public void testJdkSerializableOperator() throws Exception {
+    DAG dag = new DAG();
+    JdkSerializableOperator o1 = dag.addOperator("o1", new JdkSerializableOperator());
+
+    ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+    DAG.write(dag, outStream);
+    outStream.close();
+
+    DAG clonedDag = DAG.read(new ByteArrayInputStream(outStream.toByteArray()));
+    JdkSerializableOperator o1Clone = (JdkSerializableOperator)clonedDag.getOperatorMeta("o1").getOperator();
+    Assert.assertNotNull("port object null", o1Clone.inport1);
+    Assert.assertEquals("", o1Clone, o1Clone.inport1.getOperator());
+
   }
 
 }
