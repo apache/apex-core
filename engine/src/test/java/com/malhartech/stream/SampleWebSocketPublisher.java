@@ -52,6 +52,8 @@ public class SampleWebSocketPublisher implements Runnable
         Thread.sleep(1000);
         connection.disconnect();
       }
+    } catch (InterruptedException ex) {
+      return;
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }
