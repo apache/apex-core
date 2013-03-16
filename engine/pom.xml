@@ -198,6 +198,12 @@
       <artifactId>malhar-bufferserver</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-websocket</artifactId>
+      <version>8.1.9.v20130131</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 
@@ -263,8 +269,8 @@
 	  <id>generate-version-info</id>
 	  <activation>
 	    <file>
-	      <!-- 
-	        ${project.artifactId} does not work - see https://jira.codehaus.org/browse/MNG-5418 
+	      <!--
+	        ${project.artifactId} does not work - see https://jira.codehaus.org/browse/MNG-5418
 	        (required to use this for all modules from parent project)
 	      -->
 	      <missing>target/classes/malhar-stram-git.properties</missing>
@@ -290,7 +296,7 @@
               <prefix>git</prefix>
               <generateGitPropertiesFile>true</generateGitPropertiesFile>
 	          <generateGitPropertiesFilename>target/classes/malhar-stram-git.properties</generateGitPropertiesFilename>
-	        </configuration>       
+	        </configuration>
           </plugin>
         </plugins>
       </build>
