@@ -3,7 +3,7 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.bufferserver.client.Client;
+import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.stram.StramChild;
@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  *
  * @param <T>
  */
-public abstract class SocketInputStream<T> extends Client implements Stream<T>
+public abstract class SocketInputStream<T> extends VarIntLengthPrependerClient implements Stream<T>
 {
   @Override
   public void setup(StreamContext context)
