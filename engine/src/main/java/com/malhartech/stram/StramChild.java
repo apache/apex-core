@@ -34,7 +34,7 @@ import java.util.Map.Entry;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import malhar.netlet.EventLoop;
+import malhar.netlet.DefaultEventLoop;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -75,10 +75,10 @@ public class StramChild
   private final Object heartbeatTrigger = new Object();
   private String checkpointFsPath;
   private String appPath;
-  public static final EventLoop eventloop;
+  public static final DefaultEventLoop eventloop;
   static {
     try {
-      eventloop = new EventLoop("alone");
+      eventloop = new DefaultEventLoop("alone");
     }
     catch (IOException io) {
       throw new RuntimeException(io);
