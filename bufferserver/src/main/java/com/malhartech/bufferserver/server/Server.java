@@ -125,7 +125,6 @@ public class Server implements ServerListener
   {
     return identity;
   }
-
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
   static final ExtensionRegistry registry = ExtensionRegistry.newInstance();
 
@@ -407,6 +406,7 @@ public class Server implements ServerListener
           subscriber.registered(key);
           ignore = true;
 
+          logger.debug("registering the channel for write operation {}", subscriber);
           key.attach(subscriber);
           key.interestOps(SelectionKey.OP_WRITE);
 
@@ -415,6 +415,7 @@ public class Server implements ServerListener
           if (need2cathcup) {
             ln.catchUp();
           }
+          DefaultEventLoop.KEY = key;
           break;
 
         case PURGE_REQUEST:
@@ -457,19 +458,13 @@ public class Server implements ServerListener
     Subscriber(String type)
     {
       this.type = type;
+      write = false;
     }
 
     @Override
     public void onMessage(byte[] buffer, int offset, int size)
     {
       logger.warn("Received data when no data is expected: {}", Arrays.toString(Arrays.copyOfRange(buffer, offset, offset + size)));
-    }
-
-    @Override
-    public void registered(SelectionKey key)
-    {
-      super.registered(key); //To change body of generated methods, choose Tools | Templates.
-      logger.debug("registered {} with key {}", this, key);
     }
 
     @Override

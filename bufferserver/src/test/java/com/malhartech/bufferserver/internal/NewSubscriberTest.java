@@ -13,6 +13,7 @@ import com.malhartech.bufferserver.util.Codec;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.channels.CancelledKeyException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import malhar.netlet.DefaultEventLoop;
 import org.junit.Assert;
@@ -33,21 +34,24 @@ public class NewSubscriberTest
   static String host;
   static int port;
   static int spinCount = 500;
-  static DefaultEventLoop eventloop;
+  static DefaultEventLoop eventloopServer;
+  static DefaultEventLoop eventloopClient;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
     try {
-      eventloop = new DefaultEventLoop("server");
+      eventloopServer = new DefaultEventLoop("server");
+      eventloopClient = new DefaultEventLoop("client");
     }
     catch (IOException ioe) {
       throw new RuntimeException(ioe);
     }
-    eventloop.start();
+    eventloopServer.start();
+    eventloopClient.start();
 
     instance = new Server(0);
-    SocketAddress result = instance.run(eventloop);
+    SocketAddress result = instance.run(eventloopServer);
     assert (result instanceof InetSocketAddress);
     host = ((InetSocketAddress)result).getHostName();
     port = ((InetSocketAddress)result).getPort();
@@ -56,8 +60,9 @@ public class NewSubscriberTest
   @AfterClass
   public static void teardownServerAndClients()
   {
-    eventloop.stop(instance);
-    eventloop.stop();
+    eventloopServer.stop(instance);
+    eventloopServer.stop();
+    eventloopClient.stop();
   }
 
   @Test
@@ -67,11 +72,11 @@ public class NewSubscriberTest
     logger.debug("test");
 
     final BufferServerPublisher bsp1 = new BufferServerPublisher("MyPublisher");
-    bsp1.eventloop = eventloop;
+    bsp1.eventloop = eventloopClient;
     bsp1.setup(host, port);
 
     final BufferServerSubscriber bss1 = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss1.eventloop = eventloop;
+    bss1.eventloop = eventloopClient;
     bss1.setup(host, port);
 
     bsp1.baseWindow = 0x7afebabe;
@@ -170,11 +175,11 @@ public class NewSubscriberTest
      * subscribe from 8 onwards. What we should see is that subscriber gets the new data from 8 onwards.
      */
     final BufferServerPublisher bsp2 = new BufferServerPublisher("MyPublisher");
-    bsp2.eventloop = eventloop;
+    bsp2.eventloop = eventloopClient;
     bsp2.setup(host, port);
 
     final BufferServerSubscriber bss2 = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss2.eventloop = eventloop;
+    bss2.eventloop = eventloopClient;
     bss2.setup(host, port);
 
     bsp2.baseWindow = 0x7afebabe;
@@ -209,8 +214,10 @@ public class NewSubscriberTest
         }
         catch (InterruptedException ex) {
         }
+        catch (CancelledKeyException cke) {
+        }
         finally {
-          logger.debug("publisher the middle of window = {}", Codec.getStringWindowId(windowId));
+          logger.debug("publisher in the middle of window = {}", Codec.getStringWindowId(windowId));
         }
       }
 

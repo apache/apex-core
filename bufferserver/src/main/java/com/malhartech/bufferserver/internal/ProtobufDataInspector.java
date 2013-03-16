@@ -11,6 +11,7 @@ import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.io.IOException;
+import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +32,7 @@ public class ProtobufDataInspector implements DataIntrospector
   private void readyMessage(SerializedData data)
   {
     if (data.offset != previousOffset) {
+      logger.debug("processing at {} = {}", data.offset, Arrays.toString(Arrays.copyOfRange(data.bytes, data.offset, data.offset + data.size)));
       try {
         int size = data.size - data.dataOffset + data.offset;
         if (size < BasicDataMinLength) {
@@ -45,7 +47,8 @@ public class ProtobufDataInspector implements DataIntrospector
         }
       }
       catch (InvalidProtocolBufferException ipbe) {
-        logger.debug(ipbe.getLocalizedMessage());
+        logger.debug("exception", ipbe);
+        System.exit(0);
         previousMessage = null;
       }
 
@@ -124,6 +127,7 @@ public class ProtobufDataInspector implements DataIntrospector
 
   /**
    * Writes the NO_MESSAGE record if there is room or else returns the size of the data it wrote to the buffer.
+   *
    * @param bytes The array which contains the region to wipe out
    * @param offset The start offset of th region
    * @param length The size of the region in bytes
