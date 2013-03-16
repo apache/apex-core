@@ -236,7 +236,7 @@ public class StramAppMaster
     public String getDaemonUrl()
     {
       if (dag != null) {
-        return dag.getAttributes().attr(DAG.STRAM_DAEMON_URL).get();
+        return dag.getAttributes().attrValue(DAG.STRAM_DAEMON_URL, null);
       }
       return "unknown";
     }
