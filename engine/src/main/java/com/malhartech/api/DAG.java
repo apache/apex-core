@@ -27,15 +27,22 @@ import org.slf4j.LoggerFactory;
 
 /**
  * DAG contains the logical declarations of operators and streams.
- * It will be serialized and deployed to the cluster, where it is translated into the physical plan.
+ * <p>
+ * Operators have ports that are connected through streams. Ports can be
+ * mandatory or optional with respect to their need to connect a stream to it.
+ * Each port can be connected to a single stream only. A stream has to be
+ * connected to one output port and can go to multiple input ports.
+ * <p>
+ * The DAG will be serialized and deployed to the cluster, where it is translated
+ * into the physical plan.
  */
 public class DAG implements Serializable, DAGContext
 {
   private static final long serialVersionUID = -2099729915606048704L;
   private static final Logger LOG = LoggerFactory.getLogger(DAG.class);
   private final Map<String, StreamMeta> streams = new HashMap<String, StreamMeta>();
-  private final Map<String, OperatorMeta> nodes = new HashMap<String, OperatorMeta>();
-  private final List<OperatorMeta> rootNodes = new ArrayList<OperatorMeta>();
+  private final Map<String, OperatorMeta> operators = new HashMap<String, OperatorMeta>();
+  private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
   private final AttributeMap<DAGContext> attributes = new DefaultAttributeMap<DAGContext>();
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
@@ -182,6 +189,9 @@ public class DAG implements Serializable, DAGContext
     }
   }
 
+  /**
+   * Representation of streams in the logical layer. Instances are created through {@link DAG.addStream}.
+   */
   public final class StreamMeta implements Serializable
   {
     private static final long serialVersionUID = 1L;
@@ -229,14 +239,14 @@ public class DAG implements Serializable, DAGContext
 
     public StreamMeta setSource(Operator.OutputPort<?> port)
     {
-      OperatorMeta op = getOperatorWrapper(port.getOperator());
+      OperatorMeta op = getOperatorMeta(port.getOperator());
       OutputPortMeta portMeta = op.getOutputPortMeta(port);
       if (portMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + port);
       }
       this.source = portMeta;
       if (op.outputStreams.containsKey(portMeta)) {
-        String msg = String.format("Node %s already connected to %s", op.id, op.outputStreams.get(portMeta).id);
+        String msg = String.format("Operator %s already connected to %s", op.id, op.outputStreams.get(portMeta).id);
         throw new IllegalArgumentException(msg);
       }
       op.outputStreams.put(portMeta, this);
@@ -250,7 +260,7 @@ public class DAG implements Serializable, DAGContext
 
     public StreamMeta addSink(Operator.InputPort<?> port)
     {
-      OperatorMeta op = getOperatorWrapper(port.getOperator());
+      OperatorMeta op = getOperatorMeta(port.getOperator());
       InputPortMeta portMeta = op.getInputPortMeta(port);
       if (portMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + port);
@@ -272,7 +282,7 @@ public class DAG implements Serializable, DAGContext
 
       sinks.add(portMeta);
       op.inputStreams.put(portMeta, this);
-      rootNodes.remove(portMeta.operatorWrapper);
+      rootOperators.remove(portMeta.operatorWrapper);
 
       return this;
     }
@@ -437,16 +447,16 @@ public class DAG implements Serializable, DAGContext
     if (operator instanceof BaseOperator) {
       ((BaseOperator)operator).setName(name);
     }
-    if (nodes.containsKey(name)) {
-      if (nodes.get(name) == (Object)operator) {
+    if (operators.containsKey(name)) {
+      if (operators.get(name) == (Object)operator) {
         return operator;
       }
-      throw new IllegalArgumentException("duplicate operator id: " + nodes.get(name));
+      throw new IllegalArgumentException("duplicate operator id: " + operators.get(name));
     }
 
     OperatorMeta decl = new OperatorMeta(name, operator);
-    rootNodes.add(decl);
-    nodes.put(name, decl);
+    rootOperators.add(decl);
+    operators.put(name, decl);
     return operator;
   }
 
@@ -462,7 +472,14 @@ public class DAG implements Serializable, DAGContext
   }
 
   /**
-   * Add identified stream for given source and sinks.
+   * Add identified stream for given source and sinks. Multiple sinks can be
+   * connected to a stream, but each port can only be connected to a single
+   * stream. Attempt to add stream to an already connected port will throw an
+   * error.
+   * <p>
+   * This method allows to connect all interested ports to a stream at
+   * once. Alternatively, use the returned {@link StreamMeta} builder object to
+   * add more sinks and set other stream properties.
    *
    * @param <T>
    * @param id
@@ -515,7 +532,7 @@ public class DAG implements Serializable, DAGContext
    */
   public AttributeMap<OperatorContext> getContextAttributes(Operator operator)
   {
-    return getOperatorWrapper(operator).attributes;
+    return getOperatorMeta(operator).attributes;
   }
 
   public <T> void setAttribute(DAGContext.AttributeKey<T> key, T value)
@@ -525,35 +542,35 @@ public class DAG implements Serializable, DAGContext
 
   public <T> void setAttribute(Operator operator, OperatorContext.AttributeKey<T> key, T value)
   {
-    this.getOperatorWrapper(operator).attributes.attr(key).set(value);
+    this.getOperatorMeta(operator).attributes.attr(key).set(value);
   }
 
   public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
-    getOperatorWrapper(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
+    getOperatorMeta(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
   }
 
   public <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
-    getOperatorWrapper(port.getOperator()).getPortMapping().inPortMap.get(port).attributes.attr(key).set(value);
+    getOperatorMeta(port.getOperator()).getPortMapping().inPortMap.get(port).attributes.attr(key).set(value);
   }
 
   public List<OperatorMeta> getRootOperators()
   {
-    return Collections.unmodifiableList(this.rootNodes);
+    return Collections.unmodifiableList(this.rootOperators);
   }
 
   public Collection<OperatorMeta> getAllOperators()
   {
-    return Collections.unmodifiableCollection(this.nodes.values());
+    return Collections.unmodifiableCollection(this.operators.values());
   }
 
-  public OperatorMeta getOperatorWrapper(String nodeId)
+  public OperatorMeta getOperatorMeta(String operatorId)
   {
-    return this.nodes.get(nodeId);
+    return this.operators.get(operatorId);
   }
 
-  public OperatorMeta getOperatorWrapper(Operator operator)
+  public OperatorMeta getOperatorMeta(Operator operator)
   {
     // TODO: cache mapping
     for (OperatorMeta o: getAllOperators()) {
@@ -596,7 +613,7 @@ public class DAG implements Serializable, DAGContext
   public Set<String> getClassNames()
   {
     Set<String> classNames = new HashSet<String>();
-    for (OperatorMeta n: this.nodes.values()) {
+    for (OperatorMeta n: this.operators.values()) {
       String className = n.getOperator().getClass().getName();
       if (className != null) {
         classNames.add(className);
@@ -621,7 +638,7 @@ public class DAG implements Serializable, DAGContext
     Validator validator = factory.getValidator();
 
     // clear visited on all operators
-    for (OperatorMeta n: nodes.values()) {
+    for (OperatorMeta n: operators.values()) {
       n.nindex = null;
       n.lowlink = null;
 
@@ -663,7 +680,7 @@ public class DAG implements Serializable, DAGContext
     stack = new Stack<OperatorMeta>();
 
     List<List<String>> cycles = new ArrayList<List<String>>();
-    for (OperatorMeta n: nodes.values()) {
+    for (OperatorMeta n: operators.values()) {
       if (n.nindex == null) {
         findStronglyConnected(n, cycles);
       }
@@ -750,7 +767,7 @@ public class DAG implements Serializable, DAGContext
   public String toString()
   {
     return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-            append("operators", this.nodes).
+            append("operators", this.operators).
             append("streams", this.streams).
             append("properties", this.attributes).
             toString();

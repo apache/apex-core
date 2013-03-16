@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram.webapp;
 
+import java.util.List;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -40,7 +41,7 @@ public class OperatorInfo {
   public long failureCount;
   public long recoveryWindowId;
   public long currentWindowId;
-  public String recordingName; // null if recording is not happening
+  public List<String> recordingNames; // null if recording is not happening
 
   public OperatorInfo() {
   }

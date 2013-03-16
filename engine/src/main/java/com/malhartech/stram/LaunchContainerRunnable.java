@@ -67,7 +67,7 @@ public class LaunchContainerRunnable implements Runnable
     // It should be provided out of the box.
     // For now setting all required classpaths including
     // the classpath to "." for the application jar
-    StringBuilder classPathEnv = new StringBuilder("${CLASSPATH}:./*");
+    StringBuilder classPathEnv = new StringBuilder("./*");
     for (String c: yarnClient.getConf().get(YarnConfiguration.YARN_APPLICATION_CLASSPATH).split(",")) {
       classPathEnv.append(':');
       classPathEnv.append(c.trim());
@@ -112,7 +112,7 @@ public class LaunchContainerRunnable implements Runnable
     // Connect to ContainerManager
     ContainerManager cm = yarnClient.connectToCM(container);
 
-    LOG.info("Setting up container launch container for containerid=" + container.getId());
+    LOG.info("Setting up container launch context for containerid=" + container.getId());
     ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
 
     ctx.setContainerId(container.getId());
@@ -122,8 +122,7 @@ public class LaunchContainerRunnable implements Runnable
       ctx.setUser(UserGroupInformation.getCurrentUser().getShortUserName());
     }
     catch (IOException e) {
-      LOG.info("Getting current user info failed when trying to launch the container"
-              + e.getMessage());
+      LOG.info("Getting current user info failed when trying to launch the container", e);
     }
 
     setClasspath(containerEnv);

@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.malhartech.api.DAG.InputPortMeta;
 import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.InputOperator;
@@ -145,7 +147,7 @@ public class StramChildAgent {
     long currentWindowId;
     MovingAverage tuplesProcessedPSMA10 = new MovingAverage(10);
     MovingAverage tuplesEmittedPSMA10 = new MovingAverage(10);
-    String recordingName; // null if recording is not in progress
+    List<String> recordingNames; // null if recording is not in progress
 
     private OperatorStatus(PTContainer container, PTOperator operator) {
       this.operator = operator;
@@ -165,9 +167,6 @@ public class StramChildAgent {
     this.container = container;
     this.initCtx = initCtx;
     this.operators = new HashMap<Integer, OperatorStatus>(container.operators.size());
-    for (PTOperator operator : container.operators) {
-      this.operators.put(operator.id, new OperatorStatus(container, operator));
-    }
   }
 
   boolean shutdownRequested = false;
@@ -176,7 +175,7 @@ public class StramChildAgent {
   long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
-  final Map<Integer, OperatorStatus> operators;
+  Map<Integer, OperatorStatus> operators;
   final StreamingContainerContext initCtx;
   private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
   DeployRequest pendingRequest = null;
@@ -204,12 +203,26 @@ public class StramChildAgent {
 
   public void addRequest(DeployRequest r) {
     this.requests.add(r);
-    LOG.info("Adding request {} {}"/*ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero*/, container.containerId, r);
+    if (r.deployOperators != null) {
+      // currently deployed operators copy on write
+      HashMap<Integer, OperatorStatus> newDeployedOperators = new HashMap<Integer, OperatorStatus>(this.operators);
+      if (r instanceof UndeployRequest) {
+        for (PTOperator operator : r.deployOperators) {
+            newDeployedOperators.remove(operator.getId());
+        }
+      } else {
+        for (PTOperator operator : r.deployOperators) {
+          newDeployedOperators.put(operator.getId(), new OperatorStatus(container, operator));
+        }
+      }
+      this.operators = Collections.unmodifiableMap(newDeployedOperators);
+    }
+    LOG.info("Added request {} {}"/*ack=" + r.ackCountdown + " ewz=" + r.executeWhenZero*/, container.containerId, r);
   }
 
   public void addOperatorRequest(StramToNodeRequest r) {
-    this.operatorRequests.add(r);
     LOG.info("Adding operator request {} {}", container.containerId, r);
+    this.operatorRequests.add(r);
   }
 
   protected ConcurrentLinkedQueue<DeployRequest> getRequests() {
@@ -244,18 +257,22 @@ public class StramChildAgent {
 
     // process
     if (!requests.remove(r)) {
-        return null;
+      return null;
     }
 
     this.pendingRequest = r;
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     if (r.deployOperators != null) {
       if (r instanceof UndeployRequest) {
-        List<OperatorDeployInfo> nodeList = getDeployInfoList(r.deployOperators);
+        List<OperatorDeployInfo> nodeList = getUndeployInfoList(r.deployOperators);
         rsp.undeployRequest = nodeList;
       } else {
         List<OperatorDeployInfo> nodeList = getDeployInfoList(r.deployOperators);
         rsp.deployRequest = nodeList;
+        rsp.nodeRequests = Lists.newArrayList();
+        for (PTOperator o : r.deployOperators) {
+          rsp.nodeRequests.addAll(o.deployRequests);
+        }
       }
     }
 
@@ -264,6 +281,10 @@ public class StramChildAgent {
   }
 
   boolean isIdle() {
+    if (this.hasPendingWork()) {
+      // container may have no active operators but deploy request pending
+      return false;
+    }
     for (OperatorStatus operatorStatus : this.operators.values()) {
       if (!operatorStatus.isIdle()) {
         return false;
@@ -278,12 +299,10 @@ public class StramChildAgent {
 
   /**
    * Create deploy info for StramChild.
-   * @param container
-   * @param deployNodes
-   * @param checkpoints
+   * @param operators
    * @return StreamingContainerContext
    */
-  private List<OperatorDeployInfo> getDeployInfoList(List<PTOperator> deployNodes) {
+  private List<OperatorDeployInfo> getDeployInfoList(List<PTOperator> operators) {
 
     if (container.bufferServerAddress == null) {
       throw new IllegalStateException("No buffer server address assigned");
@@ -292,11 +311,11 @@ public class StramChildAgent {
     Map<OperatorDeployInfo, PTOperator> nodes = new LinkedHashMap<OperatorDeployInfo, PTOperator>();
     Map<String, OutputDeployInfo> publishers = new LinkedHashMap<String, OutputDeployInfo>();
 
-    for (PTOperator node : deployNodes) {
+    for (PTOperator node : operators) {
       OperatorDeployInfo ndi = createOperatorDeployInfo(node);
       long checkpointWindowId = node.getRecoveryCheckpoint();
       if (checkpointWindowId > 0) {
-        LOG.debug("Operator {} recovery checkpoint {}", node.id, Codec.getStringWindowId(checkpointWindowId));
+        LOG.debug("Operator {} recovery checkpoint {}", node.getId(), Codec.getStringWindowId(checkpointWindowId));
         ndi.checkpointWindowId = checkpointWindowId;
       }
       nodes.put(ndi, node);
@@ -324,7 +343,7 @@ public class StramChildAgent {
         }
 
         ndi.outputs.add(portInfo);
-        publishers.put(node.id + "/" + streamMeta.getId(), portInfo);
+        publishers.put(node.getId() + "/" + streamMeta.getId(), portInfo);
       }
     }
 
@@ -344,12 +363,12 @@ public class StramChildAgent {
         InputDeployInfo inputInfo = new InputDeployInfo();
         inputInfo.declaredStreamId = streamMeta.getId();
         inputInfo.portName = in.portName;
-        for (Map.Entry<InputPortMeta, StreamMeta> e : node.logicalNode.getInputStreams().entrySet()) {
+        for (Map.Entry<InputPortMeta, StreamMeta> e : node.getOperatorMeta().getInputStreams().entrySet()) {
           if (e.getValue() == streamMeta) {
             inputInfo.contextAttributes = e.getKey().getAttributes();
           }
         }
-        inputInfo.sourceNodeId = sourceOutput.source.id;
+        inputInfo.sourceNodeId = sourceOutput.source.getId();
         inputInfo.sourcePortName = sourceOutput.portName;
         if (in.partitions != null) {
           inputInfo.partitionKeys = in.partitions.partitions;
@@ -358,9 +377,9 @@ public class StramChildAgent {
 
         if (streamMeta.isInline() && sourceOutput.source.container == node.container) {
           // inline input (both operators in same container and inline hint set)
-          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.id + "/" + streamMeta.getId());
+          OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getId());
           if (outputInfo == null) {
-            throw new AssertionError("Missing publisher for inline stream " + streamMeta);
+            throw new AssertionError("Missing publisher for inline stream " + sourceOutput);
           }
         } else {
           // buffer server input
@@ -368,7 +387,7 @@ public class StramChildAgent {
           InetSocketAddress addr = sourceOutput.source.container.bufferServerAddress;
           if (addr == null) {
             // TODO: occurs during undeploy
-            LOG.warn("upstream address not assigned: " + in.source);
+            LOG.warn("upstream address not assigned: " + sourceOutput);
             addr = container.bufferServerAddress;
             //throw new IllegalStateException("upstream address not assigned: " + in.source);
           }
@@ -386,6 +405,29 @@ public class StramChildAgent {
   }
 
   /**
+   * Create operator undeploy request for StramChild. Since the physical plan
+   * could have been modified (dynamic partitioning etc.), stream information
+   * cannot be provided. StramChild keeps track of connected streams and removes
+   * them along with the operator instance.
+   *
+   * @param operators
+   * @return
+   */
+  private List<OperatorDeployInfo> getUndeployInfoList(List<PTOperator> operators) {
+    List<OperatorDeployInfo> undeployList = new ArrayList<OperatorDeployInfo>(operators.size());
+    for (PTOperator node : operators) {
+      OperatorDeployInfo ndi = createOperatorDeployInfo(node);
+      long checkpointWindowId = node.getRecoveryCheckpoint();
+      if (checkpointWindowId > 0) {
+        LOG.debug("Operator {} recovery checkpoint {}", node.getId(), Codec.getStringWindowId(checkpointWindowId));
+        ndi.checkpointWindowId = checkpointWindowId;
+      }
+      undeployList.add(ndi);
+    }
+    return undeployList;
+  }
+
+  /**
    * Create deploy info for operator.<p>
    * <br>
    * @param dnodeId
@@ -396,7 +438,7 @@ public class StramChildAgent {
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator node)
   {
     OperatorDeployInfo ndi = new OperatorDeployInfo();
-    Operator operator = node.getLogicalNode().getOperator();
+    Operator operator = node.getOperatorMeta().getOperator();
     ndi.type = (operator instanceof InputOperator) ? OperatorDeployInfo.OperatorType.INPUT : OperatorDeployInfo.OperatorType.GENERIC;
     if (node.merge != null) {
       operator = node.merge;
@@ -412,9 +454,9 @@ public class StramChildAgent {
     } catch (Exception e) {
       throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getClass() + ")", e);
     }
-    ndi.declaredId = node.getLogicalId();
-    ndi.id = node.id;
-    ndi.contextAttributes = node.logicalNode.getAttributes();
+    ndi.declaredId = node.getOperatorMeta().getId();
+    ndi.id = node.getId();
+    ndi.contextAttributes = node.getOperatorMeta().getAttributes();
     return ndi;
   }
 

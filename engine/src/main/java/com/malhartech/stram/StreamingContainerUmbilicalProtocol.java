@@ -237,14 +237,17 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.lastBackupWindowId = lastBackupWindowId;
     }
 
-    private String recordingName;
+    private List<String> recordingNames = null;
 
-    public String getRecordingName() {
-      return recordingName;
+    public List<String> getRecordingNames() {
+      return recordingNames;
     }
 
-    public void setRecordingName(String recordingName) {
-      this.recordingName = recordingName;
+    public void addRecordingName(String recordingName) {
+      if (this.recordingNames == null) {
+        this.recordingNames = new ArrayList<String>();
+      }
+      this.recordingNames.add(recordingName);
     }
   }
 
@@ -303,20 +306,23 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 1L;
 
     enum RequestType {
-      REPORT_PARTION_STATS, CHECKPOINT, START_RECORDING, STOP_RECORDING
+      CHECKPOINT, START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY
     }
 
-    private int nodeId;
+    private int operatorId;
     private RequestType requestType;
     private long recoveryCheckpoint;
-    private String name;
+    private String portName;
 
-    public int getNodeId() {
-      return nodeId;
+    public String setPropertyKey;
+    public String setPropertyValue;
+
+    public int getOperatorId() {
+      return operatorId;
     }
 
-    public void setNodeId(int nodeId) {
-      this.nodeId = nodeId;
+    public void setOperatorId(int id) {
+      this.operatorId = id;
     }
 
     public RequestType getRequestType() {
@@ -335,20 +341,20 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.recoveryCheckpoint = recoveryCheckpoint;
     }
 
-    public String getName() {
-      return name;
+    public String getPortName() {
+      return portName;
     }
 
-    public void setName(String name) {
-      this.name = name;
+    public void setPortName(String portName) {
+      this.portName = portName;
     }
 
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-              .append("nodeId", this.nodeId)
+              .append("operatorId", this.operatorId)
               .append("requestType", this.requestType)
-              .append("name", this.name).toString();
+              .append("portName", this.portName).toString();
     }
   }
 
@@ -403,13 +409,4 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    */
   ContainerHeartbeatResponse pollRequest(String containerId);
 
-  /**
-   * Reporting of partitioning stats - requested by stram for operators that
-   * participate in partitioning when the basic heartbeat indicates a
-   * bottleneck. The details would then be used by stram to split or merge operators
-   * to re-balance load.
-   *
-   * @return {com.malhartech.stram.StramToNodeRequest}
-   */
-  StramToNodeRequest processPartioningDetails();
 }

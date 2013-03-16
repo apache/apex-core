@@ -36,11 +36,11 @@ public class StreamingContainerParent extends CompositeService implements Stream
   private Server server;
   private final SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;
-  private final StreamingContainerManager dnodeManager;
+  private final StreamingContainerManager dagManager;
 
   public StreamingContainerParent(String name, StreamingContainerManager dnodeMgr) {
     super(name);
-    this.dnodeManager = dnodeMgr;
+    this.dagManager = dnodeMgr;
   }
 
   @Override
@@ -110,30 +110,25 @@ public class StreamingContainerParent extends CompositeService implements Stream
 
   @Override
   public void log(String containerId, String msg) throws IOException {
-    LOG.info("child msg: {} context: {}", msg, dnodeManager.getContainerAgent(containerId).container);
+    LOG.info("child msg: {} context: {}", msg, dagManager.getContainerAgent(containerId).container);
   }
 
   @Override
   public StreamingContainerContext getInitContext(String containerId)
       throws IOException {
-    StramChildAgent sca = dnodeManager.getContainerAgent(containerId);
+    StramChildAgent sca = dagManager.getContainerAgent(containerId);
     return sca.getInitContext();
   }
 
   @Override
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) {
-    return dnodeManager.processHeartbeat(msg);
+    return dagManager.processHeartbeat(msg);
   }
 
   @Override
   public ContainerHeartbeatResponse pollRequest(String containerId) {
-    StramChildAgent sca = dnodeManager.getContainerAgent(containerId);
+    StramChildAgent sca = dagManager.getContainerAgent(containerId);
     return sca.pollRequest();
-  }
-
-  @Override
-  public StramToNodeRequest processPartioningDetails() {
-    throw new RuntimeException("processPartioningDetails not implemented");
   }
 
 }

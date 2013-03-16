@@ -136,7 +136,7 @@ public class PartitioningTest
     }
     CollectorOperator collector = dag.addOperator("collector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
-    dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getOperatorMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
@@ -147,16 +147,16 @@ public class PartitioningTest
     lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
-    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorWrapper(collector));
+    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorMeta(collector));
     Assert.assertEquals("number operator instances " + operators, 2, operators.size());
 
     // one entry for each partition + merged output
     Assert.assertEquals("received tuples " + CollectorOperator.receivedTuples, 3, CollectorOperator.receivedTuples.size());
-    Assert.assertEquals("received tuples " + operators.get(0), Arrays.asList(4), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(0).id));
-    Assert.assertEquals("received tuples " + operators.get(1), Arrays.asList(5), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(1).id));
+    Assert.assertEquals("received tuples " + operators.get(0), Arrays.asList(4), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(0).getId()));
+    Assert.assertEquals("received tuples " + operators.get(1), Arrays.asList(5), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(1).getId()));
 
-    PTOperator pmerged = lc.findByLogicalNode(dag.getOperatorWrapper(merged));
-    List<Object> tuples = CollectorOperator.receivedTuples.get(merged.prefix + pmerged.id);
+    PTOperator pmerged = lc.findByLogicalNode(dag.getOperatorMeta(merged));
+    List<Object> tuples = CollectorOperator.receivedTuples.get(merged.prefix + pmerged.getId());
     Assert.assertNotNull("merged tuples " + pmerged, tuples);
     Assert.assertEquals("merged tuples " + pmerged, Sets.newHashSet(testData[0]), Sets.newHashSet(tuples));
   }
@@ -212,7 +212,7 @@ public class PartitioningTest
 
     CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
-    dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getOperatorMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(20);
     //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(200);
     dag.addStream("fromInput", input.output, collector.input);
@@ -224,7 +224,7 @@ public class PartitioningTest
     lc.setHeartbeatMonitoringEnabled(false);
     lc.runAsync();
 
-    List<PTOperator> partitions = assertNumberPartitions(2, lc, dag.getOperatorWrapper(collector));
+    List<PTOperator> partitions = assertNumberPartitions(2, lc, dag.getOperatorMeta(collector));
 
     PTOperator splitPartition = partitions.get(0);
     PartitionLoadWatch.loadIndicators.put(splitPartition, 1);
@@ -235,7 +235,7 @@ public class PartitioningTest
       count += lc.dnmgr.processEvents();
     }
 
-    partitions = assertNumberPartitions(3, lc, dag.getOperatorWrapper(collector));
+    partitions = assertNumberPartitions(3, lc, dag.getOperatorMeta(collector));
     // check deployment
     for (PTOperator p: partitions) {
       StramTestSupport.waitForActivation(lc, p);
@@ -243,12 +243,12 @@ public class PartitioningTest
 
     PartitionLoadWatch.loadIndicators.remove(splitPartition);
 
-    PTOperator planInput = lc.findByLogicalNode(dag.getOperatorWrapper(input));
+    PTOperator planInput = lc.findByLogicalNode(dag.getOperatorMeta(input));
     LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
     Map<Integer, Node<?>> nodeMap = c.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
     @SuppressWarnings({"unchecked"})
-    TestInputOperator<Integer> inputDeployed = (TestInputOperator<Integer>)nodeMap.get(planInput.id).getOperator();
+    TestInputOperator<Integer> inputDeployed = (TestInputOperator<Integer>)nodeMap.get(planInput.getId()).getOperator();
     Assert.assertNotNull(inputDeployed);
 
     // add tuple that matches the partition key and check that each partition receives it
@@ -263,7 +263,7 @@ public class PartitioningTest
     for (PTOperator p: partitions) {
       Integer expectedTuple = p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next();
       List<Object> receivedTuples;
-      while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.id)) == null) {
+      while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.getId())) == null) {
         LOG.debug("Waiting for tuple: " + p);
         sleep(20);
       }
@@ -271,10 +271,10 @@ public class PartitioningTest
     }
 
     // single output operator to receive tuple from each partition
-    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorWrapper(singleCollector));
+    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorMeta(singleCollector));
     Assert.assertEquals("number output operator instances " + operators, 1, operators.size());
     List<Object> receivedTuples;
-    while ((receivedTuples = CollectorOperator.receivedTuples.get(singleCollector.prefix + operators.get(0).id)) == null) {
+    while ((receivedTuples = CollectorOperator.receivedTuples.get(singleCollector.prefix + operators.get(0).getId())) == null) {
       LOG.debug("Waiting for merge operator tuple: " + operators.get(0));
       sleep(20);
     }
@@ -324,7 +324,7 @@ public class PartitioningTest
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
       DAG dag = new DAG();
       dag.getAttributes().attr(DAG.STRAM_STATS_HANDLER).set(PartitionLoadWatch.class.getName());
-      dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).set(checkpointDir.getPath());
+      dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
 
@@ -332,19 +332,19 @@ public class PartitioningTest
       lc.setHeartbeatMonitoringEnabled(false);
       lc.runAsync();
 
-      List<PTOperator> partitions = assertNumberPartitions(3, lc, dag.getOperatorWrapper(input));
+      List<PTOperator> partitions = assertNumberPartitions(3, lc, dag.getOperatorMeta(input));
       Set<String> partProperties = new HashSet<String>();
       for (PTOperator p: partitions) {
         LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
         Map<Integer, Node<?>> nodeMap = c.getNodes();
         Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
-        PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.id).getOperator();
+        PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.getId()).getOperator();
         Assert.assertNotNull(inputDeployed);
         partProperties.add(inputDeployed.partitionProperty);
         // move to checkpoint to verify that checkpoint state is updated upon repartition
         p.checkpointWindows.add(10L);
         p.recoveryCheckpoint = 10L;
-        new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).backup(p.id, 10L, inputDeployed, StramUtils.getNodeSerDe(null));
+        new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).backup(p.getId(), 10L, inputDeployed, StramUtils.getNodeSerDe(null));
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);
@@ -357,13 +357,13 @@ public class PartitioningTest
       }
       PartitionLoadWatch.loadIndicators.remove(partitions.get(0));
 
-      partitions = assertNumberPartitions(3, lc, dag.getOperatorWrapper(input));
+      partitions = assertNumberPartitions(3, lc, dag.getOperatorMeta(input));
       partProperties = new HashSet<String>();
       for (PTOperator p: partitions) {
         LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
         Map<Integer, Node<?>> nodeMap = c.getNodes();
         Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
-        PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.id).getOperator();
+        PartitionableInputOperator inputDeployed = (PartitionableInputOperator)nodeMap.get(p.getId()).getOperator();
         Assert.assertNotNull(inputDeployed);
         partProperties.add(inputDeployed.partitionProperty);
       }

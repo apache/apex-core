@@ -67,6 +67,7 @@ public class StramWebServicesTest extends JerseyTest {
     final String appPath = "/testPath";
     final String userId = "testUser";
     final long startTime = System.currentTimeMillis();
+    final String daemonUrl = "http://localhost:9090";
 
     TestAppContext(int appid, int numJobs, int numTasks, int numAttempts) {
       this.appID = Records.newRecord(ApplicationId.class);
@@ -126,6 +127,13 @@ public class StramWebServicesTest extends JerseyTest {
       return new AppInfo.AppStats() {
       };
     }
+
+    @Override
+    public String getDaemonUrl()
+    {
+      return daemonUrl;
+    }
+
   }
 
   public static class SomeStats {

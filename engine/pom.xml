@@ -36,101 +36,101 @@
   <build>
     <plugins>
       <!-- Publish tests jar -->
-       <plugin>
-         <groupId>org.apache.maven.plugins</groupId>
-         <artifactId>maven-jar-plugin</artifactId>
-         <version>2.4</version>
-         <executions>
-           <execution>
-             <goals>
-               <goal>test-jar</goal>
-             </goals>
-             <phase>package</phase>
-           </execution>
-         </executions>
-         <configuration>
-           <excludes>
-             <!-- never include into jar (used in minicluster test) -->
-             <exclude>**/yarn-site.xml</exclude>
-           </excludes>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>test-jar</goal>
+            </goals>
+            <phase>package</phase>
+          </execution>
+        </executions>
+        <configuration>
+          <excludes>
+            <!-- never include into jar (used in minicluster test) -->
+            <exclude>**/yarn-site.xml</exclude>
+          </excludes>
           <archive>
             <manifestEntries>
               <malhar-buildtime>${maven.build.timestamp}</malhar-buildtime>
               <malhar-buildversion>${project.version}</malhar-buildversion>
             </manifestEntries>
           </archive>
-         </configuration>
-       </plugin>
-       <plugin>
-         <artifactId>maven-compiler-plugin</artifactId>
-         <version>2.3.2</version>
-         <configuration>
-           <encoding>UTF-8</encoding>
-           <source>1.6</source>
-           <target>1.6</target>
-           <debug>true</debug>
-           <!--optimize>true</optimize-->
-           <showDeprecation>true</showDeprecation>
-           <showWarnings>true</showWarnings>
-         </configuration>
-       </plugin>
-       <plugin>
-         <artifactId>maven-dependency-plugin</artifactId>
-         <executions>
-           <execution>
-             <id>create-client-mvn-generated-classpath</id>
-             <phase>generate-resources</phase>
-             <goals>
-               <goal>build-classpath</goal>
-             </goals>
-             <configuration>
-               <!--
-               generate runtime classpath for running client in dev environment
-               -->
-               <outputFile>${project.build.directory}/mvn-generated-runtime-classpath</outputFile>
-               <includeScope>runtime</includeScope>
-               <!--excludeGroupIds>org.apache.hadoop</excludeGroupIds-->
-             </configuration>
-           </execution>
-           <execution>
-             <id>create-mvn-generated-classpath</id>
-             <phase>generate-test-resources</phase>
-             <goals>
-               <goal>build-classpath</goal>
-             </goals>
-             <configuration>
-               <!-- needed to run the unit test to generate
-               the required classpath that is required in the env
-               of the launch container in the mini yarn cluster
-               -->
-               <outputFile>${project.build.directory}/test-classes/mvn-generated-classpath</outputFile>
-             </configuration>
-           </execution>
-         </executions>
-       </plugin>
-       <plugin>
-           <groupId>org.apache.maven.plugins</groupId>
-           <artifactId>maven-eclipse-plugin</artifactId>
-           <version>2.9</version>
-           <configuration>
-               <downloadSources>true</downloadSources>
-               <!--downloadJavadocs>true</downloadJavadocs-->
-           </configuration>
-       </plugin>
-       <plugin>
-         <artifactId>maven-surefire-plugin</artifactId>
-         <version>2.12</version>
-         <dependencies>
-             <dependency>
-               <groupId>org.apache.maven.surefire</groupId>
-               <artifactId>surefire-junit47</artifactId>
-               <version>2.12</version>
-             </dependency>
-         </dependencies>
-         <configuration>
-             <excludedGroups>${test.excludedGroups}</excludedGroups>
-         </configuration>
-       </plugin>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <source>1.6</source>
+          <target>1.6</target>
+          <debug>true</debug>
+          <!--optimize>true</optimize-->
+          <showDeprecation>true</showDeprecation>
+          <showWarnings>true</showWarnings>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>create-client-mvn-generated-classpath</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>build-classpath</goal>
+            </goals>
+            <configuration>
+              <!--
+              generate runtime classpath for running client in dev environment
+              -->
+              <outputFile>${project.build.directory}/mvn-generated-runtime-classpath</outputFile>
+              <includeScope>runtime</includeScope>
+              <!--excludeGroupIds>org.apache.hadoop</excludeGroupIds-->
+            </configuration>
+          </execution>
+          <execution>
+            <id>create-mvn-generated-classpath</id>
+            <phase>generate-test-resources</phase>
+            <goals>
+              <goal>build-classpath</goal>
+            </goals>
+            <configuration>
+              <!-- needed to run the unit test to generate
+              the required classpath that is required in the env
+              of the launch container in the mini yarn cluster
+              -->
+              <outputFile>${project.build.directory}/test-classes/mvn-generated-classpath</outputFile>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-eclipse-plugin</artifactId>
+        <version>2.9</version>
+        <configuration>
+          <downloadSources>true</downloadSources>
+          <!--downloadJavadocs>true</downloadJavadocs-->
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.12</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-junit47</artifactId>
+            <version>2.12</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <excludedGroups>${test.excludedGroups}</excludedGroups>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
@@ -172,26 +172,26 @@
       <version>1.07</version>
       <classifier>shaded</classifier>
     </dependency>
-     <!--dependency>
-         <groupId>org.reflections</groupId>
-         <artifactId>reflections</artifactId>
-         <version>0.9.8</version>
-     </dependency-->
+    <!--dependency>
+        <groupId>org.reflections</groupId>
+        <artifactId>reflections</artifactId>
+        <version>0.9.8</version>
+    </dependency-->
     <dependency>
       <groupId>com.esotericsoftware.kryo</groupId>
       <artifactId>kryo</artifactId>
-      <version>2.20</version>
+      <version>2.21</version>
     </dependency>
 
-	<dependency>
-	    <groupId>org.apache.bval</groupId>
-	    <artifactId>bval-jsr303</artifactId>
-	    <version>0.5</version>
-	</dependency>
     <dependency>
-        <groupId>javax.validation</groupId>
-        <artifactId>validation-api</artifactId>
-        <version>1.0.0.GA</version>
+      <groupId>org.apache.bval</groupId>
+      <artifactId>bval-jsr303</artifactId>
+      <version>0.5</version>
+    </dependency>
+    <dependency>
+      <groupId>javax.validation</groupId>
+      <artifactId>validation-api</artifactId>
+      <version>1.0.0.GA</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -208,9 +208,13 @@
       <artifactId>netlet</artifactId>
       <version>1.0-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-websocket</artifactId>
+      <version>8.1.9.v20130131</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
-
-
   <profiles>
     <!--
       profile for building against Hadoop 2.0.
@@ -241,11 +245,11 @@
           <type>test-jar</type>
           <scope>compile</scope>
         </dependency>
-	    <dependency>
-	      <groupId>org.apache.hadoop</groupId>
-	      <artifactId>hadoop-yarn-client</artifactId>
+        <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-yarn-client</artifactId>
           <version>${hadoop.version}</version>
-	    </dependency>
+        </dependency>
         <!-- test deps for hadoop-2.0 profile -->
         <dependency>
           <groupId>org.apache.hadoop</groupId>
@@ -267,7 +271,43 @@
         <test.excludedGroups></test.excludedGroups>
       </properties>
     </profile>
+
+    <profile>
+      <!--  version info profile to generate exactly once after clean -->
+      <id>generate-version-info</id>
+      <activation>
+        <file>
+          <!--
+            ${project.artifactId} does not work - see https://jira.codehaus.org/browse/MNG-5418
+            (required to use this for all modules from parent project)
+          -->
+          <missing>target/classes/malhar-stram-git.properties</missing>
+        </file>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>pl.project13.maven</groupId>
+            <artifactId>git-commit-id-plugin</artifactId>
+            <version>2.1.4</version>
+            <executions>
+              <execution>
+                <id>create-git-version-info</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>revision</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <verbose>true</verbose>
+              <prefix>git</prefix>
+              <generateGitPropertiesFile>true</generateGitPropertiesFile>
+              <generateGitPropertiesFilename>target/classes/malhar-stram-git.properties</generateGitPropertiesFilename>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
-
-
 </project>

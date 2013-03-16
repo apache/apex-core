@@ -203,7 +203,7 @@ public class ProtoModuleTest {
     LOG.debug("dag bytes size: " + dagBytes.length);
     DAG clonedDag = DAG.read(new ByteArrayInputStream(dagBytes));
     Assert.assertEquals(dag.getAllOperators().size(), clonedDag.getAllOperators().size());
-    Operator clonedModule = clonedDag.getOperatorWrapper("operator1").getOperator();
+    Operator clonedModule = clonedDag.getOperatorMeta("operator1").getOperator();
     Assert.assertNotNull("", clonedModule);
     Assert.assertEquals(""+m1.getMyConfigField(), m1.getMyConfigField(), ((MyProtoModule<?>)clonedModule).getMyConfigField());
     clonedDag.validate();
