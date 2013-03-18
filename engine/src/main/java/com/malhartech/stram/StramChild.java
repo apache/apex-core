@@ -87,7 +87,7 @@ public class StramChild
   private AttributeMap<DAGContext> applicationAttributes;
   protected HashMap<String, TupleRecorder> tupleRecorders = new HashMap<String, TupleRecorder>();
   private int tupleRecordingPartFileSize;
-  private String daemonUrl;
+  private String daemonAddress;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -107,7 +107,7 @@ public class StramChild
     this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
     this.checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
     this.tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    this.daemonUrl = ctx.applicationAttributes.attrValue(DAG.STRAM_DAEMON_URL, null);
+    this.daemonAddress = ctx.applicationAttributes.attrValue(DAG.STRAM_DAEMON_ADDRESS, null);
 
     try {
       if (ctx.deployBufferServer) {
@@ -754,8 +754,8 @@ public class StramChild
               tupleRecorder.setRecordingName(defaultName);
               tupleRecorder.setBasePath(basePath);
               tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
-              if (StramChild.this.daemonUrl != null) {
-                String url = StramChild.this.daemonUrl + "/channel/tr_" + URLEncoder.encode(tupleRecorder.getRecordingName(), "UTF-8");
+              if (StramChild.this.daemonAddress != null) {
+                String url = "http://" + StramChild.this.daemonAddress + "/channel/tr_" + URLEncoder.encode(tupleRecorder.getRecordingName(), "UTF-8");
                 try {
                   tupleRecorder.setPostToUrl(url);
                   tupleRecorder.setGetNumSubscribersUrl(url + "/numSubscribers");

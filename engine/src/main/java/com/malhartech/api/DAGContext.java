@@ -79,7 +79,7 @@ public interface DAGContext {
   public static final AttributeKey<Integer> STRAM_CHECKPOINT_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.checkpointIntervalMillis", Integer.class);
   public static final AttributeKey<String> STRAM_APP_PATH = new AttributeKey<String>("stram.appPath", String.class);
   public static final AttributeKey<Integer> STRAM_TUPLE_RECORDING_PART_FILE_SIZE = new AttributeKey<Integer>("stram.tupleRecordingPartFileSize", Integer.class);
-  public static final AttributeKey<String> STRAM_DAEMON_URL = new AttributeKey<String>("stram.daemon.url", String.class);
+  public static final AttributeKey<String> STRAM_DAEMON_ADDRESS = new AttributeKey<String>("stram.daemon.address", String.class);
   /**
    * How frequently should operators heartbeat to stram. Recommended setting is
    * 1000ms. Value 0 will disable heartbeat (for unit testing).

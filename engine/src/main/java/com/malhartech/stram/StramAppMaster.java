@@ -233,10 +233,10 @@ public class StramAppMaster
     }
 
     @Override
-    public String getDaemonUrl()
+    public String getDaemonAddress()
     {
       if (dag != null) {
-        return dag.getAttributes().attrValue(DAG.STRAM_DAEMON_URL, null);
+        return dag.getAttributes().attrValue(DAG.STRAM_DAEMON_ADDRESS, null);
       }
       return "unknown";
     }

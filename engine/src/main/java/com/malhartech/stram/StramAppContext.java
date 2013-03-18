@@ -44,6 +44,6 @@ public interface StramAppContext {
 
   AppInfo.AppStats getStats();
 
-  String getDaemonUrl();
+  String getDaemonAddress();
 
 }
