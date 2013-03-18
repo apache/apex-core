@@ -538,6 +538,7 @@ public class PhysicalPlan {
               newOperator.inlineSet = u.inlineSet;
               newOperator.inlineSet.add(u);
               newOperator.inlineSet.add(newOperator);
+              LOG.debug("inlineSet for {} {}", newOperator, newOperator.inlineSet);
             }
           } else {
             // single instance, no partitions
@@ -550,6 +551,7 @@ public class PhysicalPlan {
                 continue;
               }
               // merge inline sets
+              //LOG.debug("merging {} {}", newOperator, inlineCandidate.partitions);
               for (PTOperator otherNode : inlineCandidate.partitions) {
                 if (!otherNode.inlineSet.isEmpty()) {
                   newOperator.inlineSet.addAll(otherNode.inlineSet);
@@ -562,6 +564,7 @@ public class PhysicalPlan {
               inlineNode.inlineSet = newOperator.inlineSet;
               //LOG.debug(n.getId() + " " + inlineNode.id + " inlineset: " + newOperator.inlineSet);
             }
+            LOG.debug("inlineSet for {} {}", newOperator, newOperator.inlineSet);
           }
         }
 
@@ -576,6 +579,7 @@ public class PhysicalPlan {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
           Set<PTOperator> inlineNodes = node.inlineSet;
+          LOG.debug("Setting container {} for {}", container, node.inlineSet);
           if (!inlineNodes.isEmpty()) {
             // process inline operators
             for (PTOperator inlineNode : inlineNodes) {
