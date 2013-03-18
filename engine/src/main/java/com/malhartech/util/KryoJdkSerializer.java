@@ -36,7 +36,7 @@ import com.esotericsoftware.kryo.io.Output;
  * @param <T>
  *          type of serialized object
  */
-public class JdkSerializer<T> extends Serializer<T> {
+public class KryoJdkSerializer<T> extends Serializer<T> {
 
   @Override
   public void write(Kryo kryo, Output output, T t) {

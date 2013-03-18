@@ -18,7 +18,7 @@ import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.engine.DefaultStreamCodec.ClassIdPair;
-import com.malhartech.util.JdkSerializer;
+import com.malhartech.util.KryoJdkSerializer;
 
 /**
  *
@@ -156,11 +156,11 @@ public class DefaultStreamCodecTest
     Assert.assertEquals("", t1.finalField, t2.finalField);
   }
 
-   @DefaultSerializer(JdkSerializer.class)
+   @DefaultSerializer(KryoJdkSerializer.class)
    public static class OuterClass implements Serializable {
     private static final long serialVersionUID = -3128672061060284420L;
 
-     @DefaultSerializer(JdkSerializer.class)
+     @DefaultSerializer(KryoJdkSerializer.class)
      public class InnerClass implements Serializable {
       private static final long serialVersionUID = -7176523451391231326L;
      }
