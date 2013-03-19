@@ -4,8 +4,9 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.bufferserver.packet.NoMessageTuple;
+import com.malhartech.bufferserver.packet.Tuple;
 import junit.framework.TestCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,20 +34,14 @@ public class BufferTest extends TestCase
     super.tearDown();
   }
 
-  public void testSerDe() throws InvalidProtocolBufferException
+  public void testSerDe()
   {
     logger.info("testSerDe");
-    Message.Builder db = Message.newBuilder();
-    db.setType(Message.MessageType.NO_MESSAGE);
 
-    Message d = db.build();
+    byte[] serialized = NoMessageTuple.getSerializedTuple();
+    Tuple t = Tuple.getTuple(serialized, 0, serialized.length);
 
-    byte[] serialized = d.toByteArray();
-
-    db = Message.newBuilder().mergeFrom(serialized, 0, serialized.length);
-    Message d1 = db.build();
-
-    assertEquals(d, d1);
+    assert(t.getType() == MessageType.NO_MESSAGE);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferTest.class);

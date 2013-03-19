@@ -6,9 +6,8 @@ package com.malhartech.bufferserver.internal;
 
 import com.malhartech.bufferserver.client.BufferServerSubscriber;
 import com.malhartech.bufferserver.client.BufferServerPublisher;
+import com.malhartech.bufferserver.packet.*;
 import com.malhartech.bufferserver.server.Server;
-import com.malhartech.bufferserver.Buffer.Message;
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.util.Codec;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -93,25 +92,21 @@ public class NewSubscriberTest
       @SuppressWarnings("SleepWhileInLoop")
       public void run()
       {
-        ResetTuple rt = new ResetTuple();
-        rt.id = 0x7afebabe000000faL;
-        bsp1.publishMessage(rt);
+        long resetId = 0x7afebabe000000faL;
+        bsp1.publishMessage(ResetWindowTuple.getSerializedTuple(resetId));
 
         long windowId = 0x7afebabe00000000L;
         try {
           while (publisherRun.get()) {
-
-            BeginTuple bt = new BeginTuple();
-            bt.id = windowId;
-            bsp1.publishMessage(bt);
+            bsp1.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
             Thread.sleep(5);
-            bsp1.publishMessage(new byte[0]);
+
+            bsp1.publishMessage(PayloadTuple.getSerializedTuple(0, 0));
+
             Thread.sleep(5);
 
-            EndTuple et = new EndTuple();
-            et.id = windowId;
-            bsp1.publishMessage(et);
+            bsp1.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
             windowId++;
           }
@@ -150,9 +145,9 @@ public class NewSubscriberTest
     }.start();
 
     do {
-      Message message = bss1.lastPayload;
+      Tuple message = bss1.lastPayload;
       if (message != null) {
-        if (message.getType() == MessageType.BEGIN_WINDOW && message.getBeginWindow().getWindowId() > 9) {
+        if (message.getType() == MessageType.BEGIN_WINDOW && message.getWindowId() > 9) {
           break;
         }
       }
@@ -197,17 +192,17 @@ public class NewSubscriberTest
         long windowId = 0x7afebabe00000005L;
         try {
           while (publisherRun.get()) {
-            BeginTuple bt = new BeginTuple();
-            bt.id = windowId;
-            bsp2.publishMessage(bt);
+            bsp2.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
             Thread.sleep(5);
-            bsp2.publishMessage(new byte[] {'a'});
+
+            byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+            buff[buff.length - 1] = 'a';
+            bsp2.publishMessage(buff);
+
             Thread.sleep(5);
 
-            EndTuple et = new EndTuple();
-            et.id = windowId;
-            bsp2.publishMessage(et);
+            bsp2.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
             windowId++;
           }
@@ -248,8 +243,8 @@ public class NewSubscriberTest
     }.start();
 
     do {
-      Message message = bss2.lastPayload;
-      if (message != null && message.getBeginWindow().getWindowId() > 14) {
+      Tuple message = bss2.lastPayload;
+      if (message != null && message.getWindowId() > 14) {
         break;
       }
       Thread.sleep(10);
@@ -265,57 +260,7 @@ public class NewSubscriberTest
     bss2.teardown();
     bsp2.teardown();
 
-    Assert.assertTrue((bss2.lastPayload.getBeginWindow().getWindowId() - 8) * 3 < bss2.tupleCount.get());
-  }
-
-  class ResetTuple implements Tuple
-  {
-    long id;
-
-    @Override
-    public MessageType getType()
-    {
-      return MessageType.RESET_WINDOW;
-    }
-
-    @Override
-    public long getWindowId()
-    {
-      return id;
-    }
-
-    @Override
-    public int getIntervalMillis()
-    {
-      return (int)id;
-    }
-
-    @Override
-    public int getBaseSeconds()
-    {
-      return (int)(id >> 32);
-    }
-
-  }
-
-  class BeginTuple extends ResetTuple
-  {
-    @Override
-    public MessageType getType()
-    {
-      return MessageType.BEGIN_WINDOW;
-    }
-
-  }
-
-  class EndTuple extends ResetTuple
-  {
-    @Override
-    public MessageType getType()
-    {
-      return MessageType.END_WINDOW;
-    }
-
+    Assert.assertTrue((bss2.lastPayload.getWindowId() - 8) * 3 < bss2.tupleCount.get());
   }
 
 }

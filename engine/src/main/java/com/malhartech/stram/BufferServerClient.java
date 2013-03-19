@@ -6,6 +6,8 @@ package com.malhartech.stram;
 
 import com.malhartech.bufferserver.client.ClientHandler;
 import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
+import com.malhartech.bufferserver.packet.PurgeRequestTuple;
+import com.malhartech.bufferserver.packet.ResetRequestTuple;
 import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +32,7 @@ class BufferServerClient extends VarIntLengthPrependerClient
     StramChild.eventloop.connect(this.addr, this);
 
     logger.debug("Purging sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
-    write(ClientHandler.getPurgeRequest(sourceIdentifier, windowId));
+    write(PurgeRequestTuple.getSerializedRequest(sourceIdentifier, windowId));
   }
 
   void reset(String sourceIdentifier, long windowId)
@@ -38,7 +40,7 @@ class BufferServerClient extends VarIntLengthPrependerClient
     StramChild.eventloop.connect(this.addr, this);
 
     logger.debug("Reset sourceId=" + sourceIdentifier + ", windowId=" + windowId + " @" + addr);
-    write(ClientHandler.getResetRequest(sourceIdentifier, windowId));
+    write(ResetRequestTuple.getSerializedRequest(sourceIdentifier, windowId));
   }
 
   @Override

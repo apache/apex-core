@@ -4,7 +4,8 @@
  */
 package com.malhartech.bufferserver.client;
 
-import com.malhartech.bufferserver.Buffer.Message;
+import com.malhartech.bufferserver.packet.PurgeRequestTuple;
+import com.malhartech.bufferserver.packet.ResetRequestTuple;
 import java.io.IOException;
 import malhar.netlet.DefaultEventLoop;
 
@@ -12,11 +13,11 @@ import malhar.netlet.DefaultEventLoop;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class BufferServerController extends AbstractSocketSubscriber<Message>
+public class BufferServerController extends AbstractSocketSubscriber
 {
   private final String sourceId;
   public long windowId;
-  public Message data;
+  public Fragment data;
 
   public BufferServerController(String sourceId)
   {
@@ -26,19 +27,13 @@ public class BufferServerController extends AbstractSocketSubscriber<Message>
   public void purge()
   {
     data = null;
-    write(ClientHandler.getPurgeRequest(sourceId, windowId));
+    write(PurgeRequestTuple.getSerializedRequest(sourceId, windowId));
   }
 
   public void reset()
   {
     data = null;
-    write(ClientHandler.getResetRequest(sourceId, windowId));
-  }
-
-  @Override
-  public void onMessage(Message data)
-  {
-    this.data = data;
+    write(ResetRequestTuple.getSerializedRequest(sourceId, windowId));
   }
 
   @Override
@@ -50,6 +45,12 @@ public class BufferServerController extends AbstractSocketSubscriber<Message>
     else {
       throw new RuntimeException(cce);
     }
+  }
+
+  @Override
+  public void onMessage(byte[] buffer, int offset, int size)
+  {
+    data = new Fragment(buffer, offset, size);
   }
 
 }

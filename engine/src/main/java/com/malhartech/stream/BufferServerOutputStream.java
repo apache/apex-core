@@ -12,6 +12,7 @@ import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.bufferserver.Buffer.Message.Builder;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.bufferserver.client.ClientHandler;
+import com.malhartech.bufferserver.packet.PublishRequestTuple;
 import com.malhartech.engine.ResetWindowTuple;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
@@ -118,7 +119,8 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   {
     super.activate(context);
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
-    write(ClientHandler.getPublishRequest(context.getSourceId(), context.getId(), context.getStartingWindowId()));
+    //write(ClientHandler.getPublishRequest(context.getSourceId(), context.getId(), context.getStartingWindowId()));
+    write(PublishRequestTuple.getSerializedRequest(context.getSourceId(), context.getStartingWindowId()));
   }
 
   @Override

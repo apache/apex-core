@@ -4,9 +4,10 @@
  */
 package com.malhartech.bufferserver.client;
 
-import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.Message;
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.bufferserver.packet.ResetRequestTuple;
+import com.malhartech.bufferserver.packet.SubscriberRequestTuple;
+import com.malhartech.bufferserver.packet.Tuple;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,15 +26,15 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Message>
+public class BufferServerSubscriber extends AbstractSocketSubscriber
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerSubscriber.class);
   private final String sourceId;
   private final Collection<Integer> partitions;
   private final int mask;
   public AtomicInteger tupleCount = new AtomicInteger(0);
-  public Message firstPayload, lastPayload;
-  public final ArrayList<Message> resetPayloads = new ArrayList<Message>();
+  public Tuple firstPayload, lastPayload;
+  public final ArrayList<ResetRequestTuple> resetPayloads = new ArrayList<ResetRequestTuple>();
   public long windowId;
 
   public BufferServerSubscriber(String sourceId, int mask, Collection<Integer> partitions)
@@ -50,30 +51,13 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Mess
     firstPayload = lastPayload = null;
     resetPayloads.clear();
     super.activate();
-    write(ClientHandler.getSubscribeRequest(
+    write(SubscriberRequestTuple.getSerializedRequest(
             "BufferServerSubscriber",
             "BufferServerOutput/BufferServerSubscriber",
             sourceId,
             mask,
             partitions,
             windowId));
-  }
-
-  @Override
-  public void onMessage(Message data)
-  {
-    if (data.getType() == Message.MessageType.RESET_WINDOW) {
-      resetPayloads.add(data);
-    }
-    else {
-      tupleCount.incrementAndGet();
-      if (firstPayload == null) {
-        firstPayload = data;
-      }
-      else if (data.getType() == MessageType.BEGIN_WINDOW || data.getType() == MessageType.RESET_WINDOW) {
-        lastPayload = data;
-      }
-    }
   }
 
   @Override
@@ -84,6 +68,24 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber<Buffer.Mess
     }
     else {
       throw new RuntimeException(cce);
+    }
+  }
+
+  @Override
+  public void onMessage(byte[] buffer, int offset, int size)
+  {
+    byte type = buffer[offset];
+    if (type == MessageType.RESET_WINDOW_VALUE) {
+      resetPayloads.add(new ResetRequestTuple(buffer, offset, size));
+    }
+    else {
+      tupleCount.incrementAndGet();
+      if (firstPayload == null) {
+        firstPayload = Tuple.getTuple(buffer, offset, size);
+      }
+      else if (type == MessageType.BEGIN_WINDOW_VALUE || type == MessageType.RESET_WINDOW_VALUE) {
+        lastPayload = Tuple.getTuple(buffer, offset, size);
+      }
     }
   }
 

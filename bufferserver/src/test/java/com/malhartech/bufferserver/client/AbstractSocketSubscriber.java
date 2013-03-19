@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
  * @param <T>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractSocketSubscriber<T> extends ProtoBufClient
+public abstract class AbstractSocketSubscriber extends VarIntLengthPrependerClient
 {
   private static final Logger logger = LoggerFactory.getLogger(AbstractSocketSubscriber.class);
   InetSocketAddress address;

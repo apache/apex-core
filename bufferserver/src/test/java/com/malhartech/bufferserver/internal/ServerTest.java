@@ -7,8 +7,11 @@ package com.malhartech.bufferserver.internal;
 import com.malhartech.bufferserver.client.BufferServerSubscriber;
 import com.malhartech.bufferserver.client.BufferServerController;
 import com.malhartech.bufferserver.client.BufferServerPublisher;
+import com.malhartech.bufferserver.packet.BeginWindowTuple;
+import com.malhartech.bufferserver.packet.EndWindowTuple;
+import com.malhartech.bufferserver.packet.PayloadTuple;
+import com.malhartech.bufferserver.packet.ResetWindowTuple;
 import com.malhartech.bufferserver.server.Server;
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -94,9 +97,9 @@ public class ServerTest
     bsp.activate();
     bss.activate();
 
-    ResetTuple rt = new ResetTuple();
-    rt.id = 0x7afebabe000000faL;
-    bsp.publishMessage(rt);
+    long resetInfo = 0x7afebabe000000faL;
+
+    bsp.publishMessage(ResetWindowTuple.getSerializedTuple(resetInfo));
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -143,29 +146,30 @@ public class ServerTest
     bsp.windowId = 0;
     bsp.activate();
 
-    BeginTuple bt0 = new BeginTuple();
-    bt0.id = 0x7afebabe00000000L;
-    bsp.publishMessage(bt0);
+    long windowId = 0x7afebabe00000000L;
+
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < 100; i++) {
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte)i;
+      bsp.publishMessage(buff);
     }
 
-    EndTuple et0 = new EndTuple();
-    et0.id = bt0.id;
-    bsp.publishMessage(et0);
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
-    BeginTuple bt1 = new BeginTuple();
-    bt1.id = bt0.id + 1;
-    bsp.publishMessage(bt1);
+    windowId++;
+
+
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < 100; i++) {
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte)i;
+      bsp.publishMessage(buff);
     }
 
-    EndTuple et1 = new EndTuple();
-    et1.id = bt1.id;
-    bsp.publishMessage(et1);
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -283,29 +287,29 @@ public class ServerTest
     bsp.activate();
     Thread.sleep(10);
 
-    BeginTuple bt0 = new BeginTuple();
-    bt0.id = 0L;
-    bsp.publishMessage(bt0);
+    long windowId = 0L;
+
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < 2; i++) {
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte)i;
+      bsp.publishMessage(buff);
     }
 
-    EndTuple et0 = new EndTuple();
-    et0.id = bt0.id;
-    bsp.publishMessage(et0);
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
-    BeginTuple bt1 = new BeginTuple();
-    bt1.id = bt0.id + 1;
-    bsp.publishMessage(bt1);
+    windowId++;
+
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < 2; i++) {
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte)i;
+      bsp.publishMessage(buff);
     }
 
-    EndTuple et1 = new EndTuple();
-    et1.id = bt1.id;
-    bsp.publishMessage(et1);
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
     bsp.deactivate();
 
@@ -381,15 +385,13 @@ public class ServerTest
     bsp.activate();
 
     for (int i = 0; i < 100; i++) {
-      BeginTuple bt = new BeginTuple();
-      bt.id = i;
-      bsp.publishMessage(bt);
+      bsp.publishMessage(BeginWindowTuple.getSerializedTuple(i));
 
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte)i;
+      bsp.publishMessage(buff);
 
-      EndTuple et = new EndTuple();
-      et.id = i;
-      bsp.publishMessage(et);
+      bsp.publishMessage(EndWindowTuple.getSerializedTuple(i));
     }
 
     for (int i = 0; i < spinCount; i++) {
@@ -406,56 +408,6 @@ public class ServerTest
     assertEquals(bss.tupleCount.get(), 150);
 
     bss.deactivate();
-  }
-
-  public static class ResetTuple implements Tuple
-  {
-    public long id;
-
-    @Override
-    public MessageType getType()
-    {
-      return MessageType.RESET_WINDOW;
-    }
-
-    @Override
-    public long getWindowId()
-    {
-      return id;
-    }
-
-    @Override
-    public int getIntervalMillis()
-    {
-      return (int)id;
-    }
-
-    @Override
-    public int getBaseSeconds()
-    {
-      return (int)(id >> 32);
-    }
-
-  }
-
-  public static class BeginTuple extends ResetTuple
-  {
-    @Override
-    public MessageType getType()
-    {
-      return MessageType.BEGIN_WINDOW;
-    }
-
-  }
-
-  public static class EndTuple extends ResetTuple
-  {
-    @Override
-    public MessageType getType()
-    {
-      return MessageType.END_WINDOW;
-    }
-
   }
 
 }

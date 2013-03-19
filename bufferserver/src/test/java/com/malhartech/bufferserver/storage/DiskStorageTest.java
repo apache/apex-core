@@ -7,8 +7,9 @@ package com.malhartech.bufferserver.storage;
 import com.malhartech.bufferserver.client.BufferServerController;
 import com.malhartech.bufferserver.client.BufferServerPublisher;
 import com.malhartech.bufferserver.client.BufferServerSubscriber;
-import com.malhartech.bufferserver.internal.ServerTest.BeginTuple;
-import com.malhartech.bufferserver.internal.ServerTest.EndTuple;
+import com.malhartech.bufferserver.packet.BeginWindowTuple;
+import com.malhartech.bufferserver.packet.EndWindowTuple;
+import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.bufferserver.server.Server;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
@@ -76,29 +77,28 @@ public class DiskStorageTest
     bsp.windowId = 0;
     bsp.activate();
 
-    BeginTuple bt0 = new BeginTuple();
-    bt0.id = 0x7afebabe00000000L;
-    bsp.publishMessage(bt0);
+    long windowId = 0x7afebabe00000000L;
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < 1000; i++) {
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte) i;
+      bsp.publishMessage(buff);
     }
 
-    EndTuple et0 = new EndTuple();
-    et0.id = bt0.id;
-    bsp.publishMessage(et0);
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
-    BeginTuple bt1 = new BeginTuple();
-    bt1.id = bt0.id + 1;
-    bsp.publishMessage(bt1);
+    windowId++;
+
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < 1000; i++) {
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte) i;
+      bsp.publishMessage(buff);
     }
 
-    EndTuple et1 = new EndTuple();
-    et1.id = bt1.id;
-    bsp.publishMessage(et1);
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < spinCount; i++) {
       sleep(10);
