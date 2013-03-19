@@ -6,7 +6,7 @@ package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.ResetRequestTuple;
-import com.malhartech.bufferserver.packet.SubscriberRequestTuple;
+import com.malhartech.bufferserver.packet.SubscribeRequestTuple;
 import com.malhartech.bufferserver.packet.Tuple;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,7 +51,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
     firstPayload = lastPayload = null;
     resetPayloads.clear();
     super.activate();
-    write(SubscriberRequestTuple.getSerializedRequest(
+    write(SubscribeRequestTuple.getSerializedRequest(
             "BufferServerSubscriber",
             "BufferServerOutput/BufferServerSubscriber",
             sourceId,

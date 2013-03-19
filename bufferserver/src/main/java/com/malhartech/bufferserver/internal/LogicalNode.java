@@ -34,7 +34,7 @@ public class LogicalNode implements DataListener
   private final String group;
   private final HashSet<PhysicalNode> physicalNodes;
   private final HashSet<BitVector> partitions;
-  private final Policy policy;
+  private final Policy policy = GiveAll.getInstance();
   private final DataListIterator iterator;
   private final long windowId;
   private long baseSeconds;
@@ -45,14 +45,12 @@ public class LogicalNode implements DataListener
    * @param upstream
    * @param group
    * @param iterator
-   * @param policy
    * @param startingWindowId
    */
-  public LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, Policy policy, long startingWindowId)
+  public LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, long startingWindowId)
   {
     this.upstream = upstream;
     this.group = group;
-    this.policy = policy;
     this.physicalNodes = new HashSet<PhysicalNode>();
     this.partitions = new HashSet<BitVector>();
 

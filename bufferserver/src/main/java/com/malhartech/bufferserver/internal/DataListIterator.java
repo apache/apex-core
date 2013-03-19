@@ -18,20 +18,17 @@ class DataListIterator implements Iterator<SerializedData>
 {
   private static final Logger logger = LoggerFactory.getLogger(DataListIterator.class);
   Block da;
-  final DataIntrospector di;
   SerializedData previous = null;
   SerializedData current = new SerializedData();
 
   /**
    *
    * @param da
-   * @param di
    */
-  DataListIterator(Block da, DataIntrospector di)
+  DataListIterator(Block da)
   {
     da.acquire(true);
     this.da = da;
-    this.di = di;
 
     current.bytes = da.data;
     current.offset = da.readingOffset;
@@ -63,8 +60,10 @@ class DataListIterator implements Iterator<SerializedData>
           break;
 
         default:
-          if (di.getType(current) != MessageType.NO_MESSAGE && di.getType(current) != MessageType.NO_MESSAGE_ODD) {
-            return true;
+          switch (current.bytes[current.dataOffset]) {
+            case MessageType.NO_MESSAGE_VALUE:
+            case MessageType.NO_MESSAGE_ODD_VALUE:
+              return true;
           }
           current.offset += current.size;
           break;
@@ -106,7 +105,7 @@ class DataListIterator implements Iterator<SerializedData>
       throw new IllegalStateException("Nothing to remove");
     }
 
-    di.wipeData(previous);
+    previous.bytes[previous.dataOffset] = MessageType.NO_MESSAGE_VALUE;
   }
 
 }

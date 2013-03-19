@@ -35,7 +35,7 @@ public class DataList
     return blocksize;
   }
 
-  public void rewind(int baseSeconds, int windowId, DataIntrospector di) throws IOException
+  public void rewind(int baseSeconds, int windowId) throws IOException
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
 
@@ -46,7 +46,7 @@ public class DataList
           last = temp;
         }
 
-        temp.rewind(di, longWindowId);
+        temp.rewind(longWindowId);
       }
     }
   }
@@ -67,7 +67,7 @@ public class DataList
     }
   }
 
-  public void purge(int baseSeconds, int windowId, DataIntrospector di)
+  public void purge(int baseSeconds, int windowId)
   {
     long longWindowId = (long)baseSeconds << 32 | windowId;
 
@@ -78,7 +78,7 @@ public class DataList
           first = temp;
         }
 
-        first.purge(longWindowId, di);
+        first.purge(longWindowId);
         break;
       }
 
@@ -135,11 +135,11 @@ public class DataList
    */
   private final HashMap<String, DataListIterator> iterators = new HashMap<String, DataListIterator>();
 
-  public Iterator<SerializedData> newIterator(String identifier, DataIntrospector di, long windowId)
+  public Iterator<SerializedData> newIterator(String identifier, long windowId)
   {
     for (Block temp = first; temp != null; temp = temp.next) {
       if (true || temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
-        DataListIterator dli = new DataListIterator(temp, di);
+        DataListIterator dli = new DataListIterator(temp);
         synchronized (iterators) {
           iterators.put(identifier, dli);
         }
@@ -147,7 +147,7 @@ public class DataList
       }
     }
 
-    DataListIterator dli = new DataListIterator(last, di);
+    DataListIterator dli = new DataListIterator(last);
     synchronized (iterators) {
       iterators.put(identifier, dli);
     }

@@ -59,7 +59,7 @@ public abstract class Tuple
         return grt;
 
       case SUBSCRIBER_REQUEST:
-        SubscriberRequestTuple srt = new SubscriberRequestTuple(buffer, offset, length);
+        SubscribeRequestTuple srt = new SubscribeRequestTuple(buffer, offset, length);
         srt.parse();
         if (!srt.isValid()) {
           logger.error("Unparseable Subscriber Request Tuple received!");

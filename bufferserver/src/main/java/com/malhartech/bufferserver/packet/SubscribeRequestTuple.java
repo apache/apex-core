@@ -12,14 +12,14 @@ import java.util.Collection;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class SubscriberRequestTuple extends RequestTuple
+public class SubscribeRequestTuple extends RequestTuple
 {
   public static final String EMPTY_STRING = new String();
   private String version;
   private String identifier;
-  protected int baseSeconds;
-  protected int windowId;
-  protected String type;
+  private int baseSeconds;
+  private int windowId;
+  private String type;
   private String upstreamIdentifier;
   private int mask;
   private int[] partitions;
@@ -66,7 +66,7 @@ public class SubscriberRequestTuple extends RequestTuple
     }
 
     baseSeconds = readVarInt(dataOffset, limit);
-    if (baseSeconds > 0) {
+    if (getBaseSeconds() > 0) {
       while (buffer[dataOffset++] < 0) {
       }
     }
@@ -75,7 +75,7 @@ public class SubscriberRequestTuple extends RequestTuple
     }
 
     windowId = readVarInt(dataOffset, limit);
-    if (windowId > 0) {
+    if (getWindowId() > 0) {
       while (buffer[dataOffset++] < 0) {
       }
     }
@@ -150,7 +150,12 @@ public class SubscriberRequestTuple extends RequestTuple
     return parsed;
   }
 
-  public SubscriberRequestTuple(byte[] array, int offset, int length)
+  public String getUpstreamType()
+  {
+    return type;
+  }
+
+  public SubscribeRequestTuple(byte[] array, int offset, int length)
   {
     super(array, offset, length);
   }
@@ -276,5 +281,4 @@ public class SubscriberRequestTuple extends RequestTuple
 
     return Arrays.copyOfRange(array, 0, offset);
   }
-
 }

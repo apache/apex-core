@@ -4,6 +4,10 @@
  */
 package com.malhartech.bufferserver.internal;
 
+import com.malhartech.bufferserver.packet.BeginWindowTuple;
+import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.bufferserver.packet.ResetWindowTuple;
+import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Arrays;
@@ -60,16 +64,17 @@ public class Block
     }
   }
 
-  public void rewind(DataIntrospector di, long windowId)
+  public void rewind(long windowId)
   {
     long bs = starting_window & 0x7fffffff00000000L;
-    DataListIterator dli = new DataListIterator(this, di);
+    DataListIterator dli = new DataListIterator(this);
     done:
     while (dli.hasNext()) {
       SerializedData sd = dli.next();
-      switch (di.getType(sd)) {
-        case RESET_WINDOW:
-          bs = (long)di.getBaseSeconds(sd) << 32;
+      switch (sd.bytes[sd.dataOffset]) {
+        case MessageType.RESET_WINDOW_VALUE:
+          ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+          bs = (long)rwt.getBaseSeconds() << 32;
           if (bs > windowId) {
             writingOffset = sd.offset;
             Arrays.fill(data, writingOffset, data.length, Byte.MIN_VALUE);
@@ -77,8 +82,9 @@ public class Block
           }
           break;
 
-        case BEGIN_WINDOW:
-          if ((bs | di.getWindowId(sd)) >= windowId) {
+        case MessageType.BEGIN_WINDOW_VALUE:
+          BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+          if ((bs | bwt.getWindowId()) >= windowId) {
             writingOffset = sd.offset;
             Arrays.fill(data, writingOffset, data.length, Byte.MIN_VALUE);
             break done;
@@ -88,25 +94,27 @@ public class Block
     }
   }
 
-  public synchronized void purge(long longWindowId, DataIntrospector di)
+  public synchronized void purge(long longWindowId)
   {
     logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}", new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId), this.baseSeconds});
     boolean found = false;
     long bs = (long)this.baseSeconds << 32;
     SerializedData lastReset = null;
 
-    DataListIterator dli = new DataListIterator(this, di);
+    DataListIterator dli = new DataListIterator(this);
     done:
     while (dli.hasNext()) {
       SerializedData sd = dli.next();
-      switch (di.getType(sd)) {
-        case RESET_WINDOW:
-          bs = (long)di.getBaseSeconds(sd) << 32;
+      switch (sd.bytes[sd.dataOffset]) {
+        case MessageType.RESET_WINDOW_VALUE:
+          ResetWindowTuple rwt = (ResetWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+          bs = (long)rwt.getBaseSeconds() << 32;
           lastReset = sd;
           break;
 
-        case BEGIN_WINDOW:
-          if ((bs | di.getWindowId(sd)) > longWindowId) {
+        case MessageType.BEGIN_WINDOW_VALUE:
+          BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
+          if ((bs | bwt.getWindowId()) > longWindowId) {
             found = true;
             if (lastReset != null) {
               /*
@@ -119,7 +127,7 @@ public class Block
                 }
               }
 
-              this.starting_window = bs | di.getWindowId(sd);
+              this.starting_window = bs | bwt.getWindowId();
               this.readingOffset = sd.offset;
             }
 
@@ -160,7 +168,7 @@ public class Block
         sd.size = sd.offset;
         sd.offset = 0;
         sd.dataOffset = Codec.writeRawVarint32(sd.size - i, sd.bytes, sd.offset, i);
-        di.wipeData(sd);
+        sd.bytes[sd.dataOffset] = MessageType.NO_MESSAGE_VALUE;
       }
       else {
         logger.warn("Unhandled condition while purging the data purge to offset {}", sd.offset);

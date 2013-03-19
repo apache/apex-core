@@ -7,7 +7,7 @@ package com.malhartech.bufferserver.server;
 import com.malhartech.bufferserver.internal.LogicalNode;
 import com.malhartech.bufferserver.internal.DataList;
 import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
-import com.malhartech.bufferserver.policy.*;
+import com.malhartech.bufferserver.packet.*;
 import com.malhartech.bufferserver.storage.Storage;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -113,8 +113,8 @@ public class Server implements ServerListener
   {
     return identity;
   }
-  private static final Logger logger = LoggerFactory.getLogger(Server.class);
 
+  private static final Logger logger = LoggerFactory.getLogger(Server.class);
   private final HashMap<String, DataList> publisherBufffers = new HashMap<String, DataList>();
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
   private final ConcurrentHashMap<String, VarIntLengthPrependerClient> publisherChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
@@ -167,16 +167,14 @@ public class Server implements ServerListener
 //
 //    return p;
 //  }
-
-  private void handleResetRequest(Buffer.Request request, VarIntLengthPrependerClient ctx) throws IOException
+  private void handleResetRequest(ResetRequestTuple request, VarIntLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());
 
-    Payload.Builder sdb = Payload.newBuilder();
-    sdb.setPartition(0);
+    byte[] message;
     if (dl == null) {
-      sdb.setData(ByteString.copyFromUtf8("Invalid identifier '" + request.getIdentifier() + "'"));
+      message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
     }
     else {
       VarIntLengthPrependerClient channel = publisherChannels.remove(request.getIdentifier());
@@ -185,14 +183,12 @@ public class Server implements ServerListener
         // how do we wait here?
       }
       dl.reset();
-      sdb.setData(ByteString.copyFromUtf8("Reset request sent for processing"));
+      message = "Reset request sent for processing".getBytes();
     }
 
-    Message.Builder db = Message.newBuilder();
-    db.setType(MessageType.PAYLOAD);
-    db.setPayload(sdb);
-
-    ctx.write(db.build().toByteArray());
+    byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
+    System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
+    ctx.write(tuple);
     eventloop.disconnect(ctx);
   }
 
@@ -202,13 +198,11 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public LogicalNode handleSubscriberRequest(Buffer.Request request, VarIntLengthPrependerClient connection)
+  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request, VarIntLengthPrependerClient connection)
   {
-    SubscriberRequest subscriberRequest = request.getExtension(SubscriberRequest.request);
     String identifier = request.getIdentifier();
-    String type = subscriberRequest.getType();
-    String upstream_identifier = subscriberRequest.getUpstreamIdentifier();
-    //String upstream_type = request.getUpstreamType();
+    String type = request.getUpstreamType();
+    String upstream_identifier = request.getUpstreamIdentifier();
 
     // Check if there is a logical node of this type, if not create it.
     LogicalNode ln;
@@ -241,13 +235,12 @@ public class Server implements ServerListener
 
       ln = new LogicalNode(upstream_identifier,
                            type,
-                           dl.newIterator(identifier, new ProtobufDataInspector(), request.getWindowId()),
-                           getPolicy(subscriberRequest.getPolicy(), null),
+                           dl.newIterator(identifier, request.getWindowId()),
                            (long)request.getBaseSeconds() << 32 | request.getWindowId());
 
-      int mask = subscriberRequest.getPartitions().getMask();
-      if (subscriberRequest.getPartitions().getPartitionCount() > 0) {
-        for (Integer bs : subscriberRequest.getPartitions().getPartitionList()) {
+      int mask = request.getMask();
+      if (mask != 0) {
+        for (Integer bs : request.getPartitions()) {
           ln.addPartition(bs, mask);
         }
       }
@@ -260,26 +253,23 @@ public class Server implements ServerListener
     return ln;
   }
 
-  public void handlePurgeRequest(Buffer.Request request, VarIntLengthPrependerClient ctx) throws IOException
+  public void handlePurgeRequest(PurgeRequestTuple request, VarIntLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
 
-    Payload.Builder sdb = Payload.newBuilder();
-    sdb.setPartition(0);
+    byte[] message;
     if (dl == null) {
-      sdb.setData(ByteString.copyFromUtf8("Invalid identifier '" + request.getIdentifier() + "'"));
+      message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
     }
     else {
-      dl.purge(request.getBaseSeconds(), request.getWindowId(), new ProtobufDataInspector());
-      sdb.setData(ByteString.copyFromUtf8("Purge request sent for processing"));
+      dl.purge(request.getBaseSeconds(), request.getWindowId());
+      message = "Purge request sent for processing".getBytes();
     }
 
-    Message.Builder db = Message.newBuilder();
-    db.setType(MessageType.PAYLOAD);
-    db.setPayload(sdb);
-
-    ctx.write(db.build().toByteArray());
+    byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
+    System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
+    ctx.write(tuple);
     eventloop.disconnect(ctx);
   }
 
@@ -289,7 +279,7 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public DataList handlePublisherRequest(Buffer.Request request, VarIntLengthPrependerClient connection)
+  public DataList handlePublisherRequest(PublishRequestTuple request, VarIntLengthPrependerClient connection)
   {
     String identifier = request.getIdentifier();
 
@@ -342,15 +332,14 @@ public class Server implements ServerListener
     }
 
     @Override
-    public void onMessage(Message message)
+    public void onMessage(byte[] buffer, int offset, int size)
     {
-      logger.debug("listener = {}, message = {}", this, message);
       if (ignore) {
         return;
       }
 
-      Request request = message.getRequest();
-      switch (message.getType()) {
+      Tuple request = Tuple.getTuple(buffer, offset, size);
+      switch (request.getType()) {
         case PUBLISHER_REQUEST:
           /*
            * unregister the unidentified client since its job is done!
@@ -358,9 +347,9 @@ public class Server implements ServerListener
           unregistered(key);
           logger.info("Received publisher request: {}", request);
 
-          DataList dl = handlePublisherRequest(request, this);
+          DataList dl = handlePublisherRequest((PublishRequestTuple)request, this);
           try {
-            dl.rewind(request.getBaseSeconds(), request.getWindowId(), new ProtobufDataInspector());
+            dl.rewind(request.getBaseSeconds(), request.getWindowId());
           }
           catch (IOException ie) {
             logger.debug("exception while rewiding", ie);
@@ -383,9 +372,8 @@ public class Server implements ServerListener
           unregistered(key);
           logger.info("Received subscriber request: {}", request);
 
-          SubscriberRequest subscriberRequest = request.getExtension(SubscriberRequest.request);
-
-          VarIntLengthPrependerClient subscriber = new Subscriber(subscriberRequest.getType());
+          SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
+          VarIntLengthPrependerClient subscriber = new Subscriber(subscriberRequest.getUpstreamType());
           subscriber.registered(key);
           ignore = true;
 
@@ -393,8 +381,8 @@ public class Server implements ServerListener
           key.attach(subscriber);
           key.interestOps(SelectionKey.OP_WRITE);
 
-          boolean need2cathcup = !subscriberGroups.containsKey(subscriberRequest.getType());
-          LogicalNode ln = handleSubscriberRequest(request, subscriber);
+          boolean need2cathcup = !subscriberGroups.containsKey(subscriberRequest.getUpstreamType());
+          LogicalNode ln = handleSubscriberRequest(subscriberRequest, subscriber);
           if (need2cathcup) {
             ln.catchUp();
           }
@@ -404,7 +392,7 @@ public class Server implements ServerListener
         case PURGE_REQUEST:
           logger.info("Received purge request: {}", request);
           try {
-            handlePurgeRequest(request, this);
+            handlePurgeRequest((PurgeRequestTuple)request, this);
           }
           catch (IOException io) {
             throw new RuntimeException(io);
@@ -414,7 +402,7 @@ public class Server implements ServerListener
         case RESET_REQUEST:
           logger.info("Received purge all request: {}", request);
           try {
-            handleResetRequest(request, this);
+            handleResetRequest((ResetRequestTuple)request, this);
           }
           catch (IOException io) {
             throw new RuntimeException(io);
@@ -422,7 +410,7 @@ public class Server implements ServerListener
           break;
 
         default:
-          throw new RuntimeException("unexpected message: " + message.toString());
+          throw new RuntimeException("unexpected message: " + request.toString());
       }
     }
 
@@ -509,7 +497,7 @@ public class Server implements ServerListener
     }
 
     @Override
-    public void onMessage(Message msg)
+    public void onMessage(byte[] buffer, int offset, int size)
     {
       dirty = true;
     }
