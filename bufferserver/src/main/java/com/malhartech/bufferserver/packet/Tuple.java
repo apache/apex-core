@@ -4,6 +4,7 @@
  */
 package com.malhartech.bufferserver.packet;
 
+import com.malhartech.bufferserver.util.Codec;
 import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class Tuple
 {
+  public static final String VERSION = "1.0";
   final byte[] buffer;
   final int offset;
   final int length;
@@ -67,6 +69,13 @@ public abstract class Tuple
       default:
         return null;
     }
+  }
+
+  public static int writeString(String identifier, byte[] array, int offset)
+  {
+    offset = Codec.writeRawVarint32(identifier.getBytes().length, array, offset);
+    System.arraycopy(identifier.getBytes(), 0, array, offset, identifier.getBytes().length);
+    return offset + identifier.getBytes().length;
   }
 
   public int readVarInt(int offset, int limit)

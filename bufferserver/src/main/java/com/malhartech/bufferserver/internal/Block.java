@@ -4,8 +4,6 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import static com.malhartech.bufferserver.Buffer.Message.MessageType.BEGIN_WINDOW;
-import static com.malhartech.bufferserver.Buffer.Message.MessageType.RESET_WINDOW;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Arrays;

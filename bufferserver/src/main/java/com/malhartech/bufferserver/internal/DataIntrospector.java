@@ -4,9 +4,8 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
-import java.nio.ByteBuffer;
 
 /**
  *
@@ -32,7 +31,7 @@ public interface DataIntrospector
   public int getWindowId(SerializedData data);
 
   public int getBaseSeconds(SerializedData data);
-  
+
   /**
    *
    * @param data

@@ -4,8 +4,6 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import com.malhartech.bufferserver.packet.MessageType;
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>

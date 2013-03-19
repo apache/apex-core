@@ -4,6 +4,11 @@
  */
 package com.malhartech.bufferserver.packet;
 
+import static com.malhartech.bufferserver.packet.Tuple.VERSION;
+import static com.malhartech.bufferserver.packet.Tuple.writeString;
+import com.malhartech.bufferserver.util.Codec;
+import java.util.Arrays;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -126,6 +131,31 @@ public class GenericRequestTuple extends RequestTuple
   public String getIdentifier()
   {
     return identifier;
+  }
+
+  public static byte[] getSerializedRequest(String identifier, long startingWindowId, byte type)
+  {
+    byte[] array = new byte[4096];
+    int offset = 0;
+
+    /* write the type */
+    array[offset++] = type;
+
+    /* write the version */
+    offset = writeString(VERSION, array, offset);
+
+    /* write the identifer */
+    offset = writeString(identifier, array, offset);
+
+    /* write the baseSeconds */
+    int baseSeconds = (int)(startingWindowId >> 32);
+    offset = Codec.writeRawVarint32(baseSeconds, array, offset);
+
+    /* write the windowId */
+    int windowId = (int)startingWindowId;
+    offset = Codec.writeRawVarint32(windowId, array, offset);
+
+    return Arrays.copyOfRange(array, 0, offset);
   }
 
 }

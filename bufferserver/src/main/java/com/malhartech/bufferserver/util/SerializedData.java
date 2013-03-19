@@ -4,8 +4,6 @@
  */
 package com.malhartech.bufferserver.util;
 
-import com.google.protobuf.CodedOutputStream;
-import com.malhartech.bufferserver.Buffer.Message;
 import java.io.IOException;
 
 /**
@@ -32,18 +30,6 @@ public final class SerializedData
    * size is the total size of the slice of the byte array which stores the length and the message.
    */
   public int size;
-
-  public static SerializedData getInstanceFrom(Message d) throws IOException
-  {
-    SerializedData sd = new SerializedData();
-    int size = d.getSerializedSize();
-    sd.bytes = new byte[5 + size];
-    sd.offset = 0;
-    sd.dataOffset = Codec.writeRawVarint32(size, sd.bytes, 0);
-    sd.size = sd.dataOffset + d.getSerializedSize();
-    d.writeTo(CodedOutputStream.newInstance(sd.bytes, sd.dataOffset, size));
-    return sd;
-  }
 
   public boolean isEquivalent(SerializedData sd)
   {

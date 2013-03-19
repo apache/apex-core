@@ -4,21 +4,9 @@
  */
 package com.malhartech.bufferserver.server;
 
-import com.malhartech.bufferserver.internal.ProtobufDataInspector;
 import com.malhartech.bufferserver.internal.LogicalNode;
 import com.malhartech.bufferserver.internal.DataList;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.ExtensionRegistry;
-import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.Message;
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
-import static com.malhartech.bufferserver.Buffer.Message.MessageType.*;
-import com.malhartech.bufferserver.Buffer.Payload;
-import com.malhartech.bufferserver.Buffer.Request;
-import com.malhartech.bufferserver.Buffer.SubscriberRequest;
-import static com.malhartech.bufferserver.Buffer.SubscriberRequest.PolicyType.*;
 import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
-import com.malhartech.bufferserver.client.ProtoBufClient;
 import com.malhartech.bufferserver.policy.*;
 import com.malhartech.bufferserver.storage.Storage;
 import java.io.IOException;
@@ -126,11 +114,6 @@ public class Server implements ServerListener
     return identity;
   }
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
-  static final ExtensionRegistry registry = ExtensionRegistry.newInstance();
-
-  static {
-    Buffer.registerAllExtensions(registry);
-  }
 
   private final HashMap<String, DataList> publisherBufffers = new HashMap<String, DataList>();
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
@@ -138,54 +121,54 @@ public class Server implements ServerListener
   private final ConcurrentHashMap<String, VarIntLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
   private final int blockSize;
 
-  /**
-   *
-   * @param policytype
-   * @param type
-   * @return Policy
-   */
-  public Policy getPolicy(Buffer.SubscriberRequest.PolicyType policytype, String type)
-  {
-    Policy p = null;
+//  /**
+//   *
+//   * @param policytype
+//   * @param type
+//   * @return Policy
+//   */
+//  public Policy getPolicy(Buffer.SubscriberRequest.PolicyType policytype, String type)
+//  {
+//    Policy p = null;
+//
+//    switch (policytype) {
+//      case CUSTOM:
+//        try {
+//          Class<?> customclass = Class.forName(type);
+//          p = (Policy)customclass.newInstance();
+//        }
+//        catch (InstantiationException ex) {
+//          throw new RuntimeException(ex);
+//        }
+//        catch (IllegalAccessException ex) {
+//          throw new RuntimeException(ex);
+//        }
+//        catch (ClassNotFoundException ex) {
+//          throw new RuntimeException(ex);
+//        }
+//        break;
+//
+//      case GIVE_ALL:
+//        p = GiveAll.getInstance();
+//        break;
+//
+//      case LEAST_BUSY:
+//        p = LeastBusy.getInstance();
+//        break;
+//
+//      case RANDOM_ONE:
+//        p = RandomOne.getInstance();
+//        break;
+//
+//      case ROUND_ROBIN:
+//        p = new RoundRobin();
+//        break;
+//    }
+//
+//    return p;
+//  }
 
-    switch (policytype) {
-      case CUSTOM:
-        try {
-          Class<?> customclass = Class.forName(type);
-          p = (Policy)customclass.newInstance();
-        }
-        catch (InstantiationException ex) {
-          throw new RuntimeException(ex);
-        }
-        catch (IllegalAccessException ex) {
-          throw new RuntimeException(ex);
-        }
-        catch (ClassNotFoundException ex) {
-          throw new RuntimeException(ex);
-        }
-        break;
-
-      case GIVE_ALL:
-        p = GiveAll.getInstance();
-        break;
-
-      case LEAST_BUSY:
-        p = LeastBusy.getInstance();
-        break;
-
-      case RANDOM_ONE:
-        p = RandomOne.getInstance();
-        break;
-
-      case ROUND_ROBIN:
-        p = new RoundRobin();
-        break;
-    }
-
-    return p;
-  }
-
-  private synchronized void handleResetRequest(Buffer.Request request, VarIntLengthPrependerClient ctx) throws IOException
+  private void handleResetRequest(Buffer.Request request, VarIntLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());
@@ -348,7 +331,7 @@ public class Server implements ServerListener
     throw new RuntimeException(cce);
   }
 
-  class UnidentifiedClient extends ProtoBufClient
+  class UnidentifiedClient extends VarIntLengthPrependerClient
   {
     SocketChannel channel;
     boolean ignore;
@@ -504,7 +487,7 @@ public class Server implements ServerListener
    *
    * @author Chetan Narsude <chetan@malhar-inc.com>
    */
-  class Publisher extends ProtoBufClient
+  class Publisher extends VarIntLengthPrependerClient
   {
     private final DataList datalist;
     boolean dirty;

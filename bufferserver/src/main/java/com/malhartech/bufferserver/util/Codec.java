@@ -14,6 +14,7 @@ public class Codec
    * Writes the Variable Sized Integer of Length 32. Assumes that the buffer has 5 positions at least starting with offset.
    *
    * @param value
+   * @param buffer
    * @param offset
    * @return int
    */

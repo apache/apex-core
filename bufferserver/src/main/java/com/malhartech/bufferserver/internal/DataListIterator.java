@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Iterator;
 import org.slf4j.Logger;
@@ -107,33 +107,6 @@ class DataListIterator implements Iterator<SerializedData>
     }
 
     di.wipeData(previous);
-  }
-
-  /**
-   *
-   * @return MessageType
-   */
-  MessageType getType()
-  {
-    return di.getType(previous);
-  }
-
-  /**
-   *
-   * @return long
-   */
-  long getWindowId()
-  {
-    return di.getWindowId(previous);
-  }
-
-  /**
-   *
-   * @return Object
-   */
-  Object getData()
-  {
-    return di.getData(previous);
   }
 
 }

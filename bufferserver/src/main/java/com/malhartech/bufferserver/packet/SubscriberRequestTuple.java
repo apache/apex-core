@@ -4,6 +4,10 @@
  */
 package com.malhartech.bufferserver.packet;
 
+import com.malhartech.bufferserver.util.Codec;
+import java.util.Arrays;
+import java.util.Collection;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -60,6 +64,7 @@ public class SubscriberRequestTuple extends RequestTuple
     else {
       return;
     }
+
     baseSeconds = readVarInt(dataOffset, limit);
     if (baseSeconds > 0) {
       while (buffer[dataOffset++] < 0) {
@@ -68,6 +73,7 @@ public class SubscriberRequestTuple extends RequestTuple
     else {
       return;
     }
+
     windowId = readVarInt(dataOffset, limit);
     if (windowId > 0) {
       while (buffer[dataOffset++] < 0) {
@@ -220,6 +226,55 @@ public class SubscriberRequestTuple extends RequestTuple
   public int[] getPartitions()
   {
     return partitions;
+  }
+
+  public static byte[] getSerializedRequest(
+          String id,
+          String down_type,
+          String upstream_id,
+          int mask,
+          Collection<Integer> partitions,
+          long startingWindowId)
+  {
+    byte[] array = new byte[4096];
+    int offset = 0;
+
+    /* write the type */
+    array[offset++] = MessageType.PUBLISHER_REQUEST_VALUE;
+
+    /* write the version */
+    offset = Tuple.writeString(VERSION, array, offset);
+
+    /* write the identifier */
+    offset = Tuple.writeString(id, array, offset);
+
+    /* write the baseSeconds */
+    int baseSeconds = (int)(startingWindowId >> 32);
+    offset = Codec.writeRawVarint32(baseSeconds, array, offset);
+
+    /* write the windowId */
+    int windowId = (int)startingWindowId;
+    offset = Codec.writeRawVarint32(windowId, array, offset);
+
+    /* write the type */
+    offset = Tuple.writeString(down_type, array, offset);
+
+    /* write upstream identifier */
+    offset = Tuple.writeString(upstream_id, array, offset);
+
+    /* write the partitions */
+    if (partitions == null || partitions.isEmpty()) {
+      offset = Codec.writeRawVarint32(0, array, offset);
+    }
+    else {
+      offset = Codec.writeRawVarint32(partitions.size(), array, offset);
+      offset = Codec.writeRawVarint32(mask, array, offset);
+      for (int i : partitions) {
+        offset = Codec.writeRawVarint32(i, array, offset);
+      }
+    }
+
+    return Arrays.copyOfRange(array, 0, offset);
   }
 
 }

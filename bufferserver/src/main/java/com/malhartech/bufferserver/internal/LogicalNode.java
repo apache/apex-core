@@ -4,9 +4,9 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import com.malhartech.bufferserver.Buffer.Message;
-import static com.malhartech.bufferserver.Buffer.Message.MessageType.*;
 import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
+import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
 import com.malhartech.bufferserver.util.BitVector;
@@ -151,26 +151,27 @@ public class LogicalNode implements DataListener
         outer:
         while (iterator.hasNext()) {
           SerializedData data = iterator.next();
-          switch (iterator.getType()) {
-            case RESET_WINDOW:
-              Message resetWindow = (Message)iterator.getData();
-              baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
-              intervalMillis = resetWindow.getResetWindow().getWidth();
+          switch (data.bytes[data.dataOffset]) {
+            case MessageType.RESET_WINDOW_VALUE:
+              Tuple tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+              baseSeconds = (long)tuple.getBaseSeconds() << 32;
+              intervalMillis = tuple.getWindowWidth();
               if (intervalMillis <= 0) {
                 logger.warn("Interval value set to non positive value = {}", intervalMillis);
               }
               GiveAll.getInstance().distribute(physicalNodes, data);
               break;
 
-            case BEGIN_WINDOW:
+            case MessageType.BEGIN_WINDOW_VALUE:
+              tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
               logger.debug("{}->{} condition {} =? {}",
                            new Object[] {
                 upstream,
                 group,
-                Codec.getStringWindowId(baseSeconds | iterator.getWindowId()),
+                Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
                 Codec.getStringWindowId(windowId)
               });
-              if ((baseSeconds | iterator.getWindowId()) >= windowId) {
+              if ((baseSeconds | tuple.getWindowId()) >= windowId) {
                 logger.debug("caught up {}->{}", upstream, group);
                 GiveAll.getInstance().distribute(physicalNodes, data);
                 caughtup = true;
@@ -178,8 +179,8 @@ public class LogicalNode implements DataListener
               }
               break;
 
-            case CHECKPOINT:
-            case CODEC_STATE:
+            case MessageType.CHECKPOINT_VALUE:
+            case MessageType.CODEC_STATE_VALUE:
               GiveAll.getInstance().distribute(physicalNodes, data);
               break;
           }
@@ -208,18 +209,18 @@ public class LogicalNode implements DataListener
           if (partitions.isEmpty()) {
             while (iterator.hasNext()) {
               SerializedData data = iterator.next();
-              switch (iterator.getType()) {
-                case PAYLOAD:
+              switch (data.bytes[data.dataOffset]) {
+                case MessageType.PAYLOAD_VALUE:
                   policy.distribute(physicalNodes, data);
                   break;
 
-                case NO_MESSAGE:
-                case NO_MESSAGE_ODD:
+                case MessageType.NO_MESSAGE_VALUE:
+                case MessageType.NO_MESSAGE_ODD_VALUE:
                   break;
 
-                case RESET_WINDOW:
-                  Message resetWindow = (Message)iterator.getData();
-                  baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
+                case MessageType.RESET_WINDOW_VALUE:
+                  Tuple resetWindow = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+                  baseSeconds = (long)resetWindow.getBaseSeconds() << 32;
 
                 default:
                   GiveAll.getInstance().distribute(physicalNodes, data);
@@ -230,9 +231,10 @@ public class LogicalNode implements DataListener
           else {
             while (iterator.hasNext()) {
               SerializedData data = iterator.next();
-              switch (iterator.getType()) {
-                case PAYLOAD:
-                  int value = ((Message)iterator.getData()).getPayload().getPartition();
+              switch (data.bytes[data.dataOffset]) {
+                case MessageType.PAYLOAD_VALUE:
+                  Tuple tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+                  int value = tuple.getPartition();
                   for (BitVector bv : partitions) {
                     if (bv.matches(value)) {
                       policy.distribute(physicalNodes, data);
@@ -241,13 +243,13 @@ public class LogicalNode implements DataListener
                   }
                   break;
 
-                case NO_MESSAGE:
-                case NO_MESSAGE_ODD:
+                case MessageType.NO_MESSAGE_VALUE:
+                case MessageType.NO_MESSAGE_ODD_VALUE:
                   break;
 
-                case RESET_WINDOW:
-                  Message resetWindow = (Message)iterator.getData();
-                  baseSeconds = (long)resetWindow.getResetWindow().getBaseSeconds() << 32;
+                case MessageType.RESET_WINDOW_VALUE:
+                  tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+                  baseSeconds = (long)tuple.getBaseSeconds() << 32;
 
                 default:
                   GiveAll.getInstance().distribute(physicalNodes, data);
