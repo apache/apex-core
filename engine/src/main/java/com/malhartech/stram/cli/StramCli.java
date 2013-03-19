@@ -3,21 +3,28 @@
  */
 package com.malhartech.stram.cli;
 
-import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
-import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
-import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.webapp.StramWebServices;
-import com.malhartech.util.VersionInfo;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+
 import javax.ws.rs.core.MediaType;
-import jline.*;
+
+import jline.ArgumentCompletor;
+import jline.Completor;
+import jline.ConsoleReader;
+import jline.FileNameCompletor;
+import jline.History;
+import jline.MultiCompletor;
+import jline.SimpleCompletor;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.protocolrecords.GetAllApplicationsRequest;
@@ -32,6 +39,15 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
+import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
+import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.webapp.StramWebServices;
+import com.malhartech.util.VersionInfo;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 
 /**
  *
@@ -53,6 +69,7 @@ import org.slf4j.LoggerFactory;
  * </table>
  * <br>
  */
+@SuppressWarnings("UseOfSystemOutOrSystemErr")
 public class StramCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
@@ -99,13 +116,107 @@ public class StramCli
   {
   }
 
+  /**
+   * Why reinvent the wheel?
+   * JLine 2.x supports search and more.. but it uses the same package as JLine 1.x
+   * Hadoop bundles and forces 1.x into our class path (when CLI is launched via hadoop command).
+   */
+  private class ConsoleReaderExt extends ConsoleReader
+  {
+    private final char REVERSE_SEARCH_KEY = (char)31;
+
+    ConsoleReaderExt() throws IOException
+    {
+      // CTRL-? since CTRL-R already mapped to redisplay
+      addTriggeredAction(REVERSE_SEARCH_KEY, new ActionListener()
+      {
+        @Override
+        public void actionPerformed(ActionEvent e)
+        {
+          try {
+            searchHistory();
+          }
+          catch (IOException ex) {
+            return; // ignore
+          }
+        }
+
+      });
+    }
+
+    public int searchBackwards(CharSequence searchTerm, int startIndex)
+    {
+      @SuppressWarnings("unchecked")
+      List<String> history = getHistory().getHistoryList();
+      if (startIndex < 0) {
+        startIndex = history.size();
+      }
+      for (int i = startIndex; --i > 0;) {
+        String line = history.get(i);
+        if (line.contains(searchTerm)) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    private void searchHistory() throws IOException
+    {
+      final String prompt = "reverse-search: ";
+      StringBuilder searchTerm = new StringBuilder();
+      String matchingCmd = null;
+      int historyIndex = -1;
+      while (true) {
+        while (backspace());
+        String line = prompt + searchTerm;
+        if (matchingCmd != null) {
+          line = line.concat(": ").concat(matchingCmd);
+        }
+        this.putString(line);
+
+        int c = this.readVirtualKey();
+        if (c == 8) {
+          if (searchTerm.length() > 0) {
+            searchTerm.deleteCharAt(searchTerm.length() - 1);
+          }
+        }
+        else if (c == REVERSE_SEARCH_KEY) {
+          int newIndex = searchBackwards(searchTerm, historyIndex);
+          if (newIndex >= 0) {
+            historyIndex = newIndex;
+            matchingCmd = (String)getHistory().getHistoryList().get(historyIndex);
+          }
+        }
+        else if (!Character.isISOControl(c)) {
+          searchTerm.append(Character.toChars(c));
+          int newIndex = searchBackwards(searchTerm, -1);
+          if (newIndex >= 0) {
+            historyIndex = newIndex;
+            matchingCmd = (String)getHistory().getHistoryList().get(historyIndex);
+          }
+        }
+        else {
+          while (backspace());
+          //if (c == 10) { // enter
+          if (!StringUtils.isBlank(matchingCmd)) {
+            this.putString(matchingCmd);
+            this.flushConsole();
+          }
+          return;
+          //}
+        }
+      }
+    }
+
+  }
+
   public void run() throws IOException
   {
     printWelcomeMessage();
-    ConsoleReader reader = new ConsoleReader();
+    ConsoleReader reader = new ConsoleReaderExt();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill", "startrecording", "stoprecording", "exit"};
+    String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill", "startrecording", "stoprecording", "syncrecording", "operator-property-set", "exit"};
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -166,6 +277,12 @@ public class StramCli
         else if (line.startsWith("stoprecording")) {
           stopRecording(line);
         }
+        else if (line.startsWith("syncrecording")) {
+          syncRecording(line);
+        }
+        else if (line.startsWith("operator-property-set")) {
+          setOperatorProperty(line);
+        }
         else if ("exit".equals(line)) {
           System.out.println("Exiting application");
           return;
@@ -183,11 +300,12 @@ public class StramCli
       }
       out.flush();
     }
+    System.out.println("exit");
   }
 
   private void printWelcomeMessage()
   {
-    System.out.println("Stram CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate());
+    System.out.println("Stram CLI " + VersionInfo.getVersion() + " " + VersionInfo.getDate() + " " + VersionInfo.getRevision());
   }
 
   private void printHelp()
@@ -198,8 +316,9 @@ public class StramCli
     System.out.println("launch <jarFile> [<configuration>] - Launch application packaged in jar file.");
     System.out.println("timeout <duration> - Wait for completion of current application.");
     System.out.println("kill             - Force termination for current application.");
-    System.out.println("startrecording <operId> [<recordingName>] - Start recording tuples for the given operator id");
-    System.out.println("stoprecording [<operId>] - Stop recording tuples for the given operator id, all if operator id is not given");
+    System.out.println("startrecording <operId> [<portName>] - Start recording tuples for the given operator id");
+    System.out.println("stoprecording <operId> [<portName>] - Stop recording tuples for the given operator id");
+    System.out.println("syncrecording <operId> [<portName>] - Sync recording tuples for the given operator id");
     System.out.println("exit             - Exit the app");
 
   }
@@ -208,6 +327,9 @@ public class StramCli
           throws IOException
   {
     String line = reader.readLine(promtMessage + "\nstramcli> ");
+    if (line == null) {
+      return null;
+    }
     return line.trim();
   }
 
@@ -256,7 +378,8 @@ public class StramCli
     }
     else if (context.equals("containers")) {
       listContainers();
-    } else {
+    }
+    else {
       listOperators(args);
     }
   }
@@ -383,7 +506,7 @@ public class StramCli
       return;
     }
     else {
-        currentDir = args[1];
+      currentDir = args[1];
     }
 
     currentApp = getApplication(Integer.parseInt(currentDir));
@@ -561,7 +684,8 @@ public class StramCli
 
   }
 
-  private WebResource getPostResource() {
+  private WebResource getPostResource()
+  {
     if (currentApp == null) {
       throw new CliException("No application selected");
     }
@@ -655,7 +779,7 @@ public class StramCli
     try {
       request.put("operId", args[1]);
       if (args.length == 3) {
-        request.put("name", args[2]);
+        request.put("portName", args[2]);
       }
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
       System.out.println("start recording requested: " + response);
@@ -668,7 +792,7 @@ public class StramCli
   private void stopRecording(String line)
   {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
-    if (args.length > 2) {
+    if (args.length != 2 && args.length != 3) {
       System.err.println("Invalid arguments");
       return;
     }
@@ -677,12 +801,55 @@ public class StramCli
     JSONObject request = new JSONObject();
 
     try {
-      if (args.length == 2) {
-        int operId = Integer.valueOf(args[1]);
-        request.put("operId", operId);
+      request.put("operId", args[1]);
+      if (args.length == 3) {
+        request.put("portName", args[2]);
       }
       JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
       System.out.println("stop recording requested: " + response);
+    }
+    catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+
+  private void syncRecording(String line)
+  {
+    String[] args = StringUtils.splitByWholeSeparator(line, " ");
+    if (args.length != 2 && args.length != 3) {
+      System.err.println("Invalid arguments");
+      return;
+    }
+
+    WebResource r = getPostResource().path(StramWebServices.PATH_SYNCRECORDING);
+    JSONObject request = new JSONObject();
+
+    try {
+      request.put("operId", args[1]);
+      if (args.length == 3) {
+        request.put("portName", args[2]);
+      }
+      JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+      System.out.println("sync recording requested: " + response);
+    }
+    catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+
+  private void setOperatorProperty(String line)
+  {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    String[] args = assertArgs(line, 4, "required arguments: <operatorName> <propertyName> <propertyValue>");
+    WebResource r = getPostResource().path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("setProperty");
+    try {
+      JSONObject request = new JSONObject();
+      request.put("propertyName", args[2]);
+      request.put("propertyValue", args[3]);
+      JSONObject response = r.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
+      System.out.println("request submitted: " + response);
     }
     catch (Exception e) {
       throw new CliException("Failed to request " + r.getURI(), e);

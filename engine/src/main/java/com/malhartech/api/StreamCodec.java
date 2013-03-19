@@ -11,24 +11,24 @@ package com.malhartech.api;
 
 /**
  *
- * Serializing and Deserializing the data tuples and controlling the partitioning<p>
- * <br>
- * Data flows from one Operator to another Operator through a stream. For load balancing the
- * downstream operators, we can use sticky partitions. Since the framework has no knowledge
- * about the internals of the data flowing between operators, it has to ask the
- * application if payload can be partitioned and appropriately creates downstream
- * operators to share the load as per the partitions. This functionality is abstracted
- * out in StreamCodec. Typically StreamCodec is defined on each input stream and is able to
+ * Serializing and Deserializing the data tuples and controlling the partitioning
+ * <p>
+ * Data flows from one Operator to another Operator through a stream.Typically
+ * StreamCodec is defined on each input stream and is able to
  * serialize/deserialize and partition the data of type supported by the stream.
- * <br /><br />
- * For a few known types, the system is able to determine the StreamCodec. In all other cases,
- * it would need user to define the codec on each input stream.
- * <br /> <br />
- * In the physical layout, each codec has at least 2 instances - serializer instance which
- * attaches itself to the stream coming out of upstream operator and deserializer instance
- * which attaches itself to input stream of downstream operator.
+ * <br />
+ * <br />
+ * For a few known types, the system is able to determine the StreamCodec. In
+ * all other cases, it would need user to define the codec on each input stream.
+ * <br />
+ * <br />
+ * In the physical layout, each codec has at least 2 instances - serializer
+ * instance which attaches itself to the stream coming out of upstream operator
+ * and deserializer instance which attaches itself to input stream of downstream
+ * operator.
  *
- * @param <T> data type of the tuples on the stream
+ * @param <T>
+ *          data type of the tuples on the stream
  * @author chetan
  */
 public interface StreamCodec<T>
@@ -87,7 +87,7 @@ public interface StreamCodec<T>
    * balancing per partition is in effect.
    *
    * @param o object for which the partition has to be determined
-   * @return byte array representing the partition for the object
+   * @return partition for the object
    */
   int getPartition(T o);
 

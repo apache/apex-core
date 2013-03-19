@@ -6,7 +6,6 @@ package com.malhartech.stram.webapp;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Level;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -52,7 +51,9 @@ public class StramWebServices
   public static final String PATH_SHUTDOWN = "shutdown";
   public static final String PATH_STARTRECORDING = "startRecording";
   public static final String PATH_STOPRECORDING = "stopRecording";
+  public static final String PATH_SYNCRECORDING = "syncRecording";
   public static final String PATH_CONTAINERS = "containers";
+  public static final String PATH_LOGICAL_PLAN_OPERATORS = "logicalPlan/operators";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
@@ -115,7 +116,7 @@ public class StramWebServices
   {
     init();
     OperatorsInfo nodeList = new OperatorsInfo();
-    nodeList.operators = dagManager.getNodeInfoList();
+    nodeList.operators = dagManager.getOperatorInfoList();
     return nodeList;
   }
 
@@ -137,15 +138,15 @@ public class StramWebServices
     JSONObject response = new JSONObject();
     try {
       int operId = Integer.valueOf(request.getString("operId"));
-      String name = request.optString("name");
-      dagManager.startRecording(operId, name);
+      String portName = request.optString("portName");
+      dagManager.startRecording(operId, portName);
     }
     catch (JSONException ex) {
       try {
         response.put("error", ex.toString());
       }
       catch (JSONException ex1) {
-        java.util.logging.Logger.getLogger(StramWebServices.class.getName()).log(Level.SEVERE, null, ex1);
+        throw new RuntimeException(ex1);
       }
     }
     return response;
@@ -160,10 +161,29 @@ public class StramWebServices
     JSONObject response = new JSONObject();
     try {
       int operId = request.getInt("operId");
-      dagManager.stopRecording(operId);
+      String portName = request.optString("portName");
+      dagManager.stopRecording(operId, portName);
     }
     catch (JSONException ex) {
-      dagManager.stopAllRecordings();
+      ex.printStackTrace();
+    }
+    return response;
+  }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_SYNCRECORDING)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject syncRecording(JSONObject request)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      int operId = request.getInt("operId");
+      String portName = request.optString("portName");
+      dagManager.syncRecording(operId, portName);
+    }
+    catch (JSONException ex) {
+      ex.printStackTrace();
     }
     return response;
   }
@@ -176,7 +196,7 @@ public class StramWebServices
     init();
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
     List<ContainerInfo> l = new java.util.ArrayList<ContainerInfo>(containerAgents.size());
-    for (StramChildAgent sca : containerAgents) {
+    for (StramChildAgent sca: containerAgents) {
       l.add(sca.getContainerInfo());
     }
     return l;
@@ -190,6 +210,24 @@ public class StramWebServices
   {
     JSONObject response = new JSONObject();
     dagManager.stopContainer(containerId);
+    return response;
+  }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/setProperty")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject setOperatorProperty(JSONObject request, @PathParam("operatorId") String operatorId)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      String propertyName = request.getString("propertyName");
+      String propertyValue = request.getString("propertyValue");
+      dagManager.setOperatorProperty(operatorId, propertyName, propertyValue);
+    }
+    catch (JSONException ex) {
+      ex.printStackTrace();
+    }
     return response;
   }
 

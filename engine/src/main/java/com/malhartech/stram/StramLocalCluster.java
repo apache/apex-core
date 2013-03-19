@@ -120,12 +120,6 @@ public class StramLocalCluster implements Runnable
       return sca.pollRequest();
     }
 
-    @Override
-    public StramToNodeRequest processPartioningDetails()
-    {
-      throw new RuntimeException("processPartioningDetails not implemented");
-    }
-
   }
 
   public static class LocalStramChild extends StramChild
@@ -146,13 +140,21 @@ public class StramLocalCluster implements Runnable
     {
       LOG.debug("Got context: " + ctx);
       stramChild.setup(ctx);
+      boolean hasError = true;
       try {
         // main thread enters heartbeat loop
         stramChild.monitorHeartbeat();
+        hasError = false;
       }
       finally {
         // teardown
-        stramChild.teardown();
+        try {
+          stramChild.teardown();
+        } catch (Exception e) {
+          if (!hasError) {
+            throw e;
+          }
+        }
       }
     }
 
@@ -253,7 +255,7 @@ public class StramLocalCluster implements Runnable
     }
 
     dag.getAttributes().attr(DAG.STRAM_APP_ID).set("app_local_" + System.currentTimeMillis());
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).setIfAbsent(pathUri);
+    dag.getAttributes().attr(DAG.STRAM_APP_PATH).setIfAbsent(pathUri);
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
@@ -324,7 +326,7 @@ public class StramLocalCluster implements Runnable
     LocalStramChild container;
     if (planOperator.container.containerId != null) {
       if ((container = getContainer(planOperator.container.containerId)) != null) {
-        if (container.getNodeContext(planOperator.id) != null) {
+        if (container.getNodeContext(planOperator.getId()) != null) {
           return container;
         }
       }

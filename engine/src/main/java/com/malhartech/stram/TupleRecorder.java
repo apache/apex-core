@@ -7,18 +7,26 @@ package com.malhartech.stram;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.engine.Tuple;
+import com.malhartech.util.JacksonObjectMapperProvider;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.config.ClientConfig;
+import com.sun.jersey.api.client.config.DefaultClientConfig;
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map.Entry;
+import java.util.List;
+import javax.ws.rs.core.MediaType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -37,28 +45,68 @@ public class TupleRecorder implements Operator
   private transient OutputStream localIndexOutput;
   private transient String localBasePath;
   private int bytesPerPartFile = 100 * 1024;
+  private long millisPerPartFile = 30 * 60 * 1000; // 30 minutes
   private String basePath = ".";
   private transient String hdfsFile;
   private int fileParts = 0;
   private int partFileTupleCount = 0;
   private int totalTupleCount = 0;
+  private long currentPartFileTimeStamp = 0;
   private HashMap<String, PortInfo> portMap = new HashMap<String, PortInfo>(); // used for output portInfo <name, id> map
   private HashMap<String, PortCount> portCountMap = new HashMap<String, PortCount>(); // used for tupleCount of each port <name, count> map
   private transient long currentWindowId = -1;
-  private transient long partBeginWindowId = -1;
+  private transient ArrayList<Range> windowIdRanges = new ArrayList<Range>();
+  //private transient long partBeginWindowId = -1;
   private String recordingName = "Untitled";
   private final long startTime = System.currentTimeMillis();
   private int nextPortIndex = 0;
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
+  private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
+  private transient StreamCodec<Object> streamCodec;
+  private transient JsonStreamCodec<Object> jsonStreamCodec = new JsonStreamCodec<Object>();
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
+  private boolean syncRequested = false;
+  private Client client;
+  private URI postToUrl = null;
+  private URI getNumSubscribersUrl = null;
+  private int numSubscribers = 0;
+
+  public TupleRecorder()
+  {
+    ClientConfig cc = new DefaultClientConfig();
+    cc.getClasses().add(JacksonObjectMapperProvider.class);
+    client = Client.create(cc);
+  }
 
   public RecorderSink newSink(String key)
   {
     RecorderSink recorderSink = new RecorderSink(key);
     sinks.put(key, recorderSink);
     return recorderSink;
+  }
+
+  /**
+   * Sets the stream codec for serialization to write to the files
+   * The serialization method must not produce newlines.
+   * For serializations that produces binary, base64 is recommended.
+   *
+   * @param streamCodecClass
+   */
+  public void setStreamCodec(Class<? extends StreamCodec<Object>> streamCodecClass)
+  {
+    this.streamCodecClass = streamCodecClass;
+  }
+
+  public void setPostToUrl(String postToUrl) throws URISyntaxException
+  {
+    this.postToUrl = new URI(postToUrl);
+  }
+
+  public void setGetNumSubscribersUrl(String getNumSubscribersUrl) throws URISyntaxException
+  {
+    this.getNumSubscribersUrl = new URI(getNumSubscribersUrl);
   }
 
   public HashMap<String, PortInfo> getPortInfoMap()
@@ -103,6 +151,29 @@ public class TupleRecorder implements Operator
     public String recordingName;
   }
 
+  public static class Range
+  {
+    public long low = -1;
+    public long high = -1;
+
+    public Range()
+    {
+    }
+
+    public Range(long low, long high)
+    {
+      this.low = low;
+      this.high = high;
+    }
+
+    @Override
+    public String toString()
+    {
+      return "[" + String.valueOf(low) + "," + String.valueOf(high) + "]";
+    }
+
+  }
+
   public String getRecordingName()
   {
     return recordingName;
@@ -115,12 +186,17 @@ public class TupleRecorder implements Operator
 
   public void setBytesPerPartFile(int bytes)
   {
-    bytesPerPartFile = bytes;
+    this.bytesPerPartFile = bytes;
+  }
+
+  public void setMillisPerPartFile(long millis)
+  {
+    this.millisPerPartFile = millis;
   }
 
   public void setBasePath(String path)
   {
-    basePath = path;
+    this.basePath = path;
   }
 
   public String getBasePath()
@@ -170,8 +246,8 @@ public class TupleRecorder implements Operator
         logger.debug("Closing part file");
         partOutStr.close();
         if (indexOutStr != null) {
-          logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
           writeIndex();
+          writeIndexEnd();
         }
       }
       if (indexOutStr != null) {
@@ -184,9 +260,11 @@ public class TupleRecorder implements Operator
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void setup(OperatorContext context)
   {
     try {
+      streamCodec = streamCodecClass.newInstance();
       Path pa = new Path(basePath, META_FILE);
       if (basePath.startsWith("file:")) {
         isLocalMode = true;
@@ -196,18 +274,17 @@ public class TupleRecorder implements Operator
       fs = FileSystem.get(pa.toUri(), new Configuration());
       FSDataOutputStream metaOs = fs.create(pa);
 
-      ObjectMapper mapper = new ObjectMapper();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       bos.write((VERSION + "\n").getBytes());
 
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
       recordInfo.recordingName = recordingName;
-      mapper.writeValue(bos, recordInfo);
+      bos.write(streamCodec.toByteArray(recordInfo).data);
       bos.write("\n".getBytes());
 
       for (PortInfo pi: portMap.values()) {
-        mapper.writeValue(bos, pi);
+        bos.write(streamCodec.toByteArray(pi).data);
         bos.write("\n".getBytes());
       }
 
@@ -224,8 +301,8 @@ public class TupleRecorder implements Operator
         indexOutStr = fs.create(pa);
       }
     }
-    catch (IOException ex) {
-      logger.error(ex.toString());
+    catch (Exception ex) {
+      logger.error("Trouble setting up tuple recorder", ex);
     }
   }
 
@@ -242,19 +319,31 @@ public class TupleRecorder implements Operator
       partOutStr = fs.create(path);
     }
     fileParts++;
+    currentPartFileTimeStamp = System.currentTimeMillis();
+    partFileTupleCount = 0;
   }
 
   @Override
   public void beginWindow(long windowId)
   {
     if (this.currentWindowId != windowId) {
-      this.currentWindowId = windowId;
-      if (partBeginWindowId < 0) {
-        partBeginWindowId = windowId;
+      if (windowId != this.currentWindowId + 1) {
+        if (!windowIdRanges.isEmpty()) {
+          windowIdRanges.get(windowIdRanges.size() - 1).high = this.currentWindowId;
+        }
+        Range range = new Range();
+        range.low = windowId;
+        windowIdRanges.add(range);
       }
+      if (windowIdRanges.isEmpty()) {
+        Range range = new Range();
+        range.low = windowId;
+        windowIdRanges.add(range);
+      }
+      this.currentWindowId = windowId;
       endWindowTuplesProcessed = 0;
       try {
-        if (partOutStr == null || partOutStr.getPos() > bytesPerPartFile) {
+        if (partOutStr == null) {
           openNewPartFile();
         }
         logger.debug("Writing begin window (id: {}) to tuple recorder", windowId);
@@ -275,20 +364,14 @@ public class TupleRecorder implements Operator
         partOutStr.write(("E:" + currentWindowId + "\n").getBytes());
         logger.debug("Got last end window tuple.  Flushing...");
         partOutStr.hflush();
-        //fsOutput.hsync();
-        if (partOutStr.getPos() > bytesPerPartFile) {
+        if (syncRequested || (partOutStr.getPos() > bytesPerPartFile) || (currentPartFileTimeStamp + millisPerPartFile < System.currentTimeMillis())) {
           partOutStr.close();
-          logger.debug("Writing index file for windows {} to {}", partBeginWindowId, currentWindowId);
+          partOutStr = null;
           writeIndex();
-          partBeginWindowId = -1;
-          logger.debug("Closing current part file because it's full");
+          syncRequested = false;
+          logger.debug("Closing current part file.");
         }
-      }
-      catch (JsonGenerationException ex) {
-        logger.error(ex.toString());
-      }
-      catch (JsonMappingException ex) {
-        logger.error(ex.toString());
+        updateNumSubscribers();
       }
       catch (IOException ex) {
         logger.error(ex.toString());
@@ -296,12 +379,16 @@ public class TupleRecorder implements Operator
     }
   }
 
+  public void requestSync()
+  {
+    syncRequested = true;
+  }
+
   public void writeTuple(Object obj, String port)
   {
     try {
-      ObjectMapper mapper = new ObjectMapper();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      mapper.writeValue(bos, obj);
+      bos.write(streamCodec.toByteArray(obj).data);
       bos.write("\n".getBytes());
 
       PortInfo pi = portMap.get(port);
@@ -314,14 +401,11 @@ public class TupleRecorder implements Operator
       partOutStr.write(bos.toByteArray());
       //logger.debug("Writing tuple for port id {}", pi.id);
       //fsOutput.hflush();
+      if (numSubscribers > 0) {
+        postTupleData(pi.id, obj);
+      }
       ++partFileTupleCount;
       ++totalTupleCount;
-    }
-    catch (JsonGenerationException ex) {
-      logger.error(ex.toString());
-    }
-    catch (JsonMappingException ex) {
-      logger.error(ex.toString());
     }
     catch (IOException ex) {
       logger.error(ex.toString());
@@ -344,13 +428,30 @@ public class TupleRecorder implements Operator
     }
   }
 
+  private static String convertToString(List<Range> ranges)
+  {
+    String result = "";
+    int i = 0;
+    for (Range range: ranges) {
+      if (i++ > 0) {
+        result += ",";
+      }
+      result += String.valueOf(range.low);
+      result += "-";
+      result += String.valueOf(range.high);
+    }
+    return result;
+  }
+
   public void writeIndex()
   {
-    if (partBeginWindowId < 0) {
+    if (windowIdRanges.isEmpty()) {
       return;
     }
+    windowIdRanges.get(windowIdRanges.size() - 1).high = this.currentWindowId;
+    logger.debug("Writing index file for windows {}", windowIdRanges);
     try {
-      indexOutStr.write(("F:" + partBeginWindowId + ":" + currentWindowId + ":T:" + partFileTupleCount + ":").getBytes());
+      indexOutStr.write(("F:" + convertToString(windowIdRanges) + ":T:" + partFileTupleCount + ":").getBytes());
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       int i = 0;
@@ -360,7 +461,7 @@ public class TupleRecorder implements Operator
         if (i != 0) {
           countStr += ",";
         }
-        countStr += "\"" + pc.id + "\"" + ":" + pc.count;
+        countStr += "\"" + pc.id + "\"" + ":\"" + pc.count + "\"";
         i++;
 
         pc.count = 0;
@@ -379,7 +480,52 @@ public class TupleRecorder implements Operator
     catch (IOException ex) {
       logger.error(ex.toString());
     }
+    windowIdRanges.clear();
+  }
 
+  public void writeIndexEnd()
+  {
+    try {
+      indexOutStr.write(("E\n").getBytes());
+      indexOutStr.hflush();
+      indexOutStr.hsync();
+    }
+    catch (IOException ex) {
+      logger.error(ex.toString());
+    }
+  }
+
+  private void postTupleData(int portId, Object obj)
+  {
+    try {
+      if (postToUrl != null) {
+        JSONObject json = new JSONObject();
+        json.put("portId", String.valueOf(portId));
+        json.put("windowId", currentWindowId);
+        json.put("data", new JSONObject(new String(jsonStreamCodec.toByteArray(obj).data)));
+        WebResource wr = client.resource(postToUrl);
+        wr.type(MediaType.APPLICATION_JSON).post(json);
+      }
+    }
+    catch (Exception ex) {
+      logger.warn("Error posting to URL {}", postToUrl, ex);
+    }
+  }
+
+  public void updateNumSubscribers()
+  {
+    try {
+      if (getNumSubscribersUrl != null) {
+        WebResource wr = client.resource(getNumSubscribersUrl);
+        JSONObject response = wr.get(JSONObject.class);
+        numSubscribers = response.getInt("num");
+        logger.info("Number of subscribers is {}", numSubscribers);
+      }
+    }
+    catch (Exception ex) {
+      numSubscribers = 0;
+      logger.warn("Error getting number of subscribers from URL {}", getNumSubscribersUrl, ex);
+    }
   }
 
   public class RecorderSink implements Sink<Object>

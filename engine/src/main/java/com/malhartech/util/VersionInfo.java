@@ -3,7 +3,9 @@ package com.malhartech.util;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.Properties;
 import java.util.jar.Attributes;
+import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -22,11 +24,12 @@ public class VersionInfo {
   private static String version = "Unknown";
   private static String user = "Unknown";
   private static String date = "Unknown";
+  private static String revision = "Unknown";
 
   static {
     LOG.debug("Version from manifest");
     try {
-      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/MANIFEST.MF");
+      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources(JarFile.MANIFEST_NAME);
       while (resources.hasMoreElements()) {
         Manifest manifest = new Manifest(resources.nextElement().openStream());
         Attributes mainAttribs = manifest.getMainAttributes();
@@ -38,6 +41,17 @@ public class VersionInfo {
           break;
         }
       }
+
+      resources = VersionInfo.class.getClassLoader().getResources("malhar-stram-git.properties");
+      while (resources.hasMoreElements()) {
+        Properties gitInfo = new Properties();
+        gitInfo.load(resources.nextElement().openStream());
+        String commitAbbrev = gitInfo.getProperty("git.commit.id.abbrev", "unknown");
+        String branch = gitInfo.getProperty("git.branch", "unknown");
+        VersionInfo.revision = "rev: " + commitAbbrev + " branch: " + branch;
+        break;
+      }
+
     }
     catch (IOException e) {
       LOG.error("Failed to read version info", e);
@@ -76,7 +90,7 @@ public class VersionInfo {
    * @return the revision number, eg. "451451"
    */
   public static String getRevision() {
-    return "Unknown";
+    return revision;
   }
 
   /**

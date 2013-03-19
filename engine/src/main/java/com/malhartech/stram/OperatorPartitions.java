@@ -17,6 +17,9 @@ import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class OperatorPartitions {
 
   final DAG.OperatorMeta operatorWrapper;
@@ -24,21 +27,6 @@ public class OperatorPartitions {
   public OperatorPartitions(DAG.OperatorMeta operator) {
     this.operatorWrapper = operator;
   }
-
-  private Map<DAG.InputPortMeta, PartitionKeys> convertMapping(Map<InputPort<?>, PartitionKeys> keys) {
-    Map<DAG.InputPortMeta, PartitionKeys> partitionKeys;
-    partitionKeys = new HashMap<DAG.InputPortMeta, PartitionKeys>(keys.size());
-    Map<InputPort<?>, PartitionKeys> partKeys = keys;
-    for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
-      DAG.InputPortMeta pportMeta = operatorWrapper.getInputPortMeta(portEntry.getKey());
-      if (pportMeta == null) {
-        throw new IllegalArgumentException("Invalid port reference " + portEntry);
-      }
-      partitionKeys.put(pportMeta, portEntry.getValue());
-    }
-    return partitionKeys;
-  }
-
 
   public static class PartitionImpl implements PartitionableOperator.Partition<Operator> {
     private final PartitionPortMap partitionKeys;
@@ -168,6 +156,7 @@ public class OperatorPartitions {
    * DAG.
    */
   public static class DefaultPartitioner {
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultPartitioner.class);
 
     public List<Partition<?>> defineInitialPartitions(DAG.OperatorMeta logicalOperator, int initialPartitionCnt) {
 
@@ -230,18 +219,22 @@ public class OperatorPartitions {
           // combine neighboring underutilized partitions
           PartitionKeys pks = p.getPartitionKeys().values().iterator().next(); // one port partitioned
           for (int partitionKey : pks.partitions) {
-            // look for the sibling partition by flipping leading bit
-            int lookupKey = ( ( pks.mask >>> 1 ) & pks.mask ) & partitionKey;
-            Partition<?> siblingPartition = lowLoadPartitions.get(lookupKey);
+            // look for the sibling partition by excluding leading bit
+            int reducedMask = pks.mask >>> 1;
+            String lookupKey = Integer.valueOf(reducedMask) + "-" + Integer.valueOf(partitionKey & reducedMask);
+            LOG.debug("pks {} lookupKey {}", pks, lookupKey);
+            Partition<?> siblingPartition = lowLoadPartitions.remove(partitionKey & reducedMask);
             if (siblingPartition == null) {
-              lowLoadPartitions.put(partitionKey, p);
+              lowLoadPartitions.put(partitionKey & reducedMask, p);
             } else {
               // both of the partitions are low load, combine
-              lowLoadPartitions.remove(lookupKey);
-              PartitionKeys newPks = new PartitionKeys(pks.mask >>> 1, Sets.newHashSet(lookupKey & (pks.mask >>> 1)));
-              siblingPartition.getPartitionKeys().entrySet().iterator().next().setValue(newPks);
+              PartitionKeys newPks = new PartitionKeys(reducedMask, Sets.newHashSet(partitionKey & reducedMask));
+              // put new value so the map gets marked as modified
+              InputPort<?> port = siblingPartition.getPartitionKeys().keySet().iterator().next();
+              siblingPartition.getPartitionKeys().put(port, newPks);
               // add as new partition
               newPartitions.add(siblingPartition);
+              //LOG.debug("partition keys after merge {}", siblingPartition.getPartitionKeys());
             }
           }
         } else if (load > 0) {

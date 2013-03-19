@@ -58,13 +58,14 @@ public class CheckpointTest
     // node with no inputs will be connected to window generator
     TestGeneratorInputModule m1 = dag.addOperator("node1", TestGeneratorInputModule.class);
     m1.setMaxTuples(1);
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_DIR).set(testWorkDir.getPath());
+    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
     String containerId = "container1";
     StramChildAgent cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
+
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
     WindowGenerator wingen = StramTestSupport.setupWindowGenerator(mses);
     LocalStramChild container = new LocalStramChild(containerId, null, wingen);
@@ -73,6 +74,11 @@ public class CheckpointTest
     List<OperatorDeployInfo> deployInfo = cc.getDeployInfo();
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.deployRequest = deployInfo;
+
+    StramChildAgent.DeployRequest dr = new StramChildAgent.DeployRequest(null, null);
+    dr.setOperators(cc.container.operators);
+    cc.addRequest(dr);
+
     container.processHeartbeatResponse(rsp);
 
 //    mses.tick(1); // begin window 0
@@ -91,7 +97,7 @@ public class CheckpointTest
     StramTestSupport.waitForWindowComplete(context, 1);
 
     StramToNodeRequest backupRequest = new StramToNodeRequest();
-    backupRequest.setNodeId(context.getId());
+    backupRequest.setOperatorId(context.getId());
     backupRequest.setRequestType(RequestType.CHECKPOINT);
     rsp = new ContainerHeartbeatResponse();
     rsp.nodeRequests = Collections.singletonList(backupRequest);
@@ -101,7 +107,7 @@ public class CheckpointTest
     StramTestSupport.waitForWindowComplete(context, 2);
     Assert.assertEquals("node = window 2", 2, context.getLastProcessedWindowId());
 
-    File cpFile1 = new File(testWorkDir, backupRequest.getNodeId() + "/2");
+    File cpFile1 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + backupRequest.getOperatorId() + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
     StreamingNodeHeartbeat hbe = new StreamingNodeHeartbeat();
@@ -120,7 +126,7 @@ public class CheckpointTest
     StramTestSupport.waitForWindowComplete(context, 3);
     Assert.assertEquals("node = window 3", 3, context.getLastProcessedWindowId());
 
-    File cpFile2 = new File(testWorkDir, backupRequest.getNodeId() + "/3");
+    File cpFile2 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + backupRequest.getOperatorId() + "/3");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     // fake heartbeat to propagate checkpoint
@@ -149,12 +155,12 @@ public class CheckpointTest
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
-    List<PTOperator> nodes1 = plan.getOperators(dag.getOperatorWrapper(node1));
+    List<PTOperator> nodes1 = plan.getOperators(dag.getOperatorMeta(node1));
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());
     PTOperator pnode1 = nodes1.get(0);
 
-    List<PTOperator> nodes2 = plan.getOperators(dag.getOperatorWrapper(node2));
+    List<PTOperator> nodes2 = plan.getOperators(dag.getOperatorMeta(node2));
     Assert.assertNotNull(nodes2);
     Assert.assertEquals(1, nodes2.size());
     PTOperator pnode2 = nodes2.get(0);

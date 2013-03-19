@@ -8,7 +8,7 @@ import com.malhartech.api.Operator.InputPort;
 
 /**
  * Default abstract implementation for input ports.
- * An operator would typically create a derived inner class that defines process method.
+ * An operator would typically define a derived inner class with the process method.
  * This class is designed for use with a transient field, i.e. not to be serialized with the operator state.
  */
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
@@ -16,9 +16,9 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
   final private Operator operator;
   protected boolean connected = false;
 
-  public DefaultInputPort(Operator module)
+  public DefaultInputPort(Operator operator)
   {
-    this.operator = module;
+    this.operator = operator;
   }
 
   @Override

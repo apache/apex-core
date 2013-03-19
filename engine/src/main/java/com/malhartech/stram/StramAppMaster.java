@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.xml.bind.annotation.XmlElement;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -155,6 +157,12 @@ public class StramAppMaster
     }
 
     @Override
+    @XmlElement
+    public int getFailedContainers() {
+      return numFailedContainers.get();
+    }
+
+    @Override
     public int getNumOperators() {
       int num = 0;
       for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
@@ -222,6 +230,15 @@ public class StramAppMaster
     @Override
     public ClusterAppStats getStats() {
       return stats;
+    }
+
+    @Override
+    public String getDaemonAddress()
+    {
+      if (dag != null) {
+        return dag.getAttributes().attrValue(DAG.STRAM_DAEMON_ADDRESS, null);
+      }
+      return "unknown";
     }
 
   }

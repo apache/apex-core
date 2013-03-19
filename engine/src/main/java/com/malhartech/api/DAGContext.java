@@ -26,7 +26,8 @@ public interface DAGContext {
    */
   public static final String STRAM_LAUNCH_MODE = "stram.launchmode";
 
-  public final int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
+  public static final int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
+  public static final String SUBDIR_CHECKPOINTS = "checkpoints";
 
   /**
    * Name under which the application will be shown in the resource manager.
@@ -75,10 +76,10 @@ public interface DAGContext {
   public static final AttributeKey<Integer> STRAM_MASTER_MEMORY_MB = new AttributeKey<Integer>("stram.masterMemoryMB", Integer.class);
 
   public static final AttributeKey<Integer> STRAM_WINDOW_SIZE_MILLIS = new AttributeKey<Integer>("stram.windowSizeMillis", Integer.class);
-  public static final AttributeKey<String> STRAM_CHECKPOINT_DIR = new AttributeKey<String>("stram.checkpointDir", String.class);
   public static final AttributeKey<Integer> STRAM_CHECKPOINT_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.checkpointIntervalMillis", Integer.class);
   public static final AttributeKey<String> STRAM_APP_PATH = new AttributeKey<String>("stram.appPath", String.class);
   public static final AttributeKey<Integer> STRAM_TUPLE_RECORDING_PART_FILE_SIZE = new AttributeKey<Integer>("stram.tupleRecordingPartFileSize", Integer.class);
+  public static final AttributeKey<String> STRAM_DAEMON_ADDRESS = new AttributeKey<String>("stram.daemon.address", String.class);
   /**
    * How frequently should operators heartbeat to stram. Recommended setting is
    * 1000ms. Value 0 will disable heartbeat (for unit testing).

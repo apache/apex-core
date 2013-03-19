@@ -4,6 +4,29 @@
  */
 package com.malhartech.stram;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.Nullable;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
@@ -30,15 +53,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang.StringUtils;
 
 /**
  *
@@ -79,8 +94,8 @@ public class StreamingContainerManager implements PlanContext
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
 
-    appAttributes.attr(DAG.STRAM_CHECKPOINT_DIR).setIfAbsent("stram/" + System.currentTimeMillis() + "/checkpoints");
-    this.checkpointFsPath = appAttributes.attr(DAG.STRAM_CHECKPOINT_DIR).get();
+    appAttributes.attr(DAG.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
+    this.checkpointFsPath = appAttributes.attr(DAG.STRAM_APP_PATH).get() + "/" + DAG.SUBDIR_CHECKPOINTS;
 
     appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).setIfAbsent(30000);
     this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).get();
@@ -195,7 +210,7 @@ public class StreamingContainerManager implements PlanContext
         container.bufferServerAddress = bufferServerAddress;
         StreamingContainerContext scc = newStreamingContainerContext();
         StramChildAgent ca = new StramChildAgent(container, scc);
-        containers.put(containerId, new StramChildAgent(container, scc));
+        containers.put(containerId, ca);
         return ca;
       }
     }
@@ -248,7 +263,8 @@ public class StreamingContainerManager implements PlanContext
     return cs;
   }
 
-  public Collection<StramChildAgent> getContainerAgents() {
+  public Collection<StramChildAgent> getContainerAgents()
+  {
     return this.containers.values();
   }
 
@@ -297,7 +313,7 @@ public class StreamingContainerManager implements PlanContext
         if (previousHeartbeat == null || DNodeState.FAILED.name().compareTo(previousHeartbeat.getState()) != 0) {
           status.operator.failureCount++;
           LOG.warn("Operator failure: {} count: {}", status.operator, status.operator.failureCount);
-          Integer maxAttempts = status.operator.logicalNode.getAttributes().attrValue(OperatorContext.RECOVERY_ATTEMPTS, this.operatorMaxAttemptCount);
+          Integer maxAttempts = status.operator.getOperatorMeta().getAttributes().attrValue(OperatorContext.RECOVERY_ATTEMPTS, this.operatorMaxAttemptCount);
           if (status.operator.failureCount <= maxAttempts) {
             // restart entire container in attempt to recover operator
             // in the future a more sophisticated recovery strategy could
@@ -356,7 +372,7 @@ public class StreamingContainerManager implements PlanContext
           addCheckpoint(status.operator, shb.getLastBackupWindowId());
         }
       }
-      status.recordingName = shb.getRecordingName();
+      status.recordingNames = shb.getRecordingNames();
     }
 
     sca.lastHeartbeatMillis = currentTimeMillis;
@@ -378,14 +394,14 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    List<StramToNodeRequest> requests = new ArrayList<StramToNodeRequest>();
+    List<StramToNodeRequest> requests = rsp.nodeRequests != null ? rsp.nodeRequests : new ArrayList<StramToNodeRequest>();
     if (checkpointIntervalMillis > 0) {
       if (sca.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
         //System.out.println("\n\n*** sending checkpoint to " + cs.container.containerId + " at " + currentTimeMillis);
         for (OperatorStatus os: sca.operators.values()) {
           if (os.lastHeartbeat != null && os.lastHeartbeat.getState().compareTo(DNodeState.ACTIVE.name()) == 0) {
             StramToNodeRequest backupRequest = new StramToNodeRequest();
-            backupRequest.setNodeId(os.operator.id);
+            backupRequest.setOperatorId(os.operator.getId());
             backupRequest.setRequestType(RequestType.CHECKPOINT);
             backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
             requests.add(backupRequest);
@@ -458,7 +474,7 @@ public class StreamingContainerManager implements PlanContext
 
     // find smallest most recent subscriber checkpoint
     for (PTOutput out: operator.outputs) {
-      for (PhysicalPlan.PTInput sink : out.sinks) {
+      for (PhysicalPlan.PTInput sink: out.sinks) {
         PTOperator sinkOperator = (PTOperator)sink.target;
         if (!visited.contains(sinkOperator)) {
           // downstream traversal
@@ -476,7 +492,7 @@ public class StreamingContainerManager implements PlanContext
           long c2 = 0;
           while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
             operator.checkpointWindows.removeFirst();
-            LOG.debug("Checkpoint to purge: operator={} windowId={}", operator.id, c1);
+            LOG.debug("Checkpoint to purge: operator={} windowId={}", operator.getId(), c1);
             this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
             c1 = c2;
           }
@@ -527,7 +543,7 @@ public class StreamingContainerManager implements PlanContext
     for (Pair<PTOperator, Long> p: purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       try {
-        ba.delete(operator.id, p.getSecond());
+        ba.delete(operator.getId(), p.getSecond());
       }
       catch (Exception e) {
         LOG.error("Failed to purge checkpoint " + p, e);
@@ -536,7 +552,7 @@ public class StreamingContainerManager implements PlanContext
       for (PTOutput out: operator.outputs) {
         if (!out.isDownStreamInline()) {
           // following needs to match the concat logic in StramChild
-          String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+          String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
           // purge everything from buffer server prior to new checkpoint
           BufferServerClient bsc = getBufferServerClient(operator);
           try {
@@ -630,7 +646,7 @@ public class StreamingContainerManager implements PlanContext
         for (PTOutput out: operator.outputs) {
           if (!out.isDownStreamInline()) {
             // following needs to match the concat logic in StramChild
-            String sourceIdentifier = Integer.toString(operator.id).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
+            String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
             // TODO: find way to mock this when testing rest of logic
             if (operator.container.bufferServerAddress.getPort() != 0) {
               BufferServerClient bsc = getBufferServerClient(operator);
@@ -662,19 +678,7 @@ public class StreamingContainerManager implements PlanContext
     this.eventQueue.add(r);
   }
 
-  @Override
-  public Set<PTOperator> getDependents(Collection<PTOperator> operators)
-  {
-    Set<PTOperator> visited = new LinkedHashSet<PTOperator>();
-    if (operators != null) {
-      for (PTOperator operator: operators) {
-        updateRecoveryCheckpoints(operator, visited);
-      }
-    }
-    return visited;
-  }
-
-  public ArrayList<OperatorInfo> getNodeInfoList()
+  public ArrayList<OperatorInfo> getOperatorInfoList()
   {
     ArrayList<OperatorInfo> nodeInfoList = new ArrayList<OperatorInfo>();
 
@@ -690,15 +694,16 @@ public class StreamingContainerManager implements PlanContext
         OperatorInfo ni = new OperatorInfo();
         ni.container = os.container.containerId;
         ni.host = os.container.host;
-        ni.id = Integer.toString(os.operator.id);
-        ni.name = os.operator.getLogicalId();
+        ni.id = Integer.toString(os.operator.getId());
+        ni.name = os.operator.getName();
         StreamingNodeHeartbeat hb = os.lastHeartbeat;
         if (hb != null) {
           ni.status = hb.getState();
           if (deploying.contains(os.operator)) {
             if (dr instanceof UndeployRequest) {
               ni.status = "UNDEPLOY";
-            } else {
+            }
+            else {
               ni.status = "DEPLOY";
             }
           }
@@ -710,7 +715,7 @@ public class StreamingContainerManager implements PlanContext
           ni.failureCount = os.operator.failureCount;
           ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
           ni.currentWindowId = os.currentWindowId & 0xFFFF;
-          ni.recordingName = os.recordingName;
+          ni.recordingNames = os.recordingNames;
         }
         else {
           // initial heartbeat not yet received
@@ -726,54 +731,123 @@ public class StreamingContainerManager implements PlanContext
     return nodeInfoList;
   }
 
-  public void startRecording(int operId, String name)
-  {
-    ArrayList<StramChildAgent> matchedContainers = getContainersFromOperatorId(operId);
-    if (matchedContainers.isEmpty()) {
-      throw new NotFoundException("Operator ID " + operId + " not found");
-    }
-    for (StramChildAgent container: matchedContainers) {
-      StramToNodeRequest request = new StramToNodeRequest();
-      request.setNodeId(operId);
-      request.setName(name);
-      request.setRequestType(RequestType.START_RECORDING);
-      container.addOperatorRequest(request);
+  private static class RecordingRequestFilter implements Predicate<StramToNodeRequest> {
+    final static Set<StramToNodeRequest.RequestType> MATCH_TYPES = Sets.newHashSet(RequestType.START_RECORDING, RequestType.STOP_RECORDING, RequestType.SYNC_RECORDING);
+    @Override
+    public boolean apply(@Nullable StramToNodeRequest input) {
+      return MATCH_TYPES.contains(input.getRequestType());
     }
   }
 
-  public void stopRecording(int operId)
-  {
-    ArrayList<StramChildAgent> matchedContainers = getContainersFromOperatorId(operId);
-    if (matchedContainers.isEmpty()) {
-      throw new NotFoundException("Operator ID " + operId + " not found");
+  private class SetOperatorPropertyRequestFilter implements Predicate<StramToNodeRequest> {
+    final String propertyKey;
+    SetOperatorPropertyRequestFilter(String key) {
+      this.propertyKey = key;
     }
-    for (StramChildAgent container: matchedContainers) {
-      StramToNodeRequest request = new StramToNodeRequest();
-      request.setNodeId(operId);
-      request.setRequestType(RequestType.STOP_RECORDING);
-      container.addOperatorRequest(request);
+    @Override
+    public boolean apply(@Nullable StramToNodeRequest input) {
+      return input.getRequestType() == RequestType.SET_PROPERTY && input.setPropertyKey.equals(propertyKey);
     }
   }
 
-  public void stopAllRecordings()
-  {
-    // Not Supported yet
-  }
-
-  protected ArrayList<StramChildAgent> getContainersFromOperatorId(int operatorId)
-  {
-    // Thomas, please change it when you get a chance.  -- David
-    ArrayList<StramChildAgent> retContainers = new ArrayList<StramChildAgent>();
-    for (StramChildAgent container: containers.values()) {
-      if (container.operators.containsKey(operatorId)) {
-        retContainers.add(container);
+  private void updateOnDeployRequests(PTOperator p, Predicate<StramToNodeRequest> superseded, StramToNodeRequest newRequest) {
+    // filter existing requests
+    List<StramToNodeRequest> cloneRequests = new ArrayList<StramToNodeRequest>(p.deployRequests.size());
+    for (StramToNodeRequest existingRequest : p.deployRequests) {
+      if (!superseded.apply(existingRequest)) {
+        cloneRequests.add(existingRequest);
       }
     }
-    return retContainers;
+    // add new request, if any
+    if (newRequest != null) {
+      cloneRequests.add(newRequest);
+    }
+    p.deployRequests = Collections.unmodifiableList(cloneRequests);
   }
 
-  public void stopContainer(String containerId) {
+  private StramChildAgent getContainerAgentFromOperatorId(int operatorId)
+  {
+    // Thomas, please change it when you get a chance.  -- David
+    for (StramChildAgent container: containers.values()) {
+      if (container.operators.containsKey(operatorId)) {
+        return container;
+      }
+    }
+    // throw exception that propagates to web client
+    throw new NotFoundException("Operator ID " + operatorId + " not found");
+  }
+
+  public void startRecording(int operId, String portName)
+  {
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    if (!StringUtils.isBlank(portName)) {
+      request.setPortName(portName);
+    }
+    request.setRequestType(RequestType.START_RECORDING);
+    sca.addOperatorRequest(request);
+    OperatorStatus os = sca.operators.get(operId);
+    if (os != null) {
+      // restart on deploy
+      updateOnDeployRequests(os.operator, new RecordingRequestFilter(), request);
+    }
+  }
+
+  public void stopRecording(int operId, String portName)
+  {
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    if (!StringUtils.isBlank(portName)) {
+      request.setPortName(portName);
+    }
+    request.setRequestType(RequestType.STOP_RECORDING);
+    sca.addOperatorRequest(request);
+    OperatorStatus os = sca.operators.get(operId);
+    if (os != null) {
+      // no stop on deploy, but remove existing start
+      updateOnDeployRequests(os.operator, new RecordingRequestFilter(), null);
+    }
+  }
+
+  public void syncRecording(int operId, String portName)
+  {
+    StramChildAgent sca = getContainerAgentFromOperatorId(operId);
+    StramToNodeRequest request = new StramToNodeRequest();
+    request.setOperatorId(operId);
+    if (!StringUtils.isBlank(portName)) {
+      request.setPortName(portName);
+    }
+    request.setRequestType(RequestType.SYNC_RECORDING);
+    sca.addOperatorRequest(request);
+  }
+
+  public void stopContainer(String containerId)
+  {
     this.containerStopRequests.put(containerId, containerId);
+  }
+
+  public void setOperatorProperty(String operatorId, String propertyName, String propertyValue)
+  {
+    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    if (logicalOperator == null) {
+      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+    }
+
+    List<PTOperator> operators = plan.getOperators(logicalOperator);
+    for (PTOperator o: operators) {
+      StramChildAgent sca = getContainerAgent(o.getContainer().containerId);
+      StramToNodeRequest request = new StramToNodeRequest();
+      request.setOperatorId(o.getId());
+      request.setPropertyKey = propertyName;
+      request.setPropertyValue = propertyValue;
+      request.setRequestType(RequestType.SET_PROPERTY);
+      sca.addOperatorRequest(request);
+      // restart on deploy
+      updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
+    }
+
   }
 
 }
