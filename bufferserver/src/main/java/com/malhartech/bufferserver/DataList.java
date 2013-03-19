@@ -408,15 +408,16 @@ public class DataList
           {
             try {
               synchronized (DataArray.this) {
-
-                int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
-                if (i == 0) {
-                  logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
-                }
-                else {
-                  //logger.debug("stored {} {} in release", identifier, i);
-                  uniqueIdentifier = i;
-                  data = null;
+                if (uniqueIdentifier != 0) {
+                  int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
+                  if (i == 0) {
+                    logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
+                  }
+                  else {
+                    //logger.debug("stored {} {} in release", identifier, i);
+                    uniqueIdentifier = i;
+                    data = null;
+                  }
                 }
               }
             }
@@ -458,7 +459,7 @@ public class DataList
 
   public final synchronized void flush()
   {
-    for (DataListener dl: all_listeners) {
+    for (DataListener dl : all_listeners) {
       dl.dataAdded();
     }
   }
@@ -547,7 +548,7 @@ public class DataList
     if (iterator instanceof DataListIterator) {
       DataListIterator dli = (DataListIterator)iterator;
       synchronized (iterator) {
-        for (Entry<String, DataListIterator> e: iterators.entrySet()) {
+        for (Entry<String, DataListIterator> e : iterators.entrySet()) {
           if (e.getValue() == dli) {
             iterators.remove(e.getKey());
             released = true;
@@ -570,7 +571,7 @@ public class DataList
     int count = 0;
 
     synchronized (iterators) {
-      for (DataListIterator dli: iterators.values()) {
+      for (DataListIterator dli : iterators.values()) {
         count++;
         dli.da.release(false);
         dli.da = null;
@@ -587,7 +588,7 @@ public class DataList
     all_listeners.add(dl);
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (BitVector partition: partitions) {
+      for (BitVector partition : partitions) {
         HashSet<DataListener> set;
         if (listeners.containsKey(partition)) {
           set = listeners.get(partition);
@@ -617,7 +618,7 @@ public class DataList
   {
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (BitVector partition: partitions) {
+      for (BitVector partition : partitions) {
         if (listeners.containsKey(partition)) {
           listeners.get(partition).remove(dl);
         }
