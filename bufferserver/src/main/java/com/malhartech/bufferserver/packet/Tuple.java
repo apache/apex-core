@@ -49,6 +49,13 @@ public abstract class Tuple
         return new WindowIdTuple(buffer, offset, length);
 
       case PUBLISHER_REQUEST:
+        PublishRequestTuple prt = new PublishRequestTuple(buffer, offset, length);
+        prt.parse();
+        if (!prt.isValid()) {
+          logger.error("Unparseable Generic Request Tuple of type {} received!", MessageType.valueOf(buffer[offset]));
+        }
+        return prt;
+
       case PURGE_REQUEST:
       case RESET_REQUEST:
         GenericRequestTuple grt = new GenericRequestTuple(buffer, offset, length);
