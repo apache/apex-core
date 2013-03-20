@@ -324,7 +324,7 @@ public class StramWebServicesTest extends JerseyTest {
 
   void verifyAMInfo(JSONObject info, TestAppContext ctx)
       throws JSONException {
-    assertEquals("incorrect number of elements", 8, info.length());
+    assertEquals("incorrect number of elements", 9, info.length());
 
     verifyAMInfoGeneric(ctx, info.getString("appId"), info.getString("user"),
         info.getString("name"), info.getLong("startedOn"),
