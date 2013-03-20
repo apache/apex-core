@@ -10,6 +10,7 @@ import com.malhartech.bufferserver.packet.Tuple;
 import junit.framework.TestCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.Test;
 
 /**
  *
@@ -34,6 +35,7 @@ public class BufferTest extends TestCase
     super.tearDown();
   }
 
+  @Test
   public void testSerDe()
   {
     logger.info("testSerDe");

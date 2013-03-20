@@ -36,6 +36,7 @@ public class GenericRequestTuple extends RequestTuple
   public void parse()
   {
     parsed = true;
+
     int dataOffset = offset + 1;
     int limit = offset + length;
     /*
@@ -72,14 +73,16 @@ public class GenericRequestTuple extends RequestTuple
     else {
       return;
     }
+
     baseSeconds = readVarInt(dataOffset, limit);
-    if (baseSeconds > 0) {
+    if (baseSeconds != Integer.MIN_VALUE) {
       while (buffer[dataOffset++] < 0) {
       }
     }
     else {
       return;
     }
+
     windowId = readVarInt(dataOffset, limit);
     if (windowId > 0) {
       while (buffer[dataOffset++] < 0) {

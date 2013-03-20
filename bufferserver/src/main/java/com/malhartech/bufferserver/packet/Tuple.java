@@ -127,7 +127,7 @@ public abstract class Tuple
       }
     }
 
-    return -1;
+    return Integer.MIN_VALUE;
   }
 
   public MessageType getType()
