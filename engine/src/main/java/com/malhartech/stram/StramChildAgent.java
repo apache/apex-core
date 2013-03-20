@@ -91,7 +91,6 @@ public class StramChildAgent {
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
         .append("operators", this.deployOperators)
-        //.append("streams", this.streams)
         .append("executeWhenZero", this.executeWhenZero)
         .toString();
     }

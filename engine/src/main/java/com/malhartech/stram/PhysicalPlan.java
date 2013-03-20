@@ -252,9 +252,7 @@ public class PhysicalPlan {
 
   /**
    *
-   * Representation of a node in the physical layout<p>
-   * <br>
-   * A generic node in the DAG<br>
+   * Representation of an operator in the physical layout<p>
    * <br>
    *
    */
