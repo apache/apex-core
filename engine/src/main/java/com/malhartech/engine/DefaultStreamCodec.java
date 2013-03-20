@@ -114,7 +114,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
           logger.debug("registering class {} => {}", pair.classname, pair.id);
-          register(Class.forName(pair.classname, false, getClassLoader()), pair.id);
+          register(Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader()), pair.id);
         }
       }
       catch (ClassNotFoundException ex) {
