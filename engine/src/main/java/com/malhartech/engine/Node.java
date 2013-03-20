@@ -6,6 +6,7 @@ package com.malhartech.engine;
 
 import com.malhartech.api.ActivationListener;
 import com.malhartech.api.Context.PortContext;
+import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Port;
@@ -46,6 +47,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected final PortMappingDescriptor descriptor;
   protected long currentWindowId;
   protected int applicationWindowCount;
+  protected long stramWindowSize;
+  protected long beginWindowTime = 0;
+  protected long endWindowTime = 0;
 
   public Node(String id, OPERATOR operator)
   {
@@ -122,6 +126,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     this.alive = true;
     this.context = context;
     this.applicationWindowCount = context.getAttributes().attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
+    this.stramWindowSize = context.getApplicationAttributes().attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
 
     if (activationListener) {
       ((ActivationListener)operator).activate(context);
@@ -202,7 +207,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  protected void handleRequests(long windowId)
+  protected void handleRequests(long windowId, boolean applicationWindowBoundary)
   {
     /*
      * we prefer to cater to requests at the end of the window boundary.
@@ -222,16 +227,19 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
 
     OperatorStats stats = new OperatorStats();
-    reportStats(stats);
+    reportStats(stats, applicationWindowBoundary);
 
     context.report(stats, windowId);
   }
 
-  protected void reportStats(OperatorStats stats)
+  protected void reportStats(OperatorStats stats, boolean applicationWindowBoundary)
   {
-    stats.ouputPorts = new ArrayList<OperatorStats.PortStats>();
+    stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
     for (Entry<String, InternalCounterSink> e: outputs.entrySet()) {
-      stats.ouputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount()));
+      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount()));
+    }
+    if (applicationWindowBoundary) {
+      stats.latency = new Long(endWindowTime - beginWindowTime - applicationWindowCount * stramWindowSize * 1000000);
     }
   }
 

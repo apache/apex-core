@@ -184,6 +184,7 @@ public class PhysicalPlan {
   public static interface StatsHandler {
     // TODO: handle stats generically
     public void onThroughputUpdate(PTOperator operatorInstance, long tps);
+    public void onLatencyUpdate(PTOperator operatorInstance, long latency);
   }
 
   /**
@@ -247,6 +248,11 @@ public class PhysicalPlan {
           }
         }
       }
+    }
+
+    @Override
+    public void onLatencyUpdate(final PTOperator operatorInstance, long tps) {
+      // not implemented yet
     }
   }
 

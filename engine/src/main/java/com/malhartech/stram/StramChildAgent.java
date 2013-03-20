@@ -146,6 +146,7 @@ public class StramChildAgent {
     long currentWindowId;
     MovingAverage tuplesProcessedPSMA10 = new MovingAverage(10);
     MovingAverage tuplesEmittedPSMA10 = new MovingAverage(10);
+    MovingAverage latencyPSMA10 = new MovingAverage(10);
     List<String> recordingNames; // null if recording is not in progress
 
     private OperatorStatus(PTContainer container, PTOperator operator) {
