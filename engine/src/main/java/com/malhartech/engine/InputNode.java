@@ -86,7 +86,7 @@ public class InputNode extends Node<InputOperator>
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].process(t);
                 }
-                handleRequests(currentWindowId);
+                handleRequests(currentWindowId, false);
                 break;
 
               default:

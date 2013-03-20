@@ -36,6 +36,7 @@ public class OperatorInfo {
   public long totalTuplesEmitted;
   public long tuplesProcessedPSMA10;
   public long tuplesEmittedPSMA10;
+  public long latencyPSMA10;
   public String status;
   public long lastHeartbeat;
   public long failureCount;
