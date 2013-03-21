@@ -52,7 +52,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected long endWindowTime = 0;
   protected long lastSampleCpuTime = 0;
 
-  ThreadMXBean tmb;
+  protected ThreadMXBean tmb;
 
   public Node(String id, OPERATOR operator)
   {
