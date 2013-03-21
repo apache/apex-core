@@ -29,4 +29,5 @@ public class OperatorStats implements Serializable {
   public ArrayList<PortStats> inputPorts;
   public ArrayList<PortStats> outputPorts;
   public Long latency = null;
+  public long cpuTimeUsed;
 }

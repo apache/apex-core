@@ -337,6 +337,7 @@ public class StreamingContainerManager implements PlanContext
         long tuplesEmitted = 0;
         int latencyCount = 0;
         long totalLatency = 0;
+        long totalCpuTimeUsed = 0;
         List<OperatorStats> statsList = shb.getWindowStats();
         for (OperatorStats stats: statsList) {
           Collection<PortStats> ports = stats.inputPorts;
@@ -358,6 +359,7 @@ public class StreamingContainerManager implements PlanContext
             totalLatency += stats.latency;
           }
           status.currentWindowId = stats.windowId;
+          totalCpuTimeUsed += stats.cpuTimeUsed;
         }
 
         status.totalTuplesProcessed += tuplesProcessed;
@@ -365,8 +367,9 @@ public class StreamingContainerManager implements PlanContext
         if (lastHeartbeatIntervalMillis > 0) {
           status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / lastHeartbeatIntervalMillis);
           status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / lastHeartbeatIntervalMillis);
+          status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (lastHeartbeatIntervalMillis * 1000000));
           if (latencyCount > 0) {
-            status.latencyPSMA10.add(totalLatency / latencyCount);
+            status.latencyMA10.add(totalLatency / latencyCount);
           }
           if (status.operator.statsMonitors != null) {
             long tps = status.tuplesProcessedPSMA10.getAvg() + status.tuplesEmittedPSMA10.getAvg();
@@ -375,6 +378,7 @@ public class StreamingContainerManager implements PlanContext
               if (latencyCount > 0) {
                 sm.onLatencyUpdate(status.operator, totalLatency / latencyCount);
               }
+              sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA10.getAvg());
             }
           }
         }
@@ -723,7 +727,8 @@ public class StreamingContainerManager implements PlanContext
           ni.totalTuplesEmitted = os.totalTuplesEmitted;
           ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
           ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
-          ni.latencyPSMA10 = os.latencyPSMA10.getAvg();
+          ni.latencyMA10 = os.latencyMA10.getAvg();
+          ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
           ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           ni.failureCount = os.operator.failureCount;
           ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;

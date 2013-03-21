@@ -9,11 +9,11 @@ import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.Operator.Port;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
-import com.malhartech.stram.TupleRecorder.RecorderSink;
 import com.malhartech.util.AttributeMap;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,6 +50,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected long stramWindowSize;
   protected long beginWindowTime = 0;
   protected long endWindowTime = 0;
+  protected long lastSampleCpuTime = 0;
+
+  protected ThreadMXBean tmb;
 
   public Node(String id, OPERATOR operator)
   {
@@ -58,6 +61,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
     descriptor = new PortMappingDescriptor();
     Operators.describe(operator, descriptor);
+    tmb = ManagementFactory.getThreadMXBean();
   }
 
   public Operator getOperator()
@@ -241,6 +245,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     if (applicationWindowBoundary) {
       stats.latency = new Long(endWindowTime - beginWindowTime - applicationWindowCount * stramWindowSize * 1000000);
     }
+    long currentCpuTime = tmb.getCurrentThreadCpuTime();
+    stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
+    lastSampleCpuTime = currentCpuTime;
   }
 
   protected void activateSinks()

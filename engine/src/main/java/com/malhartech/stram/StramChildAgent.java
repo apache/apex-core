@@ -103,13 +103,13 @@ public class StramChildAgent {
     }
   }
 
-  class MovingAverage {
+  class MovingAverageLong {
     private final int periods;
     private final long[] values;
     private int index = 0;
     private boolean filled = false;
 
-    MovingAverage(int periods) {
+    MovingAverageLong(int periods) {
       this.periods = periods;
       this.values = new long[periods];
     }
@@ -136,6 +136,39 @@ public class StramChildAgent {
     }
   }
 
+  // Generics don't work with numbers.  Hence this mess.
+  class MovingAverageDouble {
+    private final int periods;
+    private final double[] values;
+    private int index = 0;
+    private boolean filled = false;
+
+    MovingAverageDouble(int periods) {
+      this.periods = periods;
+      this.values = new double[periods];
+    }
+
+    void add(double val) {
+      values[index++] = val;
+      if (index == periods) {
+        filled = true;
+      }
+      index = index % periods;
+    }
+
+    double getAvg() {
+      double sum = 0;
+      for (int i=0; i<periods; i++) {
+        sum += values[i];
+      }
+
+      if (!filled) {
+        return index == 0 ? 0 : sum/index;
+      } else {
+        return sum/periods;
+      }
+    }
+  }
   class OperatorStatus
   {
     StreamingNodeHeartbeat lastHeartbeat;
@@ -144,9 +177,10 @@ public class StramChildAgent {
     long totalTuplesProcessed;
     long totalTuplesEmitted;
     long currentWindowId;
-    MovingAverage tuplesProcessedPSMA10 = new MovingAverage(10);
-    MovingAverage tuplesEmittedPSMA10 = new MovingAverage(10);
-    MovingAverage latencyPSMA10 = new MovingAverage(10);
+    MovingAverageLong tuplesProcessedPSMA10 = new MovingAverageLong(10);
+    MovingAverageLong tuplesEmittedPSMA10 = new MovingAverageLong(10);
+    MovingAverageLong latencyMA10 = new MovingAverageLong(10);
+    MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
     List<String> recordingNames; // null if recording is not in progress
 
     private OperatorStatus(PTContainer container, PTOperator operator) {
