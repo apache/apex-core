@@ -185,6 +185,7 @@ public class PhysicalPlan {
     // TODO: handle stats generically
     public void onThroughputUpdate(PTOperator operatorInstance, long tps);
     public void onLatencyUpdate(PTOperator operatorInstance, long latency);
+    public void onCpuPercentageUpdate(PTOperator operatorInstance, double percentage);
   }
 
   /**
@@ -251,7 +252,12 @@ public class PhysicalPlan {
     }
 
     @Override
-    public void onLatencyUpdate(final PTOperator operatorInstance, long tps) {
+    public void onLatencyUpdate(final PTOperator operatorInstance, long latency) {
+      // not implemented yet
+    }
+
+    @Override
+    public void onCpuPercentageUpdate(final PTOperator operatorInstance, double percentage) {
       // not implemented yet
     }
   }
