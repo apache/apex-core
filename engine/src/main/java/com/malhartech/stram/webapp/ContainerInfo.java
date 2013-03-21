@@ -13,6 +13,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class ContainerInfo {
 
   public String id;
+  public String host;
   public long lastHeartbeat;
   public int numOperators;
 

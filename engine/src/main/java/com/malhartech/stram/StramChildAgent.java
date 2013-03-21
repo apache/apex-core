@@ -497,6 +497,7 @@ public class StramChildAgent {
   public ContainerInfo getContainerInfo() {
     ContainerInfo ci = new ContainerInfo();
     ci.id = container.containerId;
+    ci.host = container.host;
     ci.numOperators = container.operators.size();
     ci.lastHeartbeat = lastHeartbeatMillis;
     return ci;
