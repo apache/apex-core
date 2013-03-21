@@ -5,6 +5,7 @@
 package com.malhartech.stram;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.Lists;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.DAG;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
@@ -232,27 +233,31 @@ public class StramClient
     for (String className : dag.getClassNames()) {
       try {
         Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
-        // process class and super classes (super does not require deploy annotation)
-        for (Class<?> c = clazz; c != Object.class && c != null; c = c.getSuperclass()) {
-          //LOG.debug("checking " + c);
-          jarClasses.add(c);
-          // check for annotated dependencies
-          try {
-            ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
-            if (shipJars != null) {
-              for (Class<?> depClass : shipJars.classes()) {
-                jarClasses.add(depClass);
-                LOG.info("Including {} as deploy dependency of {}", depClass, c);
-              }
-            }
-          }
-          catch (ArrayStoreException e) {
-            LOG.error("Failed to process ShipContainingJars annotation for class " + c.getName(), e);
-          }
-        }
+        jarClasses.add(clazz);
       }
       catch (ClassNotFoundException e) {
         throw new IllegalArgumentException("Failed to load class " + className, e);
+      }
+    }
+
+    for (Class<?> clazz : Lists.newArrayList(jarClasses)) {
+      // process class and super classes (super does not require deploy annotation)
+      for (Class<?> c = clazz; c != Object.class && c != null; c = c.getSuperclass()) {
+        //LOG.debug("checking " + c);
+        jarClasses.add(c);
+        // check for annotated dependencies
+        try {
+          ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
+          if (shipJars != null) {
+            for (Class<?> depClass : shipJars.classes()) {
+              jarClasses.add(depClass);
+              LOG.info("Including {} as deploy dependency of {}", depClass, c);
+            }
+          }
+        }
+        catch (ArrayStoreException e) {
+          LOG.error("Failed to process ShipContainingJars annotation for class " + c.getName(), e);
+        }
       }
     }
 
@@ -264,6 +269,11 @@ public class StramClient
     HashMap<String, String> sourceToJar = new HashMap<String, String>();
 
     for (Class<?> jarClass : jarClasses) {
+      if (jarClass.getProtectionDomain().getCodeSource() == null) {
+        // system class
+        continue;
+      }
+      //LOG.debug("{} {}", jarClass, jarClass.getProtectionDomain().getCodeSource());
       String sourceLocation = jarClass.getProtectionDomain().getCodeSource().getLocation().toString();
       String jar = sourceToJar.get(sourceLocation);
       if (jar == null) {

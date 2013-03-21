@@ -381,6 +381,7 @@ public class StramMiniClusterTest
 
     Assert.assertTrue("", jars.contains(JarFinder.getJar(Logger.class)));
     Assert.assertTrue("", jars.contains(JarFinder.getJar(javax.jms.Message.class)));
+    Assert.assertTrue("", jars.contains(JarFinder.getJar(com.esotericsoftware.kryo.Kryo.class)));
   }
 
 
