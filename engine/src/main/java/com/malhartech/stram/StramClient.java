@@ -232,41 +232,50 @@ public class StramClient
     for (String className : dag.getClassNames()) {
       try {
         Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
-        jarClasses.add(clazz);
+        // process class and super classes (super does not require deploy annotation)
+        for (Class<?> c = clazz; c != Object.class && c != null; c = c.getSuperclass()) {
+          //LOG.debug("checking " + c);
+          jarClasses.add(c);
+          // check for annotated dependencies
+          try {
+            ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
+            if (shipJars != null) {
+              for (Class<?> depClass : shipJars.classes()) {
+                jarClasses.add(depClass);
+                LOG.info("Including {} as deploy dependency of {}", depClass, c);
+              }
+            }
+          }
+          catch (ArrayStoreException e) {
+            LOG.error("Failed to process ShipContainingJars annotation for class " + c.getName(), e);
+          }
+        }
       }
       catch (ClassNotFoundException e) {
         throw new IllegalArgumentException("Failed to load class " + className, e);
       }
     }
 
+    if (dag.isDebug()) {
+      LOG.info("Deploy dependencies: {}", jarClasses);
+    }
+
     LinkedHashSet<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
+    HashMap<String, String> sourceToJar = new HashMap<String, String>();
 
     for (Class<?> jarClass : jarClasses) {
-      String jar = JarFinder.getJar(jarClass);
+      String sourceLocation = jarClass.getProtectionDomain().getCodeSource().getLocation().toString();
+      String jar = sourceToJar.get(sourceLocation);
       if (jar == null) {
-        throw new IllegalArgumentException("Cannot resolve jar file for " + jarClass);
+        // don't create jar file from folders multiple times
+        jar = JarFinder.getJar(jarClass);
+        sourceToJar.put(sourceLocation, jar);
+        LOG.debug("added sourceLocation {} as {}", sourceLocation, jar);
+      }
+      if (jar == null) {
+        throw new AssertionError("Cannot resolve jar file for " + jarClass);
       }
       localJarFiles.add(jar);
-      // check for annotated dependencies in class and super classes
-      for (Class<?> c = jarClass; c != Object.class && c != null; c = c.getSuperclass()) {
-        try {
-          //LOG.debug("checking " + c);
-          ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
-          if (shipJars != null) {
-            for (Class<?> depClass : shipJars.classes()) {
-              String depJar = JarFinder.getJar(depClass);
-              if (depJar == null) {
-                throw new IllegalArgumentException("Cannot resolve jar file for " + depClass);
-              }
-              localJarFiles.add(depJar);
-              LOG.info("Including {} as dependency of {}", depClass, jarClass);
-            }
-          }
-        }
-        catch (ArrayStoreException e) {
-          LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
-        }
-      }
     }
 
     String libJarsPath = dag.getAttributes().attrValue(DAG.STRAM_LIBJARS, null);

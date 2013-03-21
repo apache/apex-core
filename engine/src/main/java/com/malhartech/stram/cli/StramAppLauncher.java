@@ -137,7 +137,7 @@ public class StramAppLauncher {
     String cp = null;
 
     // read crc and classpath file, if it exists
-    // (we won't run mvn if pom didn't change)
+    // (we won't run mvn again if pom didn't change)
     if (cpFile.exists()) {
       try {
        DataInputStream dis = new DataInputStream(new FileInputStream(pomCrcFile));
@@ -168,14 +168,11 @@ public class StramAppLauncher {
               pomCrc = jarEntry.getCrc();
             }
           } else if (jarEntry.getName().endsWith(".app.properties")) {
-            // TODO: handle subdirs
             File targetFile = new File(baseDir, jarEntry.getName());
             FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
             configurationList.add(new PropertyFileAppConfig(targetFile));
-          } else {
-            if (jarEntry.getName().endsWith(".class")) {
-              classFileNames.add(jarEntry.getName());
-            }
+          } else if (jarEntry.getName().endsWith(".class")) {
+            classFileNames.add(jarEntry.getName());
           }
         }
     }

@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URL;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 
@@ -40,6 +41,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
@@ -352,12 +354,13 @@ public class StramMiniClusterTest
     //Assert.assertTrue("appReport " + ar, ar.getDiagnostics().contains("badOperator"));
   }
 
-/*
+
   @ShipContainingJars(classes = {javax.jms.Message.class})
   protected class ShipJarsBaseOperator extends BaseOperator {
 
   }
 
+  @ShipContainingJars(classes = {Logger.class})
   protected class ShipJarsOperator extends ShipJarsBaseOperator {
 
   }
@@ -365,11 +368,20 @@ public class StramMiniClusterTest
   @Test
   public void testShipContainingJars() {
     DAG dag = new DAG();
+    dag.getClassNames();
+    LinkedHashSet<String> baseJars = StramClient.findJars(dag);
+
+    dag = new DAG();
     dag.addOperator("foo", new ShipJarsOperator());
     dag.getClassNames();
     LinkedHashSet<String> jars = StramClient.findJars(dag);
-    Assert.assertEquals("" + jars, 1 , jars.size());
+
+    // operator class from test + 2 annotated dependencies
+    Assert.assertEquals("" + jars, baseJars.size() + 3 , jars.size());
+
+    Assert.assertTrue("", jars.contains(JarFinder.getJar(Logger.class)));
+    Assert.assertTrue("", jars.contains(JarFinder.getJar(javax.jms.Message.class)));
   }
-*/
+
 
 }
