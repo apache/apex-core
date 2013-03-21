@@ -84,7 +84,7 @@ public class GenericRequestTuple extends RequestTuple
     }
 
     windowId = readVarInt(dataOffset, limit);
-    if (windowId > 0) {
+    if (windowId >= 0) {
       while (buffer[dataOffset++] < 0) {
       }
     }

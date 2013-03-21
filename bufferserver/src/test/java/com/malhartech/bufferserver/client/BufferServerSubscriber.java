@@ -33,8 +33,8 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
   private final Collection<Integer> partitions;
   private final int mask;
   public AtomicInteger tupleCount = new AtomicInteger(0);
-  public Tuple firstPayload, lastPayload;
-  public final ArrayList<ResetRequestTuple> resetPayloads = new ArrayList<ResetRequestTuple>();
+  public Object firstPayload, lastPayload;
+  public final ArrayList<Object> resetPayloads = new ArrayList<Object>();
   public long windowId;
 
   public BufferServerSubscriber(String sourceId, int mask, Collection<Integer> partitions)
@@ -74,19 +74,47 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
   @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
-    byte type = buffer[offset];
-    if (type == MessageType.RESET_WINDOW_VALUE) {
-      resetPayloads.add(new ResetRequestTuple(buffer, offset, size));
+    Tuple tuple = Tuple.getTuple(buffer, offset, size);
+    switch (tuple.getType()) {
+      case BEGIN_WINDOW:
+        beginWindow(tuple.getWindowId());
+        break;
+
+      case END_WINDOW:
+        endWindow(tuple.getWindowId());
+        break;
+
+      case RESET_WINDOW:
+        resetWindow(tuple.getBaseSeconds(), tuple.getWindowWidth());
+        break;
     }
-    else {
-      tupleCount.incrementAndGet();
-      if (firstPayload == null) {
-        firstPayload = Tuple.getTuple(buffer, offset, size);
-      }
-      else if (type == MessageType.BEGIN_WINDOW_VALUE || type == MessageType.RESET_WINDOW_VALUE) {
-        lastPayload = Tuple.getTuple(buffer, offset, size);
-      }
+  }
+
+  public void beginWindow(final int windowId)
+  {
+    if (firstPayload == null) {
+      firstPayload = new Object() {
+        MessageType type = MessageType.BEGIN_WINDOW;
+        int window = windowId;
+      };
     }
+
+  }
+
+  public void endWindow(final int windowId)
+  {
+    if (firstPayload == null) {
+      firstPayload = new Object() {
+        MessageType type = MessageType.END_WINDOW;
+        int window = windowId;
+      };
+    }
+
+  }
+
+  public void resetWindow(int baseSeconds, int windowWidth)
+  {
+
   }
 
 }

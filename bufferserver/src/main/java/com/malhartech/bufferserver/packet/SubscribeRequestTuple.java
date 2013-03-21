@@ -66,7 +66,7 @@ public class SubscribeRequestTuple extends RequestTuple
     }
 
     baseSeconds = readVarInt(dataOffset, limit);
-    if (getBaseSeconds() > 0) {
+    if (getBaseSeconds() != Integer.MIN_VALUE) {
       while (buffer[dataOffset++] < 0) {
       }
     }
@@ -75,7 +75,7 @@ public class SubscribeRequestTuple extends RequestTuple
     }
 
     windowId = readVarInt(dataOffset, limit);
-    if (getWindowId() > 0) {
+    if (windowId >= 0) {
       while (buffer[dataOffset++] < 0) {
       }
     }
@@ -104,6 +104,8 @@ public class SubscribeRequestTuple extends RequestTuple
      */
     idlen = readVarInt(dataOffset, limit);
     if (idlen > 0) {
+      while (buffer[dataOffset++] < 0) {
+      }
       upstreamIdentifier = new String(buffer, dataOffset, idlen);
       dataOffset += idlen;
     }
@@ -142,6 +144,7 @@ public class SubscribeRequestTuple extends RequestTuple
         }
       }
     }
+
     valid = true;
   }
 
@@ -245,7 +248,7 @@ public class SubscribeRequestTuple extends RequestTuple
     int offset = 0;
 
     /* write the type */
-    array[offset++] = MessageType.PUBLISHER_REQUEST_VALUE;
+    array[offset++] = MessageType.SUBSCRIBER_REQUEST_VALUE;
 
     /* write the version */
     offset = Tuple.writeString(VERSION, array, offset);

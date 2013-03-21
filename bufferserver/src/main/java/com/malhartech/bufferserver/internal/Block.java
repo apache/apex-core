@@ -9,6 +9,7 @@ import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.ResetWindowTuple;
 import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.bufferserver.util.Codec.MutableInt;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Arrays;
 import org.slf4j.Logger;
@@ -94,7 +95,7 @@ public class Block
     }
   }
 
-  public synchronized void purge(long longWindowId)
+  public void purge(long longWindowId)
   {
     logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}", new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId), this.baseSeconds});
     boolean found = false;
@@ -236,4 +237,34 @@ public class Block
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Block.class);
+
+  MutableInt newOffset = new MutableInt();
+  Block prev;
+  int prevOffset;
+  void flush(int writeOffset)
+  {
+    if (writingOffset == 0) {
+      if (prev != null) {
+        int size = Codec.readVarInt(prev.data, prevOffset, prev.data.length, newOffset);
+        if (newOffset.integer > prevOffset) {
+          int remainingLength = size - prev.data.length + newOffset.integer;
+          if (remainingLength > writeOffset) {
+            return; /* we still do not have enough data */
+          }
+          else {
+            byte[] buffer = new byte[size];
+            System.arraycopy(prev.data, newOffset.integer, buffer, 0, size - remainingLength);
+            System.arraycopy(data, 0, buffer, prev.data.length - newOffset.integer, remainingLength);
+            // we have our new object in the buffer!
+          }
+        }
+        else if (newOffset.integer != -5) { /* we do not have enough bytes to read even the int
+
+        }
+      }
+    }
+    while (writingOffset < writeOffset) {
+    }
+  }
+
 }

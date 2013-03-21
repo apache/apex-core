@@ -4,8 +4,11 @@
  */
 package com.malhartech.bufferserver.internal;
 
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.BitVector;
+import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.bufferserver.util.Codec.MutableInt;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.io.IOException;
 import java.util.*;
@@ -29,6 +32,7 @@ public class DataList
   private Block first;
   private Block last;
   private Storage storage;
+  private int processedOffset;
 
   public int getBlockSize()
   {
@@ -117,9 +121,10 @@ public class DataList
     this(identifier, 64 * 1024 * 1024);
   }
 
-  public final synchronized void flush(int writeOffset)
+  MutableInt nextOffset = new MutableInt();
+  public final void flush(int writeOffset)
   {
-    last.writingOffset = writeOffset;
+    last.flush(writeOffset);
     for (DataListener dl : all_listeners) {
       dl.dataAdded();
     }
@@ -140,17 +145,13 @@ public class DataList
     for (Block temp = first; temp != null; temp = temp.next) {
       if (true || temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
         DataListIterator dli = new DataListIterator(temp);
-        synchronized (iterators) {
-          iterators.put(identifier, dli);
-        }
+        iterators.put(identifier, dli);
         return dli;
       }
     }
 
     DataListIterator dli = new DataListIterator(last);
-    synchronized (iterators) {
-      iterators.put(identifier, dli);
-    }
+    iterators.put(identifier, dli);
     return dli;
   }
 
@@ -165,15 +166,13 @@ public class DataList
     boolean released = false;
     if (iterator instanceof DataListIterator) {
       DataListIterator dli = (DataListIterator)iterator;
-      synchronized (iterator) {
-        for (Entry<String, DataListIterator> e : iterators.entrySet()) {
-          if (e.getValue() == dli) {
-            iterators.remove(e.getKey());
-            released = true;
-            dli.da.release(false);
-            dli.da = null;
-            break;
-          }
+      for (Entry<String, DataListIterator> e : iterators.entrySet()) {
+        if (e.getValue() == dli) {
+          iterators.remove(e.getKey());
+          released = true;
+          dli.da.release(false);
+          dli.da = null;
+          break;
         }
       }
     }
@@ -188,15 +187,13 @@ public class DataList
   {
     int count = 0;
 
-    synchronized (iterators) {
-      for (DataListIterator dli : iterators.values()) {
-        count++;
-        dli.da.release(false);
-        dli.da = null;
-      }
-
-      iterators.clear();
+    for (DataListIterator dli : iterators.values()) {
+      count++;
+      dli.da.release(false);
+      dli.da = null;
     }
+
+    iterators.clear();
 
     return count;
   }
@@ -232,7 +229,7 @@ public class DataList
     }
   }
 
-  public synchronized void removeDataListener(DataListener dl)
+  public void removeDataListener(DataListener dl)
   {
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
@@ -269,4 +266,5 @@ public class DataList
   {
     return last.writingOffset;
   }
+
 }

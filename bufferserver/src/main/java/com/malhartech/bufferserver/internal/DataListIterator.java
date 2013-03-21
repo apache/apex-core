@@ -60,9 +60,7 @@ class DataListIterator implements Iterator<SerializedData>
           break;
 
         default:
-          switch (current.bytes[current.dataOffset]) {
-            case MessageType.NO_MESSAGE_VALUE:
-            case MessageType.NO_MESSAGE_ODD_VALUE:
+          if (current.bytes[current.dataOffset] != MessageType.NO_MESSAGE_VALUE) {
               return true;
           }
           current.offset += current.size;

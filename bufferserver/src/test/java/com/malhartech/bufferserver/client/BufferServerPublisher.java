@@ -5,7 +5,6 @@
 package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.packet.PublishRequestTuple;
-import com.malhartech.bufferserver.packet.Tuple;
 import java.io.IOException;
 import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
@@ -38,7 +37,6 @@ public class BufferServerPublisher extends AbstractSocketPublisher
   public void activate()
   {
     super.activate();
-    //write(ClientHandler.getPublishRequest(id, "BufferServerPublisher", (long)baseWindow << 32 | windowId));
     write(PublishRequestTuple.getSerializedRequest(id, (long)baseWindow << 32 | windowId));
   }
 
