@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver.internal;
 
 import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.Codec;
@@ -32,7 +33,6 @@ public class DataList
   private Block first;
   private Block last;
   private Storage storage;
-  private int processedOffset;
 
   public int getBlockSize()
   {
@@ -51,6 +51,7 @@ public class DataList
         }
 
         temp.rewind(longWindowId);
+        processingOffset = temp.writingOffset;
       }
     }
   }
@@ -120,11 +121,100 @@ public class DataList
      */
     this(identifier, 64 * 1024 * 1024);
   }
+//    if (writingOffset == 0) {
+//      if (discard > 0) {
+//        if (writeOffset < discard) {
+//          return;
+//        }
+//        else {
+//          writeOffset = discard;
+//          discard = 0;
+//        }
+//      }
+//      else if (prev != null) {
+//        int size = Codec.readVarInt(prev.data, prevOffset, prev.data.length, newOffset);
+//        if (newOffset.integer > prevOffset) {
+//          int remainingLength = size - prev.data.length + newOffset.integer;
+//          if (remainingLength > writeOffset) {
+//            return; /* we still do not have enough data */
+//          }
+//          else {
+//            byte[] buffer = new byte[size];
+//            System.arraycopy(prev.data, newOffset.integer, buffer, 0, size - remainingLength);
+//            System.arraycopy(data, 0, buffer, prev.data.length - newOffset.integer, remainingLength);
+//            // we have our new object in the buffer!
+//          }
+//        }
+//        else if (newOffset.integer != -5) { /* we do not have enough bytes to read even the int */
+//
+//        }
+//      }
+//    }
+//
+//    while (writingOffset < writeOffset) {
+//    }
 
   MutableInt nextOffset = new MutableInt();
+  long baseSeconds;
+  int size;
+  int processingOffset;
+
   public final void flush(int writeOffset)
   {
-    last.flush(writeOffset);
+    last.writingOffset = writeOffset;
+
+    logger.debug("processingOffset = {} and writeOffset = {}", new Object[]{processingOffset, writeOffset});
+    flush:
+    do {
+      while (size == 0) {
+        size = Codec.readVarInt(last.data, processingOffset, writeOffset, nextOffset);
+        switch (nextOffset.integer) {
+          case -5:
+            throw new RuntimeException("problemo!");
+
+          case -4:
+          case -3:
+          case -2:
+          case -1:
+          case 0:
+            if (writeOffset == last.data.length) {
+              processingOffset = 0;
+            }
+            break flush;
+
+          default:
+            processingOffset = nextOffset.integer;
+            break;
+        }
+      }
+
+      if (processingOffset + size < writeOffset) {
+        switch (last.data[processingOffset]) {
+          case MessageType.BEGIN_WINDOW_VALUE:
+            Tuple btw = Tuple.getTuple(last.data, processingOffset, size);
+            if (last.starting_window == -1) {
+              last.starting_window = baseSeconds | btw.getWindowId();
+              last.ending_window = last.starting_window;
+            }
+            else {
+              last.ending_window = baseSeconds | btw.getWindowId();
+            }
+            break;
+
+          case MessageType.RESET_WINDOW_VALUE:
+            Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
+            baseSeconds = (long)rwt.getBaseSeconds() << 32;
+            break;
+        }
+        processingOffset += size;
+        size = 0;
+      }
+      else {
+        break;
+      }
+    }
+    while (true);
+
     for (DataListener dl : all_listeners) {
       dl.dataAdded();
     }

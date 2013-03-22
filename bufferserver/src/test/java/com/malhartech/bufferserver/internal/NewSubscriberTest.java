@@ -73,11 +73,21 @@ public class NewSubscriberTest
     final BufferServerSubscriber bss1 = new BufferServerSubscriber("MyPublisher", 0, null)
     {
       @Override
-      public synchronized void beginWindow(int windowId)
+      public void beginWindow(int windowId)
       {
+        logger.debug("windowid = {} received", windowId);
+        super.beginWindow(windowId);
         if (windowId > 9) {
-          notifyAll();
+          synchronized (NewSubscriberTest.this) {
+            NewSubscriberTest.this.notifyAll();
+          }
         }
+      }
+
+      @Override
+      public String toString()
+      {
+        return "BufferServerSubscriber";
       }
 
     };
@@ -118,6 +128,7 @@ public class NewSubscriberTest
         catch (InterruptedException ex) {
         }
         catch (CancelledKeyException cke) {
+          logger.debug("exception", cke);
         }
         finally {
           logger.debug("publisher the middle of window = {}", Codec.getStringWindowId(windowId));
@@ -127,7 +138,9 @@ public class NewSubscriberTest
     }.start();
 
     synchronized (this) {
-      wait(200);
+      logger.debug("waiting!!!");
+      wait();
+      logger.debug("done waiting!!!");
     }
 
     publisherRun.set(false);
@@ -150,10 +163,13 @@ public class NewSubscriberTest
     final BufferServerSubscriber bss2 = new BufferServerSubscriber("MyPublisher", 0, null)
     {
       @Override
-      public synchronized void beginWindow(int windowId)
+      public void beginWindow(int windowId)
       {
+        super.beginWindow(windowId);
         if (windowId > 14) {
-          notifyAll();
+          synchronized (NewSubscriberTest.this) {
+            NewSubscriberTest.this.notifyAll();
+          }
         }
       }
 
@@ -205,7 +221,7 @@ public class NewSubscriberTest
     bss2.activate();
 
     synchronized (this) {
-      wait(200);
+      wait();
     }
 
     publisherRun.set(false);

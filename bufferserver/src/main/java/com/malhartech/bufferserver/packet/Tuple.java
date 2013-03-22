@@ -29,6 +29,9 @@ public abstract class Tuple
 
   public static Tuple getTuple(byte[] buffer, int offset, int length)
   {
+    if (buffer == null) {
+      logger.debug("found null buffer!");
+    }
     switch (MessageType.valueOf(buffer[offset])) {
       case NO_MESSAGE:
       case CHECKPOINT:
@@ -44,7 +47,11 @@ public abstract class Tuple
         return new ResetWindowTuple(buffer, offset, length);
 
       case BEGIN_WINDOW:
+        return new BeginWindowTuple(buffer, offset, length);
+
       case END_WINDOW:
+        return new EndWindowTuple(buffer, offset, length);
+
       case END_STREAM:
         return new WindowIdTuple(buffer, offset, length);
 

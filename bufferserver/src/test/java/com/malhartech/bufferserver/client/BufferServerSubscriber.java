@@ -87,34 +87,50 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
       case RESET_WINDOW:
         resetWindow(tuple.getBaseSeconds(), tuple.getWindowWidth());
         break;
+
+      default:
+        lastPayload = tuple;
     }
   }
 
   public void beginWindow(final int windowId)
   {
+    Object payload = new Object()
+    {
+      MessageType type = MessageType.BEGIN_WINDOW;
+      int window = windowId;
+    };
+
     if (firstPayload == null) {
-      firstPayload = new Object() {
-        MessageType type = MessageType.BEGIN_WINDOW;
-        int window = windowId;
-      };
+      firstPayload = payload;
     }
 
+    lastPayload = payload;
   }
 
   public void endWindow(final int windowId)
   {
+    Object payload = new Object()
+    {
+      MessageType type = MessageType.END_WINDOW;
+      int window = windowId;
+    };
+
     if (firstPayload == null) {
-      firstPayload = new Object() {
-        MessageType type = MessageType.END_WINDOW;
-        int window = windowId;
-      };
+      firstPayload = payload;
     }
 
+    lastPayload = payload;
   }
 
   public void resetWindow(int baseSeconds, int windowWidth)
   {
+  }
 
+  @Override
+  public String toString()
+  {
+    return "BufferServerSubscriber";
   }
 
 }

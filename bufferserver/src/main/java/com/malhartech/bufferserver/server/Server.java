@@ -356,13 +356,13 @@ public class Server implements ServerListener
           }
 
           Publisher publisher = new Publisher(dl);
+          key.attach(publisher);
+          key.interestOps(SelectionKey.OP_READ);
+          logger.debug("registering the channel for read operation {}", publisher);
           publisher.registered(key);
           publisher.transferBuffer(readBuffer, readOffset + size, writeOffset - readOffset - size);
           ignore = true;
 
-          logger.debug("registering the channel for read operation {}", publisher);
-          key.attach(publisher);
-          key.interestOps(SelectionKey.OP_READ);
           break;
 
         case SUBSCRIBER_REQUEST:
@@ -370,23 +370,21 @@ public class Server implements ServerListener
            * unregister the unidentified client since its job is done!
            */
           unregistered(key);
+          ignore = true;
           logger.info("Received subscriber request: {}", request);
 
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
           VarIntLengthPrependerClient subscriber = new Subscriber(subscriberRequest.getUpstreamType());
-          subscriber.registered(key);
-          ignore = true;
-
-          logger.debug("registering the channel for write operation {}", subscriber);
           key.attach(subscriber);
           key.interestOps(SelectionKey.OP_WRITE);
+          logger.debug("registering the channel for write operation {}", subscriber);
+          subscriber.registered(key);
 
           boolean need2cathcup = !subscriberGroups.containsKey(subscriberRequest.getUpstreamType());
           LogicalNode ln = handleSubscriberRequest(subscriberRequest, subscriber);
           if (need2cathcup) {
             ln.catchUp();
           }
-          DefaultEventLoop.KEY = key;
           break;
 
         case PURGE_REQUEST:
@@ -465,6 +463,12 @@ public class Server implements ServerListener
       }
 
       el.disconnect(this);
+    }
+
+    @Override
+    public String toString()
+    {
+      return "subscriber";
     }
 
   }

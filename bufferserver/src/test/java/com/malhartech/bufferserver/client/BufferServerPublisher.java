@@ -51,5 +51,12 @@ public class BufferServerPublisher extends AbstractSocketPublisher
     }
   }
 
+  @Override
+  public String toString()
+  {
+    return "BufferServerPublisher";
+  }
+
+
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
 }

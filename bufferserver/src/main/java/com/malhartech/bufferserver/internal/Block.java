@@ -36,7 +36,7 @@ public class Block
   /**
    * The starting window which is available in this data array.
    */
-  long starting_window;
+  long starting_window = -1;
   /**
    * the ending window which is available in this data array
    */
@@ -78,7 +78,6 @@ public class Block
           bs = (long)rwt.getBaseSeconds() << 32;
           if (bs > windowId) {
             writingOffset = sd.offset;
-            Arrays.fill(data, writingOffset, data.length, Byte.MIN_VALUE);
             break done;
           }
           break;
@@ -87,7 +86,6 @@ public class Block
           BeginWindowTuple bwt = (BeginWindowTuple)Tuple.getTuple(sd.bytes, sd.dataOffset, sd.size - sd.dataOffset + sd.offset);
           if ((bs | bwt.getWindowId()) >= windowId) {
             writingOffset = sd.offset;
-            Arrays.fill(data, writingOffset, data.length, Byte.MIN_VALUE);
             break done;
           }
           break;
@@ -237,34 +235,38 @@ public class Block
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Block.class);
-
-  MutableInt newOffset = new MutableInt();
-  Block prev;
-  int prevOffset;
-  void flush(int writeOffset)
-  {
-    if (writingOffset == 0) {
-      if (prev != null) {
-        int size = Codec.readVarInt(prev.data, prevOffset, prev.data.length, newOffset);
-        if (newOffset.integer > prevOffset) {
-          int remainingLength = size - prev.data.length + newOffset.integer;
-          if (remainingLength > writeOffset) {
-            return; /* we still do not have enough data */
-          }
-          else {
-            byte[] buffer = new byte[size];
-            System.arraycopy(prev.data, newOffset.integer, buffer, 0, size - remainingLength);
-            System.arraycopy(data, 0, buffer, prev.data.length - newOffset.integer, remainingLength);
-            // we have our new object in the buffer!
-          }
-        }
-        else if (newOffset.integer != -5) { /* we do not have enough bytes to read even the int
-
-        }
-      }
-    }
-    while (writingOffset < writeOffset) {
-    }
-  }
-
 }
+
+
+//    if (writingOffset == 0) {
+//      if (discardLength > 0) {
+//        if (writeOffset < discardLength) {
+//          return;
+//        }
+//        else {
+//          writeOffset = discardLength;
+//          discardLength = 0;
+//        }
+//      }
+//      else if (prev != null) {
+//        int size = Codec.readVarInt(prev.data, prevOffset, prev.data.length, newOffset);
+//        if (newOffset.integer > prevOffset) {
+//          int remainingLength = size - prev.data.length + newOffset.integer;
+//          if (remainingLength > writeOffset) {
+//            return; /* we still do not have enough data */
+//          }
+//          else {
+//            byte[] buffer = new byte[size];
+//            System.arraycopy(prev.data, newOffset.integer, buffer, 0, size - remainingLength);
+//            System.arraycopy(data, 0, buffer, prev.data.length - newOffset.integer, remainingLength);
+//            // we have our new object in the buffer!
+//          }
+//        }
+//        else if (newOffset.integer != -5) { /* we do not have enough bytes to read even the int */
+//
+//        }
+//      }
+//    }
+//
+//    while (writingOffset < writeOffset) {
+//    }
