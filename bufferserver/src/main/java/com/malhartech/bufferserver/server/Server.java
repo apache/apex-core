@@ -360,7 +360,11 @@ public class Server implements ServerListener
           key.interestOps(SelectionKey.OP_READ);
           logger.debug("registering the channel for read operation {}", publisher);
           publisher.registered(key);
-          publisher.transferBuffer(readBuffer, readOffset + size, writeOffset - readOffset - size);
+
+          int len = writeOffset - readOffset - size;
+          if (len > 0) {
+            publisher.transferBuffer(readBuffer, readOffset + size, len);
+          }
           ignore = true;
 
           break;
@@ -486,11 +490,8 @@ public class Server implements ServerListener
 
     Publisher(DataList dl)
     {
+      super(dl.getBufer(), dl.getPosition());
       this.datalist = dl;
-
-      readBuffer = datalist.getBufer();
-      buffer = ByteBuffer.wrap(readBuffer);
-      buffer.position(datalist.getPosition());
     }
 
     public void transferBuffer(byte[] array, int offset, int len)
@@ -575,6 +576,28 @@ public class Server implements ServerListener
       readBuffer = newBuffer;
       readOffset = 0;
       datalist.addBuffer(readBuffer);
+    }
+
+    @Override
+    public void unregistered(SelectionKey key)
+    {
+      /*
+       * if the publisher unregistered, all the downstream guys are going to be unregistered anyways
+       * in our world. So it makes sense to kick them out proactively. Otherwise these clients since
+       * are not being written to, just stick around till the next publisher shows up and eat into
+       * the data it's publishing for the new subscribers.
+       */
+      super.unregistered(key);
+      String publisherIdentifier = datalist.getIdentifier();
+
+      Iterator<LogicalNode> iterator = subscriberGroups.values().iterator();
+      while (iterator.hasNext()) {
+        LogicalNode ln = iterator.next();
+        if (publisherIdentifier.equals(ln.getUpstream())) {
+          ln.boot(eventloop);
+          iterator.remove();
+        }
+      }
     }
 
     @Override
