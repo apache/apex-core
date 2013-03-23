@@ -4,9 +4,12 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.util.JacksonObjectMapperProvider;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.collections.buffer.CircularFifoBuffer;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocket.Connection;
 import org.eclipse.jetty.websocket.WebSocketClient;
@@ -17,11 +20,13 @@ import org.eclipse.jetty.websocket.WebSocketClientFactory;
  * @author David Yan <davidyan@malhar-inc.com>
  */
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
-public class SampleWebSocketSubscriber implements Runnable
+public class SamplePubSubWebSocketSubscriber implements Runnable
 {
-  private String channelUrl = "ws://localhost:9090/channel/testChannel";
+  private String channelUrl = "ws://localhost:9090/pubsub";
   private int messagesReceived = 0;
   private CircularFifoBuffer buffer = new CircularFifoBuffer(5);
+  private String topic = "testTopic";
+  private ObjectMapper mapper = (new JacksonObjectMapperProvider()).getContext(null);
 
   public int getMessagesReceived()
   {
@@ -33,7 +38,13 @@ public class SampleWebSocketSubscriber implements Runnable
     this.channelUrl = channelUrl;
   }
 
-  public CircularFifoBuffer getBuffer() {
+  public void setTopic(String topic)
+  {
+    this.topic = topic;
+  }
+
+  public CircularFifoBuffer getBuffer()
+  {
     return buffer;
   }
 
@@ -49,7 +60,7 @@ public class SampleWebSocketSubscriber implements Runnable
 
       URI uri = new URI(channelUrl);
 
-      client.open(uri, new WebSocket.OnTextMessage()
+      WebSocket.Connection connection = client.open(uri, new WebSocket.OnTextMessage()
       {
         @Override
         public void onMessage(String string)
@@ -72,15 +83,20 @@ public class SampleWebSocketSubscriber implements Runnable
         }
 
       }).get(5, TimeUnit.SECONDS);
+      HashMap<String,Object> map = new HashMap<String,Object>();
+      map.put("type", "subscribe");
+      map.put("topic", topic);
+      connection.sendMessage(mapper.writeValueAsString(map));
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
     }
+
   }
 
   public static void main(String[] args) throws Exception
   {
-    SampleWebSocketSubscriber ss = new SampleWebSocketSubscriber();
+    SamplePubSubWebSocketSubscriber ss = new SamplePubSubWebSocketSubscriber();
     ss.run();
   }
 
