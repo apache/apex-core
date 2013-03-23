@@ -50,8 +50,9 @@ public class DataList
           last = temp;
         }
 
-        temp.rewind(longWindowId);
+        this.baseSeconds = temp.rewind(longWindowId);
         processingOffset = temp.writingOffset;
+        size = 0;
       }
     }
   }
@@ -161,9 +162,7 @@ public class DataList
 
   public final void flush(int writeOffset)
   {
-    last.writingOffset = writeOffset;
-
-    logger.debug("processingOffset = {} and writeOffset = {}", new Object[]{processingOffset, writeOffset});
+    logger.debug("processingOffset = {} and writeOffset = {}", new Object[] {processingOffset, writeOffset});
     flush:
     do {
       while (size == 0) {
@@ -178,17 +177,14 @@ public class DataList
           case -1:
           case 0:
             if (writeOffset == last.data.length) {
+              last.writingOffset = processingOffset;
               processingOffset = 0;
             }
             break flush;
-
-          default:
-            processingOffset = nextOffset.integer;
-            break;
         }
       }
 
-      if (processingOffset + size < writeOffset) {
+      if (nextOffset.integer + size < writeOffset) {
         switch (last.data[processingOffset]) {
           case MessageType.BEGIN_WINDOW_VALUE:
             Tuple btw = Tuple.getTuple(last.data, processingOffset, size);
@@ -206,10 +202,11 @@ public class DataList
             baseSeconds = (long)rwt.getBaseSeconds() << 32;
             break;
         }
-        processingOffset += size;
+        processingOffset = size + nextOffset.integer;
         size = 0;
       }
       else {
+        last.writingOffset = processingOffset;
         break;
       }
     }
