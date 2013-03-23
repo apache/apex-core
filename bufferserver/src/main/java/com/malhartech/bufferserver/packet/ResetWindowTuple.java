@@ -56,17 +56,24 @@ public class ResetWindowTuple extends Tuple
     return readVarInt(intervalOffset, offset + length);
   }
 
-  public static byte[] getSerializedTuple(long windowId)
+  public static byte[] getSerializedTuple(int baseSeconds, int windowWidth)
   {
-    byte[] buffer = new byte[12];
-    int offset = 0;
+    int size = 1; /* for type */
 
-    buffer[offset++] = MessageType.RESET_WINDOW_VALUE;
+    /* for baseSeconds */
+    int bits = 32 - Integer.numberOfLeadingZeros(baseSeconds);
+    size += bits / 7 + 1;
 
-    int baseSeconds = (int)(windowId >> 32);
-    offset = Codec.writeRawVarint32(baseSeconds, buffer, offset);
+    /* for windowWidth */
+    bits = 32 - Integer.numberOfLeadingZeros(windowWidth);
+    size += bits / 7 + 1;
 
-    Codec.writeRawVarint32((int)windowId, buffer, offset);
+    byte[] buffer = new byte[size];
+    size = 0;
+
+    buffer[size++] = MessageType.RESET_WINDOW_VALUE;
+    size = Codec.writeRawVarint32(baseSeconds, buffer, size);
+    Codec.writeRawVarint32(windowWidth, buffer, size);
 
     return buffer;
   }
