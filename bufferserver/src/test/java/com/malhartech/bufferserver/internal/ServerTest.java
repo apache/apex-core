@@ -99,7 +99,7 @@ public class ServerTest
 
     long resetInfo = 0x7afebabe000000faL;
 
-    bsp.publishMessage(ResetWindowTuple.getSerializedTuple(resetInfo));
+    bsp.publishMessage(ResetWindowTuple.getSerializedTuple((int)(resetInfo >> 32), 500));
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
