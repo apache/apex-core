@@ -65,7 +65,7 @@ public class Block
     }
   }
 
-  public void rewind(long windowId)
+  public long rewind(long windowId)
   {
     long bs = starting_window & 0x7fffffff00000000L;
     DataListIterator dli = new DataListIterator(this);
@@ -91,6 +91,8 @@ public class Block
           break;
       }
     }
+
+    return bs;
   }
 
   public void purge(long longWindowId)
