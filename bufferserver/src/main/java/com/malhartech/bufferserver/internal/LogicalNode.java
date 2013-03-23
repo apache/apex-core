@@ -15,6 +15,7 @@ import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -293,6 +294,14 @@ public class LogicalNode implements DataListener
   public String getUpstream()
   {
     return upstream;
+  }
+
+  public void boot(DefaultEventLoop eventloop)
+  {
+    for (PhysicalNode pn: physicalNodes) {
+      eventloop.disconnect(pn.getConnection());
+      physicalNodes.clear();
+    }
   }
 
 }
