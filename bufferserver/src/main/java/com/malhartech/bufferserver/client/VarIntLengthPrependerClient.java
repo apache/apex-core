@@ -16,9 +16,26 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class VarIntLengthPrependerClient extends malhar.netlet.Client
 {
-  protected byte[] readBuffer = new byte[32 * 1024];
-  protected ByteBuffer buffer = ByteBuffer.wrap(readBuffer);
+  protected byte[] readBuffer;
+  protected ByteBuffer buffer;
   protected int size, writeOffset, readOffset;
+
+  public VarIntLengthPrependerClient()
+  {
+    super();
+    readBuffer = new byte[32 * 1024];
+    buffer = ByteBuffer.wrap(readBuffer);
+  }
+
+  public VarIntLengthPrependerClient(byte[] readbuffer, int position)
+  {
+    super();
+    readBuffer = readbuffer;
+    buffer = ByteBuffer.wrap(readbuffer);
+    buffer.position(position);
+    writeOffset = position;
+    readOffset = position;
+  }
 
   @Override
   public ByteBuffer buffer()
