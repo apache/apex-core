@@ -75,6 +75,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
   public void onMessage(byte[] buffer, int offset, int size)
   {
     Tuple tuple = Tuple.getTuple(buffer, offset, size);
+    tupleCount.incrementAndGet();
     switch (tuple.getType()) {
       case BEGIN_WINDOW:
         beginWindow(tuple.getWindowId());
