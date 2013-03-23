@@ -64,8 +64,9 @@ public class PayloadTuple extends Tuple
     }
     while ((bits -= 7) > 0);
 
-    byte[] array = new byte[size];
-    Codec.writeRawVarint32(size, array, 0);
+    byte[] array = new byte[size + 1];
+    array[0] = MessageType.PAYLOAD_VALUE;
+    Codec.writeRawVarint32(partition, array, 1);
     return array;
   }
 
