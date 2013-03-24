@@ -7,7 +7,9 @@ package com.malhartech.util;
 import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocketClient;
@@ -56,32 +58,41 @@ public abstract class PubSubWebSocketClient
     public void onOpen(WebSocket.Connection connection)
     {
       LOG.debug("WebSocket connection opened");
+      PubSubWebSocketClient.this.onOpen(connection);
     }
 
     @Override
     public void onClose(int code, String message)
     {
       LOG.warn("WebSocket connection has closed with code {}, message {}", code, message);
-      // try to reconnect
-      try {
-        connection = client.open(uri, new PubSubWebSocket()).get(5, TimeUnit.SECONDS);
-      }
-      catch (Exception ex) {
-        LOG.warn("Failed to reconnect to {}", uri);
-      }
+      PubSubWebSocketClient.this.onClose(code, message);
     }
 
   }
 
-  public PubSubWebSocketClient(URI uri)
+  public PubSubWebSocketClient()
   {
     try {
       client = factory.newWebSocketClient();
-      connection = client.open(uri, new PubSubWebSocket()).get(5, TimeUnit.SECONDS);
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
     }
+  }
+
+  public void setUri(URI uri)
+  {
+    this.uri = uri;
+  }
+
+  public void openConnection(long timeoutMillis) throws IOException, ExecutionException, InterruptedException, TimeoutException
+  {
+    connection = client.open(uri, new PubSubWebSocket()).get(timeoutMillis, TimeUnit.MILLISECONDS);
+  }
+
+  public boolean isConnectionOpen()
+  {
+    return connection != null && connection.isOpen();
   }
 
   public void publish(String topic, Object data) throws IOException
@@ -103,6 +114,34 @@ public abstract class PubSubWebSocketClient
     connection.sendMessage(mapper.writeValueAsString(map));
   }
 
+  public void unsubscribe(String topic) throws IOException
+  {
+    HashMap<String, Object> map = new HashMap<String, Object>();
+    map.put("type", "unsubscribe");
+    map.put("topic", topic);
+    connection.sendMessage(mapper.writeValueAsString(map));
+  }
+
+  public void subscribeNumSubscribers(String topic) throws IOException
+  {
+    HashMap<String, Object> map = new HashMap<String, Object>();
+    map.put("type", "subscribeNumSubscribers");
+    map.put("topic", topic);
+    connection.sendMessage(mapper.writeValueAsString(map));
+  }
+
+  public void unsubscribeNumSubscribers(String topic) throws IOException
+  {
+    HashMap<String, Object> map = new HashMap<String, Object>();
+    map.put("type", "unsubscribeNumSubscribers");
+    map.put("topic", topic);
+    connection.sendMessage(mapper.writeValueAsString(map));
+  }
+
+  public abstract void onOpen(WebSocket.Connection connection);
+
   public abstract void onMessage(String type, String topic, Object data);
+
+  public abstract void onClose(int code, String message);
 
 }

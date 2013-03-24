@@ -8,6 +8,7 @@ import com.malhartech.util.JacksonObjectMapperProvider;
 import com.malhartech.util.ObjectMapperString;
 import com.malhartech.util.PubSubWebSocketClient;
 import java.net.URI;
+import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,19 +42,35 @@ public class SamplePubSubWebSocketPublisher implements Runnable
   public void run()
   {
     try {
-      PubSubWebSocketClient wsClient = new PubSubWebSocketClient(new URI(channelUrl)) {
+      PubSubWebSocketClient wsClient = new PubSubWebSocketClient()
+      {
+        @Override
+        public void onOpen(WebSocket.Connection connection)
+        {
+        }
+
         @Override
         public void onMessage(String type, String topic, Object data)
         {
         }
+
+        @Override
+        public void onClose(int code, String message)
+        {
+        }
+
       };
+      wsClient.setUri(new URI(channelUrl));
+      wsClient.openConnection(1000);
       while (true) {
         wsClient.publish(topic, payload);
         Thread.sleep(1000);
       }
-    } catch (InterruptedException ex) {
+    }
+    catch (InterruptedException ex) {
       return;
-    } catch (Exception ex) {
+    }
+    catch (Exception ex) {
       throw new RuntimeException(ex);
     }
   }

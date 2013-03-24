@@ -17,10 +17,13 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,8 +69,7 @@ public class TupleRecorder implements Operator
   private URI pubSubUrl = null;
   private int numSubscribers = 0;
   private PubSubWebSocketClient wsClient;
-  private String recorderNameTopic;
-  private String recorderNameNumSubscriberTopic;
+  private String recordingNameTopic;
 
   public RecorderSink newSink(String key)
   {
@@ -285,26 +287,48 @@ public class TupleRecorder implements Operator
         indexOutStr = fs.create(pa);
       }
       if (pubSubUrl != null) {
-        recorderNameTopic = "tupleRecorder." + recordingName;
-        recorderNameNumSubscriberTopic = recorderNameTopic + ".numSubscribers";
-        wsClient = new PubSubWebSocketClient(pubSubUrl)
-        {
-          @Override
-          public void onMessage(String type, String topic, Object data)
-          {
-            if (topic.equals(recorderNameNumSubscriberTopic)) {
-              numSubscribers = Integer.valueOf((String)data);
-              logger.info("Number of subscribers for {} is now {}", recordingName, numSubscribers);
-            }
-          }
-
-        };
-        wsClient.subscribe(recorderNameNumSubscriberTopic);
+        recordingNameTopic = "tupleRecorder." + recordingName;
+        try {
+          setupWsClient();
+        }
+        catch (Exception ex) {
+          logger.error("Cannot connect to daemon at {}", pubSubUrl);
+        }
       }
     }
     catch (Exception ex) {
       logger.error("Trouble setting up tuple recorder", ex);
     }
+  }
+
+  private void setupWsClient() throws ExecutionException, IOException, InterruptedException, TimeoutException
+  {
+    wsClient = new PubSubWebSocketClient()
+    {
+      @Override
+      public void onOpen(WebSocket.Connection connection)
+      {
+      }
+
+      @Override
+      public void onMessage(String type, String topic, Object data)
+      {
+        if (topic.equals(recordingNameTopic + ".numSubscribers")) {
+          numSubscribers = Integer.valueOf((String)data);
+          logger.info("Number of subscribers for {} is now {}", recordingName, numSubscribers);
+        }
+      }
+
+      @Override
+      public void onClose(int code, String message)
+      {
+        numSubscribers = 0;
+      }
+
+    };
+    wsClient.setUri(pubSubUrl);
+    wsClient.openConnection(500);
+    wsClient.subscribeNumSubscribers(recordingNameTopic);
   }
 
   protected void openNewPartFile() throws IOException
@@ -372,9 +396,20 @@ public class TupleRecorder implements Operator
           syncRequested = false;
           logger.debug("Closing current part file.");
         }
+        if (pubSubUrl != null) {
+          // check web socket connection
+          if (!wsClient.isConnectionOpen()) {
+            try {
+              setupWsClient();
+            }
+            catch (Exception ex) {
+              logger.error("Cannot connect to daemon");
+            }
+          }
+        }
       }
       catch (IOException ex) {
-        logger.error(ex.toString());
+        logger.error("Exception caught in endWindow", ex);
       }
     }
   }
@@ -498,12 +533,12 @@ public class TupleRecorder implements Operator
   private void publishTupleData(int portId, Object obj)
   {
     try {
-      if (pubSubUrl != null) {
+      if (pubSubUrl != null && wsClient.isConnectionOpen()) {
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("portId", String.valueOf(portId));
         map.put("windowId", currentWindowId);
         map.put("data", obj);
-        wsClient.publish(recorderNameTopic, map);
+        wsClient.publish(recordingNameTopic, map);
       }
     }
     catch (Exception ex) {

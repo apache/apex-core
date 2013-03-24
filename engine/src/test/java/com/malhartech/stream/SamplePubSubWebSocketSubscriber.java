@@ -9,6 +9,7 @@ import com.malhartech.util.PubSubWebSocketClient;
 import java.net.URI;
 import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,13 @@ public class SamplePubSubWebSocketSubscriber implements Runnable
   {
     try {
       URI uri = new URI(channelUrl);
-      PubSubWebSocketClient wsClient = new PubSubWebSocketClient(uri) {
+      PubSubWebSocketClient wsClient = new PubSubWebSocketClient()
+      {
+        @Override
+        public void onOpen(WebSocket.Connection connection)
+        {
+        }
+
         @Override
         public void onMessage(String type, String topic, Object data)
         {
@@ -59,7 +66,15 @@ public class SamplePubSubWebSocketSubscriber implements Runnable
           messagesReceived++;
           buffer.add(data);
         }
+
+        @Override
+        public void onClose(int code, String message)
+        {
+        }
+
       };
+      wsClient.setUri(uri);
+      wsClient.openConnection(1000);
       wsClient.subscribe(topic);
     }
     catch (Exception ex) {
