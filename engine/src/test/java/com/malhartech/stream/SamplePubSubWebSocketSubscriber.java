@@ -5,15 +5,12 @@
 package com.malhartech.stream;
 
 import com.malhartech.util.JacksonObjectMapperProvider;
+import com.malhartech.util.PubSubWebSocketClient;
 import java.net.URI;
-import java.util.HashMap;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.eclipse.jetty.websocket.WebSocket;
-import org.eclipse.jetty.websocket.WebSocket.Connection;
-import org.eclipse.jetty.websocket.WebSocketClient;
-import org.eclipse.jetty.websocket.WebSocketClientFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -22,6 +19,7 @@ import org.eclipse.jetty.websocket.WebSocketClientFactory;
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
 public class SamplePubSubWebSocketSubscriber implements Runnable
 {
+  private static final Logger LOG = LoggerFactory.getLogger(SamplePubSubWebSocketPublisher.class);
   private String channelUrl = "ws://localhost:9090/pubsub";
   private int messagesReceived = 0;
   private CircularFifoBuffer buffer = new CircularFifoBuffer(5);
@@ -52,41 +50,17 @@ public class SamplePubSubWebSocketSubscriber implements Runnable
   public void run()
   {
     try {
-      WebSocketClientFactory factory = new WebSocketClientFactory();
-      factory.setBufferSize(8192);
-      factory.start();
-
-      WebSocketClient client = factory.newWebSocketClient();
-
       URI uri = new URI(channelUrl);
-
-      WebSocket.Connection connection = client.open(uri, new WebSocket.OnTextMessage()
-      {
+      PubSubWebSocketClient wsClient = new PubSubWebSocketClient(uri) {
         @Override
-        public void onMessage(String string)
+        public void onMessage(String type, String topic, Object data)
         {
-          System.out.println("onMessage " + string);
+          LOG.info("onMessage {}", data);
           messagesReceived++;
-          buffer.add(string);
+          buffer.add(data);
         }
-
-        @Override
-        public void onOpen(Connection cnctn)
-        {
-          System.out.println("onOpen");
-        }
-
-        @Override
-        public void onClose(int i, String string)
-        {
-          System.out.println("onClose " + i + "," + string);
-        }
-
-      }).get(5, TimeUnit.SECONDS);
-      HashMap<String,Object> map = new HashMap<String,Object>();
-      map.put("type", "subscribe");
-      map.put("topic", topic);
-      connection.sendMessage(mapper.writeValueAsString(map));
+      };
+      wsClient.subscribe(topic);
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
