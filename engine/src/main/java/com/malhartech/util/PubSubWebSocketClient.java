@@ -48,7 +48,7 @@ public abstract class PubSubWebSocketClient
         PubSubWebSocketClient.this.onMessage((String)map.get("type"), (String)map.get("topic"), map.get("data"));
       }
       catch (Exception ex) {
-        LOG.error("onMessage has problem parsing message {}", message);
+        LOG.error("onMessage has problem parsing message {}", message, ex);
       }
     }
 

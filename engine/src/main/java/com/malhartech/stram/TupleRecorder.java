@@ -293,7 +293,7 @@ public class TupleRecorder implements Operator
           public void onMessage(String type, String topic, Object data)
           {
             if (topic.equals(recorderNameNumSubscriberTopic)) {
-              numSubscribers = (Integer)data;
+              numSubscribers = Integer.valueOf((String)data);
               logger.info("Number of subscribers for {} is now {}", recordingName, numSubscribers);
             }
           }

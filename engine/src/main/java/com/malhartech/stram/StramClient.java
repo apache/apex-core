@@ -225,7 +225,9 @@ public class StramClient
       io.netty.buffer.ChannelBufType.class,
       io.netty.handler.codec.ByteToByteCodec.class,
       javax.validation.ConstraintViolationException.class,
-      com.sun.jersey.api.client.Client.class,
+      org.eclipse.jetty.websocket.WebSocketFactory.class,
+      org.eclipse.jetty.io.nio.SelectorManager.class,
+      org.eclipse.jetty.http.HttpParser.class,
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
