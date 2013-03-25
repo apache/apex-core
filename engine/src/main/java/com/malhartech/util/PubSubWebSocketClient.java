@@ -95,47 +95,75 @@ public abstract class PubSubWebSocketClient
     return connection != null && connection.isOpen();
   }
 
-  public void publish(String topic, Object data) throws IOException
+  public static String constructPublishMessage(String topic, Object data, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
     map.put("type", "publish");
     map.put("topic", topic);
     map.put("data", data);
 
-    String message = mapper.writeValueAsString(map);
-    connection.sendMessage(message);
+    return mapper.writeValueAsString(map);
   }
 
-  public void subscribe(String topic) throws IOException
+  public void publish(String topic, Object data) throws IOException
+  {
+    connection.sendMessage(constructPublishMessage(topic, data, mapper));
+  }
+
+  public static String constructSubscribeMessage(String topic, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
     map.put("type", "subscribe");
     map.put("topic", topic);
-    connection.sendMessage(mapper.writeValueAsString(map));
+
+    return mapper.writeValueAsString(map);
   }
 
-  public void unsubscribe(String topic) throws IOException
+  public void subscribe(String topic) throws IOException
+  {
+    connection.sendMessage(constructSubscribeMessage(topic, mapper));
+  }
+
+  public static String constructUnsubscribeMessage(String topic, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
     map.put("type", "unsubscribe");
     map.put("topic", topic);
-    connection.sendMessage(mapper.writeValueAsString(map));
+
+    return mapper.writeValueAsString(map);
   }
 
-  public void subscribeNumSubscribers(String topic) throws IOException
+  public void unsubscribe(String topic) throws IOException
+  {
+    connection.sendMessage(constructUnsubscribeMessage(topic, mapper));
+  }
+
+  public static String constructSubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
     map.put("type", "subscribeNumSubscribers");
     map.put("topic", topic);
-    connection.sendMessage(mapper.writeValueAsString(map));
+
+    return mapper.writeValueAsString(map);
   }
 
-  public void unsubscribeNumSubscribers(String topic) throws IOException
+  public void subscribeNumSubscribers(String topic) throws IOException
+  {
+    connection.sendMessage(constructSubscribeNumSubscribersMessage(topic, mapper));
+  }
+
+  public static String constructUnsubscribeNumSubscribersMessage(String topic, ObjectMapper mapper) throws IOException
   {
     HashMap<String, Object> map = new HashMap<String, Object>();
     map.put("type", "unsubscribeNumSubscribers");
     map.put("topic", topic);
-    connection.sendMessage(mapper.writeValueAsString(map));
+
+    return mapper.writeValueAsString(map);
+  }
+
+  public void unsubscribeNumSubscribers(String topic) throws IOException
+  {
+    connection.sendMessage(constructUnsubscribeNumSubscribersMessage(topic, mapper));
   }
 
   public abstract void onOpen(WebSocket.Connection connection);

@@ -21,7 +21,8 @@ import org.slf4j.LoggerFactory;
 public class SamplePubSubWebSocketSubscriber implements Runnable
 {
   private static final Logger LOG = LoggerFactory.getLogger(SamplePubSubWebSocketPublisher.class);
-  private String channelUrl = "ws://localhost:9090/pubsub";
+  private static final String defaultUri = "ws://localhost:9090/pubsub";
+  private URI uri;
   private int messagesReceived = 0;
   private CircularFifoBuffer buffer = new CircularFifoBuffer(5);
   private String topic = "testTopic";
@@ -32,9 +33,9 @@ public class SamplePubSubWebSocketSubscriber implements Runnable
     return messagesReceived;
   }
 
-  public void setChannelUrl(String channelUrl)
+  public void setUri(URI uri)
   {
-    this.channelUrl = channelUrl;
+    this.uri = uri;
   }
 
   public void setTopic(String topic)
@@ -51,7 +52,9 @@ public class SamplePubSubWebSocketSubscriber implements Runnable
   public void run()
   {
     try {
-      URI uri = new URI(channelUrl);
+      if (uri == null) {
+        uri = new URI(defaultUri);
+      }
       PubSubWebSocketClient wsClient = new PubSubWebSocketClient()
       {
         @Override

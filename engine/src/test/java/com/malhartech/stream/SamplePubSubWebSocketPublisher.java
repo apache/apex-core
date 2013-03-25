@@ -18,14 +18,15 @@ import org.slf4j.LoggerFactory;
  */
 public class SamplePubSubWebSocketPublisher implements Runnable
 {
-  private String channelUrl = "http://localhost:9090/pubsub";
+  private static final String defaultUri = "ws://localhost:9090/pubsub";
   private static final Logger LOG = LoggerFactory.getLogger(SamplePubSubWebSocketPublisher.class);
+  private URI uri;
   private ObjectMapperString payload = new ObjectMapperString("{\"hello\":\"world\"}");
   private String topic = "testTopic";
 
-  public void setChannelUrl(String channelUrl)
+  public void setUri(URI uri)
   {
-    this.channelUrl = channelUrl;
+    this.uri = uri;
   }
 
   public void setPayload(ObjectMapperString payload)
@@ -60,7 +61,10 @@ public class SamplePubSubWebSocketPublisher implements Runnable
         }
 
       };
-      wsClient.setUri(new URI(channelUrl));
+      if (uri == null) {
+        uri = new URI(defaultUri);
+      }
+      wsClient.setUri(uri);
       wsClient.openConnection(1000);
       while (true) {
         wsClient.publish(topic, payload);
