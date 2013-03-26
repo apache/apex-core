@@ -295,6 +295,12 @@ public class Server implements ServerListener
       }
 
       dl = publisherBufffers.get(identifier);
+      try {
+        dl.rewind(request.getBaseSeconds(), request.getWindowId());
+      }
+      catch (IOException ie) {
+        throw new RuntimeException(ie);
+      }
     }
     else {
       dl = new DataList(identifier, blockSize);
@@ -341,6 +347,7 @@ public class Server implements ServerListener
       Tuple request = Tuple.getTuple(buffer, offset, size);
       switch (request.getType()) {
         case PUBLISHER_REQUEST:
+
           /*
            * unregister the unidentified client since its job is done!
            */
@@ -348,12 +355,6 @@ public class Server implements ServerListener
           logger.info("Received publisher request: {}", request);
 
           DataList dl = handlePublisherRequest((PublishRequestTuple)request, this);
-          try {
-            dl.rewind(request.getBaseSeconds(), request.getWindowId());
-          }
-          catch (IOException ie) {
-            logger.debug("exception while rewiding", ie);
-          }
 
           Publisher publisher = new Publisher(dl);
           key.attach(publisher);
@@ -497,7 +498,7 @@ public class Server implements ServerListener
     public void transferBuffer(byte[] array, int offset, int len)
     {
       System.arraycopy(array, offset, readBuffer, writeOffset, len);
-      buffer.position(len);
+      buffer.position(writeOffset + len);
       read(len);
     }
 

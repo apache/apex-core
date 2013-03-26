@@ -4,14 +4,21 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import com.malhartech.bufferserver.util.Codec;
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class BeginWindowTuple extends WindowIdTuple
 {
+  private static final byte[][] serializedTuples = new byte[16000][];
+
+  static {
+    for (int i = serializedTuples.length; i-- > 0;) {
+      serializedTuples[i] = WindowIdTuple.getSerializedTuple(i);
+      serializedTuples[i][0] = MessageType.BEGIN_WINDOW_VALUE;
+    }
+  }
+
   public BeginWindowTuple(byte[] array, int offset, int length)
   {
     super(array, offset, length);
@@ -19,12 +26,7 @@ public class BeginWindowTuple extends WindowIdTuple
 
   public static byte[] getSerializedTuple(int windowId)
   {
-    byte[] array = new byte[6];
-    int offset = 0;
-
-    array[offset++] = MessageType.BEGIN_WINDOW_VALUE;
-    Codec.writeRawVarint32(windowId, array, offset);
-
-    return array;
+    return serializedTuples[windowId % serializedTuples.length];
   }
+
 }

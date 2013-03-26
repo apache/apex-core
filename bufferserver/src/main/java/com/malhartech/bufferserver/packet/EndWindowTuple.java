@@ -12,19 +12,23 @@ import com.malhartech.bufferserver.util.Codec;
  */
 public class EndWindowTuple extends WindowIdTuple
 {
-  public EndWindowTuple(byte[] array, int offset, int length)
-  {
-    super(array, offset, length);
+  private static final byte[][] serializedTuples = new byte[16000][];
+
+  static {
+    for (int i = serializedTuples.length; i-- > 0;) {
+      serializedTuples[i] = WindowIdTuple.getSerializedTuple(i);
+      serializedTuples[i][0] = MessageType.END_WINDOW_VALUE;
+    }
   }
 
   public static byte[] getSerializedTuple(int windowId)
   {
-    byte[] array = new byte[6];
+    return serializedTuples[windowId % serializedTuples.length];
+  }
 
-    array[0] = MessageType.END_WINDOW_VALUE;
-    Codec.writeRawVarint32(windowId, array, 1);
-
-    return array;
+  public EndWindowTuple(byte[] array, int offset, int length)
+  {
+    super(array, offset, length);
   }
 
 }

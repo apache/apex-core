@@ -55,6 +55,10 @@ public class DataList
         size = 0;
       }
     }
+
+    for (DataListIterator dli : iterators.values()) {
+      dli.rewind(processingOffset);
+    }
   }
 
   public void reset()
@@ -162,7 +166,6 @@ public class DataList
 
   public final void flush(int writeOffset)
   {
-    logger.debug("processingOffset = {} and writeOffset = {}", new Object[] {processingOffset, writeOffset});
     flush:
     do {
       while (size == 0) {
@@ -176,18 +179,18 @@ public class DataList
           case -2:
           case -1:
           case 0:
+            last.writingOffset = processingOffset;
             if (writeOffset == last.data.length) {
-              last.writingOffset = processingOffset;
               processingOffset = 0;
             }
             break flush;
         }
       }
 
-      if (nextOffset.integer + size < writeOffset) {
-        switch (last.data[processingOffset]) {
+      if (nextOffset.integer + size <= writeOffset) {
+        switch (last.data[nextOffset.integer]) {
           case MessageType.BEGIN_WINDOW_VALUE:
-            Tuple btw = Tuple.getTuple(last.data, processingOffset, size);
+            Tuple btw = Tuple.getTuple(last.data, nextOffset.integer, size);
             if (last.starting_window == -1) {
               last.starting_window = baseSeconds | btw.getWindowId();
               last.ending_window = last.starting_window;
@@ -198,7 +201,7 @@ public class DataList
             break;
 
           case MessageType.RESET_WINDOW_VALUE:
-            Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
+            Tuple rwt = Tuple.getTuple(last.data, nextOffset.integer, size);
             baseSeconds = (long)rwt.getBaseSeconds() << 32;
             break;
         }
@@ -213,7 +216,7 @@ public class DataList
     while (true);
 
     for (DataListener dl : all_listeners) {
-      dl.dataAdded();
+      dl.addedData();
     }
   }
 

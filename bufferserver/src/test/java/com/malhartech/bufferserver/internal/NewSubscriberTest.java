@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -75,7 +76,6 @@ public class NewSubscriberTest
       @Override
       public void beginWindow(int windowId)
       {
-        logger.debug("windowid = {} received", windowId);
         super.beginWindow(windowId);
         if (windowId > 9) {
           synchronized (NewSubscriberTest.this) {
@@ -106,23 +106,19 @@ public class NewSubscriberTest
       @SuppressWarnings("SleepWhileInLoop")
       public void run()
       {
-        long resetId = 0x7afebabe000000faL;
-        bsp1.publishMessage(ResetWindowTuple.getSerializedTuple(resetId));
+        bsp1.publishMessage(ResetWindowTuple.getSerializedTuple(bsp1.baseWindow, 500));
 
         long windowId = 0x7afebabe00000000L;
         try {
           while (publisherRun.get()) {
             bsp1.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
-            Thread.sleep(5);
-
             bsp1.publishMessage(PayloadTuple.getSerializedTuple(0, 0));
-
-            Thread.sleep(5);
 
             bsp1.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
             windowId++;
+            Thread.sleep(5);
           }
         }
         catch (InterruptedException ex) {
@@ -138,9 +134,7 @@ public class NewSubscriberTest
     }.start();
 
     synchronized (this) {
-      logger.debug("waiting!!!");
       wait();
-      logger.debug("done waiting!!!");
     }
 
     publisherRun.set(false);
@@ -193,17 +187,14 @@ public class NewSubscriberTest
           while (publisherRun.get()) {
             bsp2.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
-            Thread.sleep(5);
-
             byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
             buff[buff.length - 1] = 'a';
             bsp2.publishMessage(buff);
 
-            Thread.sleep(5);
-
             bsp2.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
             windowId++;
+            Thread.sleep(5);
           }
         }
         catch (InterruptedException ex) {
@@ -232,7 +223,7 @@ public class NewSubscriberTest
     bss2.teardown();
     bsp2.teardown();
 
-    //Assert.assertTrue((bss2.lastPayload.getWindowId() - 8) * 3 < bss2.tupleCount.get());
+    Assert.assertTrue((bss2.lastPayload.getWindowId() - 8) * 3 < bss2.tupleCount.get());
   }
 
 }

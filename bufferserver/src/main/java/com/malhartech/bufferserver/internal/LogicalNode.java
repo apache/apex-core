@@ -190,14 +190,14 @@ public class LogicalNode implements DataListener
       }
 
       if (iterator.hasNext()) {
-        dataAdded();
+        addedData();
       }
     }
   }
 
   @SuppressWarnings("fallthrough")
   @Override
-  public void dataAdded()
+  public void addedData()
   {
     if (isReady()) {
       if (caughtup) {
@@ -298,7 +298,7 @@ public class LogicalNode implements DataListener
 
   public void boot(DefaultEventLoop eventloop)
   {
-    for (PhysicalNode pn: physicalNodes) {
+    for (PhysicalNode pn : physicalNodes) {
       eventloop.disconnect(pn.getConnection());
       physicalNodes.clear();
     }

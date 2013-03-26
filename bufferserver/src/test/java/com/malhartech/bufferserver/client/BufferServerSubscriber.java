@@ -4,8 +4,6 @@
  */
 package com.malhartech.bufferserver.client;
 
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.packet.ResetRequestTuple;
 import com.malhartech.bufferserver.packet.SubscribeRequestTuple;
 import com.malhartech.bufferserver.packet.Tuple;
 import java.io.IOException;
@@ -33,7 +31,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
   private final Collection<Integer> partitions;
   private final int mask;
   public AtomicInteger tupleCount = new AtomicInteger(0);
-  public Object firstPayload, lastPayload;
+  public WindowIdHolder firstPayload, lastPayload;
   public final ArrayList<Object> resetPayloads = new ArrayList<Object>();
   public long windowId;
 
@@ -88,18 +86,18 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
       case RESET_WINDOW:
         resetWindow(tuple.getBaseSeconds(), tuple.getWindowWidth());
         break;
-
-      default:
-        lastPayload = tuple;
     }
   }
 
   public void beginWindow(final int windowId)
   {
-    Object payload = new Object()
-    {
-      MessageType type = MessageType.BEGIN_WINDOW;
-      int window = windowId;
+    WindowIdHolder payload = new WindowIdHolder() {
+
+      @Override
+      public int getWindowId()
+      {
+        return windowId;
+      }
     };
 
     if (firstPayload == null) {
@@ -111,10 +109,13 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
 
   public void endWindow(final int windowId)
   {
-    Object payload = new Object()
-    {
-      MessageType type = MessageType.END_WINDOW;
-      int window = windowId;
+    WindowIdHolder payload = new WindowIdHolder() {
+
+      @Override
+      public int getWindowId()
+      {
+        return windowId;
+      }
     };
 
     if (firstPayload == null) {
@@ -132,6 +133,11 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
   public String toString()
   {
     return "BufferServerSubscriber";
+  }
+
+  public interface WindowIdHolder
+  {
+    public int getWindowId();
   }
 
 }

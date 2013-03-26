@@ -106,4 +106,9 @@ class DataListIterator implements Iterator<SerializedData>
     previous.bytes[previous.dataOffset] = MessageType.NO_MESSAGE_VALUE;
   }
 
+  void rewind(int processingOffset)
+  {
+    current.offset = processingOffset;
+  }
+
 }

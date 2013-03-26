@@ -17,13 +17,11 @@ import java.util.Collection;
  */
 public interface DataListener
 {
-  public static final BitVector NULL_PARTITION = new BitVector(0,0);
+  public static final BitVector NULL_PARTITION = new BitVector(0, 0);
 
   /**
-   *
-   * @param partition
    */
-  public void dataAdded();
+  public void addedData();
 
   /**
    *
@@ -31,4 +29,5 @@ public interface DataListener
    * @return int
    */
   public int getPartitions(Collection<BitVector> partitions);
+
 }

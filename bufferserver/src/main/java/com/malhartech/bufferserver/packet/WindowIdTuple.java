@@ -4,6 +4,8 @@
  */
 package com.malhartech.bufferserver.packet;
 
+import com.malhartech.bufferserver.util.Codec;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -55,6 +57,19 @@ public class WindowIdTuple extends Tuple
   public String toString()
   {
     return "WindowIdTuple{" + getType() + ", " + Integer.toHexString(getWindowId()) + '}';
+  }
+
+  protected static byte[] getSerializedTuple(int windowId)
+  {
+    int offset = 1; /* for type */
+
+    int bits = 32 - Integer.numberOfLeadingZeros(windowId);
+    offset += bits / 7 + 1;
+
+    byte[] array = new byte[offset];
+    Codec.writeRawVarint32(windowId, array, 1);
+
+    return array;
   }
 
 }
