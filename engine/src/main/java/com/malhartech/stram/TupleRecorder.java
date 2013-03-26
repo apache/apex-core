@@ -10,28 +10,26 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.Buffer.Message.MessageType;
 import com.malhartech.engine.Tuple;
-import com.malhartech.util.JacksonObjectMapperProvider;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.api.client.config.ClientConfig;
-import com.sun.jersey.api.client.config.DefaultClientConfig;
+import com.malhartech.util.PubSubWebSocketClient;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import javax.ws.rs.core.MediaType;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.codehaus.jettison.json.JSONObject;
+import org.eclipse.jetty.websocket.WebSocket;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author Zhongjian Wang <zhongjian@malhar-inc.com>
+ * @author David Yan <davidyan@malhar-inc.com>
  */
 public class TupleRecorder implements Operator
 {
@@ -66,19 +64,12 @@ public class TupleRecorder implements Operator
   private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
   private transient StreamCodec<Object> streamCodec;
   private transient JsonStreamCodec<Object> jsonStreamCodec = new JsonStreamCodec<Object>();
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
+  private static final Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
   private boolean syncRequested = false;
-  private Client client;
-  private URI postToUrl = null;
-  private URI getNumSubscribersUrl = null;
+  private URI pubSubUrl = null;
   private int numSubscribers = 0;
-
-  public TupleRecorder()
-  {
-    ClientConfig cc = new DefaultClientConfig();
-    cc.getClasses().add(JacksonObjectMapperProvider.class);
-    client = Client.create(cc);
-  }
+  private PubSubWebSocketClient wsClient;
+  private String recordingNameTopic;
 
   public RecorderSink newSink(String key)
   {
@@ -99,14 +90,9 @@ public class TupleRecorder implements Operator
     this.streamCodecClass = streamCodecClass;
   }
 
-  public void setPostToUrl(String postToUrl) throws URISyntaxException
+  public void setPubSubUrl(String pubSubUrl) throws URISyntaxException
   {
-    this.postToUrl = new URI(postToUrl);
-  }
-
-  public void setGetNumSubscribersUrl(String getNumSubscribersUrl) throws URISyntaxException
-  {
-    this.getNumSubscribersUrl = new URI(getNumSubscribersUrl);
+    this.pubSubUrl = new URI(pubSubUrl);
   }
 
   public HashMap<String, PortInfo> getPortInfoMap()
@@ -300,10 +286,49 @@ public class TupleRecorder implements Operator
       else {
         indexOutStr = fs.create(pa);
       }
+      if (pubSubUrl != null) {
+        recordingNameTopic = "tupleRecorder." + recordingName;
+        try {
+          setupWsClient();
+        }
+        catch (Exception ex) {
+          logger.error("Cannot connect to daemon at {}", pubSubUrl);
+        }
+      }
     }
     catch (Exception ex) {
       logger.error("Trouble setting up tuple recorder", ex);
     }
+  }
+
+  private void setupWsClient() throws ExecutionException, IOException, InterruptedException, TimeoutException
+  {
+    wsClient = new PubSubWebSocketClient()
+    {
+      @Override
+      public void onOpen(WebSocket.Connection connection)
+      {
+      }
+
+      @Override
+      public void onMessage(String type, String topic, Object data)
+      {
+        if (topic.equals(recordingNameTopic + ".numSubscribers")) {
+          numSubscribers = Integer.valueOf((String)data);
+          logger.info("Number of subscribers for {} is now {}", recordingName, numSubscribers);
+        }
+      }
+
+      @Override
+      public void onClose(int code, String message)
+      {
+        numSubscribers = 0;
+      }
+
+    };
+    wsClient.setUri(pubSubUrl);
+    wsClient.openConnection(500);
+    wsClient.subscribeNumSubscribers(recordingNameTopic);
   }
 
   protected void openNewPartFile() throws IOException
@@ -371,10 +396,20 @@ public class TupleRecorder implements Operator
           syncRequested = false;
           logger.debug("Closing current part file.");
         }
-        updateNumSubscribers();
+        if (pubSubUrl != null) {
+          // check web socket connection
+          if (!wsClient.isConnectionOpen()) {
+            try {
+              setupWsClient();
+            }
+            catch (Exception ex) {
+              logger.error("Cannot connect to daemon");
+            }
+          }
+        }
       }
       catch (IOException ex) {
-        logger.error(ex.toString());
+        logger.error("Exception caught in endWindow", ex);
       }
     }
   }
@@ -402,7 +437,7 @@ public class TupleRecorder implements Operator
       //logger.debug("Writing tuple for port id {}", pi.id);
       //fsOutput.hflush();
       if (numSubscribers > 0) {
-        postTupleData(pi.id, obj);
+        publishTupleData(pi.id, obj);
       }
       ++partFileTupleCount;
       ++totalTupleCount;
@@ -495,36 +530,19 @@ public class TupleRecorder implements Operator
     }
   }
 
-  private void postTupleData(int portId, Object obj)
+  private void publishTupleData(int portId, Object obj)
   {
     try {
-      if (postToUrl != null) {
-        JSONObject json = new JSONObject();
-        json.put("portId", String.valueOf(portId));
-        json.put("windowId", currentWindowId);
-        json.put("data", new JSONObject(new String(jsonStreamCodec.toByteArray(obj).data)));
-        WebResource wr = client.resource(postToUrl);
-        wr.type(MediaType.APPLICATION_JSON).post(json);
+      if (pubSubUrl != null && wsClient.isConnectionOpen()) {
+        HashMap<String, Object> map = new HashMap<String, Object>();
+        map.put("portId", String.valueOf(portId));
+        map.put("windowId", currentWindowId);
+        map.put("data", obj);
+        wsClient.publish(recordingNameTopic, map);
       }
     }
     catch (Exception ex) {
-      logger.warn("Error posting to URL {}", postToUrl, ex);
-    }
-  }
-
-  public void updateNumSubscribers()
-  {
-    try {
-      if (getNumSubscribersUrl != null) {
-        WebResource wr = client.resource(getNumSubscribersUrl);
-        JSONObject response = wr.get(JSONObject.class);
-        numSubscribers = response.getInt("num");
-        logger.info("Number of subscribers is {}", numSubscribers);
-      }
-    }
-    catch (Exception ex) {
-      numSubscribers = 0;
-      logger.warn("Error getting number of subscribers from URL {}", getNumSubscribersUrl, ex);
+      logger.warn("Error posting to URL {}", pubSubUrl, ex);
     }
   }
 

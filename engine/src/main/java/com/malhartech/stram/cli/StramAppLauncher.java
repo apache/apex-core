@@ -302,10 +302,15 @@ public class StramAppLauncher {
    */
   public void runLocal(AppConfig appConfig) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
-    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
-    Thread.currentThread().setContextClassLoader(cl);
+    loadDependencies();
     StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_LOCAL));
     lc.run();
+  }
+
+  public URLClassLoader loadDependencies() {
+    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
+    Thread.currentThread().setContextClassLoader(cl);
+    return cl;
   }
 
   /**
@@ -316,10 +321,9 @@ public class StramAppLauncher {
    */
   public ApplicationId launchApp(AppConfig appConfig) throws Exception {
 
-    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
+    URLClassLoader cl = loadDependencies();
     //Class<?> loadedClass = cl.loadClass("com.malhartech.example.wordcount.WordCountSerDe");
     //LOG.info("loaded " + loadedClass);
-    Thread.currentThread().setContextClassLoader(cl);
 
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath

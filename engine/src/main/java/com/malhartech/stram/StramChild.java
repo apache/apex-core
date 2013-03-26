@@ -755,10 +755,9 @@ public class StramChild
               tupleRecorder.setBasePath(basePath);
               tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
               if (StramChild.this.daemonAddress != null) {
-                String url = "http://" + StramChild.this.daemonAddress + "/channel/tr_" + URLEncoder.encode(tupleRecorder.getRecordingName(), "UTF-8");
+                String url = "ws://" + StramChild.this.daemonAddress + "/pubsub";
                 try {
-                  tupleRecorder.setPostToUrl(url);
-                  tupleRecorder.setGetNumSubscribersUrl(url + "/numSubscribers");
+                  tupleRecorder.setPubSubUrl(url);
                 }
                 catch (URISyntaxException ex) {
                   logger.warn("URL {} is not valid. NOT posting live tuples to daemon.", url, ex);
