@@ -565,6 +565,11 @@ public class DAG implements Serializable, DAGContext
     return Collections.unmodifiableCollection(this.operators.values());
   }
 
+  public Collection<StreamMeta> getAllStreams()
+  {
+    return Collections.unmodifiableCollection(this.streams.values());
+  }
+  
   public OperatorMeta getOperatorMeta(String operatorId)
   {
     return this.operators.get(operatorId);
