@@ -284,7 +284,7 @@ public class StramAppLauncher {
     return conf;
   }
 
-  private static DAG prepareDAG(AppConfig appConfig, String launchMode) {
+  public static DAG prepareDAG(AppConfig appConfig, String launchMode) {
     Configuration conf = getConfig(launchMode);
     DAG dag = appConfig.createApp(conf);
     dag.getAttributes().attr(DAG.STRAM_APPNAME).setIfAbsent(appConfig.getName());
