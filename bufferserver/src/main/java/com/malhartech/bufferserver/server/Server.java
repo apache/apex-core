@@ -121,52 +121,26 @@ public class Server implements ServerListener
   private final ConcurrentHashMap<String, VarIntLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
   private final int blockSize;
 
-//  /**
-//   *
-//   * @param policytype
-//   * @param type
-//   * @return Policy
-//   */
-//  public Policy getPolicy(Buffer.SubscriberRequest.PolicyType policytype, String type)
-//  {
-//    Policy p = null;
-//
-//    switch (policytype) {
-//      case CUSTOM:
-//        try {
-//          Class<?> customclass = Class.forName(type);
-//          p = (Policy)customclass.newInstance();
-//        }
-//        catch (InstantiationException ex) {
-//          throw new RuntimeException(ex);
-//        }
-//        catch (IllegalAccessException ex) {
-//          throw new RuntimeException(ex);
-//        }
-//        catch (ClassNotFoundException ex) {
-//          throw new RuntimeException(ex);
-//        }
-//        break;
-//
-//      case GIVE_ALL:
-//        p = GiveAll.getInstance();
-//        break;
-//
-//      case LEAST_BUSY:
-//        p = LeastBusy.getInstance();
-//        break;
-//
-//      case RANDOM_ONE:
-//        p = RandomOne.getInstance();
-//        break;
-//
-//      case ROUND_ROBIN:
-//        p = new RoundRobin();
-//        break;
-//    }
-//
-//    return p;
-//  }
+  public void handlePurgeRequest(PurgeRequestTuple request, VarIntLengthPrependerClient ctx) throws IOException
+  {
+    DataList dl;
+    dl = publisherBufffers.get(request.getIdentifier());
+
+    byte[] message;
+    if (dl == null) {
+      message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
+    }
+    else {
+      dl.purge(request.getBaseSeconds(), request.getWindowId());
+      message = "Purge request sent for processing".getBytes();
+    }
+
+    byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
+    System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
+    ctx.write(tuple);
+    eventloop.disconnect(ctx);
+  }
+
   private void handleResetRequest(ResetRequestTuple request, VarIntLengthPrependerClient ctx) throws IOException
   {
     DataList dl;
@@ -180,7 +154,6 @@ public class Server implements ServerListener
       VarIntLengthPrependerClient channel = publisherChannels.remove(request.getIdentifier());
       if (channel != null) {
         eventloop.disconnect(channel);
-        // how do we wait here?
       }
       dl.reset();
       message = "Reset request sent for processing".getBytes();
@@ -240,7 +213,7 @@ public class Server implements ServerListener
 
       int mask = request.getMask();
       if (mask != 0) {
-        for (Integer bs : request.getPartitions()) {
+        for (Integer bs: request.getPartitions()) {
           ln.addPartition(bs, mask);
         }
       }
@@ -251,26 +224,6 @@ public class Server implements ServerListener
     }
 
     return ln;
-  }
-
-  public void handlePurgeRequest(PurgeRequestTuple request, VarIntLengthPrependerClient ctx) throws IOException
-  {
-    DataList dl;
-    dl = publisherBufffers.get(request.getIdentifier());
-
-    byte[] message;
-    if (dl == null) {
-      message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
-    }
-    else {
-      dl.purge(request.getBaseSeconds(), request.getWindowId());
-      message = "Purge request sent for processing".getBytes();
-    }
-
-    byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
-    System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    ctx.write(tuple);
-    eventloop.disconnect(ctx);
   }
 
   /**
@@ -385,11 +338,12 @@ public class Server implements ServerListener
           logger.debug("registering the channel for write operation {}", subscriber);
           subscriber.registered(key);
 
-          boolean need2cathcup = !subscriberGroups.containsKey(subscriberRequest.getUpstreamType());
-          LogicalNode ln = handleSubscriberRequest(subscriberRequest, subscriber);
-          if (need2cathcup) {
-            ln.catchUp();
+          LogicalNode ln = subscriberGroups.remove(subscriberRequest.getUpstreamType());
+          if (ln != null) {
+            ln.boot(eventloop);
           }
+          ln = handleSubscriberRequest(subscriberRequest, subscriber);
+          ln.catchUp();
           break;
 
         case PURGE_REQUEST:
@@ -597,6 +551,7 @@ public class Server implements ServerListener
         if (publisherIdentifier.equals(ln.getUpstream())) {
           ln.boot(eventloop);
           iterator.remove();
+          logger.debug("booting logical node {} resulting in size = {}", ln, subscriberGroups.size());
         }
       }
     }

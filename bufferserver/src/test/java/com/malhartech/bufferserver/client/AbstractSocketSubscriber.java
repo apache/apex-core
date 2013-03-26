@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @param <T>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class AbstractSocketSubscriber extends VarIntLengthPrependerClient

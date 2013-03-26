@@ -125,8 +125,22 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
     lastPayload = payload;
   }
 
-  public void resetWindow(int baseSeconds, int windowWidth)
+  public void resetWindow(final int baseSeconds, final int windowWidth)
   {
+    resetPayloads.add(new ResetHolder() {
+
+      @Override
+      public int getBaseSeconds()
+      {
+        return baseSeconds;
+      }
+
+      @Override
+      public int getWindowWidth()
+      {
+        return windowWidth;
+      }
+    });
   }
 
   @Override
@@ -138,6 +152,12 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
   public interface WindowIdHolder
   {
     public int getWindowId();
+  }
+
+  public interface ResetHolder
+  {
+    public int getBaseSeconds();
+    public int getWindowWidth();
   }
 
 }

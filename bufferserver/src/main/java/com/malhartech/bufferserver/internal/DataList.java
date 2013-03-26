@@ -215,6 +215,7 @@ public class DataList
     }
     while (true);
 
+    logger.debug("have {} listeners interested in the data", all_listeners.size());
     for (DataListener dl : all_listeners) {
       dl.addedData();
     }

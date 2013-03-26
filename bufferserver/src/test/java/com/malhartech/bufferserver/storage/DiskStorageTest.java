@@ -26,7 +26,8 @@ import org.testng.annotations.Test;
  */
 public class DiskStorageTest
 {
-  static DefaultEventLoop eventloop;
+  static DefaultEventLoop eventloopServer;
+  static DefaultEventLoop eventloopClient;
   static Server instance;
   static BufferServerPublisher bsp;
   static BufferServerSubscriber bss;
@@ -36,24 +37,30 @@ public class DiskStorageTest
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
-    eventloop = new DefaultEventLoop("server");
-    eventloop.start();
+    eventloopServer = new DefaultEventLoop("server");
+    eventloopServer.start();
+
+    eventloopClient = new DefaultEventLoop("client");
+    eventloopClient.start();
 
     instance = new Server(0, 1024);
     instance.setSpoolStorage(new DiskStorage());
 
-    SocketAddress result = instance.run(eventloop);
+    SocketAddress result = instance.run(eventloopServer);
     assert (result instanceof InetSocketAddress);
     String host = ((InetSocketAddress)result).getHostName();
     int port = ((InetSocketAddress)result).getPort();
 
     bsp = new BufferServerPublisher("MyPublisher");
+    bsp.eventloop = eventloopClient;
     bsp.setup(host, port);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss.eventloop = eventloopClient;
     bss.setup(host, port);
 
     bsc = new BufferServerController("MyPublisher");
+    bsc.eventloop = eventloopClient;
     bsc.setup(host, port);
   }
 
@@ -63,8 +70,8 @@ public class DiskStorageTest
     bsc.teardown();
     bss.teardown();
     bsp.teardown();
-    eventloop.stop(instance);
-    eventloop.stop();
+    eventloopServer.stop(instance);
+    eventloopServer.stop();
   }
 
   @Test
@@ -82,7 +89,7 @@ public class DiskStorageTest
 
     for (int i = 0; i < 1000; i++) {
       byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
-      buff[buff.length - 1] = (byte) i;
+      buff[buff.length - 1] = (byte)i;
       bsp.publishMessage(buff);
     }
 
@@ -94,7 +101,7 @@ public class DiskStorageTest
 
     for (int i = 0; i < 1000; i++) {
       byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
-      buff[buff.length - 1] = (byte) i;
+      buff[buff.length - 1] = (byte)i;
       bsp.publishMessage(buff);
     }
 
@@ -111,6 +118,9 @@ public class DiskStorageTest
     bsp.deactivate();
     bss.deactivate();
 
+    bsp.teardown();
+    bss.teardown();
+    
     assertEquals(bss.tupleCount.get(), 2004);
   }
 

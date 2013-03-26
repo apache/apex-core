@@ -9,9 +9,7 @@ import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.ResetWindowTuple;
 import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.bufferserver.util.Codec.MutableInt;
 import com.malhartech.bufferserver.util.SerializedData;
-import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,14 +47,12 @@ public class Block
    * the next in the chain.
    */
   Block next;
-  private int baseSeconds;
-  private int intervalMillis;
 
   void getNextData(SerializedData current)
   {
     if (current.offset < writingOffset) {
       Codec.readRawVarInt32(current);
-      if (current.offset + current.size >= writingOffset) {
+      if (current.offset + current.size > writingOffset) {
         current.size = 0;
       }
     }
@@ -97,9 +93,9 @@ public class Block
 
   public void purge(long longWindowId)
   {
-    logger.debug("starting_window = {}, longWindowId = {}, baseSeconds = {}", new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId), this.baseSeconds});
+    logger.debug("starting_window = {}, longWindowId = {}", new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId)});
     boolean found = false;
-    long bs = (long)this.baseSeconds << 32;
+    long bs = starting_window & 0xffffffff00000000L;
     SerializedData lastReset = null;
 
     DataListIterator dli = new DataListIterator(this);

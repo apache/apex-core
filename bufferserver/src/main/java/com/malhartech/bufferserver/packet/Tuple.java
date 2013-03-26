@@ -64,13 +64,20 @@ public abstract class Tuple
         return prt;
 
       case PURGE_REQUEST:
-      case RESET_REQUEST:
-        GenericRequestTuple grt = new GenericRequestTuple(buffer, offset, length);
-        grt.parse();
-        if (!grt.isValid()) {
-          logger.error("Unparseable Generic Request Tuple of type {} received!", MessageType.valueOf(buffer[offset]));
+        PurgeRequestTuple purgert = new PurgeRequestTuple(buffer, offset, length);
+        purgert.parse();
+        if (!purgert.isValid()) {
+          logger.error("Unparseable Purge Request Tuple of type {} received!", MessageType.valueOf(buffer[offset]));
         }
-        return grt;
+        return purgert;
+
+      case RESET_REQUEST:
+        ResetRequestTuple resetrt = new ResetRequestTuple(buffer, offset, length);
+        resetrt.parse();
+        if (!resetrt.isValid()) {
+          logger.error("Unparseable Reset Request Tuple of type {} received!", MessageType.valueOf(buffer[offset]));
+        }
+        return resetrt;
 
       case SUBSCRIBER_REQUEST:
         SubscribeRequestTuple srt = new SubscribeRequestTuple(buffer, offset, length);
