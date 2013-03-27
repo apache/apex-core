@@ -12,7 +12,10 @@ import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.Codec.MutableInt;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +59,7 @@ public class DataList
       }
     }
 
-    for (DataListIterator dli : iterators.values()) {
+    for (DataListIterator dli: iterators.values()) {
       dli.rewind(processingOffset);
     }
   }
@@ -114,7 +117,7 @@ public class DataList
   {
     this.identifier = identifier;
     this.blocksize = blocksize;
-    first = new Block();
+    first = new Block(identifier);
     first.data = new byte[blocksize];
     last = first;
   }
@@ -126,38 +129,6 @@ public class DataList
      */
     this(identifier, 64 * 1024 * 1024);
   }
-//    if (writingOffset == 0) {
-//      if (discard > 0) {
-//        if (writeOffset < discard) {
-//          return;
-//        }
-//        else {
-//          writeOffset = discard;
-//          discard = 0;
-//        }
-//      }
-//      else if (prev != null) {
-//        int size = Codec.readVarInt(prev.data, prevOffset, prev.data.length, newOffset);
-//        if (newOffset.integer > prevOffset) {
-//          int remainingLength = size - prev.data.length + newOffset.integer;
-//          if (remainingLength > writeOffset) {
-//            return; /* we still do not have enough data */
-//          }
-//          else {
-//            byte[] buffer = new byte[size];
-//            System.arraycopy(prev.data, newOffset.integer, buffer, 0, size - remainingLength);
-//            System.arraycopy(data, 0, buffer, prev.data.length - newOffset.integer, remainingLength);
-//            // we have our new object in the buffer!
-//          }
-//        }
-//        else if (newOffset.integer != -5) { /* we do not have enough bytes to read even the int */
-//
-//        }
-//      }
-//    }
-//
-//    while (writingOffset < writeOffset) {
-//    }
 
   MutableInt nextOffset = new MutableInt();
   long baseSeconds;
@@ -215,8 +186,7 @@ public class DataList
     }
     while (true);
 
-    logger.debug("have {} listeners interested in the data", all_listeners.size());
-    for (DataListener dl : all_listeners) {
+    for (DataListener dl: all_listeners) {
       dl.addedData();
     }
   }
@@ -235,13 +205,13 @@ public class DataList
   {
     for (Block temp = first; temp != null; temp = temp.next) {
       if (true || temp.starting_window >= windowId || temp.ending_window > windowId) { // for now always send the first
-        DataListIterator dli = new DataListIterator(temp);
+        DataListIterator dli = new DataListIterator(temp, storage);
         iterators.put(identifier, dli);
         return dli;
       }
     }
 
-    DataListIterator dli = new DataListIterator(last);
+    DataListIterator dli = new DataListIterator(last, storage);
     iterators.put(identifier, dli);
     return dli;
   }
@@ -257,11 +227,11 @@ public class DataList
     boolean released = false;
     if (iterator instanceof DataListIterator) {
       DataListIterator dli = (DataListIterator)iterator;
-      for (Entry<String, DataListIterator> e : iterators.entrySet()) {
+      for (Entry<String, DataListIterator> e: iterators.entrySet()) {
         if (e.getValue() == dli) {
           iterators.remove(e.getKey());
           released = true;
-          dli.da.release(false);
+          dli.da.release(storage, false);
           dli.da = null;
           break;
         }
@@ -278,9 +248,9 @@ public class DataList
   {
     int count = 0;
 
-    for (DataListIterator dli : iterators.values()) {
+    for (DataListIterator dli: iterators.values()) {
       count++;
-      dli.da.release(false);
+      dli.da.release(storage, false);
       dli.da = null;
     }
 
@@ -294,7 +264,7 @@ public class DataList
     all_listeners.add(dl);
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (BitVector partition : partitions) {
+      for (BitVector partition: partitions) {
         HashSet<DataListener> set;
         if (listeners.containsKey(partition)) {
           set = listeners.get(partition);
@@ -324,7 +294,7 @@ public class DataList
   {
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
-      for (BitVector partition : partitions) {
+      for (BitVector partition: partitions) {
         if (listeners.containsKey(partition)) {
           listeners.get(partition).remove(dl);
         }
@@ -341,11 +311,13 @@ public class DataList
 
   public void addBuffer(byte[] array)
   {
-    last.next = new Block();
+    Block b = new Block(identifier);
+    b.data = array;
+    
+    last.next = b;
     long windowId = last.ending_window;
     last = last.next;
     last.starting_window = windowId;
-    last.data = array;
   }
 
   public byte[] getBufer()
