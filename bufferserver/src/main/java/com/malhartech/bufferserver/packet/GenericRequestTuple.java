@@ -161,4 +161,10 @@ public class GenericRequestTuple extends RequestTuple
     return Arrays.copyOfRange(array, 0, offset);
   }
 
+  @Override
+  public String toString()
+  {
+    return getClass().getSimpleName() + "{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + '}';
+  }
+
 }

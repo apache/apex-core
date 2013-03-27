@@ -284,4 +284,11 @@ public class SubscribeRequestTuple extends RequestTuple
 
     return Arrays.copyOfRange(array, 0, offset);
   }
+
+  @Override
+  public String toString()
+  {
+    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + type + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + partitions + '}';
+  }
+  
 }
