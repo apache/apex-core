@@ -163,15 +163,15 @@ public class LogicalNode implements DataListener
 
             case MessageType.BEGIN_WINDOW_VALUE:
               tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
-              logger.debug("{}->{} condition {} =? {}",
-                           new Object[] {
-                upstream,
-                group,
-                Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
-                Codec.getStringWindowId(windowId)
-              });
+//              logger.debug("{}->{} condition {} =? {}",
+//                           new Object[] {
+//                upstream,
+//                group,
+//                Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
+//                Codec.getStringWindowId(windowId)
+//              });
               if ((baseSeconds | tuple.getWindowId()) >= windowId) {
-                logger.debug("caught up {}->{}", upstream, group);
+//                logger.debug("caught up {}->{}", upstream, group);
                 GiveAll.getInstance().distribute(physicalNodes, data);
                 caughtup = true;
                 break outer;
