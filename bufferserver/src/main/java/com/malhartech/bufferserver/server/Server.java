@@ -4,9 +4,9 @@
  */
 package com.malhartech.bufferserver.server;
 
-import com.malhartech.bufferserver.internal.LogicalNode;
-import com.malhartech.bufferserver.internal.DataList;
 import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
+import com.malhartech.bufferserver.internal.DataList;
+import com.malhartech.bufferserver.internal.LogicalNode;
 import com.malhartech.bufferserver.packet.*;
 import com.malhartech.bufferserver.storage.Storage;
 import java.io.IOException;
@@ -63,15 +63,15 @@ public class Server implements ServerListener
   public synchronized void registered(SelectionKey key)
   {
     ServerSocketChannel channel = (ServerSocketChannel)key.channel();
-    logger.info("server started listening at {}", channel);
     address = (InetSocketAddress)channel.socket().getLocalSocketAddress();
+    logger.info("Server started listening at {}", address);
     notifyAll();
   }
 
   @Override
   public void unregistered(SelectionKey key)
   {
-    logger.info("Server stopped listening at {}", key.channel());
+    logger.info("Server stopped listening at {}", address);
   }
 
   public synchronized InetSocketAddress run(DefaultEventLoop eventloop)
@@ -312,7 +312,7 @@ public class Server implements ServerListener
           Publisher publisher = new Publisher(dl);
           key.attach(publisher);
           key.interestOps(SelectionKey.OP_READ);
-          logger.debug("registering the channel for read operation {}", publisher);
+          //logger.debug("registering the channel for read operation {}", publisher);
           publisher.registered(key);
 
           int len = writeOffset - readOffset - size;
@@ -335,7 +335,7 @@ public class Server implements ServerListener
           VarIntLengthPrependerClient subscriber = new Subscriber(subscriberRequest.getUpstreamType());
           key.attach(subscriber);
           key.interestOps(SelectionKey.OP_WRITE);
-          logger.debug("registering the channel for write operation {}", subscriber);
+          //logger.debug("registering the channel for write operation {}", subscriber);
           subscriber.registered(key);
 
           LogicalNode ln = subscriberGroups.remove(subscriberRequest.getUpstreamType());
@@ -451,9 +451,19 @@ public class Server implements ServerListener
 
     public void transferBuffer(byte[] array, int offset, int len)
     {
-      System.arraycopy(array, offset, readBuffer, writeOffset, len);
-      buffer.position(writeOffset + len);
-      read(len);
+      int remainingCapacity;
+      do {
+        remainingCapacity = readBuffer.length - writeOffset;
+        if (len < remainingCapacity) {
+          remainingCapacity = len;
+        }
+        System.arraycopy(array, offset, readBuffer, writeOffset, remainingCapacity);
+        buffer.position(readBuffer.length);
+        read(remainingCapacity);
+
+        offset += remainingCapacity;
+      }
+      while ((len -= remainingCapacity) > 0);
     }
 
     @Override
@@ -471,6 +481,10 @@ public class Server implements ServerListener
         if (size <= 0) {
           switch (size = readVarInt()) {
             case -1:
+              if (dirty) {
+                dirty = false;
+                datalist.flush(writeOffset);
+              }
               if (writeOffset == readBuffer.length) {
                 if (readOffset > writeOffset - 5) {
                   /*
@@ -481,11 +495,6 @@ public class Server implements ServerListener
                   logger.info("hit the boundary while reading varint!");
                   switchToNewBuffer(readBuffer, readOffset);
                 }
-              }
-
-              if (dirty) {
-                dirty = false;
-                datalist.flush(writeOffset);
               }
               return;
 
@@ -499,16 +508,17 @@ public class Server implements ServerListener
           readOffset += size;
           size = 0;
         }
-        else if (writeOffset == readBuffer.length) {
-          /*
-           * hit wall while writing serialized data, so have to allocate a new buffer.
-           */
-          switchToNewBuffer(null, 0);
-        }
         else {
           if (dirty) {
             dirty = false;
             datalist.flush(writeOffset);
+          }
+
+          if (writeOffset == readBuffer.length) {
+            /*
+             * hit wall while writing serialized data, so have to allocate a new buffer.
+             */
+            switchToNewBuffer(readBuffer, readOffset);
           }
           return;
         }
@@ -551,7 +561,7 @@ public class Server implements ServerListener
         if (publisherIdentifier.equals(ln.getUpstream())) {
           ln.boot(eventloop);
           iterator.remove();
-          logger.debug("booting logical node {} resulting in size = {}", ln, subscriberGroups.size());
+          //logger.debug("booting logical node {} resulting in size = {}", ln, subscriberGroups.size());
         }
       }
     }
