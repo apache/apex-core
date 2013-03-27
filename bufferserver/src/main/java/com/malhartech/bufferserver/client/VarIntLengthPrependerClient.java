@@ -35,7 +35,7 @@ public abstract class VarIntLengthPrependerClient extends malhar.netlet.Client
     buffer.position(position);
     writeOffset = position;
     readOffset = position;
-    logger.debug("using readbuffer = {} and position = {}", "" + readbuffer, position);
+    //logger.debug("using readbuffer = {} and position = {}", "" + readbuffer, position);
   }
 
   @Override
