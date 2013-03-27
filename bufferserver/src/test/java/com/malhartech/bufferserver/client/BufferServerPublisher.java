@@ -6,6 +6,7 @@ package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.packet.PublishRequestTuple;
 import java.io.IOException;
+import java.util.Arrays;
 import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
