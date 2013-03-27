@@ -46,6 +46,7 @@
     <module>contrib</module>
     <module>dist</module>
     <module>daemon</module>
+    <module>premium-dist</module>
   </modules>
 
   <build>
