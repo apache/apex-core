@@ -8,6 +8,7 @@ import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.ResetWindowTuple;
 import com.malhartech.bufferserver.packet.Tuple;
+import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import org.slf4j.LoggerFactory;
  */
 public class Block
 {
+  final String identifier;
   /**
    * actual data - stored as length followed by actual data.
    */
@@ -47,6 +49,13 @@ public class Block
    * the next in the chain.
    */
   Block next;
+  int refCount;
+
+  public Block(String id)
+  {
+    identifier = id;
+    refCount = 1;
+  }
 
   void getNextData(SerializedData current)
   {
@@ -64,7 +73,7 @@ public class Block
   public long rewind(long windowId)
   {
     long bs = starting_window & 0x7fffffff00000000L;
-    DataListIterator dli = new DataListIterator(this);
+    DataListIterator dli = new DataListIterator(this, null);
     done:
     while (dli.hasNext()) {
       SerializedData sd = dli.next();
@@ -93,12 +102,12 @@ public class Block
 
   public void purge(long longWindowId)
   {
-    logger.debug("starting_window = {}, longWindowId = {}", new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId)});
+    //logger.debug("starting_window = {}, longWindowId = {}", new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId)});
     boolean found = false;
     long bs = starting_window & 0xffffffff00000000L;
     SerializedData lastReset = null;
 
-    DataListIterator dli = new DataListIterator(this);
+    DataListIterator dli = new DataListIterator(this, null);
     done:
     while (dli.hasNext()) {
       SerializedData sd = dli.next();
@@ -139,7 +148,7 @@ public class Block
      * It helps with better utilization of the RAM.
      */
     if (!found) {
-      logger.debug("we could not find a tuple which is in a window later than the window to be purged, so this has to be the last window published so far");
+      //logger.debug("we could not find a tuple which is in a window later than the window to be purged, so this has to be the last window published so far");
       if (lastReset != null && lastReset.offset != 0) {
         this.readingOffset = this.writingOffset - lastReset.size;
         System.arraycopy(lastReset.bytes, lastReset.offset, this.data, this.readingOffset, lastReset.size);
@@ -173,98 +182,65 @@ public class Block
     }
   }
 
-  synchronized void acquire(boolean wait)
+  void acquire(final Storage storage, boolean wait)
   {
-//    if (data == null && storage != null) {
-//      Runnable r = new Runnable()
-//      {
-//        @Override
-//        public void run()
-//        {
-//          data = storage.retrieve(identifier, uniqueIdentifier);
-//          readingOffset = 0;
-//          writingOffset = data.length;
-//        }
-//
-//      };
-//
-//      if (wait) {
-//        r.run();
-//      }
-//      else {
-//        new Thread(r).start();
-//      }
-//    }
+    refCount++;
+    if (data == null && storage != null) {
+      Runnable r = new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          data = storage.retrieve(identifier, uniqueIdentifier);
+          readingOffset = 0;
+          writingOffset = data.length;
+        }
+
+      };
+
+      if (wait) {
+        r.run();
+      }
+      else {
+        new Thread(r).start();
+      }
+    }
   }
 
-  synchronized void release(boolean wait)
+  void release(final Storage storage, boolean wait)
   {
-//    if (storage != null) {
-//      Runnable r = new Runnable()
-//      {
-//        @Override
-//        public void run()
-//        {
-//          try {
-//            int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
-//            if (i == 0) {
-//              logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
-//            }
-//            else {
-//              //logger.debug("stored {} {} in release", identifier, i);
-//              uniqueIdentifier = i;
-//              data = null;
-//            }
-//          }
-//          catch (RuntimeException ex) {
-//            logger.warn("Storage failed!", ex);
-//          }
-//        }
-//
-//      };
-//
-//      if (wait) {
-//        r.run();
-//      }
-//      else {
-//        new Thread(r).start();
-//      }
-//    }
+    refCount--;
+    if (refCount == 0 && storage != null) {
+      Runnable r = new Runnable()
+      {
+        @Override
+        public void run()
+        {
+          try {
+            int i = storage.store(identifier, uniqueIdentifier, data, readingOffset, writingOffset);
+            if (i == 0) {
+              logger.warn("Storage returned unexpectedly, please check the status of the spool directory!");
+            }
+            else {
+              uniqueIdentifier = i;
+              data = null;
+            }
+          }
+          catch (RuntimeException ex) {
+            logger.warn("Storage failed!", ex);
+          }
+        }
+
+      };
+
+      if (wait) {
+        r.run();
+      }
+      else {
+        new Thread(r).start();
+      }
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Block.class);
 }
-
-
-//    if (writingOffset == 0) {
-//      if (discardLength > 0) {
-//        if (writeOffset < discardLength) {
-//          return;
-//        }
-//        else {
-//          writeOffset = discardLength;
-//          discardLength = 0;
-//        }
-//      }
-//      else if (prev != null) {
-//        int size = Codec.readVarInt(prev.data, prevOffset, prev.data.length, newOffset);
-//        if (newOffset.integer > prevOffset) {
-//          int remainingLength = size - prev.data.length + newOffset.integer;
-//          if (remainingLength > writeOffset) {
-//            return; /* we still do not have enough data */
-//          }
-//          else {
-//            byte[] buffer = new byte[size];
-//            System.arraycopy(prev.data, newOffset.integer, buffer, 0, size - remainingLength);
-//            System.arraycopy(data, 0, buffer, prev.data.length - newOffset.integer, remainingLength);
-//            // we have our new object in the buffer!
-//          }
-//        }
-//        else if (newOffset.integer != -5) { /* we do not have enough bytes to read even the int */
-//
-//        }
-//      }
-//    }
-//
-//    while (writingOffset < writeOffset) {
-//    }
