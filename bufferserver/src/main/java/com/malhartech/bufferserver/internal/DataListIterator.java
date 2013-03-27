@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver.internal;
 
 import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Iterator;
 import org.slf4j.Logger;
@@ -20,15 +21,17 @@ class DataListIterator implements Iterator<SerializedData>
   Block da;
   SerializedData previous = null;
   SerializedData current = new SerializedData();
+  private final Storage storage;
 
   /**
    *
    * @param da
    */
-  DataListIterator(Block da)
+  DataListIterator(Block da, Storage storage)
   {
-    da.acquire(true);
+    da.acquire(storage, true);
     this.da = da;
+    this.storage = storage;
 
     current.bytes = da.data;
     current.offset = da.readingOffset;
@@ -52,8 +55,8 @@ class DataListIterator implements Iterator<SerializedData>
             return false;
           }
 
-          da.release(false);
-          da.next.acquire(true);
+          da.release(storage, false);
+          da.next.acquire(storage, true);
           da = da.next;
           current.bytes = da.data;
           current.offset = da.readingOffset;
@@ -73,7 +76,7 @@ class DataListIterator implements Iterator<SerializedData>
   @SuppressWarnings("FinalizeDeclaration")
   protected void finalize() throws Throwable
   {
-    da.release(false);
+    da.release(storage, false);
     super.finalize();
   }
 
