@@ -34,6 +34,9 @@ public class DiskStorageTest
   static BufferServerController bsc;
   static int spinCount = 500;
 
+  static String host;
+  static int port;
+
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
@@ -48,8 +51,8 @@ public class DiskStorageTest
 
     SocketAddress result = instance.run(eventloopServer);
     assert (result instanceof InetSocketAddress);
-    String host = ((InetSocketAddress)result).getHostName();
-    int port = ((InetSocketAddress)result).getPort();
+     host = ((InetSocketAddress)result).getHostName();
+    port = ((InetSocketAddress)result).getPort();
 
     bsp = new BufferServerPublisher("MyPublisher");
     bsp.eventloop = eventloopClient;
@@ -68,8 +71,6 @@ public class DiskStorageTest
   public static void teardownServerAndClients()
   {
     bsc.teardown();
-    bss.teardown();
-    bsp.teardown();
     eventloopServer.stop(instance);
     eventloopServer.stop();
   }
@@ -120,8 +121,27 @@ public class DiskStorageTest
 
     bsp.teardown();
     bss.teardown();
-    
+
     assertEquals(bss.tupleCount.get(), 2004);
+
+    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss.eventloop = eventloopClient;
+    bss.setup(host, port);
+
+    bss.activate();
+
+    for (int i = 0; i < spinCount; i++) {
+      sleep(10);
+      if (bss.tupleCount.get() > 2003) {
+        break;
+      }
+    }
+    Thread.sleep(10); // wait some more to receive more tuples if possible
+    bss.deactivate();
+    bss.teardown();
+
+    assertEquals(bss.tupleCount.get(), 2004);
+
   }
 
 }
