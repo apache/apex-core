@@ -6,6 +6,8 @@ package com.malhartech.bufferserver.internal;
 
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.storage.Storage;
+import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.bufferserver.util.Codec.MutableInt;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Iterator;
 import org.slf4j.Logger;
@@ -17,11 +19,13 @@ import org.slf4j.LoggerFactory;
  */
 class DataListIterator implements Iterator<SerializedData>
 {
-  private static final Logger logger = LoggerFactory.getLogger(DataListIterator.class);
   Block da;
-  SerializedData previous = null;
-  SerializedData current = new SerializedData();
+  SerializedData current;
   private final Storage storage;
+  private byte[] buffer;
+  private int readOffset;
+  MutableInt nextOffset = new MutableInt();
+  int size;
 
   /**
    *
@@ -32,9 +36,8 @@ class DataListIterator implements Iterator<SerializedData>
     da.acquire(storage, true);
     this.da = da;
     this.storage = storage;
-
-    current.bytes = da.data;
-    current.offset = da.readingOffset;
+    buffer = da.data;
+    readOffset = da.readingOffset;
   }
 
   /**
@@ -44,12 +47,16 @@ class DataListIterator implements Iterator<SerializedData>
   @Override
   public synchronized boolean hasNext()
   {
-    while (true) {
-      da.getNextData(current);
-      switch (current.size) {
-        case -1:
-          return false;
+    while (size == 0) {
+      size = Codec.readVarInt(buffer, readOffset, da.writingOffset, nextOffset);
+      switch (nextOffset.integer) {
+        case -5:
+          throw new RuntimeException("problemo!");
 
+        case -4:
+        case -3:
+        case -2:
+        case -1:
         case 0:
           if (da.next == null) {
             return false;
@@ -58,16 +65,35 @@ class DataListIterator implements Iterator<SerializedData>
           da.release(storage, false);
           da.next.acquire(storage, true);
           da = da.next;
-          current.bytes = da.data;
-          current.offset = da.readingOffset;
-          break;
 
-        default:
-          if (current.bytes[current.dataOffset] != MessageType.NO_MESSAGE_VALUE) {
-              return true;
+          buffer = da.data;
+          readOffset = da.readingOffset;
+      }
+    }
+
+    while (true) {
+      if (nextOffset.integer + size <= da.writingOffset) {
+        current = new SerializedData(buffer, readOffset, size + nextOffset.integer - readOffset);
+        current.dataOffset = nextOffset.integer;
+        return true;
+      }
+      else {
+        if (da.writingOffset == buffer.length) {
+          if (da.next == null) {
+            return false;
           }
-          current.offset += current.size;
-          break;
+          else {
+            da.release(storage, false);
+            da.next.acquire(storage, true);
+            da = da.next;
+
+            readOffset = nextOffset.integer = da.readingOffset;
+            buffer = da.data;
+          }
+        }
+        else {
+          return false;
+        }
       }
     }
   }
@@ -87,11 +113,9 @@ class DataListIterator implements Iterator<SerializedData>
   @Override
   public SerializedData next()
   {
-    previous = current;
-    current = new SerializedData();
-    current.offset = previous.offset + previous.size;
-    current.bytes = previous.bytes;
-    return previous;
+    readOffset = current.offset + current.size;
+    size = 0;
+    return current;
   }
 
   /**
@@ -102,16 +126,14 @@ class DataListIterator implements Iterator<SerializedData>
   @Override
   public void remove()
   {
-    if (previous == null) {
-      throw new IllegalStateException("Nothing to remove");
-    }
-
-    previous.bytes[previous.dataOffset] = MessageType.NO_MESSAGE_VALUE;
+    current.bytes[current.dataOffset] = MessageType.NO_MESSAGE_VALUE;
   }
 
   void rewind(int processingOffset)
   {
-    current.offset = processingOffset;
+    readOffset = processingOffset;
+    size = 0;
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(DataListIterator.class);
 }

@@ -31,6 +31,13 @@ public final class SerializedData
    */
   public int size;
 
+  public SerializedData(byte[] array, int offset, int size)
+  {
+    bytes = array;
+    this.offset = offset;
+    this.size = size;
+  }
+
   public boolean isEquivalent(SerializedData sd)
   {
     if (sd != null) {
@@ -47,6 +54,7 @@ public final class SerializedData
 
     return false;
   }
+
   /**
    *
    * @return String
@@ -56,4 +64,5 @@ public final class SerializedData
   {
     return "bytes = " + bytes + " offset = " + offset + " size = " + size;
   }
+
 }

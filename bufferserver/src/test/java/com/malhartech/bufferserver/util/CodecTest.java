@@ -25,9 +25,7 @@ public class CodecTest
 
     logger.debug("bytes taken = " + Codec.writeRawVarint32(value, buffer, 0));
 
-    SerializedData sd = new SerializedData();
-    sd.bytes = buffer;
-    sd.offset = 0;
+    SerializedData sd = new SerializedData(buffer, 0, 0);
     Codec.readRawVarInt32(sd);
     assertEquals(sd.size - sd.dataOffset, value);
 

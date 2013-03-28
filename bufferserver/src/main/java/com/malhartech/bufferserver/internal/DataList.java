@@ -117,8 +117,7 @@ public class DataList
   {
     this.identifier = identifier;
     this.blocksize = blocksize;
-    first = new Block(identifier);
-    first.data = new byte[blocksize];
+    first = new Block(identifier, blocksize);
     last = first;
   }
 
@@ -152,6 +151,7 @@ public class DataList
           case 0:
             last.writingOffset = processingOffset;
             if (writeOffset == last.data.length) {
+              nextOffset.integer = 0;
               processingOffset = 0;
             }
             break flush;
@@ -181,6 +181,13 @@ public class DataList
       }
       else {
         last.writingOffset = processingOffset;
+        if (writeOffset == last.data.length) {
+          nextOffset.integer = 0;
+          processingOffset = 0;
+        }
+        else {
+          processingOffset = nextOffset.integer;
+        }
         break;
       }
     }
@@ -311,16 +318,13 @@ public class DataList
 
   public void addBuffer(byte[] array)
   {
-    Block b = new Block(identifier);
-    b.data = array;
-    
-    last.next = b;
+    last.next = new Block(identifier, array);;
     long windowId = last.ending_window;
     last = last.next;
     last.starting_window = windowId;
   }
 
-  public byte[] getBufer()
+  public byte[] getBuffer()
   {
     return last.data;
   }

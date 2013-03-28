@@ -445,7 +445,7 @@ public class Server implements ServerListener
 
     Publisher(DataList dl)
     {
-      super(dl.getBufer(), dl.getPosition());
+      super(dl.getBuffer(), dl.getPosition());
       this.datalist = dl;
     }
 
@@ -456,9 +456,12 @@ public class Server implements ServerListener
         remainingCapacity = readBuffer.length - writeOffset;
         if (len < remainingCapacity) {
           remainingCapacity = len;
+          buffer.position(writeOffset + remainingCapacity);
+        }
+        else {
+          buffer.position(readBuffer.length);
         }
         System.arraycopy(array, offset, readBuffer, writeOffset, remainingCapacity);
-        buffer.position(readBuffer.length);
         read(remainingCapacity);
 
         offset += remainingCapacity;

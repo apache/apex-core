@@ -10,7 +10,6 @@ import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
 import com.malhartech.bufferserver.util.BitVector;
-import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Collection;
 import java.util.HashSet;

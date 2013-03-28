@@ -72,6 +72,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
   @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
+    logger.debug("buffer = {}, offset = {}, size = {}", buffer == null, offset, size);
     Tuple tuple = Tuple.getTuple(buffer, offset, size);
     tupleCount.incrementAndGet();
     switch (tuple.getType()) {

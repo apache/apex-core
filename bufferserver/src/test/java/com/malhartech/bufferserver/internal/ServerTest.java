@@ -38,7 +38,7 @@ public class ServerTest
   static BufferServerPublisher bsp;
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
-  static int spinCount = 100;
+  static int spinCount = 300;
   static DefaultEventLoop eventloopServer;
   static DefaultEventLoop eventloopClient;
 
@@ -338,7 +338,6 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testReblishLowerWindow() throws InterruptedException
   {
-    logger.debug("test republish");
     bsp = new BufferServerPublisher("MyPublisher");
     bsp.eventloop = eventloopClient;
     bsp.setup(host, port);

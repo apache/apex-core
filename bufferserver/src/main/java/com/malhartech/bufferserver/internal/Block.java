@@ -51,9 +51,15 @@ public class Block
   Block next;
   int refCount;
 
-  public Block(String id)
+  public Block(String id, int size)
+  {
+    this(id, new byte[size]);
+  }
+
+  public Block(String id, byte[] array)
   {
     identifier = id;
+    data = array;
     refCount = 1;
   }
 
@@ -160,9 +166,7 @@ public class Block
       }
 
 
-      SerializedData sd = new SerializedData();
-      sd.bytes = this.data;
-      sd.offset = this.readingOffset;
+      SerializedData sd = new SerializedData(this.data, readingOffset, 0);
 
       // the rest of it is just a copy from beginWindow case here to wipe the data - refactor
       int i = 1;
