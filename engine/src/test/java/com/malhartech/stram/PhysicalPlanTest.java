@@ -107,7 +107,7 @@ public class PhysicalPlanTest {
 
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
 
-    PhysicalPlan plan = new PhysicalPlan(dag, null);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
 
     Assert.assertEquals("number of containers", 2, plan.getContainers().size());
 
@@ -137,7 +137,7 @@ public class PhysicalPlanTest {
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
     node2Decl.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(initialPartitionCount);
 
-    PhysicalPlan plan = new PhysicalPlan(dag, null);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
 
     List<PTOperator> n2Instances = plan.getOperators(node2Decl);
     Assert.assertEquals("partition instances " + n2Instances, initialPartitionCount, n2Instances.size());
@@ -174,6 +174,7 @@ public class PhysicalPlanTest {
     List<Runnable> events = new ArrayList<Runnable>();
     Collection<PTOperator> undeploy;
     Collection<PTOperator> deploy;
+    Collection<PTContainer> startContainers;
     List<Object> backupRequests = new ArrayList<Object>();
 
     @Override
@@ -185,6 +186,7 @@ public class PhysicalPlanTest {
     public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
       this.undeploy = undeploy;
       this.deploy = deploy;
+      this.startContainers = startContainers;
     }
 
     @Override
@@ -468,7 +470,7 @@ public class PhysicalPlanTest {
 
     int maxContainers = 5;
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
-    PhysicalPlan plan = new PhysicalPlan(dag, null);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
     Assert.assertEquals("operators container 0", 3, plan.getContainers().get(0).operators.size());
 
@@ -508,7 +510,7 @@ public class PhysicalPlanTest {
     int maxContainers = 5;
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
 
-    PhysicalPlan deployer = new PhysicalPlan(dag, null);
+    PhysicalPlan deployer = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
 
     PTOutput node1Out = deployer.getOperators(dag.getOperatorMeta(node1)).get(0).outputs.get(0);
@@ -564,7 +566,7 @@ public class PhysicalPlanTest {
     int maxContainers = 5;
     dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, maxContainers);
 
-    PhysicalPlan plan = new PhysicalPlan(dag, null);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
 
     PTContainer container1 = plan.getContainers().get(0);
@@ -634,7 +636,7 @@ public class PhysicalPlanTest {
     int maxContainers = 10;
     dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, maxContainers);
 
-    PhysicalPlan plan = new PhysicalPlan(dag, null);
+    PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
 
     List<PTOperator> inputOperators = new ArrayList<PTOperator>();

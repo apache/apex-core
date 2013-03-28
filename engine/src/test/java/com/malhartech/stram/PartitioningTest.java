@@ -45,7 +45,7 @@ public class PartitioningTest
     /*
      * Received tuples are stored in a map keyed with the system assigned operator id.
      */
-    public static final Map<String, List<Object>> receivedTuples = new ConcurrentHashMap<String, List<Object>>();
+    public static final ConcurrentHashMap<String, List<Object>> receivedTuples = new ConcurrentHashMap<String, List<Object>>();
     private transient int operatorId;
     public String prefix = "";
 
@@ -62,12 +62,15 @@ public class PartitioningTest
       {
         Assert.assertNotNull(CollectorOperator.this.operatorId);
         String id = prefix + CollectorOperator.this.operatorId;
-        List<Object> l = receivedTuples.get(id);
-        if (l == null) {
-          l = new ArrayList<Object>();
-          receivedTuples.put(id, l);
+        synchronized (receivedTuples) {
+          List<Object> l = receivedTuples.get(id);
+          if (l == null) {
+            l = Collections.synchronizedList(new ArrayList<Object>());
+            //LOG.debug("adding {} {}", id, l);
+            receivedTuples.put(id, l);
+          }
+          l.add(tuple);
         }
-        l.add(tuple);
 
         if (output.isConnected()) {
           output.emit(tuple);
@@ -203,8 +206,8 @@ public class PartitioningTest
   {
 
     DAG dag = new DAG();
-
-    dag.getAttributes().attr(DAG.STRAM_STATS_HANDLER).set(PartitionLoadWatch.class.getName());
+    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, 5);
+    dag.setAttribute(DAG.STRAM_STATS_HANDLER, PartitionLoadWatch.class.getName());
     CollectorOperator.receivedTuples.clear();
 
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
@@ -246,10 +249,10 @@ public class PartitioningTest
     PTOperator planInput = lc.findByLogicalNode(dag.getOperatorMeta(input));
     LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
     Map<Integer, Node<?>> nodeMap = c.getNodes();
-    Assert.assertEquals("number operators", 1, nodeMap.size());
+    Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
     @SuppressWarnings({"unchecked"})
     TestInputOperator<Integer> inputDeployed = (TestInputOperator<Integer>)nodeMap.get(planInput.getId()).getOperator();
-    Assert.assertNotNull(inputDeployed);
+    Assert.assertNotNull(""+nodeMap, inputDeployed);
 
     // add tuple that matches the partition key and check that each partition receives it
     ArrayList<Integer> inputTuples = new ArrayList<Integer>();
@@ -263,7 +266,7 @@ public class PartitioningTest
     for (PTOperator p: partitions) {
       Integer expectedTuple = p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next();
       List<Object> receivedTuples;
-      while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.getId())) == null) {
+      while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.getId())) == null || receivedTuples.isEmpty()) {
         LOG.debug("Waiting for tuple: " + p);
         sleep(20);
       }
@@ -274,8 +277,8 @@ public class PartitioningTest
     List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorMeta(singleCollector));
     Assert.assertEquals("number output operator instances " + operators, 1, operators.size());
     List<Object> receivedTuples;
-    while ((receivedTuples = CollectorOperator.receivedTuples.get(singleCollector.prefix + operators.get(0).getId())) == null) {
-      LOG.debug("Waiting for merge operator tuple: " + operators.get(0));
+    while ((receivedTuples = CollectorOperator.receivedTuples.get(singleCollector.prefix + operators.get(0).getId())) == null || receivedTuples.size() < inputTuples.size()) {
+      LOG.debug("Waiting for tuple: " + operators.get(0));
       sleep(20);
     }
     Assert.assertEquals("output tuples " + receivedTuples, Sets.newHashSet(inputTuples), Sets.newHashSet(receivedTuples));

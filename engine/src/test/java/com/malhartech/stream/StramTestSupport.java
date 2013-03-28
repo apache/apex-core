@@ -92,23 +92,25 @@ abstract public class StramTestSupport
    * Asserts non null return value.
    *
    * @param localCluster
-   * @param node
+   * @param operator
    * @return
    * @throws InterruptedException
    */
   @SuppressWarnings("SleepWhileInLoop")
-  public static LocalStramChild waitForActivation(StramLocalCluster localCluster, PTOperator node) throws InterruptedException
+  public static LocalStramChild waitForActivation(StramLocalCluster localCluster, PTOperator operator) throws InterruptedException
   {
     LocalStramChild container = null;
     long startMillis = System.currentTimeMillis();
     while (System.currentTimeMillis() < (startMillis + DEFAULT_TIMEOUT_MILLIS)) {
-      if ((container = localCluster.getContainer(node)) != null) {
-         return container;
+      if (operator.getState() == PTOperator.State.ACTIVE) {
+        if ((container = localCluster.getContainer(operator)) != null) {
+           return container;
+        }
       }
-      LOG.debug("Waiting for {} in container {}", node, node.getContainer());
+      LOG.debug("Waiting for {}({}) in container {}", new Object[] {operator, operator.getState(), operator.getContainer()});
       Thread.sleep(500);
     }
-    throw new AssertionFailedError("timeout waiting for operator deployment " + node);
+    throw new AssertionFailedError("timeout waiting for operator deployment " + operator);
   }
 
 }
