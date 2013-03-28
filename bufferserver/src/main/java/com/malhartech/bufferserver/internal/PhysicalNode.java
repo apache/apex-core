@@ -55,9 +55,16 @@ public class PhysicalNode
    * @param d
    * @throws InterruptedException
    */
+  int i;
+
   public void send(SerializedData d) throws InterruptedException
   {
-    connection.send(d.bytes, d.offset, d.size);
+    if (d.offset == d.dataOffset) {
+      connection.write(d.bytes, d.offset, d.size);
+    }
+    else {
+      connection.send(d.bytes, d.offset, d.size);
+    }
   }
 
   /**

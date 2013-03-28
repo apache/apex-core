@@ -134,7 +134,7 @@ public class DataList
   int size;
   int processingOffset;
 
-  public final void flush(int writeOffset)
+  public final void flush(final int writeOffset)
   {
     flush:
     do {
@@ -149,7 +149,7 @@ public class DataList
           case -2:
           case -1:
           case 0:
-            last.writingOffset = processingOffset;
+            //last.writingOffset = processingOffset;
             if (writeOffset == last.data.length) {
               nextOffset.integer = 0;
               processingOffset = 0;
@@ -158,10 +158,12 @@ public class DataList
         }
       }
 
-      if (nextOffset.integer + size <= writeOffset) {
-        switch (last.data[nextOffset.integer]) {
+      processingOffset = nextOffset.integer;
+
+      if (processingOffset + size <= writeOffset) {
+        switch (last.data[processingOffset]) {
           case MessageType.BEGIN_WINDOW_VALUE:
-            Tuple btw = Tuple.getTuple(last.data, nextOffset.integer, size);
+            Tuple btw = Tuple.getTuple(last.data, processingOffset, size);
             if (last.starting_window == -1) {
               last.starting_window = baseSeconds | btw.getWindowId();
               last.ending_window = last.starting_window;
@@ -172,15 +174,15 @@ public class DataList
             break;
 
           case MessageType.RESET_WINDOW_VALUE:
-            Tuple rwt = Tuple.getTuple(last.data, nextOffset.integer, size);
+            Tuple rwt = Tuple.getTuple(last.data, processingOffset, size);
             baseSeconds = (long)rwt.getBaseSeconds() << 32;
             break;
         }
-        processingOffset = size + nextOffset.integer;
+        processingOffset += size;
         size = 0;
       }
       else {
-        last.writingOffset = processingOffset;
+        //last.writingOffset = nextOffset.integer;
         if (writeOffset == last.data.length) {
           nextOffset.integer = 0;
           processingOffset = 0;
@@ -193,6 +195,7 @@ public class DataList
     }
     while (true);
 
+    last.writingOffset = writeOffset;
     for (DataListener dl: all_listeners) {
       dl.addedData();
     }

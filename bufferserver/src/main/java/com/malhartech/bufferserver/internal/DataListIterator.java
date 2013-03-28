@@ -58,16 +58,21 @@ class DataListIterator implements Iterator<SerializedData>
         case -2:
         case -1:
         case 0:
-          if (da.next == null) {
+          if (da.writingOffset == buffer.length) {
+            if (da.next == null) {
+              return false;
+            }
+
+            da.release(storage, false);
+            da.next.acquire(storage, true);
+            da = da.next;
+
+            buffer = da.data;
+            readOffset = da.readingOffset;
+          }
+          else {
             return false;
           }
-
-          da.release(storage, false);
-          da.next.acquire(storage, true);
-          da = da.next;
-
-          buffer = da.data;
-          readOffset = da.readingOffset;
       }
     }
 
