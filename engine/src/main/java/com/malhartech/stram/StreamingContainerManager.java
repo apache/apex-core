@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.Nullable;
 
@@ -31,7 +30,6 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DAGContext;
-import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
@@ -289,8 +287,8 @@ public class StreamingContainerManager implements PlanContext
         continue;
       }
 
-      LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
-          Codec.getStringWindowId(shb.getLastBackupWindowId()) });
+      //LOG.debug("heartbeat {}/{}@{}: {} {}", new Object[] { shb.getNodeId(), status.operator.getName(), heartbeat.getContainerId(), shb.getState(),
+      //    Codec.getStringWindowId(shb.getLastBackupWindowId()) });
 
       StreamingNodeHeartbeat previousHeartbeat = status.lastHeartbeat;
       status.lastHeartbeat = shb;
