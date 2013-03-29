@@ -4,11 +4,11 @@
  */
 package com.malhartech.bufferserver.server;
 
-import com.malhartech.bufferserver.client.Controller;
 import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.EndWindowTuple;
 import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.bufferserver.packet.ResetWindowTuple;
+import com.malhartech.bufferserver.support.Controller;
 import com.malhartech.bufferserver.support.Publisher;
 import com.malhartech.bufferserver.support.Subscriber;
 import java.io.IOException;
@@ -29,7 +29,6 @@ import org.testng.annotations.Test;
  */
 public class ServerTest
 {
-  private static final Logger logger = LoggerFactory.getLogger(ServerTest.class);
   static Server instance;
   static InetSocketAddress address;
   static Publisher bsp;
@@ -203,12 +202,11 @@ public class ServerTest
   public void testPurgeNonExistent() throws InterruptedException
   {
 
-    bsc = new Controller("MyPublisher");
+    bsc = new Controller("MyController");
     bsc.setup(address, eventloopClient);
 
-    bsc.windowId = 0;
     bsc.activate();
-    bsc.purge();
+    bsc.purge("MyPublisher", 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -239,12 +237,11 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testPurgeSome() throws InterruptedException
   {
-    bsc = new Controller("MyPublisher");
+    bsc = new Controller("MyController");
     bsc.setup(address, eventloopClient);
 
-    bsc.windowId = 0x7afebabe00000000L;
     bsc.activate();
-    bsc.purge();
+    bsc.purge("MyPublisher", 0x7afebabe00000000L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -274,12 +271,11 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testPurgeAll() throws InterruptedException
   {
-    bsc = new Controller("MyPublisher");
+    bsc = new Controller("MyController");
     bsc.setup(address, eventloopClient);
 
-    bsc.windowId = 0x7afebabe00000001L;
     bsc.activate();
-    bsc.purge();
+    bsc.purge("MyPublisher", 0x7afebabe00000001L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -371,12 +367,11 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testReset() throws InterruptedException
   {
-    bsc = new Controller("MyPublisher");
+    bsc = new Controller("MyController");
     bsc.setup(address, eventloopClient);
 
-    bsc.windowId = 0x7afebabe00000001L;
     bsc.activate();
-    bsc.reset();
+    bsc.reset("MyPublisher", 0x7afebabe00000001L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -388,7 +383,7 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new Subscriber("MyPublisher");
+    bss = new Subscriber("MySubscriber");
     bss.setup(address, eventloopClient);
 
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
@@ -461,4 +456,5 @@ public class ServerTest
     bss.teardown();
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(ServerTest.class);
 }

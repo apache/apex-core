@@ -13,33 +13,29 @@ import malhar.netlet.DefaultEventLoop;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class Controller extends AbstractClient
+public abstract class Controller extends AbstractClient
 {
-  private final String sourceId;
-  public long windowId;
-  public Fragment data;
+  String id;
 
-  public Controller(String sourceId)
+  public Controller(String id)
   {
-    this.sourceId = sourceId;
+    this.id = id;
   }
 
-  public void purge()
+  public void purge(String sourceId, long windowId)
   {
-    data = null;
     write(PurgeRequestTuple.getSerializedRequest(sourceId, windowId));
   }
 
-  public void reset()
+  public void reset(String sourceId, long windowId)
   {
-    data = null;
     write(ResetRequestTuple.getSerializedRequest(sourceId, windowId));
   }
 
   @Override
-  public void onMessage(byte[] buffer, int offset, int size)
+  public String toString()
   {
-    data = new Fragment(buffer, offset, size);
+    return "Controller{" + "id=" + id + '}';
   }
 
 }

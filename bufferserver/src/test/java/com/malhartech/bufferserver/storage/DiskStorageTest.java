@@ -4,11 +4,11 @@
  */
 package com.malhartech.bufferserver.storage;
 
-import com.malhartech.bufferserver.client.Controller;
 import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.EndWindowTuple;
 import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.bufferserver.server.Server;
+import com.malhartech.bufferserver.support.Controller;
 import com.malhartech.bufferserver.support.Publisher;
 import com.malhartech.bufferserver.support.Subscriber;
 import static java.lang.Thread.sleep;
@@ -52,7 +52,7 @@ public class DiskStorageTest
     bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
-    bss = new Subscriber("MyPublisher");
+    bss = new Subscriber("MySubscriber");
     bss.setup(address, eventloopClient);
 
     bsc = new Controller("MyPublisher");
@@ -115,7 +115,7 @@ public class DiskStorageTest
 
     assertEquals(bss.tupleCount.get(), 2004);
 
-    bss = new Subscriber("MyPublisher");
+    bss = new Subscriber("MySubscriber");
     bss.setup(address, eventloopClient);
 
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);

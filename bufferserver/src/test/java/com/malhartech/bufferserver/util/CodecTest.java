@@ -15,8 +15,6 @@ import org.testng.annotations.Test;
  */
 public class CodecTest
 {
-  private static final Logger logger = LoggerFactory.getLogger(CodecTest.class);
-
   @Test
   public void testSomeMethod()
   {
@@ -35,4 +33,6 @@ public class CodecTest
     Codec.readRawVarInt32(sd);
     assertEquals(sd.size - sd.dataOffset, value);
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(CodecTest.class);
 }
