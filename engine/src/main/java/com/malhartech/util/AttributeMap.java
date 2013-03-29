@@ -4,8 +4,6 @@
  */
 package com.malhartech.util;
 
-import com.malhartech.util.AttributeMap.AttributeKey;
-import io.netty.util.Attribute;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +17,20 @@ import java.util.concurrent.atomic.AtomicReference;
  * @param <CONTEXT>
  */
 public interface AttributeMap<CONTEXT> {
+
+  public interface Attribute<T> {
+    T get();
+    void set(T value);
+    T getAndSet(T value);
+    /**
+     * Set the value to newValue if current value == oldValue.
+     * @param value
+     * @return previous value
+     */
+    T setIfAbsent(T value);
+    boolean compareAndSet(T oldValue, T newValue);
+    void remove();
+}
 
   /**
    * Return the attribute value for the given key. If the map does not have an
