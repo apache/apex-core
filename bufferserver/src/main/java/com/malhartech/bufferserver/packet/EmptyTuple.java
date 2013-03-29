@@ -4,6 +4,8 @@
  */
 package com.malhartech.bufferserver.packet;
 
+import malhar.netlet.Client.Fragment;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -34,7 +36,7 @@ public class EmptyTuple extends Tuple
   }
 
   @Override
-  public int getDataOffset()
+  public Fragment getData()
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }

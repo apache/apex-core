@@ -4,6 +4,8 @@
  */
 package com.malhartech.bufferserver.packet;
 
+import malhar.netlet.Client.Fragment;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -21,6 +23,24 @@ public abstract class RequestTuple extends Tuple
   public boolean isValid()
   {
     return valid;
+  }
+
+  @Override
+  public int getPartition()
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public Fragment getData()
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public int getWindowWidth()
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
   public abstract void parse();

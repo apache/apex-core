@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver.packet;
 
 import com.malhartech.bufferserver.util.Codec;
+import malhar.netlet.Client.Fragment;
 
 /**
  *
@@ -36,7 +37,7 @@ public class ResetWindowTuple extends Tuple
   }
 
   @Override
-  public int getDataOffset()
+  public Fragment getData()
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }

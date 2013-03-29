@@ -170,27 +170,9 @@ public class SubscribeRequestTuple extends RequestTuple
   }
 
   @Override
-  public int getPartition()
-  {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-  }
-
-  @Override
-  public int getDataOffset()
-  {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-  }
-
-  @Override
   public int getBaseSeconds()
   {
     return baseSeconds;
-  }
-
-  @Override
-  public int getWindowWidth()
-  {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
   /**
@@ -290,5 +272,5 @@ public class SubscribeRequestTuple extends RequestTuple
   {
     return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + type + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + partitions + '}';
   }
-  
+
 }

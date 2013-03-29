@@ -4,6 +4,8 @@
  */
 package com.malhartech.bufferserver.packet;
 
+import malhar.netlet.Client.Fragment;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -28,9 +30,9 @@ public class DataTuple extends Tuple
   }
 
   @Override
-  public int getDataOffset()
+  public Fragment getData()
   {
-    return offset + 1;
+    return new Fragment(buffer, offset + 1, length - 1);
   }
 
   @Override

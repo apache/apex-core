@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
  */
 public class Subscriber extends AbstractClient
 {
-  private static final Logger logger = LoggerFactory.getLogger(Subscriber.class);
   private final String sourceId;
   private final Collection<Integer> partitions;
   private final int mask;
@@ -91,13 +90,14 @@ public class Subscriber extends AbstractClient
 
   public void beginWindow(final int windowId)
   {
-    WindowIdHolder payload = new WindowIdHolder() {
-
+    WindowIdHolder payload = new WindowIdHolder()
+    {
       @Override
       public int getWindowId()
       {
         return windowId;
       }
+
     };
 
     if (firstPayload == null) {
@@ -109,13 +109,14 @@ public class Subscriber extends AbstractClient
 
   public void endWindow(final int windowId)
   {
-    WindowIdHolder payload = new WindowIdHolder() {
-
+    WindowIdHolder payload = new WindowIdHolder()
+    {
       @Override
       public int getWindowId()
       {
         return windowId;
       }
+
     };
 
     if (firstPayload == null) {
@@ -127,8 +128,8 @@ public class Subscriber extends AbstractClient
 
   public void resetWindow(final int baseSeconds, final int windowWidth)
   {
-    resetPayloads.add(new ResetHolder() {
-
+    resetPayloads.add(new ResetHolder()
+    {
       @Override
       public int getBaseSeconds()
       {
@@ -140,6 +141,7 @@ public class Subscriber extends AbstractClient
       {
         return windowWidth;
       }
+
     });
   }
 
@@ -152,12 +154,16 @@ public class Subscriber extends AbstractClient
   public interface WindowIdHolder
   {
     public int getWindowId();
+
   }
 
   public interface ResetHolder
   {
     public int getBaseSeconds();
+
     public int getWindowWidth();
+
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(Subscriber.class);
 }

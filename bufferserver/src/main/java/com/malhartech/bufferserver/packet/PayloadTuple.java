@@ -5,6 +5,7 @@
 package com.malhartech.bufferserver.packet;
 
 import com.malhartech.bufferserver.util.Codec;
+import malhar.netlet.Client.Fragment;
 
 /**
  *
@@ -36,12 +37,13 @@ public class PayloadTuple extends Tuple
   }
 
   @Override
-  public int getDataOffset()
+  public Fragment getData()
   {
     int dataOffset = this.offset + 1;
     while (buffer[dataOffset++] < 0) {
     }
-    return dataOffset;
+
+    return new Fragment(buffer, dataOffset, length + offset - dataOffset);
   }
 
   @Override

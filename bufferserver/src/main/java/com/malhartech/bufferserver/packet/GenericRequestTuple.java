@@ -8,6 +8,7 @@ import static com.malhartech.bufferserver.packet.Tuple.VERSION;
 import static com.malhartech.bufferserver.packet.Tuple.writeString;
 import com.malhartech.bufferserver.util.Codec;
 import java.util.Arrays;
+import malhar.netlet.Client.Fragment;
 
 /**
  *
@@ -101,27 +102,9 @@ public class GenericRequestTuple extends RequestTuple
   }
 
   @Override
-  public int getPartition()
-  {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-  }
-
-  @Override
-  public int getDataOffset()
-  {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-  }
-
-  @Override
   public int getBaseSeconds()
   {
     return baseSeconds;
-  }
-
-  @Override
-  public int getWindowWidth()
-  {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
   @Override
