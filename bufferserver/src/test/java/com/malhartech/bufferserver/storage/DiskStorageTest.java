@@ -4,9 +4,9 @@
  */
 package com.malhartech.bufferserver.storage;
 
-import com.malhartech.bufferserver.client.BufferServerController;
-import com.malhartech.bufferserver.client.BufferServerPublisher;
-import com.malhartech.bufferserver.client.BufferServerSubscriber;
+import com.malhartech.bufferserver.client.Controller;
+import com.malhartech.bufferserver.client.Publisher;
+import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.EndWindowTuple;
 import com.malhartech.bufferserver.packet.PayloadTuple;
@@ -28,9 +28,9 @@ public class DiskStorageTest
   static DefaultEventLoop eventloopServer;
   static DefaultEventLoop eventloopClient;
   static Server instance;
-  static BufferServerPublisher bsp;
-  static BufferServerSubscriber bss;
-  static BufferServerController bsc;
+  static Publisher bsp;
+  static Subscriber bss;
+  static Controller bsc;
   static int spinCount = 500;
   static InetSocketAddress address;
 
@@ -49,13 +49,13 @@ public class DiskStorageTest
     address = instance.run(eventloopServer);
     assert (address instanceof InetSocketAddress);
 
-    bsp = new BufferServerPublisher("MyPublisher");
+    bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
-    bsc = new BufferServerController("MyPublisher");
+    bsc = new Controller("MyPublisher");
     bsc.setup(address, eventloopClient);
   }
 
@@ -117,7 +117,7 @@ public class DiskStorageTest
 
     assertEquals(bss.tupleCount.get(), 2004);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
     bss.activate();

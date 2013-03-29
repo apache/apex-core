@@ -13,13 +13,13 @@ import malhar.netlet.DefaultEventLoop;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class BufferServerController extends AbstractSocketSubscriber
+public class Controller extends AbstractClient
 {
   private final String sourceId;
   public long windowId;
   public Fragment data;
 
-  public BufferServerController(String sourceId)
+  public Controller(String sourceId)
   {
     this.sourceId = sourceId;
   }
@@ -34,17 +34,6 @@ public class BufferServerController extends AbstractSocketSubscriber
   {
     data = null;
     write(ResetRequestTuple.getSerializedRequest(sourceId, windowId));
-  }
-
-  @Override
-  public void handleException(Exception cce, DefaultEventLoop el)
-  {
-    if (cce instanceof IOException) {
-      el.disconnect(this);
-    }
-    else {
-      throw new RuntimeException(cce);
-    }
   }
 
   @Override

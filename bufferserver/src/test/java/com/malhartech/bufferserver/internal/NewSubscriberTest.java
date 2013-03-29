@@ -4,8 +4,8 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import com.malhartech.bufferserver.client.BufferServerPublisher;
-import com.malhartech.bufferserver.client.BufferServerSubscriber;
+import com.malhartech.bufferserver.client.Publisher;
+import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.EndWindowTuple;
 import com.malhartech.bufferserver.packet.PayloadTuple;
@@ -66,10 +66,10 @@ public class NewSubscriberTest
   @SuppressWarnings("SleepWhileInLoop")
   public void test() throws InterruptedException
   {
-    final BufferServerPublisher bsp1 = new BufferServerPublisher("MyPublisher");
+    final Publisher bsp1 = new Publisher("MyPublisher");
     bsp1.setup(address, eventloopClient);
 
-    final BufferServerSubscriber bss1 = new BufferServerSubscriber("MyPublisher", 0, null)
+    final Subscriber bss1 = new Subscriber("MyPublisher", 0, null)
     {
       @Override
       public void beginWindow(int windowId)
@@ -147,10 +147,10 @@ public class NewSubscriberTest
      * So we go ahead and make the publisher publish from 5 onwards with different data and have subscriber
      * subscribe from 8 onwards. What we should see is that subscriber gets the new data from 8 onwards.
      */
-    final BufferServerPublisher bsp2 = new BufferServerPublisher("MyPublisher");
+    final Publisher bsp2 = new Publisher("MyPublisher");
     bsp2.setup(address, eventloopClient);
 
-    final BufferServerSubscriber bss2 = new BufferServerSubscriber("MyPublisher", 0, null)
+    final Subscriber bss2 = new Subscriber("MyPublisher", 0, null)
     {
       @Override
       public void beginWindow(int windowId)

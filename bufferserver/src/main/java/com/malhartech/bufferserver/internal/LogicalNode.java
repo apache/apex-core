@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
+import com.malhartech.bufferserver.client.AbstractClient;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.bufferserver.policy.GiveAll;
@@ -86,7 +86,7 @@ public class LogicalNode implements DataListener
    *
    * @param connection
    */
-  public void addConnection(VarIntLengthPrependerClient connection)
+  public void addConnection(AbstractClient connection)
   {
     PhysicalNode pn = new PhysicalNode(connection);
     if (!physicalNodes.contains(pn)) {
@@ -98,7 +98,7 @@ public class LogicalNode implements DataListener
    *
    * @param connection
    */
-  public void removeChannel(VarIntLengthPrependerClient connection)
+  public void removeChannel(AbstractClient connection)
   {
     for (PhysicalNode pn : physicalNodes) {
       if (pn.getConnection() == connection) {

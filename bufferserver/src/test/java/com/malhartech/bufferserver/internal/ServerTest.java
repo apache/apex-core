@@ -4,9 +4,9 @@
  */
 package com.malhartech.bufferserver.internal;
 
-import com.malhartech.bufferserver.client.BufferServerController;
-import com.malhartech.bufferserver.client.BufferServerPublisher;
-import com.malhartech.bufferserver.client.BufferServerSubscriber;
+import com.malhartech.bufferserver.client.Controller;
+import com.malhartech.bufferserver.client.Publisher;
+import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.EndWindowTuple;
 import com.malhartech.bufferserver.packet.PayloadTuple;
@@ -33,9 +33,9 @@ public class ServerTest
   private static final Logger logger = LoggerFactory.getLogger(ServerTest.class);
   static Server instance;
   static InetSocketAddress address;
-  static BufferServerPublisher bsp;
-  static BufferServerSubscriber bss;
-  static BufferServerController bsc;
+  static Publisher bsp;
+  static Subscriber bss;
+  static Controller bsc;
   static int spinCount = 300;
   static DefaultEventLoop eventloopServer;
   static DefaultEventLoop eventloopClient;
@@ -68,10 +68,10 @@ public class ServerTest
   @Test
   public void testNoPublishNoSubscribe() throws InterruptedException
   {
-    bsp = new BufferServerPublisher("MyPublisher");
+    bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
     bsp.activate();
@@ -93,10 +93,10 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void test1Window() throws InterruptedException
   {
-    bsp = new BufferServerPublisher("MyPublisher");
+    bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
     bsp.activate();
@@ -127,7 +127,7 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testLateSubscriber() throws InterruptedException
   {
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
     bss.activate();
@@ -151,11 +151,11 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testATonOfData() throws InterruptedException
   {
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
     bss.activate();
 
-    bsp = new BufferServerPublisher("MyPublisher");
+    bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
     bsp.baseWindow = 0x7afebabe;
     bsp.windowId = 0;
@@ -207,7 +207,7 @@ public class ServerTest
   public void testPurgeNonExistent() throws InterruptedException
   {
 
-    bsc = new BufferServerController("MyPublisher");
+    bsc = new Controller("MyPublisher");
     bsc.setup(address, eventloopClient);
 
     bsc.windowId = 0;
@@ -224,7 +224,7 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
@@ -243,7 +243,7 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testPurgeSome() throws InterruptedException
   {
-    bsc = new BufferServerController("MyPublisher");
+    bsc = new Controller("MyPublisher");
     bsc.setup(address, eventloopClient);
 
     bsc.windowId = 0x7afebabe00000000L;
@@ -260,7 +260,7 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
@@ -278,7 +278,7 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testPurgeAll() throws InterruptedException
   {
-    bsc = new BufferServerController("MyPublisher");
+    bsc = new Controller("MyPublisher");
     bsc.setup(address, eventloopClient);
 
     bsc.windowId = 0x7afebabe00000001L;
@@ -295,7 +295,7 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
     bss.activate();
@@ -321,7 +321,7 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testReblishLowerWindow() throws InterruptedException
   {
-    bsp = new BufferServerPublisher("MyPublisher");
+    bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
     bsp.baseWindow = 10;
@@ -355,7 +355,7 @@ public class ServerTest
     bsp.deactivate();
     bsp.teardown();
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
     bss.activate();
@@ -377,7 +377,7 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testReset() throws InterruptedException
   {
-    bsc = new BufferServerController("MyPublisher");
+    bsc = new Controller("MyPublisher");
     bsc.setup(address, eventloopClient);
 
     bsc.windowId = 0x7afebabe00000001L;
@@ -394,7 +394,7 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
     bss.activate();
@@ -427,7 +427,7 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testEarlySubscriberForLaterWindow() throws InterruptedException
   {
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher", 0, null);
     bss.setup(address, eventloopClient);
 
     bss.windowId = 50;
@@ -435,7 +435,7 @@ public class ServerTest
 
     /* wait in a hope that the subscriber is able to reach the server */
     Thread.sleep(100);
-    bsp = new BufferServerPublisher("MyPublisher");
+    bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
 

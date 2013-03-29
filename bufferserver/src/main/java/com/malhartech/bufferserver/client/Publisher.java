@@ -15,13 +15,13 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class BufferServerPublisher extends AbstractSocketPublisher
+public class Publisher extends AbstractClient
 {
   private final String id;
   public int baseWindow;
   public int windowId;
 
-  public BufferServerPublisher(String id)
+  public Publisher(String id)
   {
     this.id = id;
   }
@@ -58,6 +58,11 @@ public class BufferServerPublisher extends AbstractSocketPublisher
     return "BufferServerPublisher";
   }
 
+  @Override
+  public void onMessage(byte[] buffer, int offset, int size)
+  {
+    logger.warn("received data when unexpected {}", Arrays.toString(Arrays.copyOfRange(buffer, offset, size)));
+  }
 
-  private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
+  private static final Logger logger = LoggerFactory.getLogger(Publisher.class);
 }

@@ -24,9 +24,9 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerSubscriber extends AbstractSocketSubscriber
+public class Subscriber extends AbstractClient
 {
-  private static final Logger logger = LoggerFactory.getLogger(BufferServerSubscriber.class);
+  private static final Logger logger = LoggerFactory.getLogger(Subscriber.class);
   private final String sourceId;
   private final Collection<Integer> partitions;
   private final int mask;
@@ -35,7 +35,7 @@ public class BufferServerSubscriber extends AbstractSocketSubscriber
   public final ArrayList<Object> resetPayloads = new ArrayList<Object>();
   public long windowId;
 
-  public BufferServerSubscriber(String sourceId, int mask, Collection<Integer> partitions)
+  public Subscriber(String sourceId, int mask, Collection<Integer> partitions)
   {
     this.sourceId = sourceId;
     this.mask = mask;

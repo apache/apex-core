@@ -5,8 +5,13 @@
 package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.util.Codec;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import malhar.netlet.Client;
+import malhar.netlet.DefaultEventLoop;
+import malhar.netlet.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,11 +19,31 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class Client extends malhar.netlet.Client
+public abstract class AbstractClient extends Client
 {
-  protected byte[] readBuffer = new byte[32 * 1024];
-  protected ByteBuffer buffer = ByteBuffer.wrap(readBuffer);
+  protected byte[] readBuffer;
+  protected ByteBuffer buffer;
   protected int size, writeOffset, readOffset;
+  private EventLoop eventloop;
+  private InetSocketAddress address;
+
+  public AbstractClient()
+  {
+    super();
+    readBuffer = new byte[32 * 1024];
+    buffer = ByteBuffer.wrap(readBuffer);
+  }
+
+  public AbstractClient(byte[] readbuffer, int position)
+  {
+    super();
+    readBuffer = readbuffer;
+    buffer = ByteBuffer.wrap(readbuffer);
+    buffer.position(position);
+    writeOffset = position;
+    readOffset = position;
+    //logger.debug("using readbuffer = {} and position = {}", "" + readbuffer, position);
+  }
 
   @Override
   public ByteBuffer buffer()
@@ -150,7 +175,6 @@ public abstract class Client extends malhar.netlet.Client
 
   public void write(byte[] message, int offset, int size)
   {
-    logger.debug("writing {}", Arrays.toString(Arrays.copyOfRange(message, offset, offset + size)));
     if (intOffset > INT_ARRAY_SIZE) {
       intBuffer = new byte[INT_ARRAY_SIZE + 5];
       intOffset = 0;
@@ -167,7 +191,38 @@ public abstract class Client extends malhar.netlet.Client
     }
   }
 
+  public void setup(InetSocketAddress address, EventLoop eventloop)
+  {
+    this.address = address;
+    this.eventloop = eventloop;
+  }
+
+  public void teardown()
+  {
+  }
+
+  public void activate()
+  {
+    eventloop.connect(address, this);
+  }
+
+  public void deactivate()
+  {
+    eventloop.disconnect(this);
+  }
+
+  @Override
+  public void handleException(Exception cce, DefaultEventLoop el)
+  {
+    if (cce instanceof IOException) {
+      el.disconnect(this);
+    }
+    else {
+      throw new RuntimeException(cce);
+    }
+  }
+
   public abstract void onMessage(byte[] buffer, int offset, int size);
 
-  private static final Logger logger = LoggerFactory.getLogger(Client.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractClient.class);
 }

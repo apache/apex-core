@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.server;
 
-import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
+import com.malhartech.bufferserver.client.AbstractClient;
 import com.malhartech.bufferserver.internal.DataList;
 import com.malhartech.bufferserver.internal.LogicalNode;
 import com.malhartech.bufferserver.packet.*;
@@ -38,7 +38,7 @@ public class Server implements ServerListener
   private final int port;
   private String identity;
   private Storage storage;
-  EventLoop eventloop;
+  private EventLoop eventloop;
   private InetSocketAddress address;
 
   /**
@@ -118,11 +118,11 @@ public class Server implements ServerListener
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
   private final HashMap<String, DataList> publisherBufffers = new HashMap<String, DataList>();
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
-  private final ConcurrentHashMap<String, VarIntLengthPrependerClient> publisherChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
-  private final ConcurrentHashMap<String, VarIntLengthPrependerClient> subscriberChannels = new ConcurrentHashMap<String, VarIntLengthPrependerClient>();
+  private final ConcurrentHashMap<String, AbstractClient> publisherChannels = new ConcurrentHashMap<String, AbstractClient>();
+  private final ConcurrentHashMap<String, AbstractClient> subscriberChannels = new ConcurrentHashMap<String, AbstractClient>();
   private final int blockSize;
 
-  public void handlePurgeRequest(PurgeRequestTuple request, VarIntLengthPrependerClient ctx) throws IOException
+  public void handlePurgeRequest(PurgeRequestTuple request, AbstractClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
@@ -142,7 +142,7 @@ public class Server implements ServerListener
     eventloop.disconnect(ctx);
   }
 
-  private void handleResetRequest(ResetRequestTuple request, VarIntLengthPrependerClient ctx) throws IOException
+  private void handleResetRequest(ResetRequestTuple request, AbstractClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());
@@ -152,7 +152,7 @@ public class Server implements ServerListener
       message = ("Invalid identifier '" + request.getIdentifier() + "'").getBytes();
     }
     else {
-      VarIntLengthPrependerClient channel = publisherChannels.remove(request.getIdentifier());
+      AbstractClient channel = publisherChannels.remove(request.getIdentifier());
       if (channel != null) {
         eventloop.disconnect(channel);
       }
@@ -172,7 +172,7 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request, VarIntLengthPrependerClient connection)
+  public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request, AbstractClient connection)
   {
     String identifier = request.getIdentifier();
     String type = request.getUpstreamType();
@@ -184,7 +184,7 @@ public class Server implements ServerListener
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      VarIntLengthPrependerClient previous = subscriberChannels.put(identifier, connection);
+      AbstractClient previous = subscriberChannels.put(identifier, connection);
       if (previous != null) {
         eventloop.disconnect(previous);
       }
@@ -233,7 +233,7 @@ public class Server implements ServerListener
    * @param connection
    * @return
    */
-  public DataList handlePublisherRequest(PublishRequestTuple request, VarIntLengthPrependerClient connection)
+  public DataList handlePublisherRequest(PublishRequestTuple request, AbstractClient connection)
   {
     String identifier = request.getIdentifier();
 
@@ -243,7 +243,7 @@ public class Server implements ServerListener
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
-      VarIntLengthPrependerClient previous = publisherChannels.put(identifier, connection);
+      AbstractClient previous = publisherChannels.put(identifier, connection);
       if (previous != null) {
         eventloop.disconnect(previous);
       }
@@ -281,7 +281,7 @@ public class Server implements ServerListener
     throw new RuntimeException(cce);
   }
 
-  class UnidentifiedClient extends VarIntLengthPrependerClient
+  class UnidentifiedClient extends AbstractClient
   {
     SocketChannel channel;
     boolean ignore;
@@ -333,7 +333,7 @@ public class Server implements ServerListener
           logger.info("Received subscriber request: {}", request);
 
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
-          VarIntLengthPrependerClient subscriber = new Subscriber(subscriberRequest.getUpstreamType());
+          AbstractClient subscriber = new Subscriber(subscriberRequest.getUpstreamType());
           key.attach(subscriber);
           key.interestOps(SelectionKey.OP_WRITE);
           //logger.debug("registering the channel for write operation {}", subscriber);
@@ -380,7 +380,7 @@ public class Server implements ServerListener
 
   }
 
-  class Subscriber extends VarIntLengthPrependerClient
+  class Subscriber extends AbstractClient
   {
     private final String type;
 
@@ -402,7 +402,7 @@ public class Server implements ServerListener
       LogicalNode ln = subscriberGroups.get(type);
       if (ln != null) {
         if (subscriberChannels.containsValue(this)) {
-          final Iterator<Entry<String, VarIntLengthPrependerClient>> i = subscriberChannels.entrySet().iterator();
+          final Iterator<Entry<String, AbstractClient>> i = subscriberChannels.entrySet().iterator();
           while (i.hasNext()) {
             if (i.next().getValue() == this) {
               i.remove();
@@ -439,7 +439,7 @@ public class Server implements ServerListener
    *
    * @author Chetan Narsude <chetan@malhar-inc.com>
    */
-  class Publisher extends VarIntLengthPrependerClient
+  class Publisher extends AbstractClient
   {
     private final DataList datalist;
     boolean dirty;
@@ -578,7 +578,7 @@ public class Server implements ServerListener
        * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
        */
       if (publisherChannels.containsValue(this)) {
-        final Iterator<Entry<String, VarIntLengthPrependerClient>> i = publisherChannels.entrySet().iterator();
+        final Iterator<Entry<String, AbstractClient>> i = publisherChannels.entrySet().iterator();
         while (i.hasNext()) {
           if (i.next().getValue() == this) {
             i.remove();
