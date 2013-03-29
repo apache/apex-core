@@ -1207,9 +1207,6 @@ public class StramChild
       }
       for (OperatorDeployInfo.OutputDeployInfo odi: ndi.outputs) {
         outputPortAttributes.put(odi.portName, odi.contextAttributes);
-        if (odi.contextAttributes.attrValue(PortContext.AUTO_RECORD, false)) {
-          startRecording(node, ndi.id, odi.portName, true);
-        }
       }
 
       new Thread(node.id)
@@ -1221,12 +1218,14 @@ public class StramChild
             OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes, inputPortAttributes, outputPortAttributes);
             node.getOperator().setup(context);
             for (Map.Entry<String, AttributeMap<PortContext>> entry: inputPortAttributes.entrySet()) {
-              if (entry.getValue().attrValue(PortContext.AUTO_RECORD, false)) {
+              AttributeMap<PortContext> attrMap = entry.getValue();
+              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
                 startRecording(node, ndi.id, entry.getKey(), true);
               }
             }
             for (Map.Entry<String, AttributeMap<PortContext>> entry: outputPortAttributes.entrySet()) {
-              if (entry.getValue().attrValue(PortContext.AUTO_RECORD, false)) {
+              AttributeMap<PortContext> attrMap = entry.getValue();
+              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
                 startRecording(node, ndi.id, entry.getKey(), true);
               }
             }
