@@ -44,6 +44,11 @@ public interface Context
      */
     public static final AttributeKey<Boolean> PARTITION_PARALLEL = new AttributeKey<Boolean>("partitionInline");
 
+    /**
+     * Whether or not to auto record the tuples
+     */
+    public static final AttributeKey<Boolean> AUTO_RECORD = new AttributeKey<Boolean>("autoRecord");
+
     AttributeMap<PortContext> getAttributes();
 
   }
@@ -107,6 +112,21 @@ public interface Context
      */
     AttributeMap<DAGContext> getApplicationAttributes();
 
+    /**
+     * Return the port attributes given the port name
+     *
+     * @param portName
+     * @return
+     */
+    AttributeMap<PortContext> getInputPortAttributes(String portName);
+
+    /**
+     * Return the port attributes given the port name
+     *
+     * @param portName
+     * @return
+     */
+    AttributeMap<PortContext> getOutputPortAttributes(String portName);
   }
 
 }

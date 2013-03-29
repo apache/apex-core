@@ -17,7 +17,6 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
 {
   private final Operator operator;
   private transient Sink<T> sink;
-  private boolean autoRecord = false;
 
   @SuppressWarnings("unchecked")
   public DefaultOutputPort(Operator operator)
@@ -74,18 +73,6 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
   public Unifier<T> getUnifier()
   {
     return null;
-  }
-
-  @Override
-  public boolean isAutoRecord()
-  {
-    return autoRecord;
-  }
-
-  @Override
-  public void setAutoRecord(boolean autoRecord)
-  {
-    this.autoRecord = autoRecord;
   }
 
 }

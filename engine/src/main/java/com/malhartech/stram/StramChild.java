@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Unifier;
@@ -30,13 +31,11 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.security.PrivilegedExceptionAction;
 import java.util.Map.Entry;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
@@ -560,13 +559,13 @@ public class StramChild
           hb.addRecordingName(tupleRecorder.getRecordingName());
         }
         PortMappingDescriptor portMappingDescriptor = e.getValue().getPortMappingDescriptor();
-        for (String portName : portMappingDescriptor.inputPorts.keySet()) {
+        for (String portName: portMappingDescriptor.inputPorts.keySet()) {
           tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
           if (tupleRecorder != null) {
             hb.addRecordingName(tupleRecorder.getRecordingName());
           }
         }
-        for (String portName : portMappingDescriptor.outputPorts.keySet()) {
+        for (String portName: portMappingDescriptor.outputPorts.keySet()) {
           tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
           if (tupleRecorder != null) {
             hb.addRecordingName(tupleRecorder.getRecordingName());
@@ -1199,12 +1198,17 @@ public class StramChild
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
     for (final OperatorDeployInfo ndi: nodeList) {
       final Node<?> node = nodes.get(ndi.id);
+      final Map<String, AttributeMap<PortContext>> inputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
+      final Map<String, AttributeMap<PortContext>> outputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
       assert (!activeNodes.containsKey(ndi.id));
 
-      PortMappingDescriptor portMappingDescriptor = node.getPortMappingDescriptor();
-      for (Map.Entry<String, OutputPort<?>> entry: portMappingDescriptor.outputPorts.entrySet()) {
-        if (entry.getValue().isAutoRecord()) {
-          startRecording(node, ndi.id, entry.getKey(), true);
+      for (OperatorDeployInfo.InputDeployInfo idi: ndi.inputs) {
+        inputPortAttributes.put(idi.portName, idi.contextAttributes);
+      }
+      for (OperatorDeployInfo.OutputDeployInfo odi: ndi.outputs) {
+        outputPortAttributes.put(odi.portName, odi.contextAttributes);
+        if (odi.contextAttributes.attrValue(PortContext.AUTO_RECORD, false)) {
+          startRecording(node, ndi.id, odi.portName, true);
         }
       }
 
@@ -1214,8 +1218,19 @@ public class StramChild
         public void run()
         {
           try {
-            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes);
+            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes, inputPortAttributes, outputPortAttributes);
             node.getOperator().setup(context);
+            for (Map.Entry<String, AttributeMap<PortContext>> entry: inputPortAttributes.entrySet()) {
+              if (entry.getValue().attrValue(PortContext.AUTO_RECORD, false)) {
+                startRecording(node, ndi.id, entry.getKey(), true);
+              }
+            }
+            for (Map.Entry<String, AttributeMap<PortContext>> entry: outputPortAttributes.entrySet()) {
+              if (entry.getValue().attrValue(PortContext.AUTO_RECORD, false)) {
+                startRecording(node, ndi.id, entry.getKey(), true);
+              }
+            }
+
             activeNodes.put(ndi.id, context);
 
             activatedNodeCount.incrementAndGet();
@@ -1233,6 +1248,7 @@ public class StramChild
         }
 
       }.start();
+
     }
 
     /**

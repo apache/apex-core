@@ -12,6 +12,7 @@ import com.malhartech.util.AttributeMap.AttributeKey;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
 import io.netty.util.Attribute;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.Assert;
 import org.junit.Test;
@@ -119,7 +120,7 @@ public class GenericNodeTest
       public void run()
       {
         ab.set(true);
-        gn.activate(new OperatorContext(0, this, new DefaultAttributeMap<com.malhartech.api.Context.OperatorContext>(), new DefaultAttributeMap<com.malhartech.api.DAGContext>()));
+        gn.activate(new OperatorContext(0, this, new DefaultAttributeMap<com.malhartech.api.Context.OperatorContext>(), new DefaultAttributeMap<com.malhartech.api.DAGContext>(), new HashMap<String, AttributeMap<com.malhartech.api.Context.PortContext>>(), new HashMap<String, AttributeMap<com.malhartech.api.Context.PortContext>>()));
       }
 
     };

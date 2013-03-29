@@ -117,19 +117,6 @@ public interface Operator extends Component<OperatorContext>
      */
     public Unifier<T> getUnifier();
 
-    /**
-     * Returns whether this port should be auto recorded
-     *
-     * @return boolean
-     */
-    public boolean isAutoRecord();
-
-    /**
-     * Sets whether this port should be auto recorded
-     *
-     */
-    public void setAutoRecord(boolean autoRecord);
-
   }
 
 }
