@@ -5,7 +5,7 @@
 package com.malhartech.bufferserver.client;
 
 import java.net.InetSocketAddress;
-import malhar.netlet.DefaultEventLoop;
+import malhar.netlet.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,18 +15,13 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractSocketSubscriber extends VarIntLengthPrependerClient
 {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractSocketSubscriber.class);
-  InetSocketAddress address;
-  public DefaultEventLoop eventloop;
+  private InetSocketAddress address;
+  private EventLoop eventloop;
 
-  public void setup(String host, int port)
+  public void setup(InetSocketAddress address, EventLoop eventloop)
   {
-    if (host == null) {
-      address = new InetSocketAddress(port);
-    }
-    else {
-      address = new InetSocketAddress(host, port);
-    }
+    this.address = address;
+    this.eventloop = eventloop;
   }
 
   public void teardown()
@@ -43,4 +38,5 @@ public abstract class AbstractSocketSubscriber extends VarIntLengthPrependerClie
     eventloop.disconnect(this);
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(AbstractSocketSubscriber.class);
 }

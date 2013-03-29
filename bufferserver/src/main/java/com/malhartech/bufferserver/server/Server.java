@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import malhar.netlet.DefaultEventLoop;
+import malhar.netlet.EventLoop;
 import malhar.netlet.Listener.ServerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +38,7 @@ public class Server implements ServerListener
   private final int port;
   private String identity;
   private Storage storage;
-  DefaultEventLoop eventloop;
+  EventLoop eventloop;
   private InetSocketAddress address;
 
   /**
@@ -74,7 +75,7 @@ public class Server implements ServerListener
     logger.info("Server stopped listening at {}", address);
   }
 
-  public synchronized InetSocketAddress run(DefaultEventLoop eventloop)
+  public synchronized InetSocketAddress run(EventLoop eventloop)
   {
     eventloop.start(null, port, this);
     try {

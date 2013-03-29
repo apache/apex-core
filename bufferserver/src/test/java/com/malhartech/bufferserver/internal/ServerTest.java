@@ -14,7 +14,6 @@ import com.malhartech.bufferserver.packet.ResetWindowTuple;
 import com.malhartech.bufferserver.server.Server;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,8 +32,7 @@ public class ServerTest
 {
   private static final Logger logger = LoggerFactory.getLogger(ServerTest.class);
   static Server instance;
-  static String host;
-  static int port;
+  static InetSocketAddress address;
   static BufferServerPublisher bsp;
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
@@ -56,10 +54,8 @@ public class ServerTest
     eventloopClient.start();
 
     instance = new Server(0, 4096);
-    SocketAddress result = instance.run(eventloopServer);
-    assert (result instanceof InetSocketAddress);
-    host = ((InetSocketAddress)result).getHostName();
-    port = ((InetSocketAddress)result).getPort();
+    address = instance.run(eventloopServer);
+    assert (address instanceof InetSocketAddress);
   }
 
   @AfterClass
@@ -73,12 +69,10 @@ public class ServerTest
   public void testNoPublishNoSubscribe() throws InterruptedException
   {
     bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloopClient;
-    bsp.setup(host, port);
+    bsp.setup(address, eventloopClient);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bsp.activate();
     bss.activate();
@@ -100,12 +94,10 @@ public class ServerTest
   public void test1Window() throws InterruptedException
   {
     bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloopClient;
-    bsp.setup(host, port);
+    bsp.setup(address, eventloopClient);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bsp.activate();
     bss.activate();
@@ -136,8 +128,7 @@ public class ServerTest
   public void testLateSubscriber() throws InterruptedException
   {
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bss.activate();
 
@@ -161,13 +152,11 @@ public class ServerTest
   public void testATonOfData() throws InterruptedException
   {
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
     bss.activate();
 
     bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloopClient;
-    bsp.setup(host, port);
+    bsp.setup(address, eventloopClient);
     bsp.baseWindow = 0x7afebabe;
     bsp.windowId = 0;
     bsp.activate();
@@ -219,8 +208,7 @@ public class ServerTest
   {
 
     bsc = new BufferServerController("MyPublisher");
-    bsc.eventloop = eventloopClient;
-    bsc.setup(host, port);
+    bsc.setup(address, eventloopClient);
 
     bsc.windowId = 0;
     bsc.activate();
@@ -237,8 +225,7 @@ public class ServerTest
     assertNotNull(bsc.data);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -257,8 +244,7 @@ public class ServerTest
   public void testPurgeSome() throws InterruptedException
   {
     bsc = new BufferServerController("MyPublisher");
-    bsc.eventloop = eventloopClient;
-    bsc.setup(host, port);
+    bsc.setup(address, eventloopClient);
 
     bsc.windowId = 0x7afebabe00000000L;
     bsc.activate();
@@ -275,8 +261,7 @@ public class ServerTest
     assertNotNull(bsc.data);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -294,8 +279,7 @@ public class ServerTest
   public void testPurgeAll() throws InterruptedException
   {
     bsc = new BufferServerController("MyPublisher");
-    bsc.eventloop = eventloopClient;
-    bsc.setup(host, port);
+    bsc.setup(address, eventloopClient);
 
     bsc.windowId = 0x7afebabe00000001L;
     bsc.activate();
@@ -312,8 +296,7 @@ public class ServerTest
     assertNotNull(bsc.data);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
@@ -339,8 +322,7 @@ public class ServerTest
   public void testReblishLowerWindow() throws InterruptedException
   {
     bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloopClient;
-    bsp.setup(host, port);
+    bsp.setup(address, eventloopClient);
 
     bsp.baseWindow = 10;
     bsp.windowId = 0;
@@ -374,8 +356,7 @@ public class ServerTest
     bsp.teardown();
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
@@ -397,8 +378,7 @@ public class ServerTest
   public void testReset() throws InterruptedException
   {
     bsc = new BufferServerController("MyPublisher");
-    bsc.eventloop = eventloopClient;
-    bsc.setup(host, port);
+    bsc.setup(address, eventloopClient);
 
     bsc.windowId = 0x7afebabe00000001L;
     bsc.activate();
@@ -415,8 +395,7 @@ public class ServerTest
     assertNotNull(bsc.data);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bss.activate();
     for (int i = 0; i < spinCount; i++) {
@@ -449,8 +428,7 @@ public class ServerTest
   public void testEarlySubscriberForLaterWindow() throws InterruptedException
   {
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bss.windowId = 50;
     bss.activate();
@@ -458,8 +436,7 @@ public class ServerTest
     /* wait in a hope that the subscriber is able to reach the server */
     Thread.sleep(100);
     bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloopClient;
-    bsp.setup(host, port);
+    bsp.setup(address, eventloopClient);
 
 
     bsp.baseWindow = 0;

@@ -6,7 +6,7 @@ package com.malhartech.bufferserver.client;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
-import malhar.netlet.DefaultEventLoop;
+import malhar.netlet.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,19 +16,14 @@ import org.slf4j.LoggerFactory;
  */
 public class AbstractSocketPublisher extends VarIntLengthPrependerClient
 {
-  public DefaultEventLoop eventloop;
-  InetSocketAddress address;
+  private EventLoop eventloop;
+  private InetSocketAddress address;
 
 
-  public void setup(String host, int port)
+  public void setup(InetSocketAddress address, EventLoop eventloop)
   {
-    if (host == null) {
-      address = new InetSocketAddress(port);
-    }
-    else{
-      address = new InetSocketAddress(host, port);
-    }
-
+    this.address = address;
+    this.eventloop = eventloop;
   }
 
   public void teardown()

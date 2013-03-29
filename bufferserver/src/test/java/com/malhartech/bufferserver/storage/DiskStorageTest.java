@@ -13,7 +13,6 @@ import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.bufferserver.server.Server;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import malhar.netlet.DefaultEventLoop;
 import static org.testng.Assert.assertEquals;
 import org.testng.annotations.AfterClass;
@@ -33,9 +32,7 @@ public class DiskStorageTest
   static BufferServerSubscriber bss;
   static BufferServerController bsc;
   static int spinCount = 500;
-
-  static String host;
-  static int port;
+  static InetSocketAddress address;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
@@ -49,22 +46,17 @@ public class DiskStorageTest
     instance = new Server(0, 1024);
     instance.setSpoolStorage(new DiskStorage());
 
-    SocketAddress result = instance.run(eventloopServer);
-    assert (result instanceof InetSocketAddress);
-     host = ((InetSocketAddress)result).getHostName();
-    port = ((InetSocketAddress)result).getPort();
+    address = instance.run(eventloopServer);
+    assert (address instanceof InetSocketAddress);
 
     bsp = new BufferServerPublisher("MyPublisher");
-    bsp.eventloop = eventloopClient;
-    bsp.setup(host, port);
+    bsp.setup(address, eventloopClient);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bsc = new BufferServerController("MyPublisher");
-    bsc.eventloop = eventloopClient;
-    bsc.setup(host, port);
+    bsc.setup(address, eventloopClient);
   }
 
   @AfterClass
@@ -72,6 +64,7 @@ public class DiskStorageTest
   {
     bsc.teardown();
     eventloopServer.stop(instance);
+    eventloopClient.stop();
     eventloopServer.stop();
   }
 
@@ -125,8 +118,7 @@ public class DiskStorageTest
     assertEquals(bss.tupleCount.get(), 2004);
 
     bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.eventloop = eventloopClient;
-    bss.setup(host, port);
+    bss.setup(address, eventloopClient);
 
     bss.activate();
 
