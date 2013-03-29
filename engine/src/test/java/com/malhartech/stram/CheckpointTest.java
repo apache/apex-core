@@ -64,22 +64,31 @@ public class CheckpointTest
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
     String containerId = "container1";
-    StramChildAgent cc = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
+    StramChildAgent sca = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
 
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
     WindowGenerator wingen = StramTestSupport.setupWindowGenerator(mses);
     LocalStramChild container = new LocalStramChild(containerId, null, wingen);
-    container.setup(cc.getInitContext());
+
+    container.setup(sca.getInitContext());
     // push deploy
-    List<OperatorDeployInfo> deployInfo = cc.getDeployInfo();
+    List<OperatorDeployInfo> deployInfo = sca.getDeployInfo();
+    Assert.assertEquals("size " + deployInfo, 1, deployInfo.size());
+
     ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
     rsp.deployRequest = deployInfo;
 
-    StramChildAgent.DeployRequest dr = new StramChildAgent.DeployRequest(null, null);
-    dr.setOperators(cc.container.operators);
-    cc.addRequest(dr);
-
     container.processHeartbeatResponse(rsp);
+
+    StreamingNodeHeartbeat ohb = new StreamingNodeHeartbeat();
+    ohb.setNodeId(deployInfo.get(0).id);
+    ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
+
+    ContainerHeartbeat hb = new ContainerHeartbeat();
+    hb.setContainerId(containerId);
+    hb.setDnodeEntries(Collections.singletonList(ohb));
+
+    dnm.processHeartbeat(hb); // mark deployed
 
 //    mses.tick(1); // begin window 0
     mses.tick(1); // begin window 1
@@ -110,13 +119,8 @@ public class CheckpointTest
     File cpFile1 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + backupRequest.getOperatorId() + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
-    StreamingNodeHeartbeat hbe = new StreamingNodeHeartbeat();
-    hbe.setNodeId(context.getId());
-    hbe.setLastBackupWindowId(context.getLastProcessedWindowId());
-    hbe.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
-    ContainerHeartbeat hb = new ContainerHeartbeat();
-    hb.setContainerId(containerId);
-    hb.setDnodeEntries(Collections.singletonList(hbe));
+    ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
+    ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
 
     // fake heartbeat to propagate checkpoint
     dnm.processHeartbeat(hb);
@@ -130,7 +134,7 @@ public class CheckpointTest
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     // fake heartbeat to propagate checkpoint
-    hbe.setLastBackupWindowId(context.getLastProcessedWindowId());
+    ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
     dnm.processHeartbeat(hb);
 
     // purge checkpoints

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -25,6 +26,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
@@ -263,29 +265,45 @@ public class PhysicalPlan {
   }
 
   /**
+   * Determine operators that should be deployed into the execution environment.
+   * Operators can be deployed once all containers are running and any pending
+   * undeploy operations are complete.
+   * @return
+   */
+  public Set<PTOperator> getOperatorsForDeploy(PTContainer c) {
+    for (PTContainer otherContainer : this.containers) {
+      if (otherContainer != c && (otherContainer.state != PTContainer.State.ACTIVE || !otherContainer.pendingUndeploy.isEmpty())) {
+        LOG.debug("{}({}) unsatisfied dependency: {}({})", new Object[] {c.containerId, c.state, otherContainer.containerId, otherContainer.state});
+        return Collections.emptySet();
+      }
+    }
+    return c.pendingDeploy;
+  }
+
+  /**
    *
    * Representation of an operator in the physical layout<p>
    * <br>
    *
    */
   public static class PTOperator extends PTComponent {
-/*
-    enum State {
+
+    public enum State {
       NEW,
       PENDING_DEPLOY,
-      RUNNING,
+      ACTIVE,
       PENDING_UNDEPLOY,
+      INACTIVE,
       REMOVED
     }
 
-    State state = State.NEW;
-*/
     PTOperator(PhysicalPlan plan, int id, String name) {
       this.plan = plan;
       this.name = name;
       this.id = id;
     }
 
+    private State state = State.NEW;
     private final PhysicalPlan plan;
     private DAG.OperatorMeta logicalNode;
     private final int id;
@@ -310,6 +328,14 @@ public class PhysicalPlan {
      */
     public OperatorMeta getOperatorMeta() {
       return this.logicalNode;
+    }
+
+    public State getState() {
+      return state;
+    }
+
+    public void setState(State state) {
+      this.state = state;
     }
 
     /**
@@ -383,11 +409,36 @@ public class PhysicalPlan {
    */
 
   public static class PTContainer {
+    public enum State {
+      NEW,
+      ACTIVE,
+      TIMEDOUT,
+      KILLED
+    }
+
+    private State state = State.NEW;
+
     List<PTOperator> operators = new ArrayList<PTOperator>();
+    Set<PTOperator> pendingUndeploy = Collections.newSetFromMap(new ConcurrentHashMap<PTOperator, Boolean>());
+    Set<PTOperator> pendingDeploy = Collections.newSetFromMap(new ConcurrentHashMap<PTOperator, Boolean>());
+
     String containerId; // assigned yarn container id
     String host;
     InetSocketAddress bufferServerAddress;
     int restartAttempts;
+    final PhysicalPlan plan;
+
+    PTContainer(PhysicalPlan plan) {
+      this.plan = plan;
+    }
+
+    public State getState() {
+      return this.state;
+    }
+
+    public void setState(State state) {
+      this.state = state;
+    }
 
     /**
      *
@@ -414,13 +465,15 @@ public class PhysicalPlan {
         index = maxContainers - 1;
       }
       for (int i=containers.size(); i<index+1; i++) {
-        containers.add(i, new PTContainer());
+        containers.add(i, new PTContainer(this));
       }
     }
     return containers.get(index);
   }
 
-
+  /**
+   * Interface to execution context that can be mocked for plan testing.
+   */
   interface PlanContext {
 
     /**
@@ -430,19 +483,22 @@ public class PhysicalPlan {
     public BackupAgent getBackupAgent();
 
     /**
-     * Request deployment changes as sequence of undeploy, container start and deploy groups with dependency.
-     * @param container
+     * Request deployment change as sequence of undeploy, container start and deploy groups with dependency.
+     * Called on initial plan and on dynamic changes during execution.
      */
     public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy);
 
-    // TODO: pass events through pub/sub and present context as command parameter
+    /**
+     * Trigger event to perform plan modification.
+     * @param r
+     */
     public void dispatch(Runnable r);
 
   }
 
   public static class PMapping {
-    private PMapping(OperatorMeta ow) {
-      this.logicalOperator = ow;
+    private PMapping(OperatorMeta om) {
+      this.logicalOperator = om;
     }
 
     final private OperatorMeta logicalOperator;
@@ -584,6 +640,7 @@ public class PhysicalPlan {
 
     // assign operators to containers
     int groupCount = 0;
+    Set<PTOperator> deployOperators = Sets.newHashSet();
     for (Map.Entry<OperatorMeta, PMapping> e : logicalToPTOperator.entrySet()) {
       for (PTOperator node : e.getValue().getAllNodes()) {
         if (node.container == null) {
@@ -599,9 +656,14 @@ public class PhysicalPlan {
           } else {
             setContainer(node, container);
           }
+          deployOperators.addAll(container.operators);
         }
       }
     }
+
+    // request initial deployment
+    ctx.redeploy(Collections.<PTOperator>emptySet(), Sets.newHashSet(containers), deployOperators);
+
   }
 
   private void setContainer(PTOperator pOperator, PTContainer container) {
@@ -809,7 +871,7 @@ public class PhysicalPlan {
         if (c == null) {
           // get new container
           LOG.debug("New container for partition: " + p);
-          c = new PTContainer();
+          c = new PTContainer(this);
           newContainers.add(c);
         }
       }
