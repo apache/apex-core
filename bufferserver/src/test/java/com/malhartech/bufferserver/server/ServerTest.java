@@ -5,12 +5,12 @@
 package com.malhartech.bufferserver.server;
 
 import com.malhartech.bufferserver.client.Controller;
-import com.malhartech.bufferserver.client.Publisher;
-import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.EndWindowTuple;
 import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.bufferserver.packet.ResetWindowTuple;
+import com.malhartech.bufferserver.support.Publisher;
+import com.malhartech.bufferserver.support.Subscriber;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import malhar.netlet.DefaultEventLoop;
@@ -70,11 +70,11 @@ public class ServerTest
     bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MySubscriber");
     bss.setup(address, eventloopClient);
 
-    bsp.activate();
-    bss.activate();
+    bsp.activate(0L);
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     synchronized (this) {
       wait(100);
@@ -95,11 +95,11 @@ public class ServerTest
     bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
 
-    bsp.activate();
-    bss.activate();
+    bsp.activate(0L);
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     long resetInfo = 0x7afebabe000000faL;
 
@@ -126,10 +126,10 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testLateSubscriber() throws InterruptedException
   {
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
 
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -150,15 +150,13 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testATonOfData() throws InterruptedException
   {
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
-    bsp.baseWindow = 0x7afebabe;
-    bsp.windowId = 0;
-    bsp.activate();
+    bsp.activate(0x7afebabe, 0);
 
     long windowId = 0x7afebabe00000000L;
 
@@ -173,7 +171,6 @@ public class ServerTest
     bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
     windowId++;
-
 
     bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
@@ -223,9 +220,9 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() > 204) {
@@ -259,9 +256,9 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() > 102) {
@@ -294,10 +291,10 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
 
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (!bss.resetPayloads.isEmpty()) {
@@ -323,9 +320,7 @@ public class ServerTest
     bsp = new Publisher("MyPublisher");
     bsp.setup(address, eventloopClient);
 
-    bsp.baseWindow = 10;
-    bsp.windowId = 0;
-    bsp.activate();
+    bsp.activate(10, 0);
 
     long windowId = 0L;
 
@@ -354,10 +349,10 @@ public class ServerTest
     bsp.deactivate();
     bsp.teardown();
 
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
 
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() > 7) {
@@ -393,10 +388,10 @@ public class ServerTest
 
     assertNotNull(bsc.data);
 
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
 
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() > 0) {
@@ -426,11 +421,9 @@ public class ServerTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testEarlySubscriberForLaterWindow() throws InterruptedException
   {
-    bss = new Subscriber("MyPublisher", 0, null);
+    bss = new Subscriber("MyPublisher");
     bss.setup(address, eventloopClient);
-
-    bss.windowId = 50;
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 50L);
 
     /* wait in a hope that the subscriber is able to reach the server */
     Thread.sleep(100);
@@ -438,9 +431,7 @@ public class ServerTest
     bsp.setup(address, eventloopClient);
 
 
-    bsp.baseWindow = 0;
-    bsp.windowId = 0;
-    bsp.activate();
+    bsp.activate(0, 0);
 
     for (int i = 0; i < 100; i++) {
       bsp.publishMessage(BeginWindowTuple.getSerializedTuple(i));

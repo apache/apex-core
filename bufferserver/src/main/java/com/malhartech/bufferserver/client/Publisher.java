@@ -15,53 +15,34 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class Publisher extends AbstractClient
+public abstract class Publisher extends AbstractClient
 {
   private final String id;
-  public int baseWindow;
-  public int windowId;
 
   public Publisher(String id)
   {
     this.id = id;
   }
 
-  public void publishMessage(byte[] payload)
-  {
-    write(payload);
-  }
-
-  /**
-   *
-   */
   @Override
   public void activate()
   {
-    super.activate();
-    write(PublishRequestTuple.getSerializedRequest(id, (long)baseWindow << 32 | windowId));
+    throw new RuntimeException("please use 'void activate(long windowId)' instead");
   }
-
-  @Override
-  public void handleException(Exception cce, DefaultEventLoop el)
+  /**
+   *
+   * @param windowId
+   */
+  public void activate(long windowId)
   {
-    if (cce instanceof IOException) {
-      el.disconnect(this);
-    }
-    else {
-      throw new RuntimeException(cce);
-    }
+    super.activate();
+    write(PublishRequestTuple.getSerializedRequest(id, windowId));
   }
 
   @Override
   public String toString()
   {
-    return "BufferServerPublisher";
-  }
-
-  @Override
-  public void onMessage(byte[] buffer, int offset, int size)
-  {
-    logger.warn("received data when unexpected {}", Arrays.toString(Arrays.copyOfRange(buffer, offset, size)));
+    return "Publisher{" + "id=" + id + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Publisher.class);

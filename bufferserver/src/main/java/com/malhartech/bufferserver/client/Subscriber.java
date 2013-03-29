@@ -5,12 +5,7 @@
 package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.packet.SubscribeRequestTuple;
-import com.malhartech.bufferserver.packet.Tuple;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.concurrent.atomic.AtomicInteger;
-import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,33 +19,27 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class Subscriber extends AbstractClient
+public abstract class Subscriber extends AbstractClient
 {
-  private final String sourceId;
-  private final Collection<Integer> partitions;
-  private final int mask;
-  public AtomicInteger tupleCount = new AtomicInteger(0);
-  public WindowIdHolder firstPayload, lastPayload;
-  public final ArrayList<Object> resetPayloads = new ArrayList<Object>();
-  public long windowId;
+  private final String id;
 
-  public Subscriber(String sourceId, int mask, Collection<Integer> partitions)
+  public Subscriber(String id)
   {
-    this.sourceId = sourceId;
-    this.mask = mask;
-    this.partitions = partitions;
+    this.id = id;
   }
 
   @Override
   public void activate()
   {
-    tupleCount.set(0);
-    firstPayload = lastPayload = null;
-    resetPayloads.clear();
+    throw new RuntimeException("please use 'void activate(String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)' instead");
+  }
+
+  public void activate(String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)
+  {
     super.activate();
     write(SubscribeRequestTuple.getSerializedRequest(
-            "BufferServerSubscriber",
-            "BufferServerOutput/BufferServerSubscriber",
+            id,
+            type,
             sourceId,
             mask,
             partitions,
@@ -58,111 +47,9 @@ public class Subscriber extends AbstractClient
   }
 
   @Override
-  public void handleException(Exception cce, DefaultEventLoop el)
-  {
-    if (cce instanceof IOException) {
-      el.disconnect(this);
-    }
-    else {
-      throw new RuntimeException(cce);
-    }
-  }
-
-  @Override
-  public void onMessage(byte[] buffer, int offset, int size)
-  {
-    Tuple tuple = Tuple.getTuple(buffer, offset, size);
-    tupleCount.incrementAndGet();
-    switch (tuple.getType()) {
-      case BEGIN_WINDOW:
-        beginWindow(tuple.getWindowId());
-        break;
-
-      case END_WINDOW:
-        endWindow(tuple.getWindowId());
-        break;
-
-      case RESET_WINDOW:
-        resetWindow(tuple.getBaseSeconds(), tuple.getWindowWidth());
-        break;
-    }
-  }
-
-  public void beginWindow(final int windowId)
-  {
-    WindowIdHolder payload = new WindowIdHolder()
-    {
-      @Override
-      public int getWindowId()
-      {
-        return windowId;
-      }
-
-    };
-
-    if (firstPayload == null) {
-      firstPayload = payload;
-    }
-
-    lastPayload = payload;
-  }
-
-  public void endWindow(final int windowId)
-  {
-    WindowIdHolder payload = new WindowIdHolder()
-    {
-      @Override
-      public int getWindowId()
-      {
-        return windowId;
-      }
-
-    };
-
-    if (firstPayload == null) {
-      firstPayload = payload;
-    }
-
-    lastPayload = payload;
-  }
-
-  public void resetWindow(final int baseSeconds, final int windowWidth)
-  {
-    resetPayloads.add(new ResetHolder()
-    {
-      @Override
-      public int getBaseSeconds()
-      {
-        return baseSeconds;
-      }
-
-      @Override
-      public int getWindowWidth()
-      {
-        return windowWidth;
-      }
-
-    });
-  }
-
-  @Override
   public String toString()
   {
-    return "BufferServerSubscriber";
-  }
-
-  public interface WindowIdHolder
-  {
-    public int getWindowId();
-
-  }
-
-  public interface ResetHolder
-  {
-    public int getBaseSeconds();
-
-    public int getWindowWidth();
-
+    return "Subscriber{" + "id=" + id + '}';
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Subscriber.class);

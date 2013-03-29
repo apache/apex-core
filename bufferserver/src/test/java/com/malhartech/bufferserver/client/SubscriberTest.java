@@ -4,13 +4,13 @@
  */
 package com.malhartech.bufferserver.client;
 
-import com.malhartech.bufferserver.client.Publisher;
-import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.EndWindowTuple;
 import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.bufferserver.packet.ResetWindowTuple;
 import com.malhartech.bufferserver.server.Server;
+import com.malhartech.bufferserver.support.Publisher;
+import com.malhartech.bufferserver.support.Subscriber;
 import com.malhartech.bufferserver.util.Codec;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -69,7 +69,7 @@ public class SubscriberTest
     final Publisher bsp1 = new Publisher("MyPublisher");
     bsp1.setup(address, eventloopClient);
 
-    final Subscriber bss1 = new Subscriber("MyPublisher", 0, null)
+    final Subscriber bss1 = new Subscriber("MySubscriber")
     {
       @Override
       public void beginWindow(int windowId)
@@ -91,10 +91,9 @@ public class SubscriberTest
     };
     bss1.setup(address, eventloopClient);
 
-    bsp1.baseWindow = 0x7afebabe;
-    bsp1.windowId = 00000000;
-    bsp1.activate();
-    bss1.activate();
+    final int baseWindow = 0x7afebabe;
+    bsp1.activate(baseWindow, 0);
+    bss1.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     final AtomicBoolean publisherRun = new AtomicBoolean(true);
     new Thread("publisher")
@@ -103,7 +102,7 @@ public class SubscriberTest
       @SuppressWarnings("SleepWhileInLoop")
       public void run()
       {
-        bsp1.publishMessage(ResetWindowTuple.getSerializedTuple(bsp1.baseWindow, 500));
+        bsp1.publishMessage(ResetWindowTuple.getSerializedTuple(baseWindow, 500));
 
         long windowId = 0x7afebabe00000000L;
         try {
@@ -149,8 +148,9 @@ public class SubscriberTest
      */
     final Publisher bsp2 = new Publisher("MyPublisher");
     bsp2.setup(address, eventloopClient);
+    bsp2.activate(0x7afebabe, 5);
 
-    final Subscriber bss2 = new Subscriber("MyPublisher", 0, null)
+    final Subscriber bss2 = new Subscriber("MyPublisher")
     {
       @Override
       public void beginWindow(int windowId)
@@ -165,10 +165,8 @@ public class SubscriberTest
 
     };
     bss2.setup(address, eventloopClient);
+    bss2.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0x7afebabe00000008L);
 
-    bsp2.baseWindow = 0x7afebabe;
-    bsp2.windowId = 5;
-    bsp2.activate();
 
     publisherRun.set(true);
     new Thread("publisher")
@@ -202,9 +200,6 @@ public class SubscriberTest
       }
 
     }.start();
-
-    bss2.windowId = 0x7afebabe00000008L;
-    bss2.activate();
 
     synchronized (this) {
       wait();
