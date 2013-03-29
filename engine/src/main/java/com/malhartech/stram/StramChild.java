@@ -714,88 +714,13 @@ public class StramChild
 
       case START_RECORDING: {
         final String portName = snr.getPortName();
-        final String operatorPortName = getRecorderKey(operatorId, portName);
-
-        logger.debug("Received start recording request for {}", operatorPortName);
+        logger.debug("Received start recording request for {}", getRecorderKey(operatorId, portName));
         context.request(new OperatorContext.NodeRequest()
         {
           @Override
           public void execute(Operator operator, int operatorId, long windowId) throws IOException
           {
-            PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
-            // check any recording conflict
-            boolean conflict = false;
-            if (tupleRecorders.containsKey(String.valueOf(operatorId))) {
-              conflict = true;
-            }
-            else if (portName == null) {
-              for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
-                if (tupleRecorders.containsKey(getRecorderKey(operatorId, entry.getKey()))) {
-                  conflict = true;
-                  break;
-                }
-              }
-              for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
-                if (tupleRecorders.containsKey(getRecorderKey(operatorId, entry.getKey()))) {
-                  conflict = true;
-                  break;
-                }
-              }
-            }
-            else {
-              if (tupleRecorders.containsKey(operatorPortName)) {
-                conflict = true;
-              }
-            }
-            if (!conflict) {
-              logger.debug("Executing start recording request for " + operatorPortName);
-
-              TupleRecorder tupleRecorder = new TupleRecorder();
-              String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
-              String defaultName = StramChild.this.containerId + "_" + operatorPortName + "_" + tupleRecorder.getStartTime();
-              tupleRecorder.setRecordingName(defaultName);
-              tupleRecorder.setBasePath(basePath);
-              tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
-              tupleRecorder.setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);
-              if (StramChild.this.daemonAddress != null) {
-                String url = "ws://" + StramChild.this.daemonAddress + "/pubsub";
-                try {
-                  tupleRecorder.setPubSubUrl(url);
-                }
-                catch (URISyntaxException ex) {
-                  logger.warn("URL {} is not valid. NOT posting live tuples to daemon.", url, ex);
-                }
-              }
-              HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
-              for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
-                String streamId = getDeclaredStreamId(operatorId, entry.getKey());
-                if (streamId != null && (portName == null || entry.getKey().equals(portName))) {
-                  logger.info("Adding recorder sink to input port {}, stream {}", entry.getKey(), streamId);
-                  tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
-                  sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
-                }
-              }
-              for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
-                String streamId = getDeclaredStreamId(operatorId, entry.getKey());
-                if (streamId != null && (portName == null || entry.getKey().equals(portName))) {
-                  logger.info("Adding recorder sink to output port {}, stream {}", entry.getKey(), streamId);
-                  tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
-                  sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
-                }
-              }
-              if (!sinkMap.isEmpty()) {
-                logger.debug("Started recording to base path {}", basePath);
-                node.addSinks(sinkMap);
-                tupleRecorder.setup(null);
-                tupleRecorders.put(operatorPortName, tupleRecorder);
-              }
-              else {
-                logger.warn("Tuple recording request ignored because operator is not connected on the specified port.");
-              }
-            }
-            else {
-              logger.error("Operator id {} is already being recorded.", operatorPortName);
-            }
+            startRecording(node, operatorId, portName, false);
           }
 
         });
@@ -804,28 +729,14 @@ public class StramChild
 
       case STOP_RECORDING: {
         final String portName = snr.getPortName();
-        final String operatorPortName = getRecorderKey(operatorId, portName);
-        logger.debug("Received stop recording request for {}" + operatorPortName);
+        logger.debug("Received stop recording request for {}", getRecorderKey(operatorId, portName));
 
         context.request(new OperatorContext.NodeRequest()
         {
           @Override
           public void execute(Operator operator, int operatorId, long windowId) throws IOException
           {
-            if (tupleRecorders.containsKey(operatorPortName)) {
-              logger.debug("Executing stop recording request for {}", operatorPortName);
-
-              TupleRecorder tupleRecorder = tupleRecorders.get(operatorPortName);
-              if (tupleRecorder != null) {
-                node.removeSinks(tupleRecorder.getSinkMap());
-                tupleRecorder.teardown();
-                logger.debug("Stopped recording for operator/port {}", operatorPortName);
-                tupleRecorders.remove(operatorPortName);
-              }
-            }
-            else {
-              logger.error("Operator/port {} is not being recorded.", operatorPortName);
-            }
+            stopRecording(node, operatorId, portName);
           }
 
         });
@@ -834,26 +745,14 @@ public class StramChild
 
       case SYNC_RECORDING: {
         final String portName = snr.getPortName();
-        final String operatorPortName = getRecorderKey(operatorId, portName);
-        logger.debug("Received sync recording request for " + operatorId);
+        logger.debug("Received sync recording request for {}", getRecorderKey(operatorId, portName));
 
         context.request(new OperatorContext.NodeRequest()
         {
           @Override
           public void execute(Operator operator, int operatorId, long windowId) throws IOException
           {
-            if (tupleRecorders.containsKey(operatorPortName)) {
-              logger.debug("Executing sync recording request for {}" + operatorPortName);
-
-              TupleRecorder tupleRecorder = tupleRecorders.get(operatorPortName);
-              if (tupleRecorder != null) {
-                tupleRecorder.requestSync();
-                logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
-              }
-            }
-            else {
-              logger.error("(SYNC_RECORDING) Operator/port " + operatorPortName + " is not being recorded.");
-            }
+            syncRecording(node, operatorId, portName);
           }
 
         });
@@ -1301,6 +1200,14 @@ public class StramChild
     for (final OperatorDeployInfo ndi: nodeList) {
       final Node<?> node = nodes.get(ndi.id);
       assert (!activeNodes.containsKey(ndi.id));
+
+      PortMappingDescriptor portMappingDescriptor = node.getPortMappingDescriptor();
+      for (Map.Entry<String, OutputPort<?>> entry: portMappingDescriptor.outputPorts.entrySet()) {
+        if (entry.getValue().isAutoRecord()) {
+          startRecording(node, ndi.id, entry.getKey(), true);
+        }
+      }
+
       new Thread(node.id)
       {
         @Override
@@ -1382,6 +1289,127 @@ public class StramChild
   private String getRecorderKey(int operatorId, String portName)
   {
     return String.valueOf(operatorId) + (portName != null ? ("$" + portName) : "");
+  }
+
+  private void startRecording(Node<?> node, int operatorId, String portName, boolean recordEvenIfNotConnected)
+  {
+    PortMappingDescriptor descriptor = node.getPortMappingDescriptor();
+    String operatorPortName = getRecorderKey(operatorId, portName);
+    // check any recording conflict
+    boolean conflict = false;
+    if (tupleRecorders.containsKey(String.valueOf(operatorId))) {
+      conflict = true;
+    }
+    else if (portName == null) {
+      for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
+        if (tupleRecorders.containsKey(getRecorderKey(operatorId, entry.getKey()))) {
+          conflict = true;
+          break;
+        }
+      }
+      for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
+        if (tupleRecorders.containsKey(getRecorderKey(operatorId, entry.getKey()))) {
+          conflict = true;
+          break;
+        }
+      }
+    }
+    else {
+      if (tupleRecorders.containsKey(operatorPortName)) {
+        conflict = true;
+      }
+    }
+    if (!conflict) {
+      logger.debug("Executing start recording request for " + operatorPortName);
+
+      TupleRecorder tupleRecorder = new TupleRecorder();
+      String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
+      String defaultName = StramChild.this.containerId + "_" + operatorPortName + "_" + tupleRecorder.getStartTime();
+      tupleRecorder.setRecordingName(defaultName);
+      tupleRecorder.setBasePath(basePath);
+      tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
+      tupleRecorder.setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);
+      if (StramChild.this.daemonAddress != null) {
+        String url = "ws://" + StramChild.this.daemonAddress + "/pubsub";
+        try {
+          tupleRecorder.setPubSubUrl(url);
+        }
+        catch (URISyntaxException ex) {
+          logger.warn("URL {} is not valid. NOT posting live tuples to daemon.", url, ex);
+        }
+      }
+      HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
+      for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
+        String streamId = getDeclaredStreamId(operatorId, entry.getKey());
+        if (recordEvenIfNotConnected && streamId == null) {
+          streamId = portName + "_implicit_stream";
+        }
+        if (streamId != null && (portName == null || entry.getKey().equals(portName))) {
+          logger.info("Adding recorder sink to input port {}, stream {}", entry.getKey(), streamId);
+          tupleRecorder.addInputPortInfo(entry.getKey(), streamId);
+          sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+        }
+      }
+      for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
+        String streamId = getDeclaredStreamId(operatorId, entry.getKey());
+        if (recordEvenIfNotConnected && streamId == null) {
+          streamId = portName + "_implicit_stream";
+        }
+        if (streamId != null && (portName == null || entry.getKey().equals(portName))) {
+          logger.info("Adding recorder sink to output port {}, stream {}", entry.getKey(), streamId);
+          tupleRecorder.addOutputPortInfo(entry.getKey(), streamId);
+          sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
+        }
+      }
+      if (!sinkMap.isEmpty()) {
+        logger.debug("Started recording (name: {}) to base path {}", operatorPortName, basePath);
+        node.addSinks(sinkMap);
+        tupleRecorder.setup(null);
+        tupleRecorders.put(operatorPortName, tupleRecorder);
+      }
+      else {
+        logger.warn("Tuple recording request ignored because operator is not connected on the specified port.");
+      }
+    }
+    else {
+      logger.error("Operator id {} is already being recorded.", operatorPortName);
+    }
+  }
+
+  private void stopRecording(Node<?> node, int operatorId, String portName)
+  {
+    String operatorPortName = getRecorderKey(operatorId, portName);
+    if (tupleRecorders.containsKey(operatorPortName)) {
+      logger.debug("Executing stop recording request for {}", operatorPortName);
+
+      TupleRecorder tupleRecorder = tupleRecorders.get(operatorPortName);
+      if (tupleRecorder != null) {
+        node.removeSinks(tupleRecorder.getSinkMap());
+        tupleRecorder.teardown();
+        logger.debug("Stopped recording for operator/port {}", operatorPortName);
+        tupleRecorders.remove(operatorPortName);
+      }
+    }
+    else {
+      logger.error("Operator/port {} is not being recorded.", operatorPortName);
+    }
+  }
+
+  private void syncRecording(Node<?> node, int operatorId, String portName)
+  {
+    String operatorPortName = getRecorderKey(operatorId, portName);
+    if (tupleRecorders.containsKey(operatorPortName)) {
+      logger.debug("Executing sync recording request for {}" + operatorPortName);
+
+      TupleRecorder tupleRecorder = tupleRecorders.get(operatorPortName);
+      if (tupleRecorder != null) {
+        tupleRecorder.requestSync();
+        logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
+      }
+    }
+    else {
+      logger.error("(SYNC_RECORDING) Operator/port " + operatorPortName + " is not being recorded.");
+    }
   }
 
 }

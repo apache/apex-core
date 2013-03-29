@@ -569,7 +569,7 @@ public class DAG implements Serializable, DAGContext
   {
     return Collections.unmodifiableCollection(this.streams.values());
   }
-  
+
   public OperatorMeta getOperatorMeta(String operatorId)
   {
     return this.operators.get(operatorId);
@@ -679,7 +679,7 @@ public class DAG implements Serializable, DAGContext
         allPortsOptional &= (pm.portAnnotation != null && pm.portAnnotation.optional());
       }
       if (!allPortsOptional && n.outputStreams.isEmpty()) {
-        throw new IllegalArgumentException("At least on output port must be connected: " + n.id);
+        throw new IllegalArgumentException("At least one output port must be connected: " + n.id);
       }
     }
     stack = new Stack<OperatorMeta>();
