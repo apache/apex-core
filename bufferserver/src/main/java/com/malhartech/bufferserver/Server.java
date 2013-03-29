@@ -28,11 +28,22 @@ public class Server
   public static final int DEFAULT_PORT = 9080;
   public static final int DEFAULT_BUFFER_SIZE = 64 * 1024 * 1024;
   public static final int DEFAULT_BLOCK_COUNT = 8;
+
+  /**
+   * List of classes defines containing jar files that will
+   * be included during cluster deployment.
+   */
+  public static final Class<?>[] CLUSTER_DEPLOY_DEPENDENCIES = {
+    io.netty.channel.socket.nio.NioEventLoopGroup.class,
+    io.netty.util.AttributeMap.class,
+    io.netty.buffer.ChannelBufType.class,
+    io.netty.handler.codec.ByteToByteCodec.class,
+  };
+
   private final int port;
   private ServerBootstrap bootstrap;
   private String identity;
   private final ServerInitializer serverInitializer;
-  private Storage storage;
 
   /**
    * @param port - port number to bind to or 0 to auto select a free port

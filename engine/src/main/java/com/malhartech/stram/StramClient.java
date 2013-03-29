@@ -220,16 +220,13 @@ public class StramClient
       com.malhartech.bufferserver.Server.class,
       com.malhartech.stram.StramAppMaster.class,
       com.malhartech.engine.DefaultStreamCodec.class,
-      io.netty.channel.socket.nio.NioEventLoopGroup.class,
-      io.netty.util.AttributeMap.class,
-      io.netty.buffer.ChannelBufType.class,
-      io.netty.handler.codec.ByteToByteCodec.class,
       javax.validation.ConstraintViolationException.class,
       org.eclipse.jetty.websocket.WebSocketFactory.class,
       org.eclipse.jetty.io.nio.SelectorManager.class,
       org.eclipse.jetty.http.HttpParser.class,
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
+    jarClasses.addAll(Arrays.asList(com.malhartech.bufferserver.Server.CLUSTER_DEPLOY_DEPENDENCIES));
     jarClasses.addAll(Arrays.asList(defaultClasses));
 
     for (String className : dag.getClassNames()) {
