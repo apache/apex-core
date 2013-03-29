@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.client.Publisher;
 import com.malhartech.bufferserver.client.Subscriber;
@@ -28,9 +28,9 @@ import org.testng.annotations.Test;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class NewSubscriberTest
+public class SubscriberTest
 {
-  private static final Logger logger = LoggerFactory.getLogger(NewSubscriberTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(SubscriberTest.class);
   static Server instance;
   static DefaultEventLoop eventloopServer;
   static DefaultEventLoop eventloopClient;
@@ -76,8 +76,8 @@ public class NewSubscriberTest
       {
         super.beginWindow(windowId);
         if (windowId > 9) {
-          synchronized (NewSubscriberTest.this) {
-            NewSubscriberTest.this.notifyAll();
+          synchronized (SubscriberTest.this) {
+            SubscriberTest.this.notifyAll();
           }
         }
       }
@@ -157,8 +157,8 @@ public class NewSubscriberTest
       {
         super.beginWindow(windowId);
         if (windowId > 14) {
-          synchronized (NewSubscriberTest.this) {
-            NewSubscriberTest.this.notifyAll();
+          synchronized (SubscriberTest.this) {
+            SubscriberTest.this.notifyAll();
           }
         }
       }

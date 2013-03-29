@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.malhartech.bufferserver.server;
 
 import com.malhartech.bufferserver.client.Controller;
 import com.malhartech.bufferserver.client.Publisher;
@@ -11,7 +11,6 @@ import com.malhartech.bufferserver.packet.BeginWindowTuple;
 import com.malhartech.bufferserver.packet.EndWindowTuple;
 import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.bufferserver.packet.ResetWindowTuple;
-import com.malhartech.bufferserver.server.Server;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import malhar.netlet.DefaultEventLoop;

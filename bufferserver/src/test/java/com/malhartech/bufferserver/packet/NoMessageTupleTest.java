@@ -2,11 +2,8 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.malhartech.bufferserver.packet;
 
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.packet.NoMessageTuple;
-import com.malhartech.bufferserver.packet.Tuple;
 import junit.framework.TestCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +13,9 @@ import org.testng.annotations.Test;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class BufferTest extends TestCase
+public class NoMessageTupleTest extends TestCase
 {
-  public BufferTest(String testName)
+  public NoMessageTupleTest(String testName)
   {
     super(testName);
   }
@@ -46,5 +43,5 @@ public class BufferTest extends TestCase
     assert(t.getType() == MessageType.NO_MESSAGE);
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(BufferTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(NoMessageTupleTest.class);
 }
