@@ -4,16 +4,16 @@
  */
 package com.malhartech.engine;
 
-import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.Set;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-
 import com.malhartech.api.Context;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
+import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
+import malhar.netlet.EventLoop;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  * Defines the destination for tuples processed<p>
@@ -25,6 +25,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
 {
   private static final long serialVersionUID = 201212042146L;
   public static final AttributeKey<InetSocketAddress> BUFFER_SERVER_ADDRESS = new AttributeKey<InetSocketAddress>("BUFFER_SERVER_ADDRESS");
+  public static final AttributeKey<EventLoop> EVENT_LOOP = new AttributeKey<EventLoop>("EVENT_LOOP");
 
   public static class AttributeKey<T> extends AttributeMap.AttributeKey<StreamContext, T>
   {
@@ -61,16 +62,18 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
 
   /**
    *
+   * @param mask
    * @param partitionKeys
    */
   public void setPartitions(int mask, Set<Integer> partitionKeys)
   {
     this.mask = mask;
-    this.partitions = partitionKeys;
+    this.partitions = Collections.unmodifiableSet(partitionKeys);
   }
 
   /**
    *
+   * @return
    */
   public int getPartitionMask()
   {
@@ -80,6 +83,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
    *
    * @return Collection<Integer>
    */
+  @SuppressWarnings("ReturnOfCollectionOrArrayField")
   public Collection<Integer> getPartitions()
   {
     return partitions;

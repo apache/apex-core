@@ -8,6 +8,8 @@
  */
 package com.malhartech.api;
 
+import malhar.netlet.Client.Fragment;
+
 
 /**
  *
@@ -41,7 +43,7 @@ public interface StreamCodec<T>
     /**
      * This byte array corresponds to serialized form of the tuple of type T.
      */
-    public byte[] data;
+    public Fragment data;
     /**
      * This byte array corresponds to serialized form the incremental state the
      * codec built while serializing the tuple into data field.
@@ -61,7 +63,7 @@ public interface StreamCodec<T>
      * this serializer in the same order as it was created. Due to the nature of the partitioning
      * the accompanying data field may not make it to the deserializer.
      */
-    public byte[] state;
+    public Fragment state;
   }
 
   /**

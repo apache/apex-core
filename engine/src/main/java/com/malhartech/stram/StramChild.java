@@ -125,9 +125,9 @@ public class StramChild
     try {
       if (ctx.deployBufferServer) {
         // start buffer server, if it was not set externally
-        bufferServer = new Server(0, 64 * 1024 * 1024, 8);
+        bufferServer = new Server(0, 64 * 1024 * 1024);
         bufferServer.setSpoolStorage(new DiskStorage());
-        SocketAddress bindAddr = bufferServer.run();
+        SocketAddress bindAddr = bufferServer.run(eventloop);
         logger.info("Buffer server started: {}", bindAddr);
         this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
       }
@@ -509,7 +509,7 @@ public class StramChild
     }
 
     if (bufferServer != null) {
-      bufferServer.shutdown();
+      eventloop.stop(bufferServer);
     }
 
     gens.clear();

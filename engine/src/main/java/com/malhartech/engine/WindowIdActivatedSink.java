@@ -5,10 +5,10 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
-import com.malhartech.bufferserver.Buffer;
 
 /**
  *
+ * @param <T> 
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class WindowIdActivatedSink<T> implements Sink<T>

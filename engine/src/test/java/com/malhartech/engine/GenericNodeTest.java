@@ -4,9 +4,9 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.*;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.api.*;
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.AttributeKey;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;

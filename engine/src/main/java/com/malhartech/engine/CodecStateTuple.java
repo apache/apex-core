@@ -4,7 +4,7 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.bufferserver.packet.MessageType;
 
 /**
  *

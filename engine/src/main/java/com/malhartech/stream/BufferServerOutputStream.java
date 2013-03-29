@@ -7,13 +7,10 @@ import com.google.protobuf.ByteString;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
-import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.Message;
-import com.malhartech.bufferserver.Buffer.Message.Builder;
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
-import com.malhartech.bufferserver.client.ClientHandler;
+import com.malhartech.bufferserver.client.Publisher;
 import com.malhartech.bufferserver.packet.PublishRequestTuple;
 import com.malhartech.engine.ResetWindowTuple;
+import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
 import org.slf4j.Logger;
@@ -27,12 +24,11 @@ import org.slf4j.LoggerFactory;
  * Partitioning is managed by this instance of the buffer server<br>
  * <br>
  */
-public class BufferServerOutputStream extends SocketOutputStream<Object>
+public class BufferServerOutputStream extends Publisher implements Stream<Object>
 {
   private static final Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
   public static final int BUFFER_SIZE = 64 * 1024;
   StreamCodec<Object> serde;
-  int windowId;
   int writtenBytes;
 
   public BufferServerOutputStream(StreamCodec<Object> serde)
@@ -137,6 +133,12 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
+  }
+
+  @Override
+  public void setup(StreamContext context)
+  {
+    super.setup(context.getBufferServerAddress(), context.attr(StreamContext.EVENT_LOOP).get());
   }
 
 }

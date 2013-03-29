@@ -4,13 +4,7 @@
  */
 package com.malhartech.stream;
 
-import static org.junit.Assert.assertTrue;
-import junit.framework.AssertionFailedError;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.malhartech.bufferserver.Buffer;
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.engine.EndWindowTuple;
 import com.malhartech.engine.OperatorContext;
 import com.malhartech.engine.Tuple;
@@ -19,6 +13,11 @@ import com.malhartech.stram.ManualScheduledExecutorService;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import static java.lang.Thread.sleep;
+import junit.framework.AssertionFailedError;
+import static org.junit.Assert.assertTrue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Bunch of utilities shared between tests.
@@ -35,7 +34,7 @@ abstract public class StramTestSupport
 
   public static Tuple generateBeginWindowTuple(String nodeid, int windowId)
   {
-    Tuple bwt = new Tuple(Buffer.Message.MessageType.BEGIN_WINDOW);
+    Tuple bwt = new Tuple(MessageType.BEGIN_WINDOW);
     bwt.setWindowId(windowId);
     return bwt;
   }
@@ -72,17 +71,21 @@ abstract public class StramTestSupport
     }
   }
 
-  public interface WaitCondition {
+  public interface WaitCondition
+  {
     boolean isComplete();
+
   }
 
-  public static boolean awaitCompletion(WaitCondition c, long timeoutMillis) throws InterruptedException {
+  @SuppressWarnings("SleepWhileInLoop")
+  public static boolean awaitCompletion(WaitCondition c, long timeoutMillis) throws InterruptedException
+  {
     long startMillis = System.currentTimeMillis();
     while (System.currentTimeMillis() < (startMillis + timeoutMillis)) {
       if (c.isComplete()) {
         return true;
       }
-      Thread.sleep(50);
+      sleep(50);
     }
     return c.isComplete();
   }
@@ -99,11 +102,11 @@ abstract public class StramTestSupport
   @SuppressWarnings("SleepWhileInLoop")
   public static LocalStramChild waitForActivation(StramLocalCluster localCluster, PTOperator node) throws InterruptedException
   {
-    LocalStramChild container = null;
+    LocalStramChild container;
     long startMillis = System.currentTimeMillis();
     while (System.currentTimeMillis() < (startMillis + DEFAULT_TIMEOUT_MILLIS)) {
       if ((container = localCluster.getContainer(node)) != null) {
-         return container;
+        return container;
       }
       LOG.debug("Waiting for {} in container {}", node, node.getContainer());
       Thread.sleep(500);

@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import malhar.netlet.DefaultEventLoop;
+import malhar.netlet.EventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -51,6 +53,7 @@ public class StramLocalCluster implements Runnable
   private boolean appDone = false;
   private final Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>();
   private boolean heartbeatMonitoringEnabled = true;
+  private EventLoop eventloop;
 
   public interface MockComponentFactory
   {
@@ -150,7 +153,8 @@ public class StramLocalCluster implements Runnable
         // teardown
         try {
           stramChild.teardown();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
           if (!hasError) {
             throw e;
           }
@@ -260,9 +264,9 @@ public class StramLocalCluster implements Runnable
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
     // start buffer server
-    this.bufferServer = new Server(0, 1024 * 1024, 8);
+    bufferServer = new Server(0, 1024 * 1024);
     bufferServer.setSpoolStorage(new DiskStorage());
-    SocketAddress bindAddr = this.bufferServer.run();
+    SocketAddress bindAddr = bufferServer.run(eventloop);
     this.bufferServerAddress = ((InetSocketAddress)bindAddr);
     LOG.info("Buffer server started: {}", bufferServerAddress);
   }
@@ -317,9 +321,7 @@ public class StramLocalCluster implements Runnable
    * Returns null if the specified operator is not deployed.
    *
    * @param planOperator
-   * @param timeout
    * @return
-   * @throws InterruptedException
    */
   public LocalStramChild getContainer(PTOperator planOperator)
   {
@@ -360,10 +362,22 @@ public class StramLocalCluster implements Runnable
   }
 
   @Override
-  public void run() {
-    run(0);
-  }
+  public void run()
+  {
+    DefaultEventLoop del;
+    try {
+      del = new DefaultEventLoop("local-cluster-eventloop");
+      del.start();
+      eventloop = del;
+      run(0);
+      eventloop = null;
+      del.stop();
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
 
+  }
 
   @SuppressWarnings({"SleepWhileInLoop", "ResultOfObjectAllocationIgnored"})
   public void run(long runMillis)
@@ -422,7 +436,7 @@ public class StramLocalCluster implements Runnable
     }
 
     LOG.info("Application finished.");
-    bufferServer.shutdown();
+    eventloop.stop(bufferServer);
   }
 
 }

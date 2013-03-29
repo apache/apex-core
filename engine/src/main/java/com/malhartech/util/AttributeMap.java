@@ -125,6 +125,18 @@ public interface AttributeMap<CONTEXT> {
       public void remove() {
           set(null);
       }
+
+      @Override
+      public io.netty.util.AttributeKey<T> key()
+      {
+        throw new UnsupportedOperationException("Not supported yet.");
+      }
+
+      @Override
+      public T getAndRemove()
+      {
+        throw new UnsupportedOperationException("Not supported yet.");
+      }
     }
 
     /**

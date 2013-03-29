@@ -4,7 +4,7 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.bufferserver.Buffer;
+import com.malhartech.bufferserver.packet.MessageType;
 
 /**
  *
@@ -19,6 +19,6 @@ public class EndWindowTuple extends Tuple
 {
   public EndWindowTuple()
   {
-    super(Buffer.Message.MessageType.END_WINDOW);
+    super(MessageType.END_WINDOW);
   }
 }

@@ -4,8 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.bufferserver.client.ClientHandler;
-import com.malhartech.bufferserver.client.VarIntLengthPrependerClient;
+import com.malhartech.bufferserver.client.AbstractClient;
 import com.malhartech.bufferserver.packet.PurgeRequestTuple;
 import com.malhartech.bufferserver.packet.ResetRequestTuple;
 import java.net.InetSocketAddress;
@@ -15,7 +14,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Encapsulates buffer server control interface, used by the master for purging data.
  */
-class BufferServerClient extends VarIntLengthPrependerClient
+class BufferServerClient extends AbstractClient
 {
   /**
    * Use a single thread group for all buffer server interactions.

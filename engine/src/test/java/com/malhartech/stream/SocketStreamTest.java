@@ -4,15 +4,16 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.engine.DefaultStreamCodec;
-import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
+import malhar.netlet.DefaultEventLoop;
+import malhar.netlet.EventLoop;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -28,12 +29,23 @@ public class SocketStreamTest
   private static final Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
   private static int bufferServerPort = 0;
   private static Server bufferServer = null;
+  static EventLoop eventloop;
+  static {
+    try {
+      eventloop = new DefaultEventLoop("streamTest");
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
 
   @BeforeClass
   public static void setup() throws InterruptedException, IOException, Exception
   {
+    ((DefaultEventLoop)eventloop).start();
     bufferServer = new Server(0); // find random port
-    InetSocketAddress bindAddr = (InetSocketAddress)bufferServer.run();
+    InetSocketAddress bindAddr = bufferServer.run(eventloop);
     bufferServerPort = bindAddr.getPort();
   }
 
@@ -41,8 +53,9 @@ public class SocketStreamTest
   public static void tearDown() throws IOException
   {
     if (bufferServer != null) {
-      bufferServer.shutdown();
+      eventloop.stop(bufferServer);
     }
+    ((DefaultEventLoop)eventloop).stop();
   }
 
   /**
@@ -56,7 +69,7 @@ public class SocketStreamTest
   {
 
     final AtomicInteger messageCount = new AtomicInteger();
-    Sink sink = new Sink()
+    Sink<Object> sink = new Sink<Object>()
     {
       @Override
       public void process(Object payload)
@@ -77,13 +90,13 @@ public class SocketStreamTest
           }
         }
         else {
-          System.out.println("received: " + payload);
+          logger.debug("received: " + payload);
           messageCount.incrementAndGet();
         }
       }
     };
 
-    StreamCodec serde = new DefaultStreamCodec();
+    StreamCodec<Object> serde = new DefaultStreamCodec<Object>();
 
     String streamName = "streamName"; // AKA "type"
     String upstreamNodeId = "upstreamNodeId";
@@ -127,4 +140,5 @@ public class SocketStreamTest
     Assert.assertEquals("Received messages", 1, messageCount.get());
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(SocketStreamTest.class);
 }

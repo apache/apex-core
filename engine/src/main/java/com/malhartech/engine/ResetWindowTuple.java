@@ -4,19 +4,20 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.bufferserver.Buffer;
+import com.malhartech.bufferserver.packet.MessageType;
 
 /**
  *
  * ResetWindow ids<p>
  * <br>
+ *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class ResetWindowTuple extends Tuple
 {
   public ResetWindowTuple()
   {
-    super(Buffer.Message.MessageType.RESET_WINDOW);
+    super(MessageType.RESET_WINDOW);
   }
 
   @Override
@@ -27,11 +28,12 @@ public class ResetWindowTuple extends Tuple
 
   public final int getBaseSeconds()
   {
-    return (int) (super.windowId >> 32);
+    return (int)(super.windowId >> 32);
   }
 
   public final int getIntervalMillis()
   {
-    return (int) super.windowId;
+    return (int)super.windowId;
   }
+
 }

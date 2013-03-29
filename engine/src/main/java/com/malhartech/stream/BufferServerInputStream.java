@@ -3,15 +3,11 @@
  */
 package com.malhartech.stream;
 
-import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
-import com.malhartech.bufferserver.Buffer;
-import com.malhartech.bufferserver.Buffer.Message;
-import static com.malhartech.bufferserver.Buffer.Message.MessageType.*;
-import com.malhartech.bufferserver.client.ClientHandler;
+import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.engine.*;
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -26,23 +22,15 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerInputStream extends SocketInputStream<Message>
+public class BufferServerInputStream extends Subscriber implements Stream<Object>
 {
-  private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
-  private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
-  private long baseSeconds;
-  private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
+  private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>(); // needed here
+  private long baseSeconds; // needed here
+  private int lastWindowId = WindowGenerator.MAX_WINDOW_ID; // needed here
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink<Object>[] sinks = NO_SINKS;
-  private final StreamCodec<Object> serde;
-  DataStatePair dsp = new DataStatePair();
-  private int mask;
-  private Collection<Integer> partitions;
-  static final ExtensionRegistry registry = ExtensionRegistry.newInstance();
-
-  static {
-    Buffer.registerAllExtensions(registry);
-  }
+  private volatile Sink<Object>[] sinks = NO_SINKS; // needed here
+  private final StreamCodec<Object> serde; // needed here
+  DataStatePair dsp = new DataStatePair(); // needed here
 
   public BufferServerInputStream(StreamCodec<Object> serde)
   {
@@ -55,9 +43,6 @@ public class BufferServerInputStream extends SocketInputStream<Message>
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
     super.activate(context);
     activateSinks();
-
-    mask = context.getPartitionMask();
-    partitions = context.getPartitions();
 
     baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
@@ -74,76 +59,61 @@ public class BufferServerInputStream extends SocketInputStream<Message>
   @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
-    try {
-      Message data = Message.newBuilder().mergeFrom(buffer, offset, size, registry).build();
-      Tuple t;
-      switch (data.getType()) {
-        case CHECKPOINT:
-          serde.resetState();
+    com.malhartech.bufferserver.packet.Tuple data = com.malhartech.bufferserver.packet.Tuple.getTuple(buffer, offset, size);
+    Tuple t;
+    switch (data.getType()) {
+      case CHECKPOINT:
+        serde.resetState();
+        return;
+
+      case CODEC_STATE:
+        dsp.state = data.getData();
+        return;
+
+      case PAYLOAD:
+        dsp.data = data.getData();
+        Object o = serde.fromByteArray(dsp);
+        for (Sink<Object> s: sinks) {
+          s.process(o);
+        }
+        return;
+
+      case END_WINDOW:
+        t = new EndWindowTuple();
+        t.setWindowId(baseSeconds | (lastWindowId = data.getWindowId()));
+        break;
+
+      case END_STREAM:
+        t = new EndStreamTuple();
+        t.setWindowId(baseSeconds | data.getWindowId());
+        break;
+
+      case RESET_WINDOW:
+        baseSeconds = (long)data.getBaseSeconds() << 32;
+        if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
           return;
+        }
+        t = new ResetWindowTuple();
+        t.setWindowId(baseSeconds | data.getWindowWidth());
+        break;
 
-        case CODEC_STATE:
-          dsp.state = data.getCodecState().getData().toByteArray();
-          return;
+      case BEGIN_WINDOW:
+        t = new Tuple(data.getType());
+        t.setWindowId(baseSeconds | data.getWindowId());
+        break;
 
-        case PAYLOAD:
-          dsp.data = data.getPayload().getData().toByteArray();
-          if (mask != 0) {
-            assert (data.getPayload().hasPartition());
-            assert (partitions.contains(data.getPayload().getPartition() & mask));
-          }
-          Object o = serde.fromByteArray(dsp);
-          for (Sink<Object> s : sinks) {
-            s.process(o);
-          }
-          return;
-
-        case END_WINDOW:
-          t = new EndWindowTuple();
-          t.setWindowId(baseSeconds | (lastWindowId = data.getEndWindow().getWindowId()));
-          break;
-
-        case END_STREAM:
-          t = new EndStreamTuple();
-          t.setWindowId(baseSeconds | data.getEndStream().getWindowId());
-          break;
-
-        case RESET_WINDOW:
-          baseSeconds = (long)data.getResetWindow().getBaseSeconds() << 32;
-          if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
-            return;
-          }
-          t = new ResetWindowTuple();
-          t.setWindowId(baseSeconds | data.getResetWindow().getWidth());
-          break;
-
-        case BEGIN_WINDOW:
-          t = new Tuple(data.getType());
-          t.setWindowId(baseSeconds | data.getBeginWindow().getWindowId());
-          break;
-
-        default:
-          throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
-      }
-
-      for (int i = sinks.length; i-- > 0;) {
-        sinks[i].process(t);
-      }
-    }
-    catch (InvalidProtocolBufferException ex) {
-      logger.debug("parse error", ex);
-      throw new RuntimeException(ex);
-    }
-    catch (IOException ex) {
-      logger.debug("IO exception", ex);
-      throw new RuntimeException(ex);
+      default:
+        throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
     }
 
+    for (int i = sinks.length; i-- > 0;) {
+      sinks[i].process(t);
+    }
   }
 
   @Override
   @SuppressWarnings("unchecked")
-  public void setSink(String id, Sink<Message> sink)
+  public void setSink(String id, Sink<Object> sink)
   {
     if (sink == null) {
       outputs.remove(id);
@@ -173,16 +143,23 @@ public class BufferServerInputStream extends SocketInputStream<Message>
     @SuppressWarnings("unchecked")
     Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, outputs.size());
     int i = 0;
-    for (final Sink<Object> s : outputs.values()) {
+    for (final Sink<Object> s: outputs.values()) {
       newSinks[i++] = s;
     }
     sinks = newSinks;
   }
 
   @Override
-  public void process(Message tuple)
+  public void process(Object tuple)
   {
     throw new IllegalAccessError("Attempt to pass payload " + tuple + " to " + this + " from source other than buffer server!");
   }
 
+  @Override
+  public void setup(StreamContext context)
+  {
+    super.setup(context.getBufferServerAddress(), context.attr(StreamContext.EVENT_LOOP).get());
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
 }

@@ -1,33 +1,27 @@
 /**
- * Copyright (c) 2012-2012 Malhar, Inc.
+ * Copyright (c) 2012 Malhar, Inc.
  * All rights reserved.
  */
 package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
-import com.malhartech.engine.Tuple;
-
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * A sink implementation to collect expected test results.
  */
-public class TestSink<T> implements Sink<T>
+public class TestSink implements Sink<Object>
 {
-  final public List<T> collectedTuples = new ArrayList<T>();
+  final public List<Object> collectedTuples = new ArrayList<Object>();
 
-  /**
-   *
-   * @param payload
-   */
   public void clear()
   {
     this.collectedTuples.clear();
   }
 
   @Override
-  public void process(T payload)
+  public void process(Object payload)
   {
     if (payload instanceof Tuple) {
     }
