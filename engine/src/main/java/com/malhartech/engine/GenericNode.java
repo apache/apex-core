@@ -205,6 +205,7 @@ public class GenericNode extends Node<Operator>
                   }
                   if (windowCount == 0) {
                     insideWindow = true;
+                    beginWindowTime = System.nanoTime();
                     operator.beginWindow(currentWindowId);
                   }
                   receivedEndWindow = 0;
@@ -233,9 +234,13 @@ public class GenericNode extends Node<Operator>
                       output.process(t);
                     }
 
+                    if (!insideWindow) {
+                      endWindowTime = System.nanoTime();
+                    }
+
                     buffers.remove();
                     assert (activeQueues.isEmpty());
-                    handleRequests(currentWindowId);
+                    handleRequests(currentWindowId, !insideWindow);
 
                     activeQueues.addAll(inputs.values());
                     expectingBeginWindow = activeQueues.size();
@@ -347,7 +352,7 @@ public class GenericNode extends Node<Operator>
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
 
-                  handleRequests(currentWindowId);
+                  handleRequests(currentWindowId, true);
                   break_activequeue = true;
                 }
 
@@ -468,9 +473,9 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  protected void reportStats(OperatorStats stats)
+  protected void reportStats(OperatorStats stats, boolean applicationWindowBoundary)
   {
-    super.reportStats(stats);
+    super.reportStats(stats, applicationWindowBoundary);
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
     for (Entry<String, Reservoir> e: inputs.entrySet()) {
       AbstractReservoir ar;

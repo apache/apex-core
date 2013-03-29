@@ -137,7 +137,7 @@ public class StramAppLauncher {
     String cp = null;
 
     // read crc and classpath file, if it exists
-    // (we won't run mvn if pom didn't change)
+    // (we won't run mvn again if pom didn't change)
     if (cpFile.exists()) {
       try {
        DataInputStream dis = new DataInputStream(new FileInputStream(pomCrcFile));
@@ -168,14 +168,11 @@ public class StramAppLauncher {
               pomCrc = jarEntry.getCrc();
             }
           } else if (jarEntry.getName().endsWith(".app.properties")) {
-            // TODO: handle subdirs
             File targetFile = new File(baseDir, jarEntry.getName());
             FileUtils.copyInputStreamToFile(jar.getInputStream(jarEntry), targetFile);
             configurationList.add(new PropertyFileAppConfig(targetFile));
-          } else {
-            if (jarEntry.getName().endsWith(".class")) {
-              classFileNames.add(jarEntry.getName());
-            }
+          } else if (jarEntry.getName().endsWith(".class")) {
+            classFileNames.add(jarEntry.getName());
           }
         }
     }
@@ -287,7 +284,7 @@ public class StramAppLauncher {
     return conf;
   }
 
-  private static DAG prepareDAG(AppConfig appConfig, String launchMode) {
+  public static DAG prepareDAG(AppConfig appConfig, String launchMode) {
     Configuration conf = getConfig(launchMode);
     DAG dag = appConfig.createApp(conf);
     dag.getAttributes().attr(DAG.STRAM_APPNAME).setIfAbsent(appConfig.getName());
@@ -305,10 +302,15 @@ public class StramAppLauncher {
    */
   public void runLocal(AppConfig appConfig) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
-    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
-    Thread.currentThread().setContextClassLoader(cl);
+    loadDependencies();
     StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_LOCAL));
     lc.run();
+  }
+
+  public URLClassLoader loadDependencies() {
+    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
+    Thread.currentThread().setContextClassLoader(cl);
+    return cl;
   }
 
   /**
@@ -319,10 +321,9 @@ public class StramAppLauncher {
    */
   public ApplicationId launchApp(AppConfig appConfig) throws Exception {
 
-    URLClassLoader cl = URLClassLoader.newInstance(launchDependencies.toArray(new URL[launchDependencies.size()]));
+    URLClassLoader cl = loadDependencies();
     //Class<?> loadedClass = cl.loadClass("com.malhartech.example.wordcount.WordCountSerDe");
     //LOG.info("loaded " + loadedClass);
-    Thread.currentThread().setContextClassLoader(cl);
 
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath

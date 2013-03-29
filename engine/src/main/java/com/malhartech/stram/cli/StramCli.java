@@ -127,7 +127,7 @@ public class StramCli
 
     ConsoleReaderExt() throws IOException
     {
-      // CTRL-? since CTRL-R already mapped to redisplay
+      // CTRL-/ since CTRL-R already mapped to redisplay
       addTriggeredAction(REVERSE_SEARCH_KEY, new ActionListener()
       {
         @Override

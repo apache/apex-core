@@ -184,6 +184,8 @@ public class PhysicalPlan {
   public static interface StatsHandler {
     // TODO: handle stats generically
     public void onThroughputUpdate(PTOperator operatorInstance, long tps);
+    public void onLatencyUpdate(PTOperator operatorInstance, long latency);
+    public void onCpuPercentageUpdate(PTOperator operatorInstance, double percentage);
   }
 
   /**
@@ -248,13 +250,21 @@ public class PhysicalPlan {
         }
       }
     }
+
+    @Override
+    public void onLatencyUpdate(final PTOperator operatorInstance, long latency) {
+      // not implemented yet
+    }
+
+    @Override
+    public void onCpuPercentageUpdate(final PTOperator operatorInstance, double percentage) {
+      // not implemented yet
+    }
   }
 
   /**
    *
-   * Representation of a node in the physical layout<p>
-   * <br>
-   * A generic node in the DAG<br>
+   * Representation of an operator in the physical layout<p>
    * <br>
    *
    */
@@ -538,6 +548,7 @@ public class PhysicalPlan {
               newOperator.inlineSet = u.inlineSet;
               newOperator.inlineSet.add(u);
               newOperator.inlineSet.add(newOperator);
+              LOG.debug("inlineSet for {} {}", newOperator, newOperator.inlineSet);
             }
           } else {
             // single instance, no partitions
@@ -550,6 +561,7 @@ public class PhysicalPlan {
                 continue;
               }
               // merge inline sets
+              //LOG.debug("merging {} {}", newOperator, inlineCandidate.partitions);
               for (PTOperator otherNode : inlineCandidate.partitions) {
                 if (!otherNode.inlineSet.isEmpty()) {
                   newOperator.inlineSet.addAll(otherNode.inlineSet);
@@ -562,6 +574,7 @@ public class PhysicalPlan {
               inlineNode.inlineSet = newOperator.inlineSet;
               //LOG.debug(n.getId() + " " + inlineNode.id + " inlineset: " + newOperator.inlineSet);
             }
+            LOG.debug("inlineSet for {} {}", newOperator, newOperator.inlineSet);
           }
         }
 
@@ -576,6 +589,7 @@ public class PhysicalPlan {
         if (node.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
           Set<PTOperator> inlineNodes = node.inlineSet;
+          LOG.debug("Setting container {} for {}", container, node.inlineSet);
           if (!inlineNodes.isEmpty()) {
             // process inline operators
             for (PTOperator inlineNode : inlineNodes) {

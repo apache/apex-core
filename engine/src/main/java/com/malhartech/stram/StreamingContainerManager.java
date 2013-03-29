@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Predicate;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
@@ -336,6 +335,9 @@ public class StreamingContainerManager implements PlanContext
 
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
+        int latencyCount = 0;
+        long totalLatency = 0;
+        long totalCpuTimeUsed = 0;
         List<OperatorStats> statsList = shb.getWindowStats();
         for (OperatorStats stats: statsList) {
           Collection<PortStats> ports = stats.inputPorts;
@@ -345,13 +347,19 @@ public class StreamingContainerManager implements PlanContext
             }
           }
 
-          ports = stats.ouputPorts;
+          ports = stats.outputPorts;
           if (ports != null) {
             for (PortStats s: ports) {
               tuplesEmitted += s.processedCount;
             }
           }
+
+          if (stats.latency != null) {
+            latencyCount++;
+            totalLatency += stats.latency;
+          }
           status.currentWindowId = stats.windowId;
+          totalCpuTimeUsed += stats.cpuTimeUsed;
         }
 
         status.totalTuplesProcessed += tuplesProcessed;
@@ -359,10 +367,18 @@ public class StreamingContainerManager implements PlanContext
         if (lastHeartbeatIntervalMillis > 0) {
           status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / lastHeartbeatIntervalMillis);
           status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / lastHeartbeatIntervalMillis);
+          status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (lastHeartbeatIntervalMillis * 1000000));
+          if (latencyCount > 0) {
+            status.latencyMA10.add(totalLatency / latencyCount);
+          }
           if (status.operator.statsMonitors != null) {
             long tps = status.tuplesProcessedPSMA10.getAvg() + status.tuplesEmittedPSMA10.getAvg();
             for (StatsHandler sm: status.operator.statsMonitors) {
               sm.onThroughputUpdate(status.operator, tps);
+              if (latencyCount > 0) {
+                sm.onLatencyUpdate(status.operator, totalLatency / latencyCount);
+              }
+              sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA10.getAvg());
             }
           }
         }
@@ -711,6 +727,8 @@ public class StreamingContainerManager implements PlanContext
           ni.totalTuplesEmitted = os.totalTuplesEmitted;
           ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
           ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
+          ni.latencyMA10 = os.latencyMA10.getAvg();
+          ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
           ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           ni.failureCount = os.operator.failureCount;
           ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
@@ -731,29 +749,40 @@ public class StreamingContainerManager implements PlanContext
     return nodeInfoList;
   }
 
-  private static class RecordingRequestFilter implements Predicate<StramToNodeRequest> {
+  private static class RecordingRequestFilter implements Predicate<StramToNodeRequest>
+  {
     final static Set<StramToNodeRequest.RequestType> MATCH_TYPES = Sets.newHashSet(RequestType.START_RECORDING, RequestType.STOP_RECORDING, RequestType.SYNC_RECORDING);
+
     @Override
-    public boolean apply(@Nullable StramToNodeRequest input) {
+    public boolean apply(@Nullable StramToNodeRequest input)
+    {
       return MATCH_TYPES.contains(input.getRequestType());
     }
+
   }
 
-  private class SetOperatorPropertyRequestFilter implements Predicate<StramToNodeRequest> {
+  private class SetOperatorPropertyRequestFilter implements Predicate<StramToNodeRequest>
+  {
     final String propertyKey;
-    SetOperatorPropertyRequestFilter(String key) {
+
+    SetOperatorPropertyRequestFilter(String key)
+    {
       this.propertyKey = key;
     }
+
     @Override
-    public boolean apply(@Nullable StramToNodeRequest input) {
+    public boolean apply(@Nullable StramToNodeRequest input)
+    {
       return input.getRequestType() == RequestType.SET_PROPERTY && input.setPropertyKey.equals(propertyKey);
     }
+
   }
 
-  private void updateOnDeployRequests(PTOperator p, Predicate<StramToNodeRequest> superseded, StramToNodeRequest newRequest) {
+  private void updateOnDeployRequests(PTOperator p, Predicate<StramToNodeRequest> superseded, StramToNodeRequest newRequest)
+  {
     // filter existing requests
     List<StramToNodeRequest> cloneRequests = new ArrayList<StramToNodeRequest>(p.deployRequests.size());
-    for (StramToNodeRequest existingRequest : p.deployRequests) {
+    for (StramToNodeRequest existingRequest: p.deployRequests) {
       if (!superseded.apply(existingRequest)) {
         cloneRequests.add(existingRequest);
       }

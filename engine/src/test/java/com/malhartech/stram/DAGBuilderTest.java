@@ -58,7 +58,7 @@ import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.TestGeneratorInputModule;
 import com.malhartech.engine.TestOutputModule;
 import com.malhartech.stram.cli.StramClientUtils;
-import com.malhartech.util.JdkSerializer;
+import com.malhartech.util.KryoJdkSerializer;
 
 public class DAGBuilderTest {
 
@@ -604,7 +604,7 @@ public class DAGBuilderTest {
   /**
    * Operator that can be used with default Java serialization instead of Kryo
    */
-  @DefaultSerializer(JdkSerializer.class)
+  @DefaultSerializer(KryoJdkSerializer.class)
   public static class JdkSerializableOperator extends BaseOperator implements Serializable {
     private static final long serialVersionUID = -4024202339520027097L;
 

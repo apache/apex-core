@@ -67,7 +67,7 @@ public class StramWebServicesTest extends JerseyTest {
     final String appPath = "/testPath";
     final String userId = "testUser";
     final long startTime = System.currentTimeMillis();
-    final String daemonUrl = "http://localhost:9090";
+    final String daemonAddress = "localhost:9090";
 
     TestAppContext(int appid, int numJobs, int numTasks, int numAttempts) {
       this.appID = Records.newRecord(ApplicationId.class);
@@ -129,9 +129,9 @@ public class StramWebServicesTest extends JerseyTest {
     }
 
     @Override
-    public String getDaemonUrl()
+    public String getDaemonAddress()
     {
-      return daemonUrl;
+      return daemonAddress;
     }
 
   }
@@ -324,7 +324,7 @@ public class StramWebServicesTest extends JerseyTest {
 
   void verifyAMInfo(JSONObject info, TestAppContext ctx)
       throws JSONException {
-    assertEquals("incorrect number of elements", 8, info.length());
+    assertEquals("incorrect number of elements", 9, info.length());
 
     verifyAMInfoGeneric(ctx, info.getString("appId"), info.getString("user"),
         info.getString("name"), info.getLong("startedOn"),

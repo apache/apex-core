@@ -5,6 +5,7 @@
 package com.malhartech.stram;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.Lists;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.DAG;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
@@ -224,7 +225,9 @@ public class StramClient
       io.netty.buffer.ChannelBufType.class,
       io.netty.handler.codec.ByteToByteCodec.class,
       javax.validation.ConstraintViolationException.class,
-      com.sun.jersey.api.client.Client.class,
+      org.eclipse.jetty.websocket.WebSocketFactory.class,
+      org.eclipse.jetty.io.nio.SelectorManager.class,
+      org.eclipse.jetty.http.HttpParser.class,
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
@@ -239,34 +242,52 @@ public class StramClient
       }
     }
 
-    LinkedHashSet<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
-
-    for (Class<?> jarClass : jarClasses) {
-      String jar = JarFinder.getJar(jarClass);
-      if (jar == null) {
-        throw new IllegalArgumentException("Cannot resolve jar file for " + jarClass);
-      }
-      localJarFiles.add(jar);
-      // check for annotated dependencies in class and super classes
-      for (Class<?> c = jarClass; c != Object.class && c != null; c = c.getSuperclass()) {
+    for (Class<?> clazz : Lists.newArrayList(jarClasses)) {
+      // process class and super classes (super does not require deploy annotation)
+      for (Class<?> c = clazz; c != Object.class && c != null; c = c.getSuperclass()) {
+        //LOG.debug("checking " + c);
+        jarClasses.add(c);
+        // check for annotated dependencies
         try {
-          //LOG.debug("checking " + c);
           ShipContainingJars shipJars = c.getAnnotation(ShipContainingJars.class);
           if (shipJars != null) {
             for (Class<?> depClass : shipJars.classes()) {
-              String depJar = JarFinder.getJar(depClass);
-              if (depJar == null) {
-                throw new IllegalArgumentException("Cannot resolve jar file for " + depClass);
-              }
-              localJarFiles.add(depJar);
-              LOG.info("Including {} as dependency of {}", depClass, jarClass);
+              jarClasses.add(depClass);
+              LOG.info("Including {} as deploy dependency of {}", depClass, c);
             }
           }
         }
         catch (ArrayStoreException e) {
-          LOG.error("Failed to process ShipContainingJars annotation for class " + jarClass.getName(), e);
+          LOG.error("Failed to process ShipContainingJars annotation for class " + c.getName(), e);
         }
       }
+    }
+
+    if (dag.isDebug()) {
+      LOG.info("Deploy dependencies: {}", jarClasses);
+    }
+
+    LinkedHashSet<String> localJarFiles = new LinkedHashSet<String>(); // avoid duplicates
+    HashMap<String, String> sourceToJar = new HashMap<String, String>();
+
+    for (Class<?> jarClass : jarClasses) {
+      if (jarClass.getProtectionDomain().getCodeSource() == null) {
+        // system class
+        continue;
+      }
+      //LOG.debug("{} {}", jarClass, jarClass.getProtectionDomain().getCodeSource());
+      String sourceLocation = jarClass.getProtectionDomain().getCodeSource().getLocation().toString();
+      String jar = sourceToJar.get(sourceLocation);
+      if (jar == null) {
+        // don't create jar file from folders multiple times
+        jar = JarFinder.getJar(jarClass);
+        sourceToJar.put(sourceLocation, jar);
+        LOG.debug("added sourceLocation {} as {}", sourceLocation, jar);
+      }
+      if (jar == null) {
+        throw new AssertionError("Cannot resolve jar file for " + jarClass);
+      }
+      localJarFiles.add(jar);
     }
 
     String libJarsPath = dag.getAttributes().attrValue(DAG.STRAM_LIBJARS, null);

@@ -158,7 +158,7 @@ public class InlineStreamTest
       public void run()
       {
         int id = counter.incrementAndGet();
-        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<Context.OperatorContext>(), null);
+        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<Context.OperatorContext>(), new AttributeMap.DefaultAttributeMap<com.malhartech.api.DAGContext>());
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
         activeNodes.remove(ctx.getId());

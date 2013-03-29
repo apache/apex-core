@@ -565,6 +565,11 @@ public class DAG implements Serializable, DAGContext
     return Collections.unmodifiableCollection(this.operators.values());
   }
 
+  public Collection<StreamMeta> getAllStreams()
+  {
+    return Collections.unmodifiableCollection(this.streams.values());
+  }
+  
   public OperatorMeta getOperatorMeta(String operatorId)
   {
     return this.operators.get(operatorId);
@@ -597,12 +602,12 @@ public class DAG implements Serializable, DAGContext
 
   public int getContainerMemoryMB()
   {
-    return this.attributes.attrValue(STRAM_CONTAINER_MEMORY_MB, 256);
+    return this.attributes.attrValue(STRAM_CONTAINER_MEMORY_MB, 1024);
   }
 
   public int getMasterMemoryMB()
   {
-    return this.attributes.attrValue(STRAM_MASTER_MEMORY_MB, 256);
+    return this.attributes.attrValue(STRAM_MASTER_MEMORY_MB, 1024);
   }
 
   /**

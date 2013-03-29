@@ -117,7 +117,6 @@ public class BufferServerOutputStream extends SocketOutputStream<Object>
   @Override
   public void activate(StreamContext context)
   {
-    super.activate(context);
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
     //write(ClientHandler.getPublishRequest(context.getSourceId(), context.getId(), context.getStartingWindowId()));
     write(PublishRequestTuple.getSerializedRequest(context.getSourceId(), context.getStartingWindowId()));

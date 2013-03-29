@@ -194,6 +194,11 @@
       <version>1.0.0.GA</version>
     </dependency>
     <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-websocket</artifactId>
+      <version>8.1.10.v20130312</version>
+    </dependency>
+    <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>malhar-bufferserver</artifactId>
       <version>${project.version}</version>

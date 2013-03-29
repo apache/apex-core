@@ -52,6 +52,7 @@ public class BufferServerInputStream extends SocketInputStream<Message>
   @Override
   public void activate(StreamContext context)
   {
+    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
     super.activate(context);
     activateSinks();
 
