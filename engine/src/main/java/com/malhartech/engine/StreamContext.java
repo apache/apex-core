@@ -5,6 +5,7 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Context;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
 import java.net.InetSocketAddress;
@@ -26,6 +27,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   private static final long serialVersionUID = 201212042146L;
   public static final AttributeKey<InetSocketAddress> BUFFER_SERVER_ADDRESS = new AttributeKey<InetSocketAddress>("BUFFER_SERVER_ADDRESS");
   public static final AttributeKey<EventLoop> EVENT_LOOP = new AttributeKey<EventLoop>("EVENT_LOOP");
+  public static final AttributeKey<StreamCodec<Object>> CODEC = new AttributeKey<StreamCodec<Object>>("CODEC");
 
   public static class AttributeKey<T> extends AttributeMap.AttributeKey<StreamContext, T>
   {
@@ -33,6 +35,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
     {
       super(StreamContext.class, name);
     }
+
   }
 
   public InetSocketAddress getBufferServerAddress()
@@ -53,6 +56,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
     INSIDE_WINDOW,
     TERMINATED
   }
+
   private String sourceId;
   private String sinkId;
   private long startingWindowId;
@@ -68,7 +72,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   public void setPartitions(int mask, Set<Integer> partitionKeys)
   {
     this.mask = mask;
-    this.partitions = Collections.unmodifiableSet(partitionKeys);
+    this.partitions = partitionKeys == null ? null : Collections.unmodifiableSet(partitionKeys);
   }
 
   /**
@@ -79,6 +83,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   {
     return mask;
   }
+
   /**
    *
    * @return Collection<Integer>
@@ -168,4 +173,5 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
             .append("sinkId", sinkId)
             .toString();
   }
+
 }

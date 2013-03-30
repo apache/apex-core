@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import malhar.netlet.DefaultEventLoop;
-import malhar.netlet.EventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -53,7 +52,7 @@ public class StramLocalCluster implements Runnable
   private boolean appDone = false;
   private final Map<String, StramChild> injectShutdown = new ConcurrentHashMap<String, StramChild>();
   private boolean heartbeatMonitoringEnabled = true;
-  private EventLoop eventloop;
+  private DefaultEventLoop eventloop;
 
   public interface MockComponentFactory
   {
@@ -263,6 +262,9 @@ public class StramLocalCluster implements Runnable
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
+    eventloop = new DefaultEventLoop("local-cluster-io");
+    eventloop.start();
+
     // start buffer server
     bufferServer = new Server(0, 1024 * 1024);
     bufferServer.setSpoolStorage(new DiskStorage());
@@ -364,18 +366,18 @@ public class StramLocalCluster implements Runnable
   @Override
   public void run()
   {
-    DefaultEventLoop del;
-    try {
-      del = new DefaultEventLoop("local-cluster-eventloop");
-      del.start();
-      eventloop = del;
+    //DefaultEventLoop del;
+    //try {
+      //del = new DefaultEventLoop("local-cluster-eventloop");
+      //del.start();
+      //eventloop = del;
       run(0);
-      eventloop = null;
-      del.stop();
-    }
-    catch (IOException ex) {
-      throw new RuntimeException(ex);
-    }
+      //eventloop = null;
+      //del.stop();
+    //}
+    //catch (IOException ex) {
+      //throw new RuntimeException(ex);
+    //}
 
   }
 
@@ -437,6 +439,7 @@ public class StramLocalCluster implements Runnable
 
     LOG.info("Application finished.");
     eventloop.stop(bufferServer);
+    eventloop.stop();
   }
 
 }

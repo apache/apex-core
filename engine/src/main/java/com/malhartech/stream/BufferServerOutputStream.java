@@ -3,13 +3,11 @@
  */
 package com.malhartech.stream;
 
-import com.google.protobuf.ByteString;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Publisher;
-import com.malhartech.bufferserver.packet.PublishRequestTuple;
-import com.malhartech.engine.ResetWindowTuple;
+import com.malhartech.bufferserver.packet.*;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
@@ -30,10 +28,11 @@ public class BufferServerOutputStream extends Publisher implements Stream<Object
   public static final int BUFFER_SIZE = 64 * 1024;
   StreamCodec<Object> serde;
   int writtenBytes;
+  int windowId;
 
-  public BufferServerOutputStream(StreamCodec<Object> serde)
+  public BufferServerOutputStream(String id)
   {
-    this.serde = serde;
+    super(id);
   }
 
   /**
@@ -43,39 +42,31 @@ public class BufferServerOutputStream extends Publisher implements Stream<Object
   @Override
   public void process(Object payload)
   {
-    Buffer.Message.Builder db = Buffer.Message.newBuilder();
+    byte[] array;
     if (payload instanceof Tuple) {
       final Tuple t = (Tuple)payload;
-      db.setType(t.getType());
 
       switch (t.getType()) {
         case CHECKPOINT:
           serde.resetState();
+          array = EmptyTuple.getSerializedTuple(MessageType.CHECKPOINT_VALUE);
           break;
 
         case BEGIN_WINDOW:
-          Buffer.BeginWindow.Builder bw = Buffer.BeginWindow.newBuilder();
-          bw.setWindowId(windowId = (int)t.getWindowId());
-          db.setBeginWindow(bw);
+          array = BeginWindowTuple.getSerializedTuple(windowId = (int)t.getWindowId());
           break;
 
         case END_WINDOW:
-          Buffer.EndWindow.Builder ew = Buffer.EndWindow.newBuilder();
-          ew.setWindowId(windowId = (int)t.getWindowId());
-          db.setEndWindow(ew);
+          array = EndWindowTuple.getSerializedTuple(windowId = (int)t.getWindowId());
           break;
 
         case END_STREAM:
-          Buffer.EndStream.Builder es = Buffer.EndStream.newBuilder();
-          es.setWindowId(windowId = (int)t.getWindowId());
-          db.setEndStream(es);
+          array = EndStreamTuple.getSerializedTuple(windowId = (int)t.getWindowId());
           break;
 
         case RESET_WINDOW:
-          Buffer.ResetWindow.Builder rw = Buffer.ResetWindow.newBuilder();
-          rw.setWidth(((ResetWindowTuple)t).getIntervalMillis());
-          rw.setBaseSeconds(((ResetWindowTuple)t).getBaseSeconds());
-          db.setResetWindow(rw);
+          com.malhartech.engine.ResetWindowTuple rwt = (com.malhartech.engine.ResetWindowTuple)t;
+          array = ResetWindowTuple.getSerializedTuple(rwt.getBaseSeconds(), rwt.getIntervalMillis());
           break;
 
         default:
@@ -89,21 +80,16 @@ public class BufferServerOutputStream extends Publisher implements Stream<Object
        * if there is any state write that for the subscriber before we write the data.
        */
       if (dsp.state != null) {
-        write(Buffer.Message.newBuilder().setType(MessageType.CODEC_STATE)
-                .setCodecState(Buffer.CodecState.newBuilder().setData(ByteString.copyFrom(dsp.state))).build().toByteArray());
+        write(DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state));
       }
 
       /*
        * Now that the state if any has been sent, we can proceed with the actual data we want to send.
        */
-      Buffer.Payload.Builder pdb = Buffer.Payload.newBuilder();
-      pdb.setPartition(serde.getPartition(payload));
-      pdb.setData(ByteString.copyFrom(dsp.data));
-      db.setType(Buffer.Message.MessageType.PAYLOAD);
-      db.setPayload(pdb);
+      array = PayloadTuple.getSerializedTuple(serde.getPartition(payload), dsp.data);
     }
 
-    write(db.build().toByteArray());
+    write(array);
   }
 
   /**
@@ -114,7 +100,7 @@ public class BufferServerOutputStream extends Publisher implements Stream<Object
   public void activate(StreamContext context)
   {
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
-    //write(ClientHandler.getPublishRequest(context.getSourceId(), context.getId(), context.getStartingWindowId()));
+    serde = context.attr(StreamContext.CODEC).get();
     write(PublishRequestTuple.getSerializedRequest(context.getSourceId(), context.getStartingWindowId()));
   }
 
@@ -133,6 +119,7 @@ public class BufferServerOutputStream extends Publisher implements Stream<Object
   @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
+    throw new RuntimeException("OutputStream is not supposed to receive anything!");
   }
 
   @Override

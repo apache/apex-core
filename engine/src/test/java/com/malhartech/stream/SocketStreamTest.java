@@ -107,8 +107,10 @@ public class SocketStreamTest
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
     issContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+    issContext.attr(StreamContext.CODEC).set(serde);
+    issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerInputStream iss = new BufferServerInputStream(serde);
+    BufferServerInputStream iss = new BufferServerInputStream(streamName);
     iss.setup(issContext);
     iss.setSink("testSink", sink);
 
@@ -116,8 +118,10 @@ public class SocketStreamTest
     ossContext.setSourceId(upstreamNodeId);
     ossContext.setSinkId(downstreamNodeId);
     ossContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+    ossContext.attr(StreamContext.CODEC).set(serde);
+    ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerOutputStream oss = new BufferServerOutputStream(serde);
+    BufferServerOutputStream oss = new BufferServerOutputStream(streamName);
     oss.setup(ossContext);
 
     iss.activate(issContext);

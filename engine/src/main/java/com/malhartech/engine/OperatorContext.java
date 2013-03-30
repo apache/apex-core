@@ -38,6 +38,7 @@ public class OperatorContext implements Context.OperatorContext
   {
     /**
      * Command to be executed at subsequent end of window.
+     * @param operator
      */
     public void execute(Operator operator, int id, long windowId) throws IOException;
   }

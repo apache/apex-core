@@ -3,15 +3,12 @@
  */
 package com.malhartech.stream;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.engine.*;
-import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.Collection;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,36 +21,27 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerInputStream extends Subscriber implements Stream<Object>
 {
-  private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>(); // needed here
+  private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   private long baseSeconds; // needed here
-  private int lastWindowId = WindowGenerator.MAX_WINDOW_ID; // needed here
+  private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink<Object>[] sinks = NO_SINKS; // needed here
-  private final StreamCodec<Object> serde; // needed here
-  DataStatePair dsp = new DataStatePair(); // needed here
+  private volatile Sink<Object>[] sinks = NO_SINKS;
+  private StreamCodec<Object> serde;
+  DataStatePair dsp = new DataStatePair();
 
-  public BufferServerInputStream(StreamCodec<Object> serde)
+  public BufferServerInputStream(String id)
   {
-    this.serde = serde;
+    super(id);
   }
 
   @Override
   public void activate(StreamContext context)
   {
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-    super.activate(context);
-    activateSinks();
-
     baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
-    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-    byte[] request = ClientHandler.getSubscribeRequest(
-            context.getSinkId(),
-            context.getId() + '/' + context.getSinkId(),
-            context.getSourceId(),
-            context.getPartitionMask(),
-            context.getPartitions(),
-            context.getStartingWindowId());
-    write(request, 0, request.length);
+    serde = context.attr(StreamContext.CODEC).get();
+    activateSinks();
+    activate(context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getStartingWindowId());
   }
 
   @Override

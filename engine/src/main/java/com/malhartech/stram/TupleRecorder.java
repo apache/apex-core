@@ -17,6 +17,7 @@ import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import malhar.netlet.Client.Fragment;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -264,11 +265,13 @@ public class TupleRecorder implements Operator
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
       recordInfo.recordingName = recordingName;
-      bos.write(streamCodec.toByteArray(recordInfo).data);
+      Fragment f = streamCodec.toByteArray(recordInfo).data;
+      bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
       for (PortInfo pi: portMap.values()) {
-        bos.write(streamCodec.toByteArray(pi).data);
+        f = streamCodec.toByteArray(pi).data;
+        bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
       }
 
@@ -421,7 +424,8 @@ public class TupleRecorder implements Operator
   {
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      bos.write(streamCodec.toByteArray(obj).data);
+      Fragment f = streamCodec.toByteArray(obj).data;
+      bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
       PortInfo pi = portMap.get(port);

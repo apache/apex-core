@@ -16,6 +16,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import malhar.netlet.Client.Fragment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +70,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public Registration registerImplicit(Class type)
     {
       while (getRegistration(nextAvailableRegistrationId) != null) {
@@ -110,7 +112,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   {
     if (dspair.state != null) {
       try {
-        input.setBuffer(dspair.state);
+        input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.length);
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
           logger.debug("registering class {} => {}", pair.classname, pair.id);
@@ -126,7 +128,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
       }
     }
 
-    input.setBuffer(dspair.data);
+    input.setBuffer(dspair.data.buffer, dspair.data.offset, dspair.data.length);
     return readClassAndObject(input);
   }
 
@@ -144,10 +146,13 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
       }
       pairs.clear();
 
-      pair.state = state.toBytes();
+      // can we optimize this?
+      byte[] bytes = state.toBytes();
+      pair.state = new Fragment(bytes, 0, bytes.length);
     }
 
-    pair.data = data.toBytes();
+    byte[] bytes = data.toBytes();
+    pair.data = new Fragment(bytes, 0, bytes.length);
     return pair;
   }
 
@@ -164,6 +169,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   }
 
   @Override
+  @SuppressWarnings("rawtypes")
   public Registration getRegistration(Class type)
   {
     if (type == null) {
