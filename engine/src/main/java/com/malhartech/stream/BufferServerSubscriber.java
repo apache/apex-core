@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerInputStream extends Subscriber implements Stream<Object>
+public class BufferServerSubscriber extends Subscriber implements Stream<Object>
 {
   private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   private long baseSeconds; // needed here
@@ -29,7 +29,7 @@ public class BufferServerInputStream extends Subscriber implements Stream<Object
   private StreamCodec<Object> serde;
   DataStatePair dsp = new DataStatePair();
 
-  public BufferServerInputStream(String id)
+  public BufferServerSubscriber(String id)
   {
     super(id);
   }
@@ -149,5 +149,5 @@ public class BufferServerInputStream extends Subscriber implements Stream<Object
     super.setup(context.getBufferServerAddress(), context.attr(StreamContext.EVENT_LOOP).get());
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(BufferServerInputStream.class);
+  private static final Logger logger = LoggerFactory.getLogger(BufferServerSubscriber.class);
 }

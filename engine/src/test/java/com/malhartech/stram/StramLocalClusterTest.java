@@ -12,7 +12,7 @@ import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stream.BufferServerInputStream;
+import com.malhartech.stream.BufferServerSubscriber;
 import com.malhartech.stream.StramTestSupport;
 import java.io.File;
 import java.io.FileReader;
@@ -72,7 +72,7 @@ public class StramLocalClusterTest
 
   private static class TestBufferServerSubscriber
   {
-    final BufferServerInputStream bsi;
+    final BufferServerSubscriber bsi;
     final StreamContext streamContext;
     final TestSink sink;
 
@@ -87,7 +87,7 @@ public class StramLocalClusterTest
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
-      bsi = new BufferServerInputStream(streamName);
+      bsi = new BufferServerSubscriber(streamName);
       bsi.setup(streamContext);
       bsi.setSink("testSink", sink);
     }

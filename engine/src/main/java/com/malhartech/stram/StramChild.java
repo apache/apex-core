@@ -994,7 +994,7 @@ public class StramChild
             context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
           }
 
-          stream = new BufferServerOutputStream(nodi.declaredStreamId);
+          stream = new BufferServerPublisher(nodi.declaredStreamId);
           stream.setup(context);
           logger.debug("deployed a buffer stream {}", stream);
 
@@ -1030,7 +1030,7 @@ public class StramChild
               bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
             }
 
-            BufferServerOutputStream bsos = new BufferServerOutputStream(nodi.declaredStreamId);
+            BufferServerPublisher bsos = new BufferServerPublisher(nodi.declaredStreamId);
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
@@ -1076,7 +1076,7 @@ public class StramChild
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
             bssc.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
-            BufferServerOutputStream bsos = new BufferServerOutputStream(nodi.declaredStreamId);
+            BufferServerPublisher bsos = new BufferServerPublisher(nodi.declaredStreamId);
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
@@ -1180,7 +1180,7 @@ public class StramChild
             context.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
 
             @SuppressWarnings("unchecked")
-            Stream<Object> stream = (Stream)new BufferServerInputStream(nidi.declaredStreamId);
+            Stream<Object> stream = (Stream)new BufferServerSubscriber(nidi.declaredStreamId);
             stream.setup(context);
             logger.debug("deployed buffer input stream {}", stream);
 
@@ -1206,7 +1206,7 @@ public class StramChild
             }
             else {
               /**
-               * we are trying to tap into existing InlineStream or BufferServerOutputStream.
+               * we are trying to tap into existing InlineStream or BufferServerPublisher.
                * Since none of those streams are MultiSinkCapable, we need to replace them with Mux.
                */
               StreamContext context = new StreamContext(nidi.declaredStreamId);
@@ -1313,7 +1313,7 @@ public class StramChild
   public synchronized void activate(List<OperatorDeployInfo> nodeList)
   {
     for (ComponentContextPair<Stream<Object>, StreamContext> pair: streams.values()) {
-      if (!(pair.component instanceof BufferServerInputStream || activeStreams.containsKey(pair.component))) {
+      if (!(pair.component instanceof BufferServerSubscriber || activeStreams.containsKey(pair.component))) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
       }
@@ -1364,7 +1364,7 @@ public class StramChild
     }
 
     for (ComponentContextPair<Stream<Object>, StreamContext> pair: streams.values()) {
-      if (pair.component instanceof BufferServerInputStream && !activeStreams.containsKey(pair.component)) {
+      if (pair.component instanceof BufferServerSubscriber && !activeStreams.containsKey(pair.component)) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
       }

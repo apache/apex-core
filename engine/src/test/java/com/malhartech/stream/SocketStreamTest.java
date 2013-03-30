@@ -98,7 +98,7 @@ public class SocketStreamTest
 
     StreamCodec<Object> serde = new DefaultStreamCodec<Object>();
 
-    String streamName = "streamName"; // AKA "type"
+    String streamName = "streamName";
     String upstreamNodeId = "upstreamNodeId";
     String downstreamNodeId = "downStreamNodeId";
 
@@ -110,7 +110,7 @@ public class SocketStreamTest
     issContext.attr(StreamContext.CODEC).set(serde);
     issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerInputStream iss = new BufferServerInputStream(streamName);
+    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId);
     iss.setup(issContext);
     iss.setSink("testSink", sink);
 
@@ -121,7 +121,7 @@ public class SocketStreamTest
     ossContext.attr(StreamContext.CODEC).set(serde);
     ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerOutputStream oss = new BufferServerOutputStream(streamName);
+    BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId);
     oss.setup(ossContext);
 
     iss.activate(issContext);

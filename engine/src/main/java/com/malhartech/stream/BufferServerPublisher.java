@@ -22,17 +22,17 @@ import org.slf4j.LoggerFactory;
  * Partitioning is managed by this instance of the buffer server<br>
  * <br>
  */
-public class BufferServerOutputStream extends Publisher implements Stream<Object>
+public class BufferServerPublisher extends Publisher implements Stream<Object>
 {
-  private static final Logger logger = LoggerFactory.getLogger(BufferServerOutputStream.class);
+  private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
   public static final int BUFFER_SIZE = 64 * 1024;
   StreamCodec<Object> serde;
   int writtenBytes;
   int windowId;
 
-  public BufferServerOutputStream(String id)
+  public BufferServerPublisher(String sourceId)
   {
-    super(id);
+    super(sourceId);
   }
 
   /**
@@ -101,7 +101,7 @@ public class BufferServerOutputStream extends Publisher implements Stream<Object
   {
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
     serde = context.attr(StreamContext.CODEC).get();
-    write(PublishRequestTuple.getSerializedRequest(context.getSourceId(), context.getStartingWindowId()));
+    super.activate(context.getStartingWindowId());
   }
 
   @Override
