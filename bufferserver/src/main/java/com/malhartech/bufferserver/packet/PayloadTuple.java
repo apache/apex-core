@@ -72,4 +72,21 @@ public class PayloadTuple extends Tuple
     return array;
   }
 
+  public static byte[] getSerializedTuple(int partition, Fragment f)
+  {
+    int size = 0;
+    int bits = 32 - Integer.numberOfLeadingZeros(partition);
+    do {
+      size++;
+    }
+    while ((bits -= 7) > 0);
+    size++;
+
+    byte[] array = new byte[size + f.length];
+    array[0] = MessageType.PAYLOAD_VALUE;
+    Codec.writeRawVarint32(partition, array, 1);
+    System.arraycopy(f.buffer, f.offset, array, size, f.length);
+    return array;
+  }
+
 }

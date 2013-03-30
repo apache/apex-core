@@ -17,9 +17,7 @@ public class NoMessageTuple extends EmptyTuple
 
   public static byte[] getSerializedTuple()
   {
-    byte[] serialized = EmptyTuple.getSerializedTuple();
-    serialized[0] = MessageType.NO_MESSAGE_VALUE;
-    return serialized;
+    return EmptyTuple.getSerializedTuple(MessageType.NO_MESSAGE_VALUE);
   }
 
 }

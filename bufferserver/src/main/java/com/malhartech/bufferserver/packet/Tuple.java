@@ -35,6 +35,8 @@ public abstract class Tuple
     }
     switch (MessageType.valueOf(buffer[offset])) {
       case NO_MESSAGE:
+        return new NoMessageTuple(buffer, offset, length);
+
       case CHECKPOINT:
         return new EmptyTuple(buffer, offset, length);
 

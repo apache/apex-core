@@ -53,8 +53,9 @@ public class EmptyTuple extends Tuple
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
-  public static byte[] getSerializedTuple()
+  public static byte[] getSerializedTuple(byte value)
   {
-    return new byte[1];
+    return new byte[] {value};
   }
+
 }

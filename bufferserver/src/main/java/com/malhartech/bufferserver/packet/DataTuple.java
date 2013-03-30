@@ -47,4 +47,12 @@ public class DataTuple extends Tuple
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
+  public static byte[] getSerializedTuple(byte type, Fragment f)
+  {
+    byte[] array = new byte[f.length + 1];
+    array[0] = type;
+    System.arraycopy(f.buffer, f.offset, array, 1, f.length);
+    return array;
+  }
+
 }
