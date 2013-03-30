@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.util.ObjectMapperString;
 import java.io.*;
+import malhar.netlet.Client.Fragment;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -34,7 +35,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   @Override
   public Object fromByteArray(DataStatePair dspair)
   {
-    ByteArrayInputStream bis = new ByteArrayInputStream(dspair.data);
+    ByteArrayInputStream bis = new ByteArrayInputStream(dspair.data.buffer, dspair.data.offset, dspair.data.length);
     try {
       return mapper.readValue(bis, Object.class);
     }
@@ -51,7 +52,8 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     try {
       mapper.writeValue(bos, o);
       DataStatePair dsp = new DataStatePair();
-      dsp.data = bos.toByteArray();
+      byte[] bytes = bos.toByteArray();
+      dsp.data = new Fragment(bytes, 0, bytes.length);
       return dsp;
     }
     catch (IOException ex) {
