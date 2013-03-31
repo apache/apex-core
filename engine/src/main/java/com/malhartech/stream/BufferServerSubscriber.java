@@ -90,6 +90,9 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         t.setWindowId(baseSeconds | data.getWindowId());
         break;
 
+      case NO_MESSAGE:
+        return;
+        
       default:
         throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
     }

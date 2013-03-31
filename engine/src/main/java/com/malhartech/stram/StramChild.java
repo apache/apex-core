@@ -79,7 +79,7 @@ public class StramChild
 
   static {
     try {
-      eventloop = new DefaultEventLoop("alone");
+      eventloop = new DefaultEventLoop("ProcessWideEventLoop");
     }
     catch (IOException io) {
       throw new RuntimeException(io);
@@ -121,12 +121,11 @@ public class StramChild
     this.tupleRecordingPartFileTimeMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
     this.daemonAddress = ctx.applicationAttributes.attrValue(DAG.STRAM_DAEMON_ADDRESS, null);
 
-    if (!eventloop.isActive()) { /* this check is necessary since StramLocalCluster can have multiple children in the same cluster */
-      eventloop.start();
-    }
-
     try {
       if (ctx.deployBufferServer) {
+        if (!eventloop.isActive()) { /* this check is necessary since StramLocalCluster can have multiple children in the same cluster */
+          eventloop.start();
+        }
         // start buffer server, if it was not set externally
         bufferServer = new Server(0, 64 * 1024 * 1024);
         bufferServer.setSpoolStorage(new DiskStorage());
@@ -513,8 +512,8 @@ public class StramChild
 
     if (bufferServer != null) {
       eventloop.stop(bufferServer);
+      eventloop.stop();
     }
-    eventloop.stop();
 
     gens.clear();
   }

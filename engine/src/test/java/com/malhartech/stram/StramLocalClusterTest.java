@@ -87,7 +87,8 @@ public class StramLocalClusterTest
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
-      bsi = new BufferServerSubscriber(streamName);
+      streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
+      bsi = new BufferServerSubscriber(streamContext.getSinkId());
       bsi.setup(streamContext);
       bsi.setSink("testSink", sink);
     }
@@ -280,6 +281,7 @@ public class StramLocalClusterTest
     Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
     Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
 
+    sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputModule.OUTPUT_PORT);
     // buffer server data purged
     tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());
