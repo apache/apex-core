@@ -9,6 +9,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.DefaultOperatorSerDe;
+import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.engine.DefaultStreamCodec.ClassIdPair;
 import com.malhartech.util.KryoJdkSerializer;
@@ -25,7 +26,6 @@ import org.junit.Test;
  */
 public class DefaultStreamCodecTest
 {
-
   static class TestClass
   {
     final String s;
@@ -94,13 +94,25 @@ public class DefaultStreamCodecTest
   }
 
   @Test
-  public void testSomeMethod()
+  public void testString()
+  {
+    StreamCodec<Object> coder = new DefaultStreamCodec<Object>();
+    StreamCodec<Object> decoder = new DefaultStreamCodec<Object>();
+
+    String hello = "hello";
+
+    DataStatePair dsp = coder.toByteArray(hello);
+    Assert.assertEquals("both are hello", hello, decoder.fromByteArray(dsp));
+  }
+
+  @Test
+  public void testCustomObject()
   {
     DefaultStreamCodec<Object> coder = new DefaultStreamCodec<Object>();
     DefaultStreamCodec<Object> decoder = new DefaultStreamCodec<Object>();
 
     TestClass tc = new TestClass("hello!", 42);
-//    String tc = "hello!";
+    //String tc = "hello";
 
     DataStatePair dsp1 = coder.toByteArray(tc);
     Fragment state1 = dsp1.state;
@@ -155,15 +167,18 @@ public class DefaultStreamCodecTest
     Assert.assertEquals("", t1.finalField, t2.finalField);
   }
 
-   @DefaultSerializer(KryoJdkSerializer.class)
-   public static class OuterClass implements Serializable {
+  @DefaultSerializer(KryoJdkSerializer.class)
+  public static class OuterClass implements Serializable
+  {
     private static final long serialVersionUID = -3128672061060284420L;
 
-     @DefaultSerializer(KryoJdkSerializer.class)
-     public class InnerClass implements Serializable {
+    @DefaultSerializer(KryoJdkSerializer.class)
+    public class InnerClass implements Serializable
+    {
       private static final long serialVersionUID = -7176523451391231326L;
-     }
-   }
+    }
+
+  }
 
   @Test
   public void testInnerClassSerialization() throws Exception
@@ -171,7 +186,7 @@ public class DefaultStreamCodecTest
     OuterClass outer = new OuterClass();
     Object inner = outer.new InnerClass();
 
-    for (Object o : new Object[] {outer, inner}) {
+    for (Object o: new Object[] {outer, inner}) {
       DefaultStreamCodec<Object> c = new DefaultStreamCodec<Object>();
       DataStatePair dsp = c.toByteArray(o);
       c.fromByteArray(dsp);

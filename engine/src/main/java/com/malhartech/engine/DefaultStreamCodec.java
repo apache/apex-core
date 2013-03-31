@@ -112,7 +112,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   {
     if (dspair.state != null) {
       try {
-        input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.length);
+        input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.offset + dspair.state.length);
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
           logger.debug("registering class {} => {}", pair.classname, pair.id);
@@ -128,7 +128,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
       }
     }
 
-    input.setBuffer(dspair.data.buffer, dspair.data.offset, dspair.data.length);
+    input.setBuffer(dspair.data.buffer, dspair.data.offset, dspair.data.offset + dspair.data.length);
     return readClassAndObject(input);
   }
 
