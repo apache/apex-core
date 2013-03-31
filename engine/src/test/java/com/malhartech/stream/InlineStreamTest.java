@@ -31,11 +31,11 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
     prev = null;
 
-    final PassThroughNode operator1 = new PassThroughNode();
+    final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
     final GenericNode node1 = new GenericNode("node1", operator1);
     operator1.setup(new OperatorContext(0, null, null, null));
 
-    final PassThroughNode operator2 = new PassThroughNode();
+    final PassThroughNode<Object> operator2 = new PassThroughNode<Object>();
     final GenericNode node2 = new GenericNode("node2", operator2);
     operator2.setup(new OperatorContext(0, null, null, null));
 
@@ -172,6 +172,7 @@ public class InlineStreamTest
 
   /**
    * Operator implementation that simply passes on any tuple received
+   * @param <T>
    */
   public static class PassThroughNode<T> extends BaseOperator
   {
@@ -184,7 +185,7 @@ public class InlineStreamTest
       }
 
     };
-    public final DefaultOutputPort<T> output = new DefaultOutputPort(this);
+    public final DefaultOutputPort<T> output = new DefaultOutputPort<T>(this);
     private boolean logMessages = false;
 
     public boolean isLogMessages()

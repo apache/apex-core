@@ -2,12 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.malhartech.util;
 
-import com.malhartech.util.JacksonObjectMapperProvider;
-import com.malhartech.util.ObjectMapperString;
-import com.malhartech.util.PubSubWebSocketClient;
 import java.net.URI;
+import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,22 +14,22 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
-public class SamplePubSubWebSocketPublisher implements Runnable
+public class SamplePubSubWebSocketSubscriber implements Runnable
 {
   private static final String defaultUri = "ws://localhost:9090/pubsub";
-  private static final Logger LOG = LoggerFactory.getLogger(SamplePubSubWebSocketPublisher.class);
   private URI uri;
-  private ObjectMapperString payload = new ObjectMapperString("{\"hello\":\"world\"}");
+  private int messagesReceived = 0;
+  private CircularFifoBuffer buffer = new CircularFifoBuffer(5);
   private String topic = "testTopic";
+
+  public int getMessagesReceived()
+  {
+    return messagesReceived;
+  }
 
   public void setUri(URI uri)
   {
     this.uri = uri;
-  }
-
-  public void setPayload(ObjectMapperString payload)
-  {
-    this.payload = payload;
   }
 
   public void setTopic(String topic)
@@ -39,10 +37,18 @@ public class SamplePubSubWebSocketPublisher implements Runnable
     this.topic = topic;
   }
 
+  public CircularFifoBuffer getBuffer()
+  {
+    return buffer;
+  }
+
   @Override
   public void run()
   {
     try {
+      if (uri == null) {
+        uri = new URI(defaultUri);
+      }
       PubSubWebSocketClient wsClient = new PubSubWebSocketClient()
       {
         @Override
@@ -53,6 +59,9 @@ public class SamplePubSubWebSocketPublisher implements Runnable
         @Override
         public void onMessage(String type, String topic, Object data)
         {
+          logger.info("onMessage {}", data);
+          messagesReceived++;
+          buffer.add(data);
         }
 
         @Override
@@ -61,28 +70,21 @@ public class SamplePubSubWebSocketPublisher implements Runnable
         }
 
       };
-      if (uri == null) {
-        uri = new URI(defaultUri);
-      }
       wsClient.setUri(uri);
       wsClient.openConnection(1000);
-      while (true) {
-        wsClient.publish(topic, payload);
-        Thread.sleep(1000);
-      }
-    }
-    catch (InterruptedException ex) {
-      return;
+      wsClient.subscribe(topic);
     }
     catch (Exception ex) {
       throw new RuntimeException(ex);
     }
+
   }
 
   public static void main(String[] args) throws Exception
   {
-    SamplePubSubWebSocketPublisher sp = new SamplePubSubWebSocketPublisher();
-    sp.run();
+    SamplePubSubWebSocketSubscriber ss = new SamplePubSubWebSocketSubscriber();
+    ss.run();
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(SamplePubSubWebSocketSubscriber.class);
 }
