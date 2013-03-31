@@ -39,73 +39,73 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  */
-
-public class StramClientUtils {
-
-/**
- *
- * TBD<p>
- * <br>
- *
- */
-
-  public static class YarnClientHelper {
+public class StramClientUtils
+{
+  /**
+   *
+   * TBD<p>
+   * <br>
+   *
+   */
+  public static class YarnClientHelper
+  {
     private static final Logger LOG = LoggerFactory.getLogger(YarnClientHelper.class);
-
     // Configuration
     private final Configuration conf;
-
     // RPC to communicate to RM
     private final YarnRPC rpc;
 
-
-    public YarnClientHelper(Configuration conf)  {
+    public YarnClientHelper(Configuration conf)
+    {
       // Set up the configuration and RPC
       this.conf = conf;
       this.rpc = YarnRPC.create(conf);
     }
 
-    public Configuration getConf() {
+    public Configuration getConf()
+    {
       return this.conf;
     }
 
-    public YarnRPC  getYarnRPC() {
+    public YarnRPC getYarnRPC()
+    {
       return rpc;
     }
 
     /**
      * Connect to the Resource Manager/Applications Manager<p>
+     *
      * @return Handle to communicate with the ASM
      * @throws IOException
      */
-    public ClientRMProtocol connectToASM() throws IOException {
+    public ClientRMProtocol connectToASM() throws IOException
+    {
 
       /*
-      UserGroupInformation user = UserGroupInformation.getCurrentUser();
-      applicationsManager = user.doAs(new PrivilegedAction<ClientRMProtocol>() {
-        public ClientRMProtocol run() {
-          InetSocketAddress rmAddress = NetUtils.createSocketAddr(conf.get(
-            YarnConfiguration.RM_SCHEDULER_ADDRESS,
-            YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS));
-          LOG.info("Connecting to ResourceManager at " + rmAddress);
-          Configuration appsManagerServerConf = new Configuration(conf);
-          appsManagerServerConf.setClass(YarnConfiguration.YARN_SECURITY_INFO,
-          ClientRMSecurityInfo.class, SecurityInfo.class);
-          ClientRMProtocol asm = ((ClientRMProtocol) rpc.getProxy(ClientRMProtocol.class, rmAddress, appsManagerServerConf));
-          return asm;
-        }
-      });
+       UserGroupInformation user = UserGroupInformation.getCurrentUser();
+       applicationsManager = user.doAs(new PrivilegedAction<ClientRMProtocol>() {
+       public ClientRMProtocol run() {
+       InetSocketAddress rmAddress = NetUtils.createSocketAddr(conf.get(
+       YarnConfiguration.RM_SCHEDULER_ADDRESS,
+       YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS));
+       LOG.info("Connecting to ResourceManager at " + rmAddress);
+       Configuration appsManagerServerConf = new Configuration(conf);
+       appsManagerServerConf.setClass(YarnConfiguration.YARN_SECURITY_INFO,
+       ClientRMSecurityInfo.class, SecurityInfo.class);
+       ClientRMProtocol asm = ((ClientRMProtocol) rpc.getProxy(ClientRMProtocol.class, rmAddress, appsManagerServerConf));
+       return asm;
+       }
+       });
        */
       YarnConfiguration yarnConf = new YarnConfiguration(conf);
       InetSocketAddress rmAddress = yarnConf.getSocketAddr(
-          YarnConfiguration.RM_ADDRESS,
-          YarnConfiguration.DEFAULT_RM_ADDRESS,
-          YarnConfiguration.DEFAULT_RM_PORT);
+              YarnConfiguration.RM_ADDRESS,
+              YarnConfiguration.DEFAULT_RM_ADDRESS,
+              YarnConfiguration.DEFAULT_RM_PORT);
       LOG.info("Connecting to ResourceManager at " + rmAddress);
-      return  ((ClientRMProtocol) rpc.getProxy(
-          ClientRMProtocol.class, rmAddress, conf));
+      return ((ClientRMProtocol)rpc.getProxy(
+              ClientRMProtocol.class, rmAddress, conf));
     }
-
 
     /**
      * Connect to the Resource Manager<p>
@@ -115,11 +115,11 @@ public class StramClientUtils {
     public AMRMProtocol connectToRM()
     {
       InetSocketAddress rmAddress = conf.getSocketAddr(
-        YarnConfiguration.RM_SCHEDULER_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
-        YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
+              YarnConfiguration.RM_SCHEDULER_ADDRESS,
+              YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS,
+              YarnConfiguration.DEFAULT_RM_SCHEDULER_PORT);
       LOG.info("Connecting to ResourceManager at " + rmAddress);
-      return ((AMRMProtocol) rpc.getProxy(AMRMProtocol.class, rmAddress, conf));
+      return ((AMRMProtocol)rpc.getProxy(AMRMProtocol.class, rmAddress, conf));
     }
 
     /**
@@ -129,10 +129,10 @@ public class StramClientUtils {
     {
       LOG.debug("Connecting to ContainerManager for containerid=" + container.getId());
       String cmIpPortStr = container.getNodeId().getHost() + ":"
-                           + container.getNodeId().getPort();
+              + container.getNodeId().getPort();
       InetSocketAddress cmAddress = NetUtils.createSocketAddr(cmIpPortStr);
       LOG.info("Connecting to ContainerManager at " + cmIpPortStr);
-      return ((ContainerManager) rpc.getProxy(ContainerManager.class, cmAddress, conf));
+      return ((ContainerManager)rpc.getProxy(ContainerManager.class, cmAddress, conf));
     }
 
   }
@@ -142,16 +142,18 @@ public class StramClientUtils {
    * Bunch of utilities that ease repeating interactions with {@link ClientRMProtocol}<p>
    *
    */
-  public static class ClientRMHelper {
+  public static class ClientRMHelper
+  {
     private static final Logger LOG = LoggerFactory.getLogger(ClientRMHelper.class);
-
     public final ClientRMProtocol clientRM;
 
-    public ClientRMHelper(YarnClientHelper yarnClient) throws IOException {
+    public ClientRMHelper(YarnClientHelper yarnClient) throws IOException
+    {
       this.clientRM = yarnClient.connectToASM();
     }
 
-    public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnRemoteException {
+    public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnRemoteException
+    {
       // Get application report for the appId we are interested in
       GetApplicationReportRequest reportRequest = Records.newRecord(GetApplicationReportRequest.class);
       reportRequest.setApplicationId(appId);
@@ -179,11 +181,11 @@ public class StramClientUtils {
       clientRM.forceKillApplication(request);
     }
 
-
-    public static interface AppStatusCallback {
+    public static interface AppStatusCallback
+    {
       boolean exitLoop(ApplicationReport report);
-    }
 
+    }
 
     /**
      * Monitor the submitted application for completion. Kill application if time expires.
@@ -220,16 +222,16 @@ public class StramClientUtils {
           }
           else {
             LOG.info("Application did finished unsuccessfully."
-                     + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-                     + ". Breaking monitoring loop");
+                    + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+                    + ". Breaking monitoring loop");
             return false;
           }
         }
         else if (YarnApplicationState.KILLED == state
-                 || YarnApplicationState.FAILED == state) {
+                || YarnApplicationState.FAILED == state) {
           LOG.info("Application did not finish."
-                   + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
-                   + ". Breaking monitoring loop");
+                  + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString()
+                  + ". Breaking monitoring loop");
           return false;
         }
 
@@ -240,20 +242,28 @@ public class StramClientUtils {
         }
       }
     }
+
   }
 
-  public static File getSettingsRootDir() {
-    return new File(FileUtils.getUserDirectory(), ".stram");
+  public static final String MALHAR_HOME = System.getenv("MALHAR_HOME");
+
+  public static File getSettingsRootDir()
+  {
+    if (MALHAR_HOME == null || MALHAR_HOME.isEmpty()) {
+      return new File(FileUtils.getUserDirectory(), ".stram");
+    }
+
+    return new File(MALHAR_HOME, ".stram");
   }
 
   private static final String STRAM_DEFAULT_XML_FILE = "stram-default.xml";
   public static final String STRAM_SITE_XML_FILE = "stram-site.xml";
 
-  public static Configuration addStramResources(Configuration conf) {
+  public static Configuration addStramResources(Configuration conf)
+  {
     conf.addResource(STRAM_DEFAULT_XML_FILE);
     conf.addResource(STRAM_SITE_XML_FILE);
     return conf;
   }
-
 
 }
