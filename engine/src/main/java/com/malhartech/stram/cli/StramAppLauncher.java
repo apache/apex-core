@@ -187,13 +187,13 @@ public class StramAppLauncher {
 
         String malhar_home = System.getenv("MALHAR_HOME");
         if (malhar_home != null && !malhar_home.isEmpty()) {
-          malhar_home = " -Duser.home=\"" + malhar_home + "\"";
+          malhar_home = " -Duser.home=" + malhar_home;
         }
         else {
           malhar_home = "";
         }
         String cmd = "mvn dependency:build-classpath" + malhar_home + " -Dmdep.outputFile=" + cpFile.getAbsolutePath() + " -f " + pomFile;
-        
+
         Process p = Runtime.getRuntime().exec(cmd);
         ProcessWatcher pw = new ProcessWatcher(p);
         InputStream output = p.getInputStream();
