@@ -994,7 +994,7 @@ public class StramChild
             context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
           }
 
-          stream = new BufferServerPublisher(nodi.declaredStreamId);
+          stream = new BufferServerPublisher(sourceIdentifier);
           stream.setup(context);
           logger.debug("deployed a buffer stream {}", stream);
 
@@ -1030,7 +1030,7 @@ public class StramChild
               bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
             }
 
-            BufferServerPublisher bsos = new BufferServerPublisher(nodi.declaredStreamId);
+            BufferServerPublisher bsos = new BufferServerPublisher(sourceIdentifier);
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
@@ -1076,7 +1076,7 @@ public class StramChild
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
             bssc.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
-            BufferServerPublisher bsos = new BufferServerPublisher(nodi.declaredStreamId);
+            BufferServerPublisher bsos = new BufferServerPublisher(sourceIdentifier);
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
