@@ -185,9 +185,9 @@ public class StramAppLauncher {
         LOG.info("Generating classpath via mvn from " + pomFile);
         LOG.info("java.home: " + System.getProperty("java.home"));
 
-        String malhar_home = System.getenv("MALHAR_HOME");
-        if (malhar_home != null && !malhar_home.isEmpty()) {
-          malhar_home = " -Duser.home=" + malhar_home;
+        String malhar_home;
+        if (StramClientUtils.MALHAR_HOME != null && !StramClientUtils.MALHAR_HOME.isEmpty()) {
+          malhar_home = " -Duser.home=" + StramClientUtils.MALHAR_HOME;
         }
         else {
           malhar_home = "";
