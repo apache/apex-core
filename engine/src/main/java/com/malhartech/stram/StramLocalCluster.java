@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StramLocalCluster implements Runnable
 {
-  private static final Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
+  private static final Logger logger = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
   protected final StreamingContainerManager dnmgr;
@@ -80,7 +80,7 @@ public class StramLocalCluster implements Runnable
     @Override
     public void log(String containerId, String msg) throws IOException
     {
-      LOG.info("child msg: {} context: {}", msg, dnmgr.getContainerAgent(containerId).container);
+      logger.info("child msg: {} context: {}", msg, dnmgr.getContainerAgent(containerId).container);
     }
 
     @Override
@@ -139,7 +139,7 @@ public class StramLocalCluster implements Runnable
 
     public static void run(StramChild stramChild, StreamingContainerContext ctx) throws Exception
     {
-      LOG.debug("Got context: " + ctx);
+      logger.debug("Got context: " + ctx);
       stramChild.setup(ctx);
       boolean hasError = true;
       try {
@@ -220,7 +220,7 @@ public class StramLocalCluster implements Runnable
       Thread launchThread = new Thread(this, containerId);
       launchThread.start();
       childContainers.put(containerId, child);
-      LOG.info("Started container {}", containerId);
+      logger.info("Started container {}", containerId);
     }
 
     @Override
@@ -231,12 +231,12 @@ public class StramLocalCluster implements Runnable
         LocalStramChild.run(child, ctx);
       }
       catch (Exception e) {
-        LOG.error("Container {} failed", containerId, e);
+        logger.error("Container {} failed", containerId, e);
         throw new RuntimeException(e);
       }
       finally {
         childContainers.remove(containerId);
-        LOG.info("Container {} terminating.", containerId);
+        logger.info("Container {} terminating.", containerId);
       }
     }
 
@@ -262,12 +262,13 @@ public class StramLocalCluster implements Runnable
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
     if (!perContainerBufferServer) {
+      logger.debug("starting event loop {}", StramChild.eventloop);
       StramChild.eventloop.start();
       bufferServer = new Server(0, 1024 * 1024);
       bufferServer.setSpoolStorage(new DiskStorage());
       SocketAddress bindAddr = bufferServer.run(StramChild.eventloop);
       this.bufferServerAddress = ((InetSocketAddress)bindAddr);
-      LOG.info("Buffer server started: {}", bufferServerAddress);
+      logger.info("Buffer server started: {}", bufferServerAddress);
     }
   }
 
@@ -296,7 +297,7 @@ public class StramLocalCluster implements Runnable
   {
     injectShutdown.put(c.getContainerId(), c);
     c.triggerHeartbeat();
-    LOG.info("Container {} failed, launching new container.", c.getContainerId());
+    logger.info("Container {} failed, launching new container.", c.getContainerId());
     dnmgr.scheduleContainerRestart(c.getContainerId());
     // simplify testing: remove immediately rather than waiting for thread to exit
     this.childContainers.remove(c.getContainerId());
@@ -383,7 +384,7 @@ public class StramLocalCluster implements Runnable
           c.processHeartbeatResponse(r);
         }
         dnmgr.containerStopRequests.remove(containerIdStr);
-        LOG.info("Container {} failed, launching new container.", containerIdStr);
+        logger.info("Container {} failed, launching new container.", containerIdStr);
         dnmgr.scheduleContainerRestart(containerIdStr);
       }
 
@@ -413,7 +414,7 @@ public class StramLocalCluster implements Runnable
           Thread.sleep(1000);
         }
         catch (InterruptedException e) {
-          LOG.info("Sleep interrupted " + e.getMessage());
+          logger.info("Sleep interrupted " + e.getMessage());
         }
       }
     }
@@ -423,9 +424,10 @@ public class StramLocalCluster implements Runnable
       lsc.triggerHeartbeat();
     }
 
-    LOG.info("Application finished.");
+    logger.info("Application finished.");
     if (!perContainerBufferServer) {
       StramChild.eventloop.stop(bufferServer);
+      logger.debug("stopping eventloop {}", StramChild.eventloop);
       StramChild.eventloop.stop();
     }
   }

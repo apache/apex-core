@@ -78,11 +78,13 @@ public class Server implements ServerListener
   public synchronized InetSocketAddress run(EventLoop eventloop)
   {
     eventloop.start(null, port, this);
-    try {
-      wait();
-    }
-    catch (InterruptedException ex) {
-      throw new RuntimeException(ex);
+    while (address == null) {
+      try {
+        wait(20);
+      }
+      catch (InterruptedException ex) {
+        throw new RuntimeException(ex);
+      }
     }
 
     this.eventloop = eventloop;

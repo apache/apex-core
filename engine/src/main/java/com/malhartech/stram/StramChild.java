@@ -124,6 +124,7 @@ public class StramChild
     try {
       if (ctx.deployBufferServer) {
         if (!eventloop.isActive()) { /* this check is necessary since StramLocalCluster can have multiple children in the same cluster */
+          logger.debug("starting event loop {}", eventloop);
           eventloop.start();
         }
         // start buffer server, if it was not set externally
@@ -512,6 +513,7 @@ public class StramChild
 
     if (bufferServer != null) {
       eventloop.stop(bufferServer);
+      logger.debug("stopping event loop {}", eventloop);
       eventloop.stop();
     }
 
