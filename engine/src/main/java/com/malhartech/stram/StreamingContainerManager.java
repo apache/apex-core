@@ -679,7 +679,8 @@ public class StreamingContainerManager implements PlanContext
 
     for (PTContainer container : this.plan.getContainers()) {
 
-      StramChildAgent sca = this.containers.get(container.containerId);
+      String containerId = container.containerId;
+      StramChildAgent sca = containerId != null ? this.containers.get(container.containerId) : null;
 
       for (PTOperator operator : container.operators) {
 
@@ -690,11 +691,7 @@ public class StreamingContainerManager implements PlanContext
         ni.name = operator.getName();
         ni.status = operator.getState().toString();
 
-        OperatorStatus os = null;
-        if (sca != null) {
-          os = sca.operators.get(operator.getId());
-        }
-
+        OperatorStatus os = (sca != null) ? sca.operators.get(operator.getId()) : null;
         if (os != null) {
           ni.totalTuplesProcessed = os.totalTuplesProcessed;
           ni.totalTuplesEmitted = os.totalTuplesEmitted;

@@ -194,9 +194,12 @@ public class StramChildAgent {
     }
 
     if (status != null && !container.pendingDeploy.isEmpty()) {
-      if (status.operator.getState() == PTOperator.State.PENDING_DEPLOY && container.pendingDeploy.remove(status.operator)) {
-        LOG.debug("{} removed from deploy list: {} remote status {}", new Object[] {container.containerId, status.operator, shb.getState()});
-        status.operator.setState(PTOperator.State.ACTIVE);
+      if (status.operator.getState() == PTOperator.State.PENDING_DEPLOY) {
+        // remove operator from deploy list only if not scheduled of undeploy (or redeploy) again
+        if (!container.pendingUndeploy.contains(status.operator) && container.pendingDeploy.remove(status.operator)) {
+          LOG.debug("{} marking deployed: {} remote status {}", new Object[] {container.containerId, status.operator, shb.getState()});
+          status.operator.setState(PTOperator.State.ACTIVE);
+        }
       }
       LOG.debug("{} pendingDeploy {}", container.containerId, container.pendingDeploy);
     }
@@ -229,7 +232,7 @@ public class StramChildAgent {
           for (PTOperator operator : toUndeploy) {
             operator.setState(PTOperator.State.INACTIVE);
           }
-          LOG.debug("{} undeploy complete: {}", container.containerId, toUndeploy);
+          LOG.debug("{} undeploy complete: {} deploy: {}", new Object[] {container.containerId, toUndeploy, container.pendingDeploy});
         }
       };
       return rsp;

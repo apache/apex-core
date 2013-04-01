@@ -276,9 +276,11 @@ public class PartitioningTest
     // single output operator to receive tuple from each partition
     List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorMeta(singleCollector));
     Assert.assertEquals("number output operator instances " + operators, 1, operators.size());
+    StramTestSupport.waitForActivation(lc, operators.get(0)); // ensure redeploy
+
     List<Object> receivedTuples;
     while ((receivedTuples = CollectorOperator.receivedTuples.get(singleCollector.prefix + operators.get(0).getId())) == null || receivedTuples.size() < inputTuples.size()) {
-      LOG.debug("Waiting for tuple: " + operators.get(0));
+      LOG.debug("Waiting for tuple: " + operators.get(0) + " expected: " +inputTuples + " received: " + receivedTuples);
       sleep(20);
     }
     Assert.assertEquals("output tuples " + receivedTuples, Sets.newHashSet(inputTuples), Sets.newHashSet(receivedTuples));
