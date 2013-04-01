@@ -870,16 +870,24 @@ public class StramChild
            * this stream exists. That means someone outside of this container must be interested.
            */
           assert (nodi.isInline() == false): "output should not be inline: " + nodi;
-          context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
-          if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
-            context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
+          if (nodi.bufferServerHost == null) {
+            stream = new NullStream();
+            stream.setup(context);
+
+            sinkIdentifier = null;
           }
+          else {
+            context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+            if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
+              context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
+            }
 
-          stream = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
-          stream.setup(context);
-          logger.debug("deployed a buffer stream {}", stream);
+            stream = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
+            stream.setup(context);
+            logger.debug("deployed a buffer stream {}", stream);
 
-          sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
+            sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
+          }
         }
         else if (collection.size() == 1) {
           if (nodi.isInline()) {
@@ -1220,12 +1228,14 @@ public class StramChild
             for (Map.Entry<String, AttributeMap<PortContext>> entry: inputPortAttributes.entrySet()) {
               AttributeMap<PortContext> attrMap = entry.getValue();
               if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
+                logger.info("Automatically start recording for operator {}, input port {}", ndi.id, entry.getKey());
                 startRecording(node, ndi.id, entry.getKey(), true);
               }
             }
             for (Map.Entry<String, AttributeMap<PortContext>> entry: outputPortAttributes.entrySet()) {
               AttributeMap<PortContext> attrMap = entry.getValue();
               if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
+                logger.info("Automatically start recording for operator {}, output port {}", ndi.id, entry.getKey());
                 startRecording(node, ndi.id, entry.getKey(), true);
               }
             }
