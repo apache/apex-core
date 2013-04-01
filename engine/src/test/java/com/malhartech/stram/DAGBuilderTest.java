@@ -508,9 +508,9 @@ public class DAGBuilderTest {
 
     try {
       dag.validate();
-      Assert.fail("should raise: At least on output port must be connected");
+      Assert.fail("should raise: At least one output port must be connected");
     } catch (IllegalArgumentException e) {
-      Assert.assertEquals("", "At least on output port must be connected: multiOutputPorts1", e.getMessage());
+      Assert.assertEquals("", "At least one output port must be connected: multiOutputPorts1", e.getMessage());
     }
     TestOutputModule o3 = dag.addOperator("o3", new TestOutputModule());
     dag.addStream("s2", ta2.outport1, o3.inport);
