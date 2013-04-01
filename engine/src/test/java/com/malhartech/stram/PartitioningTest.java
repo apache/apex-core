@@ -1,39 +1,24 @@
 package com.malhartech.stram;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import junit.framework.Assert;
-
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.InputOperator;
-import com.malhartech.api.PartitionableOperator;
+import com.malhartech.api.*;
 import com.malhartech.engine.Node;
 import com.malhartech.stram.PhysicalPlan.PMapping;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stream.StramTestSupport;
 import com.malhartech.stream.StramTestSupport.WaitCondition;
+import java.io.File;
 import static java.lang.Thread.sleep;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import junit.framework.Assert;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PartitioningTest
 {
