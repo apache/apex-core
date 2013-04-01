@@ -139,6 +139,7 @@ public class StramLocalClusterTest
 
     StramLocalCluster localCluster = new StramLocalCluster(dag, mcf);
     localCluster.setPerContainerBufferServer(true);
+    localCluster.setHeartbeatMonitoringEnabled(false); // driven by test
     localCluster.runAsync();
 
 
@@ -193,12 +194,12 @@ public class StramLocalClusterTest
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
     c0.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint propagated " + ptNode1, 2, ptNode1.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode1, 2, ptNode1.getRecentCheckpoint());
     c2.triggerHeartbeat();
     //Thread.yield();
-    Thread.sleep(1); // yield without using yield to heartbeat trigger cycle
+    Thread.sleep(1); // yield without using yield for heartbeat cycle
     c2.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint propagated " + ptNode2, 4, ptNode2.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode2, 4, ptNode2.getRecentCheckpoint());
 
     // activated test sink, verify tuple stored at buffer server
     List<Object> tuples = sink.retrieveTuples(1, 3000);
@@ -228,7 +229,7 @@ public class StramLocalClusterTest
       LOG.debug("Waiting for {} to complete pending work.", c2.getContainerId());
     }
 
-    Assert.assertEquals("downstream operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
+    Assert.assertEquals(c2.getContainerId() + " operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify downstream node was replaced in same container
     Assert.assertEquals("active " + ptNode2, c2, StramTestSupport.waitForActivation(localCluster, ptNode2));
     GenericTestModule n2Replaced = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorMeta(node2)).getId()).getOperator();

@@ -228,6 +228,7 @@ public class StramClient
       org.eclipse.jetty.http.HttpParser.class,
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
+    jarClasses.addAll(Arrays.asList(com.malhartech.bufferserver.Server.CLUSTER_DEPLOY_DEPENDENCIES));
     jarClasses.addAll(Arrays.asList(defaultClasses));
 
     for (String className : dag.getClassNames()) {

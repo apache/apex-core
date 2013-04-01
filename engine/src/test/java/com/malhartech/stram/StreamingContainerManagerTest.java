@@ -20,8 +20,8 @@ import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.DAG.OperatorMeta;
+import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestModule;
@@ -32,7 +32,7 @@ import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlanTest.PartitioningTestOperator;
-import com.malhartech.stram.StramChildAgent.DeployRequest;
+import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.util.AttributeMap;
 
@@ -307,19 +307,18 @@ public class StreamingContainerManagerTest {
     scm.assignContainerForTest(c2Id, InetSocketAddress.createUnresolved("localhost", 0));
     Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
     StramChildAgent sca2 = scm.getContainerAgent(c2.containerId);
+    Assert.assertEquals("", 0, sca1.container.pendingUndeploy.size());
+    Assert.assertEquals("", 2, sca1.container.pendingDeploy.size());
 
     scm.scheduleContainerRestart(c1.containerId);
-    Assert.assertEquals("", 0, sca1.getRequests().size());
+    Assert.assertEquals("", 0, sca1.container.pendingUndeploy.size());
+    Assert.assertEquals("", 2, sca1.container.pendingDeploy.size());
     Assert.assertEquals(""+scm.containerStartRequests, 1, scm.containerStartRequests.size());
-    DeployRequest dr = scm.containerStartRequests.peek();
-    Assert.assertNotNull(""+dr, dr.executeWhenZero);
-    Assert.assertEquals(""+dr, 2, dr.executeWhenZero.get());
-    Assert.assertNotNull(""+dr, dr.ackCountdown);
-    Assert.assertEquals(""+dr, 1, dr.ackCountdown.get());
+    ContainerStartRequest dr = scm.containerStartRequests.peek();
+    Assert.assertNotNull(dr);
 
-    List<?> requests = new ArrayList<DeployRequest>(sca2.getRequests());
-    Assert.assertEquals(""+requests, 2, requests.size());
-    Assert.assertEquals(""+requests.get(0), StramChildAgent.UndeployRequest.class, requests.get(0).getClass());
+    Assert.assertEquals(""+sca2.container.pendingUndeploy, 1, sca2.container.pendingUndeploy.size());
+    Assert.assertEquals(""+sca2.container.pendingDeploy, 1, sca2.container.pendingDeploy.size());
 
   }
 

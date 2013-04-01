@@ -9,6 +9,7 @@ import com.malhartech.engine.*;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.AttributeKey;
 import io.netty.util.Attribute;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,11 +34,11 @@ public class InlineStreamTest
 
     final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
     final GenericNode node1 = new GenericNode("node1", operator1);
-    operator1.setup(new OperatorContext(0, null, null, null));
+    operator1.setup(new OperatorContext(0, null, null, null, null, null));
 
     final PassThroughNode<Object> operator2 = new PassThroughNode<Object>();
     final GenericNode node2 = new GenericNode("node2", operator2);
-    operator2.setup(new OperatorContext(0, null, null, null));
+    operator2.setup(new OperatorContext(0, null, null, null, null, null));
 
     StreamContext streamContext = new StreamContext("node1->node2");
     InlineStream stream = new InlineStream();
@@ -158,7 +159,9 @@ public class InlineStreamTest
       public void run()
       {
         int id = counter.incrementAndGet();
-        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(), new AttributeMap.DefaultAttributeMap<Context.OperatorContext>(), new AttributeMap.DefaultAttributeMap<com.malhartech.api.DAGContext>());
+        OperatorContext ctx = new OperatorContext(id, Thread.currentThread(),
+                new AttributeMap.DefaultAttributeMap<Context.OperatorContext>(), new AttributeMap.DefaultAttributeMap<com.malhartech.api.DAGContext>(),
+                new HashMap<String, AttributeMap<Context.PortContext>>(), new HashMap<String, AttributeMap<Context.PortContext>>());
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
         activeNodes.remove(ctx.getId());

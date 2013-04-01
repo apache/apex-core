@@ -11,6 +11,7 @@ import com.malhartech.util.AttributeMap;
 import com.malhartech.util.CircularBuffer;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,8 @@ public class OperatorContext implements Context.OperatorContext
   private final int id;
   private final AttributeMap<OperatorContext> attributes;
   private final AttributeMap<DAGContext> applicationAttributes;
+  private final Map<String, AttributeMap<PortContext>> inputPortAttributes;
+  private final Map<String, AttributeMap<PortContext>> outputPortAttributes;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
@@ -79,13 +82,20 @@ public class OperatorContext implements Context.OperatorContext
   /**
    *
    * @param id the value of id
+   * @param worker
    * @param attributes the value of attributes
+   * @param applicationAttributes
+   * @param inputPortAttributes
+   * @param outputPortAttributes
    */
-  public OperatorContext(int id, Thread worker, AttributeMap<OperatorContext> attributes, AttributeMap<DAGContext> applicationAttributes)
+  public OperatorContext(int id, Thread worker, AttributeMap<OperatorContext> attributes, AttributeMap<DAGContext> applicationAttributes,
+            Map<String, AttributeMap<PortContext>> inputPortAttributes, Map<String, AttributeMap<PortContext>> outputPortAttributes)
   {
     this.id = id;
     this.attributes = attributes;
     this.applicationAttributes = applicationAttributes;
+    this.inputPortAttributes = inputPortAttributes;
+    this.outputPortAttributes = outputPortAttributes;
     this.thread = worker;
   }
 
@@ -136,5 +146,18 @@ public class OperatorContext implements Context.OperatorContext
   public AttributeMap<OperatorContext> getAttributes()
   {
     return this.attributes;
+  }
+
+
+  @Override
+  public AttributeMap<PortContext> getInputPortAttributes(String portName)
+  {
+    return inputPortAttributes == null ? null : inputPortAttributes.get(portName);
+  }
+
+  @Override
+  public AttributeMap<PortContext> getOutputPortAttributes(String portName)
+  {
+    return outputPortAttributes == null ? null : outputPortAttributes.get(portName);
   }
 }
