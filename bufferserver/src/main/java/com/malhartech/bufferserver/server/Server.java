@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The readBuffer server application<p>
+ * The buffer server application<p>
  * <br>
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -320,7 +320,7 @@ public class Server implements ServerListener
 
           int len = writeOffset - readOffset - size;
           if (len > 0) {
-            publisher.transferBuffer(readBuffer, readOffset + size, len);
+            publisher.transferBuffer(this.buffer, readOffset + size, len);
           }
           ignore = true;
 
@@ -456,15 +456,15 @@ public class Server implements ServerListener
     {
       int remainingCapacity;
       do {
-        remainingCapacity = readBuffer.length - writeOffset;
+        remainingCapacity = buffer.length - writeOffset;
         if (len < remainingCapacity) {
           remainingCapacity = len;
-          buffer.position(writeOffset + remainingCapacity);
+          byteBuffer.position(writeOffset + remainingCapacity);
         }
         else {
-          buffer.position(readBuffer.length);
+          byteBuffer.position(buffer.length);
         }
-        System.arraycopy(array, offset, readBuffer, writeOffset, remainingCapacity);
+        System.arraycopy(array, offset, buffer, writeOffset, remainingCapacity);
         read(remainingCapacity);
 
         offset += remainingCapacity;
@@ -491,15 +491,15 @@ public class Server implements ServerListener
                 dirty = false;
                 datalist.flush(writeOffset);
               }
-              if (writeOffset == readBuffer.length) {
+              if (writeOffset == buffer.length) {
                 if (readOffset > writeOffset - 5) {
                   /*
                    * if the data is not corrupt, we are limited by space to receive full varint.
-                   * so we allocate a new buffer and copy over the partially written data to the
-                   * new buffer and start as if we always had full room but not enough data.
+                   * so we allocate a new byteBuffer and copy over the partially written data to the
+                   * new byteBuffer and start as if we always had full room but not enough data.
                    */
                   logger.info("hit the boundary while reading varint!");
-                  switchToNewBuffer(readBuffer, readOffset);
+                  switchToNewBuffer(buffer, readOffset);
                 }
               }
               return;
@@ -510,7 +510,7 @@ public class Server implements ServerListener
         }
 
         if (writeOffset - readOffset >= size) {
-          onMessage(readBuffer, readOffset, size);
+          onMessage(buffer, readOffset, size);
           readOffset += size;
           size = 0;
         }
@@ -520,12 +520,12 @@ public class Server implements ServerListener
             datalist.flush(writeOffset);
           }
 
-          if (writeOffset == readBuffer.length) {
+          if (writeOffset == buffer.length) {
             /*
-             * hit wall while writing serialized data, so have to allocate a new buffer.
+             * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
             logger.info("hit the boundary while reading data {} and {}", readOffset, size);
-            switchToNewBuffer(readBuffer, readOffset);
+            switchToNewBuffer(buffer, readOffset);
           }
           return;
         }
@@ -537,18 +537,18 @@ public class Server implements ServerListener
     {
       logger.debug("switching thread = {}", Thread.currentThread());
       byte[] newBuffer = new byte[datalist.getBlockSize()];
-      buffer = ByteBuffer.wrap(newBuffer);
+      byteBuffer = ByteBuffer.wrap(newBuffer);
       if (array == null || array.length - offset == 0) {
         writeOffset = 0;
       }
       else {
         writeOffset = array.length - offset;
-        System.arraycopy(readBuffer, offset, newBuffer, 0, writeOffset);
-        buffer.position(writeOffset);
+        System.arraycopy(buffer, offset, newBuffer, 0, writeOffset);
+        byteBuffer.position(writeOffset);
       }
-      readBuffer = newBuffer;
+      buffer = newBuffer;
       readOffset = 0;
-      datalist.addBuffer(readBuffer);
+      datalist.addBuffer(buffer);
     }
 
     @Override

@@ -21,8 +21,8 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractClient extends Client
 {
-  protected byte[] readBuffer;
-  protected ByteBuffer buffer;
+  protected byte[] buffer;
+  protected ByteBuffer byteBuffer;
   protected int size, writeOffset, readOffset;
   private EventLoop eventloop;
   private InetSocketAddress address;
@@ -30,25 +30,24 @@ public abstract class AbstractClient extends Client
   public AbstractClient()
   {
     super();
-    readBuffer = new byte[32 * 1024];
-    buffer = ByteBuffer.wrap(readBuffer);
+    buffer = new byte[32 * 1024];
+    byteBuffer = ByteBuffer.wrap(buffer);
   }
 
   public AbstractClient(byte[] readbuffer, int position)
   {
     super();
-    readBuffer = readbuffer;
-    buffer = ByteBuffer.wrap(readbuffer);
-    buffer.position(position);
+    buffer = readbuffer;
+    byteBuffer = ByteBuffer.wrap(readbuffer);
+    byteBuffer.position(position);
     writeOffset = position;
     readOffset = position;
-    //logger.debug("using readbuffer = {} and position = {}", "" + readbuffer, position);
   }
 
   @Override
   public ByteBuffer buffer()
   {
-    return buffer;
+    return byteBuffer;
   }
 
   // -ve number is no var int
@@ -57,38 +56,38 @@ public abstract class AbstractClient extends Client
     if (readOffset < writeOffset) {
       int offset = readOffset;
 
-      byte tmp = readBuffer[readOffset++];
+      byte tmp = buffer[readOffset++];
       if (tmp >= 0) {
         return tmp;
       }
       else if (readOffset < writeOffset) {
         int integer = tmp & 0x7f;
-        tmp = readBuffer[readOffset++];
+        tmp = buffer[readOffset++];
         if (tmp >= 0) {
           return integer | tmp << 7;
         }
         else if (readOffset < writeOffset) {
           integer |= (tmp & 0x7f) << 7;
-          tmp = readBuffer[readOffset++];
+          tmp = buffer[readOffset++];
 
           if (tmp >= 0) {
             return integer | tmp << 14;
           }
           else if (readOffset < writeOffset) {
             integer |= (tmp & 0x7f) << 14;
-            tmp = readBuffer[readOffset++];
+            tmp = buffer[readOffset++];
             if (tmp >= 0) {
               return integer | tmp << 21;
             }
             else if (readOffset < writeOffset) {
               integer |= (tmp & 0x7f) << 21;
-              tmp = readBuffer[readOffset++];
+              tmp = buffer[readOffset++];
               if (tmp >= 0) {
                 return integer | tmp << 28;
               }
               else {
                 throw new NumberFormatException("Invalid varint at location " + offset + " => "
-                        + Arrays.toString(Arrays.copyOfRange(readBuffer, offset, readOffset)));
+                        + Arrays.toString(Arrays.copyOfRange(buffer, offset, readOffset)));
               }
             }
           }
@@ -101,9 +100,9 @@ public abstract class AbstractClient extends Client
   }
 
   /**
-   * Upon reading the data from the socket into the buffer, this method is called.
+   * Upon reading the data from the socket into the byteBuffer, this method is called.
    *
-   * @param len - length of the data in number of bytes read into the buffer during the most recent read.
+   * @param len - length of the data in number of bytes read into the byteBuffer during the most recent read.
    */
   @Override
   public void read(int len)
@@ -113,15 +112,15 @@ public abstract class AbstractClient extends Client
       while (size == 0) {
         size = readVarInt();
         if (size == -1) {
-          if (writeOffset == readBuffer.length) {
+          if (writeOffset == buffer.length) {
             if (readOffset > writeOffset - 5) {
               logger.info("hit the boundary while reading varint!");
               /*
                * we may be reading partial varint, adjust the buffers so that we have enough space to read the full data.
                */
-              System.arraycopy(readBuffer, readOffset, readBuffer, 0, writeOffset - readOffset);
+              System.arraycopy(buffer, readOffset, buffer, 0, writeOffset - readOffset);
               writeOffset -= readOffset;
-              buffer.position(writeOffset);
+              byteBuffer.position(writeOffset);
               readOffset = 0;
             }
           }
@@ -131,30 +130,30 @@ public abstract class AbstractClient extends Client
       }
 
       if (writeOffset - readOffset >= size) {
-        onMessage(readBuffer, readOffset, size);
+        onMessage(buffer, readOffset, size);
         readOffset += size;
         size = 0;
       }
-      else if (writeOffset == readBuffer.length) {
-        if (size > readBuffer.length) {
-          int newsize = readBuffer.length;
+      else if (writeOffset == buffer.length) {
+        if (size > buffer.length) {
+          int newsize = buffer.length;
           while (newsize < size) {
             newsize <<= 1;
           }
-          logger.info("resizing buffer to size {} from size {}", newsize, readBuffer.length);
+          logger.info("resizing buffer to size {} from size {}", newsize, buffer.length);
           byte[] newArray = new byte[newsize];
-          System.arraycopy(readBuffer, readOffset, newArray, 0, writeOffset - readOffset);
+          System.arraycopy(buffer, readOffset, newArray, 0, writeOffset - readOffset);
           writeOffset -= readOffset;
           readOffset = 0;
-          buffer = ByteBuffer.wrap(newArray);
-          buffer.position(writeOffset);
+          byteBuffer = ByteBuffer.wrap(newArray);
+          byteBuffer.position(writeOffset);
         }
         else {
-          System.arraycopy(readBuffer, readOffset, readBuffer, 0, writeOffset - readOffset);
+          System.arraycopy(buffer, readOffset, buffer, 0, writeOffset - readOffset);
           writeOffset -= readOffset;
           readOffset = 0;
-          buffer.clear();
-          buffer.position(writeOffset);
+          byteBuffer.clear();
+          byteBuffer.position(writeOffset);
         }
       }
       else {       /* need to read more */
