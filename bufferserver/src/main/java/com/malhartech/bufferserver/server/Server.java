@@ -524,7 +524,7 @@ public class Server implements ServerListener
             /*
              * hit wall while writing serialized data, so have to allocate a new buffer.
              */
-            logger.info("hit the boundary while reading data");
+            logger.info("hit the boundary while reading data {} and {}", readOffset, size);
             switchToNewBuffer(readBuffer, readOffset);
           }
           return;
