@@ -318,12 +318,13 @@ public class DataList
     all_listeners.remove(dl);
   }
 
-  public void addBuffer(byte[] array)
+  public void addBuffer(byte[] array, int writeOffset)
   {
     last.next = new Block(identifier, array);
-    long windowId = last.ending_window;
+    last.next.starting_window = last.ending_window;
+    last.next.ending_window = last.ending_window;
+    last.writingOffset = writeOffset;
     last = last.next;
-    last.starting_window = windowId;
   }
 
   public byte[] getBuffer()
