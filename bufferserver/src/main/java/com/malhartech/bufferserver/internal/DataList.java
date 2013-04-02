@@ -149,7 +149,6 @@ public class DataList
           case -2:
           case -1:
           case 0:
-            //last.writingOffset = processingOffset;
             if (writeOffset == last.data.length) {
               nextOffset.integer = 0;
               processingOffset = 0;
