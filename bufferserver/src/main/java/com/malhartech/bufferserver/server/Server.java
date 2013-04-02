@@ -487,12 +487,10 @@ public class Server implements ServerListener
         if (size <= 0) {
           switch (size = readVarInt()) {
             case -1:
-              if (dirty) {
-                dirty = false;
-                datalist.flush(writeOffset);
-              }
               if (writeOffset == buffer.length) {
                 if (readOffset > writeOffset - 5) {
+                  dirty = false;
+                  datalist.flush(writeOffset);
                   /*
                    * if the data is not corrupt, we are limited by space to receive full varint.
                    * so we allocate a new byteBuffer and copy over the partially written data to the
@@ -501,6 +499,10 @@ public class Server implements ServerListener
                   logger.info("hit the boundary while reading varint!");
                   switchToNewBuffer(buffer, readOffset);
                 }
+              }
+              else if (dirty) {
+                dirty = false;
+                datalist.flush(writeOffset);
               }
               return;
 
@@ -515,17 +517,18 @@ public class Server implements ServerListener
           size = 0;
         }
         else {
-          if (dirty) {
+          if (writeOffset == buffer.length) {
             dirty = false;
             datalist.flush(writeOffset);
-          }
-
-          if (writeOffset == buffer.length) {
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
             logger.info("hit the boundary while reading data {} and {}", readOffset, size);
             switchToNewBuffer(buffer, readOffset);
+          }
+          else if (dirty) {
+            dirty = false;
+            datalist.flush(writeOffset);
           }
           return;
         }
