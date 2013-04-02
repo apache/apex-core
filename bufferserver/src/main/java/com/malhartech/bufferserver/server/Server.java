@@ -360,7 +360,7 @@ public class Server implements ServerListener
           break;
 
         case RESET_REQUEST:
-          logger.info("Received purge all request: {}", request);
+          logger.info("Received reset all request: {}", request);
           try {
             handleResetRequest((ResetRequestTuple)request, this);
           }
