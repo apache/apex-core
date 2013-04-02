@@ -320,7 +320,7 @@ public class DataList
 
   public void addBuffer(byte[] array)
   {
-    last.next = new Block(identifier, array);;
+    last.next = new Block(identifier, array);
     long windowId = last.ending_window;
     last = last.next;
     last.starting_window = windowId;

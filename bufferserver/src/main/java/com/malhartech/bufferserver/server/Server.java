@@ -524,6 +524,7 @@ public class Server implements ServerListener
             /*
              * hit wall while writing serialized data, so have to allocate a new buffer.
              */
+            logger.info("hit the boundary while reading data");
             switchToNewBuffer(readBuffer, readOffset);
           }
           return;
@@ -534,6 +535,7 @@ public class Server implements ServerListener
 
     public void switchToNewBuffer(byte[] array, int offset)
     {
+      logger.debug("switching thread = {}", Thread.currentThread());
       byte[] newBuffer = new byte[datalist.getBlockSize()];
       buffer = ByteBuffer.wrap(newBuffer);
       if (array == null || array.length - offset == 0) {
