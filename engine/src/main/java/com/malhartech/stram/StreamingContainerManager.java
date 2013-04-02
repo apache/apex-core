@@ -535,6 +535,7 @@ public class StreamingContainerManager implements PlanContext
   {
     BufferServerController bsc = new BufferServerController(operator.getLogicalId());
     bsc.setup(operator.container.bufferServerAddress, StramChild.eventloop);
+    bsc.activate();
     return bsc;
   }
 
@@ -639,14 +640,14 @@ public class StreamingContainerManager implements PlanContext
               String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
               // TODO: find way to mock this when testing rest of logic
               if (operator.container.bufferServerAddress.getPort() != 0) {
-                BufferServerClient bsc = getBufferServerClient(operator);
+                BufferServerController bsc = getBufferServerClient(operator);
                 // reset publisher (stale operator may still write data until disconnected)
                 // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
                 try {
                   bsc.reset(sourceIdentifier, 0);
                 }
                 catch (Exception ex) {
-                  LOG.error("Failed to purge buffer server {} {}", sourceIdentifier, ex);
+                  LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);
                 }
               }
             }

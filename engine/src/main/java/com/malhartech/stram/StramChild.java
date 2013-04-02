@@ -76,7 +76,7 @@ public class StramChild
   private final Object heartbeatTrigger = new Object();
   private String checkpointFsPath;
   private String appPath;
-  public static final DefaultEventLoop eventloop;
+  public static DefaultEventLoop eventloop;
 
   static {
     try {

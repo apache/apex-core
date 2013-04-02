@@ -45,7 +45,7 @@ public class StramLocalCluster implements Runnable
   protected final StreamingContainerManager dnmgr;
   private final UmbilicalProtocolLocalImpl umbilical;
   private InetSocketAddress bufferServerAddress;
-  private boolean perContainerBufferServer = false;
+  private boolean perContainerBufferServer;
   private Server bufferServer = null;
   private final Map<String, LocalStramChild> childContainers = new ConcurrentHashMap<String, LocalStramChild>();
   private int containerSeq = 0;
@@ -262,8 +262,9 @@ public class StramLocalCluster implements Runnable
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
     if (!perContainerBufferServer) {
-      logger.debug("starting event loop {}", StramChild.eventloop);
-      StramChild.eventloop.start();
+      if (!StramChild.eventloop.isActive()) {
+        StramChild.eventloop.start();
+      }
       bufferServer = new Server(0, 1024 * 1024);
       bufferServer.setSpoolStorage(new DiskStorage());
       SocketAddress bindAddr = bufferServer.run(StramChild.eventloop);
@@ -427,7 +428,6 @@ public class StramLocalCluster implements Runnable
     logger.info("Application finished.");
     if (!perContainerBufferServer) {
       StramChild.eventloop.stop(bufferServer);
-      logger.debug("stopping eventloop {}", StramChild.eventloop);
       StramChild.eventloop.stop();
     }
   }

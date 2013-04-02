@@ -11,11 +11,15 @@ import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stream.StramTestSupport;
 import com.malhartech.stream.StramTestSupport.WaitCondition;
 import java.io.File;
+import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import junit.framework.Assert;
+import malhar.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +28,12 @@ public class PartitioningTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(PartitioningTest.class);
   private static final File TEST_OUTPUT_DIR = new File("target", PartitioningTest.class.getName());
+
+  @Before
+  public void setup() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("PartitioningTestEventLoop");
+  }
 
   public static class CollectorOperator extends BaseOperator
   {
