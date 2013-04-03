@@ -7,6 +7,7 @@ package com.malhartech.engine;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.Sink;
+import com.malhartech.stream.BufferServerSubscriber;
 import com.malhartech.util.AttributeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ public class UnifierNode extends GenericNode
       count += size;
       return null;
     }
-    
+
     @Override
     public void consume(Object payload)
     {
@@ -73,9 +74,23 @@ public class UnifierNode extends GenericNode
       retvalue = null;
     }
     else {
-      inputs.put(port, retvalue = new MergeReservoir(port,
-                                                     attributes == null ? 1024 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024 * 1024),
-                                                     attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15)));
+      int bufferCapacity = attributes == null ? 1024 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024 * 1024);
+      int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
+      if (sink instanceof BufferServerSubscriber) {
+        retvalue = new MergeReservoir(port, bufferCapacity, spinMilliseconds)
+        {
+          @Override
+          public void process(Object payload)
+          {
+            add(payload);
+          }
+
+        };
+      }
+      else {
+        retvalue = new MergeReservoir(port, bufferCapacity, spinMilliseconds);
+      }
+      inputs.put(port, retvalue);
     }
 
     return retvalue;

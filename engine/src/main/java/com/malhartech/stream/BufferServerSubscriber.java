@@ -9,7 +9,9 @@ import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.engine.*;
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +28,8 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink<Object>[] sinks = NO_SINKS;
+  private Sink<Object>[] emergencySinks = NO_SINKS;
+  private Sink<Object>[] normalSinks = NO_SINKS;
   private StreamCodec<Object> serde;
   DataStatePair dsp = new DataStatePair();
 
@@ -45,6 +49,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void onMessage(byte[] buffer, int offset, int size)
   {
     com.malhartech.bufferserver.packet.Tuple data = com.malhartech.bufferserver.packet.Tuple.getTuple(buffer, offset, size);
@@ -92,19 +97,73 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
 
       case NO_MESSAGE:
         return;
-        
+
       default:
         throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
     }
 
-    for (int i = sinks.length; i-- > 0;) {
-      sinks[i].process(t);
+    int i = sinks.length;
+    try {
+      while (i-- > 0) {
+        sinks[i].process(t);
+      }
+    }
+    catch (IllegalStateException ise) {
+      suspendRead();
+      if (emergencySinks.length != sinks.length) {
+        emergencySinks = (Sink<Object>[])Array.newInstance(Sink.class, sinks.length);
+      }
+      for (int n = emergencySinks.length; n-- > 0;) {
+        emergencySinks[n] = new EmergencySink();
+        if (n <= i) {
+          emergencySinks[n].process(t);
+        }
+      }
+      normalSinks = sinks;
+      sinks = emergencySinks;
+
+      new Thread("EmergencyThread")
+      {
+        final Sink<Object>[] esinks = emergencySinks;
+
+        @Override
+        @SuppressWarnings({"NestedSynchronizedStatement", "UnusedAssignment"})
+        public void run()
+        {
+          synchronized (BufferServerSubscriber.this) {
+            boolean iterate = false;
+            do {
+              try {
+                for (int n = esinks.length; n-- > 0;) {
+                  final ArrayList<Object> list = (ArrayList<Object>)esinks[n];
+                  synchronized (list) {
+                    Iterator<Object> iterator = list.iterator();
+                    while (iterator.hasNext()) {
+                      iterate = true;
+                      sinks[n].process(iterator.next()); /* this can throw an exception */
+                      iterate = false;
+                      iterator.remove();
+                    }
+                  }
+                }
+              }
+              catch (IllegalStateException ise) {
+              }
+            }
+            while (iterate);
+          }
+
+          resumeRead();
+          sinks = normalSinks;
+        }
+
+      }.start();
     }
   }
 
   @Override
   @SuppressWarnings("unchecked")
-  public void setSink(String id, Sink<Object> sink)
+  public synchronized void setSink(String id, Sink<Object> sink)
   {
     if (sink == null) {
       outputs.remove(id);
@@ -150,6 +209,18 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   public void setup(StreamContext context)
   {
     super.setup(context.getBufferServerAddress(), context.attr(StreamContext.EVENT_LOOP).get());
+  }
+
+  private class EmergencySink extends ArrayList<Object> implements Sink<Object>
+  {
+    private static final long serialVersionUID = 201304031531L;
+
+    @Override
+    public synchronized void process(Object tuple)
+    {
+      add(tuple);
+    }
+
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerSubscriber.class);

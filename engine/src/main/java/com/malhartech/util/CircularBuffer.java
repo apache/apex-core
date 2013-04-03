@@ -19,10 +19,10 @@ import org.slf4j.LoggerFactory;
  * Provides a premium implementation of circular buffer<p>
  * <br>
  *
+ * @param <T> type of the objects stored in this container.
  */
 public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
 {
-  private static final Logger logger = LoggerFactory.getLogger(CircularBuffer.class);
   private final T[] buffer;
   private final int buffermask;
   private volatile long tail;
@@ -354,6 +354,7 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> T[] toArray(T[] a)
   {
     int count = (int)(head - tail);
@@ -407,4 +408,5 @@ public class CircularBuffer<T> implements UnsafeBlockingQueue<T>
     return buffer[(int)(tail & buffermask)];
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(CircularBuffer.class);
 }

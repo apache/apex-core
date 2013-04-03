@@ -11,6 +11,7 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
+import com.malhartech.stream.BufferServerSubscriber;
 import com.malhartech.util.AttributeMap;
 import java.util.*;
 import java.util.Map.Entry;
@@ -100,7 +101,6 @@ public class GenericNode extends Node<Operator>
       sink.process(payload);
     }
 
-
   }
 
   public GenericNode(String id, Operator operator)
@@ -137,10 +137,22 @@ public class GenericNode extends Node<Operator>
         inputPort.setConnected(true);
         Reservoir reservoir = inputs.get(port);
         if (reservoir == null) {
-          // get the attributes here and replace the hardcoded number down here
           int bufferCapacity = attributes == null ? 1024 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024 * 1024);
           int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
-          reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
+          if (sink instanceof BufferServerSubscriber) {
+            reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds)
+            {
+              @Override
+              public void process(Object payload)
+              {
+                add(payload);
+              }
+
+            };
+          }
+          else {
+            reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
+          }
           inputs.put(port, reservoir);
         }
         retvalue = reservoir;
@@ -174,6 +186,7 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings({"SleepWhileInLoop"})
   public final void run()
   {
+    long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     boolean insideWindow = false;
     int windowCount = 0;

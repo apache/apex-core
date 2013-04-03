@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class Node<OPERATOR extends Operator> implements Runnable
 {
-  private static final Logger logger = LoggerFactory.getLogger(Node.class);
   /*
    * if the Component is capable of taking only 1 input, call it INPUT.
    * if the Component is capable of providing only 1 output, call it OUTPUT.
@@ -41,7 +40,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected final HashMap<String, InternalCounterSink> outputs = new HashMap<String, InternalCounterSink>();
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile InternalCounterSink[] sinks = InternalCounterSink.NO_SINKS;
-  protected final int spinMillis = 10;
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
@@ -51,7 +49,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected long beginWindowTime = 0;
   protected long endWindowTime = 0;
   protected long lastSampleCpuTime = 0;
-
   protected ThreadMXBean tmb;
 
   public Node(String id, OPERATOR operator)
@@ -119,7 +116,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  OperatorContext context;
+  protected OperatorContext context;
 
   @SuppressWarnings("unchecked")
   public void activate(OperatorContext context)
@@ -330,4 +327,5 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(Node.class);
 }
