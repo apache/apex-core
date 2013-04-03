@@ -136,7 +136,7 @@ public class DataList
 
   public final void flush(final int writeOffset)
   {
-    logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
+    //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
     flush:
     do {
       while (size == 0) {
@@ -198,8 +198,7 @@ public class DataList
     for (DataListener dl: all_listeners) {
       dl.addedData();
     }
-
-    logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
+    //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
   }
 
   public void setSecondaryStorage(Storage storage)

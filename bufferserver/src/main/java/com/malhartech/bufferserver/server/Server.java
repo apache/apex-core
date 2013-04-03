@@ -496,7 +496,6 @@ public class Server implements ServerListener
                    * so we allocate a new byteBuffer and copy over the partially written data to the
                    * new byteBuffer and start as if we always had full room but not enough data.
                    */
-                  logger.info("hit the boundary while reading varint!");
                   switchToNewBuffer(buffer, readOffset);
                 }
               }
@@ -523,7 +522,6 @@ public class Server implements ServerListener
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
-            logger.info("hit the boundary while reading data {} and {}", readOffset, size);
             switchToNewBuffer(buffer, readOffset);
           }
           else if (dirty) {
@@ -538,7 +536,6 @@ public class Server implements ServerListener
 
     public void switchToNewBuffer(byte[] array, int offset)
     {
-      logger.debug("switching thread = {}", Thread.currentThread());
       byte[] newBuffer = new byte[datalist.getBlockSize()];
       byteBuffer = ByteBuffer.wrap(newBuffer);
       if (array == null || array.length - offset == 0) {
