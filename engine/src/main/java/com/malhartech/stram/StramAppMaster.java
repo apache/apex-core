@@ -777,9 +777,6 @@ public class StramAppMaster
         stopContainer.setContainerId(allocatedContainer.getId());
         cm.stopContainer(stopContainer);
         LOG.info("Stopped container {}", containerIdStr);
-        // RM does not report container as completed when stopped from here
-        this.numFailedContainers.incrementAndGet();
-        //releasedContainers.add(allocatedContainer.getId());
       }
       dnmgr.containerStopRequests.remove(containerIdStr);
     }
