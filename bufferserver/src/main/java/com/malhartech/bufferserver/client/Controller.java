@@ -4,8 +4,10 @@
  */
 package com.malhartech.bufferserver.client;
 
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.PurgeRequestTuple;
 import com.malhartech.bufferserver.packet.ResetRequestTuple;
+import com.malhartech.bufferserver.packet.Tuple;
 import java.io.IOException;
 import malhar.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
@@ -36,6 +38,17 @@ public abstract class Controller extends AbstractClient
     logger.debug("sending reset request sourceId = {}, windowId = {}", sourceId, windowId);
     write(ResetRequestTuple.getSerializedRequest(sourceId, windowId));
   }
+
+  @Override
+  public void onMessage(byte[] buffer, int offset, int size)
+  {
+    Tuple t = Tuple.getTuple(buffer, offset, size);
+    assert (t.getType() == MessageType.PAYLOAD);
+    Fragment f = t.getData();
+    onMessage(new String(f.buffer, f.offset, f.length));
+  }
+
+  public abstract void onMessage(String message);
 
   @Override
   public String toString()

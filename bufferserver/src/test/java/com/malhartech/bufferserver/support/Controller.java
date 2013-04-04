@@ -10,7 +10,7 @@ package com.malhartech.bufferserver.support;
  */
 public class Controller extends com.malhartech.bufferserver.client.Controller
 {
-  public Fragment data;
+  public String data;
 
   public Controller(String id)
   {
@@ -32,9 +32,9 @@ public class Controller extends com.malhartech.bufferserver.client.Controller
   }
 
   @Override
-  public void onMessage(byte[] buffer, int offset, int size)
+  public void onMessage(String message)
   {
-    data = new Fragment(buffer, offset, size);
+    data = message;
   }
 
 }
