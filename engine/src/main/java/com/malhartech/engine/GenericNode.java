@@ -137,7 +137,7 @@ public class GenericNode extends Node<Operator>
         inputPort.setConnected(true);
         Reservoir reservoir = inputs.get(port);
         if (reservoir == null) {
-          int bufferCapacity = attributes == null ? 1024 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024 * 1024);
+          int bufferCapacity = attributes == null ? 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024);
           int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
           if (sink instanceof BufferServerSubscriber) {
             reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds)
