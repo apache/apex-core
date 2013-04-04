@@ -8,6 +8,7 @@ import com.malhartech.bufferserver.client.Controller;
 import com.malhartech.bufferserver.packet.PurgeRequestTuple;
 import com.malhartech.bufferserver.packet.ResetRequestTuple;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +30,7 @@ class BufferServerController extends Controller
   @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
+    logger.debug("Controller received {}, now disconnecting.", Arrays.toString(Arrays.copyOfRange(buffer, offset, offset + size)));
     StramChild.eventloop.disconnect(this);
   }
 
