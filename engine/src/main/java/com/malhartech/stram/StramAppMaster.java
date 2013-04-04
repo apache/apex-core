@@ -605,20 +605,21 @@ public class StramAppMaster
 
         // non complete containers should not be here
         assert (containerStatus.getState() == ContainerState.COMPLETE);
-        allAllocatedContainers.remove(containerStatus.getContainerId().toString());
+        Container allocatedContainer = allAllocatedContainers.remove(containerStatus.getContainerId().toString());
 
         // increment counters for completed/failed containers
         int exitStatus = containerStatus.getExitStatus();
         LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
         if (0 != exitStatus) {
+          if (allocatedContainer != null) {
+            numFailedContainers.incrementAndGet();
+          }
           if (exitStatus == 1) {
             // StramChild failure
-            numFailedContainers.incrementAndGet();
             appDone = true;
             LOG.info("Exiting due to unrecoverable failure in container {}", containerStatus.getContainerId());
           } else {
             // Recoverable failure or process killed (externally or via stop request by AM)
-            numFailedContainers.incrementAndGet();
             LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
             dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
           }
@@ -776,9 +777,6 @@ public class StramAppMaster
         stopContainer.setContainerId(allocatedContainer.getId());
         cm.stopContainer(stopContainer);
         LOG.info("Stopped container {}", containerIdStr);
-        // RM does not report container as completed when stopped from here
-        this.numFailedContainers.incrementAndGet();
-        //releasedContainers.add(allocatedContainer.getId());
       }
       dnmgr.containerStopRequests.remove(containerIdStr);
     }
