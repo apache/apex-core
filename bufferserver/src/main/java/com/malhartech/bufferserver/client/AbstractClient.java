@@ -114,7 +114,7 @@ public abstract class AbstractClient extends Client
         if (size == -1) {
           if (writeOffset == buffer.length) {
             if (readOffset > writeOffset - 5) {
-              logger.info("hit the boundary while reading varint!");
+              logger.info("hit the boundary while reading varint! on {} and {}", this, byteBuffer);
               /*
                * we may be reading partial varint, adjust the buffers so that we have enough space to read the full data.
                */
