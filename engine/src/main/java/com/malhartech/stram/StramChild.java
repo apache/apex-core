@@ -154,7 +154,7 @@ public class StramChild
 
   /**
    * Initialize container. Establishes heartbeat connection to the master
-   * process through the callback address provided on the command line. Deploys
+   * distribute through the callback address provided on the command line. Deploys
    * initial modules, then enters the heartbeat loop, which will only terminate
    * once container receives shutdown request from the master. On shutdown,
    * after exiting heartbeat loop, deactivate all modules and terminate

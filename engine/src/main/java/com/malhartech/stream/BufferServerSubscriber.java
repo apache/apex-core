@@ -49,7 +49,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public void onMessage(byte[] buffer, int offset, int size)
   {
     com.malhartech.bufferserver.packet.Tuple data = com.malhartech.bufferserver.packet.Tuple.getTuple(buffer, offset, size);
@@ -66,9 +65,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
       case PAYLOAD:
         dsp.data = data.getData();
         Object o = serde.fromByteArray(dsp);
-        for (Sink<Object> s: sinks) {
-          s.process(o);
-        }
+        distribute(o);
         return;
 
       case END_WINDOW:
@@ -102,63 +99,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
     }
 
-    int i = sinks.length;
-    try {
-      while (i-- > 0) {
-        sinks[i].process(t);
-      }
-    }
-    catch (IllegalStateException ise) {
-      suspendRead();
-      if (emergencySinks.length != sinks.length) {
-        emergencySinks = (Sink<Object>[])Array.newInstance(Sink.class, sinks.length);
-      }
-      for (int n = emergencySinks.length; n-- > 0;) {
-        emergencySinks[n] = new EmergencySink();
-        if (n <= i) {
-          emergencySinks[n].process(t);
-        }
-      }
-      normalSinks = sinks;
-      sinks = emergencySinks;
-
-      new Thread("EmergencyThread")
-      {
-        final Sink<Object>[] esinks = emergencySinks;
-
-        @Override
-        @SuppressWarnings({"NestedSynchronizedStatement", "UnusedAssignment"})
-        public void run()
-        {
-          synchronized (BufferServerSubscriber.this) {
-            boolean iterate = false;
-            do {
-              try {
-                for (int n = esinks.length; n-- > 0;) {
-                  final ArrayList<Object> list = (ArrayList<Object>)esinks[n];
-                  synchronized (list) {
-                    Iterator<Object> iterator = list.iterator();
-                    while (iterator.hasNext()) {
-                      iterate = true;
-                      sinks[n].process(iterator.next()); /* this can throw an exception */
-                      iterate = false;
-                      iterator.remove();
-                    }
-                  }
-                }
-              }
-              catch (IllegalStateException ise) {
-              }
-            }
-            while (iterate);
-          }
-
-          resumeRead();
-          sinks = normalSinks;
-        }
-
-      }.start();
-    }
+    distribute(t);
   }
 
   @Override
@@ -209,6 +150,68 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   public void setup(StreamContext context)
   {
     super.setup(context.getBufferServerAddress(), context.attr(StreamContext.EVENT_LOOP).get());
+  }
+
+  @SuppressWarnings("unchecked")
+  protected void distribute(Object o)
+  {
+    int i = sinks.length;
+    try {
+      while (i-- > 0) {
+        sinks[i].process(o);
+      }
+    }
+    catch (IllegalStateException ise) {
+      suspendRead();
+      if (emergencySinks.length != sinks.length) {
+        emergencySinks = (Sink<Object>[])Array.newInstance(Sink.class, sinks.length);
+      }
+      for (int n = emergencySinks.length; n-- > 0;) {
+        emergencySinks[n] = new EmergencySink();
+        if (n <= i) {
+          emergencySinks[n].process(o);
+        }
+      }
+      normalSinks = sinks;
+      sinks = emergencySinks;
+
+      new Thread("EmergencyThread")
+      {
+        final Sink<Object>[] esinks = emergencySinks;
+
+        @Override
+        @SuppressWarnings({"NestedSynchronizedStatement", "UnusedAssignment"})
+        public void run()
+        {
+          synchronized (BufferServerSubscriber.this) {
+            boolean iterate = false;
+            do {
+              try {
+                for (int n = esinks.length; n-- > 0;) {
+                  final ArrayList<Object> list = (ArrayList<Object>)esinks[n];
+                  synchronized (list) {
+                    Iterator<Object> iterator = list.iterator();
+                    while (iterator.hasNext()) {
+                      iterate = true;
+                      sinks[n].process(iterator.next()); /* this can throw an exception */
+                      iterate = false;
+                      iterator.remove();
+                    }
+                  }
+                }
+              }
+              catch (IllegalStateException ise) {
+              }
+            }
+            while (iterate);
+          }
+
+          resumeRead();
+          sinks = normalSinks;
+        }
+
+      }.start();
+    }
   }
 
   private class EmergencySink extends ArrayList<Object> implements Sink<Object>
