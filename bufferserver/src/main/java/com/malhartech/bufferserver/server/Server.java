@@ -462,6 +462,19 @@ public class Server implements ServerListener
       return "subscriber";
     }
 
+    @Override
+    public void unregistered(SelectionKey key)
+    {
+      super.unregistered(key);
+      if (!key.channel().isOpen()) {
+        logger.debug("The channel is not open so clearing its buffer to unblock worker thread if blocked.");
+        sendBuffer.pollUnsafe();
+      }
+      else {
+        logger.debug("The channel is still open. It's strage to see subscriber unregistered from channel.");
+      }
+    }
+
   }
 
   /**

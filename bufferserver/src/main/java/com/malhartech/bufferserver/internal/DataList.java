@@ -204,10 +204,10 @@ public class DataList
       @Override
       public void run()
       {
-        for (DataListener dl: all_listeners) {
-          dl.addedData();
+          for (DataListener dl: all_listeners) {
+            dl.addedData();
+          }
         }
-      }
 
     });
     //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
