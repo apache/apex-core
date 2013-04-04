@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import malhar.netlet.DefaultEventLoop;
 import malhar.netlet.EventLoop;
 import malhar.netlet.Listener.ServerListener;
@@ -40,6 +42,7 @@ public class Server implements ServerListener
   private Storage storage;
   private EventLoop eventloop;
   private InetSocketAddress address;
+  private ExecutorService executor;
 
   /**
    * @param port - port number to bind to or 0 to auto select a free port
@@ -53,6 +56,7 @@ public class Server implements ServerListener
   {
     this.port = port;
     this.blockSize = blocksize;
+    executor = Executors.newSingleThreadExecutor();
   }
 
   public void setSpoolStorage(Storage storage)
@@ -124,7 +128,7 @@ public class Server implements ServerListener
   private final ConcurrentHashMap<String, AbstractClient> subscriberChannels = new ConcurrentHashMap<String, AbstractClient>();
   private final int blockSize;
 
-  public void handlePurgeRequest(PurgeRequestTuple request, AbstractClient ctx) throws IOException
+  public void handlePurgeRequest(PurgeRequestTuple request, final AbstractClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.get(request.getIdentifier());
@@ -138,13 +142,21 @@ public class Server implements ServerListener
       message = "Purge request sent for processing".getBytes();
     }
 
-    byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
+    final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    ctx.write(tuple);
-    eventloop.disconnect(ctx);
+    executor.submit(new Runnable()
+    {
+      @Override
+      public void run()
+      {
+        ctx.write(tuple);
+        eventloop.disconnect(ctx);
+      }
+
+    });
   }
 
-  private void handleResetRequest(ResetRequestTuple request, AbstractClient ctx) throws IOException
+  private void handleResetRequest(ResetRequestTuple request, final AbstractClient ctx) throws IOException
   {
     DataList dl;
     dl = publisherBufffers.remove(request.getIdentifier());
@@ -162,10 +174,18 @@ public class Server implements ServerListener
       message = "Reset request sent for processing".getBytes();
     }
 
-    byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
+    final byte[] tuple = PayloadTuple.getSerializedTuple(0, message.length);
     System.arraycopy(message, 0, tuple, tuple.length - message.length, message.length);
-    ctx.write(tuple);
-    eventloop.disconnect(ctx);
+    executor.submit(new Runnable()
+    {
+      @Override
+      public void run()
+      {
+        ctx.write(tuple);
+        eventloop.disconnect(ctx);
+      }
+
+    });
   }
 
   /**
@@ -345,8 +365,16 @@ public class Server implements ServerListener
           if (ln != null) {
             ln.boot(eventloop);
           }
-          ln = handleSubscriberRequest(subscriberRequest, subscriber);
-          ln.catchUp();
+          final LogicalNode logicalNode = handleSubscriberRequest(subscriberRequest, subscriber);
+          executor.submit(new Runnable()
+          {
+            @Override
+            public void run()
+            {
+              logicalNode.catchUp();
+            }
+
+          });
           break;
 
         case PURGE_REQUEST:
@@ -490,7 +518,7 @@ public class Server implements ServerListener
               if (writeOffset == buffer.length) {
                 if (readOffset > writeOffset - 5) {
                   dirty = false;
-                  datalist.flush(writeOffset);
+                  datalist.flush(executor, writeOffset);
                   /*
                    * if the data is not corrupt, we are limited by space to receive full varint.
                    * so we allocate a new byteBuffer and copy over the partially written data to the
@@ -501,7 +529,7 @@ public class Server implements ServerListener
               }
               else if (dirty) {
                 dirty = false;
-                datalist.flush(writeOffset);
+                datalist.flush(executor, writeOffset);
               }
               return;
 
@@ -518,7 +546,7 @@ public class Server implements ServerListener
         else {
           if (writeOffset == buffer.length) {
             dirty = false;
-            datalist.flush(writeOffset);
+            datalist.flush(executor, writeOffset);
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
@@ -526,7 +554,7 @@ public class Server implements ServerListener
           }
           else if (dirty) {
             dirty = false;
-            datalist.flush(writeOffset);
+            datalist.flush(executor, writeOffset);
           }
           return;
         }

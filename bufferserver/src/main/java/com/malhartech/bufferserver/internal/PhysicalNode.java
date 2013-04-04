@@ -18,16 +18,16 @@ public class PhysicalNode
 {
   public static final int BUFFER_SIZE = 8 * 1024;
   private final long starttime;
-  private final AbstractClient connection;
+  private final AbstractClient client;
   private long processedMessageCount;
 
   /**
    *
-   * @param channel
+   * @param client
    */
-  public PhysicalNode(AbstractClient channel)
+  public PhysicalNode(AbstractClient client)
   {
-    this.connection = channel;
+    this.client = client;
     starttime = System.currentTimeMillis();
     processedMessageCount = 0;
   }
@@ -60,12 +60,12 @@ public class PhysicalNode
   public void send(SerializedData d) throws InterruptedException
   {
     if (d.offset == d.dataOffset) {
-      connection.write(d.bytes, d.offset, d.size);
+      client.write(d.bytes, d.offset, d.size);
     }
     else {
-      connection.send(d.bytes, d.offset, d.size);
+      client.send(d.bytes, d.offset, d.size);
+      }
     }
-  }
 
   /**
    *
@@ -93,7 +93,7 @@ public class PhysicalNode
    */
   public final int getId()
   {
-    return connection.hashCode();
+    return client.hashCode();
   }
 
   /**
@@ -103,15 +103,15 @@ public class PhysicalNode
   @Override
   public final int hashCode()
   {
-    return connection.hashCode();
+    return client.hashCode();
   }
 
   /**
    * @return the channel
    */
-  public AbstractClient getConnection()
+  public AbstractClient getClient()
   {
-    return connection;
+    return client;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(PhysicalNode.class);

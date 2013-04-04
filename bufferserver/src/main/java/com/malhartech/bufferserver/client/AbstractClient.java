@@ -202,7 +202,7 @@ public abstract class AbstractClient extends Client
 
   public void activate()
   {
-    eventloop.connect(address, this);
+    eventloop.connect(address.isUnresolved()? new InetSocketAddress(address.getHostName(), address.getPort()): address, this);
   }
 
   public void deactivate()

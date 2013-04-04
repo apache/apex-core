@@ -96,12 +96,12 @@ public class LogicalNode implements DataListener
 
   /**
    *
-   * @param connection
+   * @param client
    */
-  public void removeChannel(AbstractClient connection)
+  public void removeChannel(AbstractClient client)
   {
     for (PhysicalNode pn : physicalNodes) {
-      if (pn.getConnection() == connection) {
+      if (pn.getClient() == client) {
         physicalNodes.remove(pn);
         break;
       }
@@ -298,7 +298,7 @@ public class LogicalNode implements DataListener
   public void boot(EventLoop eventloop)
   {
     for (PhysicalNode pn : physicalNodes) {
-      eventloop.disconnect(pn.getConnection());
+      eventloop.disconnect(pn.getClient());
       physicalNodes.clear();
     }
   }

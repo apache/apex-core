@@ -372,7 +372,7 @@ public class ServerTest
 
     bsc.activate();
     bsc.reset("MyPublisher", 0x7afebabe00000001L);
-    for (int i = 0; i < spinCount; i++) {
+    for (int i = 0; i < spinCount * 2; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
         break;

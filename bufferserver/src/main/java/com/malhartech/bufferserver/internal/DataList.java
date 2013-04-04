@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,7 +135,7 @@ public class DataList
   int size;
   int processingOffset;
 
-  public final void flush(final int writeOffset)
+  public final void flush(ExecutorService es, final int writeOffset)
   {
     //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
     flush:
@@ -195,9 +196,18 @@ public class DataList
     while (true);
 
     last.writingOffset = writeOffset;
-    for (DataListener dl: all_listeners) {
-      dl.addedData();
-    }
+
+    es.submit(new Runnable()
+    {
+      @Override
+      public void run()
+      {
+        for (DataListener dl: all_listeners) {
+          dl.addedData();
+        }
+      }
+
+    });
     //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
   }
 
