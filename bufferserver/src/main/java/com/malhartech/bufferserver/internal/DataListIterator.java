@@ -66,7 +66,7 @@ class DataListIterator implements Iterator<SerializedData>
             da.release(storage, false);
             da.next.acquire(storage, true);
             da = da.next;
-
+            size = 0;
             buffer = da.data;
             readOffset = da.readingOffset;
           }
@@ -91,7 +91,7 @@ class DataListIterator implements Iterator<SerializedData>
             da.release(storage, false);
             da.next.acquire(storage, true);
             da = da.next;
-
+            size = 0;
             readOffset = nextOffset.integer = da.readingOffset;
             buffer = da.data;
           }

@@ -49,6 +49,10 @@ public class Block
    * the next in the chain.
    */
   Block next;
+
+  /**
+   * how count of references to this block.
+   */
   int refCount;
 
   public Block(String id, int size)
@@ -108,7 +112,8 @@ public class Block
 
   public void purge(long longWindowId)
   {
-    //logger.debug("starting_window = {}, longWindowId = {}", new Object[] {Codec.getStringWindowId(this.starting_window), Codec.getStringWindowId(longWindowId)});
+    logger.debug("starting_window = {}, longWindowId = {}, ending_window = {}",
+                 new Object[] {Codec.getStringWindowId(starting_window), Codec.getStringWindowId(longWindowId), Codec.getStringWindowId(ending_window)});
     boolean found = false;
     long bs = starting_window & 0xffffffff00000000L;
     SerializedData lastReset = null;

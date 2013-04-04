@@ -154,6 +154,7 @@ public class DataList
             if (writeOffset == last.data.length) {
               nextOffset.integer = 0;
               processingOffset = 0;
+              size = 0;
             }
             break flush;
         }
@@ -186,6 +187,7 @@ public class DataList
         if (writeOffset == last.data.length) {
           nextOffset.integer = 0;
           processingOffset = 0;
+          size = 0;
         }
         else {
           processingOffset = nextOffset.integer;

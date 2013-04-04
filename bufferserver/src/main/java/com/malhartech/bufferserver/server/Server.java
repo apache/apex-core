@@ -9,6 +9,7 @@ import com.malhartech.bufferserver.internal.DataList;
 import com.malhartech.bufferserver.internal.LogicalNode;
 import com.malhartech.bufferserver.packet.*;
 import com.malhartech.bufferserver.storage.Storage;
+import com.malhartech.bufferserver.util.Codec;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -550,7 +551,8 @@ public class Server implements ServerListener
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
-            switchToNewBuffer(buffer, readOffset);
+            switchToNewBuffer(buffer, readOffset - Codec.getSizeOfRawVarint32(size));
+            size = 0;
           }
           else if (dirty) {
             dirty = false;
