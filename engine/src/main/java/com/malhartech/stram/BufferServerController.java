@@ -28,9 +28,9 @@ class BufferServerController extends Controller
   }
 
   @Override
-  public void onMessage(byte[] buffer, int offset, int size)
+  public void onMessage(String message)
   {
-    logger.debug("Controller received {}, now disconnecting.", Arrays.toString(Arrays.copyOfRange(buffer, offset, offset + size)));
+    logger.debug("Controller received {}, now disconnecting.", message);
     StramChild.eventloop.disconnect(this);
   }
 
