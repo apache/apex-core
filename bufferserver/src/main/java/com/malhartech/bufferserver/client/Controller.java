@@ -21,6 +21,7 @@ public abstract class Controller extends AbstractClient
 
   public Controller(String id)
   {
+    super(1024, 1024);
     this.id = id;
   }
 

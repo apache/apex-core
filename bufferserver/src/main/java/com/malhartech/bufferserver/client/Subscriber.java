@@ -25,6 +25,7 @@ public abstract class Subscriber extends AbstractClient
 
   public Subscriber(String id)
   {
+    super(64 * 1024, 1024);
     this.id = id;
   }
 
