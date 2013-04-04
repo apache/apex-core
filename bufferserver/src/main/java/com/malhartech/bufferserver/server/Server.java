@@ -476,7 +476,7 @@ public class Server implements ServerListener
 
     Publisher(DataList dl)
     {
-      super(dl.getBuffer(), dl.getPosition());
+      super(dl.getBuffer(), dl.getPosition(), 1024);
       this.datalist = dl;
     }
 

@@ -29,14 +29,17 @@ public abstract class AbstractClient extends Client
 
   public AbstractClient()
   {
-    super();
-    buffer = new byte[32 * 1024];
-    byteBuffer = ByteBuffer.wrap(buffer);
+    this(new byte[32 * 1024], 0, 1024);
   }
 
-  public AbstractClient(byte[] readbuffer, int position)
+  public AbstractClient(int readBufferSize, int sendBufferSize)
   {
-    super();
+    this(new byte[readBufferSize], 0, sendBufferSize);
+  }
+
+  public AbstractClient(byte[] readbuffer, int position, int sendBufferSize)
+  {
+    super(sendBufferSize);
     buffer = readbuffer;
     byteBuffer = ByteBuffer.wrap(readbuffer);
     byteBuffer.position(position);
@@ -114,14 +117,17 @@ public abstract class AbstractClient extends Client
         if (size == -1) {
           if (writeOffset == buffer.length) {
             if (readOffset > writeOffset - 5) {
-              logger.info("hit the boundary while reading varint! on {} and {}", this, byteBuffer);
+              logger.info("hit the boundary while reading varint! on {} and {}", this, readOffset);
               /*
                * we may be reading partial varint, adjust the buffers so that we have enough space to read the full data.
                */
+              logger.info("before = {}", byteBuffer);
               System.arraycopy(buffer, readOffset, buffer, 0, writeOffset - readOffset);
               writeOffset -= readOffset;
-              byteBuffer.position(writeOffset);
               readOffset = 0;
+              byteBuffer.clear();
+              byteBuffer.position(writeOffset);
+              logger.info("after = {}", byteBuffer);
             }
           }
           size = 0;
