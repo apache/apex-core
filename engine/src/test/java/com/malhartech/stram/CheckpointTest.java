@@ -6,7 +6,10 @@ package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
-import com.malhartech.engine.*;
+import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.OperatorContext;
+import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.WindowGenerator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -16,13 +19,16 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stream.StramTestSupport;
 import java.io.File;
+import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import malhar.netlet.DefaultEventLoop;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +51,24 @@ public class CheckpointTest
       throw new RuntimeException("could not cleanup test dir", e);
     }
   }
+
+  /**
+   *
+   * @throws IOException
+   */
+  @Before
+  public void setupEachTest() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("CheckpointTestEventLoop");
+  }
+
+    @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+
+  }
+
 
   /**
    * Test saving of node state at window boundary.
@@ -182,23 +206,23 @@ public class CheckpointTest
     pnode1.checkpointWindows.add(5L);
     cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("no checkpoints " + pnode1, 0L, cp);
-    Assert.assertEquals("checkpoint "+pnode1, 0, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, 0, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(3L);
     cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
-    Assert.assertEquals("checkpoint "+pnode1, 3L, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(4L);
     cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
-    Assert.assertEquals("checkpoint "+pnode1, 3L, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode1.checkpointWindows.add(1, 4L);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {3L, 4L, 5L}));
     cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 4L, cp);
-    Assert.assertEquals("checkpoint "+pnode1, 4L, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, 4L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));
 
     // out of sequence windowIds should be sorted

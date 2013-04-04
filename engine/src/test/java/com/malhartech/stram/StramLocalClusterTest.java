@@ -16,9 +16,13 @@ import com.malhartech.stream.BufferServerSubscriber;
 import com.malhartech.stream.StramTestSupport;
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.LineNumberReader;
 import java.util.*;
+import malhar.netlet.DefaultEventLoop;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +30,18 @@ import org.slf4j.LoggerFactory;
 public class StramLocalClusterTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
+  @Before
+  public void setup() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("StramLocalClusterTestEventLoop");
+  }
+
+  @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+  }
+
 
   /**
    * Verify test configuration launches and stops after input terminates.

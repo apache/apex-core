@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import junit.framework.Assert;
 import malhar.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -33,6 +34,12 @@ public class PartitioningTest
   public void setup() throws IOException
   {
     StramChild.eventloop = new DefaultEventLoop("PartitioningTestEventLoop");
+  }
+
+  @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
   }
 
   public static class CollectorOperator extends BaseOperator
@@ -247,7 +254,7 @@ public class PartitioningTest
     Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
     @SuppressWarnings({"unchecked"})
     TestInputOperator<Integer> inputDeployed = (TestInputOperator<Integer>)nodeMap.get(planInput.getId()).getOperator();
-    Assert.assertNotNull(""+nodeMap, inputDeployed);
+    Assert.assertNotNull("" + nodeMap, inputDeployed);
 
     // add tuple that matches the partition key and check that each partition receives it
     ArrayList<Integer> inputTuples = new ArrayList<Integer>();
@@ -275,7 +282,7 @@ public class PartitioningTest
 
     List<Object> receivedTuples;
     while ((receivedTuples = CollectorOperator.receivedTuples.get(singleCollector.prefix + operators.get(0).getId())) == null || receivedTuples.size() < inputTuples.size()) {
-      LOG.debug("Waiting for tuple: " + operators.get(0) + " expected: " +inputTuples + " received: " + receivedTuples);
+      LOG.debug("Waiting for tuple: " + operators.get(0) + " expected: " + inputTuples + " received: " + receivedTuples);
       sleep(20);
     }
     Assert.assertEquals("output tuples " + receivedTuples, Sets.newHashSet(inputTuples), Sets.newHashSet(receivedTuples));

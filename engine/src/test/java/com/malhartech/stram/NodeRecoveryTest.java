@@ -9,9 +9,13 @@ import com.malhartech.api.CheckpointListener;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.engine.RecoverableInputOperator;
+import java.io.IOException;
 
 import java.util.HashSet;
+import malhar.netlet.DefaultEventLoop;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +29,19 @@ public class NodeRecoveryTest
   private static final Logger logger = LoggerFactory.getLogger(NodeRecoveryTest.class);
   static HashSet<Long> collection = new HashSet<Long>(20);
 
+  @Before
+  public void setup() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("NodeRecoveryTestEventLoop");
+  }
+  @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+
+  }
+
+
   public static class CollectorOperator extends BaseOperator implements CheckpointListener
   {
     private int simulateFailure;
@@ -37,6 +54,7 @@ public class NodeRecoveryTest
 //        logger.debug("adding the tuple {}", Codec.getStringWindowId(tuple));
         collection.add(tuple);
       }
+
     };
 
     /**
@@ -67,6 +85,7 @@ public class NodeRecoveryTest
     public void committed(long windowId)
     {
     }
+
   }
 
   @Test
@@ -145,4 +164,5 @@ public class NodeRecoveryTest
 //    }
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
+
 }

@@ -15,12 +15,15 @@ import com.malhartech.stream.StramTestSupport.WaitCondition;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;
+import malhar.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -29,6 +32,19 @@ import org.junit.Test;
  */
 public class TupleRecorderTest
 {
+  @Before
+  public void setup() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("TupleRecorderTestEventLoop");
+  }
+
+  @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+  }
+
+
   public TupleRecorderTest()
   {
   }
@@ -188,7 +204,7 @@ public class TupleRecorderTest
       }
 
     };
-    Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 2000));
+    Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 3000));
     TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;

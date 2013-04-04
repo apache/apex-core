@@ -15,6 +15,8 @@ import java.util.Set;
 import malhar.netlet.EventLoop;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Defines the destination for tuples processed<p>
@@ -174,4 +176,5 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
             .toString();
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(StreamContext.class);
 }
