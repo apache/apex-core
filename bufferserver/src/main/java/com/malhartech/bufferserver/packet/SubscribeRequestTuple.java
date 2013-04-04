@@ -270,7 +270,7 @@ public class SubscribeRequestTuple extends RequestTuple
   @Override
   public String toString()
   {
-    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + type + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + partitions + '}';
+    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + type + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null? "null": Arrays.toString(partitions)) + '}';
   }
 
 }
