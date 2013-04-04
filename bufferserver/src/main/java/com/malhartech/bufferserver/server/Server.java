@@ -10,6 +10,7 @@ import com.malhartech.bufferserver.internal.LogicalNode;
 import com.malhartech.bufferserver.packet.*;
 import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.bufferserver.util.NameableThreadFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -57,7 +58,7 @@ public class Server implements ServerListener
   {
     this.port = port;
     this.blockSize = blocksize;
-    executor = Executors.newSingleThreadExecutor();
+    executor = Executors.newSingleThreadExecutor(new NameableThreadFactory("ServerHelper"));
   }
 
   public void setSpoolStorage(Storage storage)
