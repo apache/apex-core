@@ -358,7 +358,7 @@ public class Server implements ServerListener
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
           AbstractClient subscriber = new Subscriber(subscriberRequest.getUpstreamType());
           key.attach(subscriber);
-          key.interestOps(SelectionKey.OP_WRITE);
+          key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
           //logger.debug("registering the channel for write operation {}", subscriber);
           subscriber.registered(key);
 
