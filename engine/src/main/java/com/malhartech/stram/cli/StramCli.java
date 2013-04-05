@@ -567,7 +567,7 @@ public class StramCli
       System.out.println(json.toString(2));
     }
     else {
-      JSONArray containers = json.getJSONArray("container");
+      JSONArray containers = json.getJSONArray("containers");
       if (containers == null) {
         System.out.println("No containers found!");
       }

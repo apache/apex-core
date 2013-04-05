@@ -191,15 +191,15 @@ public class StramWebServices
   @GET
   @Path(PATH_CONTAINERS)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
-  public List<ContainerInfo> listContainers() throws Exception
+  public ContainersInfo listContainers() throws Exception
   {
     init();
     Collection<StramChildAgent> containerAgents = dagManager.getContainerAgents();
-    List<ContainerInfo> l = new java.util.ArrayList<ContainerInfo>(containerAgents.size());
+    ContainersInfo ci = new ContainersInfo();
     for (StramChildAgent sca: containerAgents) {
-      l.add(sca.getContainerInfo());
+      ci.add(sca.getContainerInfo());
     }
-    return l;
+    return ci;
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
