@@ -529,6 +529,7 @@ public class StramChild
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
       msg.setContainerId(this.containerId);
+      msg.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
         msg.bufferServerPort = this.bufferServerAddress.getPort();
