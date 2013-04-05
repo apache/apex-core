@@ -14,6 +14,7 @@ public class ContainerInfo {
 
   public String id;
   public String host;
+  public String state;
   public String jvmName;
   public long lastHeartbeat;
   public int numOperators;

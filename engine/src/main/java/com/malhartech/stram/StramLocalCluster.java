@@ -14,6 +14,7 @@ import com.malhartech.engine.OperatorContext;
 import com.malhartech.engine.WindowGenerator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
+import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import java.io.File;
@@ -216,11 +217,14 @@ public class StramLocalCluster implements Runnable
         wingen = mockComponentFactory.setupWindowGenerator();
       }
       this.child = new LocalStramChild(containerId, umbilical, wingen);
-      dnmgr.assignContainer(cdr, containerId, "localhost", perContainerBufferServer ? null : NetUtils.getConnectAddress(bufferServerAddress));
-      Thread launchThread = new Thread(this, containerId);
-      launchThread.start();
-      childContainers.put(containerId, child);
-      logger.info("Started container {}", containerId);
+      ContainerResource cr = new ContainerResource(containerId, "localhost", cdr.container.getRequiredMemoryMB());
+      StramChildAgent sca = dnmgr.assignContainer(cr, perContainerBufferServer ? null : NetUtils.getConnectAddress(bufferServerAddress));
+      if (sca != null) {
+        Thread launchThread = new Thread(this, containerId);
+        launchThread.start();
+        childContainers.put(containerId, child);
+        logger.info("Started container {}", containerId);
+      }
     }
 
     @Override

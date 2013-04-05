@@ -51,6 +51,8 @@ import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
 
 /**
  *
@@ -150,11 +152,11 @@ public class StreamingContainerManager implements PlanContext
   }
 
   /**
-   * Schedule container restart. Called by Stram after a failed container is
-   * reported by the RM, or after heartbeat timeout occurs. <br>
+   * Schedule container restart. Called by Stram after a container was terminated
+   * and requires recovery (killed externally, or after heartbeat timeout). <br>
    * Recovery will resolve affected operators (within the container and
-   * everything downstream with respective recovery checkpoint states). Affected
-   * operators will be undeployed, buffer server connections reset prior to
+   * everything downstream with respective recovery checkpoint states).
+   * Dependent operators will be undeployed and buffer server connections reset prior to
    * redeploy to recovery checkpoint.
    *
    * @param containerId
@@ -194,40 +196,73 @@ public class StreamingContainerManager implements PlanContext
     cs.isComplete = true;
   }
 
-  public StramChildAgent assignContainerForTest(String containerId, InetSocketAddress bufferServerAddress)
+  public static class ContainerResource {
+    public final String containerId;
+    public final String host;
+    public final int memoryMB;
+
+    public ContainerResource(String containerId, String host, int memoryMB) {
+      this.containerId = containerId;
+      this.host = host;
+      this.memoryMB = memoryMB;
+    }
+
+    /**
+     *
+     * @return String
+     */
+    @Override
+    public String toString() {
+      return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
+        .append("containerId", this.containerId)
+        .append("host", this.host)
+        .append("memoryMB", this.memoryMB)
+        .toString();
+    }
+  }
+
+  public PTContainer matchContainer(ContainerResource resource)
   {
-    for (PTContainer container: this.plan.getContainers()) {
-      if (container.containerId == null) {
-        container.containerId = containerId;
-        container.bufferServerAddress = bufferServerAddress;
-        StreamingContainerContext scc = newStreamingContainerContext();
-        StramChildAgent ca = new StramChildAgent(container, scc);
-        containers.put(containerId, ca);
-        return ca;
+    PTContainer match = null;
+    // match container waiting for resource
+    for (PTContainer container : plan.getContainers()) {
+      if (container.getState() == PTContainer.State.NEW || container.getState() == PTContainer.State.KILLED) {
+        if (container.getRequiredMemoryMB() <= resource.memoryMB) {
+          if (match == null || match.getRequiredMemoryMB() < container.getRequiredMemoryMB()) {
+            match = container;
+          }
+        }
       }
     }
-    throw new IllegalStateException("There are no more containers to deploy.");
+    return match;
   }
 
   /**
-   * Assign operators to container.
+   * Assign operators to allocated container resource.
    *
    * @param containerId
    * @param cdr
    */
-  public void assignContainer(ContainerStartRequest cdr, String containerId, String containerHost, InetSocketAddress bufferServerAddr)
+  public StramChildAgent assignContainer(ContainerResource resource, InetSocketAddress bufferServerAddr)
   {
-    PTContainer container = cdr.container;
+    PTContainer container = matchContainer(resource);
+    if (container == null) {
+      LOG.debug("No container matching allocated resource {}", resource);
+      return null;
+    }
+
+    container.setState(PTContainer.State.ALLOCATED);
     if (container.containerId != null) {
-      LOG.info("Removing existing container agent {}", cdr.container.containerId);
+      LOG.info("Removing existing container agent {}", container.containerId);
       this.containers.remove(container.containerId);
     }
-    container.containerId = containerId;
-    container.host = containerHost;
+    container.containerId = resource.containerId;
+    container.host = resource.host;
     container.bufferServerAddress = bufferServerAddr;
 
     StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext());
-    containers.put(containerId, sca);
+    containers.put(resource.containerId, sca);
+    return sca;
   }
 
   private StreamingContainerContext newStreamingContainerContext()
