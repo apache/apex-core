@@ -310,6 +310,7 @@ public class StreamingContainerManager implements PlanContext
         LOG.info("Container {} buffer server: {}", sca.container.containerId, sca.container.bufferServerAddress);
       }
       sca.container.setState(PTContainer.State.ACTIVE);
+      sca.jvmName = heartbeat.jvmName;
     }
 
     long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;

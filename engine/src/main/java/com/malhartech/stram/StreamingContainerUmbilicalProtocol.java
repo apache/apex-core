@@ -269,6 +269,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public String bufferServerHost;
     public int bufferServerPort;
 
+    public String jvmName;
 
     public String getContainerId() {
       return containerId;
