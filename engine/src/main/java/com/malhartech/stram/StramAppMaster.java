@@ -607,39 +607,38 @@ public class StramAppMaster
           LOG.info("Node report: " + sb);
         }
 
-        // Check what the current available resources in the cluster are
-        //Resource availableResources = amResp.getAvailableResources();
-        //LOG.debug("Current available resources in the cluster " + availableResources);
+      // Check what the current available resources in the cluster are
+      //Resource availableResources = amResp.getAvailableResources();
+      //LOG.debug("Current available resources in the cluster " + availableResources);
 
-        // Check the completed containers
-        List<ContainerStatus> completedContainers = amResp.getCompletedContainersStatuses();
-        //LOG.debug("Got response from RM for container ask, completedCnt=" + completedContainers.size());
-        for (ContainerStatus containerStatus: completedContainers) {
-          LOG.info("Got container status for containerID= " + containerStatus.getContainerId()
-                  + ", state=" + containerStatus.getState()
-                  + ", exitStatus=" + containerStatus.getExitStatus()
-                  + ", diagnostics=" + containerStatus.getDiagnostics());
+      // Check the completed containers
+      List<ContainerStatus> completedContainers = amResp.getCompletedContainersStatuses();
+      //LOG.debug("Got response from RM for container ask, completedCnt=" + completedContainers.size());
+      for (ContainerStatus containerStatus : completedContainers) {
+        LOG.info("Got container status for containerID= " + containerStatus.getContainerId()
+                 + ", state=" + containerStatus.getState()
+                 + ", exitStatus=" + containerStatus.getExitStatus()
+                 + ", diagnostics=" + containerStatus.getDiagnostics());
 
-          // non complete containers should not be here
-          assert (containerStatus.getState() == ContainerState.COMPLETE);
-          allAllocatedContainers.remove(containerStatus.getContainerId().toString());
+        // non complete containers should not be here
+        assert (containerStatus.getState() == ContainerState.COMPLETE);
+        Container allocatedContainer = allAllocatedContainers.remove(containerStatus.getContainerId().toString());
 
-          // increment counters for completed/failed containers
-          int exitStatus = containerStatus.getExitStatus();
-          LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
-          if (0 != exitStatus) {
-            if (exitStatus == 1) {
-              // StramChild failure
-              numFailedContainers.incrementAndGet();
-              appDone = true;
-              LOG.info("Exiting due to unrecoverable failure in container {}", containerStatus.getContainerId());
-            }
-            else {
-              // Recoverable failure or process killed (externally or via stop request by AM)
-              numFailedContainers.incrementAndGet();
-              LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
-              dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
-            }
+        // increment counters for completed/failed containers
+        int exitStatus = containerStatus.getExitStatus();
+        LOG.info("Container {} exit status {}.", containerStatus.getContainerId(), exitStatus);
+        if (0 != exitStatus) {
+          if (allocatedContainer != null) {
+            numFailedContainers.incrementAndGet();
+          }
+          if (exitStatus == 1) {
+            // StramChild failure
+            appDone = true;
+            LOG.info("Exiting due to unrecoverable failure in container {}", containerStatus.getContainerId());
+          } else {
+            // Recoverable failure or process killed (externally or via stop request by AM)
+            LOG.info("Container {} failed or killed.", containerStatus.getContainerId());
+            dnmgr.scheduleContainerRestart(containerStatus.getContainerId().toString());
           }
           else {
             // container completed successfully
@@ -800,9 +799,6 @@ public class StramAppMaster
         stopContainer.setContainerId(allocatedContainer.getId());
         cm.stopContainer(stopContainer);
         LOG.info("Stopped container {}", containerIdStr);
-        // RM does not report container as completed when stopped from here
-        this.numFailedContainers.incrementAndGet();
-        //releasedContainers.add(allocatedContainer.getId());
       }
       dnmgr.containerStopRequests.remove(containerIdStr);
     }

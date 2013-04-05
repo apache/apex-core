@@ -547,6 +547,7 @@ public class StramChild
       long currentTime = System.currentTimeMillis();
       ContainerHeartbeat msg = new ContainerHeartbeat();
       msg.setContainerId(this.containerId);
+      msg.jvmName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
         msg.bufferServerPort = this.bufferServerAddress.getPort();
@@ -894,12 +895,18 @@ public class StramChild
           if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
             context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
           }
+          else {
+            context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+            if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
+              context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
+            }
 
           stream = new BufferServerPublisher(sourceIdentifier);
           stream.setup(context);
           logger.debug("deployed a buffer stream {}", stream);
 
-          sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
+            sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
+          }
         }
         else if (collection.size() == 1) {
           if (nodi.isInline()) {
@@ -1243,12 +1250,14 @@ public class StramChild
             for (Map.Entry<String, AttributeMap<PortContext>> entry: inputPortAttributes.entrySet()) {
               AttributeMap<PortContext> attrMap = entry.getValue();
               if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
+                logger.info("Automatically start recording for operator {}, input port {}", ndi.id, entry.getKey());
                 startRecording(node, ndi.id, entry.getKey(), true);
               }
             }
             for (Map.Entry<String, AttributeMap<PortContext>> entry: outputPortAttributes.entrySet()) {
               AttributeMap<PortContext> attrMap = entry.getValue();
               if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
+                logger.info("Automatically start recording for operator {}, output port {}", ndi.id, entry.getKey());
                 startRecording(node, ndi.id, entry.getKey(), true);
               }
             }

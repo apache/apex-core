@@ -164,6 +164,7 @@ public class StramChildAgent {
   final StreamingContainerContext initCtx;
   private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
   Runnable onAck = null;
+  String jvmName;
 
   private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
 
@@ -449,6 +450,7 @@ public class StramChildAgent {
     ContainerInfo ci = new ContainerInfo();
     ci.id = container.containerId;
     ci.host = container.host;
+    ci.jvmName = this.jvmName;
     ci.numOperators = container.operators.size();
     ci.lastHeartbeat = lastHeartbeatMillis;
     return ci;
