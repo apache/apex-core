@@ -7,7 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.util.ObjectMapperString;
 import java.io.*;
-import malhar.netlet.Client.Fragment;
+import com.malhartech.netlet.Client.Fragment;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
