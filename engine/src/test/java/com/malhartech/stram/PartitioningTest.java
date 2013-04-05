@@ -16,7 +16,7 @@ import static java.lang.Thread.sleep;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import junit.framework.Assert;
-import malhar.netlet.DefaultEventLoop;
+import com.malhartech.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.After;
 import org.junit.Before;

@@ -13,7 +13,7 @@ import com.malhartech.bufferserver.support.Publisher;
 import com.malhartech.bufferserver.support.Subscriber;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import malhar.netlet.DefaultEventLoop;
+import com.malhartech.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;

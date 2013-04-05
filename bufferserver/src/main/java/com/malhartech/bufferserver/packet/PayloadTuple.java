@@ -5,7 +5,7 @@
 package com.malhartech.bufferserver.packet;
 
 import com.malhartech.bufferserver.util.Codec;
-import malhar.netlet.Client.Fragment;
+import com.malhartech.netlet.Client.Fragment;
 
 /**
  *

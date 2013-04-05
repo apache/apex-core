@@ -8,7 +8,7 @@
  */
 package com.malhartech.api;
 
-import malhar.netlet.Client.Fragment;
+import com.malhartech.netlet.Client.Fragment;
 
 
 /**

@@ -14,7 +14,7 @@ import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import malhar.netlet.EventLoop;
+import com.malhartech.netlet.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

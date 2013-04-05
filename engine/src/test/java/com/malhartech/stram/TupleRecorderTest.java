@@ -15,7 +15,7 @@ import com.malhartech.stream.StramTestSupport.WaitCondition;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;
-import malhar.netlet.DefaultEventLoop;
+import com.malhartech.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;

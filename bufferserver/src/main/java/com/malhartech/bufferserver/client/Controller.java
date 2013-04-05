@@ -9,7 +9,7 @@ import com.malhartech.bufferserver.packet.PurgeRequestTuple;
 import com.malhartech.bufferserver.packet.ResetRequestTuple;
 import com.malhartech.bufferserver.packet.Tuple;
 import java.io.IOException;
-import malhar.netlet.DefaultEventLoop;
+import com.malhartech.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import malhar.netlet.Client.Fragment;
+import com.malhartech.netlet.Client.Fragment;
 
 /**
  *

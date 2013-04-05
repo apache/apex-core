@@ -24,9 +24,9 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import malhar.netlet.DefaultEventLoop;
-import malhar.netlet.EventLoop;
-import malhar.netlet.Listener.ServerListener;
+import com.malhartech.netlet.DefaultEventLoop;
+import com.malhartech.netlet.EventLoop;
+import com.malhartech.netlet.Listener.ServerListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

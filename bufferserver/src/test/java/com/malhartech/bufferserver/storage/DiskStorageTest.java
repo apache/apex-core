@@ -13,7 +13,7 @@ import com.malhartech.bufferserver.support.Publisher;
 import com.malhartech.bufferserver.support.Subscriber;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
-import malhar.netlet.DefaultEventLoop;
+import com.malhartech.netlet.DefaultEventLoop;
 import static org.testng.Assert.assertEquals;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;

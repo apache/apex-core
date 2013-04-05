@@ -16,7 +16,7 @@ import com.malhartech.util.KryoJdkSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
-import malhar.netlet.Client.Fragment;
+import com.malhartech.netlet.Client.Fragment;
 import org.junit.Assert;
 import org.junit.Test;
 

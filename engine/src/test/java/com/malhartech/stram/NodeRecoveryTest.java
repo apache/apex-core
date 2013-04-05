@@ -12,7 +12,7 @@ import com.malhartech.engine.RecoverableInputOperator;
 import java.io.IOException;
 
 import java.util.HashSet;
-import malhar.netlet.DefaultEventLoop;
+import com.malhartech.netlet.DefaultEventLoop;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

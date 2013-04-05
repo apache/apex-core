@@ -9,9 +9,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import malhar.netlet.Client;
-import malhar.netlet.DefaultEventLoop;
-import malhar.netlet.EventLoop;
+import com.malhartech.netlet.Client;
+import com.malhartech.netlet.DefaultEventLoop;
+import com.malhartech.netlet.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

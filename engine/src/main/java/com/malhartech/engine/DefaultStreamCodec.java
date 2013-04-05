@@ -16,7 +16,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import malhar.netlet.Client.Fragment;
+import com.malhartech.netlet.Client.Fragment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
