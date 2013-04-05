@@ -12,11 +12,10 @@ import java.util.Comparator;
  */
 
 /**
- * 
+ *
  * Used to wrap around long int values safely<p>
  * <br>
  * Needed to ensure that windowId wrap around safely<br>
- * {@see CircularBuffer}<br>
  * {@see StablePriorityQueue}<br>
  * <br>
  */
