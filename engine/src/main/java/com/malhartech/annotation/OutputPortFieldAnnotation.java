@@ -23,5 +23,5 @@ public @interface OutputPortFieldAnnotation {
 
   public String name();
   public boolean optional() default true;
-
+  public boolean error() default false;
 }
