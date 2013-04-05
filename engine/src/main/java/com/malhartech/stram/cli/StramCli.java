@@ -48,6 +48,7 @@ import com.malhartech.util.VersionInfo;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import java.util.Arrays;
 
 /**
  *
@@ -376,8 +377,8 @@ public class StramCli
     if (context.equals("/")) {
       listApplications(args);
     }
-    else if (context.equals("containers")) {
-      listContainers();
+    else if (context.startsWith("container")) {
+      listContainers(Arrays.copyOfRange(args, 2, args.length));
     }
     else {
       listOperators(args);
@@ -558,11 +559,30 @@ public class StramCli
     System.out.println(json.toString(2));
   }
 
-  private void listContainers() throws JSONException
+  private void listContainers(String[] args) throws JSONException
   {
     ClientResponse rsp = getResource(StramWebServices.PATH_CONTAINERS);
     JSONObject json = rsp.getEntity(JSONObject.class);
-    System.out.println(json.toString(2));
+    if (args == null || args.length == 0) {
+      System.out.println(json.toString(2));
+    }
+    else {
+      JSONArray operators = json.getJSONArray("container");
+      if (operators != null) {
+        for (int argc = args.length; argc-- > 0;) {
+          for (int o = operators.length(); o-- > 0;) {
+            JSONObject operator = operators.getJSONObject(o);
+            String id = operator.getString("id");
+            if (id != null && !id.isEmpty()) {
+              if (id.endsWith(args[argc])) {
+                System.out.println(operator.toString(2));
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   private void launchApp(String line, ConsoleReader reader)
