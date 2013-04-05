@@ -360,7 +360,6 @@ public class Server implements ServerListener
           AbstractClient subscriber = new Subscriber(subscriberRequest.getUpstreamType());
           key.attach(subscriber);
           key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
-          //logger.debug("registering the channel for write operation {}", subscriber);
           subscriber.registered(key);
 
           LogicalNode ln = subscriberGroups.remove(subscriberRequest.getUpstreamType());
@@ -455,12 +454,6 @@ public class Server implements ServerListener
       }
 
       el.disconnect(this);
-    }
-
-    @Override
-    public String toString()
-    {
-      return "subscriber";
     }
 
     @Override
