@@ -127,7 +127,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
     return true;
   }
 
-  private void activateSinks()
+  void activateSinks()
   {
     logger.debug("activating sinks = {} on {}", outputs);
 
@@ -153,7 +153,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   }
 
   @SuppressWarnings("unchecked")
-  protected void distribute(Object o)
+  void distribute(Object o)
   {
     int i = sinks.length;
     try {
@@ -194,7 +194,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
                     Iterator<Object> iterator = list.iterator();
                     while (iterator.hasNext()) {
                       iterate = true;
-                      sinks[n].process(iterator.next()); /* this can throw an exception */
+                      normalSinks[n].process(iterator.next()); /* this can throw an exception */
                       iterate = false;
                       iterator.remove();
                     }
