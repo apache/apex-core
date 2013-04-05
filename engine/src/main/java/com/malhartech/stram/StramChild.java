@@ -888,25 +888,19 @@ public class StramChild
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
            */
-          assert (nodi.isInline() == false): "output should not be inline: " + nodi;
+          assert (nodi.isInline() == false): "resulting stream cannot be inline: " + nodi;
           context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
           context.attr(StreamContext.EVENT_LOOP).set(eventloop);
           context.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nodi.serDeClassName));
           if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
             context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
           }
-          else {
-            context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
-            if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
-              context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
-            }
 
           stream = new BufferServerPublisher(sourceIdentifier);
           stream.setup(context);
           logger.debug("deployed a buffer stream {}", stream);
 
-            sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
-          }
+          sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
         }
         else if (collection.size() == 1) {
           if (nodi.isInline()) {
@@ -1215,6 +1209,7 @@ public class StramChild
     return windowGenerator;
   }
 
+  // take the recording mess out of here into something modular.
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void activate(List<OperatorDeployInfo> nodeList)
   {
@@ -1277,7 +1272,6 @@ public class StramChild
             logger.info("deactivated {}", node.id);
           }
         }
-
       }.start();
 
     }

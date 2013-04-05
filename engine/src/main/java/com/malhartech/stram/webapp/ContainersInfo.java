@@ -18,19 +18,19 @@ import javax.xml.bind.annotation.XmlRootElement;
  * This call provides restful access to individual operator instance data<br>
  * <br>
  */
-
 @XmlRootElement(name = "containers")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class ContainersInfo {
-
+public class ContainersInfo
+{
   protected ArrayList<ContainerInfo> containers = new ArrayList<ContainerInfo>();
 
   /**
    *
-   * @param operatorInfo
+   * @param info
    */
-  public void add(ContainerInfo operatorInfo) {
-    containers.add(operatorInfo);
+  public void add(ContainerInfo info)
+  {
+    containers.add(info);
   }
 
   /**
@@ -38,7 +38,8 @@ public class ContainersInfo {
    * @return ArrayList<ContainerInfo>
    *
    */
-  public Collection<ContainerInfo> getContainers() {
+  public Collection<ContainerInfo> getContainers()
+  {
     return Collections.unmodifiableCollection(containers);
   }
 
