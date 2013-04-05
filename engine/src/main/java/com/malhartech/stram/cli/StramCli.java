@@ -567,15 +567,18 @@ public class StramCli
       System.out.println(json.toString(2));
     }
     else {
-      JSONArray operators = json.getJSONArray("container");
-      if (operators != null) {
+      JSONArray containers = json.getJSONArray("container");
+      if (containers == null) {
+        System.out.println("No containers found!");
+      }
+      else {
         for (int argc = args.length; argc-- > 0;) {
-          for (int o = operators.length(); o-- > 0;) {
-            JSONObject operator = operators.getJSONObject(o);
-            String id = operator.getString("id");
+          for (int o = containers.length(); o-- > 0;) {
+            JSONObject container = containers.getJSONObject(o);
+            String id = container.getString("id");
             if (id != null && !id.isEmpty()) {
               if (id.endsWith(args[argc])) {
-                System.out.println(operator.toString(2));
+                System.out.println(container.toString(2));
                 break;
               }
             }
