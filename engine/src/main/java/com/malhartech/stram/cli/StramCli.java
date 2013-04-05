@@ -373,7 +373,7 @@ public class StramCli
       args[i] = args[i].trim();
     }
 
-    String context = (args.length == 2 ? args[1] : currentDir);
+    String context = (args.length > 1 ? args[1] : currentDir);
     if (context.equals("/")) {
       listApplications(args);
     }
