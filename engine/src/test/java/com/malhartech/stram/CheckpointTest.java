@@ -4,20 +4,13 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.DAG;
-import com.malhartech.api.Operator;
-import com.malhartech.engine.*;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stream.StramTestSupport;
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
@@ -25,6 +18,22 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.DAG;
+import com.malhartech.api.Operator;
+import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.OperatorContext;
+import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.WindowGenerator;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.StreamingContainerManager.ContainerResource;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stream.StramTestSupport;
 
 /**
  *
@@ -64,7 +73,8 @@ public class CheckpointTest
     Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
 
     String containerId = "container1";
-    StramChildAgent sca = dnm.assignContainerForTest(containerId, InetSocketAddress.createUnresolved("localhost", 0));
+    StramChildAgent sca = dnm.assignContainer(new ContainerResource(containerId, "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0));
+    Assert.assertNotNull(sca);
 
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
     WindowGenerator wingen = StramTestSupport.setupWindowGenerator(mses);

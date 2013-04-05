@@ -273,7 +273,7 @@ public class PhysicalPlan {
   public Set<PTOperator> getOperatorsForDeploy(PTContainer c) {
     for (PTContainer otherContainer : this.containers) {
       if (otherContainer != c && (otherContainer.state != PTContainer.State.ACTIVE || !otherContainer.pendingUndeploy.isEmpty())) {
-        LOG.debug("{}({}) unsatisfied dependency: {}({})", new Object[] {c.containerId, c.state, otherContainer.containerId, otherContainer.state});
+        LOG.debug("{}({}) unsatisfied dependency: {}({}) undeploy: {}", new Object[] {c.containerId, c.state, otherContainer.containerId, otherContainer.state, otherContainer.pendingUndeploy.size()});
         return Collections.emptySet();
       }
     }
@@ -411,12 +411,14 @@ public class PhysicalPlan {
   public static class PTContainer {
     public enum State {
       NEW,
+      ALLOCATED,
       ACTIVE,
       TIMEDOUT,
       KILLED
     }
 
     private State state = State.NEW;
+    private int requiredMemoryMB;
 
     List<PTOperator> operators = new ArrayList<PTOperator>();
     Set<PTOperator> pendingUndeploy = Collections.newSetFromMap(new ConcurrentHashMap<PTOperator, Boolean>());
@@ -440,6 +442,14 @@ public class PhysicalPlan {
       this.state = state;
     }
 
+    public int getRequiredMemoryMB() {
+      return requiredMemoryMB;
+    }
+
+    public void setRequiredMemoryMB(int requiredMemoryMB) {
+      this.requiredMemoryMB = requiredMemoryMB;
+    }
+
     /**
      *
      * @return String
@@ -447,6 +457,8 @@ public class PhysicalPlan {
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
+          append("id", this.containerId).
+          append("state", this.getState()).
           append("operators", this.operators).
           toString();
     }
@@ -881,6 +893,7 @@ public class PhysicalPlan {
     }
 
     deployOperators = this.getDependents(deployOperators);
+    containers.addAll(newContainers); // TODO: thread safety
     ctx.redeploy(undeployOperators, newContainers, deployOperators);
 
     // keep mapping reference as that is where stats monitors point to

@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
+import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
@@ -524,7 +524,9 @@ public class StramAppMaster
 
       // request containers for pending deploy requests
       if (!dnmgr.containerStartRequests.isEmpty()) {
-        askCount = dnmgr.containerStartRequests.size() - numRequestedContainers;
+        while (dnmgr.containerStartRequests.poll() != null) {
+          askCount++;
+        }
       }
 
       // Setup request to be sent to RM to allocate containers
@@ -562,15 +564,14 @@ public class StramAppMaster
                  + ", containerResourceMemory" + allocatedContainer.getResource().getMemory());
         //+ ", containerToken" + allocatedContainer.getContainerToken().getIdentifier().toString());
 
-        // get next pending deploy requests
-        ContainerStartRequest cdr = dnmgr.containerStartRequests.poll();
-        if (cdr == null) {
+        // allocate resource to container
+        ContainerResource resource = new ContainerResource(allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), allocatedContainer.getResource().getMemory());
+        StramChildAgent sca = dnmgr.assignContainer(resource, null);
+        if (sca == null) {
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
           releasedContainers.add(allocatedContainer.getId());
         } else {
-          // setup new container context, with buffer server deployed within container
-          dnmgr.assignContainer(cdr, allocatedContainer.getId().toString(), allocatedContainer.getNodeId().getHost(), null);
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
           LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, dag, rpcImpl.getAddress());
@@ -634,7 +635,7 @@ public class StramAppMaster
 
       }
 
-      if (allAllocatedContainers.size() == 0 && dnmgr.containerStartRequests.isEmpty()) {
+      if (allAllocatedContainers.size() == 0 && numRequestedContainers == 0) {
         appDone = true;
       }
 
