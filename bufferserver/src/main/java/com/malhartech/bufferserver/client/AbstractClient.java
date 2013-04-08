@@ -5,13 +5,13 @@
 package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.netlet.Client;
+import com.malhartech.netlet.DefaultEventLoop;
+import com.malhartech.netlet.EventLoop;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import com.malhartech.netlet.Client;
-import com.malhartech.netlet.DefaultEventLoop;
-import com.malhartech.netlet.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -169,30 +169,33 @@ public abstract class AbstractClient extends Client
     while (true);
   }
 
-  public void write(byte[] message)
+  public boolean write(byte[] message)
   {
-    write(message, 0, message.length);
+    return write(message, 0, message.length);
   }
 
   private int intOffset;
   private static final int INT_ARRAY_SIZE = 4096 - 5;
   private byte[] intBuffer = new byte[INT_ARRAY_SIZE + 5];
 
-  public void write(byte[] message, int offset, int size)
+  public boolean write(byte[] message, int offset, int size)
   {
+    if (sendBuffer.remainingCapacity() < 2) {
+      return false;
+    }
+
     if (intOffset > INT_ARRAY_SIZE) {
       intBuffer = new byte[INT_ARRAY_SIZE + 5];
       intOffset = 0;
     }
 
     int newOffset = Codec.writeRawVarint32(size, intBuffer, intOffset);
-    try {
-      send(intBuffer, intOffset, newOffset - intOffset);
+    if (send(intBuffer, intOffset, newOffset - intOffset)) {
       intOffset = newOffset;
-      send(message, offset, size);
+      return send(message, offset, size);
     }
-    catch (InterruptedException ie) {
-      throw new RuntimeException(ie);
+    else {
+      return false;
     }
   }
 
@@ -208,7 +211,7 @@ public abstract class AbstractClient extends Client
 
   public void activate()
   {
-    eventloop.connect(address.isUnresolved()? new InetSocketAddress(address.getHostName(), address.getPort()): address, this);
+    eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
   }
 
   public void deactivate()
