@@ -38,11 +38,13 @@ public class RandomOne extends AbstractPolicy
 
   /**
    *
+   *
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    */
+
   @Override
-  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
+  public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     int count = (int)(Math.random() * nodes.size());
     /*
@@ -52,10 +54,11 @@ public class RandomOne extends AbstractPolicy
      */
     for (PhysicalNode node : nodes) {
       if (count-- == 0) {
-        node.send(data);
+        return node.send(data);
       }
     }
 
+    return false;
   }
 
 }

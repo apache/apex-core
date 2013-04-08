@@ -38,25 +38,23 @@ public class LeastBusy extends AbstractPolicy
 
   /**
    *
+   *
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
-   *
    */
   @Override
-  public void distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
+  public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     PhysicalNode theOne = null;
 
-    for (PhysicalNode node : nodes) {
+    for (PhysicalNode node: nodes) {
       if (theOne == null
               || node.getProcessedMessageCount() < theOne.getProcessedMessageCount()) {
         theOne = node;
       }
     }
 
-    if (theOne != null) {
-      theOne.send(data);
-    }
+    return theOne == null ? false : theOne.send(data);
   }
 
 }
