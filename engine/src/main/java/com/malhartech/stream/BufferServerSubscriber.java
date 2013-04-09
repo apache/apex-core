@@ -183,7 +183,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         @SuppressWarnings({"NestedSynchronizedStatement", "UnusedAssignment"})
         public void run()
         {
-          logger.info("in emergency sink");
           synchronized (BufferServerSubscriber.this) {
             boolean iterate = false;
             do {
