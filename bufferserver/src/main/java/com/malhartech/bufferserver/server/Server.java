@@ -11,6 +11,9 @@ import com.malhartech.bufferserver.packet.*;
 import com.malhartech.bufferserver.storage.Storage;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.NameableThreadFactory;
+import com.malhartech.netlet.DefaultEventLoop;
+import com.malhartech.netlet.EventLoop;
+import com.malhartech.netlet.Listener.ServerListener;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -22,11 +25,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import com.malhartech.netlet.DefaultEventLoop;
-import com.malhartech.netlet.EventLoop;
-import com.malhartech.netlet.Listener.ServerListener;
+import java.util.concurrent.ScheduledExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +44,7 @@ public class Server implements ServerListener
   private Storage storage;
   private EventLoop eventloop;
   private InetSocketAddress address;
-  private ExecutorService executor;
+  private final ScheduledExecutorService executor;
 
   /**
    * @param port - port number to bind to or 0 to auto select a free port
@@ -58,7 +58,7 @@ public class Server implements ServerListener
   {
     this.port = port;
     this.blockSize = blocksize;
-    executor = Executors.newSingleThreadExecutor(new NameableThreadFactory("ServerHelper"));
+    executor = Executors.newSingleThreadScheduledExecutor(new NameableThreadFactory("ServerHelper"));
   }
 
   public void setSpoolStorage(Storage storage)
@@ -78,6 +78,7 @@ public class Server implements ServerListener
   @Override
   public void unregistered(SelectionKey key)
   {
+    executor.shutdown();
     logger.info("Server stopped listening at {}", address);
   }
 
@@ -333,6 +334,7 @@ public class Server implements ServerListener
           logger.info("Received publisher request: {}", request);
 
           DataList dl = handlePublisherRequest((PublishRequestTuple)request, this);
+          dl.setAutoflush(executor);
 
           Publisher publisher = new Publisher(dl);
           key.attach(publisher);
@@ -469,6 +471,12 @@ public class Server implements ServerListener
       }
     }
 
+    @Override
+    public String toString()
+    {
+      return "Subscriber{" + "type=" + type + '}';
+    }
+
   }
 
   /**
@@ -526,7 +534,7 @@ public class Server implements ServerListener
               if (writeOffset == buffer.length) {
                 if (readOffset > writeOffset - 5) {
                   dirty = false;
-                  datalist.flush(executor, writeOffset);
+                  datalist.flush(writeOffset);
                   /*
                    * if the data is not corrupt, we are limited by space to receive full varint.
                    * so we allocate a new byteBuffer and copy over the partially written data to the
@@ -537,7 +545,7 @@ public class Server implements ServerListener
               }
               else if (dirty) {
                 dirty = false;
-                datalist.flush(executor, writeOffset);
+                datalist.flush(writeOffset);
               }
               return;
 
@@ -554,7 +562,7 @@ public class Server implements ServerListener
         else {
           if (writeOffset == buffer.length) {
             dirty = false;
-            datalist.flush(executor, writeOffset);
+            datalist.flush(writeOffset);
             /*
              * hit wall while writing serialized data, so have to allocate a new byteBuffer.
              */
@@ -563,7 +571,7 @@ public class Server implements ServerListener
           }
           else if (dirty) {
             dirty = false;
-            datalist.flush(executor, writeOffset);
+            datalist.flush(writeOffset);
           }
           return;
         }
