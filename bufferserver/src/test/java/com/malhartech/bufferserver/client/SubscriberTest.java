@@ -120,7 +120,6 @@ public class SubscriberTest
         catch (InterruptedException ex) {
         }
         catch (CancelledKeyException cke) {
-          logger.debug("exception", cke);
         }
         finally {
           logger.debug("publisher the middle of window = {}", Codec.getStringWindowId(windowId));
