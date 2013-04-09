@@ -18,6 +18,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +39,7 @@ public class DataList
   private Block first;
   private Block last;
   private Storage storage;
+  private ScheduledExecutorService executor;
 
   public int getBlockSize()
   {
@@ -135,7 +138,7 @@ public class DataList
   int size;
   int processingOffset;
 
-  public final void flush(ExecutorService es, final int writeOffset)
+  public final void flush(final int writeOffset)
   {
     //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
     flush:
@@ -199,18 +202,37 @@ public class DataList
 
     last.writingOffset = writeOffset;
 
-    es.submit(new Runnable()
+    executor.submit(new Runnable()
     {
       @Override
       public void run()
       {
-          for (DataListener dl: all_listeners) {
-            dl.addedData();
-          }
+        for (DataListener dl: all_listeners) {
+          dl.addedData();
         }
+      }
 
     });
     //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
+  }
+
+  public void setAutoflush(final ScheduledExecutorService es)
+  {
+    executor = es;
+//    Runnable r = new Runnable()
+//    {
+//      @Override
+//      public void run()
+//      {
+//        for (DataListener dl: all_listeners) {
+//          dl.addedData();
+//        }
+//
+////        es.schedule(this, 1, TimeUnit.SECONDS);
+//      }
+//
+//    };
+//    es.schedule(r, 1, TimeUnit.SECONDS);
   }
 
   public void setSecondaryStorage(Storage storage)
