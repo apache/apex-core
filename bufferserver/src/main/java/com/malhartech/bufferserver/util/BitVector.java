@@ -52,4 +52,10 @@ public class BitVector
     return (value & mask) == bits;
   }
 
+  @Override
+  public String toString()
+  {
+    return "BitVector{" + "mask=" + Integer.toBinaryString(mask) + ", bits=" + Integer.toBinaryString(bits) + '}';
+  }
+
 }
