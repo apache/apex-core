@@ -47,6 +47,12 @@ public class PayloadTuple extends Tuple
   }
 
   @Override
+  public String toString()
+  {
+    return "PayloadTuple{" + getPartition() + ", " + getData() +  '}';
+  }
+
+  @Override
   public int getBaseSeconds()
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.

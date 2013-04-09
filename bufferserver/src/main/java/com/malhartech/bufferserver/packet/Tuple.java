@@ -5,8 +5,8 @@
 package com.malhartech.bufferserver.packet;
 
 import com.malhartech.bufferserver.util.Codec;
-import java.util.Arrays;
 import com.malhartech.netlet.Client.Fragment;
+import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
