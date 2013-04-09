@@ -19,7 +19,7 @@ public class SubscribeRequestTuple extends RequestTuple
   private String identifier;
   private int baseSeconds;
   private int windowId;
-  private String type;
+  private String streamType;
   private String upstreamIdentifier;
   private int mask;
   private int[] partitions;
@@ -89,11 +89,11 @@ public class SubscribeRequestTuple extends RequestTuple
     if (idlen > 0) {
       while (buffer[dataOffset++] < 0) {
       }
-      type = new String(buffer, dataOffset, idlen);
+      streamType = new String(buffer, dataOffset, idlen);
       dataOffset += idlen;
     }
     else if (idlen == 0) {
-      type = EMPTY_STRING;
+      streamType = EMPTY_STRING;
       dataOffset++;
     }
     else {
@@ -153,9 +153,9 @@ public class SubscribeRequestTuple extends RequestTuple
     return parsed;
   }
 
-  public String getUpstreamType()
+  public String getStreamType()
   {
-    return type;
+    return streamType;
   }
 
   public SubscribeRequestTuple(byte[] array, int offset, int length)
@@ -270,7 +270,7 @@ public class SubscribeRequestTuple extends RequestTuple
   @Override
   public String toString()
   {
-    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + type + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null? "null": Arrays.toString(partitions)) + '}';
+    return "SubscribeRequestTuple{" + "version=" + version + ", identifier=" + identifier + ", baseSeconds=" + baseSeconds + ", windowId=" + windowId + ", type=" + streamType + ", upstreamIdentifier=" + upstreamIdentifier + ", mask=" + mask + ", partitions=" + (partitions == null? "null": Arrays.toString(partitions)) + '}';
   }
 
 }
