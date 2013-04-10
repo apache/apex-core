@@ -129,7 +129,16 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
     }
 
     input.setBuffer(dspair.data.buffer, dspair.data.offset, dspair.data.offset + dspair.data.length);
-    return readClassAndObject(input);
+    try {
+      return readClassAndObject(input);
+    }
+    catch (com.esotericsoftware.kryo.KryoException kr) {
+      logger.error("Catastrophic Error: Execution halted due to Kryo exception!", kr);
+      synchronized (this) {
+        try {wait();} catch (Exception e) {}
+      }
+      return null;
+    }
   }
 
   @Override
