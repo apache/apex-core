@@ -419,6 +419,8 @@ public class PhysicalPlan {
 
     private State state = State.NEW;
     private int requiredMemoryMB;
+    private int allocatedMemoryMB;
+    private int resourceRequestPriority;
 
     List<PTOperator> operators = new ArrayList<PTOperator>();
     Set<PTOperator> pendingUndeploy = Collections.newSetFromMap(new ConcurrentHashMap<PTOperator, Boolean>());
@@ -448,6 +450,22 @@ public class PhysicalPlan {
 
     public void setRequiredMemoryMB(int requiredMemoryMB) {
       this.requiredMemoryMB = requiredMemoryMB;
+    }
+
+    public int getAllocatedMemoryMB() {
+      return allocatedMemoryMB;
+    }
+
+    public void setAllocatedMemoryMB(int allocatedMemoryMB) {
+      this.allocatedMemoryMB = allocatedMemoryMB;
+    }
+
+    public int getResourceRequestPriority() {
+      return resourceRequestPriority;
+    }
+
+    public void setResourceRequestPriority(int resourceRequestPriority) {
+      this.resourceRequestPriority = resourceRequestPriority;
     }
 
     /**

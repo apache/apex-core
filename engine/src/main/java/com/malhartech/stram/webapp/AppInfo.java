@@ -61,11 +61,6 @@ public class AppInfo {
     }
 
     @javax.xml.bind.annotation.XmlElement
-    public int getRequestedContainers() {
-      return 0;
-    }
-
-    @javax.xml.bind.annotation.XmlElement
     public int getPlannedContainers() {
       return 0;
     }

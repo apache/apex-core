@@ -28,6 +28,7 @@ public interface DAGContext {
 
   public static final int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
   public static final String SUBDIR_CHECKPOINTS = "checkpoints";
+  public static final int DEFAULT_STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
 
   /**
    * Name under which the application will be shown in the resource manager.
@@ -88,9 +89,14 @@ public interface DAGContext {
   public static final AttributeKey<Integer> STRAM_HEARTBEAT_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.heartbeatIntervalMillis", Integer.class);
 
   /**
-   * Timeout for master identify a hung container (full GC etc.). Timeout will result in container restart.
+   * Timeout for master to identify a hung container (full GC etc.). Timeout will result in container restart.
    */
   public static final AttributeKey<Integer> STRAM_HEARTBEAT_TIMEOUT_MILLIS = new AttributeKey<Integer>("stram.heartbeatTimeoutMillis", Integer.class);
+
+  /**
+   * Timeout for allocating container resources.
+   */
+  public static final AttributeKey<Integer> STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = new AttributeKey<Integer>("stram.allocateResourceTimeoutMillis", Integer.class);
 
   public static final AttributeKey<String> STRAM_STATS_HANDLER = new AttributeKey<String>("stram.statsHandler", String.class);
 

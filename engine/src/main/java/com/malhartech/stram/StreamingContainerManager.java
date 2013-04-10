@@ -79,6 +79,7 @@ public class StreamingContainerManager implements PlanContext
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
   protected String shutdownDiagnosticsMessage = "";
   protected boolean forcedShutdown = false;
+  private long lastResourceRequest = 0;
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
@@ -101,11 +102,6 @@ public class StreamingContainerManager implements PlanContext
     this.heartbeatTimeoutMillis = appAttributes.attrValue(DAG.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
   }
 
-  public int getNumRequiredContainers()
-  {
-    return containerStartRequests.size();
-  }
-
   protected PhysicalPlan getPhysicalPlan()
   {
     return plan;
@@ -113,26 +109,40 @@ public class StreamingContainerManager implements PlanContext
 
   /**
    * Check periodically that child containers phone home
-   *
    */
   public void monitorHeartbeat()
   {
     long currentTms = System.currentTimeMillis();
-    for (Map.Entry<String, StramChildAgent> cse: containers.entrySet()) {
-      String containerId = cse.getKey();
-      StramChildAgent cs = cse.getValue();
-      if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
-        // TODO: handle containers hung in deploy requests
-        if (cs.lastHeartbeatMillis > 0 && !cs.hasPendingWork()) {
-          // request stop as process may still be hanging around (would have been detected by Yarn otherwise)
-          LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {containerId, cse.getValue().container.host, currentTms - cs.lastHeartbeatMillis});
-          containerStopRequests.put(containerId, containerId);
+
+    // look for resource allocation timeout
+    for (PTContainer c : plan.getContainers()) {
+      // TODO: single state for resource requested
+      if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
+        // look for resource allocation timeout
+        if (lastResourceRequest + appAttributes.attrValue(DAG.STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS, DAG.DEFAULT_STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
+          String msg = String.format("Shutdown due to resource allocation timeout (%s ms)", currentTms - lastResourceRequest);
+          LOG.warn(msg);
+          forcedShutdown = true;
+          shutdownAllContainers(msg);
+        } else {
+          LOG.debug("Waiting for resource: {}m {}", c.getRequiredMemoryMB(), c);
+        }
+      } else if (c.containerId != null) {
+        StramChildAgent cs = containers.get(c.containerId);
+        if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
+          // TODO: handle containers hung in deploy requests
+          if (cs.lastHeartbeatMillis > 0 && !cs.hasPendingWork() && !isApplicationIdle()) {
+            // request stop (kill) as process may still be hanging around (would have been detected by Yarn otherwise)
+            LOG.info("Container {}@{} heartbeat timeout ({} ms).", new Object[] {c.containerId, c.host, currentTms - cs.lastHeartbeatMillis});
+            containerStopRequests.put(c.containerId, c.containerId);
+          }
         }
       }
     }
 
     processEvents();
     updateCheckpoints();
+
   }
 
   public int processEvents()
@@ -201,11 +211,13 @@ public class StreamingContainerManager implements PlanContext
     public final String containerId;
     public final String host;
     public final int memoryMB;
+    public final int priority;
 
-    public ContainerResource(String containerId, String host, int memoryMB) {
+    public ContainerResource(int priority, String containerId, String host, int memoryMB) {
       this.containerId = containerId;
       this.host = host;
       this.memoryMB = memoryMB;
+      this.priority = priority;
     }
 
     /**
@@ -222,17 +234,22 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  public PTContainer matchContainer(ContainerResource resource)
+  private PTContainer matchContainer(ContainerResource resource)
   {
     PTContainer match = null;
     // match container waiting for resource
-    for (PTContainer container : plan.getContainers()) {
-      if (container.getState() == PTContainer.State.NEW || container.getState() == PTContainer.State.KILLED) {
+    for (PTContainer c : plan.getContainers()) {
+      if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
+        if (c.getResourceRequestPriority() == resource.priority) {
+          return c;
+        }
+        /*
         if (container.getRequiredMemoryMB() <= resource.memoryMB) {
           if (match == null || match.getRequiredMemoryMB() < container.getRequiredMemoryMB()) {
             match = container;
           }
         }
+        */
       }
     }
     return match;
@@ -260,6 +277,7 @@ public class StreamingContainerManager implements PlanContext
     container.containerId = resource.containerId;
     container.host = resource.host;
     container.bufferServerAddress = bufferServerAddr;
+    container.setAllocatedMemoryMB(resource.memoryMB);
 
     StramChildAgent sca = new StramChildAgent(container, newStreamingContainerContext());
     containers.put(resource.containerId, sca);
@@ -663,6 +681,7 @@ public class StreamingContainerManager implements PlanContext
     for (PTContainer c: startContainers) {
       ContainerStartRequest dr = new ContainerStartRequest(c);
       containerStartRequests.add(dr);
+      lastResourceRequest = System.currentTimeMillis();
       for (PTOperator operator : c.operators) {
         operator.setState(PTOperator.State.INACTIVE);
       }

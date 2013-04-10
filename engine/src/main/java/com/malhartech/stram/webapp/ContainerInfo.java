@@ -18,5 +18,6 @@ public class ContainerInfo {
   public String jvmName;
   public long lastHeartbeat;
   public int numOperators;
+  public int memoryMB;
 
 }
