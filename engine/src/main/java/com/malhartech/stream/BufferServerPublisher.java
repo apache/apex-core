@@ -11,6 +11,7 @@ import com.malhartech.bufferserver.packet.*;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
+import static java.lang.Thread.sleep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +25,6 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerPublisher extends Publisher implements Stream<Object>
 {
-  private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
-  public static final int BUFFER_SIZE = 64 * 1024;
   StreamCodec<Object> serde;
   int writtenBytes;
   int windowId;
@@ -40,6 +39,7 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
    * @param payload
    */
   @Override
+  @SuppressWarnings("SleepWhileInLoop")
   public void process(Object payload)
   {
     byte[] array;
@@ -89,7 +89,14 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
       array = PayloadTuple.getSerializedTuple(serde.getPartition(payload), dsp.data);
     }
 
-    write(array);
+    try {
+      while (!write(array)) {
+        sleep(5);
+      }
+    }
+    catch (InterruptedException ie) {
+      throw new RuntimeException(ie);
+    }
   }
 
   /**
@@ -128,4 +135,5 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
     super.setup(context.getBufferServerAddress(), context.attr(StreamContext.EVENT_LOOP).get());
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
 }
