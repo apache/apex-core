@@ -110,6 +110,7 @@ public abstract class AbstractClient extends Client
   @Override
   public void read(int len)
   {
+    beginMessage();
     writeOffset += len;
     do {
       while (size == 0) {
@@ -129,6 +130,7 @@ public abstract class AbstractClient extends Client
             }
           }
           size = 0;
+          endMessage();
           return;
         }
       }
@@ -159,9 +161,11 @@ public abstract class AbstractClient extends Client
           byteBuffer.clear();
           byteBuffer.position(writeOffset);
         }
+        endMessage();
         return;
       }
       else {       /* need to read more */
+        endMessage();
         return;
       }
     }
@@ -229,7 +233,15 @@ public abstract class AbstractClient extends Client
     }
   }
 
+  public void beginMessage()
+  {
+  }
+
   public abstract void onMessage(byte[] buffer, int offset, int size);
+
+  public void endMessage()
+  {
+  }
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractClient.class);
 }
