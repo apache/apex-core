@@ -2,14 +2,14 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stream;
+package com.malhartech.stram.support;
 
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.engine.EndWindowTuple;
 import com.malhartech.engine.OperatorContext;
 import com.malhartech.engine.Tuple;
 import com.malhartech.engine.WindowGenerator;
-import com.malhartech.stram.ManualScheduledExecutorService;
+import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;

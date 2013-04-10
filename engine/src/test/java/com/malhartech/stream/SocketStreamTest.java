@@ -3,6 +3,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.server.Server;

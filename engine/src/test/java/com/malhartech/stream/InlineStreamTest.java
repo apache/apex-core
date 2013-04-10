@@ -3,6 +3,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.api.*;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.engine.*;
@@ -111,6 +112,10 @@ public class InlineStreamTest
 
     });
 
+    Map<Integer, Node> activeNodes = new ConcurrentHashMap<Integer, Node>();
+    launchNodeThread(node1, activeNodes);
+    launchNodeThread(node2, activeNodes);
+
     sink.process(StramTestSupport.generateBeginWindowTuple("irrelevant", 0));
     for (int i = 0; i < totalTupleCount; i++) {
       sink.process(i);
@@ -118,10 +123,6 @@ public class InlineStreamTest
     sink.process(StramTestSupport.generateEndWindowTuple("irrelevant", 0));
 
     stream.activate(streamContext);
-
-    Map<Integer, Node> activeNodes = new ConcurrentHashMap<Integer, Node>();
-    launchNodeThread(node1, activeNodes);
-    launchNodeThread(node2, activeNodes);
 
     synchronized (this) {
       this.wait(100);
@@ -160,8 +161,8 @@ public class InlineStreamTest
       {
         int id = counter.incrementAndGet();
         OperatorContext ctx = new OperatorContext(id, Thread.currentThread(),
-                new AttributeMap.DefaultAttributeMap<Context.OperatorContext>(), new AttributeMap.DefaultAttributeMap<com.malhartech.api.DAGContext>(),
-                new HashMap<String, AttributeMap<Context.PortContext>>(), new HashMap<String, AttributeMap<Context.PortContext>>());
+                                                  new AttributeMap.DefaultAttributeMap<Context.OperatorContext>(), new AttributeMap.DefaultAttributeMap<com.malhartech.api.DAGContext>(),
+                                                  new HashMap<String, AttributeMap<Context.PortContext>>(), new HashMap<String, AttributeMap<Context.PortContext>>());
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
         activeNodes.remove(ctx.getId());
@@ -175,6 +176,7 @@ public class InlineStreamTest
 
   /**
    * Operator implementation that simply passes on any tuple received
+   *
    * @param <T>
    */
   public static class PassThroughNode<T> extends BaseOperator

@@ -5,22 +5,22 @@ import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.*;
 import com.malhartech.engine.Node;
+import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.PhysicalPlan.PMapping;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stream.StramTestSupport;
-import com.malhartech.stream.StramTestSupport.WaitCondition;
+import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import java.io.File;
 import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import junit.framework.Assert;
-import com.malhartech.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +62,7 @@ public class PartitioningTest
       @Override
       public void process(Object tuple)
       {
+        LOG.debug("===received tuple {}===", tuple);
         Assert.assertNotNull(CollectorOperator.this.operatorId);
         String id = prefix + CollectorOperator.this.operatorId;
         synchronized (receivedTuples) {
@@ -109,6 +110,7 @@ public class PartitioningTest
         List<T> tuples = testTuples.remove(0);
         for (T t: tuples) {
           output.emit(t);
+          LOG.debug("sent tuple ==={}===", t);
         }
         first = false;
       }
@@ -218,8 +220,6 @@ public class PartitioningTest
     CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
     dag.getOperatorMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
-    //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(20);
-    //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(200);
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
@@ -268,8 +268,11 @@ public class PartitioningTest
     for (PTOperator p: partitions) {
       Integer expectedTuple = p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next();
       List<Object> receivedTuples;
+      int i = 0;
       while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.getId())) == null || receivedTuples.isEmpty()) {
-        LOG.debug("Waiting for tuple: " + p);
+        if (i++ % 100 == 0) {
+          LOG.debug("Waiting for tuple: " + p);
+        }
         sleep(20);
       }
       Assert.assertEquals("received " + p, Arrays.asList(expectedTuple), receivedTuples);

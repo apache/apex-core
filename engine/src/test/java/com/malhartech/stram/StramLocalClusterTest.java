@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.api.DAG;
 import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -13,7 +14,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbe
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stream.BufferServerSubscriber;
-import com.malhartech.stream.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -55,7 +56,7 @@ public class StramLocalClusterTest
     DAG dag = new DAG();
 
     TestGeneratorInputModule genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
-    genNode.setMaxTuples(1);
+    genNode.setMaxTuples(2);
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
     node1.setEmitFormat("%s >> node1");

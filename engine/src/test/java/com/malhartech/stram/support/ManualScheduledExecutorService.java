@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.malhartech.stram.support;
 
 import com.malhartech.util.ScheduledExecutorService;
 import java.util.Comparator;

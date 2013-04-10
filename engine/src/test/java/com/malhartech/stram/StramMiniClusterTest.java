@@ -343,6 +343,7 @@ public class StramMiniClusterTest
 
   }
 
+  @Ignore
   @Test
   public void testOperatorFailureRecovery() throws Exception
   {
@@ -381,6 +382,7 @@ public class StramMiniClusterTest
   {
   }
 
+  @Ignore
   @Test
   public void testShipContainingJars()
   {

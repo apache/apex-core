@@ -10,8 +10,8 @@ import com.malhartech.engine.TestGeneratorInputModule;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.TupleRecorder.PortInfo;
 import com.malhartech.stram.TupleRecorder.RecordInfo;
-import com.malhartech.stream.StramTestSupport;
-import com.malhartech.stream.StramTestSupport.WaitCondition;
+import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;
@@ -204,7 +204,7 @@ public class TupleRecorderTest
       }
 
     };
-    Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 3000));
+    Assert.assertTrue("Should get a tuple recorder within 2 seconds", StramTestSupport.awaitCompletion(c, 2000));
     TupleRecorder tupleRecorder = localCluster.getContainer(ptOp2).getTupleRecorder(ptOp2.getId(), null);
     long startTime = tupleRecorder.getStartTime();
     BufferedReader br;
