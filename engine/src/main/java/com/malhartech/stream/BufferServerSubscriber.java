@@ -69,6 +69,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         return;
 
       case END_WINDOW:
+        //logger.debug("received {}", data);
         t = new EndWindowTuple();
         t.setWindowId(baseSeconds | (lastWindowId = data.getWindowId()));
         break;
@@ -88,6 +89,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         break;
 
       case BEGIN_WINDOW:
+        //logger.debug("received {}", data);
         t = new Tuple(data.getType());
         t.setWindowId(baseSeconds | data.getWindowId());
         break;
@@ -174,7 +176,13 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
       }
       normalSinks = sinks;
       sinks = emergencySinks;
+    }
+  }
 
+  @Override
+  public void endMessage()
+  {
+    if (sinks == emergencySinks) {
       new Thread("EmergencyThread")
       {
         final Sink<Object>[] esinks = emergencySinks;
@@ -188,6 +196,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
             do {
               try {
                 for (int n = esinks.length; n-- > 0;) {
+                  @SuppressWarnings("unchecked")
                   final ArrayList<Object> list = (ArrayList<Object>)esinks[n];
                   synchronized (list) {
                     Iterator<Object> iterator = list.iterator();
