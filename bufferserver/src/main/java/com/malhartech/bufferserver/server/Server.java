@@ -514,6 +514,9 @@ public class Server implements ServerListener
     @Override
     public void onMessage(byte[] buffer, int offset, int size)
     {
+      //if (buffer[offset] == MessageType.BEGIN_WINDOW_VALUE || buffer[offset] == MessageType.END_WINDOW_VALUE) {
+      //  logger.debug("server received {}", Tuple.getTuple(buffer, offset, size));
+      //}
       dirty = true;
     }
 
