@@ -11,10 +11,10 @@ import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
 import com.malhartech.bufferserver.util.BitVector;
 import com.malhartech.bufferserver.util.SerializedData;
+import com.malhartech.netlet.EventLoop;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import com.malhartech.netlet.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
