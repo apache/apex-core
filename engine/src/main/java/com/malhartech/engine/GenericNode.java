@@ -86,6 +86,7 @@ public class GenericNode extends Node<Operator>
       for (int i = 1; i <= size; i++) {
         if (peekUnsafe() instanceof Tuple) {
           count += i;
+          //logger.debug("sweeping {}", peekUnsafe());
           return (Tuple)peekUnsafe();
         }
         sink.process(pollUnsafe());
@@ -145,7 +146,13 @@ public class GenericNode extends Node<Operator>
               @Override
               public void process(Object payload)
               {
+                //if (payload instanceof Tuple) {
+                //  logger.debug("adding {}", payload);
+                //}
                 add(payload);
+                //if (payload instanceof Tuple) {
+                //  logger.debug("added {}", payload);
+                //}
               }
 
             };
@@ -434,7 +441,8 @@ public class GenericNode extends Node<Operator>
         }
 
         if (activeQueues.isEmpty() && alive) {
-          logger.error("Invalid State - the node blocked forever!!!");
+          logger.error("Catastrophic Error: Invalid State - the operator blocked forever!");
+          System.exit(2);
         }
         else {
           boolean need2sleep = true;
