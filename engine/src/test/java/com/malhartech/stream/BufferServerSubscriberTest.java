@@ -71,6 +71,7 @@ public class BufferServerSubscriberTest
       bss.distribute(new byte[] {(byte)i});
     }
 
+    bss.endMessage();
     Thread.sleep(20);
     Assert.assertTrue("tuples received", i - 1 <= list.size());
   }
