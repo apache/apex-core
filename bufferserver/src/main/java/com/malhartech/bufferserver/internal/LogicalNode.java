@@ -148,7 +148,7 @@ public class LogicalNode implements DataListener
          * fast forward to catch up with the windowId without consuming
          */
         outer:
-        while (iterator.hasNext()) {
+        while (ready && iterator.hasNext()) {
           SerializedData data = iterator.next();
           switch (data.bytes[data.dataOffset]) {
             case MessageType.RESET_WINDOW_VALUE:
@@ -206,7 +206,7 @@ public class LogicalNode implements DataListener
            * consume as much data as you can before running out of steam
            */
           if (partitions.isEmpty()) {
-            while (iterator.hasNext()) {
+            while (ready && iterator.hasNext()) {
               SerializedData data = iterator.next();
               switch (data.bytes[data.dataOffset]) {
                 case MessageType.PAYLOAD_VALUE:
@@ -228,12 +228,11 @@ public class LogicalNode implements DataListener
             }
           }
           else {
-            while (iterator.hasNext()) {
+            while (ready && iterator.hasNext()) {
               SerializedData data = iterator.next();
               switch (data.bytes[data.dataOffset]) {
                 case MessageType.PAYLOAD_VALUE:
                   Tuple tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
-                  logger.debug("found {} by {}", tuple, this);
                   int value = tuple.getPartition();
                   for (BitVector bv : partitions) {
                     if (bv.matches(value)) {
