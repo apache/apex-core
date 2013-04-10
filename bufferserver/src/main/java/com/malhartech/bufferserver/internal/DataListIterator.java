@@ -80,6 +80,10 @@ class DataListIterator implements Iterator<SerializedData>
       if (nextOffset.integer + size <= da.writingOffset) {
         current = new SerializedData(buffer, readOffset, size + nextOffset.integer - readOffset);
         current.dataOffset = nextOffset.integer;
+        //if (buffer[current.dataOffset] == MessageType.BEGIN_WINDOW_VALUE || buffer[current.dataOffset] == MessageType.END_WINDOW_VALUE) {
+        //  Tuple t = Tuple.getTuple(current.bytes, current.dataOffset, current.size - current.dataOffset + current.offset);
+        //  logger.debug("next t = {}", t);
+        //}
         return true;
       }
       else {
