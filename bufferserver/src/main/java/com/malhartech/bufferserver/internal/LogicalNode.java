@@ -118,18 +118,19 @@ public class LogicalNode implements DataListener
     partitions.add(new BitVector(partition, mask));
   }
 
+  boolean ready = true;
   public boolean isReady()
   {
-//    if (blocked) {
-//      for (PhysicalNode pn: physicalNodes) {
-//        if (pn.isBlocked()) {
-//          return false;
-//        }
-//      }
-//      blocked = false;
-//    }
+    if (!ready) {
+      ready = true;
+      for (PhysicalNode pn: physicalNodes) {
+        if (pn.isBlocked()) {
+          ready = pn.unblock() & ready;
+        }
+      }
+    }
 
-    return true;
+    return ready;
   }
 
   // make it run a lot faster by tracking faster!
@@ -157,7 +158,7 @@ public class LogicalNode implements DataListener
               if (intervalMillis <= 0) {
                 logger.warn("Interval value set to non positive value = {}", intervalMillis);
               }
-              GiveAll.getInstance().distribute(physicalNodes, data);
+              ready = GiveAll.getInstance().distribute(physicalNodes, data);
               break;
 
             case MessageType.BEGIN_WINDOW_VALUE:
@@ -171,7 +172,7 @@ public class LogicalNode implements DataListener
 //              });
               if ((baseSeconds | tuple.getWindowId()) >= windowId) {
 //                logger.debug("caught up {}->{}", upstream, group);
-                GiveAll.getInstance().distribute(physicalNodes, data);
+                ready = GiveAll.getInstance().distribute(physicalNodes, data);
                 caughtup = true;
                 break outer;
               }
@@ -179,7 +180,7 @@ public class LogicalNode implements DataListener
 
             case MessageType.CHECKPOINT_VALUE:
             case MessageType.CODEC_STATE_VALUE:
-              GiveAll.getInstance().distribute(physicalNodes, data);
+              ready = GiveAll.getInstance().distribute(physicalNodes, data);
               break;
           }
         }
@@ -209,7 +210,7 @@ public class LogicalNode implements DataListener
               SerializedData data = iterator.next();
               switch (data.bytes[data.dataOffset]) {
                 case MessageType.PAYLOAD_VALUE:
-                  policy.distribute(physicalNodes, data);
+                  ready = policy.distribute(physicalNodes, data);
                   break;
 
                 case MessageType.NO_MESSAGE_VALUE:
@@ -221,7 +222,7 @@ public class LogicalNode implements DataListener
                   baseSeconds = (long)resetWindow.getBaseSeconds() << 32;
 
                 default:
-                  GiveAll.getInstance().distribute(physicalNodes, data);
+                  ready = GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
               }
             }
@@ -232,10 +233,11 @@ public class LogicalNode implements DataListener
               switch (data.bytes[data.dataOffset]) {
                 case MessageType.PAYLOAD_VALUE:
                   Tuple tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
+                  logger.debug("found {} by {}", tuple, this);
                   int value = tuple.getPartition();
                   for (BitVector bv : partitions) {
                     if (bv.matches(value)) {
-                      policy.distribute(physicalNodes, data);
+                      ready = policy.distribute(physicalNodes, data);
                       break;
                     }
                   }
@@ -250,7 +252,7 @@ public class LogicalNode implements DataListener
                   baseSeconds = (long)tuple.getBaseSeconds() << 32;
 
                 default:
-                  GiveAll.getInstance().distribute(physicalNodes, data);
+                  ready = GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
               }
             }
@@ -301,6 +303,12 @@ public class LogicalNode implements DataListener
       eventloop.disconnect(pn.getClient());
       physicalNodes.clear();
     }
+  }
+
+  @Override
+  public String toString()
+  {
+    return "LogicalNode{" + "upstream=" + upstream + ", group=" + group + ", partitions=" + partitions + '}';
   }
 
 }

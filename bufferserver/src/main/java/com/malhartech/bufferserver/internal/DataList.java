@@ -17,9 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -306,6 +304,7 @@ public class DataList
   public void addDataListener(DataListener dl)
   {
     all_listeners.add(dl);
+    //logger.debug("total {} listeners {} -> {}", all_listeners.size(), dl, this);
     ArrayList<BitVector> partitions = new ArrayList<BitVector>();
     if (dl.getPartitions(partitions) > 0) {
       for (BitVector partition: partitions) {

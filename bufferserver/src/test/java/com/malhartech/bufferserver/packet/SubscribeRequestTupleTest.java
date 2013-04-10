@@ -33,7 +33,7 @@ public class SubscribeRequestTupleTest
     byte[] serial = SubscribeRequestTuple.getSerializedRequest(id, down_type, upstream_id, mask, partitions, startingWindowId);
     SubscribeRequestTuple tuple = (SubscribeRequestTuple)Tuple.getTuple(serial, 0, serial.length);
     Assert.assertEquals(tuple.getIdentifier(), id, "Identifier");
-    Assert.assertEquals(tuple.getUpstreamType(), down_type, "UpstreamType");
+    Assert.assertEquals(tuple.getStreamType(), down_type, "UpstreamType");
     Assert.assertEquals(tuple.getUpstreamIdentifier(), upstream_id, "UpstreamId");
     Assert.assertEquals(tuple.getMask(), mask, "Mask");
 

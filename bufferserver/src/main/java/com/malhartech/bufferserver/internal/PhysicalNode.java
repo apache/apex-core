@@ -6,6 +6,7 @@ package com.malhartech.bufferserver.internal;
 
 import com.malhartech.bufferserver.client.AbstractClient;
 import com.malhartech.bufferserver.util.SerializedData;
+import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,17 +56,45 @@ public class PhysicalNode
    * @param d
    * @throws InterruptedException
    */
-  int i;
+  private SerializedData blocker;
 
-  public void send(SerializedData d) throws InterruptedException
+  public boolean send(SerializedData d)
   {
+    //logger.debug("{} sending ~~~{}~~~", this, Arrays.toString(Arrays.copyOfRange(d.bytes, d.offset, d.size + d.offset)));
+
     if (d.offset == d.dataOffset) {
-      client.write(d.bytes, d.offset, d.size);
-    }
-    else {
-      client.send(d.bytes, d.offset, d.size);
+      if (client.write(d.bytes, d.offset, d.size)) {
+        return true;
       }
     }
+    else {
+      if (client.send(d.bytes, d.offset, d.size)) {
+        return true;
+      }
+    }
+
+    blocker = d;
+    return false;
+  }
+
+  public boolean unblock()
+  {
+    if (blocker == null) {
+      return true;
+    }
+
+    if (send(blocker)) {
+      blocker = null;
+      return true;
+    }
+
+    return false;
+  }
+
+  public boolean isBlocked()
+  {
+    return blocker != null;
+  }
 
   /**
    *
@@ -112,6 +141,12 @@ public class PhysicalNode
   public AbstractClient getClient()
   {
     return client;
+  }
+
+  @Override
+  public String toString()
+  {
+    return "PhysicalNode." + client;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(PhysicalNode.class);

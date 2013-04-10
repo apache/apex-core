@@ -20,14 +20,13 @@ public class CodecTest
   {
     byte buffer[] = new byte[10];
     int value = 127;
-
-    logger.debug("bytes taken = " + Codec.writeRawVarint32(value, buffer, 0));
+    Codec.writeRawVarint32(value, buffer, 0);
 
     SerializedData sd = new SerializedData(buffer, 0, 0);
     Codec.readRawVarInt32(sd);
     assertEquals(sd.size - sd.dataOffset, value);
 
-    logger.debug("bytes taken = " + Codec.writeRawVarint32(value, buffer, 0, 5));
+    Codec.writeRawVarint32(value, buffer, 0, 5);
     sd.size = 0;
     sd.dataOffset = 0;
     Codec.readRawVarInt32(sd);

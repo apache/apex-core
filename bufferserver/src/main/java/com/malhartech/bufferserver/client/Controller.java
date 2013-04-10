@@ -29,14 +29,14 @@ public abstract class Controller extends AbstractClient
 
   public void purge(String sourceId, long windowId)
   {
-    logger.debug("sending purge request sourceId = {}, windowId = {}", sourceId, windowId);
     write(PurgeRequestTuple.getSerializedRequest(sourceId, windowId));
+    logger.debug("Sent purge request sourceId = {}, windowId = {}", sourceId, windowId);
   }
 
   public void reset(String sourceId, long windowId)
   {
-    logger.debug("sending reset request sourceId = {}, windowId = {}", sourceId, windowId);
     write(ResetRequestTuple.getSerializedRequest(sourceId, windowId));
+    logger.debug("Sent reset request sourceId = {}, windowId = {}", sourceId, windowId);
   }
 
   @Override

@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -200,7 +201,7 @@ public class Server implements ServerListener
   public LogicalNode handleSubscriberRequest(SubscribeRequestTuple request, AbstractClient connection)
   {
     String identifier = request.getIdentifier();
-    String type = request.getUpstreamType();
+    String type = request.getStreamType();
     String upstream_identifier = request.getUpstreamIdentifier();
 
     // Check if there is a logical node of this type, if not create it.
@@ -215,6 +216,7 @@ public class Server implements ServerListener
       }
 
       ln = subscriberGroups.get(type);
+      ln.boot(eventloop);
       ln.addConnection(connection);
     }
     else {
@@ -339,7 +341,6 @@ public class Server implements ServerListener
           Publisher publisher = new Publisher(dl);
           key.attach(publisher);
           key.interestOps(SelectionKey.OP_READ);
-          //logger.debug("registering the channel for read operation {}", publisher);
           publisher.registered(key);
 
           int len = writeOffset - readOffset - size;
@@ -359,15 +360,11 @@ public class Server implements ServerListener
           logger.info("Received subscriber request: {}", request);
 
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
-          AbstractClient subscriber = new Subscriber(subscriberRequest.getUpstreamType());
+          AbstractClient subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions());
           key.attach(subscriber);
           key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
           subscriber.registered(key);
 
-          LogicalNode ln = subscriberGroups.remove(subscriberRequest.getUpstreamType());
-          if (ln != null) {
-            ln.boot(eventloop);
-          }
           final LogicalNode logicalNode = handleSubscriberRequest(subscriberRequest, subscriber);
           executor.submit(new Runnable()
           {
@@ -416,11 +413,15 @@ public class Server implements ServerListener
   class Subscriber extends AbstractClient
   {
     private final String type;
+    private final int mask;
+    private final int[] partitions;
 
-    Subscriber(String type)
+    Subscriber(String type, int mask, int[] partitions)
     {
       this.type = type;
-      write = false;
+      this.mask = mask;
+      this.partitions = partitions;
+      super.write = false;
     }
 
     @Override
@@ -432,6 +433,15 @@ public class Server implements ServerListener
     @Override
     public void handleException(Exception cce, DefaultEventLoop el)
     {
+      unregistered(key);
+      el.disconnect(this);
+    }
+
+    @Override
+    public void unregistered(final SelectionKey key)
+    {
+      super.unregistered(key);
+
       LogicalNode ln = subscriberGroups.get(type);
       if (ln != null) {
         if (subscriberChannels.containsValue(this)) {
@@ -454,27 +464,12 @@ public class Server implements ServerListener
           subscriberGroups.remove(ln.getGroup());
         }
       }
-
-      el.disconnect(this);
-    }
-
-    @Override
-    public void unregistered(SelectionKey key)
-    {
-      super.unregistered(key);
-      if (!key.channel().isOpen()) {
-        logger.debug("The channel is not open so clearing its buffer to unblock worker thread if blocked.");
-        sendBuffer.pollUnsafe();
-      }
-      else {
-        logger.debug("The channel is still open. It's strage to see subscriber unregistered from channel.");
-      }
     }
 
     @Override
     public String toString()
     {
-      return "Subscriber{" + "type=" + type + '}';
+      return "Server.Subscriber{" + "type=" + type + ", mask=" + mask + ", partitions=" + (partitions == null ? "null" : Arrays.toString(partitions)) + '}';
     }
 
   }
@@ -525,7 +520,6 @@ public class Server implements ServerListener
     @Override
     public void read(int len)
     {
-      //logger.debug("read {} bytes", len);
       writeOffset += len;
       do {
         if (size <= 0) {
@@ -597,7 +591,7 @@ public class Server implements ServerListener
     }
 
     @Override
-    public void unregistered(SelectionKey key)
+    public void unregistered(final SelectionKey key)
     {
       /*
        * if the publisher unregistered, all the downstream guys are going to be unregistered anyways
@@ -606,22 +600,6 @@ public class Server implements ServerListener
        * the data it's publishing for the new subscribers.
        */
       super.unregistered(key);
-      String publisherIdentifier = datalist.getIdentifier();
-
-      Iterator<LogicalNode> iterator = subscriberGroups.values().iterator();
-      while (iterator.hasNext()) {
-        LogicalNode ln = iterator.next();
-        if (publisherIdentifier.equals(ln.getUpstream())) {
-          ln.boot(eventloop);
-          iterator.remove();
-          //logger.debug("booting logical node {} resulting in size = {}", ln, subscriberGroups.size());
-        }
-      }
-    }
-
-    @Override
-    public void handleException(Exception cce, DefaultEventLoop el)
-    {
       /**
        * since the publisher server died, the queue which it was using would stop pumping the data unless a new publisher comes up with the same name. We leave
        * it to the stream to decide when to bring up a new node with the same identifier as the one which just died.
@@ -636,7 +614,32 @@ public class Server implements ServerListener
         }
       }
 
+      ArrayList<LogicalNode> list = new ArrayList<LogicalNode>();
+      String publisherIdentifier = datalist.getIdentifier();
+      Iterator<LogicalNode> iterator = subscriberGroups.values().iterator();
+      while (iterator.hasNext()) {
+        LogicalNode ln = iterator.next();
+        if (publisherIdentifier.equals(ln.getUpstream())) {
+          list.add(ln);
+        }
+      }
+
+      for (LogicalNode ln: list) {
+        ln.boot(eventloop);
+      }
+    }
+
+    @Override
+    public void handleException(Exception cce, DefaultEventLoop el)
+    {
+      unregistered(key);
       el.disconnect(this);
+    }
+
+    @Override
+    public String toString()
+    {
+      return "Server.Publisher{" + "datalist=" + datalist + '}';
     }
 
   }
