@@ -59,6 +59,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
+import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
@@ -256,6 +257,8 @@ public class StramAppMaster
    */
   public static void main(String[] args)
   {
+    StdOutErrLog.tieSystemOutAndErrToLog();
+    
     boolean result = false;
 
     StringWriter sw = new StringWriter();
@@ -597,7 +600,8 @@ public class StramAppMaster
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
           releasedContainers.add(allocatedContainer.getId());
-        } else {
+        }
+        else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
           LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, dag, rpcImpl.getAddress());

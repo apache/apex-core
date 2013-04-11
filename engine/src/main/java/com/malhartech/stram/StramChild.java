@@ -12,6 +12,7 @@ import com.malhartech.api.*;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.engine.*;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -165,6 +166,7 @@ public class StramChild
    */
   public static void main(String[] args) throws Throwable
   {
+    StdOutErrLog.tieSystemOutAndErrToLog();
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
@@ -1272,6 +1274,7 @@ public class StramChild
             logger.info("deactivated {}", node.id);
           }
         }
+
       }.start();
 
     }
