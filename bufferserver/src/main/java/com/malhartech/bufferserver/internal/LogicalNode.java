@@ -224,6 +224,7 @@ public class LogicalNode implements DataListener
                   baseSeconds = (long)resetWindow.getBaseSeconds() << 32;
 
                 default:
+                  logger.debug("sending data of type {}", MessageType.valueOf(data.bytes[data.dataOffset]));
                   ready = GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
               }
