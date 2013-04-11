@@ -71,8 +71,8 @@
       <version>r03</version>
     </dependency>
     <dependency>
-      <groupId>malhar</groupId>
-      <artifactId>netlet</artifactId>
+      <groupId>com.malhartech</groupId>
+      <artifactId>malhar-netlet</artifactId>
       <version>1.0-SNAPSHOT</version>
     </dependency>
   </dependencies>
