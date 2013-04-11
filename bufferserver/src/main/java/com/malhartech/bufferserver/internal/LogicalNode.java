@@ -57,8 +57,6 @@ public class LogicalNode implements DataListener
 
     if (iterator instanceof DataListIterator) {
       this.iterator = (DataListIterator)iterator;
-      baseSeconds = (long)this.iterator.getBaseSeconds() << 32;
-      logger.debug("Set the baseSeconds to {}", baseSeconds);
     }
     else {
       throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
@@ -142,6 +140,10 @@ public class LogicalNode implements DataListener
    */
   public void catchUp()
   {
+    if (baseSeconds == 0) {
+      baseSeconds = (long)iterator.getBaseSeconds() << 32;
+      logger.debug("set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
+    }
     int intervalMillis;
 
     if (isReady()) {
