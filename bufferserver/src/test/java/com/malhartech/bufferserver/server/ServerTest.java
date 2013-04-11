@@ -183,7 +183,7 @@ public class ServerTest
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 204) {
+      if (bss.tupleCount.get() == 204 + bss.resetPayloads.size()) {
         break;
       }
     }
@@ -194,7 +194,7 @@ public class ServerTest
 
     bsp.teardown();
     bss.teardown();
-    assertEquals(bss.tupleCount.get(), 205);
+    assertEquals(bss.tupleCount.get(), 204 + bss.resetPayloads.size());
   }
 
   @Test(dependsOnMethods = {"testATonOfData"})
@@ -223,7 +223,7 @@ public class ServerTest
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 204) {
+      if (bss.tupleCount.get() == 205) {
         break;
       }
     }
@@ -258,7 +258,7 @@ public class ServerTest
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 102) {
+      if (bss.tupleCount.get() == 103) {
         break;
       }
     }
@@ -351,7 +351,7 @@ public class ServerTest
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 7) {
+      if (bss.tupleCount.get() == 8) {
         break;
       }
     }
@@ -440,7 +440,7 @@ public class ServerTest
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
-      if (bss.tupleCount.get() > 149) {
+      if (bss.tupleCount.get() == 150) {
         break;
       }
     }
