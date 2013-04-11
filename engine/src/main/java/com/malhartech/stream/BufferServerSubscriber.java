@@ -89,7 +89,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         break;
 
       case BEGIN_WINDOW:
-        //logger.debug("received {}", data);
+        logger.debug("received {}", data);
         t = new Tuple(data.getType());
         t.setWindowId(baseSeconds | data.getWindowId());
         break;
@@ -131,8 +131,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
 
   void activateSinks()
   {
-    logger.debug("activating sinks = {} on {}", outputs);
-
     @SuppressWarnings("unchecked")
     Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, outputs.size());
     int i = 0;
