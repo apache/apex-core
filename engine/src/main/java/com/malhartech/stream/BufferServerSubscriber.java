@@ -62,7 +62,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
       case CODEC_STATE:
         Fragment f = data.getData();
         if (f != null) {
-          f.buffer = Arrays.copyOfRange(f.buffer, f.offset, f.length);
+          f.buffer = Arrays.copyOfRange(f.buffer, f.offset, f.offset + f.length);
           f.offset = 0;
           dsp.state = f;
         }
