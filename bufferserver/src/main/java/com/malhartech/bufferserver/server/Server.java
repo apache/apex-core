@@ -338,7 +338,7 @@ public class Server implements ServerListener
           DataList dl = handlePublisherRequest((PublishRequestTuple)request, this);
           dl.setAutoflush(executor);
 
-          Publisher publisher = new Publisher(dl);
+          Publisher publisher = new Publisher(dl, (long)request.getBaseSeconds() << 32 | request.getWindowId());
           key.attach(publisher);
           key.interestOps(SelectionKey.OP_READ);
           publisher.registered(key);
@@ -485,9 +485,9 @@ public class Server implements ServerListener
     private final DataList datalist;
     boolean dirty;
 
-    Publisher(DataList dl)
+    Publisher(DataList dl, long windowId)
     {
-      super(dl.getBuffer(), dl.getPosition(), 1024);
+      super(dl.getBuffer(windowId), dl.getPosition(), 1024);
       this.datalist = dl;
     }
 

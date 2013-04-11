@@ -217,20 +217,6 @@ public class DataList
   public void setAutoflush(final ScheduledExecutorService es)
   {
     executor = es;
-//    Runnable r = new Runnable()
-//    {
-//      @Override
-//      public void run()
-//      {
-//        for (DataListener dl: all_listeners) {
-//          dl.addedData();
-//        }
-//
-////        es.schedule(this, 1, TimeUnit.SECONDS);
-//      }
-//
-//    };
-//    es.schedule(r, 1, TimeUnit.SECONDS);
   }
 
   public void setSecondaryStorage(Storage storage)
@@ -360,8 +346,12 @@ public class DataList
     last = last.next;
   }
 
-  public byte[] getBuffer()
+  public byte[] getBuffer(long windowId)
   {
+    if (last.starting_window == -1) {
+      last.starting_window = windowId;
+      last.ending_window = windowId;
+    }
     return last.data;
   }
 

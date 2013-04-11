@@ -140,7 +140,7 @@ public class LogicalNode implements DataListener
    */
   public void catchUp()
   {
-    if (baseSeconds == 0) {
+    if (baseSeconds <= 0) {
       baseSeconds = (long)iterator.getBaseSeconds() << 32;
       logger.debug("set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
     }
