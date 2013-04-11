@@ -10,6 +10,7 @@ import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.bufferserver.policy.GiveAll;
 import com.malhartech.bufferserver.policy.Policy;
 import com.malhartech.bufferserver.util.BitVector;
+import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
 import com.malhartech.netlet.EventLoop;
 import java.util.Collection;
@@ -165,15 +166,15 @@ public class LogicalNode implements DataListener
 
             case MessageType.BEGIN_WINDOW_VALUE:
               tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
-//              logger.debug("{}->{} condition {} =? {}",
-//                           new Object[] {
-//                upstream,
-//                group,
-//                Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
-//                Codec.getStringWindowId(windowId)
-//              });
+              logger.debug("{}->{} condition {} =? {}",
+                           new Object[] {
+                upstream,
+                group,
+                Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
+                Codec.getStringWindowId(windowId)
+              });
               if ((baseSeconds | tuple.getWindowId()) >= windowId) {
-//                logger.debug("caught up {}->{}", upstream, group);
+                logger.debug("caught up {}->{}", upstream, group);
                 ready = GiveAll.getInstance().distribute(physicalNodes, data);
                 caughtup = true;
                 break outer;
