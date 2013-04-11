@@ -52,7 +52,7 @@ public class StramWebApp extends WebApp {
 
     // you have to specify all the dao classes here
     private final Class<?>[] cTypes = {
-      AppInfo.class, ContainerInfo.class, OperatorInfo.class, OperatorsInfo.class, RemoteExceptionData.class
+      AppInfo.class, RemoteExceptionData.class
     };
 
     /**
