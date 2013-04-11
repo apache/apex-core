@@ -297,7 +297,6 @@ public class StramAppMaster
    */
   private void dumpOutDebugInfo()
   {
-
     LOG.info("Dump debug output");
     Map<String, String> envs = System.getenv();
     LOG.info("\nDumping System Env: begin");

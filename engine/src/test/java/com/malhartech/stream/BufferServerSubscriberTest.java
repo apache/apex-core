@@ -5,16 +5,10 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.engine.StreamContext;
-import com.sun.jdi.request.InvalidRequestStateException;
-import java.nio.channels.SelectableChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.util.ArrayList;
 import java.util.List;
 import junit.framework.Assert;
 import org.junit.Test;
-import static org.junit.Assert.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
