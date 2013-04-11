@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
  */
 public class LogicalNode implements DataListener
 {
-  private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);
   private final String upstream;
   private final String group;
   private final HashSet<PhysicalNode> physicalNodes;
@@ -101,7 +100,7 @@ public class LogicalNode implements DataListener
    */
   public void removeChannel(AbstractClient client)
   {
-    for (PhysicalNode pn : physicalNodes) {
+    for (PhysicalNode pn: physicalNodes) {
       if (pn.getClient() == client) {
         physicalNodes.remove(pn);
         break;
@@ -120,6 +119,7 @@ public class LogicalNode implements DataListener
   }
 
   boolean ready = true;
+
   public boolean isReady()
   {
     if (!ready) {
@@ -142,12 +142,12 @@ public class LogicalNode implements DataListener
   {
     if (baseSeconds <= 0) {
       baseSeconds = (long)iterator.getBaseSeconds() << 32;
-      logger.debug("set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
+      logger.debug("Set the base seconds to {}", Codec.getStringWindowId(baseSeconds));
     }
     int intervalMillis;
 
     if (isReady()) {
-    logger.debug("catching up {}->{}", upstream, group);
+      logger.debug("catching up {}->{}", upstream, group);
       try {
         /*
          * fast forward to catch up with the windowId without consuming
@@ -227,7 +227,7 @@ public class LogicalNode implements DataListener
                   baseSeconds = (long)resetWindow.getBaseSeconds() << 32;
 
                 default:
-                  logger.debug("sending data of type {}", MessageType.valueOf(data.bytes[data.dataOffset]));
+                  //logger.debug("sending data of type {}", MessageType.valueOf(data.bytes[data.dataOffset]));
                   ready = GiveAll.getInstance().distribute(physicalNodes, data);
                   break;
               }
@@ -240,7 +240,7 @@ public class LogicalNode implements DataListener
                 case MessageType.PAYLOAD_VALUE:
                   Tuple tuple = Tuple.getTuple(data.bytes, data.dataOffset, data.size - data.dataOffset + data.offset);
                   int value = tuple.getPartition();
-                  for (BitVector bv : partitions) {
+                  for (BitVector bv: partitions) {
                     if (bv.matches(value)) {
                       ready = policy.distribute(physicalNodes, data);
                       break;
@@ -304,7 +304,7 @@ public class LogicalNode implements DataListener
 
   public void boot(EventLoop eventloop)
   {
-    for (PhysicalNode pn : physicalNodes) {
+    for (PhysicalNode pn: physicalNodes) {
       eventloop.disconnect(pn.getClient());
       physicalNodes.clear();
     }
@@ -316,4 +316,5 @@ public class LogicalNode implements DataListener
     return "LogicalNode{" + "upstream=" + upstream + ", group=" + group + ", partitions=" + partitions + '}';
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(LogicalNode.class);
 }

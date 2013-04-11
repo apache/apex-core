@@ -89,7 +89,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         break;
 
       case BEGIN_WINDOW:
-        logger.debug("received {}", data);
+        //logger.debug("received {}", data);
         t = new Tuple(data.getType());
         t.setWindowId(baseSeconds | data.getWindowId());
         break;
