@@ -9,15 +9,12 @@ import com.malhartech.api.Context.PortContext;
 import com.malhartech.engine.*;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.AttributeKey;
-import io.netty.util.Attribute;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Test for message flow through DAG

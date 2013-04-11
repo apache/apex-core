@@ -221,7 +221,6 @@ public class StramClient
       com.malhartech.bufferserver.server.Server.class,
       com.malhartech.stram.StramAppMaster.class,
       com.malhartech.engine.DefaultStreamCodec.class,
-      io.netty.util.AttributeMap.class,
       javax.validation.ConstraintViolationException.class,
       org.eclipse.jetty.websocket.WebSocketFactory.class,
       org.eclipse.jetty.io.nio.SelectorManager.class,

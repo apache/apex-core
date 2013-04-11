@@ -10,7 +10,6 @@ import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.AttributeKey;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
-import io.netty.util.Attribute;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
