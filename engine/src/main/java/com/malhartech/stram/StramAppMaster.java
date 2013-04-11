@@ -59,11 +59,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
+import com.malhartech.log.RollingLogs;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
+import java.util.logging.Level;
 
 /**
  *
@@ -256,8 +258,14 @@ public class StramAppMaster
    */
   public static void main(String[] args)
   {
-    boolean result = false;
+    try {
+      RollingLogs.initialize("mlog", 1024 * 1024, 1024, true);
+    }
+    catch (IOException ex) {
+      LOG.error("Could not initialize RollingLogs", ex);
+    }
 
+    boolean result = false;
     StringWriter sw = new StringWriter();
     for (Map.Entry<String, String> e: System.getenv().entrySet()) {
       sw.append("\n").append(e.getKey()).append("=").append(e.getValue());
@@ -292,7 +300,6 @@ public class StramAppMaster
    */
   private void dumpOutDebugInfo()
   {
-
     LOG.info("Dump debug output");
     Map<String, String> envs = System.getenv();
     LOG.info("\nDumping System Env: begin");
@@ -597,7 +604,8 @@ public class StramAppMaster
           // allocated container no longer needed, add release request
           LOG.warn("Container {} allocated but nothing to deploy, going to release this container.", allocatedContainer.getId());
           releasedContainers.add(allocatedContainer.getId());
-        } else {
+        }
+        else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
           LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, dag, rpcImpl.getAddress());

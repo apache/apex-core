@@ -14,6 +14,7 @@ import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.engine.*;
+import com.malhartech.log.RollingLogs;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -165,6 +166,12 @@ public class StramChild
    */
   public static void main(String[] args) throws Throwable
   {
+    try {
+      RollingLogs.initialize("clog", 1024 * 1024, 8, true);
+    }
+    catch (IOException io) {
+      logger.error("Could not initialize rolling logs", io);
+    }
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();

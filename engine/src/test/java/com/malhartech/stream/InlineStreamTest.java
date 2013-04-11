@@ -3,10 +3,10 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.api.*;
 import com.malhartech.api.Context.PortContext;
+import com.malhartech.api.*;
 import com.malhartech.engine.*;
+import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.AttributeKey;
 import java.util.HashMap;
