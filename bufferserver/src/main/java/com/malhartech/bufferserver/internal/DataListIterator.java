@@ -40,6 +40,12 @@ class DataListIterator implements Iterator<SerializedData>
     readOffset = da.readingOffset;
   }
 
+  // this is a hack! Get rid of it.
+  public int getBaseSeconds()
+  {
+    return da == null ? 0 : (int)(da.starting_window >> 32);
+  }
+
   /**
    *
    * @return boolean

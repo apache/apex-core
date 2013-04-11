@@ -56,6 +56,7 @@ public class LogicalNode implements DataListener
 
     if (iterator instanceof DataListIterator) {
       this.iterator = (DataListIterator)iterator;
+      baseSeconds = (long)this.iterator.getBaseSeconds() << 32;
     }
     else {
       throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
