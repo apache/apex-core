@@ -145,7 +145,7 @@ public class LogicalNode implements DataListener
     int intervalMillis;
 
     if (isReady()) {
-//    logger.debug("catching up {}->{}", upstream, group);
+    logger.debug("catching up {}->{}", upstream, group);
       try {
         /*
          * fast forward to catch up with the windowId without consuming
