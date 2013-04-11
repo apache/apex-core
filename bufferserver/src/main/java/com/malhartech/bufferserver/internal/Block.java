@@ -107,6 +107,14 @@ public class Block
       }
     }
 
+    if (starting_window == -1) {
+      starting_window = windowId;
+      ending_window = windowId;
+    }
+    else if (windowId < ending_window) {
+      ending_window = windowId;
+    }
+
     return bs;
   }
 
