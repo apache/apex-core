@@ -47,7 +47,9 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
+import org.apache.log4j.Appender;
 import org.apache.log4j.LogManager;
+import org.apache.log4j.RollingFileAppender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +61,6 @@ import org.slf4j.LoggerFactory;
  */
 public class StramChild
 {
-  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
   private static final String NODE_PORT_SPLIT_SEPARATOR = "\\.";
   public static final String NODE_PORT_CONCAT_SEPARATOR = ".";
   private static final int SPIN_MILLIS = 20;
@@ -167,6 +168,7 @@ public class StramChild
   public static void main(String[] args) throws Throwable
   {
     StdOutErrLog.tieSystemOutAndErrToLog();
+
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
@@ -1456,4 +1458,5 @@ public class StramChild
     }
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
 }

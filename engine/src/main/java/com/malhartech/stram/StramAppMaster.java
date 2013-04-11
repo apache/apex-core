@@ -65,6 +65,8 @@ import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
+import org.apache.log4j.Appender;
+import org.apache.log4j.RollingFileAppender;
 
 /**
  *
@@ -258,7 +260,7 @@ public class StramAppMaster
   public static void main(String[] args)
   {
     StdOutErrLog.tieSystemOutAndErrToLog();
-    
+
     boolean result = false;
 
     StringWriter sw = new StringWriter();

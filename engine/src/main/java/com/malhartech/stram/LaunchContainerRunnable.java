@@ -5,6 +5,7 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
+import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -220,6 +221,8 @@ public class LaunchContainerRunnable implements Runnable
     vargs.add(heartbeatAddress.getAddress().getHostAddress());
     vargs.add(Integer.toString(heartbeatAddress.getPort()));
 
+    vargs.add("-D" + StdOutErrLog.MALHAR_LOGDIR + '=' + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/clog");
+
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
 
@@ -233,4 +236,5 @@ public class LaunchContainerRunnable implements Runnable
     return vargsFinal;
 
   }
+
 }

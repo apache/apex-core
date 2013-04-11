@@ -1,1 +1,0 @@
-start javaw -cp lib/connectlet-core.jar;lib/connectlet-misc.jar;lib/connectlet-tools.jar com.googlecode.connectlet.tools.PortMapServerFrame

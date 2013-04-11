@@ -8,6 +8,7 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.DAG;
+import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
@@ -490,6 +491,8 @@ public class StramClient
     vargs.add("-Xmx" + (amMemory*3/4) + "m");
     // Set class name
     vargs.add(StramAppMaster.class.getName());
+
+    vargs.add("-D" + StdOutErrLog.MALHAR_LOGDIR + '=' + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/mlog");
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
