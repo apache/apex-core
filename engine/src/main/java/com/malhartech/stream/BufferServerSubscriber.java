@@ -106,19 +106,19 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
 
   @Override
   @SuppressWarnings("unchecked")
-  public synchronized void setSink(String id, Sink<Object> sink)
+  public void setSink(String id, Sink<Object> sink)
   {
     if (sink == null) {
       outputs.remove(id);
-      if (outputs.isEmpty()) {
-        sinks = NO_SINKS;
-      }
+//      if (outputs.isEmpty()) {
+//        sinks = NO_SINKS;
+//      }
     }
     else {
       outputs.put(id, (Sink)sink);
-      if (sinks != NO_SINKS) {
-        activateSinks();
-      }
+//      if (sinks != NO_SINKS) {
+//        activateSinks();
+//      }
     }
 
   }
@@ -186,33 +186,29 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         final Sink<Object>[] esinks = emergencySinks;
 
         @Override
-        @SuppressWarnings({"NestedSynchronizedStatement", "UnusedAssignment"})
+        @SuppressWarnings("UnusedAssignment")
         public void run()
         {
-          synchronized (BufferServerSubscriber.this) {
-            boolean iterate = false;
-            do {
-              try {
-                for (int n = esinks.length; n-- > 0;) {
-                  @SuppressWarnings("unchecked")
-                  final ArrayList<Object> list = (ArrayList<Object>)esinks[n];
-                  synchronized (list) {
-                    Iterator<Object> iterator = list.iterator();
-                    while (iterator.hasNext()) {
-                      iterate = true;
-                      normalSinks[n].process(iterator.next()); /* this can throw an exception */
-                      iterate = false;
-                      iterator.remove();
-                    }
-                  }
+          boolean iterate = false;
+          do {
+            try {
+              for (int n = esinks.length; n-- > 0;) {
+                @SuppressWarnings("unchecked")
+                final ArrayList<Object> list = (ArrayList<Object>)esinks[n];
+                Iterator<Object> iterator = list.iterator();
+                while (iterator.hasNext()) {
+                  iterate = true;
+                  normalSinks[n].process(iterator.next()); /* this can throw an exception */
+                  iterate = false;
+                  iterator.remove();
                 }
               }
-              catch (IllegalStateException ise) {
-              }
             }
-            while (iterate);
-            sinks = normalSinks;
+            catch (IllegalStateException ise) {
+            }
           }
+          while (iterate);
+          sinks = normalSinks;
 
           resumeRead();
         }
