@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
  * object to faciliate the partitions.
  *
  * Requires kryo and its dependencies in deployment
+ *
  * @param <T>
  */
 @ShipContainingJars(classes = {Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
@@ -54,6 +55,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
       this.id = id;
       this.classname = classname;
     }
+
   }
 
   static class ClassResolver extends DefaultClassResolver
@@ -94,6 +96,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
         unregister(--nextAvailableRegistrationId);
       }
     }
+
   }
 
   @SuppressWarnings("OverridableMethodCallInConstructor")
@@ -119,9 +122,15 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
           register(Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader()), pair.id);
         }
       }
-      catch (ClassNotFoundException ex) {
-        logger.debug("exception", ex);
-        throw new RuntimeException(ex);
+      catch (Exception ex) {
+        logger.error("Catastrophic Error: Execution halted due to Kryo exception!", ex);
+        synchronized (this) {
+          try {
+            wait();
+          }
+          catch (Exception e) {
+          }
+        }
       }
       finally {
         dspair.state = null;
@@ -132,10 +141,14 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
     try {
       return readClassAndObject(input);
     }
-    catch (com.esotericsoftware.kryo.KryoException kr) {
-      logger.error("Catastrophic Error: Execution halted due to Kryo exception!", kr);
+    catch (Exception ex) {
+      logger.error("Catastrophic Error: Execution halted due to Kryo exception!", ex);
       synchronized (this) {
-        try {wait();} catch (Exception e) {}
+        try {
+          wait();
+        }
+        catch (Exception e) {
+        }
       }
       return null;
     }
@@ -212,6 +225,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
     }
     return registration;
   }
+
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
 }
