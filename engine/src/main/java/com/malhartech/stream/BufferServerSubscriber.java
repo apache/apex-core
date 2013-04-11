@@ -10,6 +10,7 @@ import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.engine.*;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import org.slf4j.Logger;
@@ -59,7 +60,12 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
         return;
 
       case CODEC_STATE:
-        dsp.state = data.getData();
+        Fragment f = data.getData();
+        if (f != null) {
+          f.buffer = Arrays.copyOfRange(f.buffer, f.offset, f.length);
+          f.offset = 0;
+          dsp.state = f;
+        }
         return;
 
       case PAYLOAD:
