@@ -490,9 +490,9 @@ public class StramClient
     // default heap size 75% of total memory
     vargs.add("-Xmx" + (amMemory*3/4) + "m");
     // Set class name
-    vargs.add(StramAppMaster.class.getName());
-
     vargs.add("-D" + StdOutErrLog.MALHAR_LOGDIR + '=' + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/mlog");
+
+    vargs.add(StramAppMaster.class.getName());
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
