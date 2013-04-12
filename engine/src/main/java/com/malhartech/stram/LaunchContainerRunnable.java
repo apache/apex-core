@@ -214,14 +214,13 @@ public class LaunchContainerRunnable implements Runnable
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
     vargs.add("-Dstram.cid=" + jvmID);
+    vargs.add("-D" + StdOutErrLog.MALHAR_LOGDIR + '=' + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/clog");
 
     // Add main class and its arguments
     vargs.add(StramChild.class.getName());  // main of Child
     // pass listener's address
     vargs.add(heartbeatAddress.getAddress().getHostAddress());
     vargs.add(Integer.toString(heartbeatAddress.getPort()));
-
-    vargs.add("-D" + StdOutErrLog.MALHAR_LOGDIR + '=' + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/clog");
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
     vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
