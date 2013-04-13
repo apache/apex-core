@@ -11,9 +11,9 @@ import com.malhartech.bufferserver.packet.ResetWindowTuple;
 import com.malhartech.bufferserver.support.Controller;
 import com.malhartech.bufferserver.support.Publisher;
 import com.malhartech.bufferserver.support.Subscriber;
+import com.malhartech.netlet.DefaultEventLoop;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import com.malhartech.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -67,10 +67,10 @@ public class ServerTest
   public void testNoPublishNoSubscribe() throws InterruptedException
   {
     bsp = new Publisher("MyPublisher");
-    bsp.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
 
     bss = new Subscriber("MySubscriber");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bsp.activate(0L);
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
@@ -79,11 +79,9 @@ public class ServerTest
       wait(100);
     }
 
-    bss.deactivate();
-    bsp.deactivate();
+    eventloopClient.disconnect(bss);
+    eventloopClient.disconnect(bsp);
 
-    bss.teardown();
-    bsp.teardown();
     assertEquals(bss.tupleCount.get(), 0);
   }
 
@@ -92,10 +90,10 @@ public class ServerTest
   public void test1Window() throws InterruptedException
   {
     bsp = new Publisher("MyPublisher");
-    bsp.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
 
     bss = new Subscriber("MyPublisher");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bsp.activate(0L);
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
@@ -112,11 +110,9 @@ public class ServerTest
     }
     Thread.sleep(10);
 
-    bss.deactivate();
-    bsp.deactivate();
+    eventloopClient.disconnect(bss);
+    eventloopClient.disconnect(bsp);
 
-    bss.teardown();
-    bsp.teardown();
     assertEquals(bss.tupleCount.get(), 1);
     Assert.assertFalse(bss.resetPayloads.isEmpty());
   }
@@ -126,7 +122,7 @@ public class ServerTest
   public void testLateSubscriber() throws InterruptedException
   {
     bss = new Subscriber("MyPublisher");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
@@ -138,8 +134,7 @@ public class ServerTest
     }
     Thread.sleep(10);
 
-    bss.deactivate();
-    bss.teardown();
+    eventloopClient.disconnect(bss);
 
     assertEquals(bss.tupleCount.get(), 1);
     Assert.assertFalse(bss.resetPayloads.isEmpty());
@@ -150,11 +145,11 @@ public class ServerTest
   public void testATonOfData() throws InterruptedException
   {
     bss = new Subscriber("MyPublisher");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     bsp = new Publisher("MyPublisher");
-    bsp.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
     bsp.activate(0x7afebabe, 0);
 
     long windowId = 0x7afebabe00000000L;
@@ -189,11 +184,9 @@ public class ServerTest
     }
     Thread.sleep(10); // wait some more to receive more tuples if possible
 
-    bsp.deactivate();
-    bss.deactivate();
+    eventloopClient.disconnect(bsp);
+    eventloopClient.disconnect(bss);
 
-    bsp.teardown();
-    bss.teardown();
     assertEquals(bss.tupleCount.get(), 204 + bss.resetPayloads.size());
   }
 
@@ -203,9 +196,8 @@ public class ServerTest
   {
 
     bsc = new Controller("MyController");
-    bsc.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
 
-    bsc.activate();
     bsc.purge("MyPublisher", 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -213,13 +205,12 @@ public class ServerTest
         break;
       }
     }
-    bsc.deactivate();
-    bsc.teardown();
+    eventloopClient.disconnect(bsc);
 
     assertNotNull(bsc.data);
 
     bss = new Subscriber("MyPublisher");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -228,8 +219,7 @@ public class ServerTest
       }
     }
     Thread.sleep(10);
-    bss.deactivate();
-    bss.teardown();
+    eventloopClient.disconnect(bss);
     assertEquals(bss.tupleCount.get(), 205);
   }
 
@@ -238,9 +228,8 @@ public class ServerTest
   public void testPurgeSome() throws InterruptedException
   {
     bsc = new Controller("MyController");
-    bsc.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
 
-    bsc.activate();
     bsc.purge("MyPublisher", 0x7afebabe00000000L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -248,13 +237,12 @@ public class ServerTest
         break;
       }
     }
-    bsc.deactivate();
-    bsc.teardown();
+    eventloopClient.disconnect(bsc);
 
     assertNotNull(bsc.data);
 
     bss = new Subscriber("MyPublisher");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -262,8 +250,7 @@ public class ServerTest
         break;
       }
     }
-    bss.deactivate();
-    bss.teardown();
+    eventloopClient.disconnect(bss);
     assertEquals(bss.tupleCount.get(), 103);
   }
 
@@ -272,9 +259,8 @@ public class ServerTest
   public void testPurgeAll() throws InterruptedException
   {
     bsc = new Controller("MyController");
-    bsc.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
 
-    bsc.activate();
     bsc.purge("MyPublisher", 0x7afebabe00000001L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -282,13 +268,12 @@ public class ServerTest
         break;
       }
     }
-    bsc.deactivate();
-    bsc.teardown();
+    eventloopClient.disconnect(bsc);
 
     assertNotNull(bsc.data);
 
     bss = new Subscriber("MyPublisher");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
@@ -298,8 +283,7 @@ public class ServerTest
       }
     }
     Thread.sleep(10);
-    bss.deactivate();
-    bss.teardown();
+    eventloopClient.disconnect(bss);
     assertEquals(bss.tupleCount.get(), 1);
   }
 
@@ -314,7 +298,7 @@ public class ServerTest
   public void testReblishLowerWindow() throws InterruptedException
   {
     bsp = new Publisher("MyPublisher");
-    bsp.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
 
     bsp.activate(10, 0);
 
@@ -342,11 +326,10 @@ public class ServerTest
 
     bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
-    bsp.deactivate();
-    bsp.teardown();
+    eventloopClient.disconnect(bsp);
 
     bss = new Subscriber("MyPublisher");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
@@ -357,8 +340,7 @@ public class ServerTest
     }
     Thread.sleep(10); // wait some more to receive more tuples if possible
 
-    bss.deactivate();
-    bss.teardown();
+    eventloopClient.disconnect(bss);
 
     assertEquals(bss.tupleCount.get(), 8);
   }
@@ -368,9 +350,8 @@ public class ServerTest
   public void testReset() throws InterruptedException
   {
     bsc = new Controller("MyController");
-    bsc.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
 
-    bsc.activate();
     bsc.reset("MyPublisher", 0x7afebabe00000001L);
     for (int i = 0; i < spinCount * 2; i++) {
       Thread.sleep(10);
@@ -378,13 +359,12 @@ public class ServerTest
         break;
       }
     }
-    bsc.deactivate();
-    bsc.teardown();
+    eventloopClient.disconnect(bsc);
 
     assertNotNull(bsc.data);
 
     bss = new Subscriber("MySubscriber");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
@@ -394,8 +374,7 @@ public class ServerTest
       }
     }
 
-    bss.deactivate();
-    bss.teardown();
+    eventloopClient.disconnect(bss);
 
     assertEquals(bss.tupleCount.get(), 0);
   }
@@ -417,13 +396,13 @@ public class ServerTest
   public void testEarlySubscriberForLaterWindow() throws InterruptedException
   {
     bss = new Subscriber("MyPublisher");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 50L);
 
     /* wait in a hope that the subscriber is able to reach the server */
     Thread.sleep(100);
     bsp = new Publisher("MyPublisher");
-    bsp.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
 
 
     bsp.activate(0, 0);
@@ -447,13 +426,11 @@ public class ServerTest
 
     Thread.sleep(10);
 
-    bsp.deactivate();
-    bsp.teardown();
+    eventloopClient.disconnect(bsp);
 
     assertEquals(bss.tupleCount.get(), 150);
 
-    bss.deactivate();
-    bss.teardown();
+    eventloopClient.disconnect(bss);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(ServerTest.class);

@@ -29,15 +29,8 @@ public abstract class Subscriber extends AbstractClient
     this.id = id;
   }
 
-  @Override
-  public void activate()
-  {
-    throw new RuntimeException("please use 'void activate(String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)' instead");
-  }
-
   public void activate(String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)
   {
-    super.activate();
     write(SubscribeRequestTuple.getSerializedRequest(
             id,
             type,

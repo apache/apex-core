@@ -24,8 +24,6 @@ public abstract class AbstractClient extends Client
   protected byte[] buffer;
   protected ByteBuffer byteBuffer;
   protected int size, writeOffset, readOffset;
-  private EventLoop eventloop;
-  private InetSocketAddress address;
 
   public AbstractClient()
   {
@@ -200,26 +198,6 @@ public abstract class AbstractClient extends Client
     else {
       return false;
     }
-  }
-
-  public void setup(InetSocketAddress address, EventLoop eventloop)
-  {
-    this.address = address;
-    this.eventloop = eventloop;
-  }
-
-  public void teardown()
-  {
-  }
-
-  public void activate()
-  {
-    eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
-  }
-
-  public void deactivate()
-  {
-    eventloop.disconnect(this);
   }
 
   @Override

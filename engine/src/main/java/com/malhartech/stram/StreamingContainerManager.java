@@ -570,8 +570,8 @@ public class StreamingContainerManager implements PlanContext
   private BufferServerController getBufferServerClient(PTOperator operator)
   {
     BufferServerController bsc = new BufferServerController(operator.getLogicalId());
-    bsc.setup(operator.container.bufferServerAddress, StramChild.eventloop);
-    bsc.activate();
+    InetSocketAddress address = operator.container.bufferServerAddress;
+    StramChild.eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
     return bsc;
   }
 

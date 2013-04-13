@@ -11,9 +11,9 @@ import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.support.Controller;
 import com.malhartech.bufferserver.support.Publisher;
 import com.malhartech.bufferserver.support.Subscriber;
+import com.malhartech.netlet.DefaultEventLoop;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
-import com.malhartech.netlet.DefaultEventLoop;
 import static org.testng.Assert.assertEquals;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -50,19 +50,18 @@ public class DiskStorageTest
     assert (address instanceof InetSocketAddress);
 
     bsp = new Publisher("MyPublisher");
-    bsp.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
 
     bss = new Subscriber("MySubscriber");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bsc = new Controller("MyPublisher");
-    bsc.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
   }
 
   @AfterClass
   public static void teardownServerAndClients()
   {
-    bsc.teardown();
     eventloopServer.stop(instance);
     eventloopClient.stop();
     eventloopServer.stop();
@@ -107,16 +106,13 @@ public class DiskStorageTest
     }
     Thread.sleep(10); // wait some more to receive more tuples if possible
 
-    bsp.deactivate();
-    bss.deactivate();
-
-    bsp.teardown();
-    bss.teardown();
+    eventloopClient.disconnect(bsp);
+    eventloopClient.disconnect(bss);
 
     assertEquals(bss.tupleCount.get(), 2004);
 
     bss = new Subscriber("MySubscriber");
-    bss.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
     bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
@@ -127,8 +123,7 @@ public class DiskStorageTest
       }
     }
     Thread.sleep(10); // wait some more to receive more tuples if possible
-    bss.deactivate();
-    bss.teardown();
+    eventloopClient.disconnect(bss);
 
     assertEquals(bss.tupleCount.get(), 2004);
 

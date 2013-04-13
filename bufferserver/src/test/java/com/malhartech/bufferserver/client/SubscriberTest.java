@@ -12,11 +12,11 @@ import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.support.Publisher;
 import com.malhartech.bufferserver.support.Subscriber;
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.netlet.DefaultEventLoop;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.CancelledKeyException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import com.malhartech.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -67,7 +67,7 @@ public class SubscriberTest
   public void test() throws InterruptedException
   {
     final Publisher bsp1 = new Publisher("MyPublisher");
-    bsp1.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp1);
 
     final Subscriber bss1 = new Subscriber("MySubscriber")
     {
@@ -89,7 +89,7 @@ public class SubscriberTest
       }
 
     };
-    bss1.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss1);
 
     final int baseWindow = 0x7afebabe;
     bsp1.activate(baseWindow, 0);
@@ -134,11 +134,8 @@ public class SubscriberTest
 
     publisherRun.set(false);
 
-    bsp1.deactivate();
-    bss1.deactivate();
-
-    bss1.teardown();
-    bsp1.teardown();
+    eventloopClient.disconnect(bsp1);
+    eventloopClient.disconnect(bss1);
 
     /*
      * At this point, we know that both the publishers and the subscribers have gotten at least window Id 10.
@@ -146,7 +143,7 @@ public class SubscriberTest
      * subscribe from 8 onwards. What we should see is that subscriber gets the new data from 8 onwards.
      */
     final Publisher bsp2 = new Publisher("MyPublisher");
-    bsp2.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp2);
     bsp2.activate(0x7afebabe, 5);
 
     final Subscriber bss2 = new Subscriber("MyPublisher")
@@ -163,7 +160,7 @@ public class SubscriberTest
       }
 
     };
-    bss2.setup(address, eventloopClient);
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss2);
     bss2.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0x7afebabe00000008L);
 
 
@@ -206,11 +203,8 @@ public class SubscriberTest
 
     publisherRun.set(false);
 
-    bsp2.deactivate();
-    bss2.deactivate();
-
-    bss2.teardown();
-    bsp2.teardown();
+    eventloopClient.disconnect(bsp2);
+    eventloopClient.disconnect(bss2);
 
     Assert.assertTrue((bss2.lastPayload.getWindowId() - 8) * 3 < bss2.tupleCount.get());
   }
