@@ -8,7 +8,9 @@ import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Subscriber;
 import com.malhartech.engine.*;
+import com.malhartech.netlet.EventLoop;
 import java.lang.reflect.Array;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -33,6 +35,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   private Sink<Object>[] normalSinks = NO_SINKS;
   private StreamCodec<Object> serde;
   DataStatePair dsp = new DataStatePair();
+  private EventLoop eventloop;
 
   public BufferServerSubscriber(String id)
   {
@@ -42,6 +45,10 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   @Override
   public void activate(StreamContext context)
   {
+    InetSocketAddress address = context.getBufferServerAddress();
+    eventloop = context.attr(StreamContext.EVENT_LOOP).get();
+    eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
+
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
     baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
     serde = context.attr(StreamContext.CODEC).get();
@@ -155,7 +162,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   @Override
   public void setup(StreamContext context)
   {
-    super.setup(context.getBufferServerAddress(), context.attr(StreamContext.EVENT_LOOP).get());
   }
 
   @SuppressWarnings("unchecked")
@@ -221,6 +227,17 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
 
       }.start();
     }
+  }
+
+  @Override
+  public void deactivate()
+  {
+    eventloop.disconnect(this);
+  }
+
+  @Override
+  public void teardown()
+  {
   }
 
   private class EmergencySink extends ArrayList<Object> implements Sink<Object>

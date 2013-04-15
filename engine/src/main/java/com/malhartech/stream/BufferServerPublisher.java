@@ -11,7 +11,9 @@ import com.malhartech.bufferserver.packet.*;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
+import com.malhartech.netlet.EventLoop;
 import static java.lang.Thread.sleep;
+import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +30,7 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
   StreamCodec<Object> serde;
   int writtenBytes;
   int windowId;
+  private EventLoop eventloop;
 
   public BufferServerPublisher(String sourceId)
   {
@@ -106,9 +109,19 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
   @Override
   public void activate(StreamContext context)
   {
+    InetSocketAddress address = context.getBufferServerAddress();
+    eventloop = context.attr(StreamContext.EVENT_LOOP).get();
+    eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
+
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
     serde = context.attr(StreamContext.CODEC).get();
     super.activate(context.getStartingWindowId());
+  }
+
+  @Override
+  public void deactivate()
+  {
+    eventloop.disconnect(this);
   }
 
   @Override
@@ -132,7 +145,11 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
   @Override
   public void setup(StreamContext context)
   {
-    super.setup(context.getBufferServerAddress(), context.attr(StreamContext.EVENT_LOOP).get());
+  }
+
+  @Override
+  public void teardown()
+  {
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);

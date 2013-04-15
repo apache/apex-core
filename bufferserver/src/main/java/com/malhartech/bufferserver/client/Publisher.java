@@ -5,9 +5,6 @@
 package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.packet.PublishRequestTuple;
-import java.io.IOException;
-import java.util.Arrays;
-import com.malhartech.netlet.DefaultEventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,18 +22,12 @@ public abstract class Publisher extends AbstractClient
     this.id = id;
   }
 
-  @Override
-  public void activate()
-  {
-    throw new RuntimeException("please use 'void activate(long windowId)' instead");
-  }
   /**
    *
    * @param windowId
    */
   public void activate(long windowId)
   {
-    super.activate();
     write(PublishRequestTuple.getSerializedRequest(id, windowId));
   }
 

@@ -7,9 +7,7 @@ package com.malhartech.bufferserver.client;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.netlet.Client;
 import com.malhartech.netlet.DefaultEventLoop;
-import com.malhartech.netlet.EventLoop;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import org.slf4j.Logger;
@@ -24,8 +22,6 @@ public abstract class AbstractClient extends Client
   protected byte[] buffer;
   protected ByteBuffer byteBuffer;
   protected int size, writeOffset, readOffset;
-  private EventLoop eventloop;
-  private InetSocketAddress address;
 
   public AbstractClient()
   {
@@ -200,26 +196,6 @@ public abstract class AbstractClient extends Client
     else {
       return false;
     }
-  }
-
-  public void setup(InetSocketAddress address, EventLoop eventloop)
-  {
-    this.address = address;
-    this.eventloop = eventloop;
-  }
-
-  public void teardown()
-  {
-  }
-
-  public void activate()
-  {
-    eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
-  }
-
-  public void deactivate()
-  {
-    eventloop.disconnect(this);
   }
 
   @Override
