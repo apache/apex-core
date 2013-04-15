@@ -21,11 +21,14 @@ import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
@@ -431,9 +434,11 @@ public class PhysicalPlan {
     InetSocketAddress bufferServerAddress;
     int restartAttempts;
     final PhysicalPlan plan;
+    private final int seq;
 
     PTContainer(PhysicalPlan plan) {
       this.plan = plan;
+      this.seq = plan.containerSeq.incrementAndGet();
     }
 
     public State getState() {
@@ -475,7 +480,7 @@ public class PhysicalPlan {
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-          append("id", this.containerId).
+          append("id", ""+seq + "(" + this.containerId + ")").
           append("state", this.getState()).
           append("operators", this.operators).
           toString();
@@ -483,6 +488,7 @@ public class PhysicalPlan {
   }
 
   private final AtomicInteger idSequence = new AtomicInteger();
+  private final AtomicInteger containerSeq = new AtomicInteger();
   private final LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
   private final List<PTContainer> containers = new ArrayList<PTContainer>();
   private final DAG dag;
@@ -542,7 +548,7 @@ public class PhysicalPlan {
       p.statsMonitors = this.statsHandlers;
     }
 
-    private Collection<PTOperator> getAllNodes() {
+    private Collection<PTOperator> getAllOperators() {
       if (partitions.size() == 1) {
         return Collections.singletonList(partitions.get(0));
       }
@@ -559,6 +565,74 @@ public class PhysicalPlan {
       return (partitionCnt > 0);
     }
 
+    @Override
+    public String toString() {
+      return logicalOperator.toString();
+    }
+  }
+
+  private class LocalityPref {
+    String host;
+    List<String> notHost = Lists.newArrayList();
+    String rack;
+    Set<PMapping> operators = Sets.newHashSet();
+  }
+
+  private class LocalityPrefs {
+    private final Map<PMapping, LocalityPref> prefs = Maps.newHashMap();
+    private final AtomicInteger hostSeq = new AtomicInteger();
+
+    void add(PMapping m) {
+      String hostPref = m.logicalOperator.getAttributes().attrValue(OperatorContext.LOCALITY_HOST, null);
+      if (hostPref != null) {
+        LocalityPref pref = null;
+        for (LocalityPref lp : prefs.values()) {
+          if (hostPref.equals(lp.host)) {
+            lp.operators.add(m);
+            pref = lp;
+            break;
+          }
+        }
+        if (pref == null) {
+          pref = new LocalityPref();
+          pref.host = hostPref;
+          pref.operators.add(m);
+          this.prefs.put(m, pref);
+        }
+      }
+    }
+
+    void setHostLocal(PMapping m1, PMapping m2) {
+      LocalityPref lp1 = prefs.get(m1);
+      LocalityPref lp2 = prefs.get(m2);
+
+      if (lp1 == null && lp2 == null) {
+        lp1 = lp2 = new LocalityPref();
+        lp1.host = "host" + hostSeq.incrementAndGet();
+        lp1.operators.add(m1);
+        lp1.operators.add(m2);
+      } else if (lp1 != null && lp2 != null) {
+        // check if we can combine
+        if (StringUtils.equals(lp1.host, lp2.host)) {
+          lp1.operators.addAll(lp2.operators);
+          lp2.operators.addAll(lp1.operators);
+        } else {
+          LOG.warn("Node locality conflict {} {}", m1, m2);
+        }
+      } else {
+        if (lp1 == null) {
+          lp2.operators.add(m1);
+          lp1 = lp2;
+        } else {
+          lp1.operators.add(m2);
+          lp2 = lp1;
+        }
+      }
+
+      prefs.put(m1, lp1);
+      prefs.put(m2, lp2);
+    }
+
   }
 
   /**
@@ -573,7 +647,9 @@ public class PhysicalPlan {
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing for {} containers.", this.maxContainers);
 
+    LocalityPrefs localityPrefs = new LocalityPrefs();
     Stack<OperatorMeta> pendingNodes = new Stack<OperatorMeta>();
+
     for (OperatorMeta n : dag.getAllOperators()) {
       pendingNodes.push(n);
     }
@@ -600,17 +676,16 @@ public class PhysicalPlan {
       if (upstreamDeployed) {
         // ready to look at this node
         PMapping pnodes = new PMapping(n);
+        localityPrefs.add(pnodes);
 
         // determine partitioning / number operator instances
         if (pnodes.isPartitionable()) {
           initPartitioning(pnodes);
-        }
+        } else {
+          HashSet<PMapping> inlineCandidates = new HashSet<PMapping>();
+          PMapping upstreamPartitioned = null;
 
-        PMapping upstreamPartitioned = null;
-        HashSet<PMapping> inlineCandidates = new HashSet<PMapping>();
-        if (pnodes.partitions.isEmpty()) {
           for (Map.Entry<DAG.InputPortMeta, StreamMeta> e : n.getInputStreams().entrySet()) {
-            // if stream is marked inline, join the upstream operators
             PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorWrapper());
             if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false).equals(true)) {
               // operator partitioned with upstream
@@ -623,22 +698,30 @@ public class PhysicalPlan {
               }
               upstreamPartitioned = m;
             } else if (e.getValue().isInline()) {
+              // if stream is marked inline, group with upstream operators
               inlineCandidates.add(m);
+            }
+
+            if (e.getValue().isNodeLocal()) {
+              localityPrefs.setHostLocal(m, pnodes);
             }
           }
 
           if (upstreamPartitioned != null) {
-            // instance per upstream partition
+            // parallel partition
             for (PTOperator u : upstreamPartitioned.partitions) {
               PTOperator newOperator = addPTOperator(pnodes, null);
+              // FIXME: parallel partitions may not be inline
               newOperator.inlineSet = u.inlineSet;
               newOperator.inlineSet.add(u);
-              newOperator.inlineSet.add(newOperator);
-              LOG.debug("inlineSet for {} {}", newOperator, newOperator.inlineSet);
+              LOG.debug("inlineSet parallel partition {} {}", newOperator, newOperator.inlineSet);
             }
           } else {
             // single instance, no partitions
-            PTOperator newOperator = addPTOperator(pnodes, null);
+            addPTOperator(pnodes, null);
+          }
+
+          for (PTOperator newOperator : pnodes.partitions) {
             newOperator.inlineSet.add(newOperator);
 
             for (PMapping inlineCandidate : inlineCandidates) {
@@ -649,9 +732,7 @@ public class PhysicalPlan {
               // merge inline sets
               //LOG.debug("merging {} {}", newOperator, inlineCandidate.partitions);
               for (PTOperator otherNode : inlineCandidate.partitions) {
-                if (!otherNode.inlineSet.isEmpty()) {
-                  newOperator.inlineSet.addAll(otherNode.inlineSet);
-                }
+                newOperator.inlineSet.addAll(otherNode.inlineSet);
               }
             }
 
@@ -672,31 +753,114 @@ public class PhysicalPlan {
     int groupCount = 0;
     Set<PTOperator> deployOperators = Sets.newHashSet();
     for (Map.Entry<OperatorMeta, PMapping> e : logicalToPTOperator.entrySet()) {
-      for (PTOperator node : e.getValue().getAllNodes()) {
-        if (node.container == null) {
+      for (PTOperator oper : e.getValue().getAllOperators()) {
+        if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          Set<PTOperator> inlineNodes = node.inlineSet;
-          LOG.debug("Setting container {} for {}", container, node.inlineSet);
-          if (!inlineNodes.isEmpty()) {
+          if (!oper.inlineSet.isEmpty()) {
             // process inline operators
-            for (PTOperator inlineNode : inlineNodes) {
-              //LOG.debug("setting container {} {}", inlineNode, container);
-              setContainer(inlineNode, container);
+            for (PTOperator inlineOper : oper.inlineSet) {
+              setContainer(inlineOper, container);
             }
           } else {
-            setContainer(node, container);
+            setContainer(oper, container);
           }
           deployOperators.addAll(container.operators);
         }
       }
     }
-
+/*
+    assignContainers();
+    Set<PTOperator> deployOperators = Sets.newHashSet();
+    for (PTContainer container : this.containers) {
+      deployOperators.addAll(container.operators);
+    }
+*/
     // request initial deployment
     ctx.redeploy(Collections.<PTOperator>emptySet(), Sets.newHashSet(containers), deployOperators);
 
   }
+/*
+  private void assignContainers() {
+    AtomicInteger containerIndex = new AtomicInteger();
+    for (OperatorMeta om : dag.getRootOperators()) {
+      PMapping m = logicalToPTOperator.get(om);
+      for (PTOperator oper : m.getAllOperators()) {
+        assignContainer(oper, containerIndex);
+      }
+    }
+  }
+
+  private void assignContainer(PTOperator oper, AtomicInteger containerIndex) {
+    if (oper.container != null) {
+      return;
+    }
+
+    PMapping m = this.logicalToPTOperator.get(oper.getOperatorMeta());
+    if (m == null) {
+      throw new AssertionError("Operator not registered in plan: " + oper.getOperatorMeta());
+    }
+    boolean partitionable = m.isPartitionable();
+
+    // check inputs and outputs for existing inline container
+    PTContainer container = null;
+
+    // TODO: all inline first
+    Set<PTOperator> unassignedOpers = Sets.newHashSetWithExpectedSize(oper.inputs.size());
+
+    for (PTInput in : oper.inputs) {
+      if (in.source.source.container != null) {
+        // TODO: look if merge operator
+        //if (oper.merge == null) {
+          // TODO: remove assumption that parallel partitions are inline
+          if ((in.logicalStream.isInline() || in.getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false)) && !partitionable) {
+            if (container == null) {
+              container = in.source.source.container;
+            } else if (container != in.source.source.container) {
+              LOG.debug("cannot honor inline setting: {} {}", in.source, oper);
+            }
+          }
+        //} else {
+          // unifier
+
+        //}
+      } else {
+        unassignedOpers.add((PTOperator)in.source.source);
+      }
+    }
+
+    for (PTOutput out : oper.outputs) {
+      for (PTInput sink : out.sinks) {
+        if (sink.target.container != null) {
+          if (out.logicalStream.isInline() && !partitionable) {
+            if (container == null) {
+              container = sink.target.container;
+            } else if (container != sink.target.container) {
+              LOG.debug("cannot honor inline setting: {} {}", oper, sink.target);
+            }
+          }
+        } else {
+          unassignedOpers.add((PTOperator)sink.target);
+        }
+      }
+    }
+
+    if (container == null) {
+      // no inline container
+      container = getContainer(containerIndex.getAndIncrement() % maxContainers);
+    }
+
+    LOG.debug("Container {} for {}", container.seq, oper);
+    this.setContainer(oper, container);
+
+    for (PTOperator unassignedOper : unassignedOpers) {
+      assignContainer(unassignedOper, containerIndex);
+    }
+
+  }
+*/
 
   private void setContainer(PTOperator pOperator, PTContainer container) {
+    LOG.debug("Setting container {} for {}", container, pOperator);
     assert(pOperator.container == null);
     pOperator.container = container;
     container.operators.add(pOperator);

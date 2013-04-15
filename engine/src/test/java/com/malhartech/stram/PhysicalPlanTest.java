@@ -474,20 +474,22 @@ public class PhysicalPlanTest {
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
     Assert.assertEquals("operators container 0", 3, plan.getContainers().get(0).operators.size());
 
-    Set<OperatorMeta> c1ExpNodes = Sets.newHashSet(dag.getOperatorMeta(node1.getName()), dag.getOperatorMeta(node2.getName()), dag.getOperatorMeta(node3.getName()));
+    Set<OperatorMeta> c1ExpNodes = Sets.newHashSet(dag.getOperatorMeta(node1), dag.getOperatorMeta(node2), dag.getOperatorMeta(node3));
     Set<OperatorMeta> c1ActNodes = new HashSet<OperatorMeta>();
     for (PTOperator pNode: plan.getContainers().get(0).operators) {
       c1ActNodes.add(pNode.getOperatorMeta());
     }
     Assert.assertEquals("operators container 0", c1ExpNodes, c1ActNodes);
 
-    Assert.assertEquals("operators container 1", 1, plan.getContainers().get(1).operators.size());
-    Assert.assertEquals("operators container 1", dag.getOperatorMeta(notInlineNode.getName()), plan.getContainers().get(1).operators.get(0).getOperatorMeta());
+    List<PTOperator> notInlineNodeList = plan.getOperators(dag.getOperatorMeta(notInlineNode));
+    Assert.assertEquals("operators " + notInlineNode, 1, notInlineNodeList.size());
+    Assert.assertEquals("operators container " + notInlineNodeList.get(0), 1, notInlineNodeList.get(0).container.operators.size());
 
     // one container per partition
-    for (int cindex = 2; cindex < maxContainers; cindex++) {
-      Assert.assertEquals("operators container" + cindex, 1, plan.getContainers().get(cindex).operators.size());
-      Assert.assertEquals("operators container" + cindex, dag.getOperatorMeta(partNode.getName()), plan.getContainers().get(cindex).operators.get(0).getOperatorMeta());
+    OperatorMeta partOperMeta = dag.getOperatorMeta(partNode);
+    List<PTOperator> partitions = plan.getOperators(partOperMeta);
+    for (PTOperator partition : partitions) {
+      Assert.assertEquals("operators container" + partition, 1, partition.getContainer().operators.size());
     }
 
   }
@@ -534,12 +536,12 @@ public class PhysicalPlanTest {
 
     GenericTestModule o3 = dag.addOperator("o3", GenericTestModule.class);
 
-    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(true);
+    dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(false);
 
-    dag.addStream("o2Output1", o2.outport1, o3.inport2).setInline(false);
+    dag.addStream("o2Output1", o2.outport1, o3.inport2).setInline(true);
     dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_PARALLEL, true);
 
-    // fork parallel partition to two downstream operators
+    // parallel partition two downstream operators
     GenericTestModule o3_1 = dag.addOperator("o3_1", GenericTestModule.class);
     dag.setInputPortAttribute(o3_1.inport1, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o3_1Meta = dag.getOperatorMeta(o3_1);
@@ -548,16 +550,16 @@ public class PhysicalPlanTest {
     dag.setInputPortAttribute(o3_2.inport1, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o3_2Meta = dag.getOperatorMeta(o3_2);
 
-    dag.addStream("o3outport1", o3.outport1, o3_1.inport1, o3_2.inport1).setInline(false); // inline implicit
+    dag.addStream("o3outport1", o3.outport1, o3_1.inport1, o3_2.inport1).setInline(true);
 
-    // join within parallel partitions
+    // join within parallel partition
     GenericTestModule o4 = dag.addOperator("o4", GenericTestModule.class);
     dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.setInputPortAttribute(o4.inport2, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o4Meta = dag.getOperatorMeta(o4);
 
-    dag.addStream("o3_1.outport1", o3_1.outport1, o4.inport1).setInline(false); // inline implicit
-    dag.addStream("o3_2.outport1", o3_2.outport1, o4.inport2).setInline(false); // inline implicit
+    dag.addStream("o3_1.outport1", o3_1.outport1, o4.inport1).setInline(true);
+    dag.addStream("o3_2.outport1", o3_2.outport1, o4.inport2).setInline(true);
 
     // non inline
     GenericTestModule o5merge = dag.addOperator("o5merge", GenericTestModule.class);

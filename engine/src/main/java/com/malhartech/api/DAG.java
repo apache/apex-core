@@ -221,6 +221,16 @@ public class DAG implements Serializable, DAGContext
       return inline;
     }
 
+    public boolean isNodeLocal()
+    {
+      return false;
+    }
+
+    public boolean isRackLocal()
+    {
+      return false;
+    }
+
     public StreamMeta setInline(boolean inline)
     {
       this.inline = inline;
