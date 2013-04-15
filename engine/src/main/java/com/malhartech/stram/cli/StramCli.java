@@ -48,6 +48,7 @@ import com.malhartech.util.VersionInfo;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import java.util.Arrays;
 
 /**
  *
@@ -372,12 +373,12 @@ public class StramCli
       args[i] = args[i].trim();
     }
 
-    String context = (args.length == 2 ? args[1] : currentDir);
+    String context = (args.length > 1 ? args[1] : currentDir);
     if (context.equals("/")) {
       listApplications(args);
     }
-    else if (context.equals("containers")) {
-      listContainers();
+    else if (context.startsWith("container")) {
+      listContainers(Arrays.copyOfRange(args, 2, args.length));
     }
     else {
       listOperators(args);
@@ -558,11 +559,34 @@ public class StramCli
     System.out.println(json.toString(2));
   }
 
-  private void listContainers() throws JSONException
+  private void listContainers(String[] args) throws JSONException
   {
     ClientResponse rsp = getResource(StramWebServices.PATH_CONTAINERS);
     JSONObject json = rsp.getEntity(JSONObject.class);
-    System.out.println(json.toString(2));
+    if (args == null || args.length == 0) {
+      System.out.println(json.toString(2));
+    }
+    else {
+      JSONArray containers = json.getJSONArray("containers");
+      if (containers == null) {
+        System.out.println("No containers found!");
+      }
+      else {
+        for (int o = containers.length(); o-- > 0;) {
+          JSONObject container = containers.getJSONObject(o);
+          String id = container.getString("id");
+          if (id != null && !id.isEmpty()) {
+            for (int argc = args.length; argc-- > 0;) {
+              String s1 = "0" + args[argc];
+              String s2 = "_" + args[argc];
+              if (id.endsWith(s1) || id.endsWith(s2)) {
+                System.out.println(container.toString(2));
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   private void launchApp(String line, ConsoleReader reader)

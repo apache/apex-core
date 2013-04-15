@@ -24,7 +24,7 @@ public abstract class AbstractReservoir extends CircularBuffer<Object> implement
   }
 
   @Override
-  public final void process(Object payload)
+  public void process(Object payload)
   {
     try {
       put(payload);

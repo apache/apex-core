@@ -69,11 +69,11 @@ public class TestGeneratorInputModule extends BaseOperator implements InputOpera
         throw new RuntimeException(ie);
       }
     }
-    else if (outport.isConnected() && maxTuples != 0) {
+    else if (maxTuples != 0) {
       generatedTuples++;
       LOG.info("sending tuple " + generatedTuples);
       outport.emit(String.valueOf(generatedTuples));
-      if (maxTuples > 0 && maxTuples < generatedTuples) {
+      if (maxTuples > 0 && maxTuples <= generatedTuples) {
         throw new RuntimeException(new InterruptedException("done emitting all."));
       }
       remainingSleepTime = emitInterval;

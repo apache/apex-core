@@ -39,7 +39,7 @@ import com.google.inject.util.Providers;
 import com.malhartech.stram.StramAppContext;
 import com.malhartech.stram.StreamingContainerManager;
 import com.malhartech.stram.webapp.StramWebApp.JAXBContextResolver;
-import com.malhartech.stream.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.UniformInterfaceException;

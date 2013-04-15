@@ -11,6 +11,7 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
+import com.malhartech.stream.BufferServerSubscriber;
 import com.malhartech.util.AttributeMap;
 import java.util.*;
 import java.util.Map.Entry;
@@ -85,6 +86,7 @@ public class GenericNode extends Node<Operator>
       for (int i = 1; i <= size; i++) {
         if (peekUnsafe() instanceof Tuple) {
           count += i;
+          //logger.debug("sweeping {}", peekUnsafe());
           return (Tuple)peekUnsafe();
         }
         sink.process(pollUnsafe());
@@ -99,7 +101,6 @@ public class GenericNode extends Node<Operator>
     {
       sink.process(payload);
     }
-
 
   }
 
@@ -137,10 +138,28 @@ public class GenericNode extends Node<Operator>
         inputPort.setConnected(true);
         Reservoir reservoir = inputs.get(port);
         if (reservoir == null) {
-          // get the attributes here and replace the hardcoded number down here
-          int bufferCapacity = attributes == null ? 1024 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024 * 1024);
+          int bufferCapacity = attributes == null ? 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024);
           int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
-          reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
+          if (sink instanceof BufferServerSubscriber) {
+            reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds)
+            {
+              @Override
+              public void process(Object payload)
+              {
+                //if (payload instanceof Tuple) {
+                //  logger.debug("adding {}", payload);
+                //}
+                add(payload);
+                //if (payload instanceof Tuple) {
+                //  logger.debug("added {}", payload);
+                //}
+              }
+
+            };
+          }
+          else {
+            reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
+          }
           inputs.put(port, reservoir);
         }
         retvalue = reservoir;
@@ -174,6 +193,7 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings({"SleepWhileInLoop"})
   public final void run()
   {
+    long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     boolean insideWindow = false;
     int windowCount = 0;
@@ -421,7 +441,8 @@ public class GenericNode extends Node<Operator>
         }
 
         if (activeQueues.isEmpty() && alive) {
-          logger.error("Invalid State - the node blocked forever!!!");
+          logger.error("Catastrophic Error: Invalid State - the operator blocked forever!");
+          System.exit(2);
         }
         else {
           boolean need2sleep = true;

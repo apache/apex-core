@@ -4,19 +4,20 @@
  */
 package com.malhartech.bufferserver.storage;
 
-import com.malhartech.bufferserver.BufferServerController;
-import com.malhartech.bufferserver.BufferServerPublisher;
-import com.malhartech.bufferserver.BufferServerSubscriber;
-import com.malhartech.bufferserver.Server;
-import com.malhartech.bufferserver.ServerTest.BeginTuple;
-import com.malhartech.bufferserver.ServerTest.EndTuple;
+import com.malhartech.bufferserver.packet.BeginWindowTuple;
+import com.malhartech.bufferserver.packet.EndWindowTuple;
+import com.malhartech.bufferserver.packet.PayloadTuple;
+import com.malhartech.bufferserver.server.Server;
+import com.malhartech.bufferserver.support.Controller;
+import com.malhartech.bufferserver.support.Publisher;
+import com.malhartech.bufferserver.support.Subscriber;
+import com.malhartech.netlet.DefaultEventLoop;
+import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import static org.testng.Assert.assertEquals;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
 
 /**
  *
@@ -24,87 +25,108 @@ import org.testng.annotations.Test;
  */
 public class DiskStorageTest
 {
+  static DefaultEventLoop eventloopServer;
+  static DefaultEventLoop eventloopClient;
   static Server instance;
-  static BufferServerPublisher bsp;
-  static BufferServerSubscriber bss;
-  static BufferServerController bsc;
+  static Publisher bsp;
+  static Subscriber bss;
+  static Controller bsc;
   static int spinCount = 500;
+  static InetSocketAddress address;
 
   @BeforeClass
   public static void setupServerAndClients() throws Exception
   {
-    instance = new Server(0, 1024, 10);
+    eventloopServer = new DefaultEventLoop("server");
+    eventloopServer.start();
+
+    eventloopClient = new DefaultEventLoop("client");
+    eventloopClient.start();
+
+    instance = new Server(0, 1024);
     instance.setSpoolStorage(new DiskStorage());
 
-    SocketAddress result = instance.run();
-    assert (result instanceof InetSocketAddress);
-    String host = ((InetSocketAddress)result).getHostName();
-    int port = ((InetSocketAddress)result).getPort();
+    address = instance.run(eventloopServer);
+    assert (address instanceof InetSocketAddress);
 
-    bsp = new BufferServerPublisher("MyPublisher");
-    bsp.setup(host, port);
+    bsp = new Publisher("MyPublisher");
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
 
-    bss = new BufferServerSubscriber("MyPublisher", 0, null);
-    bss.setup(host, port);
+    bss = new Subscriber("MySubscriber");
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bsc = new BufferServerController("MyPublisher");
-    bsc.setup(host, port);
+    bsc = new Controller("MyPublisher");
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
   }
 
   @AfterClass
   public static void teardownServerAndClients()
   {
-    bsc.teardown();
-    bss.teardown();
-    bsp.teardown();
-    instance.shutdown();
+    eventloopServer.stop(instance);
+    eventloopClient.stop();
+    eventloopServer.stop();
   }
 
   @Test
+  @SuppressWarnings("SleepWhileInLoop")
   public void testStorage() throws InterruptedException
   {
-    bss.activate();
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
-    bsp.baseWindow = 0x7afebabe;
-    bsp.windowId = 0;
-    bsp.activate();
+    bsp.activate(0x7afebabe, 0);
 
-    BeginTuple bt0 = new BeginTuple();
-    bt0.id = 0x7afebabe00000000L;
-    bsp.publishMessage(bt0);
+    long windowId = 0x7afebabe00000000L;
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < 1000; i++) {
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte)i;
+      bsp.publishMessage(buff);
     }
 
-    EndTuple et0 = new EndTuple();
-    et0.id = bt0.id;
-    bsp.publishMessage(et0);
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
-    BeginTuple bt1 = new BeginTuple();
-    bt1.id = bt0.id + 1;
-    bsp.publishMessage(bt1);
+    windowId++;
+
+    bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < 1000; i++) {
-      bsp.publishMessage(new byte[] {(byte)i});
+      byte[] buff = PayloadTuple.getSerializedTuple(0, 1);
+      buff[buff.length - 1] = (byte)i;
+      bsp.publishMessage(buff);
     }
 
-    EndTuple et1 = new EndTuple();
-    et1.id = bt1.id;
-    bsp.publishMessage(et1);
+    bsp.publishMessage(EndWindowTuple.getSerializedTuple((int)windowId));
 
     for (int i = 0; i < spinCount; i++) {
-      Thread.sleep(10);
+      sleep(10);
       if (bss.tupleCount.get() > 2003) {
         break;
       }
     }
     Thread.sleep(10); // wait some more to receive more tuples if possible
 
-    bsp.deactivate();
-    bss.deactivate();
+    eventloopClient.disconnect(bsp);
+    eventloopClient.disconnect(bss);
 
     assertEquals(bss.tupleCount.get(), 2004);
+
+    bss = new Subscriber("MySubscriber");
+    eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
+
+    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+
+    for (int i = 0; i < spinCount; i++) {
+      sleep(10);
+      if (bss.tupleCount.get() > 2003) {
+        break;
+      }
+    }
+    Thread.sleep(10); // wait some more to receive more tuples if possible
+    eventloopClient.disconnect(bss);
+
+    assertEquals(bss.tupleCount.get(), 2004);
+
   }
 
 }

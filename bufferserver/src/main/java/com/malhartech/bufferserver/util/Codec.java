@@ -14,6 +14,7 @@ public class Codec
    * Writes the Variable Sized Integer of Length 32. Assumes that the buffer has 5 positions at least starting with offset.
    *
    * @param value
+   * @param buffer
    * @param offset
    * @return int
    */
@@ -116,5 +117,82 @@ public class Codec
   public static String getStringWindowId(long windowId)
   {
     return String.valueOf(windowId >> 32) + "[" + (int)windowId + "]";
+  }
+
+  public static class MutableInt
+  {
+    public int integer;
+  }
+
+  /**
+   *
+   * @param readBuffer The array of bytes which contains the data to be parsed.
+   * @param offset The offset where we should start reading the first 7 bits of varint.
+   * @param limit The length of the slice of the data array where in which we are reading varint.
+   * @param newOffset If the varint is read successfully, newOffset contains the position after varint.
+   * @return varint value read
+   */
+  public static int readVarInt(byte[] readBuffer, int offset, int limit, MutableInt newOffset)
+  {
+    if (offset < limit) {
+      byte tmp = readBuffer[offset++];
+      if (tmp >= 0) {
+        newOffset.integer = offset;
+        return tmp;
+      }
+      else if (offset < limit) {
+        int integer = tmp & 0x7f;
+        tmp = readBuffer[offset++];
+        if (tmp >= 0) {
+          newOffset.integer = offset;
+          return integer | tmp << 7;
+        }
+        else if (offset < limit) {
+          integer |= (tmp & 0x7f) << 7;
+          tmp = readBuffer[offset++];
+
+          if (tmp >= 0) {
+            newOffset.integer = offset;
+            return integer | tmp << 14;
+          }
+          else if (offset < limit) {
+            integer |= (tmp & 0x7f) << 14;
+            tmp = readBuffer[offset++];
+            if (tmp >= 0) {
+              newOffset.integer = offset;
+              return integer | tmp << 21;
+            }
+            else if (offset < limit) {
+              integer |= (tmp & 0x7f) << 21;
+              tmp = readBuffer[offset++];
+              if (tmp >= 0) {
+                newOffset.integer = offset;
+                return integer | tmp << 28;
+              }
+              else {
+                newOffset.integer = -5;
+              }
+            }
+            else {
+              newOffset.integer = -4;
+            }
+          }
+          else {
+            newOffset.integer = -3;
+          }
+        }
+        else {
+          newOffset.integer = -2;
+        }
+      }
+      else {
+        newOffset.integer = -1;
+      }
+    }
+    else {
+      newOffset.integer = 0;
+    }
+
+    return 0;
   }
 }

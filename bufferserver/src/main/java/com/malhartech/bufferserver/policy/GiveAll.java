@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.policy;
 
-import com.malhartech.bufferserver.PhysicalNode;
+import com.malhartech.bufferserver.internal.PhysicalNode;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Set;
 
@@ -31,20 +31,21 @@ public class GiveAll extends AbstractPolicy
 
   /**
    *
+   *
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    * @return true if blocked, false otherwise
+   * @throws InterruptedException
    */
   @Override
   public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
-    boolean retval = false;
-    for (PhysicalNode node : nodes) {
-      if (node.send(data)) {
-        retval = true;
-      }
+    boolean retval = true;
+    for (PhysicalNode node: nodes) {
+      retval = node.send(data) & retval;
     }
 
     return retval;
   }
+
 }

@@ -4,7 +4,7 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.util.Codec;
 
 /**
@@ -58,4 +58,5 @@ public class Tuple
   {
     return "type = " + type + " " + Codec.getStringWindowId(windowId);
   }
+
 }

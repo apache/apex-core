@@ -4,12 +4,14 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.bufferserver.Server;
-import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.bufferserver.server.Server;
+import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.Tuple;
-
+import com.malhartech.netlet.DefaultEventLoop;
+import com.malhartech.netlet.EventLoop;
+import com.malhartech.stram.support.StramTestSupport;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,12 +30,23 @@ public class SocketStreamTest
   private static final Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
   private static int bufferServerPort = 0;
   private static Server bufferServer = null;
+  static EventLoop eventloop;
+  static {
+    try {
+      eventloop = new DefaultEventLoop("streamTest");
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
 
   @BeforeClass
   public static void setup() throws InterruptedException, IOException, Exception
   {
+    ((DefaultEventLoop)eventloop).start();
     bufferServer = new Server(0); // find random port
-    InetSocketAddress bindAddr = (InetSocketAddress)bufferServer.run();
+    InetSocketAddress bindAddr = bufferServer.run(eventloop);
     bufferServerPort = bindAddr.getPort();
   }
 
@@ -41,8 +54,9 @@ public class SocketStreamTest
   public static void tearDown() throws IOException
   {
     if (bufferServer != null) {
-      bufferServer.shutdown();
+      eventloop.stop(bufferServer);
     }
+    ((DefaultEventLoop)eventloop).stop();
   }
 
   /**
@@ -56,7 +70,7 @@ public class SocketStreamTest
   {
 
     final AtomicInteger messageCount = new AtomicInteger();
-    Sink sink = new Sink()
+    Sink<Object> sink = new Sink<Object>()
     {
       @Override
       public void process(Object payload)
@@ -77,15 +91,15 @@ public class SocketStreamTest
           }
         }
         else {
-          System.out.println("received: " + payload);
+          logger.debug("received: " + payload);
           messageCount.incrementAndGet();
         }
       }
     };
 
-    StreamCodec serde = new DefaultStreamCodec();
+    StreamCodec<Object> serde = new DefaultStreamCodec<Object>();
 
-    String streamName = "streamName"; // AKA "type"
+    String streamName = "streamName";
     String upstreamNodeId = "upstreamNodeId";
     String downstreamNodeId = "downStreamNodeId";
 
@@ -94,8 +108,10 @@ public class SocketStreamTest
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
     issContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+    issContext.attr(StreamContext.CODEC).set(serde);
+    issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerInputStream iss = new BufferServerInputStream(serde);
+    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId);
     iss.setup(issContext);
     iss.setSink("testSink", sink);
 
@@ -103,8 +119,10 @@ public class SocketStreamTest
     ossContext.setSourceId(upstreamNodeId);
     ossContext.setSinkId(downstreamNodeId);
     ossContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+    ossContext.attr(StreamContext.CODEC).set(serde);
+    ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerOutputStream oss = new BufferServerOutputStream(serde);
+    BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId);
     oss.setup(ossContext);
 
     iss.activate(issContext);
@@ -127,4 +145,5 @@ public class SocketStreamTest
     Assert.assertEquals("Received messages", 1, messageCount.get());
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(SocketStreamTest.class);
 }

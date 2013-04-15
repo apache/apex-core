@@ -107,7 +107,7 @@ public interface Operator extends Component<OperatorContext>
      *
      * @param s
      */
-    public void setSink(Sink<T> s);
+    public void setSink(Sink<Object> s);
 
     /**
      * Merge tuples emitted by multiple upstream instances of the enclosing

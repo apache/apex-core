@@ -59,11 +59,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAG;
+import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
+import org.apache.log4j.Appender;
+import org.apache.log4j.RollingFileAppender;
 
 /**
  *
@@ -89,7 +92,7 @@ public class StramAppMaster
     if (containerIdString == null) {
       // container id should always be set in the env by the framework
       throw new IllegalArgumentException(
-          "ContainerId not set in the environment");
+              "ContainerId not set in the environment");
     }
     System.setProperty("stram.cid", containerIdString);
     //ContainerId containerId = ConverterUtils.toContainerId(containerIdString);
@@ -120,7 +123,6 @@ public class StramAppMaster
   private final AtomicInteger numCompletedContainers = new AtomicInteger();
   // Containers that the RM has allocated to us
   private final Map<String, Container> allAllocatedContainers = new HashMap<String, Container>();
-
   // Count of failed containers
   private final AtomicInteger numFailedContainers = new AtomicInteger();
   // Launch threads
@@ -155,11 +157,12 @@ public class StramAppMaster
     @Override
     public int getNumOperators() {
       int num = 0;
-      for (PTContainer c : dnmgr.getPhysicalPlan().getContainers()) {
+      for (PTContainer c: dnmgr.getPhysicalPlan().getContainers()) {
         num += c.operators.size();
       }
       return num;
     }
+
   }
 
   private class ClusterAppContextImpl implements StramAppContext
@@ -238,10 +241,12 @@ public class StramAppMaster
    */
   public static void main(String[] args)
   {
+    StdOutErrLog.tieSystemOutAndErrToLog();
+
     boolean result = false;
 
     StringWriter sw = new StringWriter();
-    for (Map.Entry<String, String> e : System.getenv().entrySet()) {
+    for (Map.Entry<String, String> e: System.getenv().entrySet()) {
       sw.append("\n").append(e.getKey()).append("=").append(e.getValue());
     }
     LOG.info("appmaster env:" + sw.toString());
@@ -274,11 +279,10 @@ public class StramAppMaster
    */
   private void dumpOutDebugInfo()
   {
-
     LOG.info("Dump debug output");
     Map<String, String> envs = System.getenv();
     LOG.info("\nDumping System Env: begin");
-    for (Map.Entry<String, String> env : envs.entrySet()) {
+    for (Map.Entry<String, String> env: envs.entrySet()) {
       LOG.info("System env: key=" + env.getKey() + ", val=" + env.getValue());
       System.out.println("System env: key=" + env.getKey() + ", val=" + env.getValue());
     }
@@ -375,9 +379,9 @@ public class StramAppMaster
     }
 
     LOG.info("Application master for app"
-             + ", appId=" + appAttemptID.getApplicationId().getId()
-             + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
-             + ", attemptId=" + appAttemptID.getAttemptId());
+            + ", appId=" + appAttemptID.getApplicationId().getId()
+            + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
+            + ", attemptId=" + appAttemptID.getAttemptId());
 
     FileInputStream fis = new FileInputStream("./" + DAG.SER_FILE_NAME);
     this.dag = DAG.read(fis);
@@ -401,7 +405,7 @@ public class StramAppMaster
     // start web service
     try {
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(conf).
-        start(new StramWebApp(this.dnmgr));
+              start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
       this.appMasterTrackingUrl = NetUtils.getConnectAddress(rpcImpl.getAddress()).getHostName() + ":" + webApp.port();
       LOG.info("Setting tracking URL to: " + appMasterTrackingUrl);
@@ -423,12 +427,29 @@ public class StramAppMaster
     new HelpFormatter().printHelp("ApplicationMaster", opts);
   }
 
+  public boolean run() throws YarnRemoteException
+  {
+    boolean started = false;
+    try {
+      if (!StramChild.eventloop.isActive()) {
+        StramChild.eventloop.start();
+        started = true;
+      }
+      return runStram();
+    }
+    finally {
+      if (started) {
+        StramChild.eventloop.stop();
+      }
+    }
+  }
+
   /**
    * Main run function for the application master
    *
    * @throws YarnRemoteException
    */
-  public boolean run() throws YarnRemoteException
+  public boolean runStram() throws YarnRemoteException
   {
     LOG.info("Starting ApplicationMaster");
 
@@ -449,14 +470,14 @@ public class StramAppMaster
     int containerMemory = dag.getContainerMemoryMB();
     if (containerMemory < minMem) {
       LOG.info("Container memory specified below min threshold of cluster. Using min value."
-               + ", specified=" + containerMemory
-               + ", min=" + minMem);
+              + ", specified=" + containerMemory
+              + ", min=" + minMem);
       containerMemory = minMem;
     }
     else if (containerMemory > maxMem) {
       LOG.info("Container memory specified above max threshold of cluster. Using max value."
-               + ", specified=" + containerMemory
-               + ", max=" + maxMem);
+              + ", specified=" + containerMemory
+              + ", max=" + maxMem);
       containerMemory = maxMem;
     }
     stats.containerMemory = containerMemory;
@@ -625,7 +646,7 @@ public class StramAppMaster
     // Join all launched threads
     // needed for when we time out
     // and we need to release containers
-    for (Thread launchThread : launchThreads) {
+    for (Thread launchThread: launchThreads) {
       try {
         launchThread.join(10000);
       }
@@ -648,10 +669,10 @@ public class StramAppMaster
     else {
       finishReq.setFinishApplicationStatus(FinalApplicationStatus.FAILED);
       String diagnostics = "Diagnostics."
-                           + ", total=" + numTotalContainers
-                           + ", completed=" + numCompletedContainers.get()
-                           + ", allocated=" + allAllocatedContainers.size()
-                           + ", failed=" + numFailedContainers.get();
+              + ", total=" + numTotalContainers
+              + ", completed=" + numCompletedContainers.get()
+              + ", allocated=" + allAllocatedContainers.size()
+              + ", failed=" + numFailedContainers.get();
       if (!StringUtils.isEmpty(dnmgr.shutdownDiagnosticsMessage)) {
         diagnostics += "\n";
         diagnostics += dnmgr.shutdownDiagnosticsMessage;
@@ -726,21 +747,22 @@ public class StramAppMaster
    * @throws YarnRemoteException
    */
   private AMResponse sendContainerAskToRM(List<ResourceRequest> requestedContainers, List<ContainerId> releasedContainers)
-    throws YarnRemoteException
+          throws YarnRemoteException
   {
     AllocateRequest req = Records.newRecord(AllocateRequest.class);
     req.setResponseId(rmRequestID.incrementAndGet());
     req.setApplicationAttemptId(appAttemptID);
+
     req.addAllAsks(requestedContainers);
     // Send the request to RM
     if (requestedContainers.size() > 0) {
       LOG.info("Asking RM for containers" + ", askCount=" + requestedContainers.size());
     }
 
-    for (String containerIdStr : dnmgr.containerStopRequests.values()) {
+    for (String containerIdStr: dnmgr.containerStopRequests.values()) {
       Container allocatedContainer = this.allAllocatedContainers.get(containerIdStr);
       if (allocatedContainer != null) {
-         // issue stop container - TODO: separate thread to not block heartbeat
+        // issue stop container - TODO: separate thread to not block heartbeat
         ContainerManager cm = yarnClient.connectToCM(allocatedContainer);
         StopContainerRequest stopContainer = Records.newRecord(StopContainerRequest.class);
         stopContainer.setContainerId(allocatedContainer.getId());
@@ -757,15 +779,18 @@ public class StramAppMaster
     //         + ", requestedSet=" + requestedContainers.size()
     //         + ", releasedSet=" + releasedContainers.size()
     //         + ", progress=" + req.getProgress());
-
-    for (ResourceRequest rsrcReq : requestedContainers) {
+    for (ResourceRequest rsrcReq: requestedContainers) {
       LOG.info("Requested container ask: " + rsrcReq.toString());
     }
-    for (ContainerId id : releasedContainers) {
+
+    for (ContainerId id: releasedContainers) {
       LOG.info("Released container, id=" + id.getId());
     }
 
     AllocateResponse resp = resourceManager.allocate(req);
+
     return resp.getAMResponse();
+
   }
+
 }

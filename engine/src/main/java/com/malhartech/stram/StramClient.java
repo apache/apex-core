@@ -8,6 +8,7 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.DAG;
+import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
@@ -217,7 +218,8 @@ public class StramClient
     // platform dependencies that are not part of Hadoop and need to be deployed,
     // entry below will cause containing jar file from client to be copied to cluster
     Class<?>[] defaultClasses = new Class<?>[]{
-      com.malhartech.bufferserver.Server.class,
+      com.malhartech.netlet.EventLoop.class,
+      com.malhartech.bufferserver.server.Server.class,
       com.malhartech.stram.StramAppMaster.class,
       com.malhartech.engine.DefaultStreamCodec.class,
       javax.validation.ConstraintViolationException.class,
@@ -226,7 +228,6 @@ public class StramClient
       org.eclipse.jetty.http.HttpParser.class,
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
-    jarClasses.addAll(Arrays.asList(com.malhartech.bufferserver.Server.CLUSTER_DEPLOY_DEPENDENCIES));
     jarClasses.addAll(Arrays.asList(defaultClasses));
 
     for (String className : dag.getClassNames()) {
@@ -489,6 +490,8 @@ public class StramClient
     // default heap size 75% of total memory
     vargs.add("-Xmx" + (amMemory*3/4) + "m");
     // Set class name
+    vargs.add("-D" + StdOutErrLog.MALHAR_LOGDIR + '=' + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/mlog");
+
     vargs.add(StramAppMaster.class.getName());
 
     vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");

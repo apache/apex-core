@@ -9,11 +9,13 @@ import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.*;
-import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.engine.*;
+import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -57,7 +59,6 @@ import org.slf4j.LoggerFactory;
  */
 public class StramChild
 {
-  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
   private static final String NODE_PORT_SPLIT_SEPARATOR = "\\.";
   public static final String NODE_PORT_CONCAT_SEPARATOR = ".";
   private static final int SPIN_MILLIS = 20;
@@ -75,6 +76,17 @@ public class StramChild
   private final Object heartbeatTrigger = new Object();
   private String checkpointFsPath;
   private String appPath;
+  public static DefaultEventLoop eventloop;
+
+  static {
+    try {
+      eventloop = new DefaultEventLoop("ProcessWideEventLoop");
+    }
+    catch (IOException io) {
+      throw new RuntimeException(io);
+    }
+  }
+
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
@@ -82,7 +94,7 @@ public class StramChild
   private long firstWindowMillis;
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
-  private com.malhartech.bufferserver.Server bufferServer;
+  private com.malhartech.bufferserver.server.Server bufferServer;
   private AttributeMap<DAGContext> applicationAttributes;
   protected HashMap<String, TupleRecorder> tupleRecorders = new HashMap<String, TupleRecorder>();
   private int tupleRecordingPartFileSize;
@@ -112,10 +124,14 @@ public class StramChild
 
     try {
       if (ctx.deployBufferServer) {
+        if (!eventloop.isActive()) { /* this check is necessary since StramLocalCluster can have multiple children in the same cluster */
+          logger.debug("starting event loop {}", eventloop);
+          eventloop.start();
+        }
         // start buffer server, if it was not set externally
-        bufferServer = new Server(0, 64 * 1024 * 1024, 8);
+        bufferServer = new Server(0, 64 * 1024 * 1024);
         bufferServer.setSpoolStorage(new DiskStorage());
-        SocketAddress bindAddr = bufferServer.run();
+        SocketAddress bindAddr = bufferServer.run(eventloop);
         logger.info("Buffer server started: {}", bindAddr);
         this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress)bindAddr));
       }
@@ -138,7 +154,7 @@ public class StramChild
 
   /**
    * Initialize container. Establishes heartbeat connection to the master
-   * process through the callback address provided on the command line. Deploys
+   * distribute through the callback address provided on the command line. Deploys
    * initial modules, then enters the heartbeat loop, which will only terminate
    * once container receives shutdown request from the master. On shutdown,
    * after exiting heartbeat loop, deactivate all modules and terminate
@@ -149,6 +165,8 @@ public class StramChild
    */
   public static void main(String[] args) throws Throwable
   {
+    StdOutErrLog.tieSystemOutAndErrToLog();
+
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
@@ -497,7 +515,9 @@ public class StramChild
     }
 
     if (bufferServer != null) {
-      bufferServer.shutdown();
+      eventloop.stop(bufferServer);
+      logger.debug("stopping event loop {}", eventloop);
+      eventloop.stop();
     }
 
     gens.clear();
@@ -870,25 +890,19 @@ public class StramChild
            * Nobody in this container is interested in the output placed on this stream, but
            * this stream exists. That means someone outside of this container must be interested.
            */
-          assert (nodi.isInline() == false): "output should not be inline: " + nodi;
-          if (nodi.bufferServerHost == null) {
-            stream = new NullStream();
-            stream.setup(context);
-
-            sinkIdentifier = null;
+          assert (nodi.isInline() == false): "resulting stream cannot be inline: " + nodi;
+          context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+          context.attr(StreamContext.EVENT_LOOP).set(eventloop);
+          context.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nodi.serDeClassName));
+          if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
+            context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
           }
-          else {
-            context.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
-            if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
-              context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
-            }
 
-            stream = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
-            stream.setup(context);
-            logger.debug("deployed a buffer stream {}", stream);
+          stream = new BufferServerPublisher(sourceIdentifier);
+          stream.setup(context);
+          logger.debug("deployed a buffer stream {}", stream);
 
-            sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
-          }
+          sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
         }
         else if (collection.size() == 1) {
           if (nodi.isInline()) {
@@ -914,11 +928,13 @@ public class StramChild
             bssc.setSinkId(sinkIdentifier);
             bssc.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
             bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
+            bssc.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nodi.serDeClassName));
+            bssc.attr(StreamContext.EVENT_LOOP).set(eventloop);
             if (NetUtils.isLocalAddress(bssc.getBufferServerAddress().getAddress())) {
               bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
             }
 
-            BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
+            BufferServerPublisher bsos = new BufferServerPublisher(sourceIdentifier);
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
@@ -958,12 +974,13 @@ public class StramChild
             sinkIdentifier = "tcp://".concat(nodi.bufferServerHost).concat(":").concat(String.valueOf(nodi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
             StreamContext bssc = new StreamContext(nodi.declaredStreamId);
+            bssc.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nodi.serDeClassName));
+            bssc.attr(StreamContext.EVENT_LOOP).set(eventloop);
+            bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
             bssc.setSourceId(sourceIdentifier);
             bssc.setSinkId(sinkIdentifier);
             bssc.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
-            bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
-
-            BufferServerOutputStream bsos = new BufferServerOutputStream(StramUtils.getSerdeInstance(nodi.serDeClassName));
+            BufferServerPublisher bsos = new BufferServerPublisher(sourceIdentifier);
             bsos.setup(bssc);
             logger.debug("deployed a buffer stream {}", bsos);
 
@@ -1055,19 +1072,20 @@ public class StramChild
             assert (nidi.isInline() == false);
 
             StreamContext context = new StreamContext(nidi.declaredStreamId);
-            context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
-            context.setSourceId(sourceIdentifier);
-            context.setSinkId(sinkIdentifier);
-            context.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
             if (NetUtils.isLocalAddress(context.getBufferServerAddress().getAddress())) {
               context.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nidi.bufferServerPort));
             }
+            context.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nidi.serDeClassName));
+            context.attr(StreamContext.EVENT_LOOP).set(eventloop);
+            context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
+            context.setSourceId(sourceIdentifier);
+            context.setSinkId(sinkIdentifier);
+            context.setStartingWindowId(ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0); // TODO: next window after checkpoint
 
             @SuppressWarnings("unchecked")
-            Stream<Object> stream = (Stream)new BufferServerInputStream(StramUtils.getSerdeInstance(nidi.serDeClassName));
+            Stream<Object> stream = (Stream)new BufferServerSubscriber(nidi.declaredStreamId);
             stream.setup(context);
-            logger.debug("deployed buffer input stream {}", stream);
 
             Sink<Object> s = node.connectInputPort(nidi.portName, nidi.contextAttributes, stream);
             stream.setSink(sinkIdentifier,
@@ -1091,7 +1109,7 @@ public class StramChild
             }
             else {
               /**
-               * we are trying to tap into existing InlineStream or BufferServerOutputStream.
+               * we are trying to tap into existing InlineStream or BufferServerPublisher.
                * Since none of those streams are MultiSinkCapable, we need to replace them with Mux.
                */
               StreamContext context = new StreamContext(nidi.declaredStreamId);
@@ -1149,7 +1167,6 @@ public class StramChild
                * generally speaking we do not have partitions on the inline streams so the control should not
                * come here but if it comes, then we are ready to handle it using the partition aware streams.
                */
-              logger.debug("got partitions on the inline stream from {} to {} - {}", new Object[] {sourceIdentifier, sinkIdentifier, nidi});
               PartitionAwareSink<Object> pas = new PartitionAwareSink<Object>(StramUtils.getSerdeInstance(nidi.serDeClassName), nidi.partitionKeys, nidi.partitionMask, s);
               pair.component.setSink(sinkIdentifier,
                                      ndi.checkpointWindowId > 0 ? new WindowIdActivatedSink<Object>(pair.component, sinkIdentifier, pas, ndi.checkpointWindowId) : pas);
@@ -1194,11 +1211,12 @@ public class StramChild
     return windowGenerator;
   }
 
+  // take the recording mess out of here into something modular.
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void activate(List<OperatorDeployInfo> nodeList)
   {
     for (ComponentContextPair<Stream<Object>, StreamContext> pair: streams.values()) {
-      if (!(pair.component instanceof SocketInputStream || activeStreams.containsKey(pair.component))) {
+      if (!(pair.component instanceof BufferServerSubscriber || activeStreams.containsKey(pair.component))) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
       }
@@ -1275,7 +1293,7 @@ public class StramChild
     }
 
     for (ComponentContextPair<Stream<Object>, StreamContext> pair: streams.values()) {
-      if (pair.component instanceof SocketInputStream && !activeStreams.containsKey(pair.component)) {
+      if (pair.component instanceof BufferServerSubscriber && !activeStreams.containsKey(pair.component)) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
       }
@@ -1438,4 +1456,5 @@ public class StramChild
     }
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(StramChild.class);
 }

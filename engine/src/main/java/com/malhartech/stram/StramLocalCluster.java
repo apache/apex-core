@@ -7,7 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.Operator;
-import com.malhartech.bufferserver.Server;
+import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.engine.Node;
 import com.malhartech.engine.OperatorContext;
@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import com.malhartech.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -39,13 +40,13 @@ import org.slf4j.LoggerFactory;
  */
 public class StramLocalCluster implements Runnable
 {
-  private static final Logger LOG = LoggerFactory.getLogger(StramLocalCluster.class);
+  private static final Logger logger = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
   private static File CLUSTER_WORK_DIR = new File("target", StramLocalCluster.class.getName());
   protected final StreamingContainerManager dnmgr;
   private final UmbilicalProtocolLocalImpl umbilical;
-  private final InetSocketAddress bufferServerAddress;
-  private boolean perContainerBufferServer = false;
+  private InetSocketAddress bufferServerAddress;
+  private boolean perContainerBufferServer;
   private Server bufferServer = null;
   private final Map<String, LocalStramChild> childContainers = new ConcurrentHashMap<String, LocalStramChild>();
   private int containerSeq = 0;
@@ -80,7 +81,7 @@ public class StramLocalCluster implements Runnable
     @Override
     public void log(String containerId, String msg) throws IOException
     {
-      LOG.info("child msg: {} context: {}", msg, dnmgr.getContainerAgent(containerId).container);
+      logger.info("child msg: {} context: {}", msg, dnmgr.getContainerAgent(containerId).container);
     }
 
     @Override
@@ -139,7 +140,7 @@ public class StramLocalCluster implements Runnable
 
     public static void run(StramChild stramChild, StreamingContainerContext ctx) throws Exception
     {
-      LOG.debug("Got context: " + ctx);
+      logger.debug("Got context: " + ctx);
       stramChild.setup(ctx);
       boolean hasError = true;
       try {
@@ -151,7 +152,8 @@ public class StramLocalCluster implements Runnable
         // teardown
         try {
           stramChild.teardown();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
           if (!hasError) {
             throw e;
           }
@@ -221,7 +223,7 @@ public class StramLocalCluster implements Runnable
         Thread launchThread = new Thread(this, containerId);
         launchThread.start();
         childContainers.put(containerId, child);
-        LOG.info("Started container {}", containerId);
+        logger.info("Started container {}", containerId);
       }
     }
 
@@ -233,12 +235,12 @@ public class StramLocalCluster implements Runnable
         LocalStramChild.run(child, ctx);
       }
       catch (Exception e) {
-        LOG.error("Container {} failed", containerId, e);
+        logger.error("Container {} failed", containerId, e);
         throw new RuntimeException(e);
       }
       finally {
         childContainers.remove(containerId);
-        LOG.info("Container {} terminating.", containerId);
+        logger.info("Container {} terminating.", containerId);
       }
     }
 
@@ -263,12 +265,16 @@ public class StramLocalCluster implements Runnable
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
-    // start buffer server
-    this.bufferServer = new Server(0, 1024 * 1024, 8);
-    bufferServer.setSpoolStorage(new DiskStorage());
-    SocketAddress bindAddr = this.bufferServer.run();
-    this.bufferServerAddress = ((InetSocketAddress)bindAddr);
-    LOG.info("Buffer server started: {}", bufferServerAddress);
+    if (!perContainerBufferServer) {
+      if (!StramChild.eventloop.isActive()) {
+        StramChild.eventloop.start();
+      }
+      bufferServer = new Server(0, 1024 * 1024);
+      bufferServer.setSpoolStorage(new DiskStorage());
+      SocketAddress bindAddr = bufferServer.run(StramChild.eventloop);
+      this.bufferServerAddress = ((InetSocketAddress)bindAddr);
+      logger.info("Buffer server started: {}", bufferServerAddress);
+    }
   }
 
   LocalStramChild getContainer(String id)
@@ -296,7 +302,7 @@ public class StramLocalCluster implements Runnable
   {
     injectShutdown.put(c.getContainerId(), c);
     c.triggerHeartbeat();
-    LOG.info("Container {} failed, launching new container.", c.getContainerId());
+    logger.info("Container {} failed, launching new container.", c.getContainerId());
     dnmgr.scheduleContainerRestart(c.getContainerId());
     // simplify testing: remove immediately rather than waiting for thread to exit
     this.childContainers.remove(c.getContainerId());
@@ -321,9 +327,7 @@ public class StramLocalCluster implements Runnable
    * Returns null if the specified operator is not deployed.
    *
    * @param planOperator
-   * @param timeout
    * @return
-   * @throws InterruptedException
    */
   public LocalStramChild getContainer(PTOperator planOperator)
   {
@@ -364,10 +368,10 @@ public class StramLocalCluster implements Runnable
   }
 
   @Override
-  public void run() {
+  public void run()
+  {
     run(0);
   }
-
 
   @SuppressWarnings({"SleepWhileInLoop", "ResultOfObjectAllocationIgnored"})
   public void run(long runMillis)
@@ -385,7 +389,7 @@ public class StramLocalCluster implements Runnable
           c.processHeartbeatResponse(r);
         }
         dnmgr.containerStopRequests.remove(containerIdStr);
-        LOG.info("Container {} failed, launching new container.", containerIdStr);
+        logger.info("Container {} failed, launching new container.", containerIdStr);
         dnmgr.scheduleContainerRestart(containerIdStr);
       }
 
@@ -415,7 +419,7 @@ public class StramLocalCluster implements Runnable
           Thread.sleep(1000);
         }
         catch (InterruptedException e) {
-          LOG.info("Sleep interrupted " + e.getMessage());
+          logger.info("Sleep interrupted " + e.getMessage());
         }
       }
     }
@@ -425,8 +429,11 @@ public class StramLocalCluster implements Runnable
       lsc.triggerHeartbeat();
     }
 
-    LOG.info("Application finished.");
-    bufferServer.shutdown();
+    logger.info("Application finished.");
+    if (!perContainerBufferServer) {
+      StramChild.eventloop.stop(bufferServer);
+      StramChild.eventloop.stop();
+    }
   }
 
 }

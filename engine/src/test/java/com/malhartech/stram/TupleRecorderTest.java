@@ -10,17 +10,20 @@ import com.malhartech.engine.TestGeneratorInputModule;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.TupleRecorder.PortInfo;
 import com.malhartech.stram.TupleRecorder.RecordInfo;
-import com.malhartech.stream.StramTestSupport;
-import com.malhartech.stream.StramTestSupport.WaitCondition;
+import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;
+import com.malhartech.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -29,6 +32,19 @@ import org.junit.Test;
  */
 public class TupleRecorderTest
 {
+  @Before
+  public void setup() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("TupleRecorderTestEventLoop");
+  }
+
+  @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+  }
+
+
   public TupleRecorderTest()
   {
   }

@@ -16,6 +16,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import com.malhartech.netlet.Client.Fragment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,7 @@ import org.slf4j.LoggerFactory;
  * object to faciliate the partitions.
  *
  * Requires kryo and its dependencies in deployment
+ *
  * @param <T>
  */
 @ShipContainingJars(classes = {Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
@@ -53,6 +55,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
       this.id = id;
       this.classname = classname;
     }
+
   }
 
   static class ClassResolver extends DefaultClassResolver
@@ -69,6 +72,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public Registration registerImplicit(Class type)
     {
       while (getRegistration(nextAvailableRegistrationId) != null) {
@@ -92,6 +96,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
         unregister(--nextAvailableRegistrationId);
       }
     }
+
   }
 
   @SuppressWarnings("OverridableMethodCallInConstructor")
@@ -110,24 +115,43 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   {
     if (dspair.state != null) {
       try {
-        input.setBuffer(dspair.state);
+        input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.offset + dspair.state.length);
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
           logger.debug("registering class {} => {}", pair.classname, pair.id);
           register(Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader()), pair.id);
         }
       }
-      catch (ClassNotFoundException ex) {
-        logger.debug("exception", ex);
-        throw new RuntimeException(ex);
+      catch (Exception ex) {
+        logger.error("Catastrophic Error: Execution halted due to Kryo exception!", ex);
+        synchronized (this) {
+          try {
+            wait();
+          }
+          catch (Exception e) {
+          }
+        }
       }
       finally {
         dspair.state = null;
       }
     }
 
-    input.setBuffer(dspair.data);
-    return readClassAndObject(input);
+    input.setBuffer(dspair.data.buffer, dspair.data.offset, dspair.data.offset + dspair.data.length);
+    try {
+      return readClassAndObject(input);
+    }
+    catch (Exception ex) {
+      logger.error("Catastrophic Error: Execution halted due to Kryo exception!", ex);
+      synchronized (this) {
+        try {
+          wait();
+        }
+        catch (Exception e) {
+        }
+      }
+      return null;
+    }
   }
 
   @Override
@@ -144,10 +168,13 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
       }
       pairs.clear();
 
-      pair.state = state.toBytes();
+      // can we optimize this?
+      byte[] bytes = state.toBytes();
+      pair.state = new Fragment(bytes, 0, bytes.length);
     }
 
-    pair.data = data.toBytes();
+    byte[] bytes = data.toBytes();
+    pair.data = new Fragment(bytes, 0, bytes.length);
     return pair;
   }
 
@@ -164,6 +191,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   }
 
   @Override
+  @SuppressWarnings("rawtypes")
   public Registration getRegistration(Class type)
   {
     if (type == null) {
@@ -197,6 +225,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
     }
     return registration;
   }
+
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
 }

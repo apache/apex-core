@@ -8,17 +8,16 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.bufferserver.Buffer.Message.MessageType;
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.engine.Tuple;
 import com.malhartech.util.PubSubWebSocketClient;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import com.malhartech.netlet.Client.Fragment;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -61,9 +60,9 @@ public class TupleRecorder implements Operator
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
   private boolean isLocalMode = false;
+  @SuppressWarnings("rawtypes")
   private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
   private transient StreamCodec<Object> streamCodec;
-  private transient JsonStreamCodec<Object> jsonStreamCodec = new JsonStreamCodec<Object>();
   private static final Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
   private boolean syncRequested = false;
   private URI pubSubUrl = null;
@@ -95,9 +94,9 @@ public class TupleRecorder implements Operator
     this.pubSubUrl = new URI(pubSubUrl);
   }
 
-  public HashMap<String, PortInfo> getPortInfoMap()
+  public Map<String, PortInfo> getPortInfoMap()
   {
-    return portMap;
+    return Collections.unmodifiableMap(portMap);
   }
 
   public int getTotalTupleCount()
@@ -105,9 +104,9 @@ public class TupleRecorder implements Operator
     return totalTupleCount;
   }
 
-  public HashMap<String, Sink<Object>> getSinkMap()
+  public Map<String, Sink<Object>> getSinkMap()
   {
-    return sinks;
+    return Collections.unmodifiableMap(sinks);
   }
 
   public void setLocalMode(boolean isLocalMode)
@@ -266,11 +265,13 @@ public class TupleRecorder implements Operator
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
       recordInfo.recordingName = recordingName;
-      bos.write(streamCodec.toByteArray(recordInfo).data);
+      Fragment f = streamCodec.toByteArray(recordInfo).data;
+      bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
       for (PortInfo pi: portMap.values()) {
-        bos.write(streamCodec.toByteArray(pi).data);
+        f = streamCodec.toByteArray(pi).data;
+        bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
       }
 
@@ -423,7 +424,8 @@ public class TupleRecorder implements Operator
   {
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      bos.write(streamCodec.toByteArray(obj).data);
+      Fragment f = streamCodec.toByteArray(obj).data;
+      bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
       PortInfo pi = portMap.get(port);

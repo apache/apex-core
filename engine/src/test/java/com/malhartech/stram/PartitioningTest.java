@@ -1,44 +1,46 @@
 package com.malhartech.stram;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import junit.framework.Assert;
-
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.collect.Sets;
 import com.malhartech.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.InputOperator;
-import com.malhartech.api.PartitionableOperator;
+import com.malhartech.api.*;
 import com.malhartech.engine.Node;
+import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.PhysicalPlan.PMapping;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stream.StramTestSupport;
-import com.malhartech.stream.StramTestSupport.WaitCondition;
+import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport.WaitCondition;
+import java.io.File;
+import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import junit.framework.Assert;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PartitioningTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(PartitioningTest.class);
   private static final File TEST_OUTPUT_DIR = new File("target", PartitioningTest.class.getName());
+
+  @Before
+  public void setup() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("PartitioningTestEventLoop");
+  }
+
+  @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+  }
 
   public static class CollectorOperator extends BaseOperator
   {
@@ -60,6 +62,7 @@ public class PartitioningTest
       @Override
       public void process(Object tuple)
       {
+        LOG.debug("===received tuple {}===", tuple);
         Assert.assertNotNull(CollectorOperator.this.operatorId);
         String id = prefix + CollectorOperator.this.operatorId;
         synchronized (receivedTuples) {
@@ -107,6 +110,7 @@ public class PartitioningTest
         List<T> tuples = testTuples.remove(0);
         for (T t: tuples) {
           output.emit(t);
+          LOG.debug("sent tuple ==={}===", t);
         }
         first = false;
       }
@@ -216,8 +220,6 @@ public class PartitioningTest
     CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
     dag.getOperatorMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
-    //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MIN).set(20);
-    //dag.getOperatorWrapper(collector).getAttributes().attr(OperatorContext.PARTITION_TPS_MAX).set(200);
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
@@ -252,7 +254,7 @@ public class PartitioningTest
     Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
     @SuppressWarnings({"unchecked"})
     TestInputOperator<Integer> inputDeployed = (TestInputOperator<Integer>)nodeMap.get(planInput.getId()).getOperator();
-    Assert.assertNotNull(""+nodeMap, inputDeployed);
+    Assert.assertNotNull("" + nodeMap, inputDeployed);
 
     // add tuple that matches the partition key and check that each partition receives it
     ArrayList<Integer> inputTuples = new ArrayList<Integer>();
@@ -266,8 +268,11 @@ public class PartitioningTest
     for (PTOperator p: partitions) {
       Integer expectedTuple = p.partition.getPartitionKeys().values().iterator().next().partitions.iterator().next();
       List<Object> receivedTuples;
+      int i = 0;
       while ((receivedTuples = CollectorOperator.receivedTuples.get(collector.prefix + p.getId())) == null || receivedTuples.isEmpty()) {
-        LOG.debug("Waiting for tuple: " + p);
+        if (i++ % 100 == 0) {
+          LOG.debug("Waiting for tuple: " + p);
+        }
         sleep(20);
       }
       Assert.assertEquals("received " + p, Arrays.asList(expectedTuple), receivedTuples);
@@ -280,7 +285,7 @@ public class PartitioningTest
 
     List<Object> receivedTuples;
     while ((receivedTuples = CollectorOperator.receivedTuples.get(singleCollector.prefix + operators.get(0).getId())) == null || receivedTuples.size() < inputTuples.size()) {
-      LOG.debug("Waiting for tuple: " + operators.get(0) + " expected: " +inputTuples + " received: " + receivedTuples);
+      LOG.debug("Waiting for tuple: " + operators.get(0) + " expected: " + inputTuples + " received: " + receivedTuples);
       sleep(20);
     }
     Assert.assertEquals("output tuples " + receivedTuples, Sets.newHashSet(inputTuples), Sets.newHashSet(receivedTuples));

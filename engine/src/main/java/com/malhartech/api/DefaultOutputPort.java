@@ -16,13 +16,13 @@ import com.malhartech.api.Operator.Unifier;
 public class DefaultOutputPort<T> implements Operator.OutputPort<T>
 {
   private final Operator operator;
-  private transient Sink<T> sink;
+  private transient Sink<Object> sink;
 
   @SuppressWarnings("unchecked")
   public DefaultOutputPort(Operator operator)
   {
     this.operator = operator;
-    this.sink = (Sink<T>)Sink.BLACKHOLE;
+    this.sink = Sink.BLACKHOLE;
   }
 
   @Override
@@ -48,9 +48,9 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
    */
   @Override
   @SuppressWarnings("unchecked")
-  final public void setSink(Sink<T> s)
+  final public void setSink(Sink<Object> s)
   {
-    this.sink = s == null? (Sink<T>)Sink.BLACKHOLE: s;
+    this.sink = s == null? Sink.BLACKHOLE: s;
   }
 
   /**

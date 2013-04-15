@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.policy;
 
-import com.malhartech.bufferserver.PhysicalNode;
+import com.malhartech.bufferserver.internal.PhysicalNode;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Set;
 
@@ -31,9 +31,11 @@ public class RoundRobin extends AbstractPolicy
 
   /**
    *
+   *
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
    */
+
   @Override
   public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
@@ -47,14 +49,13 @@ public class RoundRobin extends AbstractPolicy
        * application
        *
        */
-      for (PhysicalNode node: nodes) {
+      for (PhysicalNode node : nodes) {
         if (count-- == 0) {
           return node.send(data);
         }
       }
     }
-    
+
     return false;
   }
-
 }

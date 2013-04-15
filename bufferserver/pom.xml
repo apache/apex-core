@@ -33,39 +33,22 @@
     </license>
   </licenses>
   <inceptionYear>2012</inceptionYear>
-  <pluginRepositories>
+  <!-- pluginRepositories>
     <pluginRepository>
       <id>dtrott</id>
       <url>http://maven.davidtrott.com/repository</url>
     </pluginRepository>
-  </pluginRepositories>
+  </pluginRepositories -->
 
   <dependencies>
 
-    <dependency>
+    <!-- dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
       <version>2.4.1</version>
       <scope>compile</scope>
       <optional>true</optional>
-    </dependency>
-
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.8.2</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-common</artifactId>
-      <version>4.0.0.Alpha5</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-transport</artifactId>
-      <version>4.0.0.Alpha5</version>
-    </dependency>
+    </dependency -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
@@ -88,14 +71,9 @@
       <version>r03</version>
     </dependency>
     <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-buffer</artifactId>
-      <version>4.0.0.Alpha5</version>
-    </dependency>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-codec</artifactId>
-      <version>4.0.0.Alpha5</version>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>malhar-netlet</artifactId>
+      <version>${project.version}</version>
     </dependency>
   </dependencies>
 
@@ -128,8 +106,8 @@
         <version>2.3.2</version>
         <configuration>
           <encoding>UTF-8</encoding>
-          <source>1.5</source>
-          <target>1.5</target>
+          <source>1.6</source>
+          <target>1.6</target>
           <debug>true</debug>
           <optimize>true</optimize>
           <showDeprecation>true</showDeprecation>
@@ -145,7 +123,7 @@
         <configuration>
           <signature>
             <groupId>org.codehaus.mojo.signature</groupId>
-            <artifactId>java15</artifactId>
+            <artifactId>java16</artifactId>
             <version>1.0</version>
           </signature>
           <ignores>
@@ -163,13 +141,13 @@
           </execution>
         </executions>
       </plugin>
-      <plugin>
+      <!-- plugin>
         <groupId>com.google.protobuf.tools</groupId>
         <artifactId>maven-protoc-plugin</artifactId>
         <version>0.1.10</version>
         <configuration>
-          <!-- checkStaleness>true</checkStaleness -->
-          <!-- protocExecutable>/usr/local/bin/protoc</protocExecutable -->
+          <checkStaleness>true</checkStaleness>
+          <protocExecutable>/usr/local/bin/protoc</protocExecutable>
         </configuration>
         <executions>
           <execution>
@@ -179,7 +157,7 @@
             </goals>
           </execution>
         </executions>
-      </plugin>
+      </plugin -->
       <!-- plugin> Disabled since we do not have a need to make the source jars, yet.
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>

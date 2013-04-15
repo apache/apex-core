@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.policy;
 
-import com.malhartech.bufferserver.PhysicalNode;
+import com.malhartech.bufferserver.internal.PhysicalNode;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.util.Set;
 
@@ -18,7 +18,6 @@ import java.util.Set;
  */
 public class LeastBusy extends AbstractPolicy
 {
-
   static final LeastBusy instance = new LeastBusy();
 
   /**
@@ -39,26 +38,23 @@ public class LeastBusy extends AbstractPolicy
 
   /**
    *
+   *
    * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
    * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
-   *
    */
   @Override
   public boolean distribute(Set<PhysicalNode> nodes, SerializedData data) throws InterruptedException
   {
     PhysicalNode theOne = null;
 
-    for (PhysicalNode node : nodes) {
+    for (PhysicalNode node: nodes) {
       if (theOne == null
-          || node.getProcessedMessageCount() < theOne.getProcessedMessageCount()) {
+              || node.getProcessedMessageCount() < theOne.getProcessedMessageCount()) {
         theOne = node;
       }
     }
 
-    if (theOne != null) {
-      return theOne.send(data);
-    }
-
-    return false;
+    return theOne == null ? false : theOne.send(data);
   }
+
 }

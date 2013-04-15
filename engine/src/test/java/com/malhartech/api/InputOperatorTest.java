@@ -6,8 +6,8 @@ package com.malhartech.api;
 
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.stram.StramLocalCluster;
-import com.malhartech.stream.StramTestSupport;
-import com.malhartech.stream.StramTestSupport.WaitCondition;
+import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import com.malhartech.util.CircularBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -5,10 +5,12 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
-import com.malhartech.bufferserver.Buffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
+ * @param <T>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public class WindowIdActivatedSink<T> implements Sink<T>
@@ -32,6 +34,7 @@ public class WindowIdActivatedSink<T> implements Sink<T>
     if (payload instanceof Tuple) {
       switch (((Tuple)payload).getType()) {
         case BEGIN_WINDOW:
+          logger.debug("got begin widnow {} to compare against {}", payload, windowId);
           if (((Tuple)payload).getWindowId() > windowId) {
             sink.process(payload);
             stream.setSink(identifier, sink);
@@ -44,4 +47,6 @@ public class WindowIdActivatedSink<T> implements Sink<T>
       }
     }
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(WindowIdActivatedSink.class);
 }

@@ -83,7 +83,6 @@ public class StreamingContainerManager implements PlanContext
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
-  private final Map<InetSocketAddress, BufferServerClient> bufferServers = new HashMap<InetSocketAddress, BufferServerClient>();
 
   public StreamingContainerManager(DAG dag)
   {
@@ -586,15 +585,11 @@ public class StreamingContainerManager implements PlanContext
     purgeCheckpoints();
   }
 
-  private BufferServerClient getBufferServerClient(PTOperator operator)
+  private BufferServerController getBufferServerClient(PTOperator operator)
   {
-    BufferServerClient bsc = bufferServers.get(operator.container.bufferServerAddress);
-    if (bsc == null) {
-      bsc = new BufferServerClient(operator.container.bufferServerAddress);
-      // use original address address as key
-      bufferServers.put(operator.container.bufferServerAddress, bsc);
-      LOG.debug("Added new buffer server client: " + operator.container.bufferServerAddress);
-    }
+    BufferServerController bsc = new BufferServerController(operator.getLogicalId());
+    InetSocketAddress address = operator.container.bufferServerAddress;
+    StramChild.eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
     return bsc;
   }
 
@@ -615,7 +610,7 @@ public class StreamingContainerManager implements PlanContext
           // following needs to match the concat logic in StramChild
           String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
           // purge everything from buffer server prior to new checkpoint
-          BufferServerClient bsc = getBufferServerClient(operator);
+          BufferServerController bsc = getBufferServerClient(operator);
           try {
             bsc.purge(sourceIdentifier, operator.checkpointWindows.getFirst() - 1);
           }
@@ -700,14 +695,14 @@ public class StreamingContainerManager implements PlanContext
               String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
               // TODO: find way to mock this when testing rest of logic
               if (operator.container.bufferServerAddress.getPort() != 0) {
-                BufferServerClient bsc = getBufferServerClient(operator);
+                BufferServerController bsc = getBufferServerClient(operator);
                 // reset publisher (stale operator may still write data until disconnected)
                 // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
                 try {
                   bsc.reset(sourceIdentifier, 0);
                 }
                 catch (Exception ex) {
-                  LOG.error("Failed to purge buffer server {} {}", sourceIdentifier, ex);
+                  LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);
                 }
               }
             }

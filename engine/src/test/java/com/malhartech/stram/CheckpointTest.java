@@ -4,27 +4,14 @@
  */
 package com.malhartech.stram;
 
-import java.io.File;
-import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Path;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.OperatorContext;
 import com.malhartech.engine.TestGeneratorInputModule;
 import com.malhartech.engine.WindowGenerator;
+import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
@@ -33,7 +20,19 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbe
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stream.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport;
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import org.apache.hadoop.fs.FileContext;
+import org.apache.hadoop.fs.Path;
+import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -56,6 +55,24 @@ public class CheckpointTest
   }
 
   /**
+   *
+   * @throws IOException
+   */
+  @Before
+  public void setupEachTest() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("CheckpointTestEventLoop");
+  }
+
+    @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+
+  }
+
+
+  /**
    * Test saving of node state at window boundary.
    *
    * @throws Exception
@@ -66,7 +83,7 @@ public class CheckpointTest
     DAG dag = new DAG();
     // node with no inputs will be connected to window generator
     TestGeneratorInputModule m1 = dag.addOperator("node1", TestGeneratorInputModule.class);
-    m1.setMaxTuples(1);
+    m1.setMaxTuples(2);
     dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
@@ -100,8 +117,7 @@ public class CheckpointTest
 
     dnm.processHeartbeat(hb); // mark deployed
 
-//    mses.tick(1); // begin window 0
-    mses.tick(1); // begin window 1
+    mses.tick(1); // begin window 0
 
     Assert.assertEquals("number operators", 1, container.getNodes().size());
     Operator node = container.getNode(deployInfo.get(0).id);
@@ -109,9 +125,9 @@ public class CheckpointTest
 
     Assert.assertNotNull("node deployed " + deployInfo.get(0), node);
     Assert.assertEquals("nodeId", deployInfo.get(0).id, context.getId());
-    Assert.assertEquals("maxTupes", 1, ((TestGeneratorInputModule)node).getMaxTuples());
+    Assert.assertEquals("maxTupes", 2, ((TestGeneratorInputModule)node).getMaxTuples());
 
-    mses.tick(1); // begin window 2
+    mses.tick(1); // end window 0, begin window 1
     // await end window 1 to ensure backup is executed at window 2
     StramTestSupport.waitForWindowComplete(context, 1);
 
@@ -122,7 +138,7 @@ public class CheckpointTest
     rsp.nodeRequests = Collections.singletonList(backupRequest);
     container.processHeartbeatResponse(rsp);
 
-    mses.tick(1); // end window 2, begin window 3
+    mses.tick(1); // end window 1, begin window 2
     StramTestSupport.waitForWindowComplete(context, 2);
     Assert.assertEquals("node = window 2", 2, context.getLastProcessedWindowId());
 
@@ -136,7 +152,7 @@ public class CheckpointTest
     dnm.processHeartbeat(hb);
 
     container.processHeartbeatResponse(rsp);
-    mses.tick(1); // end window 3
+    mses.tick(1); // end window 3, begin window 4
     StramTestSupport.waitForWindowComplete(context, 3);
     Assert.assertEquals("node = window 3", 3, context.getLastProcessedWindowId());
 
@@ -157,7 +173,8 @@ public class CheckpointTest
     container.teardown();
   }
 
-  @Test
+      @Ignore
+@Test
   public void testUpdateRecoveryCheckpoint() throws Exception
   {
     DAG dag = new DAG();
@@ -192,23 +209,23 @@ public class CheckpointTest
     pnode1.checkpointWindows.add(5L);
     cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("no checkpoints " + pnode1, 0L, cp);
-    Assert.assertEquals("checkpoint "+pnode1, 0, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, 0, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(3L);
     cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
-    Assert.assertEquals("checkpoint "+pnode1, 3L, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(4L);
     cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
-    Assert.assertEquals("checkpoint "+pnode1, 3L, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode1.checkpointWindows.add(1, 4L);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {3L, 4L, 5L}));
     cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
     Assert.assertEquals("checkpoint pnode1", 4L, cp);
-    Assert.assertEquals("checkpoint "+pnode1, 4L, pnode1.getRecoveryCheckpoint());
+    Assert.assertEquals("checkpoint " + pnode1, 4L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));
 
     // out of sequence windowIds should be sorted

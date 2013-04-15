@@ -4,8 +4,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.api.DAG;
-import com.malhartech.bufferserver.Buffer.Message;
 import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -13,13 +13,17 @@ import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stream.BufferServerInputStream;
-import com.malhartech.stream.StramTestSupport;
+import com.malhartech.stream.BufferServerSubscriber;
+import com.malhartech.stram.support.StramTestSupport;
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.LineNumberReader;
 import java.util.*;
+import com.malhartech.netlet.DefaultEventLoop;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +31,18 @@ import org.slf4j.LoggerFactory;
 public class StramLocalClusterTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
+  @Before
+  public void setup() throws IOException
+  {
+    StramChild.eventloop = new DefaultEventLoop("StramLocalClusterTestEventLoop");
+  }
+
+  @After
+  public void teardown()
+  {
+    StramChild.eventloop.stop();
+  }
+
 
   /**
    * Verify test configuration launches and stops after input terminates.
@@ -40,7 +56,7 @@ public class StramLocalClusterTest
     DAG dag = new DAG();
 
     TestGeneratorInputModule genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
-    genNode.setMaxTuples(1);
+    genNode.setMaxTuples(2);
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
     node1.setEmitFormat("%s >> node1");
@@ -73,21 +89,23 @@ public class StramLocalClusterTest
 
   private static class TestBufferServerSubscriber
   {
-    final BufferServerInputStream bsi;
+    final BufferServerSubscriber bsi;
     final StreamContext streamContext;
-    final TestSink<Message> sink;
+    final TestSink sink;
 
     TestBufferServerSubscriber(PTOperator publisherOperator, String publisherPortName)
     {
       // sink to collect tuples emitted by the input module
-      sink = new TestSink<Message>();
+      sink = new TestSink();
       String streamName = "testSinkStream";
       String sourceId = Integer.toString(publisherOperator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(TestGeneratorInputModule.OUTPUT_PORT);
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
-      bsi = new BufferServerInputStream(new DefaultStreamCodec<Object>());
+      streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
+      streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
+      bsi = new BufferServerSubscriber(streamContext.getSinkId());
       bsi.setup(streamContext);
       bsi.setSink("testSink", sink);
     }
@@ -281,6 +299,7 @@ public class StramLocalClusterTest
     Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
     Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
 
+    sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputModule.OUTPUT_PORT);
     // buffer server data purged
     tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());

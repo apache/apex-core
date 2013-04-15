@@ -24,6 +24,7 @@ public interface Storage
    * Get an instance of the class which implements Storage interface.
    * This method is useful if the platform decides that one instance is not enough for it to perform
    * the secondary storage operations efficiently.
+   * // normalize this for a given identifier
    *
    * @return instance of storage.
    * @throws IOException
