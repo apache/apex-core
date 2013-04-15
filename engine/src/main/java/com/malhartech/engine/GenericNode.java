@@ -149,6 +149,11 @@ public class GenericNode extends Node<Operator>
                 //if (payload instanceof Tuple) {
                 //  logger.debug("adding {}", payload);
                 //}
+
+                /*
+                 * this is where the tuples get added to the input port queue
+                 */
+
                 add(payload);
                 //if (payload instanceof Tuple) {
                 //  logger.debug("added {}", payload);
@@ -199,8 +204,8 @@ public class GenericNode extends Node<Operator>
     int windowCount = 0;
     int totalQueues = inputs.size();
 
-    ArrayList<Reservoir> activeQueues = new ArrayList<Reservoir>();
-    activeQueues.addAll(inputs.values());
+    ArrayList<Map.Entry<String, Reservoir>> activeQueues = new ArrayList<Map.Entry<String, Reservoir>>();
+    activeQueues.addAll(inputs.entrySet());
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
@@ -208,10 +213,12 @@ public class GenericNode extends Node<Operator>
 
     try {
       do {
-        Iterator<Reservoir> buffers = activeQueues.iterator();
+        Iterator<Entry<String, Reservoir>> buffers = activeQueues.iterator();
         activequeue:
         while (buffers.hasNext()) {
-          Reservoir activePort = buffers.next();
+          Map.Entry<String, Reservoir> entry = buffers.next();
+          String portName = entry.getKey();
+          Reservoir activePort = entry.getValue();
           Tuple t = activePort.sweep();
           if (t != null) {
             switch (t.getType()) {
@@ -225,7 +232,6 @@ public class GenericNode extends Node<Operator>
                   }
                   if (windowCount == 0) {
                     insideWindow = true;
-                    beginWindowTime = System.nanoTime();
                     operator.beginWindow(currentWindowId);
                   }
                   receivedEndWindow = 0;
@@ -243,6 +249,8 @@ public class GenericNode extends Node<Operator>
                 if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
 
+                  endWindowDequeueTimes.put(portName, System.currentTimeMillis());
+
                   if (++receivedEndWindow == totalQueues) {
                     if (++windowCount == applicationWindowCount) {
                       insideWindow = false;
@@ -254,15 +262,11 @@ public class GenericNode extends Node<Operator>
                       output.process(t);
                     }
 
-                    if (!insideWindow) {
-                      endWindowTime = System.nanoTime();
-                    }
-
                     buffers.remove();
                     assert (activeQueues.isEmpty());
                     handleRequests(currentWindowId, !insideWindow);
 
-                    activeQueues.addAll(inputs.values());
+                    activeQueues.addAll(inputs.entrySet());
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
@@ -323,7 +327,7 @@ public class GenericNode extends Node<Operator>
                   }
 
                   assert (activeQueues.isEmpty());
-                  activeQueues.addAll(inputs.values());
+                  activeQueues.addAll(inputs.entrySet());
                   expectingBeginWindow = activeQueues.size();
                   break activequeue;
                 }
@@ -369,7 +373,7 @@ public class GenericNode extends Node<Operator>
 
                   emitEndWindow();
 
-                  activeQueues.addAll(inputs.values());
+                  activeQueues.addAll(inputs.entrySet());
                   expectingBeginWindow = activeQueues.size();
 
                   handleRequests(currentWindowId, true);
@@ -446,8 +450,8 @@ public class GenericNode extends Node<Operator>
         }
         else {
           boolean need2sleep = true;
-          for (Reservoir cb: activeQueues) {
-            if (cb.size() > 0) {
+          for (Map.Entry<String, Reservoir> cb: activeQueues) {
+            if (cb.getValue().size() > 0) {
               need2sleep = false;
               break;
             }
@@ -456,8 +460,8 @@ public class GenericNode extends Node<Operator>
           if (need2sleep) {
             Thread.sleep(spinMillis);
             if (handleIdleTime) {
-              for (Reservoir cb: activeQueues) {
-                if (cb.size() > 0) {
+              for (Map.Entry<String, Reservoir> cb: activeQueues) {
+                if (cb.getValue().size() > 0) {
                   need2sleep = false;
                   break;
                 }
@@ -507,7 +511,8 @@ public class GenericNode extends Node<Operator>
       else {
         ar = (AbstractReservoir)r;
       }
-      ipstats.add(new PortStats(e.getKey(), ar.count));
+      long endWindowDequeueTime = endWindowDequeueTimes.get(e.getKey());
+      ipstats.add(new PortStats(e.getKey(), ar.count, endWindowDequeueTime));
       ar.count = 0;
     }
 

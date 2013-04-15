@@ -50,6 +50,8 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
@@ -82,6 +84,8 @@ public class StreamingContainerManager implements PlanContext
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
+  private final ConcurrentMap<Long, Map<Pair<Integer, String>, Long>> endWindowDequeueTimestamps = new ConcurrentSkipListMap<Long, Map<Pair<Integer, String>, Long>>();
+  private final ConcurrentMap<Long, Map<Integer, Long>> endWindowEmitTimestamps = new ConcurrentSkipListMap<Long, Map<Integer, Long>>();
 
   public StreamingContainerManager(DAG dag)
   {
@@ -196,12 +200,14 @@ public class StreamingContainerManager implements PlanContext
     cs.isComplete = true;
   }
 
-  public static class ContainerResource {
+  public static class ContainerResource
+  {
     public final String containerId;
     public final String host;
     public final int memoryMB;
 
-    public ContainerResource(String containerId, String host, int memoryMB) {
+    public ContainerResource(String containerId, String host, int memoryMB)
+    {
       this.containerId = containerId;
       this.host = host;
       this.memoryMB = memoryMB;
@@ -212,20 +218,22 @@ public class StreamingContainerManager implements PlanContext
      * @return String
      */
     @Override
-    public String toString() {
+    public String toString()
+    {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-        .append("containerId", this.containerId)
-        .append("host", this.host)
-        .append("memoryMB", this.memoryMB)
-        .toString();
+              .append("containerId", this.containerId)
+              .append("host", this.host)
+              .append("memoryMB", this.memoryMB)
+              .toString();
     }
+
   }
 
   public PTContainer matchContainer(ContainerResource resource)
   {
     PTContainer match = null;
     // match container waiting for resource
-    for (PTContainer container : plan.getContainers()) {
+    for (PTContainer container: plan.getContainers()) {
       if (container.getState() == PTContainer.State.NEW || container.getState() == PTContainer.State.KILLED) {
         if (container.getRequiredMemoryMB() <= resource.memoryMB) {
           if (match == null || match.getRequiredMemoryMB() < container.getRequiredMemoryMB()) {
@@ -356,29 +364,31 @@ public class StreamingContainerManager implements PlanContext
 
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
-        int latencyCount = 0;
-        long totalLatency = 0;
         long totalCpuTimeUsed = 0;
         List<OperatorStats> statsList = shb.getWindowStats();
+
         for (OperatorStats stats: statsList) {
           Collection<PortStats> ports = stats.inputPorts;
           if (ports != null) {
+            Map<Pair<Integer, String>, Long> dequeueTimes = endWindowDequeueTimestamps.putIfAbsent(stats.windowId, new ConcurrentHashMap<Pair<Integer, String>, Long>());
             for (PortStats s: ports) {
               tuplesProcessed += s.processedCount;
+              dequeueTimes.put(new Pair<Integer, String>(shb.getNodeId(), s.portname), s.endWindowTimeStamp);
             }
           }
 
           ports = stats.outputPorts;
           if (ports != null) {
+
             for (PortStats s: ports) {
               tuplesEmitted += s.processedCount;
             }
+            if (ports.size() > 0) {
+              Map<Integer, Long> emitTimes = endWindowEmitTimestamps.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, Long>());
+              emitTimes.put(shb.getNodeId(), ports.iterator().next().endWindowTimeStamp);
+            }
           }
 
-          if (stats.latency != null) {
-            latencyCount++;
-            totalLatency += stats.latency;
-          }
           status.currentWindowId = stats.windowId;
           totalCpuTimeUsed += stats.cpuTimeUsed;
         }
@@ -389,16 +399,10 @@ public class StreamingContainerManager implements PlanContext
           status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / lastHeartbeatIntervalMillis);
           status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / lastHeartbeatIntervalMillis);
           status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (lastHeartbeatIntervalMillis * 1000000));
-          if (latencyCount > 0) {
-            status.latencyMA10.add(totalLatency / latencyCount);
-          }
           if (status.operator.statsMonitors != null) {
             long tps = status.tuplesProcessedPSMA10.getAvg() + status.tuplesEmittedPSMA10.getAvg();
             for (StatsHandler sm: status.operator.statsMonitors) {
               sm.onThroughputUpdate(status.operator, tps);
-              if (latencyCount > 0) {
-                sm.onLatencyUpdate(status.operator, totalLatency / latencyCount);
-              }
               sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA10.getAvg());
             }
           }
@@ -658,7 +662,7 @@ public class StreamingContainerManager implements PlanContext
     for (PTContainer c: startContainers) {
       ContainerStartRequest dr = new ContainerStartRequest(c);
       containerStartRequests.add(dr);
-      for (PTOperator operator : c.operators) {
+      for (PTOperator operator: c.operators) {
         operator.setState(PTOperator.State.INACTIVE);
       }
     }
@@ -708,12 +712,12 @@ public class StreamingContainerManager implements PlanContext
   {
     ArrayList<OperatorInfo> infoList = new ArrayList<OperatorInfo>();
 
-    for (PTContainer container : this.plan.getContainers()) {
+    for (PTContainer container: this.plan.getContainers()) {
 
       String containerId = container.containerId;
       StramChildAgent sca = containerId != null ? this.containers.get(container.containerId) : null;
 
-      for (PTOperator operator : container.operators) {
+      for (PTOperator operator: container.operators) {
 
         OperatorInfo ni = new OperatorInfo();
         ni.container = container.containerId;
