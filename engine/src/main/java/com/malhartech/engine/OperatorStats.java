@@ -17,13 +17,13 @@ public class OperatorStats implements Serializable {
 
     public final String portname;
     public final int processedCount;
-    public final long endWindowTimeStamp;
+    public final long endWindowTimestamp;
 
     PortStats(String name, int count, long endWindowTimeStamp)
     {
       this.portname = name;
       this.processedCount= count;
-      this.endWindowTimeStamp = endWindowTimeStamp;
+      this.endWindowTimestamp = endWindowTimeStamp;
     }
   }
 

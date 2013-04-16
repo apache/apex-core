@@ -72,6 +72,7 @@ public class StreamingContainerManager implements PlanContext
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private int heartbeatTimeoutMillis = 30000;
+  private int maxWindowsBehindForStats = 100;
   private final int operatorMaxAttemptCount = 5;
   private final AttributeMap<DAGContext> appAttributes;
   private final int checkpointIntervalMillis;
@@ -84,8 +85,13 @@ public class StreamingContainerManager implements PlanContext
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
-  private final ConcurrentMap<Long, Map<Pair<Integer, String>, Long>> endWindowDequeueTimestamps = new ConcurrentSkipListMap<Long, Map<Pair<Integer, String>, Long>>();
-  private final ConcurrentMap<Long, Map<Integer, Long>> endWindowEmitTimestamps = new ConcurrentSkipListMap<Long, Map<Integer, Long>>();
+  private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsNodeMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
+
+  private static class EndWindowStats
+  {
+    long emitTimestamp = -1;
+    HashMap<String, Long> dequeueTimestamps = new HashMap<String, Long>();
+  }
 
   public StreamingContainerManager(DAG dag)
   {
@@ -102,6 +108,9 @@ public class StreamingContainerManager implements PlanContext
     appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).setIfAbsent(30000);
     this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).get();
     this.heartbeatTimeoutMillis = appAttributes.attrValue(DAG.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
+
+    appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
+    this.maxWindowsBehindForStats = appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
   }
 
   public int getNumRequiredContainers()
@@ -365,15 +374,20 @@ public class StreamingContainerManager implements PlanContext
         long tuplesProcessed = 0;
         long tuplesEmitted = 0;
         long totalCpuTimeUsed = 0;
+        long maxDequeueTimestamp = -1;
         List<OperatorStats> statsList = shb.getWindowStats();
 
         for (OperatorStats stats: statsList) {
           Collection<PortStats> ports = stats.inputPorts;
+          Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsNodeMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
+          EndWindowStats endWindowStats = new EndWindowStats();
           if (ports != null) {
-            Map<Pair<Integer, String>, Long> dequeueTimes = endWindowDequeueTimestamps.putIfAbsent(stats.windowId, new ConcurrentHashMap<Pair<Integer, String>, Long>());
             for (PortStats s: ports) {
               tuplesProcessed += s.processedCount;
-              dequeueTimes.put(new Pair<Integer, String>(shb.getNodeId(), s.portname), s.endWindowTimeStamp);
+              endWindowStats.dequeueTimestamps.put(s.portname, s.endWindowTimestamp);
+              if (s.endWindowTimestamp > maxDequeueTimestamp) {
+                maxDequeueTimestamp = s.endWindowTimestamp;
+              }
             }
           }
 
@@ -384,13 +398,18 @@ public class StreamingContainerManager implements PlanContext
               tuplesEmitted += s.processedCount;
             }
             if (ports.size() > 0) {
-              Map<Integer, Long> emitTimes = endWindowEmitTimestamps.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, Long>());
-              emitTimes.put(shb.getNodeId(), ports.iterator().next().endWindowTimeStamp);
+              endWindowStats.emitTimestamp = ports.iterator().next().endWindowTimestamp;
             }
+          }
+
+          // for input operator, just take the maximum dequeue time for emit timestamp.
+          if (endWindowStats.emitTimestamp < 0) {
+            endWindowStats.emitTimestamp = maxDequeueTimestamp;
           }
 
           status.currentWindowId = stats.windowId;
           totalCpuTimeUsed += stats.cpuTimeUsed;
+          endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
         }
 
         status.totalTuplesProcessed += tuplesProcessed;
@@ -414,6 +433,31 @@ public class StreamingContainerManager implements PlanContext
         }
       }
       status.recordingNames = shb.getRecordingNames();
+    }
+
+
+    if (!endWindowStatsNodeMap.isEmpty()) {
+      if (endWindowStatsNodeMap.size() > maxWindowsBehindForStats) {
+        LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", maxWindowsBehindForStats);
+        while (endWindowStatsNodeMap.size() > maxWindowsBehindForStats) {
+          endWindowStatsNodeMap.remove(endWindowStatsNodeMap.firstKey());
+        }
+      }
+      else {
+        int numOperators = plan.getAllOperators().size();
+        Long windowId = endWindowStatsNodeMap.firstKey();
+        while (windowId != null) {
+          Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsNodeMap.get(windowId);
+          if (endWindowStatsMap.size() < numOperators) {
+            break;
+          }
+          else {
+            // TBD do something about the end window dequeue/emit data (endWindowStatsMap)
+            endWindowStatsNodeMap.remove(windowId);
+          }
+          windowId = endWindowStatsNodeMap.higherKey(windowId);
+        }
+      }
     }
 
     sca.lastHeartbeatMillis = currentTimeMillis;

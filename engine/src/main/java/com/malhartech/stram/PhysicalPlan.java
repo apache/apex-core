@@ -43,6 +43,7 @@ import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.Operators;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
+import java.util.Map.Entry;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -1076,6 +1077,14 @@ public class PhysicalPlan {
 
   protected List<OperatorMeta> getRootOperators() {
     return dag.getRootOperators();
+  }
+
+  protected List<PTOperator> getAllOperators() {
+    List<PTOperator> list = new ArrayList<PTOperator>();
+    for (Map.Entry<OperatorMeta, PMapping> entry : logicalToPTOperator.entrySet()) {
+      list.addAll(entry.getValue().partitions);
+    }
+    return list;
   }
 
   private void getDeps(PTOperator operator, Set<PTOperator> visited) {
