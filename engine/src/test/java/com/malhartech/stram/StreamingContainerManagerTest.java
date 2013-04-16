@@ -110,13 +110,13 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    Assert.assertEquals("number required containers", 2, dnm.getNumRequiredContainers());
+    Assert.assertEquals("number required containers", 2, dnm.getPhysicalPlan().getContainers().size());
 
     String container1Id = "container1";
     String container2Id = "container2";
 
     // node1 needs to be deployed first, regardless in which order they were given
-    StramChildAgent sca1 = dnm.assignContainer(new ContainerResource(container1Id, "host1", 1024), InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
+    StramChildAgent sca1 = dnm.assignContainer(new ContainerResource(0, container1Id, "host1", 1024), InetSocketAddress.createUnresolved(container1Id+"Host", 9001));
     Assert.assertEquals("", dnm.getPhysicalPlan().getContainers().get(0), sca1.container);
     Assert.assertEquals("", PTContainer.State.ALLOCATED, sca1.container.getState());
     List<OperatorDeployInfo> c1 = sca1.getDeployInfo();
@@ -139,7 +139,7 @@ public class StreamingContainerManagerTest {
     Assert.assertNotNull("contextAttributes " + c1n1n2, c1n1n2.contextAttributes);
     Assert.assertEquals("contextAttributes " + c1n1n2,  Integer.valueOf(99), c1n1n2.contextAttributes.attr(PortContext.SPIN_MILLIS).get());
 
-    List<OperatorDeployInfo> c2 = dnm.assignContainer(new ContainerResource(container2Id, "host2", 1024), InetSocketAddress.createUnresolved(container2Id+"Host", 9002)).getDeployInfo();
+    List<OperatorDeployInfo> c2 = dnm.assignContainer(new ContainerResource(0, container2Id, "host2", 1024), InetSocketAddress.createUnresolved(container2Id+"Host", 9002)).getDeployInfo();
     Assert.assertEquals("number operators assigned to container", 2, c2.size());
     OperatorDeployInfo node2DI = getNodeDeployInfo(c2, dag.getOperatorMeta(node2));
     OperatorDeployInfo node3DI = getNodeDeployInfo(c2, dag.getOperatorMeta(node3));
@@ -184,16 +184,16 @@ public class StreamingContainerManagerTest {
     dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, 6);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
-    Assert.assertEquals("number required containers", 6, dnm.getNumRequiredContainers());
+    Assert.assertEquals("number required containers", 6, dnm.getPhysicalPlan().getContainers().size());
 
     String container1Id = "container1";
-    List<OperatorDeployInfo> c1 = dnm.assignContainer(new ContainerResource(container1Id, "localhost", 0), InetSocketAddress.createUnresolved(container1Id+"Host", 9001)).getDeployInfo();
+    List<OperatorDeployInfo> c1 = assignContainer(dnm, container1Id, "localhost").getDeployInfo();
     Assert.assertEquals("number operators assigned to container", 1, c1.size());
     Assert.assertTrue(node2.getName() + " assigned to " + container1Id, containsNodeContext(c1, dag.getOperatorMeta(node1)));
 
     for (int i=0; i<TestStaticPartitioningSerDe.partitions.length; i++) {
       String containerId = "container"+(i+1);
-      List<OperatorDeployInfo> cc = dnm.assignContainer(new ContainerResource(containerId, "localhost", 0), InetSocketAddress.createUnresolved(containerId+"Host", 9001)).getDeployInfo();
+      List<OperatorDeployInfo> cc = assignContainer(dnm, containerId, "localhost").getDeployInfo();
       Assert.assertEquals("number operators assigned to container", 1, cc.size());
       Assert.assertTrue(node2.getName() + " assigned to " + containerId, containsNodeContext(cc, dag.getOperatorMeta(node2)));
 
@@ -211,7 +211,7 @@ public class StreamingContainerManagerTest {
 
     // unifier
     String mergeContainerId = "mergeContainer";
-    List<OperatorDeployInfo> cUnifier = dnm.assignContainer(new ContainerResource(mergeContainerId, "localhost", 0), InetSocketAddress.createUnresolved(mergeContainerId+"Host", 9001)).getDeployInfo();
+    List<OperatorDeployInfo> cUnifier = assignContainer(dnm, mergeContainerId, "localhost").getDeployInfo();
     Assert.assertEquals("number operators assigned to " + mergeContainerId, 1, cUnifier.size());
 
     OperatorDeployInfo mergeNodeDI = getNodeDeployInfo(cUnifier,  dag.getOperatorMeta(node2));
@@ -236,7 +236,7 @@ public class StreamingContainerManagerTest {
 
     // node3 container
     String node3ContainerId = "node3Container";
-    List<OperatorDeployInfo> cmerge = dnm.assignContainer(new ContainerResource(node3ContainerId, "localhost", 0), InetSocketAddress.createUnresolved(node3ContainerId+"Host", 9001)).getDeployInfo();
+    List<OperatorDeployInfo> cmerge = assignContainer(dnm, node3ContainerId, "localhost").getDeployInfo();;
     Assert.assertEquals("number operators assigned to " + node3ContainerId, 1, cmerge.size());
 
     OperatorDeployInfo node3DI = getNodeDeployInfo(cmerge,  dag.getOperatorMeta(node3));
@@ -269,8 +269,7 @@ public class StreamingContainerManagerTest {
 
     // node1 and node3 are assigned, node2 unassigned
     StreamingContainerManager dnmgr = new StreamingContainerManager(dag);
-    dnmgr.assignContainer(new ContainerResource("container1", "localhost", 0), InetSocketAddress.createUnresolved("localhost", 9001));
-
+    assignContainer(dnmgr, "container1", "localhost");
   }
 
   @Test
@@ -305,11 +304,11 @@ public class StreamingContainerManagerTest {
     String c1Id = "container1";
     String c2Id = "container2";
 
-    scm.assignContainer(new ContainerResource(c1Id, "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0));
+    assignContainer(scm, c1Id, "localhost");
     Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
     StramChildAgent sca1 = scm.getContainerAgent(c1.containerId);
 
-    scm.assignContainer(new ContainerResource(c2Id, "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0));
+    assignContainer(scm, c2Id, "localhost");
     Assert.assertEquals(""+c1.operators, c1Id, c1.containerId);
     StramChildAgent sca2 = scm.getContainerAgent(c2.containerId);
     Assert.assertEquals("", 0, sca1.container.pendingUndeploy.size());
@@ -365,6 +364,10 @@ public class StreamingContainerManagerTest {
       }
     }
     return null;
+  }
+
+  private static StramChildAgent assignContainer(StreamingContainerManager scm, String containerId, String host) {
+    return scm.assignContainer(new ContainerResource(0, containerId, host, 1024), InetSocketAddress.createUnresolved(containerId+"Host", 0));
   }
 
 }

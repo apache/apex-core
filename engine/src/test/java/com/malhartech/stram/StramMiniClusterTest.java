@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URL;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
@@ -24,11 +25,23 @@ import junit.framework.Assert;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.JarFinder;
+import org.apache.hadoop.yarn.api.AMRMProtocol;
+import org.apache.hadoop.yarn.api.protocolrecords.AllocateRequest;
+import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.FinishApplicationMasterRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetClusterNodesResponse;
+import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterRequest;
+import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.NodeReport;
+import org.apache.hadoop.yarn.api.records.Priority;
+import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.ResourceRequest;
+import org.apache.hadoop.yarn.client.AMRMClient;
+import org.apache.hadoop.yarn.client.AMRMClientImpl;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.server.MiniYARNCluster;
 import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
@@ -48,6 +61,7 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.InputOperator;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -401,6 +415,188 @@ public class StramMiniClusterTest
     Assert.assertTrue("", jars.contains(JarFinder.getJar(Logger.class)));
     Assert.assertTrue("", jars.contains(JarFinder.getJar(javax.jms.Message.class)));
     Assert.assertTrue("", jars.contains(JarFinder.getJar(com.esotericsoftware.kryo.Kryo.class)));
+  }
+
+  //@Test
+  public void testUnmanagedAM() throws Exception {
+
+    new InlineAM(conf) {
+      @Override
+      public void runAM(ApplicationAttemptId attemptId) throws Exception {
+        LOG.debug("AM running {}", attemptId);
+
+        //AMRMClient amRmClient = new AMRMClientImpl(attemptId);
+        //amRmClient.init(conf);
+        //amRmClient.start();
+
+
+
+        YarnClientHelper yarnClient = new YarnClientHelper(conf);
+        AMRMProtocol resourceManager = yarnClient.connectToRM();
+
+        // register with the RM (LAUNCHED -> RUNNING)
+        RegisterApplicationMasterRequest appMasterRequest = Records.newRecord(RegisterApplicationMasterRequest.class);
+        appMasterRequest.setApplicationAttemptId(attemptId);
+        resourceManager.registerApplicationMaster(appMasterRequest);
+
+        // AM specific logic
+
+
+        /*
+        int containerCount = 1;
+        Resource capability = Records.newRecord(Resource.class);
+        capability.setMemory(1500);
+
+        Priority priority = Records.newRecord(Priority.class);
+        priority.setPriority(10);
+
+        String[] hosts = {"vm1"};
+        String[] racks = {"somerack"};
+
+        AMRMClient.ContainerRequest req = new AMRMClient.ContainerRequest(capability, hosts, racks, priority, containerCount);
+        amRmClient.addContainerRequest(req);
+
+        for (int i=0; i<100; i++) {
+          AllocateResponse ar = amRmClient.allocate(0);
+          Thread.sleep(1000);
+          LOG.debug("allocateResponse: {}" , ar);
+        }
+*/
+
+        int responseId = 0;
+        AllocateRequest req = Records.newRecord(AllocateRequest.class);
+        req.setResponseId(responseId++);
+        req.setApplicationAttemptId(attemptId);
+        req.addAllAsks(Collections.singletonList(setupContainerAskForRM(1, 1500, 10)));
+
+        resourceManager.allocate(req);
+
+        for (int i=0; i<100; i++) {
+          req = Records.newRecord(AllocateRequest.class);
+          req.setApplicationAttemptId(attemptId);
+          req.setResponseId(responseId++);
+
+          AllocateResponse ar = resourceManager.allocate(req);
+          Thread.sleep(1000);
+          LOG.debug("allocateResponse: {}" , ar);
+        }
+
+        // unregister from RM
+        FinishApplicationMasterRequest finishReq = Records.newRecord(FinishApplicationMasterRequest.class);
+        finishReq.setAppAttemptId(attemptId);
+        finishReq.setFinishApplicationStatus(FinalApplicationStatus.SUCCEEDED);
+        finishReq.setDiagnostics("testUnmanagedAM finished");
+        resourceManager.finishApplicationMaster(finishReq);
+
+      }
+
+      private ResourceRequest setupContainerAskForRM(int numContainers, int containerMemory, int priority)
+      {
+        ResourceRequest request = Records.newRecord(ResourceRequest.class);
+
+        // setup requirements for hosts
+        // whether a particular rack/host is needed
+        // Refer to apis under org.apache.hadoop.net for more
+        // details on how to get figure out rack/host mapping.
+        // using * as any host will do for the distributed shell app
+        request.setHostName("hdev-vm");
+
+        // set no. of containers needed
+        request.setNumContainers(numContainers);
+
+        // set the priority for the request
+        Priority pri = Records.newRecord(Priority.class);
+        // TODO - what is the range for priority? how to decide?
+        pri.setPriority(priority);
+        request.setPriority(pri);
+
+        // Set up resource type requirements
+        // For now, only memory is supported so we set memory requirements
+        Resource capability = Records.newRecord(Resource.class);
+        capability.setMemory(containerMemory);
+        request.setCapability(capability);
+
+        return request;
+      }
+
+
+    }.run();
+
+  }
+
+  @Ignore
+  @Test
+  public void testUnmanagedAM2() throws Exception {
+
+    new InlineAM(conf) {
+
+      @Override
+      public void runAM(ApplicationAttemptId attemptId) throws Exception {
+        LOG.debug("AM running {}", attemptId);
+
+        AMRMClient amRmClient = new AMRMClientImpl(attemptId);
+        amRmClient.init(conf);
+        amRmClient.start();
+
+
+        // register with the RM (LAUNCHED -> RUNNING)
+        amRmClient.registerApplicationMaster("", 0, null);
+
+
+        // AM specific logic
+
+        String[] hosts = {"vm1"};
+        String[] racks = {"somerack"};
+
+        Resource capability = Records.newRecord(Resource.class);
+        capability.setMemory(1000);
+
+        Priority priority = Records.newRecord(Priority.class);
+        priority.setPriority(10);
+        AMRMClient.ContainerRequest req = new AMRMClient.ContainerRequest(capability, hosts, racks, priority, 2);
+        amRmClient.addContainerRequest(req);
+
+/*
+        capability = Records.newRecord(Resource.class);
+        capability.setMemory(5512);
+        priority = Records.newRecord(Priority.class);
+        priority.setPriority(11);
+        req = new AMRMClient.ContainerRequest(capability, hosts, racks, priority, 3);
+        amRmClient.addContainerRequest(req);
+*/
+        for (int i=0; i<100; i++) {
+          AllocateResponse ar = amRmClient.allocate(0);
+          Thread.sleep(1000);
+          LOG.debug("allocateResponse: {}" , ar);
+          for (Container c : ar.getAMResponse().getAllocatedContainers()) {
+            LOG.debug("*** allocated {}", c.getResource());
+            amRmClient.removeContainerRequest(req);
+
+          }
+          /*
+          GetClusterNodesRequest request =
+              Records.newRecord(GetClusterNodesRequest.class);
+          ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
+          GetClusterNodesResponse response = clientRMService.getClusterNodes(request);
+          List<NodeReport> nodeReports = response.getNodeReports();
+          System.out.println(nodeReports);
+
+          for (NodeReport nr: nodeReports) {
+            System.out.println("Node: " + nr.getNodeId());
+            System.out.println("Total memory: " + nr.getCapability());
+            System.out.println("Used memory: " + nr.getUsed());
+            System.out.println("Number containers: " + nr.getNumContainers());
+          }
+          */
+        }
+
+        // unregister from RM
+        amRmClient.unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED, "testUnmanagedAM finished", null);
+
+      }
+
+    }.run();
+
   }
 
 }

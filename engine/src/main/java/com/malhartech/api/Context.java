@@ -96,6 +96,17 @@ public interface Context
     public static final AttributeKey<Integer> APPLICATION_WINDOW_COUNT = new AttributeKey<Integer>("applicationWindowCount");
 
     /**
+     * Logical name of a host to control locality between operators (even when not connected through stream)
+     */
+    public static final AttributeKey<String> LOCALITY_HOST = new AttributeKey<String>("localityHost");
+
+    /**
+     * Logical name of a rack to control locality between operators (even when not connected through stream)
+     */
+    public static final AttributeKey<String> LOCALITY_RACK = new AttributeKey<String>("localityRack");
+
+
+    /**
      * Return the operator runtime id.
      *
      * @return String
