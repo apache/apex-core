@@ -118,10 +118,12 @@ public abstract class AbstractClient extends Client
               /*
                * we may be reading partial varint, adjust the buffers so that we have enough space to read the full data.
                */
-              System.arraycopy(buffer, readOffset, buffer, 0, writeOffset - readOffset);
+              byte[] newArray = new byte[buffer.length];
+              System.arraycopy(buffer, readOffset, newArray, 0, writeOffset - readOffset);
+              buffer = newArray;
               writeOffset -= readOffset;
               readOffset = 0;
-              byteBuffer.clear();
+              byteBuffer = ByteBuffer.wrap(buffer);
               byteBuffer.position(writeOffset);
             }
           }
@@ -145,16 +147,19 @@ public abstract class AbstractClient extends Client
           //logger.info("resizing buffer to size {} from size {}", newsize, buffer.length);
           byte[] newArray = new byte[newsize];
           System.arraycopy(buffer, readOffset, newArray, 0, writeOffset - readOffset);
+          buffer = newArray;
           writeOffset -= readOffset;
           readOffset = 0;
           byteBuffer = ByteBuffer.wrap(newArray);
           byteBuffer.position(writeOffset);
         }
         else {
-          System.arraycopy(buffer, readOffset, buffer, 0, writeOffset - readOffset);
+          byte[] newArray = new byte[buffer.length];
+          System.arraycopy(buffer, readOffset, newArray, 0, writeOffset - readOffset);
+          buffer = newArray;
           writeOffset -= readOffset;
           readOffset = 0;
-          byteBuffer.clear();
+          byteBuffer = ByteBuffer.wrap(buffer);
           byteBuffer.position(writeOffset);
         }
         endMessage();
