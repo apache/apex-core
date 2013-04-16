@@ -196,6 +196,7 @@ public class DAG implements Serializable, DAGContext
   {
     private static final long serialVersionUID = 1L;
     private boolean inline;
+    private boolean nodeLocal;
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
     private Class<? extends StreamCodec<?>> serDeClass;
@@ -221,19 +222,20 @@ public class DAG implements Serializable, DAGContext
       return inline;
     }
 
+    public StreamMeta setInline(boolean inline)
+    {
+      this.inline = inline;
+      return this;
+    }
+
     public boolean isNodeLocal()
     {
       return false;
     }
 
-    public boolean isRackLocal()
+    public StreamMeta setNodeLocal(boolean local)
     {
-      return false;
-    }
-
-    public StreamMeta setInline(boolean inline)
-    {
-      this.inline = inline;
+      this.nodeLocal = local;
       return this;
     }
 
