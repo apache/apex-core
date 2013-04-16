@@ -211,7 +211,6 @@ public class DataList
       }
 
     });
-    //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
   }
 
   public void setAutoflush(final ScheduledExecutorService es)

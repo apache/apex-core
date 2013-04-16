@@ -25,7 +25,7 @@ public abstract class AbstractClient extends Client
 
   public AbstractClient()
   {
-    this(new byte[32 * 1024], 0, 1024);
+    this(new byte[64 * 1024], 0, 1024);
   }
 
   public AbstractClient(int readBufferSize, int sendBufferSize)
