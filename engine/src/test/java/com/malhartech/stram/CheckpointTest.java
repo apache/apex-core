@@ -87,10 +87,10 @@ public class CheckpointTest
     dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
-    Assert.assertEquals("number required containers", 1, dnm.getNumRequiredContainers());
+    Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
 
     String containerId = "container1";
-    StramChildAgent sca = dnm.assignContainer(new ContainerResource(containerId, "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0));
+    StramChildAgent sca = dnm.assignContainer(new ContainerResource(0, containerId, "localhost", 0), InetSocketAddress.createUnresolved("localhost", 0));
     Assert.assertNotNull(sca);
 
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);

@@ -453,6 +453,7 @@ public class StramChildAgent {
     ci.state = container.getState().name();
     ci.jvmName = this.jvmName;
     ci.numOperators = container.operators.size();
+    ci.memoryMB = container.getAllocatedMemoryMB();
     ci.lastHeartbeat = lastHeartbeatMillis;
     return ci;
   }
