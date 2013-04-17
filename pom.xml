@@ -45,7 +45,6 @@
     <module>demos</module>
     <module>poc</module>
     <module>contrib</module>
-    <module>dist</module>
     <module>daemon</module>
     <!--module>premium-dist</module-->
   </modules>
@@ -74,9 +73,10 @@
   <profiles>
     <profile>
     <id>release</id>
-      <!--modules>
-        <module>contrib</module>
-      </modules-->
+      <modules>
+        <module>dist</module>
+        <module>premium-dist</module>
+      </modules>
       <build>
         <plugins>
           <plugin>
