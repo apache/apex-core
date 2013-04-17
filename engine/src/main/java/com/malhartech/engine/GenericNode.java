@@ -154,13 +154,7 @@ public class GenericNode extends Node<Operator>
               @Override
               public void process(Object payload)
               {
-                //if (payload instanceof Tuple) {
-                //  logger.debug("adding {}", payload);
-                //}
                 add(payload);
-                //if (payload instanceof Tuple) {
-                //  logger.debug("added {}", payload);
-                //}
               }
 
               @Override
