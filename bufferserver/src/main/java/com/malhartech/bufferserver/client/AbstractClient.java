@@ -49,7 +49,6 @@ public abstract class AbstractClient extends Client
     return byteBuffer;
   }
 
-  // -ve number is no var int
   public int readVarInt()
   {
     if (readOffset < writeOffset) {
@@ -184,7 +183,7 @@ public abstract class AbstractClient extends Client
 
   public boolean write(byte[] message, int offset, int size)
   {
-    if (sendBuffer.remainingCapacity() < 2) {
+    if (sendBuffer4Offers.remainingCapacity() < 2) {
       return false;
     }
 
