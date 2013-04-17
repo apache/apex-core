@@ -418,6 +418,7 @@ public class Server implements ServerListener
 
     Subscriber(String type, int mask, int[] partitions)
     {
+      super(1024, 16 * 1024);
       this.type = type;
       this.mask = mask;
       this.partitions = partitions;
