@@ -9,7 +9,7 @@ import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.engine.Tuple;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.util.PubSubWebSocketClient;
 import java.io.*;
 import java.net.URI;

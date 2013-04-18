@@ -4,6 +4,7 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.api.Sink;
@@ -11,6 +12,9 @@ import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.netlet.Client.Fragment;
 import com.malhartech.stream.BufferServerSubscriber;
+import com.malhartech.tuple.EndStreamTuple;
+import com.malhartech.tuple.EndWindowTuple;
+import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.util.AttributeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

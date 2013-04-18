@@ -4,6 +4,7 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Sink;
 import com.malhartech.util.UnsafeBlockingQueue;
 

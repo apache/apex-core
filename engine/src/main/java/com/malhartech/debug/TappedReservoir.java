@@ -6,7 +6,7 @@ package com.malhartech.debug;
 
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Reservoir;
-import com.malhartech.engine.Tuple;
+import com.malhartech.tuple.Tuple;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;

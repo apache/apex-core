@@ -9,7 +9,7 @@ import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.StreamContext;
-import com.malhartech.engine.Tuple;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.netlet.Client.Fragment;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;

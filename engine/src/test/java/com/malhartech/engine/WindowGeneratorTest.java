@@ -3,10 +3,12 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.*;
-import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.stram.StramLocalCluster;
+import com.malhartech.stram.support.ManualScheduledExecutorService;
+import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;

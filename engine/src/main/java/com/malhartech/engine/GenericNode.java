@@ -4,6 +4,7 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
@@ -15,6 +16,9 @@ import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.netlet.Client.Fragment;
 import com.malhartech.stream.BufferServerSubscriber;
+import com.malhartech.tuple.EndStreamTuple;
+import com.malhartech.tuple.EndWindowTuple;
+import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.util.AttributeMap;
 import java.util.*;
 import java.util.Map.Entry;
@@ -88,7 +92,6 @@ public class GenericNode extends Node<Operator>
       for (int i = 1; i <= size; i++) {
         if (peekUnsafe() instanceof Tuple) {
           count += i;
-          //logger.debug("sweeping {}", peekUnsafe());
           return (Tuple)peekUnsafe();
         }
         sink.process(pollUnsafe());

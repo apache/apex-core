@@ -26,7 +26,7 @@ import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestModule;
 import com.malhartech.engine.TestGeneratorInputModule;
-import com.malhartech.engine.Tuple;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTContainer;

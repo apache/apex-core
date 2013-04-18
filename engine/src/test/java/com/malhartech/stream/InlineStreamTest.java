@@ -3,6 +3,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.*;
 import com.malhartech.engine.*;

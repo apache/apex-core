@@ -5,14 +5,13 @@
 package com.malhartech.stram.support;
 
 import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.engine.EndWindowTuple;
 import com.malhartech.engine.OperatorContext;
-import com.malhartech.engine.Tuple;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.engine.WindowGenerator;
-import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.tuple.EndWindowTuple;
 import static java.lang.Thread.sleep;
 import junit.framework.AssertionFailedError;
 import static org.junit.Assert.assertTrue;
@@ -65,7 +64,7 @@ abstract public class StramTestSupport
   @SuppressWarnings("SleepWhileInLoop")
   public static void waitForWindowComplete(OperatorContext nodeCtx, long windowId) throws InterruptedException
   {
-    LOG.debug("Waiting for end of window {} at node {}", windowId, nodeCtx.getId());
+    LOG.debug("Waiting for end of window {} at node {} when lastProcessedWindowId is {}", new Object[]{windowId, nodeCtx.getId(), nodeCtx.getLastProcessedWindowId()});
     while (nodeCtx.getLastProcessedWindowId() < windowId) {
       Thread.sleep(20);
     }

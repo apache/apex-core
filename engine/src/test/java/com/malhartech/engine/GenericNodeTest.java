@@ -7,6 +7,9 @@ package com.malhartech.engine;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.*;
 import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.tuple.EndStreamTuple;
+import com.malhartech.tuple.EndWindowTuple;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.AttributeKey;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
@@ -132,7 +135,7 @@ public class GenericNodeTest
 
 
     Tuple beginWindow1 = new Tuple(MessageType.BEGIN_WINDOW);
-    beginWindow1.windowId = 0x1L;
+    beginWindow1.setWindowId(0x1L);
 
     input1.process(beginWindow1);
     Thread.sleep(sleeptime);
@@ -143,14 +146,14 @@ public class GenericNodeTest
     Assert.assertEquals(1, list.size());
 
     Tuple endWindow1 = new EndWindowTuple();
-    endWindow1.windowId = 0x1L;
+    endWindow1.setWindowId(0x1L);
 
     input1.process(endWindow1);
     Thread.sleep(sleeptime);
     Assert.assertEquals(1, list.size());
 
     Tuple beginWindow2 = new Tuple(MessageType.BEGIN_WINDOW);
-    beginWindow2.windowId = 0x2L;
+    beginWindow2.setWindowId(0x2L);
 
     input1.process(beginWindow2);
     Thread.sleep(sleeptime);
@@ -165,7 +168,7 @@ public class GenericNodeTest
     Assert.assertEquals(3, list.size());
 
     Tuple endWindow2 = new EndWindowTuple();
-    endWindow2.windowId = 0x2L;
+    endWindow2.setWindowId(0x2L);
 
     input2.process(endWindow2);
     Thread.sleep(sleeptime);
@@ -182,14 +185,14 @@ public class GenericNodeTest
     Assert.assertEquals(4, list.size());
 
     Tuple beginWindow3 = new Tuple(MessageType.BEGIN_WINDOW);
-    beginWindow3.windowId = 0x3L;
+    beginWindow3.setWindowId(0x3L);
 
     input2.process(beginWindow3);
     Thread.sleep(sleeptime);
     Assert.assertEquals(5, list.size());
 
     Tuple endWindow3 = new EndWindowTuple();
-    endWindow3.windowId = 0x3L;
+    endWindow3.setWindowId(0x3L);
 
     input2.process(endWindow3);
     Thread.sleep(sleeptime);
