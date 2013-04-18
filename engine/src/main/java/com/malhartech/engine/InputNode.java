@@ -4,6 +4,7 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Sink;

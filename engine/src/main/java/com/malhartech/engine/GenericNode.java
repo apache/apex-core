@@ -4,14 +4,21 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
+import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
+import com.malhartech.netlet.Client.Fragment;
 import com.malhartech.stream.BufferServerSubscriber;
+import com.malhartech.tuple.EndStreamTuple;
+import com.malhartech.tuple.EndWindowTuple;
+import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.util.AttributeMap;
 import java.util.*;
 import java.util.Map.Entry;
@@ -36,7 +43,6 @@ import org.slf4j.LoggerFactory;
  */
 public class GenericNode extends Node<Operator>
 {
-  private static final Logger logger = LoggerFactory.getLogger(GenericNode.class);
   protected final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
   protected int deletionId;
 
@@ -67,41 +73,6 @@ public class GenericNode extends Node<Operator>
     }
 
     super.removeSinks(sinks);
-  }
-
-  private class InputReservoir extends AbstractReservoir
-  {
-    final Sink<Object> sink;
-
-    InputReservoir(Sink<Object> sink, String portname, int bufferSize, int spinMillis)
-    {
-      super(portname, bufferSize, spinMillis);
-      this.sink = sink;
-    }
-
-    @Override
-    public final Tuple sweep()
-    {
-      final int size = size();
-      for (int i = 1; i <= size; i++) {
-        if (peekUnsafe() instanceof Tuple) {
-          count += i;
-          //logger.debug("sweeping {}", peekUnsafe());
-          return (Tuple)peekUnsafe();
-        }
-        sink.process(pollUnsafe());
-      }
-
-      count += size;
-      return null;
-    }
-
-    @Override
-    public void consume(Object payload)
-    {
-      sink.process(payload);
-    }
-
   }
 
   public GenericNode(String id, Operator operator)
@@ -138,29 +109,10 @@ public class GenericNode extends Node<Operator>
         inputPort.setConnected(true);
         Reservoir reservoir = inputs.get(port);
         if (reservoir == null) {
-          int bufferCapacity = attributes == null ? 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 1024);
+          int bufferCapacity = attributes == null ? 16 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 16 * 1024);
           int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
           if (sink instanceof BufferServerSubscriber) {
-            reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds)
-            {
-              @Override
-              public void process(Object payload)
-              {
-                //if (payload instanceof Tuple) {
-                //  logger.debug("adding {}", payload);
-                //}
-
-                /*
-                 * this is where the tuples get added to the input port queue
-                 */
-
-                add(payload);
-                //if (payload instanceof Tuple) {
-                //  logger.debug("added {}", payload);
-                //}
-              }
-
-            };
+            reservoir = new BufferServerReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds, ((BufferServerSubscriber)sink).getSerde(), ((BufferServerSubscriber)sink).getBaseSeconds());
           }
           else {
             reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
@@ -519,4 +471,5 @@ public class GenericNode extends Node<Operator>
     stats.inputPorts = ipstats;
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(GenericNode.class);
 }

@@ -126,7 +126,7 @@ public class Server implements ServerListener
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Server.class);
-  private final HashMap<String, DataList> publisherBufffers = new HashMap<String, DataList>();
+  private final HashMap<String, DataList> publisherBuffers = new HashMap<String, DataList>();
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
   private final ConcurrentHashMap<String, AbstractClient> publisherChannels = new ConcurrentHashMap<String, AbstractClient>();
   private final ConcurrentHashMap<String, AbstractClient> subscriberChannels = new ConcurrentHashMap<String, AbstractClient>();
@@ -135,7 +135,7 @@ public class Server implements ServerListener
   public void handlePurgeRequest(PurgeRequestTuple request, final AbstractClient ctx) throws IOException
   {
     DataList dl;
-    dl = publisherBufffers.get(request.getIdentifier());
+    dl = publisherBuffers.get(request.getIdentifier());
 
     byte[] message;
     if (dl == null) {
@@ -163,7 +163,7 @@ public class Server implements ServerListener
   private void handleResetRequest(ResetRequestTuple request, final AbstractClient ctx) throws IOException
   {
     DataList dl;
-    dl = publisherBufffers.remove(request.getIdentifier());
+    dl = publisherBuffers.remove(request.getIdentifier());
 
     byte[] message;
     if (dl == null) {
@@ -226,12 +226,12 @@ public class Server implements ServerListener
        * then create one and register it. Hopefully this one would be used by future upstream nodes.
        */
       DataList dl;
-      if (publisherBufffers.containsKey(upstream_identifier)) {
-        dl = publisherBufffers.get(upstream_identifier);
+      if (publisherBuffers.containsKey(upstream_identifier)) {
+        dl = publisherBuffers.get(upstream_identifier);
       }
       else {
         dl = new DataList(upstream_identifier, blockSize);
-        publisherBufffers.put(upstream_identifier, dl);
+        publisherBuffers.put(upstream_identifier, dl);
       }
 
       ln = new LogicalNode(upstream_identifier,
@@ -266,7 +266,7 @@ public class Server implements ServerListener
 
     DataList dl;
 
-    if (publisherBufffers.containsKey(identifier)) {
+    if (publisherBuffers.containsKey(identifier)) {
       /*
        * close previous connection with the same identifier which is guaranteed to be unique.
        */
@@ -275,7 +275,7 @@ public class Server implements ServerListener
         eventloop.disconnect(previous);
       }
 
-      dl = publisherBufffers.get(identifier);
+      dl = publisherBuffers.get(identifier);
       try {
         dl.rewind(request.getBaseSeconds(), request.getWindowId());
       }
@@ -285,7 +285,7 @@ public class Server implements ServerListener
     }
     else {
       dl = new DataList(identifier, blockSize);
-      publisherBufffers.put(identifier, dl);
+      publisherBuffers.put(identifier, dl);
     }
     dl.setSecondaryStorage(storage);
 
@@ -418,6 +418,7 @@ public class Server implements ServerListener
 
     Subscriber(String type, int mask, int[] partitions)
     {
+      super(1024, 16 * 1024);
       this.type = type;
       this.mask = mask;
       this.partitions = partitions;
@@ -456,7 +457,7 @@ public class Server implements ServerListener
 
         ln.removeChannel(this);
         if (ln.getPhysicalNodeCount() == 0) {
-          DataList dl = publisherBufffers.get(ln.getUpstream());
+          DataList dl = publisherBuffers.get(ln.getUpstream());
           if (dl != null) {
             dl.removeDataListener(ln);
             dl.delIterator(ln.getIterator());

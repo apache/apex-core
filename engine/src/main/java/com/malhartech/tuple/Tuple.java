@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.engine;
+package com.malhartech.tuple;
 
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.util.Codec;

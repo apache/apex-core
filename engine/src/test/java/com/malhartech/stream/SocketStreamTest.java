@@ -5,10 +5,12 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.StreamContext;
-import com.malhartech.engine.Tuple;
+import com.malhartech.tuple.Tuple;
+import com.malhartech.netlet.Client.Fragment;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.stram.support.StramTestSupport;
@@ -31,6 +33,7 @@ public class SocketStreamTest
   private static int bufferServerPort = 0;
   private static Server bufferServer = null;
   static EventLoop eventloop;
+
   static {
     try {
       eventloop = new DefaultEventLoop("streamTest");
@@ -39,7 +42,6 @@ public class SocketStreamTest
       throw new RuntimeException(ex);
     }
   }
-
 
   @BeforeClass
   public static void setup() throws InterruptedException, IOException, Exception
@@ -66,38 +68,38 @@ public class SocketStreamTest
    * @throws Exception
    */
   @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
   public void testBufferServerStream() throws Exception
   {
-
+    final StreamCodec<Object> serde = new DefaultStreamCodec<Object>();
     final AtomicInteger messageCount = new AtomicInteger();
-    Sink<Object> sink = new Sink<Object>()
+    Sink<Fragment> sink = new Sink<Fragment>()
     {
+      DataStatePair dsp = new DataStatePair();
       @Override
-      public void process(Object payload)
+      public void process(Fragment fragment)
       {
-        if (payload instanceof Tuple) {
-          Tuple t = (Tuple)payload;
-          switch (t.getType()) {
-            case BEGIN_WINDOW:
-              break;
+        com.malhartech.bufferserver.packet.Tuple t = com.malhartech.bufferserver.packet.Tuple.getTuple(fragment.buffer, fragment.offset, fragment.length);
+        switch (t.getType()) {
+          case END_WINDOW:
+            synchronized (SocketStreamTest.this) {
+              SocketStreamTest.this.notifyAll();
+            }
+            break;
 
-            case END_WINDOW:
-              synchronized (SocketStreamTest.this) {
-                SocketStreamTest.this.notifyAll();
-              }
-              break;
+          case CODEC_STATE:
+            dsp.state = t.getData();
+            break;
 
-            default:
-          }
-        }
-        else {
-          logger.debug("received: " + payload);
-          messageCount.incrementAndGet();
+          case PAYLOAD:
+            dsp.data = t.getData();
+            logger.debug("received: " + serde.fromByteArray(dsp));
+            messageCount.incrementAndGet();
+            break;
         }
       }
-    };
 
-    StreamCodec<Object> serde = new DefaultStreamCodec<Object>();
+    };
 
     String streamName = "streamName";
     String upstreamNodeId = "upstreamNodeId";
@@ -113,7 +115,8 @@ public class SocketStreamTest
 
     BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId);
     iss.setup(issContext);
-    iss.setSink("testSink", sink);
+    Sink ss = sink;
+    iss.setSink("testSink", (Sink<Object>)ss);
 
     StreamContext ossContext = new StreamContext(streamName);
     ossContext.setSourceId(upstreamNodeId);

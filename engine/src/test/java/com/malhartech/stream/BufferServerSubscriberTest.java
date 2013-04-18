@@ -5,6 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
+import com.malhartech.netlet.Client.Fragment;
 import java.util.ArrayList;
 import java.util.List;
 import junit.framework.Assert;
@@ -62,7 +63,7 @@ public class BufferServerSubscriberTest
 
     int i;
     for (i = 0; i < 10; i++) {
-      bss.distribute(new byte[] {(byte)i});
+      bss.distribute(new Fragment(new byte[] {(byte)i}, 0 , 1));
     }
 
     bss.endMessage();

@@ -4,8 +4,6 @@
  */
 package com.malhartech.bufferserver.util;
 
-import java.io.IOException;
-
 /**
  * Wrapper for a {@code byte[]}, which provides read-only access and can "reveal" a partial slice of the underlying array.<p>
  *

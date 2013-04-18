@@ -4,8 +4,11 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.tuple.EndWindowTuple;
+import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.util.ScheduledExecutorService;
 import java.lang.reflect.Array;
 import java.util.HashMap;

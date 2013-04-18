@@ -230,7 +230,7 @@ public class DAG implements Serializable, DAGContext
 
     public boolean isNodeLocal()
     {
-      return false;
+      return this.nodeLocal;
     }
 
     public StreamMeta setNodeLocal(boolean local)

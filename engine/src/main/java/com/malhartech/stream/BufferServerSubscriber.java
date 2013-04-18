@@ -5,14 +5,13 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Subscriber;
-import com.malhartech.engine.*;
+import com.malhartech.engine.Stream;
+import com.malhartech.engine.StreamContext;
 import com.malhartech.netlet.EventLoop;
 import java.lang.reflect.Array;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import org.slf4j.Logger;
@@ -26,20 +25,21 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerSubscriber extends Subscriber implements Stream<Object>
 {
-  private final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
-  private long baseSeconds; // needed here
-  private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
+  private final HashMap<String, Sink<Fragment>> outputs = new HashMap<String, Sink<Fragment>>();
+  private long baseSeconds;
   @SuppressWarnings("VolatileArrayField")
-  private volatile Sink<Object>[] sinks = NO_SINKS;
-  private Sink<Object>[] emergencySinks = NO_SINKS;
-  private Sink<Object>[] normalSinks = NO_SINKS;
+  private volatile Sink<Fragment>[] sinks;
+  private Sink<Fragment>[] emergencySinks;
+  private Sink<Fragment>[] normalSinks;
   private StreamCodec<Object> serde;
-  DataStatePair dsp = new DataStatePair();
   private EventLoop eventloop;
 
+  @SuppressWarnings("unchecked")
   public BufferServerSubscriber(String id)
   {
     super(id);
+    Sink[] s = NO_SINKS;
+    sinks = emergencySinks = normalSinks = (Sink<Fragment>[])s;
   }
 
   @Override
@@ -50,8 +50,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-    baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
-    serde = context.attr(StreamContext.CODEC).get();
     activateSinks();
     activate(context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getStartingWindowId());
   }
@@ -59,62 +57,8 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   @Override
   public void onMessage(byte[] buffer, int offset, int size)
   {
-    com.malhartech.bufferserver.packet.Tuple data = com.malhartech.bufferserver.packet.Tuple.getTuple(buffer, offset, size);
-    Tuple t;
-    switch (data.getType()) {
-      case CHECKPOINT:
-        serde.resetState();
-        return;
-
-      case CODEC_STATE:
-        Fragment f = data.getData();
-        if (f != null) {
-          f.buffer = Arrays.copyOfRange(f.buffer, f.offset, f.offset + f.length);
-          f.offset = 0;
-          dsp.state = f;
-        }
-        return;
-
-      case PAYLOAD:
-        dsp.data = data.getData();
-        Object o = serde.fromByteArray(dsp);
-        distribute(o);
-        return;
-
-      case END_WINDOW:
-        //logger.debug("received {}", data);
-        t = new EndWindowTuple();
-        t.setWindowId(baseSeconds | (lastWindowId = data.getWindowId()));
-        break;
-
-      case END_STREAM:
-        t = new EndStreamTuple();
-        t.setWindowId(baseSeconds | data.getWindowId());
-        break;
-
-      case RESET_WINDOW:
-        baseSeconds = (long)data.getBaseSeconds() << 32;
-        if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
-          return;
-        }
-        t = new ResetWindowTuple();
-        t.setWindowId(baseSeconds | data.getWindowWidth());
-        break;
-
-      case BEGIN_WINDOW:
-        //logger.debug("received {}", data);
-        t = new Tuple(data.getType());
-        t.setWindowId(baseSeconds | data.getWindowId());
-        break;
-
-      case NO_MESSAGE:
-        return;
-
-      default:
-        throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
-    }
-
-    distribute(t);
+    Fragment f = new Fragment(buffer, offset, size);
+    distribute(f);
   }
 
   @Override
@@ -145,9 +89,9 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   void activateSinks()
   {
     @SuppressWarnings("unchecked")
-    Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, outputs.size());
+    Sink<Fragment>[] newSinks = (Sink<Fragment>[])Array.newInstance(Sink.class, outputs.size());
     int i = 0;
-    for (final Sink<Object> s: outputs.values()) {
+    for (final Sink<Fragment> s: outputs.values()) {
       newSinks[i++] = s;
     }
     sinks = newSinks;
@@ -162,26 +106,28 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   @Override
   public void setup(StreamContext context)
   {
+    serde = context.attr(StreamContext.CODEC).get();
+    baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
   }
 
   @SuppressWarnings("unchecked")
-  void distribute(Object o)
+  void distribute(Fragment f)
   {
     int i = sinks.length;
     try {
       while (i-- > 0) {
-        sinks[i].process(o);
+        sinks[i].process(f);
       }
     }
     catch (IllegalStateException ise) {
       suspendRead();
       if (emergencySinks.length != sinks.length) {
-        emergencySinks = (Sink<Object>[])Array.newInstance(Sink.class, sinks.length);
+        emergencySinks = (Sink<Fragment>[])Array.newInstance(Sink.class, sinks.length);
       }
       for (int n = emergencySinks.length; n-- > 0;) {
         emergencySinks[n] = new EmergencySink();
         if (n <= i) {
-          emergencySinks[n].process(o);
+          emergencySinks[n].process(f);
         }
       }
       normalSinks = sinks;
@@ -195,7 +141,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
     if (sinks == emergencySinks) {
       new Thread("EmergencyThread")
       {
-        final Sink<Object>[] esinks = emergencySinks;
+        final Sink<Fragment>[] esinks = emergencySinks;
 
         @Override
         @SuppressWarnings("UnusedAssignment")
@@ -206,8 +152,8 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
             try {
               for (int n = esinks.length; n-- > 0;) {
                 @SuppressWarnings("unchecked")
-                final ArrayList<Object> list = (ArrayList<Object>)esinks[n];
-                Iterator<Object> iterator = list.iterator();
+                final ArrayList<Fragment> list = (ArrayList<Fragment>)esinks[n];
+                Iterator<Fragment> iterator = list.iterator();
                 while (iterator.hasNext()) {
                   iterate = true;
                   normalSinks[n].process(iterator.next()); /* this can throw an exception */
@@ -240,12 +186,28 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   {
   }
 
-  private class EmergencySink extends ArrayList<Object> implements Sink<Object>
+  /**
+   * @return the serde
+   */
+  public StreamCodec<Object> getSerde()
+  {
+    return serde;
+  }
+
+  /**
+   * @return the baseSeconds
+   */
+  public long getBaseSeconds()
+  {
+    return baseSeconds;
+  }
+
+  private class EmergencySink extends ArrayList<Fragment> implements Sink<Fragment>
   {
     private static final long serialVersionUID = 201304031531L;
 
     @Override
-    public synchronized void process(Object tuple)
+    public synchronized void process(Fragment tuple)
     {
       add(tuple);
     }

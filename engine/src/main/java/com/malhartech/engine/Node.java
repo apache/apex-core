@@ -11,6 +11,9 @@ import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
+import com.malhartech.tuple.CheckpointTuple;
+import com.malhartech.tuple.EndStreamTuple;
+import com.malhartech.tuple.EndWindowTuple;
 import com.malhartech.util.AttributeMap;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
@@ -184,7 +187,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      * since we are going away, we should let all the downstream operators know that.
      */
     EndStreamTuple est = new EndStreamTuple();
-    est.windowId = currentWindowId;
+    est.setWindowId(currentWindowId);
     for (final InternalCounterSink output: outputs.values()) {
       output.process(est);
     }
@@ -203,7 +206,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public void emitCheckpoint(long windowId)
   {
     CheckpointTuple ct = new CheckpointTuple();
-    ct.windowId = currentWindowId;
+    ct.setWindowId(currentWindowId);
     for (final InternalCounterSink output: outputs.values()) {
       output.process(ct);
     }

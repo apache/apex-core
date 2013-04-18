@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StdOutErrLog
 {
-  public static final String MALHAR_LOG_APPENDER = "malhar";
+  public static final String MALHAR_LOG_APPENDER = "MALHAR";
   public static final String MALHAR_LOGDIR = "malhar.logdir";
 
   @SuppressWarnings("UseOfSystemOutOrSystemErr")

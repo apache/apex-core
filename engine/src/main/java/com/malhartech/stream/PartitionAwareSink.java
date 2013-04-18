@@ -6,7 +6,7 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.engine.Tuple;
+import com.malhartech.tuple.Tuple;
 import java.util.Set;
 
 /**

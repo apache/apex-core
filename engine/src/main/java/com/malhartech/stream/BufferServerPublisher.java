@@ -10,7 +10,7 @@ import com.malhartech.bufferserver.client.Publisher;
 import com.malhartech.bufferserver.packet.*;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
-import com.malhartech.engine.Tuple;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.netlet.EventLoop;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
@@ -68,7 +68,7 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
           break;
 
         case RESET_WINDOW:
-          com.malhartech.engine.ResetWindowTuple rwt = (com.malhartech.engine.ResetWindowTuple)t;
+          com.malhartech.tuple.ResetWindowTuple rwt = (com.malhartech.tuple.ResetWindowTuple)t;
           array = ResetWindowTuple.getSerializedTuple(rwt.getBaseSeconds(), rwt.getIntervalMillis());
           break;
 
