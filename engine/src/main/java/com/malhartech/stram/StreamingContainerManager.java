@@ -345,6 +345,8 @@ public class StreamingContainerManager implements PlanContext
       sca.jvmName = heartbeat.jvmName;
     }
 
+    sca.memoryMBFree = heartbeat.getMemoryMBFree();
+
     long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
     for (StreamingNodeHeartbeat shb: heartbeat.getDnodeEntries()) {

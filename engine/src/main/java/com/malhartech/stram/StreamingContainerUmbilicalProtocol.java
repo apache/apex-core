@@ -291,6 +291,19 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public void setDnodeEntries(List<StreamingNodeHeartbeat> dnodeEntries) {
       this.dnodeEntries = dnodeEntries;
     }
+
+    private int memoryMBFree;
+
+    public int getMemoryMBFree()
+    {
+      return memoryMBFree;
+    }
+
+    public void setMemoryMBFree(int memoryMBFree)
+    {
+      this.memoryMBFree = memoryMBFree;
+    }
+
   }
 
   /**

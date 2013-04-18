@@ -554,6 +554,8 @@ public class StramChild
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
         msg.bufferServerPort = this.bufferServerAddress.getPort();
       }
+      msg.setMemoryMBFree((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
+
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all operators

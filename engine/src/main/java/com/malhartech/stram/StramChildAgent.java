@@ -152,6 +152,7 @@ public class StramChildAgent {
     this.container = container;
     this.initCtx = initCtx;
     this.operators = new HashMap<Integer, OperatorStatus>(container.operators.size());
+    this.memoryMBFree = this.container.getAllocatedMemoryMB();
   }
 
   boolean shutdownRequested = false;
@@ -165,6 +166,7 @@ public class StramChildAgent {
   private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
   Runnable onAck = null;
   String jvmName;
+  int memoryMBFree;
 
   private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
 
@@ -453,8 +455,9 @@ public class StramChildAgent {
     ci.state = container.getState().name();
     ci.jvmName = this.jvmName;
     ci.numOperators = container.operators.size();
-    ci.memoryMB = container.getAllocatedMemoryMB();
+    ci.memoryMBAllocated = container.getAllocatedMemoryMB();
     ci.lastHeartbeat = lastHeartbeatMillis;
+    ci.memoryMBFree = this.memoryMBFree;
     return ci;
   }
 
