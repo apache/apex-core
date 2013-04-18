@@ -15,7 +15,7 @@ public class DefaultUnifier extends BaseOperator implements Unifier<Object> {
   final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>(this);
 
   @Override
-  public void merge(Object tuple) {
+  public void process(Object tuple) {
     outputPort.emit(tuple);
   }
 
