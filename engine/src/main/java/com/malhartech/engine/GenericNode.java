@@ -4,21 +4,15 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
-import com.malhartech.netlet.Client.Fragment;
-import com.malhartech.stream.BufferServerSubscriber;
-import com.malhartech.tuple.EndStreamTuple;
-import com.malhartech.tuple.EndWindowTuple;
 import com.malhartech.tuple.ResetWindowTuple;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.util.AttributeMap;
 import java.util.*;
 import java.util.Map.Entry;
@@ -44,7 +38,7 @@ import org.slf4j.LoggerFactory;
 public class GenericNode extends Node<Operator>
 {
   protected final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
-  protected int deletionId;
+  protected ArrayList<DeferredInputConnection> deferredInputConnections = new ArrayList<DeferredInputConnection>();
 
   // make sure that the cascading logic works here, right now it does not!
   @Override
@@ -80,50 +74,42 @@ public class GenericNode extends Node<Operator>
     super(id, operator);
   }
 
-  @Override
-  public Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, final Sink<? extends Object> sink)
+  @SuppressWarnings("unchecked")
+  public InputPort<Object> getInputPort(String port)
   {
-    Sink<Object> retvalue;
+    return (InputPort<Object>)descriptor.inputPorts.get(port);
+  }
 
-    @SuppressWarnings("unchecked")
-    InputPort<Object> inputPort = (InputPort<Object>)descriptor.inputPorts.get(port);
+  @Override
+  public void connectInputPort(String port, AttributeMap<PortContext> attributes, final Reservoir reservoir)
+  {
+    if (reservoir == null) {
+      throw new IllegalArgumentException("Reservoir cannot be null for port '" + port + "' on operator '" + operator + "'");
+    }
+
+    InputPort<Object> inputPort = getInputPort(port);
     if (inputPort == null) {
-      retvalue = null;
+      throw new IllegalArgumentException("Port '" + port + "' does not exist on operator '" + operator + "'");
+    }
+
+    if (inputs.containsKey(port)) {
+      deferredInputConnections.add(new DeferredInputConnection(port, reservoir));
     }
     else {
-      if (sink == null) {
-        Reservoir reservoir = inputs.remove(port);
-        /**
-         * since there are tuples which are not yet processed downstream, rather than just removing
-         * the sink, it makes sense to wait for all the data to be processed on this sink and then
-         * remove it.
-         */
-        if (reservoir != null) {
-          inputs.put(port.concat(".").concat(String.valueOf(deletionId++)), reservoir);
-          reservoir.process(new EndStreamTuple());
-        }
-
-        retvalue = null;
-      }
-      else {
-        inputPort.setConnected(true);
-        Reservoir reservoir = inputs.get(port);
-        if (reservoir == null) {
-          int bufferCapacity = attributes == null ? 16 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 16 * 1024);
-          int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
-          if (sink instanceof BufferServerSubscriber) {
-            reservoir = new BufferServerReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds, ((BufferServerSubscriber)sink).getSerde(), ((BufferServerSubscriber)sink).getBaseSeconds());
-          }
-          else {
-            reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
-          }
-          inputs.put(port, reservoir);
-        }
-        retvalue = reservoir;
-      }
+      inputPort.setConnected(true);
+      inputs.put(port, reservoir);
+//      Reservoir reservoir = inputs.get(port);
+//      if (reservoir == null) {
+//        int bufferCapacity = attributes == null ? 16 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 16 * 1024);
+//        int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
+//        if (sink instanceof BufferServerSubscriber) {
+//          reservoir = new BufferServerReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds, ((BufferServerSubscriber)sink).getSerde(), ((BufferServerSubscriber)sink).getBaseSeconds());
+//        }
+//        else {
+//          reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
+//        }
+//      }
     }
-
-    return retvalue;
   }
 
   class ResetTupleTracker
@@ -305,6 +291,18 @@ public class GenericNode extends Node<Operator>
                       descriptor.inputPorts.get(e.getKey()).setConnected(false);
                     }
                     it.remove();
+
+                    /* check the deferred connection list for any new port that should be connected here */
+                    Iterator<DeferredInputConnection> dici = deferredInputConnections.iterator();
+                    while (dici.hasNext()) {
+                      DeferredInputConnection dic = dici.next();
+                      if (e.getKey().equals(dic.portname)) {
+                        connectInputPort(dic.portname, null, dic.reservoir);
+                        dici.remove();
+                        break;
+                      }
+                    }
+
                     break;
                   }
                 }
@@ -347,7 +345,7 @@ public class GenericNode extends Node<Operator>
                   index = 0;
                   while (index < tracker.ports.length) {
                     if (tracker.ports[index] == activePort) {
-                      AbstractReservoir[] ports = new AbstractReservoir[totalQueues];
+                      Reservoir[] ports = new Reservoir[totalQueues];
                       System.arraycopy(tracker.ports, 0, ports, 0, index);
                       if (index < totalQueues) {
                         System.arraycopy(tracker.ports, index + 1, ports, index, tracker.ports.length - index - 1);
@@ -456,19 +454,32 @@ public class GenericNode extends Node<Operator>
     super.reportStats(stats, applicationWindowBoundary);
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
     for (Entry<String, Reservoir> e: inputs.entrySet()) {
-      AbstractReservoir ar;
+      Reservoir ar;
       Reservoir r = e.getValue();
       if (r instanceof TappedReservoir) {
-        ar = (AbstractReservoir)((TappedReservoir)r).reservoir;
+        ar = (Reservoir)((TappedReservoir)r).reservoir;
       }
       else {
-        ar = (AbstractReservoir)r;
+        ar = (Reservoir)r;
       }
       ipstats.add(new PortStats(e.getKey(), ar.count));
       ar.count = 0;
     }
 
     stats.inputPorts = ipstats;
+  }
+
+  protected class DeferredInputConnection
+  {
+    String portname;
+    Reservoir reservoir;
+
+    DeferredInputConnection(String portname, Reservoir reservoir)
+    {
+      this.portname = portname;
+      this.reservoir = reservoir;
+    }
+
   }
 
   private static final Logger logger = LoggerFactory.getLogger(GenericNode.class);

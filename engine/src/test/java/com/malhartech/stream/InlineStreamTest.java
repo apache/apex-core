@@ -3,11 +3,11 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.*;
 import com.malhartech.engine.*;
 import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.AttributeKey;
 import java.util.HashMap;
@@ -30,6 +30,8 @@ public class InlineStreamTest
   {
     final int totalTupleCount = 5000;
     prev = null;
+
+    final Reservoir reservoir = new DefaultReservoir("reservoir", 1024);
 
     final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
     final GenericNode node1 = new GenericNode("node1", operator1);
@@ -60,7 +62,7 @@ public class InlineStreamTest
     };
     node1.connectOutputPort("output", attributes, stream);
 
-    Sink s = node2.connectInputPort("input", attributes, stream);
+    Sink<Object> s = node2.connectInputPort("input", attributes, reservoir);
     stream.setSink("node2.input", s);
 
     Sink<Object> sink = new Sink<Object>()
@@ -100,17 +102,9 @@ public class InlineStreamTest
     };
     node2.connectOutputPort("output", attributes, sink);
 
-    sink = node1.connectInputPort("input", attributes, new Sink()
-    {
-      @Override
-      public void process(Object tuple)
-      {
-        throw new UnsupportedOperationException("Not supported yet.");
-      }
+    sink = node1.connectInputPort("input", attributes, reservoir);
 
-    });
-
-    Map<Integer, Node> activeNodes = new ConcurrentHashMap<Integer, Node>();
+    Map<Integer, Node<?>> activeNodes = new ConcurrentHashMap<Integer, Node<?>>();
     launchNodeThread(node1, activeNodes);
     launchNodeThread(node2, activeNodes);
 
@@ -129,7 +123,7 @@ public class InlineStreamTest
     Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
     Assert.assertEquals("active operators", 2, activeNodes.size());
 
-    for (Node node: activeNodes.values()) {
+    for (Node<?> node: activeNodes.values()) {
       node.deactivate();
     }
     stream.deactivate();
@@ -150,7 +144,7 @@ public class InlineStreamTest
 
   final AtomicInteger counter = new AtomicInteger(0);
 
-  private void launchNodeThread(final Node node, final Map<Integer, Node> activeNodes)
+  private void launchNodeThread(final Node<?> node, final Map<Integer, Node<?>> activeNodes)
   {
     Runnable nodeRunnable = new Runnable()
     {

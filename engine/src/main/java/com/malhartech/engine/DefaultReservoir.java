@@ -6,18 +6,27 @@ package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
 import com.malhartech.tuple.Tuple;
+import com.malhartech.util.CircularBuffer;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-class InputReservoir extends AbstractReservoir
+public class DefaultReservoir extends CircularBuffer<Object> implements Reservoir
 {
-  final Sink<Object> sink;
+  private Sink<Object> sink;
+  private final String id;
+  int count;
 
-  InputReservoir(Sink<Object> sink, String portname, int bufferSize, int spinMillis)
+  public DefaultReservoir(String id, int capacity)
   {
-    super(portname, bufferSize, spinMillis);
+    super(capacity);
+    this.id = id;
+  }
+
+  @Override
+  public void setSink(Sink<Object> sink)
+  {
     this.sink = sink;
   }
 
@@ -38,9 +47,9 @@ class InputReservoir extends AbstractReservoir
   }
 
   @Override
-  public void consume(Object payload)
+  public String toString()
   {
-    sink.process(payload);
+    return "DefaultReservoir{" + "id=" + id + ", count=" + count + '}';
   }
 
 }

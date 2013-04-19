@@ -4,8 +4,8 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.tuple.Tuple;
 import com.malhartech.api.Sink;
+import com.malhartech.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

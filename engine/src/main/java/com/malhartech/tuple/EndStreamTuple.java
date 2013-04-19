@@ -18,9 +18,10 @@ import com.malhartech.bufferserver.packet.MessageType;
  */
 public class EndStreamTuple extends Tuple
 {
-  public EndStreamTuple()
+  public EndStreamTuple(long windowId)
   {
     super(MessageType.END_STREAM);
+    this.windowId = windowId;
   }
 
 }

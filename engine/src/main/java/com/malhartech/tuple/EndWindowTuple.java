@@ -17,8 +17,9 @@ import com.malhartech.bufferserver.packet.MessageType;
  */
 public class EndWindowTuple extends Tuple
 {
-  public EndWindowTuple()
+  public EndWindowTuple(long windowId)
   {
     super(MessageType.END_WINDOW);
+    this.windowId = windowId;
   }
 }

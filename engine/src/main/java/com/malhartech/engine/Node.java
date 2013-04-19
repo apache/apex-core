@@ -95,7 +95,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  public abstract Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, final Sink<? extends Object> sink);
+  public abstract void connectInputPort(String port, AttributeMap<PortContext> attributes, final Reservoir reservoir);
 
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
@@ -105,7 +105,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         ics.sink = new ForkingSink(ics.sink, e.getValue());
       }
     }
-
   }
 
   public void removeSinks(Map<String, Sink<Object>> sinks)
@@ -186,8 +185,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
-    EndStreamTuple est = new EndStreamTuple();
-    est.setWindowId(currentWindowId);
+    EndStreamTuple est = new EndStreamTuple(currentWindowId);
     for (final InternalCounterSink output: outputs.values()) {
       output.process(est);
     }
@@ -195,8 +193,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected void emitEndWindow()
   {
-    EndWindowTuple ewt = new EndWindowTuple();
-    ewt.setWindowId(currentWindowId);
+    EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
     for (final Sink<Object> output: outputs.values()) {
       output.process(ewt);
     }

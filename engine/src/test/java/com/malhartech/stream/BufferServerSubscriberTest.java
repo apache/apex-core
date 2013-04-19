@@ -5,6 +5,9 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
+import com.malhartech.api.StreamCodec.DataStatePair;
+import com.malhartech.engine.Reservoir;
 import com.malhartech.netlet.Client.Fragment;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,28 +26,51 @@ public class BufferServerSubscriberTest
   public void testEmergencySinks() throws InterruptedException
   {
     final List<Object> list = new ArrayList<Object>();
+    final StreamCodec<Object> myserde = new StreamCodec<Object>()
+    {
+      @Override
+      public Object fromByteArray(DataStatePair dspair)
+      {
+        return dspair.data;
+      }
+
+      @Override
+      public DataStatePair toByteArray(Object o)
+      {
+        DataStatePair dsp = new DataStatePair();
+        dsp.data = new Fragment((byte[])o, 0, ((byte[])o).length);
+        return dsp;
+      }
+
+      @Override
+      public int getPartition(Object o)
+      {
+        return 0;
+      }
+
+      @Override
+      public void resetState()
+      {
+      }
+
+    };
+
     Sink<Object> unbufferedSink = new Sink<Object>()
     {
-      Object o;
-      int i;
-
       @Override
       public void process(Object tuple)
       {
-        if (o == null) {
-          o = tuple;
-        }
-        else {
-          list.add(o);
-          o = null;
-          throw new IllegalStateException("Buffer full");
-        }
+        list.add(tuple);
       }
 
     };
 
     BufferServerSubscriber bss = new BufferServerSubscriber("subscriber")
     {
+      {
+        serde = myserde;
+      }
+
       @Override
       public void suspendRead()
       {
@@ -58,16 +84,22 @@ public class BufferServerSubscriberTest
       }
 
     };
-    bss.setSink("unbufferedSink", unbufferedSink);
-    bss.activateSinks();
 
-    int i;
-    for (i = 0; i < 10; i++) {
-      bss.distribute(new Fragment(new byte[] {(byte)i}, 0 , 1));
+    Reservoir reservoir = bss.getReservoir("unbufferedSink", 3);
+    reservoir.setSink(unbufferedSink);
+
+    int i = 0;
+    while (i++ < 5) {
+      bss.onMessage(new byte[] {(byte)i}, 0, 1);
     }
 
-    bss.endMessage();
-    Thread.sleep(20);
+    reservoir.sweep();
+
+    while (i++ < 10) {
+      bss.onMessage(new byte[] {(byte)i}, 0, 1);
+    }
+
+    reservoir.sweep();
     Assert.assertTrue("tuples received", i - 1 <= list.size());
   }
 
