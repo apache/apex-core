@@ -105,7 +105,7 @@ public class StramLocalClusterTest
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
-      bsi = new BufferServerSubscriber(streamContext.getSinkId());
+      bsi = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
       bsi.setup(streamContext);
       bsi.setSink("testSink", sink);
     }

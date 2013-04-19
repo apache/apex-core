@@ -29,6 +29,12 @@ public class Tuple
     type = t;
   }
 
+  public Tuple(MessageType t, long windowId)
+  {
+    type = t;
+    this.windowId = windowId;
+  }
+
   /**
    * @return the windowId
    */

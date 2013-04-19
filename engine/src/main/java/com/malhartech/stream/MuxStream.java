@@ -5,6 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
+import com.malhartech.engine.Reservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import java.lang.reflect.Array;
@@ -104,6 +105,12 @@ public class MuxStream implements Stream<Object>
   public boolean isMultiSinkCapable()
   {
     return true;
+  }
+
+  @Override
+  public Reservoir getReservoir(String sinkId)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
 }

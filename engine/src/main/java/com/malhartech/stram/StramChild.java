@@ -370,7 +370,7 @@ public class StramChild
           String[] nodeport = sinkIds[i].split(NODE_PORT_SPLIT_SEPARATOR);
           if (Integer.toString(nodeid).equals(nodeport[0])) {
             stream.setSink(sinkIds[i], null);
-            if (node instanceof UnifierNode) {
+            if (node.getOperator() instanceof Unifier) {
               node.connectInputPort(nodeport[1] + "(" + sourceIdentifier + ")", null, null);
             }
             else {
@@ -829,7 +829,7 @@ public class StramChild
     }
   }
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"unchecked"})
   private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
     OperatorCodec operatorSerDe = StramUtils.getNodeSerDe(null);

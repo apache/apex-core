@@ -5,6 +5,8 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
+import com.malhartech.engine.DefaultReservoir;
+import com.malhartech.engine.Reservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 
@@ -26,13 +28,7 @@ import com.malhartech.engine.StreamContext;
  */
 public class InlineStream implements Stream<Object>
 {
-  private volatile Sink<Object> current, output, shunted = new Sink<Object>()
-  {
-    @Override
-    public void process(Object payload)
-    {
-    }
-  };
+  private DefaultReservoir reservoir;
 
   /**
    *
@@ -51,7 +47,6 @@ public class InlineStream implements Stream<Object>
   @Override
   public void activate(StreamContext context)
   {
-    current = output;
   }
 
   /**
@@ -60,7 +55,6 @@ public class InlineStream implements Stream<Object>
   @Override
   public void deactivate()
   {
-    current = shunted;
   }
 
   /**
@@ -73,31 +67,17 @@ public class InlineStream implements Stream<Object>
 
   /**
    *
-   * @param port
-   * @param sink
-   */
-  @Override
-  public void setSink(String port, Sink<Object> sink)
-  {
-    if (current == output) {
-      current = sink;
-    }
-    output = sink;
-  }
-
-  /**
-   *
    * @param payload
    */
   @Override
   public final void process(Object payload)
   {
-    current.process(payload);
-  }
-
-  public final Sink<Object> getOutput()
-  {
-    return output;
+    try {
+      reservoir.put(payload);
+    }
+    catch (InterruptedException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   @Override
@@ -105,4 +85,16 @@ public class InlineStream implements Stream<Object>
   {
     return false;
   }
+
+  @Override
+  @SuppressWarnings("ReturnOfCollectionOrArrayField")
+  public Reservoir getReservoir(String sinkId, int capacity)
+  {
+    if (reservoir == null) {
+      reservoir = new DefaultReservoir(sinkId, capacity);
+    }
+
+    return reservoir;
+  }
+
 }

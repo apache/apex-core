@@ -8,6 +8,7 @@ import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Publisher;
 import com.malhartech.bufferserver.packet.*;
+import com.malhartech.engine.Reservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.tuple.Tuple;
@@ -125,12 +126,6 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
   }
 
   @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-    throw new IllegalAccessError("Attempt to set destination other than buffer server on " + this + " stream!");
-  }
-
-  @Override
   public boolean isMultiSinkCapable()
   {
     return false;
@@ -153,4 +148,10 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
+
+  @Override
+  public Reservoir getReservoir(String sinkId, int capacity)
+  {
+    return null;
+  }
 }
