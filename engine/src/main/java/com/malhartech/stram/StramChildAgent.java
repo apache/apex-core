@@ -134,9 +134,21 @@ public class StramChildAgent {
     MovingAverageLong latencyMA10 = new MovingAverageLong(10);
     MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
     List<String> recordingNames; // null if recording is not in progress
+    Map<String, InputPortStatus> inputPortStatusList = new HashMap<String, InputPortStatus>();
+    Map<String, OutputPortStatus> outputPortStatusList = new HashMap<String, OutputPortStatus>();
 
     private OperatorStatus(PTOperator operator) {
       this.operator = operator;
+      for (PTInput ptInput: operator.inputs) {
+        InputPortStatus inputPortStatus = new InputPortStatus();
+        inputPortStatus.port = ptInput;
+        inputPortStatusList.put(ptInput.portName, inputPortStatus);
+      }
+      for (PTOutput ptOutput: operator.outputs) {
+        OutputPortStatus outputPortStatus = new OutputPortStatus();
+        outputPortStatus.port = ptOutput;
+        outputPortStatusList.put(ptOutput.portName, outputPortStatus);
+      }
     }
 
     public boolean isIdle()
@@ -146,6 +158,24 @@ public class StramChildAgent {
       }
       return false;
     }
+  }
+
+  private class PortStatus
+  {
+    long totalTuples;
+    MovingAverageLong tuplesPSMA10 = new MovingAverageLong(10);
+    long totalBytes;   // TBD
+    MovingAverageLong bytesPSMA10 = new MovingAverageLong(10);  // TBD
+  }
+
+  class InputPortStatus extends PortStatus
+  {
+    PTInput port;
+  }
+
+  class OutputPortStatus extends PortStatus
+  {
+    PTOutput port;
   }
 
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx) {
