@@ -5,17 +5,18 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.engine.Reservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import java.lang.reflect.Array;
 import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author chetan
+ * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class MuxStream implements Stream<Object>
+public class MuxStream implements Stream
 {
   private HashMap<String, Sink<Object>> outputs;
   @SuppressWarnings("VolatileArrayField")
@@ -107,10 +108,5 @@ public class MuxStream implements Stream<Object>
     return true;
   }
 
-  @Override
-  public Reservoir getReservoir(String sinkId)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
+  private static final Logger logger = LoggerFactory.getLogger(MuxStream.class);
 }

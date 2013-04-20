@@ -37,36 +37,36 @@ import org.slf4j.LoggerFactory;
  */
 public class GenericNode extends Node<Operator>
 {
-  protected final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
+  protected final HashMap<String, SweepableReservoir> inputs = new HashMap<String, SweepableReservoir>();
   protected ArrayList<DeferredInputConnection> deferredInputConnections = new ArrayList<DeferredInputConnection>();
 
   // make sure that the cascading logic works here, right now it does not!
   @Override
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
-    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-      Reservoir original = inputs.get(e.getKey());
-      if (original != null) {
-        inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
-      }
-    }
-
-    super.addSinks(sinks);
+//    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+//      SweepableReservoir original = inputs.get(e.getKey());
+//      if (original != null) {
+//        inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
+//      }
+//    }
+//
+//    super.addSinks(sinks);
   }
 
   @Override
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
-    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-      Reservoir someReservoir = inputs.get(e.getKey());
-      if (someReservoir instanceof TappedReservoir) {
-        TappedReservoir sr = (TappedReservoir)someReservoir;
-        assert (sr.stackedSink == e.getValue());
-        inputs.put(e.getKey(), sr.reservoir);
-      }
-    }
-
-    super.removeSinks(sinks);
+//    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+//      SweepableReservoir someReservoir = inputs.get(e.getKey());
+//      if (someReservoir instanceof TappedReservoir) {
+//        TappedReservoir sr = (TappedReservoir)someReservoir;
+//        assert (sr.stackedSink == e.getValue());
+//        inputs.put(e.getKey(), sr.reservoir);
+//      }
+//    }
+//
+//    super.removeSinks(sinks);
   }
 
   public GenericNode(String id, Operator operator)
@@ -81,7 +81,7 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  public void connectInputPort(String port, AttributeMap<PortContext> attributes, final Reservoir reservoir)
+  public void connectInputPort(String port, AttributeMap<PortContext> attributes, final SweepableReservoir reservoir)
   {
     if (reservoir == null) {
       throw new IllegalArgumentException("Reservoir cannot be null for port '" + port + "' on operator '" + operator + "'");
@@ -98,7 +98,8 @@ public class GenericNode extends Node<Operator>
     else {
       inputPort.setConnected(true);
       inputs.put(port, reservoir);
-//      Reservoir reservoir = inputs.get(port);
+      reservoir.setSink(inputPort.getSink());
+//      SweepableReservoir reservoir = inputs.get(port);
 //      if (reservoir == null) {
 //        int bufferCapacity = attributes == null ? 16 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 16 * 1024);
 //        int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
@@ -115,12 +116,12 @@ public class GenericNode extends Node<Operator>
   class ResetTupleTracker
   {
     final ResetWindowTuple tuple;
-    Reservoir[] ports;
+    SweepableReservoir[] ports;
 
     ResetTupleTracker(ResetWindowTuple base, int count)
     {
       tuple = base;
-      ports = new Reservoir[count];
+      ports = new SweepableReservoir[count];
     }
 
   }
@@ -142,7 +143,7 @@ public class GenericNode extends Node<Operator>
     int windowCount = 0;
     int totalQueues = inputs.size();
 
-    ArrayList<Reservoir> activeQueues = new ArrayList<Reservoir>();
+    ArrayList<SweepableReservoir> activeQueues = new ArrayList<SweepableReservoir>();
     activeQueues.addAll(inputs.values());
 
     int expectingBeginWindow = activeQueues.size();
@@ -151,10 +152,10 @@ public class GenericNode extends Node<Operator>
 
     try {
       do {
-        Iterator<Reservoir> buffers = activeQueues.iterator();
+        Iterator<SweepableReservoir> buffers = activeQueues.iterator();
         activequeue:
         while (buffers.hasNext()) {
-          Reservoir activePort = buffers.next();
+          SweepableReservoir activePort = buffers.next();
           Tuple t = activePort.sweep();
           if (t != null) {
             switch (t.getType()) {
@@ -284,8 +285,8 @@ public class GenericNode extends Node<Operator>
                  */
                 totalQueues--;
 
-                for (Iterator<Entry<String, Reservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
-                  Entry<String, Reservoir> e = it.next();
+                for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
+                  Entry<String, SweepableReservoir> e = it.next();
                   if (e.getValue() == activePort) {
                     if (!descriptor.inputPorts.isEmpty()) {
                       descriptor.inputPorts.get(e.getKey()).setConnected(false);
@@ -345,7 +346,7 @@ public class GenericNode extends Node<Operator>
                   index = 0;
                   while (index < tracker.ports.length) {
                     if (tracker.ports[index] == activePort) {
-                      Reservoir[] ports = new Reservoir[totalQueues];
+                      SweepableReservoir[] ports = new SweepableReservoir[totalQueues];
                       System.arraycopy(tracker.ports, 0, ports, 0, index);
                       if (index < totalQueues) {
                         System.arraycopy(tracker.ports, index + 1, ports, index, tracker.ports.length - index - 1);
@@ -401,7 +402,7 @@ public class GenericNode extends Node<Operator>
         }
         else {
           boolean need2sleep = true;
-          for (Reservoir cb: activeQueues) {
+          for (SweepableReservoir cb: activeQueues) {
             if (cb.size() > 0) {
               need2sleep = false;
               break;
@@ -411,7 +412,7 @@ public class GenericNode extends Node<Operator>
           if (need2sleep) {
             Thread.sleep(spinMillis);
             if (handleIdleTime) {
-              for (Reservoir cb: activeQueues) {
+              for (SweepableReservoir cb: activeQueues) {
                 if (cb.size() > 0) {
                   need2sleep = false;
                   break;
@@ -453,17 +454,9 @@ public class GenericNode extends Node<Operator>
   {
     super.reportStats(stats, applicationWindowBoundary);
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
-    for (Entry<String, Reservoir> e: inputs.entrySet()) {
-      Reservoir ar;
-      Reservoir r = e.getValue();
-      if (r instanceof TappedReservoir) {
-        ar = (Reservoir)((TappedReservoir)r).reservoir;
-      }
-      else {
-        ar = (Reservoir)r;
-      }
-      ipstats.add(new PortStats(e.getKey(), ar.count));
-      ar.count = 0;
+    for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
+      SweepableReservoir ar = e.getValue();
+      ipstats.add(new PortStats(e.getKey(), ar.resetCount()));
     }
 
     stats.inputPorts = ipstats;
@@ -472,9 +465,9 @@ public class GenericNode extends Node<Operator>
   protected class DeferredInputConnection
   {
     String portname;
-    Reservoir reservoir;
+    SweepableReservoir reservoir;
 
-    DeferredInputConnection(String portname, Reservoir reservoir)
+    DeferredInputConnection(String portname, SweepableReservoir reservoir)
     {
       this.portname = portname;
       this.reservoir = reservoir;

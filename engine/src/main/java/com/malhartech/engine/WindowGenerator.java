@@ -4,14 +4,12 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.tuple.EndWindowTuple;
 import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.tuple.Tuple;
 import com.malhartech.util.CircularBuffer;
 import com.malhartech.util.ScheduledExecutorService;
-import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,12 +23,21 @@ import org.slf4j.LoggerFactory;
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
  */
-public class WindowGenerator implements Stream<Object>, Runnable
+public class WindowGenerator extends MuxReservoir implements Stream<Object>, Runnable
 {
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
-  private final CircularBuffer<Tuple> controlTuples = new CircularBuffer<Tuple>(1024);
+  private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir
+  {
+    MasterReservoir(int n)
+    {
+      super(n);
+    }
+
+  }
+
+  private final MasterReservoir masterReservoir = new MasterReservoir(1024);
   public static final int WINDOW_MASK = 0x3fff;
   public static final int MAX_WINDOW_ID = WINDOW_MASK - (WINDOW_MASK % 1000) - 1;
   public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID) > 0 ? (int)(Long.MAX_VALUE / MAX_WINDOW_ID) : Integer.MAX_VALUE;
@@ -65,8 +72,8 @@ public class WindowGenerator implements Stream<Object>, Runnable
     baseSeconds = (resetWindowMillis / 1000) << 32;
     //logger.info("generating reset -> begin {}", Codec.getStringWindowId(baseSeconds));
 
-    controlTuples.put(new ResetWindowTuple(baseSeconds | windowWidthMillis));
-    controlTuples.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
+    masterReservoir.put(new ResetWindowTuple(baseSeconds | windowWidthMillis));
+    masterReservoir.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
   }
 
   /**
@@ -76,16 +83,16 @@ public class WindowGenerator implements Stream<Object>, Runnable
   private void endCurrentBeginNewWindow() throws InterruptedException
   {
     if (windowId == MAX_WINDOW_ID) {
-      controlTuples.put(new EndWindowTuple(baseSeconds | windowId));
+      masterReservoir.put(new EndWindowTuple(baseSeconds | windowId));
       advanceWindow();
       run();
     }
     else {
 //      logger.debug("generating end -> begin {}", Integer.toHexString(windowId));
-      controlTuples.put(new EndWindowTuple(baseSeconds | windowId));
+      masterReservoir.put(new EndWindowTuple(baseSeconds | windowId));
       advanceWindow();
 
-      controlTuples.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
+      masterReservoir.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
     }
   }
 
@@ -198,11 +205,6 @@ public class WindowGenerator implements Stream<Object>, Runnable
   }
 
   @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-  }
-
-  @Override
   public boolean isMultiSinkCapable()
   {
     return true;
@@ -214,62 +216,11 @@ public class WindowGenerator implements Stream<Object>, Runnable
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
-  @SuppressWarnings("VolatileArrayField")
-  private volatile BufferReservoir[] reservoirs = new BufferReservoir[0];
-  private HashMap<String, BufferReservoir> reservoirMap = new HashMap<String, BufferReservoir>();
-
   @Override
-  public Reservoir getReservoir(String sinkId)
+  @SuppressWarnings("ReturnOfCollectionOrArrayField")
+  public Reservoir getMasterReservoir()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  class BufferReservoir extends CircularBuffer<Tuple> implements Reservoir
-  {
-    long count;
-
-    BufferReservoir()
-    {
-      super(controlTuples.capacity());
-    }
-
-    @Override
-    public void setSink(Sink<Object> sink)
-    {
-      logger.info("Unnecessary call to setSink on Reservoir of WindowGenerator");
-    }
-
-    @Override
-    public Tuple sweep()
-    {
-      if (!isEmpty()) {
-        return peekUnsafe();
-      }
-
-      synchronized (controlTuples) {
-        /* find out the minimum remaining capacity in all the other buffers and consume those many tuples from bufferserver */
-        int min = controlTuples.size();
-        if (min == 0) {
-          return null;
-        }
-
-        for (int i = reservoirs.length; i-- > 0;) {
-          if (reservoirs[i].remainingCapacity() < min) {
-            min = reservoirs[i].remainingCapacity();
-          }
-        }
-
-        while (min-- > 0) {
-          Tuple t = controlTuples.remove();
-          for (int i = reservoirs.length; i-- > 0;) {
-            reservoirs[i].add(t);
-          }
-        }
-      }
-
-      return null;
-    }
-
+    return masterReservoir;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);

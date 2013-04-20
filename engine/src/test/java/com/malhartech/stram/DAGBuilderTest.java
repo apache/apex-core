@@ -594,7 +594,7 @@ public class DAGBuilderTest {
     DAG dag = new DAG();
     DuplicatePortOperator o1 = dag.addOperator("o1", new DuplicatePortOperator());
     try {
-      dag.setOutputPortAttribute(o1.outport1, PortContext.BUFFER_SIZE, 0);
+      dag.setOutputPortAttribute(o1.outport1, PortContext.QUEUE_CAPACITY, 0);
       Assert.fail("Should detect duplicate port");
     } catch (IllegalArgumentException e) {
       // expected

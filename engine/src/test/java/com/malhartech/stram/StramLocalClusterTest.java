@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
+import static java.lang.Thread.sleep;
 import java.util.*;
 import org.junit.After;
 import org.junit.Assert;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 public class StramLocalClusterTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramLocalClusterTest.class);
+
   @Before
   public void setup() throws IOException
   {
@@ -42,7 +44,6 @@ public class StramLocalClusterTest
   {
     StramChild.eventloop.stop();
   }
-
 
   /**
    * Verify test configuration launches and stops after input terminates.
@@ -92,6 +93,7 @@ public class StramLocalClusterTest
     final BufferServerSubscriber bsi;
     final StreamContext streamContext;
     final TestSink sink;
+    SweepableReservoir reservoir;
 
     TestBufferServerSubscriber(PTOperator publisherOperator, String publisherPortName)
     {
@@ -105,16 +107,24 @@ public class StramLocalClusterTest
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
-      bsi = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
+      bsi = new BufferServerSubscriber(streamContext.getSinkId());
       bsi.setup(streamContext);
-      bsi.setSink("testSink", sink);
+      reservoir = bsi.acquireReservoir("testSink", 1024);
+      reservoir.setSink(sink);
     }
 
+    @SuppressWarnings("SleepWhileInLoop")
     List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException
     {
       bsi.activate(streamContext);
+      for (long l = 0; l < timeoutMillis; l += 20) {
+        reservoir.sweep();
+        if (sink.getResultCount() >= expectedCount) {
+          break;
+        }
+        sleep(20);
+      }
       //LOG.debug("test sink activated");
-      sink.waitForResultCount(expectedCount, timeoutMillis);
       Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
       List<Object> result = new ArrayList<Object>(sink.collectedTuples);
 
@@ -122,6 +132,7 @@ public class StramLocalClusterTest
       sink.collectedTuples.clear();
       return result;
     }
+
   }
 
   @Test
@@ -152,6 +163,7 @@ public class StramLocalClusterTest
         WindowGenerator wingen = StramTestSupport.setupWindowGenerator(wclock);
         return wingen;
       }
+
     };
 
     StramLocalCluster localCluster = new StramLocalCluster(dag, mcf);
@@ -317,4 +329,5 @@ public class StramLocalClusterTest
     LOG.debug("Requesting backup {} node {}", c.getContainerId(), operatorId);
     c.processHeartbeatResponse(rsp);
   }
+
 }

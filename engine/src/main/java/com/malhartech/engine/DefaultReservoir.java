@@ -12,11 +12,11 @@ import com.malhartech.util.CircularBuffer;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class DefaultReservoir extends CircularBuffer<Object> implements Reservoir
+public class DefaultReservoir extends CircularBuffer<Object> implements SweepableReservoir
 {
   private Sink<Object> sink;
-  private final String id;
-  int count;
+  private String id;
+  private int count;
 
   public DefaultReservoir(String id, int capacity)
   {
@@ -49,7 +49,31 @@ public class DefaultReservoir extends CircularBuffer<Object> implements Reservoi
   @Override
   public String toString()
   {
-    return "DefaultReservoir{" + "id=" + id + ", count=" + count + '}';
+    return "DefaultReservoir{" + "id=" + getId() + ", count=" + count + '}';
+  }
+
+  /**
+   * @return the id
+   */
+  public String getId()
+  {
+    return id;
+  }
+
+  /**
+   * @param id the id to set
+   */
+  public void setId(String id)
+  {
+    this.id = id;
+  }
+
+  @Override
+  public int resetCount()
+  {
+    int retvalue = count;
+    count = 0;
+    return retvalue;
   }
 
 }

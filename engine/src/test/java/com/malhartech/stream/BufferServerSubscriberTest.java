@@ -7,7 +7,7 @@ package com.malhartech.stream;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
-import com.malhartech.engine.Reservoir;
+import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.Client.Fragment;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,7 +85,7 @@ public class BufferServerSubscriberTest
 
     };
 
-    Reservoir reservoir = bss.getReservoir("unbufferedSink", 3);
+    SweepableReservoir reservoir = bss.acquireReservoir("unbufferedSink", 3);
     reservoir.setSink(unbufferedSink);
 
     int i = 0;

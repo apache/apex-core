@@ -6,9 +6,11 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.engine.DefaultReservoir;
-import com.malhartech.engine.Reservoir;
+import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -26,9 +28,14 @@ import com.malhartech.engine.StreamContext;
  * <br>
  *
  */
-public class InlineStream implements Stream<Object>
+public class InlineStream extends DefaultReservoir implements Stream
 {
   private DefaultReservoir reservoir;
+
+  public InlineStream(int capacity)
+  {
+    super("InlineStream", capacity);
+  }
 
   /**
    *
@@ -37,7 +44,7 @@ public class InlineStream implements Stream<Object>
   @Override
   public void setup(StreamContext context)
   {
-    // nothing to be done here.
+    setId(context.getId());
   }
 
   /**
@@ -65,21 +72,6 @@ public class InlineStream implements Stream<Object>
   {
   }
 
-  /**
-   *
-   * @param payload
-   */
-  @Override
-  public final void process(Object payload)
-  {
-    try {
-      reservoir.put(payload);
-    }
-    catch (InterruptedException ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
   @Override
   public boolean isMultiSinkCapable()
   {
@@ -88,13 +80,39 @@ public class InlineStream implements Stream<Object>
 
   @Override
   @SuppressWarnings("ReturnOfCollectionOrArrayField")
-  public Reservoir getReservoir(String sinkId, int capacity)
+  public SweepableReservoir acquireReservoir(String sinkId, int capacity)
   {
-    if (reservoir == null) {
-      reservoir = new DefaultReservoir(sinkId, capacity);
-    }
-
-    return reservoir;
+    return this;
   }
 
+  @Override
+  public void process(Object tuple)
+  {
+    try {
+      put(tuple);
+    }
+    catch (InterruptedException ie) {
+      logger.debug("Interrupted", ie);
+    }
+  }
+
+  @Override
+  public String toString()
+  {
+    return "InlineStream{" + "reservoir=" + reservoir + '}';
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(InlineStream.class);
+
+  @Override
+  public void releaseReservoir(String sinkId)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void setSink(String id, Sink<Object> sink)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }

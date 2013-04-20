@@ -5,6 +5,7 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
+import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,40 +15,66 @@ import org.slf4j.LoggerFactory;
  * @param <T>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class WindowIdActivatedSink<T> implements Sink<T>
+public class WindowIdActivatedReservoir implements SweepableReservoir
 {
-  private final Sink<Object> sink;
-  private final long windowId;
-  private final Stream<Object> stream;
+  private Sink<Object> sink;
   private final String identifier;
+  private final SweepableReservoir reservoir;
+  private final long windowId;
 
-  public WindowIdActivatedSink(Stream<Object> stream, String identifier, final Sink<Object> sink, final long windowId)
+  public WindowIdActivatedReservoir(String identifier, SweepableReservoir reservoir, final long windowId)
   {
-    this.stream = stream;
     this.identifier = identifier;
-    this.sink = sink;
+    this.reservoir = reservoir;
     this.windowId = windowId;
+
+    reservoir.setSink(Sink.BLACKHOLE);
   }
 
   @Override
-  public void process(Object payload)
+  public int size()
   {
-    if (payload instanceof Tuple) {
-      switch (((Tuple)payload).getType()) {
-        case BEGIN_WINDOW:
-          logger.debug("got begin widnow {} to compare against {}", payload, windowId);
-          if (((Tuple)payload).getWindowId() > windowId) {
-            sink.process(payload);
-            stream.setSink(identifier, sink);
-          }
-          break;
-
-        case CODEC_STATE:
-          sink.process(payload);
-          break;
-      }
-    }
+    return reservoir.size();
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(WindowIdActivatedSink.class);
+  @Override
+  public Object remove()
+  {
+    return reservoir.remove();
+  }
+
+  @Override
+  public void setSink(Sink<Object> sink)
+  {
+    this.sink = sink;
+  }
+
+  @Override
+  public Tuple sweep()
+  {
+    Tuple t;
+    while ((t = reservoir.sweep()) != null) {
+      if (t.getType() == MessageType.BEGIN_WINDOW && t.getWindowId() > windowId) {
+        reservoir.setSink(sink);
+        return t;
+      }
+      reservoir.remove();
+    }
+
+    return null;
+  }
+
+  @Override
+  public int resetCount()
+  {
+    return 0;
+  }
+
+  @Override
+  public String toString()
+  {
+    return "WindowIdActivatedReservoir{" + "identifier=" + identifier + ", windowId=" + windowId + '}';
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(WindowIdActivatedReservoir.class);
 }
