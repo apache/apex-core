@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  */
 public class InputNode extends Node<InputOperator>
 {
-  protected Reservoir controlTuples;
+  protected SweepableReservoir controlTuples;
 
   public InputNode(String id, InputOperator operator)
   {
@@ -25,7 +25,7 @@ public class InputNode extends Node<InputOperator>
   }
 
   @Override
-  public void connectInputPort(String port, AttributeMap<PortContext> attributes, Reservoir reservoir)
+  public void connectInputPort(String port, AttributeMap<PortContext> attributes, SweepableReservoir reservoir)
   {
     if (Node.INPUT.equals(port)) {
       controlTuples = reservoir;

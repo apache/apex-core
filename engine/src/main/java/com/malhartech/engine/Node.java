@@ -95,7 +95,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  public abstract void connectInputPort(String port, AttributeMap<PortContext> attributes, final Reservoir reservoir);
+  public abstract void connectInputPort(String port, AttributeMap<PortContext> attributes, final SweepableReservoir reservoir);
 
   public void addSinks(Map<String, Sink<Object>> sinks)
   {

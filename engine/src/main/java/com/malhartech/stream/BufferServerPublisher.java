@@ -8,11 +8,10 @@ import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Publisher;
 import com.malhartech.bufferserver.packet.*;
-import com.malhartech.engine.Reservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
-import com.malhartech.tuple.Tuple;
 import com.malhartech.netlet.EventLoop;
+import com.malhartech.tuple.Tuple;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import org.slf4j.Logger;
@@ -26,16 +25,16 @@ import org.slf4j.LoggerFactory;
  * Partitioning is managed by this instance of the buffer server<br>
  * <br>
  */
-public class BufferServerPublisher extends Publisher implements Stream<Object>
+public class BufferServerPublisher extends Publisher implements Stream
 {
   StreamCodec<Object> serde;
   int writtenBytes;
   int windowId;
   private EventLoop eventloop;
 
-  public BufferServerPublisher(String sourceId)
+  public BufferServerPublisher(String sourceId, int queueCapacity)
   {
-    super(sourceId);
+    super(sourceId, queueCapacity);
   }
 
   /**
@@ -147,11 +146,11 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
   {
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
-
   @Override
-  public Reservoir getReservoir(String sinkId, int capacity)
+  public void setSink(String id, Sink<Object> sink)
   {
-    return null;
+    throw new UnsupportedOperationException("Not supported yet.");
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
 }

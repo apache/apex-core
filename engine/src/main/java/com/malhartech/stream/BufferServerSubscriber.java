@@ -7,7 +7,7 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Subscriber;
-import com.malhartech.engine.Reservoir;
+import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.WindowGenerator;
@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerSubscriber extends Subscriber implements Stream<Object>
+public class BufferServerSubscriber extends Subscriber implements Stream
 {
   private long baseSeconds;
   protected StreamCodec<Object> serde;
@@ -54,8 +54,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   @Override
   public void activate(StreamContext context)
   {
-    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-
     InetSocketAddress address = context.getBufferServerAddress();
     eventloop = context.attr(StreamContext.EVENT_LOOP).get();
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
@@ -95,12 +93,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   }
 
   @Override
-  public void process(Object tuple)
-  {
-    throw new IllegalAccessError("Attempt to pass payload " + tuple + " to " + this + " from source other than buffer server!");
-  }
-
-  @Override
   public void setup(StreamContext context)
   {
     serde = context.attr(StreamContext.CODEC).get();
@@ -118,18 +110,12 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   {
   }
 
-  public Tuple next()
-  {
-
-    return null;
-  }
-
   @SuppressWarnings("VolatileArrayField")
   private volatile BufferReservoir[] reservoirs = new BufferReservoir[0];
   private HashMap<String, BufferReservoir> reservoirMap = new HashMap<String, BufferReservoir>();
 
   @Override
-  public Reservoir getReservoir(String id, int capacity)
+  public SweepableReservoir acquireReservoir(String id, int capacity)
   {
     BufferReservoir r = reservoirMap.get(id);
     if (r == null) {
@@ -145,10 +131,22 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
     return r;
   }
 
-  class BufferReservoir extends CircularBuffer<Object> implements Reservoir
+  @Override
+  public void process(Object tuple)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void releaseReservoir(String sinkId)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  class BufferReservoir extends CircularBuffer<Object> implements SweepableReservoir
   {
     private Sink<Object> sink;
-    long count;
+    int count;
 
     BufferReservoir(int capacity)
     {
@@ -252,6 +250,14 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
       }
 
       return null;
+    }
+
+    @Override
+    public int resetCount()
+    {
+      int retvalue = count;
+      count = 0;
+      return retvalue;
     }
 
   }

@@ -7,7 +7,6 @@ import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.*;
 import com.malhartech.engine.*;
 import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.tuple.Tuple;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.AttributeKey;
 import java.util.HashMap;
@@ -31,7 +30,7 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
     prev = null;
 
-    final Reservoir reservoir = new DefaultReservoir("reservoir", 1024);
+    //final SweepableReservoir reservoir = new DefaultReservoir("reservoir", 1024);
 
     final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
     final GenericNode node1 = new GenericNode("node1", operator1);
@@ -42,7 +41,7 @@ public class InlineStreamTest
     operator2.setup(new OperatorContext(0, null, null, null, null, null));
 
     StreamContext streamContext = new StreamContext("node1->node2");
-    InlineStream stream = new InlineStream();
+    InlineStream stream = new InlineStream(1024);
     stream.setup(streamContext);
 
     AttributeMap<PortContext> attributes = new AttributeMap<PortContext>()
@@ -61,9 +60,8 @@ public class InlineStreamTest
 
     };
     node1.connectOutputPort("output", attributes, stream);
-
-    Sink<Object> s = node2.connectInputPort("input", attributes, reservoir);
-    stream.setSink("node2.input", s);
+    SweepableReservoir reservoir2 = stream.acquireReservoir("input", 1024);
+    node2.connectInputPort("input", attributes, reservoir2);
 
     Sink<Object> sink = new Sink<Object>()
     {
@@ -74,27 +72,22 @@ public class InlineStreamTest
       @Override
       public void process(Object payload)
       {
-        if (payload instanceof Tuple) {
-          // we ignore the control tuple
+        if (prev == null) {
+          prev = payload;
         }
         else {
-          if (prev == null) {
-            prev = payload;
-          }
-          else {
-            if (Integer.valueOf(payload.toString()) - Integer.valueOf(prev.toString()) != 1) {
-              synchronized (InlineStreamTest.this) {
-                InlineStreamTest.this.notify();
-              }
-            }
-
-            prev = payload;
-          }
-
-          if (Integer.valueOf(prev.toString()) == totalTupleCount - 1) {
+          if (Integer.valueOf(payload.toString()) - Integer.valueOf(prev.toString()) != 1) {
             synchronized (InlineStreamTest.this) {
               InlineStreamTest.this.notify();
             }
+          }
+
+          prev = payload;
+        }
+
+        if (Integer.valueOf(prev.toString()) == totalTupleCount - 1) {
+          synchronized (InlineStreamTest.this) {
+            InlineStreamTest.this.notify();
           }
         }
       }
@@ -102,17 +95,18 @@ public class InlineStreamTest
     };
     node2.connectOutputPort("output", attributes, sink);
 
-    sink = node1.connectInputPort("input", attributes, reservoir);
+    DefaultReservoir reservoir1 = new DefaultReservoir("input", 1024 * 5);
+    node1.connectInputPort("input", attributes, reservoir1);
 
     Map<Integer, Node<?>> activeNodes = new ConcurrentHashMap<Integer, Node<?>>();
     launchNodeThread(node1, activeNodes);
     launchNodeThread(node2, activeNodes);
 
-    sink.process(StramTestSupport.generateBeginWindowTuple("irrelevant", 0));
+    reservoir1.put(StramTestSupport.generateBeginWindowTuple("irrelevant", 0));
     for (int i = 0; i < totalTupleCount; i++) {
-      sink.process(i);
+      reservoir1.put(i);
     }
-    sink.process(StramTestSupport.generateEndWindowTuple("irrelevant", 0));
+    reservoir1.put(StramTestSupport.generateEndWindowTuple("irrelevant", 0));
 
     stream.activate(streamContext);
 

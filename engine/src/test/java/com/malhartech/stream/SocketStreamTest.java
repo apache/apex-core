@@ -7,7 +7,7 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.engine.DefaultStreamCodec;
-import com.malhartech.engine.Reservoir;
+import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;
@@ -97,7 +97,7 @@ public class SocketStreamTest
 
     BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId);
     iss.setup(issContext);
-    Reservoir reservoir = iss.getReservoir("testReservoir", 1);
+    SweepableReservoir reservoir = iss.acquireReservoir("testReservoir", 1);
     reservoir.setSink(sink);
 
     StreamContext ossContext = new StreamContext(streamName);
