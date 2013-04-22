@@ -131,7 +131,6 @@ public class StramChildAgent {
     long currentWindowId;
     MovingAverageLong tuplesProcessedPSMA10 = new MovingAverageLong(10);
     MovingAverageLong tuplesEmittedPSMA10 = new MovingAverageLong(10);
-    MovingAverageLong latencyMA10 = new MovingAverageLong(10);
     MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
     List<String> recordingNames; // null if recording is not in progress
     Map<String, InputPortStatus> inputPortStatusList = new HashMap<String, InputPortStatus>();
@@ -162,9 +161,9 @@ public class StramChildAgent {
 
   private class PortStatus
   {
-    long totalTuples;
+    long totalTuples = 0;
     MovingAverageLong tuplesPSMA10 = new MovingAverageLong(10);
-    long totalBytes;   // TBD
+    long totalBytes = 0;   // TBD
     MovingAverageLong bytesPSMA10 = new MovingAverageLong(10);  // TBD
   }
 
