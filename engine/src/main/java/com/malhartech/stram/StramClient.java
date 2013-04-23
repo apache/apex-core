@@ -8,7 +8,6 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.DAG;
-import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
@@ -489,8 +488,8 @@ public class StramClient
     // Set Xmx based on am memory size
     // default heap size 75% of total memory
     vargs.add("-Xmx" + (amMemory*3/4) + "m");
-    // Set class name
-    vargs.add("-D" + StdOutErrLog.MALHAR_LOGDIR + '=' + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/mlog");
+    vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
+    vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/mlog");
 
     vargs.add(StramAppMaster.class.getName());
 
