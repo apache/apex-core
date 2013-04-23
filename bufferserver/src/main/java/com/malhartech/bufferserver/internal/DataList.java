@@ -35,6 +35,7 @@ public class DataList
   private Block last;
   private Storage storage;
   private ScheduledExecutorService executor;
+  private long totalBytesWritten = 0;
 
   public int getBlockSize()
   {
@@ -195,6 +196,7 @@ public class DataList
     }
     while (true);
 
+    totalBytesWritten += writeOffset - last.writingOffset;
     last.writingOffset = writeOffset;
 
     executor.submit(new Runnable()
@@ -360,6 +362,7 @@ public class DataList
   {
     public long numBytesWaiting = 0;
     public long numBytesAllocated = 0;
+    public long totalBytesWritten = 0;
     public String slowestConsumer;
   }
 
@@ -406,6 +409,7 @@ public class DataList
       b = b.next;
       ++i;
     }
+    status.totalBytesWritten = totalBytesWritten;
     return status;
   }
 
