@@ -27,6 +27,7 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
@@ -549,7 +550,7 @@ public class PhysicalPlan {
     /**
      * Operators that form a parallel partition
      */
-    private Set<OperatorMeta> partitionsParallel = Sets.newHashSet();
+    private Set<OperatorMeta> parallelPartitions = Sets.newHashSet();
 
     private void addPartition(PTOperator p) {
       partitions.add(p);
@@ -693,13 +694,13 @@ public class PhysicalPlan {
             // operator partitioned with upstream
             if (upstreamPartitioned != null) {
               // need to have common root
-              if (!upstreamPartitioned.partitionsParallel.contains(m.logicalOperator)) {
+              if (!upstreamPartitioned.parallelPartitions.contains(m.logicalOperator)) {
                 String msg = String.format("operator cannot extend multiple partitions (%s and %s)", upstreamPartitioned.logicalOperator, m.logicalOperator);
                 throw new AssertionError(msg);
               }
             }
-            m.partitionsParallel.add(pnodes.logicalOperator);
-            pnodes.partitionsParallel = m.partitionsParallel;
+            m.parallelPartitions.add(pnodes.logicalOperator);
+            pnodes.parallelPartitions = m.parallelPartitions;
             upstreamPartitioned = m;
           }
 
@@ -736,7 +737,7 @@ public class PhysicalPlan {
 
           for (PMapping inlineCandidate : inlineCandidates) {
             //LOG.debug("merging {} {}", newOperator, inlineCandidate.partitions);
-            if (pnodes.partitionsParallel == inlineCandidate.partitionsParallel) {
+            if (pnodes.parallelPartitions == inlineCandidate.parallelPartitions) {
               // apply locality setting per partition
               newOperator.inlineSet.addAll(inlineCandidate.partitions.get(partIndex).inlineSet);
               newOperator.inlineSet.add(newOperator);
@@ -761,7 +762,7 @@ public class PhysicalPlan {
           LocalityPref loc = localityPrefs.prefs.get(pnodes);
           if (loc != null) {
             for (PMapping nodeLocalPM : loc.operators) {
-              if (pnodes.partitionsParallel == nodeLocalPM.partitionsParallel) {
+              if (pnodes.parallelPartitions == nodeLocalPM.parallelPartitions) {
                 // apply locality setting per partition
                 newOperator.nodeLocal.addAll(nodeLocalPM.partitions.get(partIndex).nodeLocal);
                 newOperator.nodeLocal.add(newOperator);
@@ -983,8 +984,8 @@ public class PhysicalPlan {
     // remove deprecated partitions from plan
     for (PTOperator p : currentPartitionMap.values()) {
       newMapping.partitions.remove(p);
-      removePTOperator(p);
-      p.container.operators.remove(p); // TODO: thread safety
+      removePartition(p, currentMapping.parallelPartitions);
+
       // TODO: remove checkpoint states
     }
 
@@ -1034,6 +1035,43 @@ public class PhysicalPlan {
     currentMapping.partitions = newMapping.partitions;
     //this.logicalToPTOperator.put(currentMapping.logicalOperator, newMapping);
 
+  }
+
+  /**
+   * Remove the given partition with any associated parallel partitions and
+   * per-partition unifiers.
+   *
+   * @param oper
+   * @return
+   */
+  private void removePartition(PTOperator oper, Set<DAG.OperatorMeta> parallelPartitions) {
+
+    // remove any parallel partition
+    for (PTOutput out : oper.outputs) {
+      // copy list as it is modified by recursive remove
+      for (PTInput in : Lists.newArrayList(out.sinks)) {
+        for (DAG.InputPortMeta im : in.logicalStream.getSinks()) {
+          PMapping m = this.logicalToPTOperator.get(im.getOperatorWrapper());
+          if (m.parallelPartitions == parallelPartitions) {
+            // associated operator parallel partitioned
+            removePartition((PTOperator)in.target, parallelPartitions);
+            m.partitions.remove(in.target);
+          }
+        }
+      }
+    }
+    // remove the operator
+    LOG.debug("Removing operator " + oper);
+    removePTOperator(oper);
+    oper.container.operators.remove(oper); // TODO: thread safety
+
+    // per partition merge operators
+    if (!oper.upstreamMerge.isEmpty()) {
+      for (Map.Entry<InputPortMeta, PTOperator> mEntry : oper.upstreamMerge.entrySet()) {
+        removePTOperator(mEntry.getValue());
+        mEntry.getValue().container.operators.remove(mEntry.getValue());
+      }
+    }
   }
 
   private PTContainer findContainer(PTOperator p) {

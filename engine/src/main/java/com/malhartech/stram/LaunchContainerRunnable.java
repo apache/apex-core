@@ -5,7 +5,6 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
-import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -214,7 +213,8 @@ public class LaunchContainerRunnable implements Runnable
                                 YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
     vargs.add("-Dstram.cid=" + jvmID);
-    vargs.add("-D" + StdOutErrLog.MALHAR_LOGDIR + '=' + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/clog");
+    vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
+    vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/clog");
 
     // Add main class and its arguments
     vargs.add(StramChild.class.getName());  // main of Child
