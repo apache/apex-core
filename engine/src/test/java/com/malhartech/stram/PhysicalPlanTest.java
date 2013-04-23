@@ -273,10 +273,16 @@ public class PhysicalPlanTest {
 
     GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
     GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
+    GenericTestModule o3parallel = dag.addOperator("o3parallel", GenericTestModule.class);
+    OperatorMeta o3Meta = dag.getOperatorMeta(o3parallel);
     GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
 
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
-    dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
+//    dag.addStream("node2_outport1", node2.outport1, mergeNode.inport1);
+
+    dag.addStream("node2_outport1", node2.outport1, o3parallel.inport1).setInline(true);
+    dag.setInputPortAttribute(o3parallel.inport1, PortContext.PARTITION_PARALLEL, true);
+    dag.addStream("o3parallel_outport1", o3parallel.outport1, mergeNode.inport1);
 
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
@@ -296,7 +302,8 @@ public class PhysicalPlanTest {
 
     Set<PTOperator> expUndeploy = Sets.newHashSet(plan.getOperators(dag.getOperatorMeta(mergeNode)));
     expUndeploy.addAll(n2Instances);
-    expUndeploy.addAll(plan.getMergeOperators(node2Meta).values());
+    expUndeploy.addAll(plan.getOperators(o3Meta));
+    expUndeploy.addAll(plan.getMergeOperators(o3Meta).values());
 
     // verify load update generates expected events per configuration
     Assert.assertEquals("stats handlers " + po, 1, po.statsMonitors.size());

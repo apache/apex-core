@@ -33,7 +33,7 @@ public class StdOutErrLog
       }
     }
     else {
-      logger.warn("found appeneder {} instead of RollingFileAppender", appender);
+      logger.warn("found appender {} instead of RollingFileAppender", appender);
     }
 
     System.setOut(createLoggingProxy(System.out));
