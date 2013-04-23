@@ -111,9 +111,9 @@ public class GenericNodeTest
       }
 
     };
-    gn.connectInputPort("ip1", attributes, reservoir1);
-    gn.connectInputPort("ip2", attributes, reservoir2);
-    gn.connectOutputPort("op", attributes, output);
+    gn.connectInputPort("ip1", reservoir1);
+    gn.connectInputPort("ip2", reservoir2);
+    gn.connectOutputPort("op", output);
 
     final AtomicBoolean ab = new AtomicBoolean(false);
     Thread t = new Thread()

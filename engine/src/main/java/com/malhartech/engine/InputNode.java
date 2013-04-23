@@ -4,10 +4,8 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.InputOperator;
 import com.malhartech.tuple.Tuple;
-import com.malhartech.util.AttributeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +23,7 @@ public class InputNode extends Node<InputOperator>
   }
 
   @Override
-  public void connectInputPort(String port, AttributeMap<PortContext> attributes, SweepableReservoir reservoir)
+  public void connectInputPort(String port, SweepableReservoir reservoir)
   {
     if (Node.INPUT.equals(port)) {
       controlTuples = reservoir;

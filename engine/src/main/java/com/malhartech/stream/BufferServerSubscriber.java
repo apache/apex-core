@@ -43,11 +43,11 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   private int lastWindowId;
 
   @SuppressWarnings("unchecked")
-  public BufferServerSubscriber(String id)
+  public BufferServerSubscriber(String id, int queueCapacity)
   {
     super(id);
-    polledFragments = offeredFragments = new CircularBuffer<Fragment>(1024);
-    freeFragments = new CircularBuffer<Fragment>(1024);
+    polledFragments = offeredFragments = new CircularBuffer<Fragment>(queueCapacity);
+    freeFragments = new CircularBuffer<Fragment>(queueCapacity);
     backlog = new ArrayDeque<CircularBuffer<Fragment>>();
   }
 
@@ -79,7 +79,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
     if (!offeredFragments.offer(f)) {
       suspendRead();
       synchronized (backlog) {
-        int newsize = offeredFragments.capacity() == 32 * 1024? offeredFragments.capacity(): offeredFragments.capacity() << 1;
+        int newsize = offeredFragments.capacity() == 32 * 1024 ? offeredFragments.capacity() : offeredFragments.capacity() << 1;
         backlog.add(offeredFragments = new CircularBuffer<Fragment>(newsize));
         offeredFragments.add(f);
       }
@@ -114,7 +114,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   private volatile BufferReservoir[] reservoirs = new BufferReservoir[0];
   private HashMap<String, BufferReservoir> reservoirMap = new HashMap<String, BufferReservoir>();
 
-  @Override
   public SweepableReservoir acquireReservoir(String id, int capacity)
   {
     BufferReservoir r = reservoirMap.get(id);
@@ -137,8 +136,27 @@ public class BufferServerSubscriber extends Subscriber implements Stream
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
+  public SweepableReservoir releaseReservoir(String sinkId)
+  {
+    BufferReservoir r = reservoirMap.remove(sinkId);
+    if (r != null) {
+      BufferReservoir[] newReservoirs = new BufferReservoir[reservoirs.length - 1];
+
+      int j = 0;
+      for (int i = 0; i < reservoirs.length; i++) {
+        if (reservoirs[i] != r) {
+          newReservoirs[j++] = reservoirs[i];
+        }
+      }
+
+      reservoirs = newReservoirs;
+    }
+
+    return r;
+  }
+
   @Override
-  public void releaseReservoir(String sinkId)
+  public void setSink(String id, Sink<Object> sink)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
@@ -192,7 +210,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
         }
 
         while (min > 0) {
-          Fragment fm = offeredFragments.pollUnsafe();
+          Fragment fm = polledFragments.pollUnsafe();
           com.malhartech.bufferserver.packet.Tuple data = com.malhartech.bufferserver.packet.Tuple.getTuple(fm.buffer, fm.offset, fm.length);
           Object o;
           switch (data.getType()) {
@@ -241,7 +259,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
               throw new IllegalArgumentException("Unhandled Message Type " + data.getType());
           }
 
-          freeFragments.add(fm);
+          freeFragments.offer(fm);
           for (int i = reservoirs.length; i-- > 0;) {
             reservoirs[i].add(o);
           }

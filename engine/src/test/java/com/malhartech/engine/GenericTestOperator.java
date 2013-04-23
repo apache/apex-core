@@ -16,9 +16,9 @@ import org.slf4j.LoggerFactory;
  * Module for constructing unit test DAG.
  * Test should reference the ports defined using the constants.
  */
-public class GenericTestModule extends BaseOperator {
+public class GenericTestOperator extends BaseOperator {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GenericTestModule.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GenericTestOperator.class);
 
   public static final String IPORT1 = "input1";
   public static final String IPORT2 = "input2";
@@ -32,7 +32,7 @@ public class GenericTestModule extends BaseOperator {
     }
     @Override
     public String toString() {
-      return GenericTestModule.this.toString() + "." + IPORT1;
+      return GenericTestOperator.this.toString() + "." + IPORT1;
     }
   };
 
@@ -44,7 +44,7 @@ public class GenericTestModule extends BaseOperator {
     }
     @Override
     public String toString() {
-      return GenericTestModule.this.toString() + "." + IPORT2;
+      return GenericTestOperator.this.toString() + "." + IPORT2;
     }
   };
 

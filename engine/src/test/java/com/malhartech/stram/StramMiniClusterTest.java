@@ -59,8 +59,8 @@ import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.InputOperator;
-import com.malhartech.engine.GenericTestModule;
-import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.GenericTestOperator;
+import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
@@ -180,7 +180,7 @@ public class StramMiniClusterTest
     Properties dagProps = new Properties();
 
     // input module (ensure shutdown works while windows are generated)
-    dagProps.put("stram.operator.numGen.classname", TestGeneratorInputModule.class.getName());
+    dagProps.put("stram.operator.numGen.classname", TestGeneratorInputOperator.class.getName());
     dagProps.put("stram.operator.numGen.maxTuples", "1");
 
     // fake output adapter - to be ignored when determine shutdown
@@ -188,9 +188,9 @@ public class StramMiniClusterTest
     //props.put("stram.stream.output.inputNode", "module2");
     //props.put("stram.stream.output.filepath", "miniclustertest-testSetupShutdown.out");
 
-    dagProps.put("stram.operator.module1.classname", GenericTestModule.class.getName());
+    dagProps.put("stram.operator.module1.classname", GenericTestOperator.class.getName());
 
-    dagProps.put("stram.operator.module2.classname", GenericTestModule.class.getName());
+    dagProps.put("stram.operator.module2.classname", GenericTestOperator.class.getName());
 
     dagProps.put("stram.stream.fromNumGen.source", "numGen.outputPort");
     dagProps.put("stram.stream.fromNumGen.sinks", "module1.input1");
@@ -240,9 +240,9 @@ public class StramMiniClusterTest
 
     // single container topology of inline input and module
     Properties props = new Properties();
-    props.put("stram.stream.input.classname", TestGeneratorInputModule.class.getName());
+    props.put("stram.stream.input.classname", TestGeneratorInputOperator.class.getName());
     props.put("stram.stream.input.outputNode", "module1");
-    props.put("stram.module.module1.classname", GenericTestModule.class.getName());
+    props.put("stram.module.module1.classname", GenericTestOperator.class.getName());
 
     File tmpFile = createTmpPropFile(props);
 

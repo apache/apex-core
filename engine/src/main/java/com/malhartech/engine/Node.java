@@ -5,7 +5,6 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.ActivationListener;
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
@@ -14,7 +13,6 @@ import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
 import com.malhartech.tuple.EndWindowTuple;
-import com.malhartech.util.AttributeMap;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Array;
@@ -74,7 +72,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return descriptor;
   }
 
-  public void connectOutputPort(String port, AttributeMap<PortContext> attributes, final Sink<Object> sink)
+  public void connectOutputPort(String port, final Sink<Object> sink)
   {
     @SuppressWarnings("unchecked")
     OutputPort<Object> outputPort = (OutputPort<Object>)descriptor.outputPorts.get(port);
@@ -95,7 +93,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  public abstract void connectInputPort(String port, AttributeMap<PortContext> attributes, final SweepableReservoir reservoir);
+  public abstract void connectInputPort(String port, final SweepableReservoir reservoir);
 
   public void addSinks(Map<String, Sink<Object>> sinks)
   {

@@ -81,7 +81,7 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  public void connectInputPort(String port, AttributeMap<PortContext> attributes, final SweepableReservoir reservoir)
+  public void connectInputPort(String port, final SweepableReservoir reservoir)
   {
     if (reservoir == null) {
       throw new IllegalArgumentException("Reservoir cannot be null for port '" + port + "' on operator '" + operator + "'");
@@ -298,7 +298,7 @@ public class GenericNode extends Node<Operator>
                     while (dici.hasNext()) {
                       DeferredInputConnection dic = dici.next();
                       if (e.getKey().equals(dic.portname)) {
-                        connectInputPort(dic.portname, null, dic.reservoir);
+                        connectInputPort(dic.portname, dic.reservoir);
                         dici.remove();
                         break;
                       }

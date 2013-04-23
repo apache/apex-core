@@ -3,18 +3,19 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.*;
 import com.malhartech.engine.*;
 import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.tuple.Tuple;
 import com.malhartech.util.AttributeMap;
-import com.malhartech.util.AttributeMap.AttributeKey;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Test for message flow through DAG
@@ -28,9 +29,6 @@ public class InlineStreamTest
   public void test() throws Exception
   {
     final int totalTupleCount = 5000;
-    prev = null;
-
-    //final SweepableReservoir reservoir = new DefaultReservoir("reservoir", 1024);
 
     final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
     final GenericNode node1 = new GenericNode("node1", operator1);
@@ -44,25 +42,10 @@ public class InlineStreamTest
     InlineStream stream = new InlineStream(1024);
     stream.setup(streamContext);
 
-    AttributeMap<PortContext> attributes = new AttributeMap<PortContext>()
-    {
-      @Override
-      public <T> Attribute<T> attr(AttributeKey<PortContext, T> key)
-      {
-        return null;
-      }
+    node1.connectOutputPort("output", stream);
+    node2.connectInputPort("input", stream);
 
-      @Override
-      public <T> T attrValue(AttributeKey<PortContext, T> key, T defaultValue)
-      {
-        return defaultValue;
-      }
-
-    };
-    node1.connectOutputPort("output", attributes, stream);
-    SweepableReservoir reservoir2 = stream.acquireReservoir("input", 1024);
-    node2.connectInputPort("input", attributes, reservoir2);
-
+    prev = null;
     Sink<Object> sink = new Sink<Object>()
     {
       /**
@@ -72,6 +55,10 @@ public class InlineStreamTest
       @Override
       public void process(Object payload)
       {
+        if (payload instanceof Tuple) {
+          return;
+        }
+
         if (prev == null) {
           prev = payload;
         }
@@ -93,14 +80,15 @@ public class InlineStreamTest
       }
 
     };
-    node2.connectOutputPort("output", attributes, sink);
+    node2.connectOutputPort("output", sink);
 
     DefaultReservoir reservoir1 = new DefaultReservoir("input", 1024 * 5);
-    node1.connectInputPort("input", attributes, reservoir1);
+    node1.connectInputPort("input", reservoir1);
 
     Map<Integer, Node<?>> activeNodes = new ConcurrentHashMap<Integer, Node<?>>();
     launchNodeThread(node1, activeNodes);
     launchNodeThread(node2, activeNodes);
+    stream.activate(streamContext);
 
     reservoir1.put(StramTestSupport.generateBeginWindowTuple("irrelevant", 0));
     for (int i = 0; i < totalTupleCount; i++) {
@@ -108,19 +96,18 @@ public class InlineStreamTest
     }
     reservoir1.put(StramTestSupport.generateEndWindowTuple("irrelevant", 0));
 
-    stream.activate(streamContext);
 
     synchronized (this) {
-      this.wait(100);
+      this.wait(200);
     }
 
     Assert.assertTrue("last tuple", prev != null && totalTupleCount - Integer.valueOf(prev.toString()) == 1);
     Assert.assertEquals("active operators", 2, activeNodes.size());
 
+    stream.deactivate();
     for (Node<?> node: activeNodes.values()) {
       node.deactivate();
     }
-    stream.deactivate();
 
     for (int i = 0; i < 10; i++) {
       Thread.sleep(20);
@@ -129,9 +116,9 @@ public class InlineStreamTest
       }
     }
 
+    stream.teardown();
     operator2.teardown();
     operator1.teardown();
-    stream.teardown();
 
     Assert.assertEquals("active operators", 0, activeNodes.size());
   }
@@ -191,4 +178,5 @@ public class InlineStreamTest
 
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(InlineStreamTest.class);
 }

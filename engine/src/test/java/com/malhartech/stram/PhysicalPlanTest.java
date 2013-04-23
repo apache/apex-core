@@ -35,8 +35,8 @@ import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.DefaultStreamCodec;
-import com.malhartech.engine.GenericTestModule;
-import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.GenericTestOperator;
+import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
@@ -53,7 +53,7 @@ public class PhysicalPlanTest {
 
   }
 
-  public static class PartitioningTestOperator extends GenericTestModule implements PartitionableOperator {
+  public static class PartitioningTestOperator extends GenericTestOperator implements PartitionableOperator {
     final static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
@@ -95,9 +95,9 @@ public class PhysicalPlanTest {
   public void testStaticPartitioning() {
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PartitioningTestOperator node2 = dag.addOperator("node2", PartitioningTestOperator.class);
-    GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
+    GenericTestOperator mergeNode = dag.addOperator("mergeNode", GenericTestOperator.class);
 
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inportWithCodec);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
@@ -129,8 +129,8 @@ public class PhysicalPlanTest {
   public void testDefaultPartitioning() {
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
     dag.addStream("node1.outport1", node1.outport1, node2.inport2, node2.inport1);
 
     int initialPartitionCount = 5;
@@ -213,9 +213,9 @@ public class PhysicalPlanTest {
   public void testRepartitioningScaleUp() {
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
-    GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator mergeNode = dag.addOperator("mergeNode", GenericTestOperator.class);
 
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
@@ -271,12 +271,18 @@ public class PhysicalPlanTest {
   public void testRepartitioningScaleDown() {
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
-    GenericTestModule mergeNode = dag.addOperator("mergeNode", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator o3parallel = dag.addOperator("o3parallel", GenericTestOperator.class);
+    OperatorMeta o3Meta = dag.getOperatorMeta(o3parallel);
+    GenericTestOperator mergeNode = dag.addOperator("mergeNode", GenericTestOperator.class);
 
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
-    dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
+//    dag.addStream("node2_outport1", node2.outport1, mergeNode.inport1);
+
+    dag.addStream("node2_outport1", node2.outport1, o3parallel.inport1).setInline(true);
+    dag.setInputPortAttribute(o3parallel.inport1, PortContext.PARTITION_PARALLEL, true);
+    dag.addStream("o3parallel_outport1", o3parallel.outport1, mergeNode.inport1);
 
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
 
@@ -296,7 +302,8 @@ public class PhysicalPlanTest {
 
     Set<PTOperator> expUndeploy = Sets.newHashSet(plan.getOperators(dag.getOperatorMeta(mergeNode)));
     expUndeploy.addAll(n2Instances);
-    expUndeploy.addAll(plan.getMergeOperators(node2Meta).values());
+    expUndeploy.addAll(plan.getOperators(o3Meta));
+    expUndeploy.addAll(plan.getMergeOperators(o3Meta).values());
 
     // verify load update generates expected events per configuration
     Assert.assertEquals("stats handlers " + po, 1, po.statsMonitors.size());
@@ -329,11 +336,11 @@ public class PhysicalPlanTest {
       Assert.assertEquals("inputs " + p, 2, p.inputs.size());
       boolean portConnected = false;
       for (PTInput input : p.inputs) {
-        if (GenericTestModule.IPORT1.equals(input.portName)) {
+        if (GenericTestOperator.IPORT1.equals(input.portName)) {
           portConnected = true;
           Assert.assertEquals("partition mask " + input, pks, input.partitions);
         }
-        Assert.assertTrue("connected " + GenericTestModule.IPORT1, portConnected);
+        Assert.assertTrue("connected " + GenericTestOperator.IPORT1, portConnected);
       }
     }
 
@@ -358,7 +365,7 @@ public class PhysicalPlanTest {
             newPartitionKeys("11", "11"));
 
     OperatorPartitions.DefaultPartitioner dp = new OperatorPartitions.DefaultPartitioner();
-    GenericTestModule operator = new GenericTestModule();
+    GenericTestOperator operator = new GenericTestOperator();
 
     Set<PartitionKeys> initialPartitionKeys = Sets.newHashSet(
             newPartitionKeys("1", "0"),
@@ -449,9 +456,9 @@ public class PhysicalPlanTest {
 
     DAG dag = new DAG();
 
-    GenericTestModule o1 = dag.addOperator("o1", GenericTestModule.class);
-    GenericTestModule o2 = dag.addOperator("o2", GenericTestModule.class);
-    GenericTestModule o3 = dag.addOperator("o3", GenericTestModule.class);
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
 
     PartitioningTestOperator partNode = dag.addOperator("partNode", PartitioningTestOperator.class);
     dag.getOperatorMeta(partNode).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
@@ -494,9 +501,9 @@ public class PhysicalPlanTest {
 
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
-    GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
 
     dag.addStream("n1Output1", node1.outport1, node3.inport1)
             .setInline(true);
@@ -524,19 +531,19 @@ public class PhysicalPlanTest {
 
     DAG dag = new DAG();
 
-    GenericTestModule o1 = dag.addOperator("o1", GenericTestModule.class);
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
-    GenericTestModule partitioned = dag.addOperator("partitioned", GenericTestModule.class);
+    GenericTestOperator partitioned = dag.addOperator("partitioned", GenericTestOperator.class);
     dag.getOperatorMeta(partitioned).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
 
-    GenericTestModule partitionedParallel = dag.addOperator("partitionedParallel", GenericTestModule.class);
+    GenericTestOperator partitionedParallel = dag.addOperator("partitionedParallel", GenericTestOperator.class);
 
     dag.addStream("o1_outport1", o1.outport1, partitioned.inport1).setInline(false);
 
     dag.addStream("partitioned_outport1", partitioned.outport1, partitionedParallel.inport2).setNodeLocal(true);
     dag.setInputPortAttribute(partitionedParallel.inport2, PortContext.PARTITION_PARALLEL, true);
 
-    GenericTestModule single = dag.addOperator("single", GenericTestModule.class);
+    GenericTestOperator single = dag.addOperator("single", GenericTestOperator.class);
     dag.addStream("partitionedParallel_outport1", partitionedParallel.outport1, single.inport1);
 
     int maxContainers = 7;
@@ -609,12 +616,12 @@ public class PhysicalPlanTest {
 
     DAG dag = new DAG();
 
-    GenericTestModule o1 = dag.addOperator("o1", GenericTestModule.class);
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
-    GenericTestModule o2 = dag.addOperator("o2", GenericTestModule.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.getOperatorMeta(o2).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
 
-    GenericTestModule o3 = dag.addOperator("o3", GenericTestModule.class);
+    GenericTestOperator o3 = dag.addOperator("o3", GenericTestOperator.class);
 
     dag.addStream("o1Output1", o1.outport1, o2.inport1, o3.inport1).setInline(false);
 
@@ -622,18 +629,18 @@ public class PhysicalPlanTest {
     dag.setInputPortAttribute(o3.inport2, PortContext.PARTITION_PARALLEL, true);
 
     // parallel partition two downstream operators
-    GenericTestModule o3_1 = dag.addOperator("o3_1", GenericTestModule.class);
+    GenericTestOperator o3_1 = dag.addOperator("o3_1", GenericTestOperator.class);
     dag.setInputPortAttribute(o3_1.inport1, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o3_1Meta = dag.getOperatorMeta(o3_1);
 
-    GenericTestModule o3_2 = dag.addOperator("o3_2", GenericTestModule.class);
+    GenericTestOperator o3_2 = dag.addOperator("o3_2", GenericTestOperator.class);
     dag.setInputPortAttribute(o3_2.inport1, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o3_2Meta = dag.getOperatorMeta(o3_2);
 
     dag.addStream("o3outport1", o3.outport1, o3_1.inport1, o3_2.inport1).setInline(true);
 
     // join within parallel partition
-    GenericTestModule o4 = dag.addOperator("o4", GenericTestModule.class);
+    GenericTestOperator o4 = dag.addOperator("o4", GenericTestOperator.class);
     dag.setInputPortAttribute(o4.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.setInputPortAttribute(o4.inport2, PortContext.PARTITION_PARALLEL, true);
     OperatorMeta o4Meta = dag.getOperatorMeta(o4);
@@ -642,7 +649,7 @@ public class PhysicalPlanTest {
     dag.addStream("o3_2.outport1", o3_2.outport1, o4.inport2).setInline(true);
 
     // non inline
-    GenericTestModule o5single = dag.addOperator("o5single", GenericTestModule.class);
+    GenericTestOperator o5single = dag.addOperator("o5single", GenericTestOperator.class);
     dag.addStream("o4outport1", o4.outport1, o5single.inport1);
 
     int maxContainers = 5;
@@ -705,11 +712,11 @@ public class PhysicalPlanTest {
 
     DAG dag = new DAG();
 
-    TestGeneratorInputModule o1 = dag.addOperator("o1", TestGeneratorInputModule.class);
+    TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
     OperatorMeta o1Meta = dag.getOperatorMeta(o1);
 
-    GenericTestModule o2 = dag.addOperator("o2", GenericTestModule.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
     dag.setAttribute(o2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
     OperatorMeta o2Meta = dag.getOperatorMeta(o2);
 
@@ -753,7 +760,7 @@ public class PhysicalPlanTest {
       }
       // output to single downstream partition
       Assert.assertEquals("" + pUnifier, 1, pUnifier.outputs.size());
-      Assert.assertTrue(""+actualOperators.get(o2Meta.getId()).getOperatorMeta().getOperator(), actualOperators.get(o2Meta.getId()).getOperatorMeta().getOperator() instanceof GenericTestModule);
+      Assert.assertTrue(""+actualOperators.get(o2Meta.getId()).getOperatorMeta().getOperator(), actualOperators.get(o2Meta.getId()).getOperatorMeta().getOperator() instanceof GenericTestOperator);
 
       PTOperator p = actualOperators.get(o2Meta.getId());
       Assert.assertEquals("partition inputs " + p.inputs, 1, p.inputs.size());
