@@ -464,8 +464,8 @@ public class GenericNode extends Node<Operator>
         ar = (AbstractReservoir)r;
       }
       long endWindowDequeueTime = endWindowDequeueTimes.get(e.getKey());
-      ipstats.add(new PortStats(e.getKey(), ar.count, endWindowDequeueTime));
-      ar.count = 0;
+      ipstats.add(new PortStats(e.getKey(), ar.tupleCount, endWindowDequeueTime));
+      ar.tupleCount = 0;
     }
 
     stats.inputPorts = ipstats;

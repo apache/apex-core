@@ -74,13 +74,13 @@ class BufferServerReservoir extends AbstractReservoir
           //logger.debug("received {}", data);
           t = new EndWindowTuple();
           t.setWindowId(baseSeconds | (lastWindowId = data.getWindowId()));
-          count += i;
+          tupleCount += i;
           return t;
 
         case END_STREAM:
           t = new EndStreamTuple();
           t.setWindowId(baseSeconds | data.getWindowId());
-          count += i;
+          tupleCount += i;
           return t;
 
         case RESET_WINDOW:
@@ -90,14 +90,14 @@ class BufferServerReservoir extends AbstractReservoir
           }
           t = new ResetWindowTuple();
           t.setWindowId(baseSeconds | data.getWindowWidth());
-          count += i;
+          tupleCount += i;
           return t;
 
         case BEGIN_WINDOW:
           //logger.debug("received {}", data);
           t = new Tuple(data.getType());
           t.setWindowId(baseSeconds | data.getWindowId());
-          count += i;
+          tupleCount += i;
           return t;
 
         case NO_MESSAGE:
@@ -109,7 +109,7 @@ class BufferServerReservoir extends AbstractReservoir
       }
     }
 
-    count += size;
+    tupleCount += size;
     return null;
   }
 

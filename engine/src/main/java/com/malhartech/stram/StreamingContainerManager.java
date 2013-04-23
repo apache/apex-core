@@ -467,6 +467,10 @@ public class StreamingContainerManager implements PlanContext
             if (portToTuples.containsKey(ps.port.portName)) {
               ps.tuplesPSMA10.add(portToTuples.get(ps.port.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
             }
+            Long numBytes = shb.getBufferServerPublisherWrittenBytes().get(ps.port.portName);
+            if (numBytes != null) {
+              ps.writtenBytesPSMA10.add(numBytes);
+            }
           }
           if (status.operator.statsMonitors != null) {
             long tps = status.tuplesProcessedPSMA10.getAvg() + status.tuplesEmittedPSMA10.getAvg();
@@ -840,8 +844,7 @@ public class StreamingContainerManager implements PlanContext
             pinfo.name = ps.port.portName;
             pinfo.totalTuples = ps.totalTuples;
             pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-            pinfo.totalBytes = ps.totalBytes;
-            pinfo.bytesPSMA10 = ps.bytesPSMA10.getAvg();
+            pinfo.writtenBytesPSMA10 = ps.writtenBytesPSMA10.getAvg();
             ni.addInputPort(pinfo);
           }
           for (OutputPortStatus ps : os.outputPortStatusList.values()) {
@@ -849,8 +852,7 @@ public class StreamingContainerManager implements PlanContext
             pinfo.name = ps.port.portName;
             pinfo.totalTuples = ps.totalTuples;
             pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-            pinfo.totalBytes = ps.totalBytes;
-            pinfo.bytesPSMA10 = ps.bytesPSMA10.getAvg();
+            pinfo.writtenBytesPSMA10 = ps.writtenBytesPSMA10.getAvg();
             ni.addOutputPort(pinfo);
           }
         }

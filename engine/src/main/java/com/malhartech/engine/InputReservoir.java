@@ -27,13 +27,13 @@ class InputReservoir extends AbstractReservoir
     final int size = size();
     for (int i = 1; i <= size; i++) {
       if (peekUnsafe() instanceof Tuple) {
-        count += i;
+        tupleCount += i;
         return (Tuple)peekUnsafe();
       }
       sink.process(pollUnsafe());
     }
 
-    count += size;
+    tupleCount += size;
     return null;
   }
 

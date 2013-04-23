@@ -12,9 +12,7 @@ import java.io.*;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -237,18 +235,28 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.lastBackupWindowId = lastBackupWindowId;
     }
 
-    private List<String> recordingNames = null;
+    private List<String> recordingNames = new ArrayList<String>();
 
     public List<String> getRecordingNames() {
-      return recordingNames;
+      return Collections.unmodifiableList(recordingNames);
     }
 
     public void addRecordingName(String recordingName) {
-      if (this.recordingNames == null) {
-        this.recordingNames = new ArrayList<String>();
-      }
       this.recordingNames.add(recordingName);
     }
+
+    private Map<String, Long> bufferServerPublisherWrittenBytes = new HashMap<String, Long>();
+
+    public Map<String, Long> getBufferServerPublisherWrittenBytes()
+    {
+      return Collections.unmodifiableMap(bufferServerPublisherWrittenBytes);
+    }
+
+    public void setBufferServerPublisherWrittenBytes(String identifier, long bytes)
+    {
+      this.bufferServerPublisherWrittenBytes.put(identifier, new Long(bytes));
+    }
+
   }
 
   /**

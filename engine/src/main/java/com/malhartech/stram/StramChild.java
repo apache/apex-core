@@ -66,7 +66,10 @@ public class StramChild
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
   protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<Integer, Node<?>>();
+
+  // Key of this map is NodeID.PortID
   private final Map<String, ComponentContextPair<Stream<Object>, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream<Object>, StreamContext>>();
+
   protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
   protected final Map<Integer, OperatorContext> activeNodes = new ConcurrentHashMap<Integer, OperatorContext>();
   private final Map<Stream<?>, StreamContext> activeStreams = new ConcurrentHashMap<Stream<?>, StreamContext>();
@@ -592,6 +595,16 @@ public class StramChild
           tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
           if (tupleRecorder != null) {
             hb.addRecordingName(tupleRecorder.getRecordingName());
+          }
+          if (bufferServerAddress != null) {
+            String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
+            //String bspStreamKey = "tcp://".concat(bufferServerAddress.toString()).concat("/").concat(streamId);
+            ComponentContextPair<Stream<Object>, StreamContext> stream = streams.get(streamId);
+            if (stream != null && (stream.component instanceof BufferServerPublisher)) {
+              BufferServerPublisher bsp = (BufferServerPublisher) stream.component;
+              hb.setBufferServerPublisherWrittenBytes(portName, bsp.getWrittenByteCount());
+              bsp.resetWrittenByteCount();
+            }
           }
         }
         heartbeats.add(hb);
