@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  *
  */
-public class InlineStream extends DefaultReservoir implements Stream
+public class InlineStream extends DefaultReservoir implements Stream, SweepableReservoir
 {
   private DefaultReservoir reservoir;
 
@@ -79,13 +79,6 @@ public class InlineStream extends DefaultReservoir implements Stream
   }
 
   @Override
-  @SuppressWarnings("ReturnOfCollectionOrArrayField")
-  public SweepableReservoir acquireReservoir(String sinkId, int capacity)
-  {
-    return this;
-  }
-
-  @Override
   public void process(Object tuple)
   {
     try {
@@ -102,17 +95,11 @@ public class InlineStream extends DefaultReservoir implements Stream
     return "InlineStream{" + "reservoir=" + reservoir + '}';
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(InlineStream.class);
-
-  @Override
-  public void releaseReservoir(String sinkId)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
   @Override
   public void setSink(String id, Sink<Object> sink)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(InlineStream.class);
 }

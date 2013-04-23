@@ -56,16 +56,16 @@ public class StramLocalClusterTest
   {
     DAG dag = new DAG();
 
-    TestGeneratorInputModule genNode = dag.addOperator("genNode", TestGeneratorInputModule.class);
+    TestGeneratorInputOperator genNode = dag.addOperator("genNode", TestGeneratorInputOperator.class);
     genNode.setMaxTuples(2);
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     node1.setEmitFormat("%s >> node1");
 
     File outFile = new File("./target/" + StramLocalClusterTest.class.getName() + "-testLocalClusterInitShutdown.out");
     outFile.delete();
 
-    TestOutputModule outNode = dag.addOperator("outNode", TestOutputModule.class);
+    TestOutputOperator outNode = dag.addOperator("outNode", TestOutputOperator.class);
     outNode.pathSpec = outFile.toURI().toString();
 
     dag.addStream("fromGenNode", genNode.outport, node1.inport1);
@@ -100,14 +100,14 @@ public class StramLocalClusterTest
       // sink to collect tuples emitted by the input module
       sink = new TestSink();
       String streamName = "testSinkStream";
-      String sourceId = Integer.toString(publisherOperator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(TestGeneratorInputModule.OUTPUT_PORT);
+      String sourceId = Integer.toString(publisherOperator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(TestGeneratorInputOperator.OUTPUT_PORT);
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
-      bsi = new BufferServerSubscriber(streamContext.getSinkId());
+      bsi = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
       bsi.setup(streamContext);
       reservoir = bsi.acquireReservoir("testSink", 1024);
       reservoir.setSink(sink);
@@ -141,11 +141,11 @@ public class StramLocalClusterTest
   {
     DAG dag = new DAG();
 
-    TestGeneratorInputModule node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
+    TestGeneratorInputOperator node1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     // data will be added externally from test
     node1.setMaxTuples(0);
 
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
 
     dag.addStream("n1n2", node1.outport, node2.inport1);
 
@@ -178,17 +178,17 @@ public class StramLocalClusterTest
     LocalStramChild c0 = StramTestSupport.waitForActivation(localCluster, ptNode1);
     Map<Integer, Node<?>> nodeMap = c0.getNodes();
     Assert.assertEquals("number operators", 1, nodeMap.size());
-    TestGeneratorInputModule n1 = (TestGeneratorInputModule)nodeMap.get(ptNode1.getId()).getOperator();
+    TestGeneratorInputOperator n1 = (TestGeneratorInputOperator)nodeMap.get(ptNode1.getId()).getOperator();
     Assert.assertNotNull(n1);
 
     LocalStramChild c2 = StramTestSupport.waitForActivation(localCluster, ptNode2);
     Map<Integer, Node<?>> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
-    GenericTestModule n2 = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorMeta(node2)).getId()).getOperator();
+    GenericTestOperator n2 = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorMeta(node2)).getId()).getOperator();
     Assert.assertNotNull(n2);
 
     // sink to collect tuples emitted by the input module
-    TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputModule.OUTPUT_PORT);
+    TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
 
     // input data
     String window0Tuple = "window0Tuple";
@@ -261,12 +261,12 @@ public class StramLocalClusterTest
     Assert.assertEquals(c2.getContainerId() + " operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify downstream node was replaced in same container
     Assert.assertEquals("active " + ptNode2, c2, StramTestSupport.waitForActivation(localCluster, ptNode2));
-    GenericTestModule n2Replaced = (GenericTestModule)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorMeta(node2)).getId()).getOperator();
+    GenericTestOperator n2Replaced = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorMeta(node2)).getId()).getOperator();
     Assert.assertNotNull("redeployed " + ptNode2, n2Replaced);
     Assert.assertNotSame("new instance " + ptNode2, n2, n2Replaced);
     Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());
 
-    TestGeneratorInputModule n1Replaced = (TestGeneratorInputModule)c0Replaced.getNodes().get(ptNode1.getId()).getOperator();
+    TestGeneratorInputOperator n1Replaced = (TestGeneratorInputOperator)c0Replaced.getNodes().get(ptNode1.getId()).getOperator();
     Assert.assertNotNull(n1Replaced);
 
     OperatorContext n1ReplacedContext = c0Replaced.getNodeContext(ptNode1.getId());
@@ -298,7 +298,7 @@ public class StramLocalClusterTest
     n1Replaced.addTuple(window6Tuple);
 
     // reconnect as buffer was replaced
-    sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputModule.OUTPUT_PORT);
+    sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
     // verify tuple sent before publisher checkpoint was removed from buffer during recovery
     // (publisher to resume from checkpoint id)
     tuples = sink.retrieveTuples(1, 3000);
@@ -311,7 +311,7 @@ public class StramLocalClusterTest
     Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
     Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
 
-    sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputModule.OUTPUT_PORT);
+    sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
     // buffer server data purged
     tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());

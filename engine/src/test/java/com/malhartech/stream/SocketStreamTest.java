@@ -7,8 +7,8 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.engine.DefaultStreamCodec;
-import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.StreamContext;
+import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.stram.support.StramTestSupport;
@@ -36,7 +36,7 @@ public class SocketStreamTest
 
   static {
     try {
-      eventloop = new DefaultEventLoop("streamTest");
+      eventloop = new DefaultEventLoop("StreamTestEventLoop");
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);
@@ -95,7 +95,7 @@ public class SocketStreamTest
     issContext.attr(StreamContext.CODEC).set(serde);
     issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId);
+    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId, 1024);
     iss.setup(issContext);
     SweepableReservoir reservoir = iss.acquireReservoir("testReservoir", 1);
     reservoir.setSink(sink);
@@ -107,7 +107,7 @@ public class SocketStreamTest
     ossContext.attr(StreamContext.CODEC).set(serde);
     ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId);
+    BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId, 1024);
     oss.setup(ossContext);
 
     iss.activate(issContext);
@@ -124,6 +124,11 @@ public class SocketStreamTest
 
     for (int i = 0; i < 100; i++) {
       Tuple t = reservoir.sweep();
+      if (t == null) {
+        continue;
+      }
+
+      reservoir.remove();
       if (t instanceof EndWindowTuple) {
         break;
       }

@@ -4,6 +4,7 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.tuple.EndWindowTuple;
 import com.malhartech.tuple.ResetWindowTuple;
@@ -23,8 +24,14 @@ import org.slf4j.LoggerFactory;
  * no inputadapter, then WindowGenerator instance is a no-op.<br>
  * <br>
  */
-public class WindowGenerator extends MuxReservoir implements Stream<Object>, Runnable
+public class WindowGenerator extends MuxReservoir implements Stream, Runnable
 {
+
+  @Override
+  public void setSink(String id, Sink<Object> sink)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */

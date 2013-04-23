@@ -11,9 +11,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestGeneratorInputModule extends BaseOperator implements InputOperator
+public class TestGeneratorInputOperator extends BaseOperator implements InputOperator
 {
-  private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputModule.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TestGeneratorInputOperator.class);
   public static final String OUTPUT_PORT = "outputPort";
   public static final String KEY_MAX_TUPLES = "maxTuples";
   private String myConfigProperty;

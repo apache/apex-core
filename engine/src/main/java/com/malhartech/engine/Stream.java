@@ -24,8 +24,4 @@ public interface Stream extends Component<StreamContext>, ActivationListener<Str
   public boolean isMultiSinkCapable();
 
   public void setSink(String id, Sink<Object> sink);
-
-//  public SweepableReservoir acquireReservoir(String sinkId, int capacity);
-//
-//  public void releaseReservoir(String sinkId);
 }

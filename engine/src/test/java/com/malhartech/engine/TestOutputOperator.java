@@ -4,11 +4,11 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.tuple.Tuple;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context;
 import com.malhartech.api.DefaultInputPort;
+import com.malhartech.tuple.Tuple;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -21,9 +21,9 @@ import org.slf4j.LoggerFactory;
  * Writes stringified tuple to a file stream.
  * Used to verify data flow in test.
  */
-public class TestOutputModule extends BaseOperator
+public class TestOutputOperator extends BaseOperator
 {
-  private static final Logger logger = LoggerFactory.getLogger(TestOutputModule.class);
+  private static final Logger logger = LoggerFactory.getLogger(TestOutputOperator.class);
   private boolean append;
   public String pathSpec;
   private transient FSDataOutputStream output;

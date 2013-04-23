@@ -35,7 +35,7 @@ public abstract class MuxReservoir
     return r;
   }
 
-  public void releaseReservoir(String id)
+  public SweepableReservoir releaseReservoir(String id)
   {
     SubReservoir r = reservoirMap.remove(id);
     if (r != null) {
@@ -50,6 +50,8 @@ public abstract class MuxReservoir
 
       reservoirs = newReservoirs;
     }
+
+    return r;
   }
 
   public abstract Reservoir getMasterReservoir();

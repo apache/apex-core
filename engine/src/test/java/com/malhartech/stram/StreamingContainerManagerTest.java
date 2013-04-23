@@ -24,8 +24,8 @@ import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
-import com.malhartech.engine.GenericTestModule;
-import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.GenericTestOperator;
+import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.tuple.Tuple;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
@@ -94,9 +94,9 @@ public class StreamingContainerManagerTest {
 
     DAG dag = new DAG();
 
-    TestGeneratorInputModule node1 = dag.addOperator("node1", TestGeneratorInputModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
-    GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
+    TestGeneratorInputOperator node1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
 
     dag.addStream("n1n2", node1.outport, node2.inport1);
     dag.setOutputPortAttribute(node1.outport, PortContext.SPIN_MILLIS, 99);
@@ -154,29 +154,29 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("portName " + c2n1n2, dag.getOperatorMeta(node2).getInputPortMeta(node2.inport1).getPortName(), c2n1n2.portName);
     Assert.assertNull("partitionKeys " + c2n1n2, c2n1n2.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n1n2, node1DI.id, c2n1n2.sourceNodeId);
-    Assert.assertEquals("sourcePortName " + c2n1n2, TestGeneratorInputModule.OUTPUT_PORT, c2n1n2.sourcePortName);
+    Assert.assertEquals("sourcePortName " + c2n1n2, TestGeneratorInputOperator.OUTPUT_PORT, c2n1n2.sourcePortName);
     Assert.assertNotNull("contextAttributes " + c2n1n2, c2n1n2.contextAttributes);
 
     // inline input node3 from node2
     InputDeployInfo c2n3In = getInputDeployInfo(node3DI, "n2n3");
     Assert.assertNotNull("input " + c2n3In, node2DI);
-    Assert.assertEquals("portName " + c2n3In, GenericTestModule.IPORT1, c2n3In.portName);
+    Assert.assertEquals("portName " + c2n3In, GenericTestOperator.IPORT1, c2n3In.portName);
     Assert.assertNotNull("stream connection for container2", c2n3In);
     Assert.assertNull("bufferServerHost " + c2n3In, c2n3In.bufferServerHost);
     Assert.assertEquals("bufferServerPort " + c2n3In, 0, c2n3In.bufferServerPort);
     Assert.assertNull("partitionKeys " + c2n3In, c2n3In.partitionKeys);
     Assert.assertEquals("sourceNodeId " + c2n3In, node2DI.id, c2n3In.sourceNodeId);
-    Assert.assertEquals("sourcePortName " + c2n3In, GenericTestModule.OPORT1, c2n3In.sourcePortName);
+    Assert.assertEquals("sourcePortName " + c2n3In, GenericTestOperator.OPORT1, c2n3In.sourcePortName);
   }
 
   @Test
   public void testStaticPartitioning() {
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
     dag.setAttribute(node2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
-    GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
 
     DAG.StreamMeta n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
     DAG.StreamMeta n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
@@ -257,9 +257,9 @@ public class StreamingContainerManagerTest {
   public void testBufferServerAssignment() {
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
-    GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
 
     dag.addStream("n1n2", node1.outport1, node2.inport1);
 
@@ -277,9 +277,9 @@ public class StreamingContainerManagerTest {
   {
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
-    GenericTestModule node3 = dag.addOperator("node3", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
+    GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
 
     dag.addStream("n1n2", node1.outport1, node2.inport1);
     dag.addStream("n2n3", node2.outport1, node3.inport1);
