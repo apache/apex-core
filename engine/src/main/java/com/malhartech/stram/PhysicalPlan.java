@@ -1018,6 +1018,7 @@ public class PhysicalPlan {
           }
         }
         addPTOperator(this.logicalToPTOperator.get(pp), null);
+        // TODO: set checkpoint, set container
       }
 
       // set checkpoint for new operator for deployment

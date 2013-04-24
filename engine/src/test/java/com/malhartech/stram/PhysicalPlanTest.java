@@ -352,6 +352,9 @@ public class PhysicalPlanTest {
     expDeploy.addAll(plan.getMergeOperators(o3Meta).values());
 
     Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
+    for (PTOperator oper : ctx.deploy) {
+      Assert.assertNotNull("container " + oper , oper.getContainer());
+    }
     Assert.assertEquals("backup for merged operators " + ctx.backupRequests, 4, ctx.backupRequests.size());
 
   }
