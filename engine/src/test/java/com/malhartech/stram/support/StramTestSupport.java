@@ -64,7 +64,12 @@ abstract public class StramTestSupport
   public static void waitForWindowComplete(OperatorContext nodeCtx, long windowId) throws InterruptedException
   {
     LOG.debug("Waiting for end of window {} at node {} when lastProcessedWindowId is {}", new Object[]{windowId, nodeCtx.getId(), nodeCtx.getLastProcessedWindowId()});
+    long startMillis = System.currentTimeMillis();
     while (nodeCtx.getLastProcessedWindowId() < windowId) {
+      if (System.currentTimeMillis() > (startMillis + DEFAULT_TIMEOUT_MILLIS)) {
+        long timeout = System.currentTimeMillis() - startMillis;
+        throw new AssertionError(String.format("Timeout %s ms waiting for window %s operator %s",  timeout, windowId, nodeCtx.getId()));
+      }
       Thread.sleep(20);
     }
   }

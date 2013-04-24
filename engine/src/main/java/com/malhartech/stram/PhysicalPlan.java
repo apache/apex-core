@@ -990,20 +990,35 @@ public class PhysicalPlan {
     for (PTOperator p : currentPartitionMap.values()) {
       newMapping.partitions.remove(p);
       removePartition(p, currentMapping.parallelPartitions);
-
-      // TODO: remove checkpoint states
     }
+
+    // keep mapping reference as that is where stats monitors point to
+    currentMapping.mergeOperators = newMapping.mergeOperators;
+    currentMapping.partitions = newMapping.partitions;
 
     // add new operators after cleanup complete
     Set<PTContainer> newContainers = new HashSet<PTContainer>();
 
     for (Partition<?> newPartition : addedPartitions) {
       // new partition, add operator instance
-      PTOperator p = addPTOperator(newMapping, newPartition);
-
-      // TODO: handle parallel partition
-
+      PTOperator p = addPTOperator(currentMapping, newPartition);
       deployOperators.add(p);
+
+      // handle parallel partition
+      Stack<OperatorMeta> pending = new Stack<DAG.OperatorMeta>();
+      pending.addAll(currentMapping.parallelPartitions);
+      pendingLoop:
+      while (!pending.isEmpty()) {
+        OperatorMeta pp = pending.pop();
+        for (StreamMeta s : pp.getInputStreams().values()) {
+          if (currentMapping.parallelPartitions.contains(s.getSource().getOperatorWrapper()) && pending.contains(s.getSource().getOperatorWrapper())) {
+            pending.push(pp);
+            pending.push(s.getSource().getOperatorWrapper());
+            continue pendingLoop;
+          }
+        }
+        addPTOperator(this.logicalToPTOperator.get(pp), null);
+      }
 
       // set checkpoint for new operator for deployment
       p.checkpointWindows.add(minCheckpoint);
@@ -1035,11 +1050,6 @@ public class PhysicalPlan {
     containers.addAll(newContainers); // TODO: thread safety
     ctx.redeploy(undeployOperators, newContainers, deployOperators);
 
-    // keep mapping reference as that is where stats monitors point to
-    currentMapping.mergeOperators = newMapping.mergeOperators;
-    currentMapping.partitions = newMapping.partitions;
-    //this.logicalToPTOperator.put(currentMapping.logicalOperator, newMapping);
-
   }
 
   /**
@@ -1068,6 +1078,8 @@ public class PhysicalPlan {
     // remove the operator
     LOG.debug("Removing operator " + oper);
     removePTOperator(oper);
+    // TODO: remove checkpoint states
+
     oper.container.operators.remove(oper); // TODO: thread safety
 
     // per partition merge operators

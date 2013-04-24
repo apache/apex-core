@@ -348,7 +348,8 @@ public class PhysicalPlanTest {
 
     Set<PTOperator> expDeploy = Sets.newHashSet(plan.getOperators(dag.getOperatorMeta(mergeNode)));
     expDeploy.addAll(plan.getOperators(node2Meta));
-    expDeploy.addAll(plan.getMergeOperators(node2Meta).values());
+    expDeploy.addAll(plan.getOperators(o3Meta));
+    expDeploy.addAll(plan.getMergeOperators(o3Meta).values());
 
     Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
     Assert.assertEquals("backup for merged operators " + ctx.backupRequests, 4, ctx.backupRequests.size());

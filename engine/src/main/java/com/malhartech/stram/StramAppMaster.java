@@ -65,6 +65,7 @@ import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
+import com.malhartech.util.VersionInfo;
 
 /**
  *
@@ -241,14 +242,14 @@ public class StramAppMaster
   {
     StdOutErrLog.tieSystemOutAndErrToLog();
 
-    boolean result = false;
-
+    LOG.info("version: {}", VersionInfo.getBuildVersion());
     StringWriter sw = new StringWriter();
     for (Map.Entry<String, String> e: System.getenv().entrySet()) {
       sw.append("\n").append(e.getKey()).append("=").append(e.getValue());
     }
     LOG.info("appmaster env:" + sw.toString());
 
+    boolean result = false;
     try {
       StramAppMaster appMaster = new StramAppMaster();
       LOG.info("Initializing ApplicationMaster");
