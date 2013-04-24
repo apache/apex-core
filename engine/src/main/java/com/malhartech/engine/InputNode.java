@@ -6,6 +6,7 @@ package com.malhartech.engine;
 
 import com.malhartech.api.InputOperator;
 import com.malhartech.tuple.Tuple;
+import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory;
  */
 public class InputNode extends Node<InputOperator>
 {
+  private ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
   protected SweepableReservoir controlTuples;
 
   public InputNode(String id, InputOperator operator)
@@ -26,7 +28,12 @@ public class InputNode extends Node<InputOperator>
   public void connectInputPort(String port, SweepableReservoir reservoir)
   {
     if (Node.INPUT.equals(port)) {
-      controlTuples = reservoir;
+      if (controlTuples == null) {
+        controlTuples = reservoir;
+      }
+      else {
+        deferredInputConnections.add(reservoir);
+      }
     }
   }
 
@@ -88,6 +95,17 @@ public class InputNode extends Node<InputOperator>
                 sinks[i].process(t);
               }
               handleRequests(currentWindowId, false);
+              break;
+
+            case END_STREAM:
+              if (deferredInputConnections.isEmpty()) {
+                for (int i = sinks.length; i-- > 0;) {
+                  sinks[i].process(t);
+                }
+              }
+              else {
+                controlTuples = deferredInputConnections.remove(0);
+              }
               break;
 
             default:

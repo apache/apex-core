@@ -8,6 +8,8 @@ import com.malhartech.api.Sink;
 import com.malhartech.tuple.Tuple;
 import com.malhartech.util.CircularBuffer;
 import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -76,15 +78,17 @@ public abstract class MuxReservoir
     public Tuple sweep()
     {
       final int size = size();
-      for (int i = 1; i <= size; i++) {
-        if (peekUnsafe() instanceof Tuple) {
-          count += i;
-          return (Tuple)peekUnsafe();
+      if (size > 0) {
+        for (int i = 1; i <= size; i++) {
+          if (peekUnsafe() instanceof Tuple) {
+            count += i;
+            return (Tuple)peekUnsafe();
+          }
+          sink.process(pollUnsafe());
         }
-        sink.process(pollUnsafe());
-      }
 
-      count += size;
+        count += size;
+      }
 
       final Reservoir masterReservoir = getMasterReservoir();
       synchronized (masterReservoir) {
@@ -121,4 +125,5 @@ public abstract class MuxReservoir
 
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(MuxReservoir.class);
 }

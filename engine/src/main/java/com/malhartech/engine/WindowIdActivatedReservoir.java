@@ -6,6 +6,7 @@ package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
 import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.tuple.EndStreamTuple;
 import com.malhartech.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ public class WindowIdActivatedReservoir implements SweepableReservoir
   private final String identifier;
   private final SweepableReservoir reservoir;
   private final long windowId;
+  EndStreamTuple est;
 
   public WindowIdActivatedReservoir(String identifier, SweepableReservoir reservoir, final long windowId)
   {
@@ -40,7 +42,16 @@ public class WindowIdActivatedReservoir implements SweepableReservoir
   @Override
   public Object remove()
   {
-    return reservoir.remove();
+    if (est == null) {
+      return reservoir.remove();
+    }
+
+    try {
+      return est;
+    }
+    finally {
+      est = null;
+    }
   }
 
   @Override
@@ -56,7 +67,7 @@ public class WindowIdActivatedReservoir implements SweepableReservoir
     while ((t = reservoir.sweep()) != null) {
       if (t.getType() == MessageType.BEGIN_WINDOW && t.getWindowId() > windowId) {
         reservoir.setSink(sink);
-        return t;
+        return (est = new EndStreamTuple(windowId));
       }
       reservoir.remove();
     }

@@ -4,16 +4,13 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.tuple.Tuple;
-import com.malhartech.util.AttributeMap;
 import java.util.*;
 import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
@@ -275,16 +272,7 @@ public class GenericNode extends Node<Operator>
 
               case END_STREAM:
                 activePort.remove();
-                /**
-                 * We are not going to receive begin window on this ever!
-                 */
-                expectingBeginWindow--;
-                /**
-                 * Since one of the operators we care about it gone, we should relook at our operators.
-                 * We need to make sure that the END_STREAM comes outside of the window.
-                 */
-                totalQueues--;
-
+                buffers.remove();
                 for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
                   Entry<String, SweepableReservoir> e = it.next();
                   if (e.getValue() == activePort) {
@@ -300,7 +288,8 @@ public class GenericNode extends Node<Operator>
                       if (e.getKey().equals(dic.portname)) {
                         connectInputPort(dic.portname, dic.reservoir);
                         dici.remove();
-                        break;
+                        activeQueues.add(dic.reservoir);
+                        break activequeue;
                       }
                     }
 
@@ -308,7 +297,15 @@ public class GenericNode extends Node<Operator>
                   }
                 }
 
-                buffers.remove();
+                /**
+                 * We are not going to receive begin window on this ever!
+                 */
+                expectingBeginWindow--;
+                /**
+                 * Since one of the operators we care about it gone, we should relook at our operators.
+                 * We need to make sure that the END_STREAM comes outside of the window.
+                 */
+                totalQueues--;
 
                 boolean break_activequeue = false;
                 if (totalQueues == 0) {

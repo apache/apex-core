@@ -350,7 +350,7 @@ public class StramChild
 
     Iterator<String> inputPorts = portMappingDescriptor.inputPorts.keySet().iterator();
     while (inputPorts.hasNext()) {
-      String sinkIdentifier =  String.valueOf(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(inputPorts.next());
+      String sinkIdentifier = String.valueOf(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(inputPorts.next());
       ComponentContextPair<Stream, StreamContext> pair = streams.remove(sinkIdentifier);
       if (pair != null) {
         if (activeStreams.remove(pair.component) != null) {
@@ -863,7 +863,7 @@ public class StramChild
      */
     for (OperatorDeployInfo ndi: nodeList) {
       Node<?> node = nodes.get(ndi.id);
-      long startingWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0;
+      long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
 
       for (OperatorDeployInfo.OutputDeployInfo nodi: ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
@@ -878,7 +878,7 @@ public class StramChild
            * this stream exists. That means someone outside of this container must be interested.
            */
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                  deployBufferServerPublisher(sourceIdentifier, startingWindowId, queueCapacity, nodi);
+                  deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
           newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
           node.connectOutputPort(nodi.portName, deployBufferServerPublisher.getValue().component);
         }
@@ -897,7 +897,7 @@ public class StramChild
              */
             StreamContext context = new StreamContext(nodi.declaredStreamId);
             context.setSourceId(sourceIdentifier);
-            context.setStartingWindowId(startingWindowId);
+            context.setStartingWindowId(finishedWindowId);
             Stream stream = new MuxStream();
 
             newStreams.put(sourceIdentifier, pair = new ComponentContextPair<Stream, StreamContext>(stream, context));
@@ -914,7 +914,7 @@ public class StramChild
 //          }
 //          else {
             SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
-                    deployBufferServerPublisher(sourceIdentifier, startingWindowId, queueCapacity, nodi);
+                    deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
             newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
 
             String sinkIdentifier = pair.context.getSinkId();
@@ -993,7 +993,7 @@ public class StramChild
           String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
           int queueCapacity = nidi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
-          long startingWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId + 1 : 0;
+          long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
 
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
           if (pair == null) {
@@ -1019,14 +1019,14 @@ public class StramChild
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
-            context.setStartingWindowId(startingWindowId);
+            context.setStartingWindowId(finishedWindowId);
 
             BufferServerSubscriber stream = new BufferServerSubscriber(nidi.declaredStreamId, queueCapacity);
             stream.setup(context);
 
             SweepableReservoir reservoir = stream.acquireReservoir(sinkIdentifier, queueCapacity);
-            if (startingWindowId > 0) {
-              reservoir = new WindowIdActivatedReservoir(sinkIdentifier, reservoir, startingWindowId);
+            if (finishedWindowId > 0) {
+              node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, reservoir, finishedWindowId));
             }
             node.connectInputPort(nidi.portName, reservoir);
 
@@ -1046,7 +1046,10 @@ public class StramChild
             }
             InlineStream stream = new InlineStream(queueCapacity);
             newStreams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, inlineContext));
-            node.connectInputPort(nidi.portName, startingWindowId > 0 ? new WindowIdActivatedReservoir(sinkIdentifier, stream, startingWindowId) : stream);
+            if (finishedWindowId > 0) {
+              node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, stream, finishedWindowId));
+            }
+            node.connectInputPort(nidi.portName, stream);
 
             if (!pair.component.isMultiSinkCapable()) {
               String originalSinkId = pair.context.getSinkId();
@@ -1054,7 +1057,7 @@ public class StramChild
               /* we come here only if we are trying to augment the dag */
               StreamContext muxContext = new StreamContext(nidi.declaredStreamId);
               muxContext.setSourceId(sourceIdentifier);
-              muxContext.setStartingWindowId(startingWindowId);
+              muxContext.setStartingWindowId(finishedWindowId);
               muxContext.setSinkId(originalSinkId);
 
               MuxStream muxStream = new MuxStream();
@@ -1099,7 +1102,7 @@ public class StramChild
         Node<?> node = nodes.get(ndi.id);
         SweepableReservoir reservoir = windowGenerator.acquireReservoir(String.valueOf(ndi.id), 1024);
         if (ndi.checkpointWindowId > 0) {
-          reservoir = new WindowIdActivatedReservoir(Integer.toString(ndi.id), reservoir, ndi.checkpointWindowId + 1);
+          node.connectInputPort(Node.INPUT, new WindowIdActivatedReservoir(Integer.toString(ndi.id), reservoir, ndi.checkpointWindowId));
         }
         node.connectInputPort(Node.INPUT, reservoir);
       }
@@ -1111,10 +1114,10 @@ public class StramChild
    * Create the window generator for the given start window id.
    * This is a hook for tests to control the window generation.
    *
-   * @param smallestWindowId
+   * @param finishedWindowId
    * @return WindowGenerator
    */
-  protected WindowGenerator setupWindowGenerator(long smallestWindowId)
+  protected WindowGenerator setupWindowGenerator(long finishedWindowId)
   {
     WindowGenerator windowGenerator = new WindowGenerator(new ScheduledThreadPoolExecutor(1, "WindowGenerator"), 1024);
     /**
@@ -1122,7 +1125,7 @@ public class StramChild
      */
     windowGenerator.setResetWindow(firstWindowMillis);
 
-    long millisAtFirstWindow = (smallestWindowId >> 32) * 1000 + windowWidthMillis * (smallestWindowId & WindowGenerator.MAX_WINDOW_ID);
+    long millisAtFirstWindow = (finishedWindowId >> 32) * 1000 + windowWidthMillis * (finishedWindowId & WindowGenerator.MAX_WINDOW_ID) + windowWidthMillis;
     windowGenerator.setFirstWindow(millisAtFirstWindow > firstWindowMillis ? millisAtFirstWindow : firstWindowMillis);
 
     windowGenerator.setWindowWidth(windowWidthMillis);
