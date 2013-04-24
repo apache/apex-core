@@ -131,12 +131,23 @@ public class StramChildAgent {
     long currentWindowId;
     MovingAverageLong tuplesProcessedPSMA10 = new MovingAverageLong(10);
     MovingAverageLong tuplesEmittedPSMA10 = new MovingAverageLong(10);
-    MovingAverageLong latencyMA10 = new MovingAverageLong(10);
     MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
     List<String> recordingNames; // null if recording is not in progress
+    Map<String, InputPortStatus> inputPortStatusList = new HashMap<String, InputPortStatus>();
+    Map<String, OutputPortStatus> outputPortStatusList = new HashMap<String, OutputPortStatus>();
 
     private OperatorStatus(PTOperator operator) {
       this.operator = operator;
+      for (PTInput ptInput: operator.inputs) {
+        InputPortStatus inputPortStatus = new InputPortStatus();
+        inputPortStatus.port = ptInput;
+        inputPortStatusList.put(ptInput.portName, inputPortStatus);
+      }
+      for (PTOutput ptOutput: operator.outputs) {
+        OutputPortStatus outputPortStatus = new OutputPortStatus();
+        outputPortStatus.port = ptOutput;
+        outputPortStatusList.put(ptOutput.portName, outputPortStatus);
+      }
     }
 
     public boolean isIdle()
@@ -148,10 +159,28 @@ public class StramChildAgent {
     }
   }
 
+  private class PortStatus
+  {
+    long totalTuples = 0;
+    MovingAverageLong tuplesPSMA10 = new MovingAverageLong(10);
+    MovingAverageLong bufferServerBytesPSMA10 = new MovingAverageLong(10);  // TBD
+  }
+
+  class InputPortStatus extends PortStatus
+  {
+    PTInput port;
+  }
+
+  class OutputPortStatus extends PortStatus
+  {
+    PTOutput port;
+  }
+
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx) {
     this.container = container;
     this.initCtx = initCtx;
     this.operators = new HashMap<Integer, OperatorStatus>(container.operators.size());
+    this.memoryMBFree = this.container.getAllocatedMemoryMB();
   }
 
   boolean shutdownRequested = false;
@@ -165,6 +194,7 @@ public class StramChildAgent {
   private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
   Runnable onAck = null;
   String jvmName;
+  int memoryMBFree;
 
   private final ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = new ConcurrentLinkedQueue<StramToNodeRequest>();
 
@@ -453,8 +483,9 @@ public class StramChildAgent {
     ci.state = container.getState().name();
     ci.jvmName = this.jvmName;
     ci.numOperators = container.operators.size();
-    ci.memoryMB = container.getAllocatedMemoryMB();
+    ci.memoryMBAllocated = container.getAllocatedMemoryMB();
     ci.lastHeartbeat = lastHeartbeatMillis;
+    ci.memoryMBFree = this.memoryMBFree;
     return ci;
   }
 

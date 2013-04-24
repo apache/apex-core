@@ -49,10 +49,10 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected long currentWindowId;
   protected int applicationWindowCount;
   protected long stramWindowSize;
-  protected long beginWindowTime = 0;
-  protected long endWindowTime = 0;
+  protected long endWindowEmitTime = 0;
   protected long lastSampleCpuTime = 0;
   protected ThreadMXBean tmb;
+  protected HashMap<String, Long> endWindowDequeueTimes = new HashMap<String, Long>(); // end window dequeue time for input ports
 
   public Node(String id, OPERATOR operator)
   {
@@ -200,6 +200,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     for (final Sink<Object> output: outputs.values()) {
       output.process(ewt);
     }
+    endWindowEmitTime = System.currentTimeMillis();
   }
 
   public void emitCheckpoint(long windowId)
@@ -240,11 +241,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
     for (Entry<String, InternalCounterSink> e: outputs.entrySet()) {
-      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount()));
+      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount(), endWindowEmitTime));
     }
-    if (applicationWindowBoundary) {
-      stats.latency = new Long(endWindowTime - beginWindowTime - applicationWindowCount * stramWindowSize * 1000000);
-    }
+
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
     stats.cpuTimeUsed = currentCpuTime - lastSampleCpuTime;
     lastSampleCpuTime = currentCpuTime;

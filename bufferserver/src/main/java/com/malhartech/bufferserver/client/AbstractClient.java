@@ -99,6 +99,7 @@ public abstract class AbstractClient extends Client
 
   /**
    * Upon reading the data from the socket into the byteBuffer, this method is called.
+   * read is pronounced "RED", past tense of "read", and not to be confused with the opposite of the "write" method
    *
    * @param len - length of the data in number of bytes read into the byteBuffer during the most recent read.
    */

@@ -14,7 +14,8 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractReservoir extends CircularBuffer<Object> implements Reservoir
 {
-  protected int count;
+  protected int tupleCount;
+  protected long networkByteCount;
   final String portname;
 
   AbstractReservoir(String portname, int bufferCapacity, int spinMillis)

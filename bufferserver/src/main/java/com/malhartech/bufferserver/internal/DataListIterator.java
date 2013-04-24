@@ -46,6 +46,11 @@ class DataListIterator implements Iterator<SerializedData>
     return da == null ? 0 : (int)(da.starting_window >> 32);
   }
 
+  public int getReadOffset()
+  {
+    return readOffset;
+  }
+  
   /**
    *
    * @return boolean
