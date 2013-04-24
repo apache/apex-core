@@ -64,13 +64,12 @@ public class CheckpointTest
     StramChild.eventloop = new DefaultEventLoop("CheckpointTestEventLoop");
   }
 
-    @After
+  @After
   public void teardown()
   {
     StramChild.eventloop.stop();
 
   }
-
 
   /**
    * Test saving of node state at window boundary.
@@ -173,8 +172,7 @@ public class CheckpointTest
     container.teardown();
   }
 
-      @Ignore
-@Test
+  @Test
   public void testUpdateRecoveryCheckpoint() throws Exception
   {
     DAG dag = new DAG();

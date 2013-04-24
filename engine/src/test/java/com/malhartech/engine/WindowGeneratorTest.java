@@ -16,27 +16,25 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class WindowGeneratorTest
 {
-  @Ignore
   @Test
   public void test2ndResetWindow() throws InterruptedException
   {
     logger.info("Testing 2nd Reset Window");
 
     ManualScheduledExecutorService msse = new ManualScheduledExecutorService(1);
-    WindowGenerator generator = new WindowGenerator(msse, WindowGenerator.MAX_WINDOW_ID + 1024);
+    WindowGenerator generator = new WindowGenerator(msse, (WindowGenerator.MAX_WINDOW_ID << 1) + 1024);
 
     generator.setFirstWindow(0L);
     generator.setResetWindow(0L);
     generator.setWindowWidth(1);
 
-    SweepableReservoir reservoir = generator.acquireReservoir(Node.OUTPUT, 1024);
+    SweepableReservoir reservoir = generator.acquireReservoir(Node.OUTPUT, (WindowGenerator.MAX_WINDOW_ID << 1) + 1024);
     final AtomicBoolean loggingEnabled = new AtomicBoolean(true);
     reservoir.setSink(new Sink<Object>()
     {
@@ -53,19 +51,20 @@ public class WindowGeneratorTest
 
     generator.activate(null);
 
-    msse.tick(1);
-    msse.tick(1);
+    msse.tick(1); /* reset window and begin window */
+    msse.tick(1); /* end window and begin window */
     loggingEnabled.set(false);
     for (int i = 0; i < WindowGenerator.MAX_WINDOW_ID - 2; i++) {
-      msse.tick(1);
+      msse.tick(1); /* end window and begin window */
     }
     loggingEnabled.set(true);
-    msse.tick(1);
+    msse.tick(1); /* end window, reset window, begin window */
 
     final AtomicInteger beginWindowCount = new AtomicInteger(0);
     final AtomicInteger endWindowCount = new AtomicInteger(0);
     final AtomicInteger resetWindowCount = new AtomicInteger(0);
     Tuple t;
+    reservoir.sweep();
     while ((t = reservoir.sweep()) != null) {
       reservoir.remove();
       switch (t.getType()) {
@@ -91,7 +90,6 @@ public class WindowGeneratorTest
   /**
    * Test of resetWindow functionality of WindowGenerator.
    */
-  @Ignore
   @Test
   public void testResetWindow()
   {
@@ -141,7 +139,6 @@ public class WindowGeneratorTest
     assert (reservoir.sweep() == null);
   }
 
-  @Ignore
   @Test
   public void testWindowGen() throws Exception
   {
