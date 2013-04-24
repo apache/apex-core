@@ -163,7 +163,7 @@ public class StramChildAgent {
   {
     long totalTuples = 0;
     MovingAverageLong tuplesPSMA10 = new MovingAverageLong(10);
-    MovingAverageLong writtenBytesPSMA10 = new MovingAverageLong(10);  // TBD
+    MovingAverageLong bufferServerBytesPSMA10 = new MovingAverageLong(10);  // TBD
   }
 
   class InputPortStatus extends PortStatus

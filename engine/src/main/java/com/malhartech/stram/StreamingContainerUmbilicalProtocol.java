@@ -245,16 +245,16 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.recordingNames.add(recordingName);
     }
 
-    private Map<String, Long> bufferServerPublisherWrittenBytes = new HashMap<String, Long>();
+    private Map<String, Long> bufferServerBytes = new HashMap<String, Long>();
 
-    public Map<String, Long> getBufferServerPublisherWrittenBytes()
+    public Map<String, Long> getBufferServerBytes()
     {
-      return Collections.unmodifiableMap(bufferServerPublisherWrittenBytes);
+      return Collections.unmodifiableMap(bufferServerBytes);
     }
 
-    public void setBufferServerPublisherWrittenBytes(String identifier, long bytes)
+    public void setBufferServerBytes(String identifier, long bytes)
     {
-      this.bufferServerPublisherWrittenBytes.put(identifier, new Long(bytes));
+      this.bufferServerBytes.put(identifier, bytes);
     }
 
   }

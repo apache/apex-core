@@ -28,8 +28,7 @@ import org.slf4j.LoggerFactory;
 public class BufferServerPublisher extends Publisher implements Stream<Object>
 {
   private StreamCodec<Object> serde;
-  private long totalBytesWritten = 0;
-  private long writtenByteCount = 0;
+  private long publishedByteCount = 0;
   private int windowId;
   private EventLoop eventloop;
 
@@ -97,8 +96,7 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
       while (!write(array)) {
         sleep(5);
       }
-      totalBytesWritten += array.length;
-      writtenByteCount += array.length;
+      publishedByteCount += array.length;
     }
     catch (InterruptedException ie) {
       throw new RuntimeException(ie);
@@ -155,19 +153,14 @@ public class BufferServerPublisher extends Publisher implements Stream<Object>
   {
   }
 
-  public long getTotalWrittenBytes()
+  public long getPublishedByteCount()
   {
-    return totalBytesWritten;
+    return publishedByteCount;
   }
 
-  public long getWrittenByteCount()
+  public void resetPublishedByteCount()
   {
-    return writtenByteCount;
-  }
-
-  public void resetWrittenByteCount()
-  {
-    writtenByteCount = 0;
+    publishedByteCount = 0;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);

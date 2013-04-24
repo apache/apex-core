@@ -462,14 +462,18 @@ public class StreamingContainerManager implements PlanContext
             if (portToTuples.containsKey(ps.port.portName)) {
               ps.tuplesPSMA10.add(portToTuples.get(ps.port.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
             }
+            Long numBytes = shb.getBufferServerBytes().get(ps.port.portName);
+            if (numBytes != null) {
+              ps.bufferServerBytesPSMA10.add(numBytes);
+            }
           }
           for (OutputPortStatus ps : status.outputPortStatusList.values()) {
             if (portToTuples.containsKey(ps.port.portName)) {
               ps.tuplesPSMA10.add(portToTuples.get(ps.port.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
             }
-            Long numBytes = shb.getBufferServerPublisherWrittenBytes().get(ps.port.portName);
+            Long numBytes = shb.getBufferServerBytes().get(ps.port.portName);
             if (numBytes != null) {
-              ps.writtenBytesPSMA10.add(numBytes);
+              ps.bufferServerBytesPSMA10.add(numBytes);
             }
           }
           if (status.operator.statsMonitors != null) {
@@ -844,7 +848,7 @@ public class StreamingContainerManager implements PlanContext
             pinfo.name = ps.port.portName;
             pinfo.totalTuples = ps.totalTuples;
             pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-            pinfo.writtenBytesPSMA10 = ps.writtenBytesPSMA10.getAvg();
+            pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
             ni.addInputPort(pinfo);
           }
           for (OutputPortStatus ps : os.outputPortStatusList.values()) {
@@ -852,7 +856,7 @@ public class StreamingContainerManager implements PlanContext
             pinfo.name = ps.port.portName;
             pinfo.totalTuples = ps.totalTuples;
             pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-            pinfo.writtenBytesPSMA10 = ps.writtenBytesPSMA10.getAvg();
+            pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
             ni.addOutputPort(pinfo);
           }
         }

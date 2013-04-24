@@ -33,6 +33,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
   private Sink<Fragment>[] normalSinks;
   private StreamCodec<Object> serde;
   private EventLoop eventloop;
+  private long readByteCount = 0;
 
   @SuppressWarnings("unchecked")
   public BufferServerSubscriber(String id)
@@ -62,6 +63,23 @@ public class BufferServerSubscriber extends Subscriber implements Stream<Object>
     distribute(f);
   }
 
+  @Override
+  public void read(int len)
+  {
+    super.read(len);
+    readByteCount += len;
+  }
+
+  public void resetReadByteCount()
+  {
+    readByteCount = 0;
+  }
+
+  public long getReadByteCount()
+  {
+    return readByteCount;
+  }
+  
   @Override
   @SuppressWarnings("unchecked")
   public void setSink(String id, Sink<Object> sink)

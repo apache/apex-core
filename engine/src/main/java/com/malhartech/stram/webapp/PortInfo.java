@@ -13,5 +13,5 @@ public class PortInfo
   public String name;
   public long totalTuples;
   public long tuplesPSMA10;
-  public long writtenBytesPSMA10;  // TBD
+  public long bufferServerBytesPSMA10;  // TBD
 }

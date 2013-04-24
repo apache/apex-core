@@ -590,6 +590,16 @@ public class StramChild
           if (tupleRecorder != null) {
             hb.addRecordingName(tupleRecorder.getRecordingName());
           }
+          if (bufferServerAddress != null) {
+            String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
+            //String bspStreamKey = "tcp://".concat(bufferServerAddress.toString()).concat("/").concat(streamId);
+            ComponentContextPair<Stream<Object>, StreamContext> stream = streams.get(streamId);
+            if (stream != null && (stream.component instanceof BufferServerSubscriber)) {
+              BufferServerSubscriber bsp = (BufferServerSubscriber) stream.component;
+              hb.setBufferServerBytes(portName, bsp.getReadByteCount());
+              bsp.resetReadByteCount();
+            }
+          }
         }
         for (String portName: portMappingDescriptor.outputPorts.keySet()) {
           tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
@@ -602,8 +612,8 @@ public class StramChild
             ComponentContextPair<Stream<Object>, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof BufferServerPublisher)) {
               BufferServerPublisher bsp = (BufferServerPublisher) stream.component;
-              hb.setBufferServerPublisherWrittenBytes(portName, bsp.getWrittenByteCount());
-              bsp.resetWrittenByteCount();
+              hb.setBufferServerBytes(portName, bsp.getPublishedByteCount());
+              bsp.resetPublishedByteCount();
             }
           }
         }
