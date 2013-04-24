@@ -464,7 +464,7 @@ public class StreamingContainerManager implements PlanContext
             }
             Long numBytes = shb.getBufferServerBytes().get(ps.port.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes);
+              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
             }
           }
           for (OutputPortStatus ps : status.outputPortStatusList.values()) {
@@ -473,7 +473,7 @@ public class StreamingContainerManager implements PlanContext
             }
             Long numBytes = shb.getBufferServerBytes().get(ps.port.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes);
+              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
             }
           }
           if (status.operator.statsMonitors != null) {
