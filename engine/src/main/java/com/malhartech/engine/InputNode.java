@@ -38,47 +38,10 @@ public class InputNode extends Node<InputOperator>
     boolean insideWindow = false;
     int windowCount = 0;
 
-    Tuple t;
     try {
       while (alive) {
-        int size;
-        if ((size = controlTuples.size()) > 0) {
-          while (size-- > 0) {
-            t = (Tuple)controlTuples.remove();
-            switch (t.getType()) {
-              case BEGIN_WINDOW:
-                for (int i = sinks.length; i-- > 0;) {
-                  sinks[i].process(t);
-                }
-                currentWindowId = t.getWindowId();
-                if (windowCount == 0) {
-                  insideWindow = true;
-                  operator.beginWindow(currentWindowId);
-                }
-                operator.emitTuples(); /* give at least one change to emit the tuples */
-                break;
-
-              case END_WINDOW:
-                if (++windowCount == applicationWindowCount) {
-                  operator.endWindow();
-                  insideWindow = false;
-                  windowCount = 0;
-                }
-                for (int i = sinks.length; i-- > 0;) {
-                  sinks[i].process(t);
-                }
-                handleRequests(currentWindowId, false);
-                break;
-
-              default:
-                for (int i = sinks.length; i-- > 0;) {
-                  sinks[i].process(t);
-                }
-                break;
-            }
-          }
-        }
-        else {
+        Tuple t = controlTuples.sweep();
+        if (t == null) {
           if (insideWindow) {
             int generatedTuples = 0;
 
@@ -98,6 +61,40 @@ public class InputNode extends Node<InputOperator>
           }
           else {
             Thread.sleep(0);
+          }
+        }
+        else {
+          controlTuples.remove();
+          switch (t.getType()) {
+            case BEGIN_WINDOW:
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].process(t);
+              }
+              currentWindowId = t.getWindowId();
+              if (windowCount == 0) {
+                insideWindow = true;
+                operator.beginWindow(currentWindowId);
+              }
+              operator.emitTuples(); /* give at least one chance to emit the tuples */
+              break;
+
+            case END_WINDOW:
+              if (++windowCount == applicationWindowCount) {
+                operator.endWindow();
+                insideWindow = false;
+                windowCount = 0;
+              }
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].process(t);
+              }
+              handleRequests(currentWindowId, false);
+              break;
+
+            default:
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].process(t);
+              }
+              break;
           }
         }
       }

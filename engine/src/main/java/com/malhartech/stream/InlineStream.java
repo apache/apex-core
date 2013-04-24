@@ -6,9 +6,9 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.engine.DefaultReservoir;
-import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
+import com.malhartech.engine.SweepableReservoir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,8 +30,6 @@ import org.slf4j.LoggerFactory;
  */
 public class InlineStream extends DefaultReservoir implements Stream, SweepableReservoir
 {
-  private DefaultReservoir reservoir;
-
   public InlineStream(int capacity)
   {
     super("InlineStream", capacity);
@@ -92,7 +90,7 @@ public class InlineStream extends DefaultReservoir implements Stream, SweepableR
   @Override
   public String toString()
   {
-    return "InlineStream{" + "reservoir=" + reservoir + '}';
+    return "InlineStream{" + super.toString() + '}';
   }
 
   @Override

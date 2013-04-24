@@ -7,9 +7,9 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Subscriber;
-import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
+import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.WindowGenerator;
 import com.malhartech.netlet.Client.Fragment;
 import com.malhartech.netlet.EventLoop;
@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerSubscriber extends Subscriber implements Stream
 {
+  private boolean suspended;
   private long baseSeconds;
   protected StreamCodec<Object> serde;
   private EventLoop eventloop;
@@ -77,8 +78,11 @@ public class BufferServerSubscriber extends Subscriber implements Stream
     }
 
     if (!offeredFragments.offer(f)) {
-      suspendRead();
       synchronized (backlog) {
+        if (!suspended) {
+          suspendRead();
+          suspended = true;
+        }
         int newsize = offeredFragments.capacity() == 32 * 1024 ? offeredFragments.capacity() : offeredFragments.capacity() << 1;
         backlog.add(offeredFragments = new CircularBuffer<Fragment>(newsize));
         offeredFragments.add(f);
@@ -181,22 +185,27 @@ public class BufferServerSubscriber extends Subscriber implements Stream
     public Tuple sweep()
     {
       final int size = size();
-      for (int i = 1; i <= size; i++) {
-        if (peekUnsafe() instanceof Tuple) {
-          count += i;
-          return (Tuple)peekUnsafe();
+      if (size > 0) {
+        for (int i = 1; i <= size; i++) {
+          if (peekUnsafe() instanceof Tuple) {
+            count += i;
+            return (Tuple)peekUnsafe();
+          }
+          sink.process(pollUnsafe());
         }
-        sink.process(pollUnsafe());
-      }
 
-      count += size;
+        count += size;
+      }
 
       synchronized (backlog) {
         /* find out the minimum remaining capacity in all the other buffers and consume those many tuples from bufferserver */
         int min = polledFragments.size();
         if (min == 0) {
           if (offeredFragments == polledFragments) {
-            resumeRead(); // if this is expensive, we maintain a flag elsewhere and trigger it only when suspended.
+            if (suspended) {
+              resumeRead();
+              suspended = false;
+            }
             return null;
           }
           polledFragments = backlog.remove();
@@ -209,7 +218,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
           }
         }
 
-        while (min > 0) {
+        while (min-- > 0) {
           Fragment fm = polledFragments.pollUnsafe();
           com.malhartech.bufferserver.packet.Tuple data = com.malhartech.bufferserver.packet.Tuple.getTuple(fm.buffer, fm.offset, fm.length);
           Object o;
@@ -263,7 +272,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream
           for (int i = reservoirs.length; i-- > 0;) {
             reservoirs[i].add(o);
           }
-          min--;
         }
       }
 

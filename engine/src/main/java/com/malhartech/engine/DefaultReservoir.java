@@ -49,7 +49,7 @@ public class DefaultReservoir extends CircularBuffer<Object> implements Sweepabl
   @Override
   public String toString()
   {
-    return "DefaultReservoir{" + "id=" + getId() + ", count=" + count + '}';
+    return "DefaultReservoir{" + "sink=" + sink + ", id=" + id + ", count=" + count + '}';
   }
 
   /**

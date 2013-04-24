@@ -26,12 +26,12 @@ import org.slf4j.LoggerFactory;
  */
 public class WindowGenerator extends MuxReservoir implements Stream, Runnable
 {
-
   @Override
   public void setSink(String id, Sink<Object> sink)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
+
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
@@ -44,7 +44,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
 
   }
 
-  private final MasterReservoir masterReservoir = new MasterReservoir(1024);
+  private final MasterReservoir masterReservoir;
   public static final int WINDOW_MASK = 0x3fff;
   public static final int MAX_WINDOW_ID = WINDOW_MASK - (WINDOW_MASK % 1000) - 1;
   public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID) > 0 ? (int)(Long.MAX_VALUE / MAX_WINDOW_ID) : Integer.MAX_VALUE;
@@ -56,9 +56,10 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   private int windowId;
   private long resetWindowMillis;
 
-  public WindowGenerator(ScheduledExecutorService service)
+  public WindowGenerator(ScheduledExecutorService service, int capacity)
   {
     ses = service;
+    masterReservoir = new MasterReservoir(capacity);
   }
 
   /**
