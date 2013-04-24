@@ -389,7 +389,7 @@ public class StramChildAgent {
           inputInfo.partitionMask = in.partitions.mask;
         }
 
-        if (streamMeta.isInline() && sourceOutput.source.container == node.container) {
+        if (sourceOutput.source.container == node.container) {
           // inline input (both operators in same container and inline hint set)
           OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getId());
           if (outputInfo == null) {
