@@ -530,7 +530,7 @@ public class StramChild
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof BufferServerSubscriber)) {
               BufferServerSubscriber bss = (BufferServerSubscriber) stream.component;
-              hb.setBufferServerBytes(portName, bss.resetReadByteCount());
+              hb.setBufferServerBytes(portName, bss.getAndResetReadByteCount());
             }
           }
         }
@@ -545,7 +545,7 @@ public class StramChild
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof BufferServerPublisher)) {
               BufferServerPublisher bsp = (BufferServerPublisher) stream.component;
-              hb.setBufferServerBytes(portName, bsp.resetPublishedByteCount());
+              hb.setBufferServerBytes(portName, bsp.getAndResetPublishedByteCount());
             }
           }
         }

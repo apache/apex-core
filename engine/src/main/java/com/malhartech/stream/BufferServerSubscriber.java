@@ -21,6 +21,7 @@ import com.malhartech.util.CircularBuffer;
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +43,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   CircularBuffer<Fragment> freeFragments;
   private final ArrayDeque<CircularBuffer<Fragment>> backlog;
   private int lastWindowId;
-  private long readByteCount = 0;
+  private AtomicLong readByteCount = new AtomicLong(0);
 
   @SuppressWarnings("unchecked")
   public BufferServerSubscriber(String id, int queueCapacity)
@@ -89,6 +90,13 @@ public class BufferServerSubscriber extends Subscriber implements Stream
         offeredFragments.add(f);
       }
     }
+  }
+
+  @Override
+  public void read(int len)
+  {
+    super.read(len);
+    readByteCount.addAndGet(len);
   }
 
   @Override
@@ -169,14 +177,9 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   /**
    * @return the readByteCount
    */
-  public long resetReadByteCount()
+  public long getAndResetReadByteCount()
   {
-    try {
-      return readByteCount;
-    }
-    finally {
-      readByteCount = 0;
-    }
+    return readByteCount.getAndSet(0);
   }
 
   class BufferReservoir extends CircularBuffer<Object> implements SweepableReservoir
