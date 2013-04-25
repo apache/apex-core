@@ -166,7 +166,6 @@ public class GenericNode extends Node<Operator>
                   }
                   if (windowCount == 0) {
                     insideWindow = true;
-                    beginWindowTime = System.nanoTime();
                     operator.beginWindow(currentWindowId);
                   }
                   receivedEndWindow = 0;
@@ -184,6 +183,8 @@ public class GenericNode extends Node<Operator>
                 if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
 
+                  endWindowDequeueTimes.put(portName, System.currentTimeMillis());
+
                   if (++receivedEndWindow == totalQueues) {
                     if (++windowCount == applicationWindowCount) {
                       insideWindow = false;
@@ -195,15 +196,11 @@ public class GenericNode extends Node<Operator>
                       output.process(t);
                     }
 
-                    if (!insideWindow) {
-                      endWindowTime = System.nanoTime();
-                    }
-
                     buffers.remove();
                     assert (activeQueues.isEmpty());
                     handleRequests(currentWindowId, !insideWindow);
 
-                    activeQueues.addAll(inputs.values());
+                    activeQueues.addAll(inputs.entrySet());
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
@@ -264,7 +261,7 @@ public class GenericNode extends Node<Operator>
                   }
 
                   assert (activeQueues.isEmpty());
-                  activeQueues.addAll(inputs.values());
+                  activeQueues.addAll(inputs.entrySet());
                   expectingBeginWindow = activeQueues.size();
                   break activequeue;
                 }
@@ -322,7 +319,7 @@ public class GenericNode extends Node<Operator>
 
                   emitEndWindow();
 
-                  activeQueues.addAll(inputs.values());
+                  activeQueues.addAll(inputs.entrySet());
                   expectingBeginWindow = activeQueues.size();
 
                   handleRequests(currentWindowId, true);

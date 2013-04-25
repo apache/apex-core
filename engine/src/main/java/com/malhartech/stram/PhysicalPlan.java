@@ -46,6 +46,7 @@ import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.Operators;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
+import java.util.Map.Entry;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -189,7 +190,6 @@ public class PhysicalPlan {
   public static interface StatsHandler {
     // TODO: handle stats generically
     public void onThroughputUpdate(PTOperator operatorInstance, long tps);
-    public void onLatencyUpdate(PTOperator operatorInstance, long latency);
     public void onCpuPercentageUpdate(PTOperator operatorInstance, double percentage);
   }
 
@@ -254,11 +254,6 @@ public class PhysicalPlan {
           }
         }
       }
-    }
-
-    @Override
-    public void onLatencyUpdate(final PTOperator operatorInstance, long latency) {
-      // not implemented yet
     }
 
     @Override
@@ -1270,6 +1265,14 @@ public class PhysicalPlan {
 
   protected List<OperatorMeta> getRootOperators() {
     return dag.getRootOperators();
+  }
+
+  protected List<PTOperator> getAllOperators() {
+    List<PTOperator> list = new ArrayList<PTOperator>();
+    for (Map.Entry<OperatorMeta, PMapping> entry : logicalToPTOperator.entrySet()) {
+      list.addAll(entry.getValue().partitions);
+    }
+    return list;
   }
 
   private void getDeps(PTOperator operator, Set<PTOperator> visited) {

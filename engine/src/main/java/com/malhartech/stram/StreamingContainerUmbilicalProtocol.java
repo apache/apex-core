@@ -12,9 +12,7 @@ import java.io.*;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -237,18 +235,28 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.lastBackupWindowId = lastBackupWindowId;
     }
 
-    private List<String> recordingNames = null;
+    private List<String> recordingNames = new ArrayList<String>();
 
     public List<String> getRecordingNames() {
-      return recordingNames;
+      return Collections.unmodifiableList(recordingNames);
     }
 
     public void addRecordingName(String recordingName) {
-      if (this.recordingNames == null) {
-        this.recordingNames = new ArrayList<String>();
-      }
       this.recordingNames.add(recordingName);
     }
+
+    private Map<String, Long> bufferServerBytes = new HashMap<String, Long>();
+
+    public Map<String, Long> getBufferServerBytes()
+    {
+      return Collections.unmodifiableMap(bufferServerBytes);
+    }
+
+    public void setBufferServerBytes(String identifier, long bytes)
+    {
+      this.bufferServerBytes.put(identifier, bytes);
+    }
+
   }
 
   /**
@@ -291,6 +299,19 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public void setDnodeEntries(List<StreamingNodeHeartbeat> dnodeEntries) {
       this.dnodeEntries = dnodeEntries;
     }
+
+    private int memoryMBFree;
+
+    public int getMemoryMBFree()
+    {
+      return memoryMBFree;
+    }
+
+    public void setMemoryMBFree(int memoryMBFree)
+    {
+      this.memoryMBFree = memoryMBFree;
+    }
+
   }
 
   /**

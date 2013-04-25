@@ -27,9 +27,9 @@ import org.slf4j.LoggerFactory;
  */
 public class BufferServerPublisher extends Publisher implements Stream
 {
-  StreamCodec<Object> serde;
-  int writtenBytes;
-  int windowId;
+  private StreamCodec<Object> serde;
+  private long publishedByteCount = 0;
+  private int windowId;
   private EventLoop eventloop;
 
   public BufferServerPublisher(String sourceId, int queueCapacity)
@@ -96,6 +96,7 @@ public class BufferServerPublisher extends Publisher implements Stream
       while (!write(array)) {
         sleep(5);
       }
+      publishedByteCount += array.length;
     }
     catch (InterruptedException ie) {
       throw new RuntimeException(ie);
@@ -146,10 +147,14 @@ public class BufferServerPublisher extends Publisher implements Stream
   {
   }
 
-  @Override
-  public void setSink(String id, Sink<Object> sink)
+  public long getPublishedByteCount()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return publishedByteCount;
+  }
+
+  public void resetPublishedByteCount()
+  {
+    publishedByteCount = 0;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);

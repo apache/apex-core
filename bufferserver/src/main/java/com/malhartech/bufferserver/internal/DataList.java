@@ -12,10 +12,7 @@ import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.Codec.MutableInt;
 import com.malhartech.bufferserver.util.SerializedData;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ScheduledExecutorService;
 import org.slf4j.Logger;
@@ -357,6 +354,59 @@ public class DataList
   public int getPosition()
   {
     return last.writingOffset;
+  }
+
+  public static class Status
+  {
+    public long numBytesWaiting = 0;
+    public long numBytesAllocated = 0;
+    public String slowestConsumer;
+  }
+
+  public Status getStatus()
+  {
+    Status status = new Status();
+
+    // When the number of subscribers becomes high or the number of blocks becomes high, consider optimize it.
+    Block b = first;
+    Map<Block, Integer> indices = new HashMap<Block, Integer>();
+    int i = 0;
+    while (b != null) {
+      indices.put(b, i++);
+      b = b.next;
+    }
+    int oldestBlockIndex = Integer.MAX_VALUE;
+    int oldestReadOffset = Integer.MAX_VALUE;
+
+    for (Map.Entry<String, DataListIterator> entry: iterators.entrySet()) {
+      Integer index = indices.get(entry.getValue().da);
+      if (index == null) {
+        // error
+        throw new RuntimeException("problemo!");
+      }
+      if (index.intValue() < oldestBlockIndex) {
+        oldestBlockIndex = index.intValue();
+        oldestReadOffset = entry.getValue().getReadOffset();
+        status.slowestConsumer = entry.getKey();
+      } else if (index.intValue() == oldestBlockIndex && entry.getValue().getReadOffset() < oldestReadOffset) {
+        oldestReadOffset = entry.getValue().getReadOffset();
+        status.slowestConsumer = entry.getKey();
+      }
+    }
+
+    b = first;
+    i = 0;
+    while (b != null) {
+      status.numBytesAllocated += b.data.length;
+      if (oldestBlockIndex == i) {
+        status.numBytesWaiting += b.writingOffset - oldestReadOffset;
+      } else if (oldestBlockIndex < i) {
+        status.numBytesWaiting += b.writingOffset - b.readingOffset;
+      }
+      b = b.next;
+      ++i;
+    }
+    return status;
   }
 
 }
