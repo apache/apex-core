@@ -857,7 +857,7 @@ public class StramChild
     /*
      * We proceed to deploy all the output streams. At the end of this block, our streams collection
      * will contain all the streams which originate at the output port of the operators. The streams
-     * are generally mapped against the "nodename.portname" string. But the BufferOutputStreams which
+     * are generally mapped against the "nodename.portname" string. But the BufferServerPublishers which
      * share the output port with other inline streams are mapped against the Buffer Server port to
      * avoid collision and at the same time keep track of these buffer streams.
      */
@@ -879,7 +879,7 @@ public class StramChild
            */
           SimpleEntry<String, ComponentContextPair<Stream, StreamContext>> deployBufferServerPublisher =
                   deployBufferServerPublisher(sourceIdentifier, finishedWindowId, queueCapacity, nodi);
-          newStreams.put(deployBufferServerPublisher.getKey(), deployBufferServerPublisher.getValue());
+          newStreams.put(sourceIdentifier, deployBufferServerPublisher.getValue());
           node.connectOutputPort(nodi.portName, deployBufferServerPublisher.getValue().component);
         }
         else {
@@ -992,7 +992,7 @@ public class StramChild
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
-          int queueCapacity = nidi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
           long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
 
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
@@ -1008,6 +1008,7 @@ public class StramChild
              * server, so let's make a connection to it.
              */
             assert (nidi.isInline() == false);
+            sourceIdentifier = "tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
             StreamContext context = new StreamContext(nidi.declaredStreamId);
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
@@ -1021,7 +1022,7 @@ public class StramChild
             context.setSinkId(sinkIdentifier);
             context.setStartingWindowId(finishedWindowId);
 
-            BufferServerSubscriber stream = new BufferServerSubscriber(nidi.declaredStreamId, queueCapacity);
+            BufferServerSubscriber stream = new BufferServerSubscriber(sourceIdentifier, queueCapacity);
             stream.setup(context);
 
             SweepableReservoir reservoir = stream.acquireReservoir(sinkIdentifier, queueCapacity);
