@@ -100,13 +100,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   }
 
   @Override
-  public void read(int len)
-  {
-    super.read(len);
-    readByteCount.addAndGet(len);
-  }
-
-  @Override
   public boolean isMultiSinkCapable()
   {
     return true;
