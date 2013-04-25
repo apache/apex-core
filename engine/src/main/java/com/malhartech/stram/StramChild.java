@@ -529,7 +529,7 @@ public class StramChild
             //String bspStreamKey = "tcp://".concat(bufferServerAddress.toString()).concat("/").concat(streamId);
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof BufferServerSubscriber)) {
-              BufferServerSubscriber bss = (BufferServerSubscriber) stream.component;
+              BufferServerSubscriber bss = (BufferServerSubscriber)stream.component;
               hb.setBufferServerBytes(portName, bss.getAndResetReadByteCount());
             }
           }
@@ -544,7 +544,7 @@ public class StramChild
             //String bspStreamKey = "tcp://".concat(bufferServerAddress.toString()).concat("/").concat(streamId);
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof BufferServerPublisher)) {
-              BufferServerPublisher bsp = (BufferServerPublisher) stream.component;
+              BufferServerPublisher bsp = (BufferServerPublisher)stream.component;
               hb.setBufferServerBytes(portName, bsp.getAndResetPublishedByteCount());
             }
           }
@@ -701,6 +701,12 @@ public class StramChild
             }
           }
 
+          @Override
+          public String toString()
+          {
+            return "Checkpoint";
+          }
+
         });
         break;
 
@@ -713,6 +719,12 @@ public class StramChild
           public void execute(Operator operator, int operatorId, long windowId) throws IOException
           {
             startRecording(node, operatorId, portName, false);
+          }
+
+          @Override
+          public String toString()
+          {
+            return "Start Recording";
           }
 
         });
@@ -731,6 +743,12 @@ public class StramChild
             stopRecording(node, operatorId, portName);
           }
 
+          @Override
+          public String toString()
+          {
+            return "Stop Recording";
+          }
+
         });
       }
       break;
@@ -747,6 +765,12 @@ public class StramChild
             syncRecording(node, operatorId, portName);
           }
 
+          @Override
+          public String toString()
+          {
+            return "Recording Request";
+          }
+
         });
       }
       break;
@@ -760,6 +784,12 @@ public class StramChild
             final Map<String, String> properties = Collections.singletonMap(snr.setPropertyKey, snr.setPropertyValue);
             logger.info("Setting property {} on operator {}", properties, operator);
             DAGPropertiesBuilder.setOperatorProperties(operator, properties);
+          }
+
+          @Override
+          public String toString()
+          {
+            return "Set Property";
           }
 
         });
