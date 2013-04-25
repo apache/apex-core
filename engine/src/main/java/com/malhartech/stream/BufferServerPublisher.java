@@ -14,6 +14,7 @@ import com.malhartech.netlet.EventLoop;
 import com.malhartech.tuple.Tuple;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,7 @@ import org.slf4j.LoggerFactory;
 public class BufferServerPublisher extends Publisher implements Stream
 {
   private StreamCodec<Object> serde;
-  private long publishedByteCount = 0;
+  private AtomicLong publishedByteCount = new AtomicLong(0);
   private int windowId;
   private EventLoop eventloop;
 
@@ -96,7 +97,7 @@ public class BufferServerPublisher extends Publisher implements Stream
       while (!write(array)) {
         sleep(5);
       }
-      publishedByteCount += array.length;
+      publishedByteCount.addAndGet(array.length);
     }
     catch (InterruptedException ie) {
       throw new RuntimeException(ie);
@@ -147,14 +148,9 @@ public class BufferServerPublisher extends Publisher implements Stream
   {
   }
 
-  public long resetPublishedByteCount()
+  public long getAndResetPublishedByteCount()
   {
-    try {
-      return publishedByteCount;
-    }
-    finally {
-      publishedByteCount = 0;
-    }
+    return publishedByteCount.getAndSet(0);
   }
 
   @Override
