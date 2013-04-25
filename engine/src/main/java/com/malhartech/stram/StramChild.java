@@ -1013,12 +1013,11 @@ public class StramChild
             context.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nidi.serDeClassName));
             context.attr(StreamContext.EVENT_LOOP).set(eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
-            context.setSourceId("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier));
+            context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
             context.setStartingWindowId(finishedWindowId);
 
-            BufferServerSubscriber stream = new BufferServerSubscriber(sourceIdentifier, queueCapacity);
-            //stream.setup(context);
+            BufferServerSubscriber stream = new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
 
             SweepableReservoir reservoir = stream.acquireReservoir(sinkIdentifier, queueCapacity);
             if (finishedWindowId > 0) {

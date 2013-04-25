@@ -22,10 +22,7 @@ import java.io.IOException;
 import java.io.LineNumberReader;
 import static java.lang.Thread.sleep;
 import java.util.*;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +34,7 @@ public class StramLocalClusterTest
   public void setup() throws IOException
   {
     StramChild.eventloop = new DefaultEventLoop("StramLocalClusterTestEventLoop");
+    StramChild.eventloop.start();
   }
 
   @After
@@ -100,7 +98,7 @@ public class StramLocalClusterTest
       // sink to collect tuples emitted by the input module
       sink = new TestSink();
       String streamName = "testSinkStream";
-      String sourceId = Integer.toString(publisherOperator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(TestGeneratorInputOperator.OUTPUT_PORT);
+      String sourceId = Integer.toString(publisherOperator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(publisherPortName);
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
@@ -118,7 +116,9 @@ public class StramLocalClusterTest
     {
       bsi.activate(streamContext);
       for (long l = 0; l < timeoutMillis; l += 20) {
-        reservoir.sweep();
+        if (reservoir.sweep() != null) {
+          reservoir.remove();
+        }
         if (sink.getResultCount() >= expectedCount) {
           break;
         }
@@ -196,8 +196,8 @@ public class StramLocalClusterTest
 
     OperatorContext n1Context = c0.getNodeContext(ptNode1.getId());
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
+    wclock.tick(1); // begin window 0
     wclock.tick(1); // begin window 1
-    wclock.tick(1); // begin window 2
     StramTestSupport.waitForWindowComplete(n1Context, 1);
 
     backupNode(c0, n1Context.getId()); // backup window 2
