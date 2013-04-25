@@ -39,9 +39,8 @@ import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.PhysicalPlan.PlanContext;
 import com.malhartech.stram.PhysicalPlan.StatsHandler;
 import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
-import com.malhartech.stram.StramChildAgent.InputPortStatus;
 import com.malhartech.stram.StramChildAgent.OperatorStatus;
-import com.malhartech.stram.StramChildAgent.OutputPortStatus;
+import com.malhartech.stram.StramChildAgent.PortStatus;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
@@ -407,7 +406,12 @@ public class StreamingContainerManager implements PlanContext
           EndWindowStats endWindowStats = new EndWindowStats();
           if (ports != null) {
             for (PortStats s: ports) {
-              InputPortStatus ps = status.inputPortStatusList.get(s.portname);
+              PortStatus ps = status.inputPortStatusList.get(s.portname);
+              if (ps == null) {
+                ps = sca.new PortStatus();
+                ps.portName = s.portname;
+                status.inputPortStatusList.put(s.portname, ps);
+              }
               ps.totalTuples += s.processedCount;
               if (portToTuples.containsKey(s.portname)) {
                 portToTuples.get(s.portname).add(s.processedCount);
@@ -427,7 +431,12 @@ public class StreamingContainerManager implements PlanContext
           if (ports != null) {
 
             for (PortStats s: ports) {
-              OutputPortStatus ps = status.outputPortStatusList.get(s.portname);
+              PortStatus ps = status.outputPortStatusList.get(s.portname);
+              if (ps == null) {
+                ps = sca.new PortStatus();
+                ps.portName = s.portname;
+                status.outputPortStatusList.put(s.portname, ps);
+              }
               ps.totalTuples += s.processedCount;
               if (portToTuples.containsKey(s.portname)) {
                 portToTuples.get(s.portname).add(s.processedCount);
@@ -458,20 +467,20 @@ public class StreamingContainerManager implements PlanContext
           status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / lastHeartbeatIntervalMillis);
           status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / lastHeartbeatIntervalMillis);
           status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (lastHeartbeatIntervalMillis * 1000000));
-          for (InputPortStatus ps : status.inputPortStatusList.values()) {
-            if (portToTuples.containsKey(ps.port.portName)) {
-              ps.tuplesPSMA10.add(portToTuples.get(ps.port.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
+          for (PortStatus ps : status.inputPortStatusList.values()) {
+            if (portToTuples.containsKey(ps.portName)) {
+              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
             }
-            Long numBytes = shb.getBufferServerBytes().get(ps.port.portName);
+            Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
               ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
             }
           }
-          for (OutputPortStatus ps : status.outputPortStatusList.values()) {
-            if (portToTuples.containsKey(ps.port.portName)) {
-              ps.tuplesPSMA10.add(portToTuples.get(ps.port.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
+          for (PortStatus ps : status.outputPortStatusList.values()) {
+            if (portToTuples.containsKey(ps.portName)) {
+              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
             }
-            Long numBytes = shb.getBufferServerBytes().get(ps.port.portName);
+            Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
               ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
             }
@@ -843,17 +852,17 @@ public class StreamingContainerManager implements PlanContext
           if (os.lastHeartbeat != null) {
             ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           }
-          for (InputPortStatus ps : os.inputPortStatusList.values()) {
+          for (PortStatus ps : os.inputPortStatusList.values()) {
             PortInfo pinfo = new PortInfo();
-            pinfo.name = ps.port.portName;
+            pinfo.name = ps.portName;
             pinfo.totalTuples = ps.totalTuples;
             pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
             pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
             ni.addInputPort(pinfo);
           }
-          for (OutputPortStatus ps : os.outputPortStatusList.values()) {
+          for (PortStatus ps : os.outputPortStatusList.values()) {
             PortInfo pinfo = new PortInfo();
-            pinfo.name = ps.port.portName;
+            pinfo.name = ps.portName;
             pinfo.totalTuples = ps.totalTuples;
             pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
             pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
