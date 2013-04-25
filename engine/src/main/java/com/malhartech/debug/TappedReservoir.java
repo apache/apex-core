@@ -14,10 +14,9 @@ import com.malhartech.tuple.Tuple;
  */
 public class TappedReservoir implements SweepableReservoir
 {
-  private final SweepableReservoir reservoir;
-  private Sink<Object> originalSink;
+  public final SweepableReservoir reservoir;
 
-  public TappedReservoir(SweepableReservoir reservoir)
+  public TappedReservoir(SweepableReservoir reservoir, Sink<Object> tapper)
   {
     this.reservoir = reservoir;
   }
@@ -25,7 +24,6 @@ public class TappedReservoir implements SweepableReservoir
   @Override
   public void setSink(Sink<Object> sink)
   {
-    originalSink = sink;
   }
 
   @Override
