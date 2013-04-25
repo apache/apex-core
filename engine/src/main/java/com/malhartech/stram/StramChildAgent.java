@@ -133,19 +133,19 @@ public class StramChildAgent {
     MovingAverageLong tuplesEmittedPSMA10 = new MovingAverageLong(10);
     MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
     List<String> recordingNames; // null if recording is not in progress
-    Map<String, InputPortStatus> inputPortStatusList = new HashMap<String, InputPortStatus>();
-    Map<String, OutputPortStatus> outputPortStatusList = new HashMap<String, OutputPortStatus>();
+    Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
+    Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
 
     private OperatorStatus(PTOperator operator) {
       this.operator = operator;
       for (PTInput ptInput: operator.inputs) {
-        InputPortStatus inputPortStatus = new InputPortStatus();
-        inputPortStatus.port = ptInput;
+        PortStatus inputPortStatus = new PortStatus();
+        inputPortStatus.portName = ptInput.portName;
         inputPortStatusList.put(ptInput.portName, inputPortStatus);
       }
       for (PTOutput ptOutput: operator.outputs) {
-        OutputPortStatus outputPortStatus = new OutputPortStatus();
-        outputPortStatus.port = ptOutput;
+        PortStatus outputPortStatus = new PortStatus();
+        outputPortStatus.portName = ptOutput.portName;
         outputPortStatusList.put(ptOutput.portName, outputPortStatus);
       }
     }
@@ -159,21 +159,12 @@ public class StramChildAgent {
     }
   }
 
-  private class PortStatus
+  public class PortStatus
   {
+    String portName;
     long totalTuples = 0;
     MovingAverageLong tuplesPSMA10 = new MovingAverageLong(10);
     MovingAverageLong bufferServerBytesPSMA10 = new MovingAverageLong(10);  // TBD
-  }
-
-  class InputPortStatus extends PortStatus
-  {
-    PTInput port;
-  }
-
-  class OutputPortStatus extends PortStatus
-  {
-    PTOutput port;
   }
 
   public StramChildAgent(PTContainer container, StreamingContainerContext initCtx) {
