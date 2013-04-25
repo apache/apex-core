@@ -19,6 +19,32 @@ import org.slf4j.LoggerFactory;
 public class UnifierNode extends GenericNode
 {
   final Unifier<Object> unifier;
+  final InputPort<Object> unifiedPort = new InputPort<Object>()
+  {
+    @Override
+    public Sink<Object> getSink()
+    {
+      return unifier;
+    }
+
+    @Override
+    public void setConnected(boolean connected)
+    {
+    }
+
+    @Override
+    public Class<? extends StreamCodec<Object>> getStreamCodec()
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public Operator getOperator()
+    {
+      return unifier;
+    }
+
+  };
 
   public UnifierNode(String id, Unifier<Object> unifier)
   {
@@ -29,32 +55,8 @@ public class UnifierNode extends GenericNode
   @Override
   public InputPort<Object> getInputPort(String port)
   {
-    return new InputPort<Object>()
-    {
-      @Override
-      public Sink<Object> getSink()
-      {
-        throw new UnsupportedOperationException("Not supported yet.");
-      }
-
-      @Override
-      public void setConnected(boolean connected)
-      {
-      }
-
-      @Override
-      public Class<? extends StreamCodec<Object>> getStreamCodec()
-      {
-        throw new UnsupportedOperationException("Not supported yet.");
-      }
-
-      @Override
-      public Operator getOperator()
-      {
-        return unifier;
-      }
-
-    };
+    descriptor.inputPorts.put(port, unifiedPort);
+    return unifiedPort;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(UnifierNode.class);

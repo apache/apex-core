@@ -123,10 +123,7 @@ public class StramChild
 
     try {
       if (ctx.deployBufferServer) {
-        if (!eventloop.isActive()) { /* this check is necessary since StramLocalCluster can have multiple children in the same cluster */
-          logger.debug("starting event loop {}", eventloop);
-          eventloop.start();
-        }
+        eventloop.start();
         // start buffer server, if it was not set externally
         bufferServer = new Server(0, 64 * 1024 * 1024);
         bufferServer.setSpoolStorage(new DiskStorage());
@@ -457,7 +454,6 @@ public class StramChild
 
     if (bufferServer != null) {
       eventloop.stop(bufferServer);
-      logger.debug("stopping event loop {}", eventloop);
       eventloop.stop();
     }
 
@@ -779,7 +775,7 @@ public class StramChild
     }
     streams.putAll(newStreams);
 
-    activate(nodeList);
+    activate(nodeList, newStreams);
   }
 
   private void massageUnifierDeployInfo(OperatorDeployInfo odi)
@@ -930,7 +926,7 @@ public class StramChild
       }
     }
 
-    streams.putAll(newStreams);
+    //streams.putAll(newStreams);
     return newStreams;
   }
 
@@ -1008,7 +1004,6 @@ public class StramChild
              * server, so let's make a connection to it.
              */
             assert (nidi.isInline() == false);
-            sourceIdentifier = "tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier);
 
             StreamContext context = new StreamContext(nidi.declaredStreamId);
             context.setBufferServerAddress(InetSocketAddress.createUnresolved(nidi.bufferServerHost, nidi.bufferServerPort));
@@ -1018,12 +1013,12 @@ public class StramChild
             context.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nidi.serDeClassName));
             context.attr(StreamContext.EVENT_LOOP).set(eventloop);
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
-            context.setSourceId(sourceIdentifier);
+            context.setSourceId("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier));
             context.setSinkId(sinkIdentifier);
             context.setStartingWindowId(finishedWindowId);
 
             BufferServerSubscriber stream = new BufferServerSubscriber(sourceIdentifier, queueCapacity);
-            stream.setup(context);
+            //stream.setup(context);
 
             SweepableReservoir reservoir = stream.acquireReservoir(sinkIdentifier, queueCapacity);
             if (finishedWindowId > 0) {
@@ -1135,10 +1130,10 @@ public class StramChild
 
   // take the recording mess out of here into something modular.
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
-  public synchronized void activate(List<OperatorDeployInfo> nodeList)
+  public synchronized void activate(List<OperatorDeployInfo> nodeList, Map<String, ComponentContextPair<Stream, StreamContext>> newStreams)
   {
-    for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
-      if (!(pair.component instanceof BufferServerSubscriber || activeStreams.containsKey(pair.component))) {
+    for (ComponentContextPair<Stream, StreamContext> pair: newStreams.values()) {
+      if (!(pair.component instanceof BufferServerSubscriber)) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
       }
@@ -1214,8 +1209,8 @@ public class StramChild
       logger.debug(ex.getLocalizedMessage());
     }
 
-    for (ComponentContextPair<Stream, StreamContext> pair: streams.values()) {
-      if (pair.component instanceof BufferServerSubscriber && !activeStreams.containsKey(pair.component)) {
+    for (ComponentContextPair<Stream, StreamContext> pair: newStreams.values()) {
+      if (pair.component instanceof BufferServerSubscriber) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
       }

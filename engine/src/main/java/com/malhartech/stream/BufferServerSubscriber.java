@@ -60,7 +60,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-    activate(context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getStartingWindowId());
+    activate(context.getId() + '/' + context.getSinkId(), id, context.getPartitionMask(), context.getPartitions(), context.getStartingWindowId());
   }
 
   @Override
