@@ -8,6 +8,7 @@ import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
+import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.tuple.Tuple;
@@ -37,33 +38,31 @@ public class GenericNode extends Node<Operator>
   protected final HashMap<String, SweepableReservoir> inputs = new HashMap<String, SweepableReservoir>();
   protected ArrayList<DeferredInputConnection> deferredInputConnections = new ArrayList<DeferredInputConnection>();
 
-  // make sure that the cascading logic works here, right now it does not!
   @Override
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
-//    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-//      SweepableReservoir original = inputs.get(e.getKey());
-//      if (original != null) {
-//        inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
-//      }
-//    }
-//
-//    super.addSinks(sinks);
+    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+      SweepableReservoir original = inputs.get(e.getKey());
+      if (original != null) {
+        inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
+      }
+    }
+
+    super.addSinks(sinks);
   }
 
   @Override
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
-//    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-//      SweepableReservoir someReservoir = inputs.get(e.getKey());
-//      if (someReservoir instanceof TappedReservoir) {
-//        TappedReservoir sr = (TappedReservoir)someReservoir;
-//        assert (sr.stackedSink == e.getValue());
-//        inputs.put(e.getKey(), sr.reservoir);
-//      }
-//    }
-//
-//    super.removeSinks(sinks);
+    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+      SweepableReservoir someReservoir = inputs.get(e.getKey());
+      if (someReservoir instanceof TappedReservoir) {
+        TappedReservoir sr = (TappedReservoir)someReservoir;
+        inputs.put(e.getKey(), sr.reservoir);
+      }
+    }
+
+    super.removeSinks(sinks);
   }
 
   public GenericNode(String id, Operator operator)
