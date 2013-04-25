@@ -42,6 +42,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   CircularBuffer<Fragment> freeFragments;
   private final ArrayDeque<CircularBuffer<Fragment>> backlog;
   private int lastWindowId;
+  private long readByteCount = 0;
 
   @SuppressWarnings("unchecked")
   public BufferServerSubscriber(String id, int queueCapacity)
@@ -163,6 +164,19 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   public void setSink(String id, Sink<Object> sink)
   {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  /**
+   * @return the readByteCount
+   */
+  public long resetReadByteCount()
+  {
+    try {
+      return readByteCount;
+    }
+    finally {
+      readByteCount = 0;
+    }
   }
 
   class BufferReservoir extends CircularBuffer<Object> implements SweepableReservoir

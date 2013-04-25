@@ -183,7 +183,7 @@ public class GenericNode extends Node<Operator>
                 if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
 
-                  endWindowDequeueTimes.put(portName, System.currentTimeMillis());
+                  endWindowDequeueTimes.put(activePort, System.currentTimeMillis());
 
                   if (++receivedEndWindow == totalQueues) {
                     if (++windowCount == applicationWindowCount) {
@@ -200,7 +200,7 @@ public class GenericNode extends Node<Operator>
                     assert (activeQueues.isEmpty());
                     handleRequests(currentWindowId, !insideWindow);
 
-                    activeQueues.addAll(inputs.entrySet());
+                    activeQueues.addAll(inputs.values());
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
@@ -261,7 +261,7 @@ public class GenericNode extends Node<Operator>
                   }
 
                   assert (activeQueues.isEmpty());
-                  activeQueues.addAll(inputs.entrySet());
+                  activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
                   break activequeue;
                 }
@@ -319,7 +319,7 @@ public class GenericNode extends Node<Operator>
 
                   emitEndWindow();
 
-                  activeQueues.addAll(inputs.entrySet());
+                  activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
 
                   handleRequests(currentWindowId, true);
@@ -450,7 +450,7 @@ public class GenericNode extends Node<Operator>
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
     for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
-      ipstats.add(new PortStats(e.getKey(), ar.resetCount()));
+      ipstats.add(new PortStats(e.getKey(), ar.resetCount(), endWindowDequeueTimes.get(e.getValue())));
     }
 
     stats.inputPorts = ipstats;

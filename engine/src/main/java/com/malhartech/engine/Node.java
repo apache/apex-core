@@ -50,7 +50,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected long endWindowEmitTime = 0;
   protected long lastSampleCpuTime = 0;
   protected ThreadMXBean tmb;
-  protected HashMap<String, Long> endWindowDequeueTimes = new HashMap<String, Long>(); // end window dequeue time for input ports
+  protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
 
   public Node(String id, OPERATOR operator)
   {

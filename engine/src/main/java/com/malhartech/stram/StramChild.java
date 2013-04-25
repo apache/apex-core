@@ -527,11 +527,10 @@ public class StramChild
           if (bufferServerAddress != null) {
             String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
             //String bspStreamKey = "tcp://".concat(bufferServerAddress.toString()).concat("/").concat(streamId);
-            ComponentContextPair<Stream<Object>, StreamContext> stream = streams.get(streamId);
+            ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof BufferServerSubscriber)) {
-              BufferServerSubscriber bsp = (BufferServerSubscriber) stream.component;
-              hb.setBufferServerBytes(portName, bsp.getReadByteCount());
-              bsp.resetReadByteCount();
+              BufferServerSubscriber bss = (BufferServerSubscriber) stream.component;
+              hb.setBufferServerBytes(portName, bss.resetReadByteCount());
             }
           }
         }
@@ -543,11 +542,10 @@ public class StramChild
           if (bufferServerAddress != null) {
             String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
             //String bspStreamKey = "tcp://".concat(bufferServerAddress.toString()).concat("/").concat(streamId);
-            ComponentContextPair<Stream<Object>, StreamContext> stream = streams.get(streamId);
+            ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
             if (stream != null && (stream.component instanceof BufferServerPublisher)) {
               BufferServerPublisher bsp = (BufferServerPublisher) stream.component;
-              hb.setBufferServerBytes(portName, bsp.getPublishedByteCount());
-              bsp.resetPublishedByteCount();
+              hb.setBufferServerBytes(portName, bsp.resetPublishedByteCount());
             }
           }
         }

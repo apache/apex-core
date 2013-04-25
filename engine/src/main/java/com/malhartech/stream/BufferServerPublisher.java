@@ -147,14 +147,20 @@ public class BufferServerPublisher extends Publisher implements Stream
   {
   }
 
-  public long getPublishedByteCount()
+  public long resetPublishedByteCount()
   {
-    return publishedByteCount;
+    try {
+      return publishedByteCount;
+    }
+    finally {
+      publishedByteCount = 0;
+    }
   }
 
-  public void resetPublishedByteCount()
+  @Override
+  public void setSink(String id, Sink<Object> sink)
   {
-    publishedByteCount = 0;
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);
