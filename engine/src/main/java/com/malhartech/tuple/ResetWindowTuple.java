@@ -15,9 +15,10 @@ import com.malhartech.bufferserver.packet.MessageType;
  */
 public class ResetWindowTuple extends Tuple
 {
-  public ResetWindowTuple()
+  public ResetWindowTuple(long windowId)
   {
     super(MessageType.RESET_WINDOW);
+    this.windowId = windowId;
   }
 
   @Override

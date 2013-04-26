@@ -5,8 +5,12 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
+import com.malhartech.engine.DefaultReservoir;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
+import com.malhartech.engine.SweepableReservoir;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -24,15 +28,12 @@ import com.malhartech.engine.StreamContext;
  * <br>
  *
  */
-public class InlineStream implements Stream<Object>
+public class InlineStream extends DefaultReservoir implements Stream, SweepableReservoir
 {
-  private volatile Sink<Object> current, output, shunted = new Sink<Object>()
+  public InlineStream(int capacity)
   {
-    @Override
-    public void process(Object payload)
-    {
-    }
-  };
+    super("InlineStream", capacity);
+  }
 
   /**
    *
@@ -41,7 +42,7 @@ public class InlineStream implements Stream<Object>
   @Override
   public void setup(StreamContext context)
   {
-    // nothing to be done here.
+    setId(context.getId());
   }
 
   /**
@@ -51,7 +52,6 @@ public class InlineStream implements Stream<Object>
   @Override
   public void activate(StreamContext context)
   {
-    current = output;
   }
 
   /**
@@ -60,7 +60,6 @@ public class InlineStream implements Stream<Object>
   @Override
   public void deactivate()
   {
-    current = shunted;
   }
 
   /**
@@ -71,38 +70,34 @@ public class InlineStream implements Stream<Object>
   {
   }
 
-  /**
-   *
-   * @param port
-   * @param sink
-   */
-  @Override
-  public void setSink(String port, Sink<Object> sink)
-  {
-    if (current == output) {
-      current = sink;
-    }
-    output = sink;
-  }
-
-  /**
-   *
-   * @param payload
-   */
-  @Override
-  public final void process(Object payload)
-  {
-    current.process(payload);
-  }
-
-  public final Sink<Object> getOutput()
-  {
-    return output;
-  }
-
   @Override
   public boolean isMultiSinkCapable()
   {
     return false;
   }
+
+  @Override
+  public void process(Object tuple)
+  {
+    try {
+      put(tuple);
+    }
+    catch (InterruptedException ie) {
+      logger.debug("Interrupted", ie);
+    }
+  }
+
+  @Override
+  public String toString()
+  {
+    return "InlineStream{" + super.toString() + '}';
+  }
+
+  @Override
+  public void setSink(String id, Sink<Object> sink)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(InlineStream.class);
 }

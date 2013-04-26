@@ -18,7 +18,12 @@ public abstract class Publisher extends AbstractClient
 
   public Publisher(String id)
   {
-    super(1024, 16 * 1024);
+    this(id, 1024);
+  }
+
+  public Publisher(String id, int sendBufferCapacity)
+  {
+    super(1024, sendBufferCapacity);
     this.id = id;
   }
 

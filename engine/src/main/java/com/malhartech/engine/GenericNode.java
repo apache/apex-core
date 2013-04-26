@@ -4,22 +4,14 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.tuple.Tuple;
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.IdleTimeHandler;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
-import com.malhartech.netlet.Client.Fragment;
-import com.malhartech.stream.BufferServerSubscriber;
-import com.malhartech.tuple.EndStreamTuple;
-import com.malhartech.tuple.EndWindowTuple;
 import com.malhartech.tuple.ResetWindowTuple;
-import com.malhartech.util.AttributeMap;
+import com.malhartech.tuple.Tuple;
 import java.util.*;
 import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
@@ -43,15 +35,14 @@ import org.slf4j.LoggerFactory;
  */
 public class GenericNode extends Node<Operator>
 {
-  protected final HashMap<String, Reservoir> inputs = new HashMap<String, Reservoir>();
-  protected int deletionId;
+  protected final HashMap<String, SweepableReservoir> inputs = new HashMap<String, SweepableReservoir>();
+  protected ArrayList<DeferredInputConnection> deferredInputConnections = new ArrayList<DeferredInputConnection>();
 
-  // make sure that the cascading logic works here, right now it does not!
   @Override
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-      Reservoir original = inputs.get(e.getKey());
+      SweepableReservoir original = inputs.get(e.getKey());
       if (original != null) {
         inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
       }
@@ -64,10 +55,9 @@ public class GenericNode extends Node<Operator>
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-      Reservoir someReservoir = inputs.get(e.getKey());
+      SweepableReservoir someReservoir = inputs.get(e.getKey());
       if (someReservoir instanceof TappedReservoir) {
         TappedReservoir sr = (TappedReservoir)someReservoir;
-        assert (sr.stackedSink == e.getValue());
         inputs.put(e.getKey(), sr.reservoir);
       }
     }
@@ -80,61 +70,54 @@ public class GenericNode extends Node<Operator>
     super(id, operator);
   }
 
-  @Override
-  public Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, final Sink<? extends Object> sink)
+  @SuppressWarnings("unchecked")
+  public InputPort<Object> getInputPort(String port)
   {
-    Sink<Object> retvalue;
+    return (InputPort<Object>)descriptor.inputPorts.get(port);
+  }
 
-    @SuppressWarnings("unchecked")
-    InputPort<Object> inputPort = (InputPort<Object>)descriptor.inputPorts.get(port);
+  @Override
+  public void connectInputPort(String port, final SweepableReservoir reservoir)
+  {
+    if (reservoir == null) {
+      throw new IllegalArgumentException("Reservoir cannot be null for port '" + port + "' on operator '" + operator + "'");
+    }
+
+    InputPort<Object> inputPort = getInputPort(port);
     if (inputPort == null) {
-      retvalue = null;
+      throw new IllegalArgumentException("Port '" + port + "' does not exist on operator '" + operator + "'");
+    }
+
+    if (inputs.containsKey(port)) {
+      deferredInputConnections.add(new DeferredInputConnection(port, reservoir));
     }
     else {
-      if (sink == null) {
-        Reservoir reservoir = inputs.remove(port);
-        /**
-         * since there are tuples which are not yet processed downstream, rather than just removing
-         * the sink, it makes sense to wait for all the data to be processed on this sink and then
-         * remove it.
-         */
-        if (reservoir != null) {
-          inputs.put(port.concat(".").concat(String.valueOf(deletionId++)), reservoir);
-          reservoir.process(new EndStreamTuple());
-        }
-
-        retvalue = null;
-      }
-      else {
-        inputPort.setConnected(true);
-        Reservoir reservoir = inputs.get(port);
-        if (reservoir == null) {
-          int bufferCapacity = attributes == null ? 16 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 16 * 1024);
-          int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
-          if (sink instanceof BufferServerSubscriber) {
-            reservoir = new BufferServerReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds, ((BufferServerSubscriber)sink).getSerde(), ((BufferServerSubscriber)sink).getBaseSeconds());
-          }
-          else {
-            reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
-          }
-          inputs.put(port, reservoir);
-        }
-        retvalue = reservoir;
-      }
+      inputPort.setConnected(true);
+      inputs.put(port, reservoir);
+      reservoir.setSink(inputPort.getSink());
+//      SweepableReservoir reservoir = inputs.get(port);
+//      if (reservoir == null) {
+//        int bufferCapacity = attributes == null ? 16 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 16 * 1024);
+//        int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
+//        if (sink instanceof BufferServerSubscriber) {
+//          reservoir = new BufferServerReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds, ((BufferServerSubscriber)sink).getSerde(), ((BufferServerSubscriber)sink).getBaseSeconds());
+//        }
+//        else {
+//          reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
+//        }
+//      }
     }
-
-    return retvalue;
   }
 
   class ResetTupleTracker
   {
     final ResetWindowTuple tuple;
-    Reservoir[] ports;
+    SweepableReservoir[] ports;
 
     ResetTupleTracker(ResetWindowTuple base, int count)
     {
       tuple = base;
-      ports = new Reservoir[count];
+      ports = new SweepableReservoir[count];
     }
 
   }
@@ -156,8 +139,8 @@ public class GenericNode extends Node<Operator>
     int windowCount = 0;
     int totalQueues = inputs.size();
 
-    ArrayList<Map.Entry<String, Reservoir>> activeQueues = new ArrayList<Map.Entry<String, Reservoir>>();
-    activeQueues.addAll(inputs.entrySet());
+    ArrayList<SweepableReservoir> activeQueues = new ArrayList<SweepableReservoir>();
+    activeQueues.addAll(inputs.values());
 
     int expectingBeginWindow = activeQueues.size();
     int receivedEndWindow = 0;
@@ -165,12 +148,10 @@ public class GenericNode extends Node<Operator>
 
     try {
       do {
-        Iterator<Entry<String, Reservoir>> buffers = activeQueues.iterator();
+        Iterator<SweepableReservoir> buffers = activeQueues.iterator();
         activequeue:
         while (buffers.hasNext()) {
-          Map.Entry<String, Reservoir> entry = buffers.next();
-          String portName = entry.getKey();
-          Reservoir activePort = entry.getValue();
+          SweepableReservoir activePort = buffers.next();
           Tuple t = activePort.sweep();
           if (t != null) {
             switch (t.getType()) {
@@ -201,7 +182,7 @@ public class GenericNode extends Node<Operator>
                 if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
 
-                  endWindowDequeueTimes.put(portName, System.currentTimeMillis());
+                  endWindowDequeueTimes.put(activePort, System.currentTimeMillis());
 
                   if (++receivedEndWindow == totalQueues) {
                     if (++windowCount == applicationWindowCount) {
@@ -218,7 +199,7 @@ public class GenericNode extends Node<Operator>
                     assert (activeQueues.isEmpty());
                     handleRequests(currentWindowId, !insideWindow);
 
-                    activeQueues.addAll(inputs.entrySet());
+                    activeQueues.addAll(inputs.values());
                     expectingBeginWindow = activeQueues.size();
                     break activequeue;
                   }
@@ -279,7 +260,7 @@ public class GenericNode extends Node<Operator>
                   }
 
                   assert (activeQueues.isEmpty());
-                  activeQueues.addAll(inputs.entrySet());
+                  activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
                   break activequeue;
                 }
@@ -287,6 +268,31 @@ public class GenericNode extends Node<Operator>
 
               case END_STREAM:
                 activePort.remove();
+                buffers.remove();
+                for (Iterator<Entry<String, SweepableReservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
+                  Entry<String, SweepableReservoir> e = it.next();
+                  if (e.getValue() == activePort) {
+                    if (!descriptor.inputPorts.isEmpty()) {
+                      descriptor.inputPorts.get(e.getKey()).setConnected(false);
+                    }
+                    it.remove();
+
+                    /* check the deferred connection list for any new port that should be connected here */
+                    Iterator<DeferredInputConnection> dici = deferredInputConnections.iterator();
+                    while (dici.hasNext()) {
+                      DeferredInputConnection dic = dici.next();
+                      if (e.getKey().equals(dic.portname)) {
+                        connectInputPort(dic.portname, dic.reservoir);
+                        dici.remove();
+                        activeQueues.add(dic.reservoir);
+                        break activequeue;
+                      }
+                    }
+
+                    break;
+                  }
+                }
+
                 /**
                  * We are not going to receive begin window on this ever!
                  */
@@ -296,19 +302,6 @@ public class GenericNode extends Node<Operator>
                  * We need to make sure that the END_STREAM comes outside of the window.
                  */
                 totalQueues--;
-
-                for (Iterator<Entry<String, Reservoir>> it = inputs.entrySet().iterator(); it.hasNext();) {
-                  Entry<String, Reservoir> e = it.next();
-                  if (e.getValue() == activePort) {
-                    if (!descriptor.inputPorts.isEmpty()) {
-                      descriptor.inputPorts.get(e.getKey()).setConnected(false);
-                    }
-                    it.remove();
-                    break;
-                  }
-                }
-
-                buffers.remove();
 
                 boolean break_activequeue = false;
                 if (totalQueues == 0) {
@@ -325,7 +318,7 @@ public class GenericNode extends Node<Operator>
 
                   emitEndWindow();
 
-                  activeQueues.addAll(inputs.entrySet());
+                  activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
 
                   handleRequests(currentWindowId, true);
@@ -346,7 +339,7 @@ public class GenericNode extends Node<Operator>
                   index = 0;
                   while (index < tracker.ports.length) {
                     if (tracker.ports[index] == activePort) {
-                      AbstractReservoir[] ports = new AbstractReservoir[totalQueues];
+                      SweepableReservoir[] ports = new SweepableReservoir[totalQueues];
                       System.arraycopy(tracker.ports, 0, ports, 0, index);
                       if (index < totalQueues) {
                         System.arraycopy(tracker.ports, index + 1, ports, index, tracker.ports.length - index - 1);
@@ -402,8 +395,8 @@ public class GenericNode extends Node<Operator>
         }
         else {
           boolean need2sleep = true;
-          for (Map.Entry<String, Reservoir> cb: activeQueues) {
-            if (cb.getValue().size() > 0) {
+          for (SweepableReservoir cb: activeQueues) {
+            if (cb.size() > 0) {
               need2sleep = false;
               break;
             }
@@ -412,8 +405,8 @@ public class GenericNode extends Node<Operator>
           if (need2sleep) {
             Thread.sleep(spinMillis);
             if (handleIdleTime) {
-              for (Map.Entry<String, Reservoir> cb: activeQueues) {
-                if (cb.getValue().size() > 0) {
+              for (SweepableReservoir cb: activeQueues) {
+                if (cb.size() > 0) {
                   need2sleep = false;
                   break;
                 }
@@ -454,21 +447,25 @@ public class GenericNode extends Node<Operator>
   {
     super.reportStats(stats, applicationWindowBoundary);
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
-    for (Entry<String, Reservoir> e: inputs.entrySet()) {
-      AbstractReservoir ar;
-      Reservoir r = e.getValue();
-      if (r instanceof TappedReservoir) {
-        ar = (AbstractReservoir)((TappedReservoir)r).reservoir;
-      }
-      else {
-        ar = (AbstractReservoir)r;
-      }
-      long endWindowDequeueTime = endWindowDequeueTimes.get(e.getKey());
-      ipstats.add(new PortStats(e.getKey(), ar.tupleCount, endWindowDequeueTime));
-      ar.tupleCount = 0;
+    for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
+      SweepableReservoir ar = e.getValue();
+      ipstats.add(new PortStats(e.getKey(), ar.resetCount(), endWindowDequeueTimes.get(e.getValue())));
     }
 
     stats.inputPorts = ipstats;
+  }
+
+  protected class DeferredInputConnection
+  {
+    String portname;
+    SweepableReservoir reservoir;
+
+    DeferredInputConnection(String portname, SweepableReservoir reservoir)
+    {
+      this.portname = portname;
+      this.reservoir = reservoir;
+    }
+
   }
 
   private static final Logger logger = LoggerFactory.getLogger(GenericNode.class);

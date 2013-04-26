@@ -5,6 +5,12 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
+import com.malhartech.api.StreamCodec.DataStatePair;
+import com.malhartech.bufferserver.packet.DataTuple;
+import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.bufferserver.packet.PayloadTuple;
+import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.Client.Fragment;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,28 +29,51 @@ public class BufferServerSubscriberTest
   public void testEmergencySinks() throws InterruptedException
   {
     final List<Object> list = new ArrayList<Object>();
-    Sink<Object> unbufferedSink = new Sink<Object>()
+    final StreamCodec<Object> myserde = new StreamCodec<Object>()
     {
-      Object o;
-      int i;
+      @Override
+      public Object fromByteArray(DataStatePair dspair)
+      {
+        return dspair.data;
+      }
 
       @Override
-      public void process(Object tuple)
+      public DataStatePair toByteArray(Object o)
       {
-        if (o == null) {
-          o = tuple;
-        }
-        else {
-          list.add(o);
-          o = null;
-          throw new IllegalStateException("Buffer full");
-        }
+        DataStatePair dsp = new DataStatePair();
+        dsp.data = new Fragment((byte[])o, 0, ((byte[])o).length);
+        return dsp;
+      }
+
+      @Override
+      public int getPartition(Object o)
+      {
+        return 0;
+      }
+
+      @Override
+      public void resetState()
+      {
       }
 
     };
 
-    BufferServerSubscriber bss = new BufferServerSubscriber("subscriber")
+    Sink<Object> unbufferedSink = new Sink<Object>()
     {
+      @Override
+      public void process(Object tuple)
+      {
+        list.add(tuple);
+      }
+
+    };
+
+    BufferServerSubscriber bss = new BufferServerSubscriber("subscriber", 5)
+    {
+      {
+        serde = myserde;
+      }
+
       @Override
       public void suspendRead()
       {
@@ -58,17 +87,28 @@ public class BufferServerSubscriberTest
       }
 
     };
-    bss.setSink("unbufferedSink", unbufferedSink);
-    bss.activateSinks();
 
-    int i;
-    for (i = 0; i < 10; i++) {
-      bss.distribute(new Fragment(new byte[] {(byte)i}, 0 , 1));
+    SweepableReservoir reservoir = bss.acquireReservoir("unbufferedSink", 3);
+    reservoir.setSink(unbufferedSink);
+
+    int i = 0;
+    while (i++ < 10) {
+      DataStatePair dsp = myserde.toByteArray(new byte[]{(byte)i});
+      if (dsp.state != null) {
+        byte[] buffer = DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state);
+        bss.onMessage(buffer, 0, buffer.length);
+      }
+
+      byte buffer[] = PayloadTuple.getSerializedTuple(myserde.getPartition(i), dsp.data);
+      bss.onMessage(buffer, 0, buffer.length);
     }
 
-    bss.endMessage();
-    Thread.sleep(20);
-    Assert.assertTrue("tuples received", i - 1 <= list.size());
+    reservoir.sweep(); /* 4 make it to the reservoir */
+    reservoir.sweep(); /* we consume the 4; and 4 more make it to the reservoir */
+    Assert.assertEquals("4 received", 4, list.size());
+    reservoir.sweep(); /* 8 consumed + 2 more make it to the reservoir */
+    reservoir.sweep(); /* consume 2 more */
+    Assert.assertEquals("10  received", 10, list.size());
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerSubscriberTest.class);

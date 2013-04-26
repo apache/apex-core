@@ -6,12 +6,12 @@ package com.malhartech.stram.support;
 
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.engine.OperatorContext;
-import com.malhartech.tuple.Tuple;
 import com.malhartech.engine.WindowGenerator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.tuple.EndWindowTuple;
+import com.malhartech.tuple.Tuple;
 import static java.lang.Thread.sleep;
 import junit.framework.AssertionFailedError;
 import static org.junit.Assert.assertTrue;
@@ -40,8 +40,7 @@ abstract public class StramTestSupport
 
   public static Tuple generateEndWindowTuple(String nodeid, int windowId)
   {
-    EndWindowTuple t = new EndWindowTuple();
-    t.setWindowId(windowId);
+    EndWindowTuple t = new EndWindowTuple(windowId);
     return t;
   }
 
@@ -54,7 +53,7 @@ abstract public class StramTestSupport
 
   public static WindowGenerator setupWindowGenerator(ManualScheduledExecutorService mses)
   {
-    WindowGenerator gen = new WindowGenerator(mses);
+    WindowGenerator gen = new WindowGenerator(mses, 1024);
     gen.setResetWindow(0);
     gen.setFirstWindow(0);
     gen.setWindowWidth(1);

@@ -107,9 +107,6 @@ public class NodeRecoveryTest
     lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
-//    for (Long l: collection) {
-//      logger.debug(Codec.getStringWindowId(l));
-//    }
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
 

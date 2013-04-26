@@ -5,7 +5,6 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.ActivationListener;
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
@@ -14,7 +13,6 @@ import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
 import com.malhartech.tuple.EndWindowTuple;
-import com.malhartech.util.AttributeMap;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Array;
@@ -52,7 +50,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected long endWindowEmitTime = 0;
   protected long lastSampleCpuTime = 0;
   protected ThreadMXBean tmb;
-  protected HashMap<String, Long> endWindowDequeueTimes = new HashMap<String, Long>(); // end window dequeue time for input ports
+  protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
 
   public Node(String id, OPERATOR operator)
   {
@@ -74,7 +72,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return descriptor;
   }
 
-  public void connectOutputPort(String port, AttributeMap<PortContext> attributes, final Sink<Object> sink)
+  public void connectOutputPort(String port, final Sink<Object> sink)
   {
     @SuppressWarnings("unchecked")
     OutputPort<Object> outputPort = (OutputPort<Object>)descriptor.outputPorts.get(port);
@@ -95,7 +93,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  public abstract Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, final Sink<? extends Object> sink);
+  public abstract void connectInputPort(String port, final SweepableReservoir reservoir);
 
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
@@ -105,7 +103,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         ics.sink = new ForkingSink(ics.sink, e.getValue());
       }
     }
-
   }
 
   public void removeSinks(Map<String, Sink<Object>> sinks)
@@ -186,8 +183,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     /*
      * since we are going away, we should let all the downstream operators know that.
      */
-    EndStreamTuple est = new EndStreamTuple();
-    est.setWindowId(currentWindowId);
+    EndStreamTuple est = new EndStreamTuple(currentWindowId);
     for (final InternalCounterSink output: outputs.values()) {
       output.process(est);
     }
@@ -195,8 +191,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected void emitEndWindow()
   {
-    EndWindowTuple ewt = new EndWindowTuple();
-    ewt.setWindowId(currentWindowId);
+    EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
     for (final Sink<Object> output: outputs.values()) {
       output.process(ewt);
     }
