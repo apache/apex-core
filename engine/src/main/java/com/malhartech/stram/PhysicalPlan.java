@@ -1269,7 +1269,7 @@ public class PhysicalPlan {
     return this.logicalToPTOperator.get(logicalOperator).partitions;
   }
 
-  // used for recovery, this can go once plan traversal is fully encapsulated
+  // used for testing only
   protected Map<DAG.OutputPortMeta, PTOperator> getMergeOperators(OperatorMeta logicalOperator) {
     return this.logicalToPTOperator.get(logicalOperator).mergeOperators;
   }
