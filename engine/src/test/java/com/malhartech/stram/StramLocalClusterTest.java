@@ -6,7 +6,6 @@ package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
 import com.malhartech.engine.*;
-import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
