@@ -346,11 +346,11 @@ public class DAG implements Serializable, DAGContext
       {
         if (!OperatorMeta.this.inputStreams.isEmpty()) {
           for (Map.Entry<DAG.InputPortMeta, DAG.StreamMeta> e : OperatorMeta.this.inputStreams.entrySet()) {
-            DAG.InputPortMeta ipm = e.getKey();
-            if (ipm.operatorWrapper == OperatorMeta.this && ipm.fieldName.equals(field.getName())) {
+            DAG.InputPortMeta pm = e.getKey();
+            if (pm.operatorWrapper == OperatorMeta.this && pm.fieldName.equals(field.getName())) {
               //LOG.debug("Found existing port meta for: " + field);
-              inPortMap.put(portObject, ipm);
-              checkDuplicateName(ipm.getPortName(), ipm);
+              inPortMap.put(portObject, pm);
+              checkDuplicateName(pm.getPortName(), pm);
               return;
             }
           }
@@ -366,6 +366,17 @@ public class DAG implements Serializable, DAGContext
       @Override
       public void addOutputPort(OutputPort<?> portObject, Field field, OutputPortFieldAnnotation a)
       {
+        if (!OperatorMeta.this.outputStreams.isEmpty()) {
+          for (Map.Entry<DAG.OutputPortMeta, DAG.StreamMeta> e : OperatorMeta.this.outputStreams.entrySet()) {
+            DAG.OutputPortMeta pm = e.getKey();
+            if (pm.operatorWrapper == OperatorMeta.this && pm.fieldName.equals(field.getName())) {
+              //LOG.debug("Found existing port meta for: " + field);
+              outPortMap.put(portObject, pm);
+              checkDuplicateName(pm.getPortName(), pm);
+              return;
+            }
+          }
+        }
         OutputPortMeta metaPort = new OutputPortMeta();
         metaPort.operatorWrapper = OperatorMeta.this;
         metaPort.fieldName = field.getName();
