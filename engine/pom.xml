@@ -213,6 +213,11 @@
       <artifactId>malhar-netlet</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>jline</groupId>
+      <artifactId>jline</artifactId>
+      <version>0.9.94</version>
+    </dependency>
   </dependencies>
   <profiles>
     <!--
@@ -227,7 +232,7 @@
         </property>
       </activation>
       <properties>
-        <hadoop.version>2.0.3-alpha</hadoop.version>
+        <hadoop.version>2.0.4-alpha</hadoop.version>
         <test.excludedGroups>com.malhartech.annotation.PerformanceTestCategory</test.excludedGroups>
       </properties>
       <dependencies>
