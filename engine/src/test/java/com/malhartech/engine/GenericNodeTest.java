@@ -84,6 +84,8 @@ public class GenericNodeTest
     final ArrayList<Object> list = new ArrayList<Object>();
     GenericOperator go = new GenericOperator();
     final GenericNode gn = new GenericNode("GenericNode", go);
+    DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
+    DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
     Sink<Object> output = new Sink<Object>()
     {
       @Override
@@ -94,8 +96,8 @@ public class GenericNodeTest
 
     };
 
-    AttributeMap<PortContext> attributes = new AttributeMap<PortContext>() {
-
+    AttributeMap<PortContext> attributes = new AttributeMap<PortContext>()
+    {
       @Override
       public <T> Attribute<T> attr(AttributeKey<PortContext, T> key)
       {
@@ -109,11 +111,9 @@ public class GenericNodeTest
       }
 
     };
-    @SuppressWarnings("unchecked")
-    Sink<Object> input1 = gn.connectInputPort("ip1", attributes, output);
-    @SuppressWarnings("unchecked")
-    Sink<Object> input2 = gn.connectInputPort("ip2", attributes, output);
-    gn.connectOutputPort("op", attributes, output);
+    gn.connectInputPort("ip1", reservoir1);
+    gn.connectInputPort("ip2", reservoir2);
+    gn.connectOutputPort("op", output);
 
     final AtomicBoolean ab = new AtomicBoolean(false);
     Thread t = new Thread()
@@ -137,70 +137,67 @@ public class GenericNodeTest
     Tuple beginWindow1 = new Tuple(MessageType.BEGIN_WINDOW);
     beginWindow1.setWindowId(0x1L);
 
-    input1.process(beginWindow1);
+    reservoir1.add(beginWindow1);
     Thread.sleep(sleeptime);
     Assert.assertEquals(1, list.size());
 
-    input2.process(beginWindow1);
+    reservoir2.add(beginWindow1);
     Thread.sleep(sleeptime);
     Assert.assertEquals(1, list.size());
 
-    Tuple endWindow1 = new EndWindowTuple();
-    endWindow1.setWindowId(0x1L);
+    Tuple endWindow1 = new EndWindowTuple(0x1L);
 
-    input1.process(endWindow1);
+    reservoir1.add(endWindow1);
     Thread.sleep(sleeptime);
     Assert.assertEquals(1, list.size());
 
     Tuple beginWindow2 = new Tuple(MessageType.BEGIN_WINDOW);
     beginWindow2.setWindowId(0x2L);
 
-    input1.process(beginWindow2);
+    reservoir1.add(beginWindow2);
     Thread.sleep(sleeptime);
     Assert.assertEquals(1, list.size());
 
-    input2.process(endWindow1);
+    reservoir2.add(endWindow1);
     Thread.sleep(sleeptime);
     Assert.assertEquals(3, list.size());
 
-    input2.process(beginWindow2);
+    reservoir2.add(beginWindow2);
     Thread.sleep(sleeptime);
     Assert.assertEquals(3, list.size());
 
-    Tuple endWindow2 = new EndWindowTuple();
-    endWindow2.setWindowId(0x2L);
+    Tuple endWindow2 = new EndWindowTuple(0x2L);
 
-    input2.process(endWindow2);
+    reservoir2.add(endWindow2);
     Thread.sleep(sleeptime);
     Assert.assertEquals(3, list.size());
 
-    input1.process(endWindow2);
+    reservoir1.add(endWindow2);
     Thread.sleep(sleeptime);
     Assert.assertEquals(4, list.size());
 
-    EndStreamTuple est = new EndStreamTuple();
+    EndStreamTuple est = new EndStreamTuple(0L);
 
-    input1.process(est);
+    reservoir1.add(est);
     Thread.sleep(sleeptime);
     Assert.assertEquals(4, list.size());
 
     Tuple beginWindow3 = new Tuple(MessageType.BEGIN_WINDOW);
     beginWindow3.setWindowId(0x3L);
 
-    input2.process(beginWindow3);
+    reservoir2.add(beginWindow3);
     Thread.sleep(sleeptime);
     Assert.assertEquals(5, list.size());
 
-    Tuple endWindow3 = new EndWindowTuple();
-    endWindow3.setWindowId(0x3L);
+    Tuple endWindow3 = new EndWindowTuple(0x3L);
 
-    input2.process(endWindow3);
+    reservoir2.add(endWindow3);
     Thread.sleep(sleeptime);
     Assert.assertEquals(6, list.size());
 
     Assert.assertNotSame(Thread.State.TERMINATED, t.getState());
 
-    input2.process(est);
+    reservoir2.add(est);
     Thread.sleep(sleeptime);
     Assert.assertEquals(7, list.size());
 

@@ -5,15 +5,15 @@ package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.StreamContext;
-import com.malhartech.tuple.Tuple;
-import com.malhartech.netlet.Client.Fragment;
+import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.tuple.EndWindowTuple;
+import com.malhartech.tuple.Tuple;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,7 +36,7 @@ public class SocketStreamTest
 
   static {
     try {
-      eventloop = new DefaultEventLoop("streamTest");
+      eventloop = new DefaultEventLoop("StreamTestEventLoop");
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);
@@ -73,30 +73,13 @@ public class SocketStreamTest
   {
     final StreamCodec<Object> serde = new DefaultStreamCodec<Object>();
     final AtomicInteger messageCount = new AtomicInteger();
-    Sink<Fragment> sink = new Sink<Fragment>()
+    Sink<Object> sink = new Sink<Object>()
     {
-      DataStatePair dsp = new DataStatePair();
       @Override
-      public void process(Fragment fragment)
+      public void process(Object tuple)
       {
-        com.malhartech.bufferserver.packet.Tuple t = com.malhartech.bufferserver.packet.Tuple.getTuple(fragment.buffer, fragment.offset, fragment.length);
-        switch (t.getType()) {
-          case END_WINDOW:
-            synchronized (SocketStreamTest.this) {
-              SocketStreamTest.this.notifyAll();
-            }
-            break;
-
-          case CODEC_STATE:
-            dsp.state = t.getData();
-            break;
-
-          case PAYLOAD:
-            dsp.data = t.getData();
-            logger.debug("received: " + serde.fromByteArray(dsp));
-            messageCount.incrementAndGet();
-            break;
-        }
+        logger.debug("received: " + tuple);
+        messageCount.incrementAndGet();
       }
 
     };
@@ -105,7 +88,6 @@ public class SocketStreamTest
     String upstreamNodeId = "upstreamNodeId";
     String downstreamNodeId = "downStreamNodeId";
 
-
     StreamContext issContext = new StreamContext(streamName);
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
@@ -113,10 +95,10 @@ public class SocketStreamTest
     issContext.attr(StreamContext.CODEC).set(serde);
     issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId);
+    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId, 1024);
     iss.setup(issContext);
-    Sink ss = sink;
-    iss.setSink("testSink", (Sink<Object>)ss);
+    SweepableReservoir reservoir = iss.acquireReservoir("testReservoir", 1);
+    reservoir.setSink(sink);
 
     StreamContext ossContext = new StreamContext(streamName);
     ossContext.setSourceId(upstreamNodeId);
@@ -125,7 +107,7 @@ public class SocketStreamTest
     ossContext.attr(StreamContext.CODEC).set(serde);
     ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId);
+    BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId, 1024);
     oss.setup(ossContext);
 
     iss.activate(issContext);
@@ -139,9 +121,16 @@ public class SocketStreamTest
     oss.process(StramTestSupport.generateTuple("hello", 0));
     oss.process(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0));
     oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
-    if (messageCount.get() == 0) {
-      synchronized (SocketStreamTest.this) {
-        SocketStreamTest.this.wait(2000);
+
+    for (int i = 0; i < 100; i++) {
+      Tuple t = reservoir.sweep();
+      if (t == null) {
+        continue;
+      }
+
+      reservoir.remove();
+      if (t instanceof EndWindowTuple) {
+        break;
       }
     }
 

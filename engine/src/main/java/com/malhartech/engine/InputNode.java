@@ -4,12 +4,9 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.tuple.Tuple;
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.InputOperator;
-import com.malhartech.api.Sink;
-import com.malhartech.util.AttributeMap;
-import com.malhartech.util.CircularBuffer;
+import com.malhartech.tuple.Tuple;
+import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,36 +16,25 @@ import org.slf4j.LoggerFactory;
  */
 public class InputNode extends Node<InputOperator>
 {
-  private static final Logger logger = LoggerFactory.getLogger(InputNode.class);
-  protected CircularBuffer<Tuple> controlTuples;
+  private ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
+  protected SweepableReservoir controlTuples;
 
   public InputNode(String id, InputOperator operator)
   {
     super(id, operator);
-    controlTuples = new CircularBuffer<Tuple>(1024);
   }
 
   @Override
-  public Sink<Object> connectInputPort(String port, AttributeMap<PortContext> attributes, Sink<? extends Object> sink)
+  public void connectInputPort(String port, SweepableReservoir reservoir)
   {
     if (Node.INPUT.equals(port)) {
-      return new Sink<Object>()
-      {
-        @Override
-        public void process(Object payload)
-        {
-          try {
-            controlTuples.put((Tuple)payload);
-          }
-          catch (InterruptedException ex) {
-            logger.debug("Got interrupted while putting {}", payload);
-          }
-        }
-
-      };
+      if (controlTuples == null) {
+        controlTuples = reservoir;
+      }
+      else {
+        deferredInputConnections.add(reservoir);
+      }
     }
-
-    return null;
   }
 
   @Override
@@ -59,47 +45,10 @@ public class InputNode extends Node<InputOperator>
     boolean insideWindow = false;
     int windowCount = 0;
 
-    Tuple t;
     try {
       while (alive) {
-        int size;
-        if ((size = controlTuples.size()) > 0) {
-          while (size-- > 0) {
-            t = controlTuples.poll();
-            switch (t.getType()) {
-              case BEGIN_WINDOW:
-                for (int i = sinks.length; i-- > 0;) {
-                  sinks[i].process(t);
-                }
-                currentWindowId = t.getWindowId();
-                if (windowCount == 0) {
-                  insideWindow = true;
-                  operator.beginWindow(currentWindowId);
-                }
-                operator.emitTuples(); /* give at least one chance to emit the tuples */
-                break;
-
-              case END_WINDOW:
-                if (++windowCount == applicationWindowCount) {
-                  operator.endWindow();
-                  insideWindow = false;
-                  windowCount = 0;
-                }
-                for (int i = sinks.length; i-- > 0;) {
-                  sinks[i].process(t);
-                }
-                handleRequests(currentWindowId, false);
-                break;
-
-              default:
-                for (int i = sinks.length; i-- > 0;) {
-                  sinks[i].process(t);
-                }
-                break;
-            }
-          }
-        }
-        else {
+        Tuple t = controlTuples.sweep();
+        if (t == null) {
           if (insideWindow) {
             int generatedTuples = 0;
 
@@ -121,6 +70,51 @@ public class InputNode extends Node<InputOperator>
             Thread.sleep(0);
           }
         }
+        else {
+          controlTuples.remove();
+          switch (t.getType()) {
+            case BEGIN_WINDOW:
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].process(t);
+              }
+              currentWindowId = t.getWindowId();
+              if (windowCount == 0) {
+                insideWindow = true;
+                operator.beginWindow(currentWindowId);
+              }
+              operator.emitTuples(); /* give at least one chance to emit the tuples */
+              break;
+
+            case END_WINDOW:
+              if (++windowCount == applicationWindowCount) {
+                operator.endWindow();
+                insideWindow = false;
+                windowCount = 0;
+              }
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].process(t);
+              }
+              handleRequests(currentWindowId, false);
+              break;
+
+            case END_STREAM:
+              if (deferredInputConnections.isEmpty()) {
+                for (int i = sinks.length; i-- > 0;) {
+                  sinks[i].process(t);
+                }
+              }
+              else {
+                controlTuples = deferredInputConnections.remove(0);
+              }
+              break;
+
+            default:
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].process(t);
+              }
+              break;
+          }
+        }
       }
     }
     catch (InterruptedException ex) {
@@ -140,4 +134,5 @@ public class InputNode extends Node<InputOperator>
     }
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(InputNode.class);
 }

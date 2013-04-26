@@ -31,7 +31,7 @@ public class HdfsBackupAgent implements BackupAgent
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
-    logger.debug("Backup path: {}", path);
+    //logger.debug("Backup path: {}", path);
     FSDataOutputStream output = fs.create(path);
     try {
       serDe.write(o, output);

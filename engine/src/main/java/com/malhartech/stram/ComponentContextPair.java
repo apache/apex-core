@@ -27,4 +27,11 @@ public class ComponentContextPair<COMPONENT extends Component<?>, CONTEXT extend
   {
     return context;
   }
+
+  @Override
+  public String toString()
+  {
+    return "ComponentContextPair{component=" + component + ", context=" + context + '}';
+  }
+
 }

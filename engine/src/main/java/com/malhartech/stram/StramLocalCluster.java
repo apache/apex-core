@@ -266,9 +266,7 @@ public class StramLocalCluster implements Runnable
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
     if (!perContainerBufferServer) {
-      if (!StramChild.eventloop.isActive()) {
-        StramChild.eventloop.start();
-      }
+      StramChild.eventloop.start();
       bufferServer = new Server(0, 1024 * 1024);
       bufferServer.setSpoolStorage(new DiskStorage());
       SocketAddress bindAddr = bufferServer.run(StramChild.eventloop);

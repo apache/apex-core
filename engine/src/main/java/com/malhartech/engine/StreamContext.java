@@ -6,13 +6,13 @@ package com.malhartech.engine;
 
 import com.malhartech.api.Context;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.netlet.EventLoop;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.AttributeMap.DefaultAttributeMap;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
-import com.malhartech.netlet.EventLoop;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;

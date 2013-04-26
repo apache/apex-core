@@ -5,8 +5,8 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
-import com.malhartech.engine.GenericTestModule;
-import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.GenericTestOperator;
+import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.TupleRecorder.PortInfo;
 import com.malhartech.stram.TupleRecorder.RecordInfo;
@@ -178,9 +178,9 @@ public class TupleRecorderTest
     dag.getAttributes().attr(DAG.STRAM_APP_PATH).set("file://" + testWorkDir.getAbsolutePath());
     dag.getAttributes().attr(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE).set(1024);  // 1KB per part
 
-    TestGeneratorInputModule op1 = dag.addOperator("op1", TestGeneratorInputModule.class);
-    GenericTestModule op2 = dag.addOperator("op2", GenericTestModule.class);
-    GenericTestModule op3 = dag.addOperator("op3", GenericTestModule.class);
+    TestGeneratorInputOperator op1 = dag.addOperator("op1", TestGeneratorInputOperator.class);
+    GenericTestOperator op2 = dag.addOperator("op2", GenericTestOperator.class);
+    GenericTestOperator op3 = dag.addOperator("op3", GenericTestOperator.class);
 
     op1.setEmitInterval(200); // emit every 200 msec
     dag.addStream("stream1", op1.outport, op2.inport1);//.setInline(true);

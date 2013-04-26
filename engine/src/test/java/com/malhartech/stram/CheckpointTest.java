@@ -7,9 +7,9 @@ package com.malhartech.stram;
 import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
-import com.malhartech.engine.GenericTestModule;
+import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.OperatorContext;
-import com.malhartech.engine.TestGeneratorInputModule;
+import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.engine.WindowGenerator;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -64,13 +64,12 @@ public class CheckpointTest
     StramChild.eventloop = new DefaultEventLoop("CheckpointTestEventLoop");
   }
 
-    @After
+  @After
   public void teardown()
   {
     StramChild.eventloop.stop();
 
   }
-
 
   /**
    * Test saving of node state at window boundary.
@@ -82,7 +81,7 @@ public class CheckpointTest
   {
     DAG dag = new DAG();
     // node with no inputs will be connected to window generator
-    TestGeneratorInputModule m1 = dag.addOperator("node1", TestGeneratorInputModule.class);
+    TestGeneratorInputOperator m1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     m1.setMaxTuples(2);
     dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
@@ -125,7 +124,7 @@ public class CheckpointTest
 
     Assert.assertNotNull("node deployed " + deployInfo.get(0), node);
     Assert.assertEquals("nodeId", deployInfo.get(0).id, context.getId());
-    Assert.assertEquals("maxTupes", 2, ((TestGeneratorInputModule)node).getMaxTuples());
+    Assert.assertEquals("maxTupes", 2, ((TestGeneratorInputOperator)node).getMaxTuples());
 
     mses.tick(1); // end window 0, begin window 1
     // await end window 1 to ensure backup is executed at window 2
@@ -173,14 +172,13 @@ public class CheckpointTest
     container.teardown();
   }
 
-      @Ignore
-@Test
+  @Test
   public void testUpdateRecoveryCheckpoint() throws Exception
   {
     DAG dag = new DAG();
 
-    GenericTestModule node1 = dag.addOperator("node1", GenericTestModule.class);
-    GenericTestModule node2 = dag.addOperator("node2", GenericTestModule.class);
+    GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
+    GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
 
     dag.addStream("n1n2", node1.outport1, node2.inport1);
 
