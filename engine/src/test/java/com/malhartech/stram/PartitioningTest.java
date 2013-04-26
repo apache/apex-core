@@ -20,7 +20,6 @@ import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -153,7 +152,7 @@ public class PartitioningTest
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
-    lc.run();
+    lc.run(); // terminates on end of stream
 
     List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorMeta(collector));
     Assert.assertEquals("number operator instances " + operators, 2, operators.size());

@@ -278,7 +278,6 @@ public class PhysicalPlanTest {
     GenericTestOperator mergeNode = dag.addOperator("mergeNode", GenericTestOperator.class);
 
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
-//    dag.addStream("node2_outport1", node2.outport1, mergeNode.inport1);
 
     dag.addStream("node2_outport1", node2.outport1, o3parallel.inport1).setInline(true);
     dag.setInputPortAttribute(o3parallel.inport1, PortContext.PARTITION_PARALLEL, true);
