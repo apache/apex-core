@@ -22,7 +22,10 @@ import java.io.IOException;
 import java.io.LineNumberReader;
 import static java.lang.Thread.sleep;
 import java.util.*;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +36,14 @@ public class StramLocalClusterTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop = new DefaultEventLoop("StramLocalClusterTestEventLoop");
-    StramChild.eventloop.start();
+//    StramChild.eventloop = new DefaultEventLoop("StramLocalClusterTestEventLoop");
+//    StramChild.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+//    StramChild.eventloop.stop();
   }
 
   /**
