@@ -582,37 +582,6 @@ public class PhysicalPlanTest {
       }
       Assert.assertEquals("operators " + c, expectedLogical, actualLogical);
     }
-
-/*
-    List<OperatorMeta> inlineOperators = Lists.newArrayList(dag.getOperatorMeta(o2), o3_1Meta, o3_2Meta);
-    for (OperatorMeta ow: inlineOperators) {
-      List<PTOperator> partitionedInstances = plan.getOperators(ow);
-      Assert.assertEquals("" + partitionedInstances, 2, partitionedInstances.size());
-      for (PTOperator p: partitionedInstances) {
-        Assert.assertEquals("outputs " + p, 1, p.outputs.size());
-        Assert.assertTrue("downstream inline " + p.outputs.get(0), p.outputs.get(0).isDownStreamInline());
-      }
-    }
-
-    // container 4: merge operator for o4
-    Map<DAG.OutputPortMeta, PTOperator> o4Unifiers = plan.getMergeOperators(o4Meta);
-    Assert.assertEquals("unifier " + o4Meta + ": " + o4Unifiers, 1, o4Unifiers.size());
-    PTContainer container4 = plan.getContainers().get(3);
-    Assert.assertEquals("number operators " + container4, 1, container4.operators.size());
-    Assert.assertEquals("operators " + container4, o4Meta, container4.operators.get(0).getOperatorMeta());
-    Assert.assertTrue("unifier " + o4, container4.operators.get(0).merge instanceof Unifier);
-    Assert.assertEquals("unifier inputs" + container4.operators.get(0).inputs, 2, container4.operators.get(0).inputs.size());
-
-    // container 5: o5 taking input from o4 unifier
-    OperatorMeta o5Meta = dag.getOperatorMeta(o5merge);
-    PTContainer container5 = plan.getContainers().get(4);
-    Assert.assertEquals("number operators " + container5, 1, container5.operators.size());
-    Assert.assertEquals("operators " + container5, o5Meta, container5.operators.get(0).getOperatorMeta());
-    List<PTOperator> o5Instances = plan.getOperators(o5Meta);
-    Assert.assertEquals("" + o5Instances, 1, o5Instances.size());
-    Assert.assertEquals("inputs" + container5.operators.get(0).inputs, 1, container5.operators.get(0).inputs.size());
-    Assert.assertEquals("inputs" + container5.operators.get(0).inputs, container4.operators.get(0), container5.operators.get(0).inputs.get(0).source.source);
-*/
   }
 
   @Test
