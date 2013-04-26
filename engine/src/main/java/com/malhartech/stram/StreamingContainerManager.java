@@ -556,10 +556,12 @@ public class StreamingContainerManager implements PlanContext
 
           status.currentWindowId = stats.windowId;
           totalCpuTimeUsed += stats.cpuTimeUsed;
-
+          /*
           if (endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>()) == null) {
             LOG.warn("Putting new map for window id {} for node id {}", stats.windowId, shb.getNodeId());
           }
+          */
+          endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
           Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
           endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
         }
