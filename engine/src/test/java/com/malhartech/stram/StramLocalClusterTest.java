@@ -6,7 +6,6 @@ package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
 import com.malhartech.engine.*;
-import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
@@ -22,7 +21,10 @@ import java.io.IOException;
 import java.io.LineNumberReader;
 import static java.lang.Thread.sleep;
 import java.util.*;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +35,14 @@ public class StramLocalClusterTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop = new DefaultEventLoop("StramLocalClusterTestEventLoop");
-    StramChild.eventloop.start();
+//    StramChild.eventloop = new DefaultEventLoop("StramLocalClusterTestEventLoop");
+//    StramChild.eventloop.start();
   }
 
   @After
   public void teardown()
   {
-    StramChild.eventloop.stop();
+//    StramChild.eventloop.stop();
   }
 
   /**
@@ -172,8 +174,8 @@ public class StramLocalClusterTest
     localCluster.runAsync();
 
 
-    PTOperator ptNode1 = localCluster.findByLogicalNode(dag.getOperatorMeta(node1));
-    PTOperator ptNode2 = localCluster.findByLogicalNode(dag.getOperatorMeta(node2));
+    PTOperator ptNode1 = localCluster.findByLogicalNode(dag.getMeta(node1));
+    PTOperator ptNode2 = localCluster.findByLogicalNode(dag.getMeta(node2));
 
     LocalStramChild c0 = StramTestSupport.waitForActivation(localCluster, ptNode1);
     Map<Integer, Node<?>> nodeMap = c0.getNodes();
@@ -184,7 +186,7 @@ public class StramLocalClusterTest
     LocalStramChild c2 = StramTestSupport.waitForActivation(localCluster, ptNode2);
     Map<Integer, Node<?>> c2NodeMap = c2.getNodes();
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
-    GenericTestOperator n2 = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorMeta(node2)).getId()).getOperator();
+    GenericTestOperator n2 = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getMeta(node2)).getId()).getOperator();
     Assert.assertNotNull(n2);
 
     // sink to collect tuples emitted by the input module
@@ -261,7 +263,7 @@ public class StramLocalClusterTest
     Assert.assertEquals(c2.getContainerId() + " operators after redeploy " + c2.getNodes(), 1, c2.getNodes().size());
     // verify downstream node was replaced in same container
     Assert.assertEquals("active " + ptNode2, c2, StramTestSupport.waitForActivation(localCluster, ptNode2));
-    GenericTestOperator n2Replaced = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getOperatorMeta(node2)).getId()).getOperator();
+    GenericTestOperator n2Replaced = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getMeta(node2)).getId()).getOperator();
     Assert.assertNotNull("redeployed " + ptNode2, n2Replaced);
     Assert.assertNotSame("new instance " + ptNode2, n2, n2Replaced);
     Assert.assertEquals("restored state " + ptNode2, n2.getMyStringProperty(), n2Replaced.getMyStringProperty());

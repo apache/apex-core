@@ -20,7 +20,6 @@ import junit.framework.Assert;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,7 +143,7 @@ public class PartitioningTest
     }
     CollectorOperator collector = dag.addOperator("collector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
-    dag.getOperatorMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator merged = dag.addOperator("merged", new CollectorOperator());
@@ -153,9 +152,9 @@ public class PartitioningTest
 
     StramLocalCluster lc = new StramLocalCluster(dag);
     lc.setHeartbeatMonitoringEnabled(false);
-    lc.run();
+    lc.run(); // terminates on end of stream
 
-    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorMeta(collector));
+    List<PTOperator> operators = lc.getPlanOperators(dag.getMeta(collector));
     Assert.assertEquals("number operator instances " + operators, 2, operators.size());
 
     // one entry for each partition + merged output
@@ -163,7 +162,7 @@ public class PartitioningTest
     Assert.assertEquals("received tuples " + operators.get(0), Arrays.asList(4), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(0).getId()));
     Assert.assertEquals("received tuples " + operators.get(1), Arrays.asList(5), CollectorOperator.receivedTuples.get(collector.prefix + operators.get(1).getId()));
 
-    PTOperator pmerged = lc.findByLogicalNode(dag.getOperatorMeta(merged));
+    PTOperator pmerged = lc.findByLogicalNode(dag.getMeta(merged));
     List<Object> tuples = CollectorOperator.receivedTuples.get(merged.prefix + pmerged.getId());
     Assert.assertNotNull("merged tuples " + pmerged, tuples);
     Assert.assertEquals("merged tuples " + pmerged, Sets.newHashSet(testData[0]), Sets.newHashSet(tuples));
@@ -220,7 +219,7 @@ public class PartitioningTest
 
     CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
-    dag.getOperatorMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.getMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
@@ -230,7 +229,7 @@ public class PartitioningTest
     lc.setHeartbeatMonitoringEnabled(false);
     lc.runAsync();
 
-    List<PTOperator> partitions = assertNumberPartitions(2, lc, dag.getOperatorMeta(collector));
+    List<PTOperator> partitions = assertNumberPartitions(2, lc, dag.getMeta(collector));
 
     PTOperator splitPartition = partitions.get(0);
     PartitionLoadWatch.loadIndicators.put(splitPartition, 1);
@@ -241,7 +240,7 @@ public class PartitioningTest
       count += lc.dnmgr.processEvents();
     }
 
-    partitions = assertNumberPartitions(3, lc, dag.getOperatorMeta(collector));
+    partitions = assertNumberPartitions(3, lc, dag.getMeta(collector));
     // check deployment
     for (PTOperator p: partitions) {
       StramTestSupport.waitForActivation(lc, p);
@@ -249,7 +248,7 @@ public class PartitioningTest
 
     PartitionLoadWatch.loadIndicators.remove(splitPartition);
 
-    PTOperator planInput = lc.findByLogicalNode(dag.getOperatorMeta(input));
+    PTOperator planInput = lc.findByLogicalNode(dag.getMeta(input));
     LocalStramChild c = StramTestSupport.waitForActivation(lc, planInput);
     Map<Integer, Node<?>> nodeMap = c.getNodes();
     Assert.assertEquals("number operators " + nodeMap, 1, nodeMap.size());
@@ -280,7 +279,7 @@ public class PartitioningTest
     }
 
     // single output operator to receive tuple from each partition
-    List<PTOperator> operators = lc.getPlanOperators(dag.getOperatorMeta(singleCollector));
+    List<PTOperator> operators = lc.getPlanOperators(dag.getMeta(singleCollector));
     Assert.assertEquals("number output operator instances " + operators, 1, operators.size());
     StramTestSupport.waitForActivation(lc, operators.get(0)); // ensure redeploy
 
@@ -343,7 +342,7 @@ public class PartitioningTest
       lc.setHeartbeatMonitoringEnabled(false);
       lc.runAsync();
 
-      List<PTOperator> partitions = assertNumberPartitions(3, lc, dag.getOperatorMeta(input));
+      List<PTOperator> partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       Set<String> partProperties = new HashSet<String>();
       for (PTOperator p: partitions) {
         LocalStramChild c = StramTestSupport.waitForActivation(lc, p);
@@ -368,7 +367,7 @@ public class PartitioningTest
       }
       PartitionLoadWatch.loadIndicators.remove(partitions.get(0));
 
-      partitions = assertNumberPartitions(3, lc, dag.getOperatorMeta(input));
+      partitions = assertNumberPartitions(3, lc, dag.getMeta(input));
       partProperties = new HashSet<String>();
       for (PTOperator p: partitions) {
         LocalStramChild c = StramTestSupport.waitForActivation(lc, p);

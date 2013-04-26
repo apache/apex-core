@@ -241,17 +241,17 @@ public class BufferServerSubscriber extends Subscriber implements Stream
           Object o;
           switch (data.getType()) {
             case NO_MESSAGE:
-              freeFragments.add(fm);
+              freeFragments.offer(fm);
               continue;
 
             case CHECKPOINT:
               serde.resetState();
-              freeFragments.add(fm);
+              freeFragments.offer(fm);
               continue;
 
             case CODEC_STATE:
               dsp.state = data.getData();
-              freeFragments.add(fm);
+              freeFragments.offer(fm);
               continue;
 
             case PAYLOAD:

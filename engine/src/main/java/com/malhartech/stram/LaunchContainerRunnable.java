@@ -214,7 +214,7 @@ public class LaunchContainerRunnable implements Runnable
     vargs.add("-Djava.io.tmpdir=" + childTmpDir);
     vargs.add("-Dstram.cid=" + jvmID);
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
-    vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/clog");
+    vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
     // Add main class and its arguments
     vargs.add(StramChild.class.getName());  // main of Child

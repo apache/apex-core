@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.StringUtils;
@@ -46,7 +47,6 @@ import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.Operators;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
-import java.util.Map.Entry;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -315,8 +315,14 @@ public class PhysicalPlan {
     int failureCount = 0;
     int loadIndicator = 0;
     List<? extends StatsHandler> statsMonitors;
-    private Set<PTOperator> inlineSet = Sets.newHashSet();
-    private Set<PTOperator> nodeLocal = Sets.newHashSet();
+
+    private enum LocalityType {
+      CONTAINER_LOCAL,
+      NODE_LOCAL,
+      RACK_LOCAL
+    }
+
+    private final Map<LocalityType, Set<PTOperator>> groupings = Maps.newHashMapWithExpectedSize(3);
 
     List<StreamingContainerUmbilicalProtocol.StramToNodeRequest> deployRequests = Collections.emptyList();
 
@@ -382,8 +388,17 @@ public class PhysicalPlan {
       return plan;
     }
 
+    private Set<PTOperator> getGrouping(LocalityType type) {
+      Set<PTOperator> s = this.groupings.get(type);
+      if (s == null) {
+        s = Sets.newHashSet();
+        this.groupings.put(type, s);
+      }
+      return s;
+    }
+
     public Set<PTOperator> getNodeLocalOperators() {
-      return this.nodeLocal;
+      return getGrouping(LocalityType.NODE_LOCAL);
     }
 
     /**
@@ -491,10 +506,12 @@ public class PhysicalPlan {
   private final AtomicInteger idSequence = new AtomicInteger();
   private final AtomicInteger containerSeq = new AtomicInteger();
   private final LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
-  private final List<PTContainer> containers = new ArrayList<PTContainer>();
+  private final List<PTContainer> containers = new CopyOnWriteArrayList<PTContainer>();
   private final DAG dag;
   private final PlanContext ctx;
   private int maxContainers = 1;
+  private final LocalityPrefs localityPrefs = new LocalityPrefs();
+  private final LocalityPrefs inlinePrefs = new LocalityPrefs();
 
   private PTContainer getContainer(int index) {
     if (index >= containers.size()) {
@@ -587,14 +604,13 @@ public class PhysicalPlan {
 
   private class LocalityPrefs {
     private final Map<PMapping, LocalityPref> prefs = Maps.newHashMap();
-    private final AtomicInteger hostSeq = new AtomicInteger();
+    private final AtomicInteger groupSeq = new AtomicInteger();
 
-    void add(PMapping m) {
-      String hostPref = m.logicalOperator.getAttributes().attrValue(OperatorContext.LOCALITY_HOST, null);
-      if (hostPref != null) {
+    void add(PMapping m, String group) {
+      if (group != null) {
         LocalityPref pref = null;
         for (LocalityPref lp : prefs.values()) {
-          if (hostPref.equals(lp.host)) {
+          if (group.equals(lp.host)) {
             lp.operators.add(m);
             pref = lp;
             break;
@@ -602,20 +618,20 @@ public class PhysicalPlan {
         }
         if (pref == null) {
           pref = new LocalityPref();
-          pref.host = hostPref;
+          pref.host = group;
           pref.operators.add(m);
           this.prefs.put(m, pref);
         }
       }
     }
 
-    void setHostLocal(PMapping m1, PMapping m2) {
+    void setLocal(PMapping m1, PMapping m2) {
       LocalityPref lp1 = prefs.get(m1);
       LocalityPref lp2 = prefs.get(m2);
 
       if (lp1 == null && lp2 == null) {
         lp1 = lp2 = new LocalityPref();
-        lp1.host = "host" + hostSeq.incrementAndGet();
+        lp1.host = "host" + groupSeq.incrementAndGet();
         lp1.operators.add(m1);
         lp1.operators.add(m2);
       } else if (lp1 != null && lp2 != null) {
@@ -654,7 +670,6 @@ public class PhysicalPlan {
     this.maxContainers = Math.max(dag.getMaxContainerCount(),1);
     LOG.debug("Initializing for {} containers.", this.maxContainers);
 
-    LocalityPrefs localityPrefs = new LocalityPrefs();
     Stack<OperatorMeta> pendingNodes = new Stack<OperatorMeta>();
 
     for (OperatorMeta n : dag.getAllOperators()) {
@@ -683,9 +698,8 @@ public class PhysicalPlan {
       if (upstreamDeployed) {
         // ready to look at this node
         PMapping pnodes = new PMapping(n);
-        localityPrefs.add(pnodes);
+        localityPrefs.add(pnodes, pnodes.logicalOperator.getAttributes().attrValue(OperatorContext.LOCALITY_HOST, null));
 
-        HashSet<PMapping> inlineCandidates = new HashSet<PMapping>();
         PMapping upstreamPartitioned = null;
 
         for (Map.Entry<DAG.InputPortMeta, StreamMeta> e : n.getInputStreams().entrySet()) {
@@ -705,9 +719,9 @@ public class PhysicalPlan {
           }
 
           if (e.getValue().isInline()) {
-            inlineCandidates.add(m);
+            inlinePrefs.setLocal(m, pnodes);
           } else if (e.getValue().isNodeLocal()) {
-            localityPrefs.setHostLocal(m, pnodes);
+            localityPrefs.setLocal(m, pnodes);
           }
         }
 
@@ -727,58 +741,6 @@ public class PhysicalPlan {
             addPTOperator(pnodes, null);
           }
         }
-
-        //
-        // update locality groupings
-        //
-        for (int partIndex = 0; partIndex < pnodes.partitions.size(); partIndex++) {
-          PTOperator newOperator = pnodes.partitions.get(partIndex);
-          newOperator.inlineSet.add(newOperator);
-
-          for (PMapping inlineCandidate : inlineCandidates) {
-            //LOG.debug("merging {} {}", newOperator, inlineCandidate.partitions);
-            if (pnodes.parallelPartitions == inlineCandidate.parallelPartitions) {
-              // apply locality setting per partition
-              newOperator.inlineSet.addAll(inlineCandidate.partitions.get(partIndex).inlineSet);
-              newOperator.inlineSet.add(newOperator);
-            } else {
-              for (PTOperator otherNode : inlineCandidate.partitions) {
-                newOperator.inlineSet.addAll(otherNode.inlineSet);
-                newOperator.inlineSet.add(newOperator);
-              }
-            }
-          }
-
-          // update each operator with merged set
-          for (PTOperator inlineOper : newOperator.inlineSet) {
-            inlineOper.inlineSet = newOperator.inlineSet;
-            //LOG.debug(n.getId() + " " + inlineNode.id + " inlineset: " + newOperator.inlineSet);
-          }
-          LOG.debug("inlineSet for {} {}", newOperator, newOperator.inlineSet);
-
-          //
-          // update host locality
-          newOperator.nodeLocal.add(newOperator);
-          LocalityPref loc = localityPrefs.prefs.get(pnodes);
-          if (loc != null) {
-            for (PMapping nodeLocalPM : loc.operators) {
-              if (pnodes.parallelPartitions == nodeLocalPM.parallelPartitions) {
-                // apply locality setting per partition
-                newOperator.nodeLocal.addAll(nodeLocalPM.partitions.get(partIndex).nodeLocal);
-                newOperator.nodeLocal.add(newOperator);
-              } else {
-                for (PTOperator otherNode : nodeLocalPM.partitions) {
-                  newOperator.nodeLocal.addAll(otherNode.nodeLocal);
-                  newOperator.nodeLocal.add(newOperator);
-                }
-              }
-            }
-            for (PTOperator localOper : newOperator.nodeLocal) {
-              localOper.nodeLocal = newOperator.nodeLocal;
-            }
-          }
-        }
-
         this.logicalToPTOperator.put(n, pnodes);
       }
     }
@@ -790,9 +752,10 @@ public class PhysicalPlan {
       for (PTOperator oper : e.getValue().getAllOperators()) {
         if (oper.container == null) {
           PTContainer container = getContainer((groupCount++) % maxContainers);
-          if (!oper.inlineSet.isEmpty()) {
+          Set<PTOperator> inlineSet = oper.getGrouping(PTOperator.LocalityType.CONTAINER_LOCAL);
+          if (!inlineSet.isEmpty()) {
             // process inline operators
-            for (PTOperator inlineOper : oper.inlineSet) {
+            for (PTOperator inlineOper : inlineSet) {
               setContainer(inlineOper, container);
             }
           } else {
@@ -810,7 +773,7 @@ public class PhysicalPlan {
 
   private void setContainer(PTOperator pOperator, PTContainer container) {
     LOG.debug("Setting container {} for {}", container, pOperator);
-    assert(pOperator.container == null);
+    assert (pOperator.container == null) : "Container already assigned for " + pOperator;
     pOperator.container = container;
     container.operators.add(pOperator);
     if (!pOperator.upstreamMerge.isEmpty()) {
@@ -881,7 +844,6 @@ public class PhysicalPlan {
     for (Partition<?> p: partitions) {
       addPTOperator(m, p);
     }
-
   }
 
   private void redoPartitions(PMapping currentMapping) {
@@ -925,7 +887,7 @@ public class PhysicalPlan {
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
 
-      // track inline, new partitions will need to adhere to it (publishers are not switched dynamically)
+      // track existing inline deployment (publishers are not switched dynamically)
       if (inlineContainer == null) {
         for (PTInput in : pOperator.inputs) {
           if (in.source.isDownStreamInline()) {
@@ -992,12 +954,14 @@ public class PhysicalPlan {
     currentMapping.partitions = newMapping.partitions;
 
     // add new operators after cleanup complete
-    Set<PTContainer> newContainers = new HashSet<PTContainer>();
+    Set<PTContainer> newContainers = Sets.newHashSet();
+    Set<PTOperator> newOperators = Sets.newHashSet();
 
     for (Partition<?> newPartition : addedPartitions) {
       // new partition, add operator instance
       PTOperator p = addPTOperator(currentMapping, newPartition);
       deployOperators.add(p);
+      newOperators.add(p);
 
       // handle parallel partition
       Stack<OperatorMeta> pending = new Stack<DAG.OperatorMeta>();
@@ -1012,7 +976,8 @@ public class PhysicalPlan {
             continue pendingLoop;
           }
         }
-        addPTOperator(this.logicalToPTOperator.get(pp), null);
+        newOperators.add(addPTOperator(this.logicalToPTOperator.get(pp), null));
+        // TODO: set checkpoint
       }
 
       // set checkpoint for new operator for deployment
@@ -1024,25 +989,41 @@ public class PhysicalPlan {
         // inconsistent state, no recovery option, requires shutdown
         throw new IllegalStateException("Failed to write operator state after partition change " + p, e);
       }
+    }
 
-      // find container for new operator
+    // assign containers to new operators
+    for (PTOperator oper : newOperators) {
+      PTContainer newContainer = null;
+      // check for existing inline set
+      for (PTOperator inlineOper : oper.getGrouping(PTOperator.LocalityType.CONTAINER_LOCAL)) {
+        if (inlineOper.container != null) {
+          newContainer = inlineOper.container;
+          break;
+        }
+      }
+
+      if (newContainer != null) {
+        setContainer(oper, newContainer);
+        continue;
+      }
+
+      // find container
       PTContainer c = inlineContainer;
       if (c == null) {
-        c = findContainer(p);
+        c = findContainer(oper);
         if (c == null) {
           // get new container
-          LOG.debug("New container for partition: " + p);
+          LOG.debug("New container for partition: " + oper);
           c = new PTContainer(this);
           newContainers.add(c);
         }
       }
-
-      p.container = c;
-      p.container.operators.add(p); // TODO: thread safety
+      oper.container = c;
+      oper.container.operators.add(oper); // TODO: thread safety
     }
 
     deployOperators = this.getDependents(deployOperators);
-    containers.addAll(newContainers); // TODO: thread safety
+    containers.addAll(newContainers);
     ctx.redeploy(undeployOperators, newContainers, deployOperators);
 
   }
@@ -1100,7 +1081,7 @@ public class PhysicalPlan {
       partitionKeys = new HashMap<DAG.InputPortMeta, PartitionKeys>(partition.getPartitionKeys().size());
       Map<InputPort<?>, PartitionKeys> partKeys = partition.getPartitionKeys();
       for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
-        DAG.InputPortMeta pportMeta = nodeDecl.logicalOperator.getInputPortMeta(portEntry.getKey());
+        DAG.InputPortMeta pportMeta = nodeDecl.logicalOperator.getMeta(portEntry.getKey());
         if (pportMeta == null) {
           throw new IllegalArgumentException("Invalid port reference " + portEntry);
         }
@@ -1183,6 +1164,12 @@ public class PhysicalPlan {
       }
     }
 
+    //
+    // update locality
+    //
+    setLocalityGrouping(nodeDecl, pOperator, inlinePrefs, PTOperator.LocalityType.CONTAINER_LOCAL);
+    setLocalityGrouping(nodeDecl, pOperator, localityPrefs, PTOperator.LocalityType.NODE_LOCAL);
+
     return pOperator;
   }
 
@@ -1206,6 +1193,30 @@ public class PhysicalPlan {
       }
     }
     return pOperator;
+  }
+
+  private void setLocalityGrouping(PMapping pnodes, PTOperator newOperator, LocalityPrefs localityPrefs, PTOperator.LocalityType ltype) {
+
+    Set<PTOperator> s = newOperator.getGrouping(ltype);
+    s.add(newOperator);
+    LocalityPref loc = localityPrefs.prefs.get(pnodes);
+    if (loc != null) {
+      for (PMapping localPM : loc.operators) {
+        if (pnodes.parallelPartitions == localPM.parallelPartitions) {
+          if (localPM.partitions.size() >= pnodes.partitions.size()) {
+            // apply locality setting per partition
+            s.addAll(localPM.partitions.get(pnodes.partitions.size()-1).getGrouping(ltype));
+          }
+        } else {
+          for (PTOperator otherNode : localPM.partitions) {
+            s.addAll(otherNode.getGrouping(ltype));
+          }
+        }
+      }
+      for (PTOperator localOper : s) {
+        localOper.groupings.put(ltype, s);
+      }
+    }
   }
 
   private void removePTOperator(PTOperator node) {
