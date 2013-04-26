@@ -54,6 +54,7 @@ import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.stram.webapp.PortInfo;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -91,7 +92,6 @@ public class StreamingContainerManager implements PlanContext
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
-  private final Map<PTOperator, Boolean> endWindowStatsVisited = new HashMap<PTOperator, Boolean>();
 
   private static class EndWindowStats
   {
@@ -184,12 +184,12 @@ public class StreamingContainerManager implements PlanContext
         else {
           // latency calculation
           List<OperatorMeta> rootOperatorMetas = plan.getRootOperators();
-          endWindowStatsVisited.clear();
+          Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
           for (OperatorMeta root: rootOperatorMetas) {
             List<PTOperator> rootOperators = plan.getOperators(root);
             for (PTOperator rootOperator: rootOperators) {
               // DFS for visiting the nodes for latency calculation
-              calculateLatency(rootOperator, endWindowStatsMap);
+              calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited);
             }
           }
           endWindowStatsOperatorMap.remove(windowId);
@@ -199,9 +199,9 @@ public class StreamingContainerManager implements PlanContext
     }
   }
 
-  private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap)
+  private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> endWindowStatsVisited)
   {
-    endWindowStatsVisited.put(oper, true);
+    endWindowStatsVisited.add(oper);
     EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
     if (endWindowStats == null) {
       LOG.warn("End window stats is null for operator {}. If you see this, there is a bug!", oper.getId());
@@ -229,14 +229,16 @@ public class StreamingContainerManager implements PlanContext
       LOG.warn("Operator status for operator {} does not exist!", oper.getId());
       return;
     }
-    operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
+    if (upstreamMaxEmitTimestamp > 0) {
+      operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
+    }
 
     for (PTOutput output: oper.outputs) {
       for (PTInput input: output.sinks) {
         if (input.target instanceof PTOperator) {
           PTOperator downStreamOp = (PTOperator)input.target;
-          if (!endWindowStatsVisited.get(downStreamOp)) {
-            calculateLatency(downStreamOp, endWindowStatsMap);
+          if (!endWindowStatsVisited.contains(downStreamOp)) {
+            calculateLatency(downStreamOp, endWindowStatsMap, endWindowStatsVisited);
           }
         }
       }
