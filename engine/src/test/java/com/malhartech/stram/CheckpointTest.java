@@ -184,12 +184,12 @@ public class CheckpointTest
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     PhysicalPlan plan = dnm.getPhysicalPlan();
-    List<PTOperator> nodes1 = plan.getOperators(dag.getOperatorMeta(node1));
+    List<PTOperator> nodes1 = plan.getOperators(dag.getMeta(node1));
     Assert.assertNotNull(nodes1);
     Assert.assertEquals(1, nodes1.size());
     PTOperator pnode1 = nodes1.get(0);
 
-    List<PTOperator> nodes2 = plan.getOperators(dag.getOperatorMeta(node2));
+    List<PTOperator> nodes2 = plan.getOperators(dag.getMeta(node2));
     Assert.assertNotNull(nodes2);
     Assert.assertEquals(1, nodes2.size());
     PTOperator pnode2 = nodes2.get(0);
