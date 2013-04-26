@@ -1081,7 +1081,7 @@ public class PhysicalPlan {
       partitionKeys = new HashMap<DAG.InputPortMeta, PartitionKeys>(partition.getPartitionKeys().size());
       Map<InputPort<?>, PartitionKeys> partKeys = partition.getPartitionKeys();
       for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
-        DAG.InputPortMeta pportMeta = nodeDecl.logicalOperator.getInputPortMeta(portEntry.getKey());
+        DAG.InputPortMeta pportMeta = nodeDecl.logicalOperator.getMeta(portEntry.getKey());
         if (pportMeta == null) {
           throw new IllegalArgumentException("Invalid port reference " + portEntry);
         }

@@ -251,8 +251,8 @@ public class DAG implements Serializable, DAGContext
 
     public StreamMeta setSource(Operator.OutputPort<?> port)
     {
-      OperatorMeta op = getOperatorMeta(port.getOperator());
-      OutputPortMeta portMeta = op.getOutputPortMeta(port);
+      OperatorMeta op = getMeta(port.getOperator());
+      OutputPortMeta portMeta = op.getMeta(port);
       if (portMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + port);
       }
@@ -272,8 +272,8 @@ public class DAG implements Serializable, DAGContext
 
     public StreamMeta addSink(Operator.InputPort<?> port)
     {
-      OperatorMeta op = getOperatorMeta(port.getOperator());
-      InputPortMeta portMeta = op.getInputPortMeta(port);
+      OperatorMeta op = getMeta(port.getOperator());
+      InputPortMeta portMeta = op.getMeta(port);
       if (portMeta == null) {
         throw new IllegalArgumentException("Invalid port reference " + port);
       }
@@ -407,12 +407,12 @@ public class DAG implements Serializable, DAGContext
       return portMapping;
     }
 
-    public OutputPortMeta getOutputPortMeta(Operator.OutputPort<?> port)
+    public OutputPortMeta getMeta(Operator.OutputPort<?> port)
     {
       return getPortMapping().outPortMap.get(port);
     }
 
-    public InputPortMeta getInputPortMeta(Operator.InputPort<?> port)
+    public InputPortMeta getMeta(Operator.InputPort<?> port)
     {
       return getPortMapping().inPortMap.get(port);
     }
@@ -555,7 +555,7 @@ public class DAG implements Serializable, DAGContext
    */
   public AttributeMap<OperatorContext> getContextAttributes(Operator operator)
   {
-    return getOperatorMeta(operator).attributes;
+    return getMeta(operator).attributes;
   }
 
   public <T> void setAttribute(DAGContext.AttributeKey<T> key, T value)
@@ -565,17 +565,17 @@ public class DAG implements Serializable, DAGContext
 
   public <T> void setAttribute(Operator operator, OperatorContext.AttributeKey<T> key, T value)
   {
-    this.getOperatorMeta(operator).attributes.attr(key).set(value);
+    this.getMeta(operator).attributes.attr(key).set(value);
   }
 
   public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
-    getOperatorMeta(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
+    getMeta(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
   }
 
   public <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
-    getOperatorMeta(port.getOperator()).getPortMapping().inPortMap.get(port).attributes.attr(key).set(value);
+    getMeta(port.getOperator()).getPortMapping().inPortMap.get(port).attributes.attr(key).set(value);
   }
 
   public List<OperatorMeta> getRootOperators()
@@ -598,7 +598,7 @@ public class DAG implements Serializable, DAGContext
     return this.operators.get(operatorId);
   }
 
-  public OperatorMeta getOperatorMeta(Operator operator)
+  public OperatorMeta getMeta(Operator operator)
   {
     // TODO: cache mapping
     for (OperatorMeta o: getAllOperators()) {

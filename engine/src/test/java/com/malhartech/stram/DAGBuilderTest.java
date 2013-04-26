@@ -101,11 +101,11 @@ public class DAGBuilderTest {
     // check links
     assertEquals("operator1 inputs", 0, operator1.getInputStreams().size());
     assertEquals("operator1 outputs", 1, operator1.getOutputStreams().size());
-    StreamMeta n1n2 = operator2.getInputStreams().get(operator2.getInputPortMeta(((GenericTestOperator)operator2.getOperator()).inport1));
+    StreamMeta n1n2 = operator2.getInputStreams().get(operator2.getMeta(((GenericTestOperator)operator2.getOperator()).inport1));
     assertNotNull("n1n2", n1n2);
 
     // output/input stream object same
-    assertEquals("rootNode out is operator2 in", n1n2, operator1.getOutputStreams().get(operator1.getOutputPortMeta(((GenericTestOperator)operator1.getOperator()).outport1)));
+    assertEquals("rootNode out is operator2 in", n1n2, operator1.getOutputStreams().get(operator1.getMeta(((GenericTestOperator)operator1.getOperator()).outport1)));
     assertEquals("n1n2 source", operator1, n1n2.getSource().getOperatorWrapper());
     Assert.assertEquals("n1n2 targets", 1, n1n2.getSinks().size());
     Assert.assertEquals("n1n2 target", operator2, n1n2.getSinks().get(0).getOperatorWrapper());
@@ -227,14 +227,14 @@ public class DAGBuilderTest {
      }
 
      List<List<String>> cycles = new ArrayList<List<String>>();
-     dag.findStronglyConnected(dag.getOperatorMeta(operator7), cycles);
+     dag.findStronglyConnected(dag.getMeta(operator7), cycles);
      assertEquals("operator self reference", 1, cycles.size());
      assertEquals("operator self reference", 1, cycles.get(0).size());
      assertEquals("operator self reference", operator7.getName(), cycles.get(0).get(0));
 
      // 3 operator cycle
      cycles.clear();
-     dag.findStronglyConnected(dag.getOperatorMeta(operator4), cycles);
+     dag.findStronglyConnected(dag.getMeta(operator4), cycles);
      assertEquals("3 operator cycle", 1, cycles.size());
      assertEquals("3 operator cycle", 3, cycles.get(0).size());
      assertTrue("operator2", cycles.get(0).contains(operator2.getName()));
@@ -549,16 +549,16 @@ public class DAGBuilderTest {
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
     pb.addFromProperties(props);
 
-    Map<String, String> configProps = pb.getProperties(dag.getOperatorMeta(operator1), "appName");
+    Map<String, String> configProps = pb.getProperties(dag.getMeta(operator1), "appName");
     Assert.assertEquals("" + configProps, 2, configProps.size());
     Assert.assertEquals("" + configProps, "stringProperty2Value-matchId1", configProps.get("stringProperty2"));
     Assert.assertEquals("" + configProps, "nested.propertyValue-matchId1", configProps.get("nested.property"));
 
-    configProps = pb.getProperties(dag.getOperatorMeta(operator2), "appName");
+    configProps = pb.getProperties(dag.getMeta(operator2), "appName");
     Assert.assertEquals("" + configProps, 1, configProps.size());
     Assert.assertEquals("" + configProps, "stringProperty2Value-matchClass1", configProps.get("stringProperty2"));
 
-    configProps = pb.getProperties(dag.getOperatorMeta(operator3), "appName");
+    configProps = pb.getProperties(dag.getMeta(operator3), "appName");
     Assert.assertEquals("" + configProps, 2, configProps.size());
     Assert.assertEquals("" + configProps, "myStringPropertyValue", configProps.get("myStringProperty"));
     Assert.assertEquals("" + configProps, "emitFormatValue", configProps.get("emitFormat"));
