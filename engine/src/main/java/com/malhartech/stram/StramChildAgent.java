@@ -55,7 +55,7 @@ public class StramChildAgent {
     }
   }
 
-  class MovingAverageLong {
+  static class MovingAverageLong {
     private final int periods;
     private final long[] values;
     private int index = 0;
@@ -89,7 +89,7 @@ public class StramChildAgent {
   }
 
   // Generics don't work with numbers.  Hence this mess.
-  class MovingAverageDouble {
+  static class MovingAverageDouble {
     private final int periods;
     private final double[] values;
     private int index = 0;
@@ -132,6 +132,7 @@ public class StramChildAgent {
     MovingAverageLong tuplesProcessedPSMA10 = new MovingAverageLong(10);
     MovingAverageLong tuplesEmittedPSMA10 = new MovingAverageLong(10);
     MovingAverageDouble cpuPercentageMA10 = new MovingAverageDouble(10);
+    MovingAverageLong latencyMA = new MovingAverageLong(10);
     List<String> recordingNames; // null if recording is not in progress
     Map<String, PortStatus> inputPortStatusList = new HashMap<String, PortStatus>();
     Map<String, PortStatus> outputPortStatusList = new HashMap<String, PortStatus>();
