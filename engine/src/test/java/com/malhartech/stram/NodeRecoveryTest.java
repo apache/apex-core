@@ -42,8 +42,9 @@ public class NodeRecoveryTest
 
   public static class CollectorOperator extends BaseOperator implements CheckpointListener
   {
-    private int checkpointCount;
     private boolean simulateFailure;
+    private transient long checkPointWindowId;
+
     public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>(this)
     {
       @Override
@@ -66,24 +67,23 @@ public class NodeRecoveryTest
     @Override
     public void setup(OperatorContext context)
     {
-      if (checkpointCount > 0) {
-        checkpointCount = 7;
-      }
-
-      logger.debug("checkpointcount = {}", checkpointCount);
+      simulateFailure &= (checkPointWindowId == 0);
+      logger.debug("simulateFailure = {}", simulateFailure);
     }
 
     @Override
     public void checkpointed(long windowId)
     {
-      checkpointCount++;
+      if (this.checkPointWindowId == 0) {
+        this.checkPointWindowId = windowId;
+      }
     }
 
     @Override
     public void committed(long windowId)
     {
-      logger.debug("committed window {} and checkpoint {}", windowId, checkpointCount);
-      if (simulateFailure && checkpointCount == 6) {
+      logger.debug("committed window {} and checkPointWindowId {}", windowId, checkPointWindowId);
+      if (simulateFailure && windowId > this.checkPointWindowId && this.checkPointWindowId > 0) {
         throw new RuntimeException("Failure Simulation from " + this);
       }
     }
@@ -130,7 +130,6 @@ public class NodeRecoveryTest
     dag.addStream("connection", rip.output, cm.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
 //    for (Long l: collection) {
@@ -158,7 +157,6 @@ public class NodeRecoveryTest
     dag.addStream("connection", rip.output, cm.input).setInline(true);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
 //    for (Long l: collection) {
