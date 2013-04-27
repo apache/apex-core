@@ -10,11 +10,13 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.engine.RecoverableInputOperator;
-import java.io.IOException;
-
-import java.util.HashSet;
 import com.malhartech.netlet.DefaultEventLoop;
-import org.junit.*;
+import java.io.IOException;
+import java.util.HashSet;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +92,7 @@ public class NodeRecoveryTest
 
   }
 
-  @Test
+@Test
   public void testInputOperatorRecovery() throws Exception
   {
     collection.clear();
@@ -136,7 +138,7 @@ public class NodeRecoveryTest
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
 
-  @Test
+@Test
   public void testInlineOperatorsRecovery() throws Exception
   {
     collection.clear();
