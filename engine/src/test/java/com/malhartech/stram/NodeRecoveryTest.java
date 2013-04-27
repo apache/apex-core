@@ -90,7 +90,6 @@ public class NodeRecoveryTest
 
   }
 
-  @Ignore
   @Test
   public void testInputOperatorRecovery() throws Exception
   {
@@ -138,7 +137,6 @@ public class NodeRecoveryTest
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
 
-  @Ignore
   @Test
   public void testInlineOperatorsRecovery() throws Exception
   {
