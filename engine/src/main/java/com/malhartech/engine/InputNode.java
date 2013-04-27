@@ -97,25 +97,26 @@ public class InputNode extends Node<InputOperator>
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].process(t);
               }
-              handleRequests(currentWindowId, false);
+              handleRequests(currentWindowId);
               break;
 
             case CHECKPOINT:
-              for (int i = sinks.length; i-- > 0;) {
-                sinks[i].process(t);
-              }
+              logger.debug("InputNode {} got checkpoint {}", this, t.getWindowId());
               BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();
               if (ba != null) {
                 try {
                   ba.backup(id, t.getWindowId(), operator);
-                  backupWindowId = t.getWindowId();
+                  checkpointedWindowId = t.getWindowId();
                   if (operator instanceof CheckpointListener) {
-                    ((CheckpointListener)operator).checkpointed(backupWindowId);
+                    ((CheckpointListener)operator).checkpointed(checkpointedWindowId);
                   }
                 }
                 catch (IOException io) {
                   throw new RuntimeException(io);
                 }
+              }
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].process(t);
               }
               break;
 

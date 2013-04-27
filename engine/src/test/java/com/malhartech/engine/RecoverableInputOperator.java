@@ -20,8 +20,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>(this);
   transient boolean first;
   transient long windowId;
-  boolean failed;
-  transient boolean transient_fail;
+  int checkpointCount;
   int maximumTuples = 20;
 
   public void setMaximumTuples(int count)
@@ -57,9 +56,11 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   @Override
   public void setup(OperatorContext context)
   {
-    logger.debug("failed = {}", failed);
-    transient_fail = !failed;
-    failed = true;
+    if (checkpointCount > 0) {
+      checkpointCount = 3;
+    }
+
+    logger.debug("checkpointCount = {}", checkpointCount);
   }
 
   @Override
@@ -70,14 +71,16 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   @Override
   public void checkpointed(long windowId)
   {
-    if (transient_fail) {
-      throw new RuntimeException("Failure Simulation from " + this);
-    }
+    checkpointCount++;
   }
 
   @Override
   public void committed(long windowId)
   {
+    logger.debug("committed window {} and checkpoint {}", windowId, checkpointCount);
+    if (checkpointCount == 2) {
+      throw new RuntimeException("Failure Simulation from " + this);
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(RecoverableInputOperator.class);

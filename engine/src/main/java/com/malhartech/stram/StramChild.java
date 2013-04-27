@@ -15,6 +15,7 @@ import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.engine.*;
+import com.malhartech.engine.OperatorContext.NodeRequest;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -509,7 +510,6 @@ public class StramChild
           hb.setState(e.getValue().isAlive() ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
         }
 
-        hb.setLastBackupWindowId(e.getValue().getBackupWindowId());
         TupleRecorder tupleRecorder = tupleRecorders.get(String.valueOf(e.getKey()));
         if (tupleRecorder != null) {
           hb.addRecordingName(tupleRecorder.getRecordingName());
@@ -583,6 +583,7 @@ public class StramChild
   }
 
   private long lastCommittedWindowId = -1;
+
   protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
     if (rsp.shutdown) {
@@ -615,21 +616,37 @@ public class StramChild
       }
     }
 
+    NodeRequest nr = null;
     if (rsp.committedWindowId != lastCommittedWindowId) {
-      // TBI call committed on all the operators.
       lastCommittedWindowId = rsp.committedWindowId;
+      for (Entry<Integer, OperatorContext> e: activeNodes.entrySet()) {
+        if (nodes.get(e.getKey()).getOperator() instanceof CheckpointListener) {
+          if (nr == null) {
+            nr = new NodeRequest()
+            {
+              @Override
+              public void execute(Operator operator, int id, long windowId) throws IOException
+              {
+                ((CheckpointListener)operator).committed(lastCommittedWindowId);
+              }
+
+            };
+          }
+          e.getValue().request(nr);
+        }
+      }
     }
 
     if (rsp.nodeRequests != null) {
       // processing of per operator requests
       for (StramToNodeRequest req: rsp.nodeRequests) {
-        OperatorContext nc = activeNodes.get(req.getOperatorId());
-        if (nc == null) {
+        OperatorContext oc = activeNodes.get(req.getOperatorId());
+        if (oc == null) {
           logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);
         }
         else {
           logger.debug("Stram request: {}", req);
-          processStramRequest(nc, req);
+          processStramRequest(oc, req);
         }
       }
     }
@@ -649,19 +666,6 @@ public class StramChild
 
     return PORT_QUEUE_CAPACITY;
   }
-
-  abstract private class AbstractNodeRequest implements OperatorContext.NodeRequest
-  {
-    final Node<?> node;
-    final StramToNodeRequest snr;
-
-    AbstractNodeRequest(OperatorContext context, final StramToNodeRequest snr)
-    {
-      this.node = nodes.get(context.getId());
-      this.snr = snr;
-    }
-
-  };
 
   /**
    * Process request from stram for further communication through the protocol. Extended reporting is on a per node basis (won't occur under regular operation)

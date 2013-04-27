@@ -197,7 +197,7 @@ public class GenericNode extends Node<Operator>
 
                     buffers.remove();
                     assert (activeQueues.isEmpty());
-                    handleRequests(currentWindowId, !insideWindow);
+                    handleRequests(currentWindowId);
 
                     activeQueues.addAll(inputs.values());
                     expectingBeginWindow = activeQueues.size();
@@ -213,24 +213,25 @@ public class GenericNode extends Node<Operator>
                 break;
 
               case CHECKPOINT:
+                logger.debug("GenericNode {} got checkpoint {}", this, t.getWindowId());
                 activePort.remove();
-                if (t.getWindowId() <= lastCheckpointedWindowId) {
-                  for (final Sink<Object> output: outputs.values()) {
-                    output.process(t);
-                  }
+                if (t.getWindowId() > lastCheckpointedWindowId) {
                   BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();
                   if (ba != null) {
                     try {
                       ba.backup(id, t.getWindowId(), operator);
-                      backupWindowId = t.getWindowId();
+                      checkpointedWindowId = t.getWindowId();
                       if (operator instanceof CheckpointListener) {
-                        ((CheckpointListener)operator).checkpointed(backupWindowId);
+                        ((CheckpointListener)operator).checkpointed(checkpointedWindowId);
                       }
                     }
                     catch (IOException ie) {
                       throw new RuntimeException(ie);
                     }
                     lastCheckpointedWindowId = t.getWindowId();
+                  }
+                  for (final Sink<Object> output: outputs.values()) {
+                    output.process(t);
                   }
                 }
                 break;
@@ -344,7 +345,7 @@ public class GenericNode extends Node<Operator>
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
 
-                  handleRequests(currentWindowId, true);
+                  handleRequests(currentWindowId);
                   break_activequeue = true;
                 }
 
@@ -462,9 +463,8 @@ public class GenericNode extends Node<Operator>
   }
 
   @Override
-  protected void reportStats(OperatorStats stats, boolean applicationWindowBoundary)
+  protected void reportStats(OperatorStats stats)
   {
-    super.reportStats(stats, applicationWindowBoundary);
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
     for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
@@ -472,6 +472,7 @@ public class GenericNode extends Node<Operator>
     }
 
     stats.inputPorts = ipstats;
+    super.reportStats(stats);
   }
 
   protected class DeferredInputConnection

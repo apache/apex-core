@@ -225,16 +225,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.state = state;
     }
 
-    private long lastBackupWindowId;
-
-    public long getLastBackupWindowId() {
-      return lastBackupWindowId;
-    }
-
-    public void setLastBackupWindowId(long lastBackupWindowId) {
-      this.lastBackupWindowId = lastBackupWindowId;
-    }
-
     private List<String> recordingNames = new ArrayList<String>();
 
     public List<String> getRecordingNames() {

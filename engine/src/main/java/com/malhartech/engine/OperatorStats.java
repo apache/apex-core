@@ -28,6 +28,7 @@ public class OperatorStats implements Serializable {
   }
 
   public long windowId;
+  public long checkpointedWindowId;
   public ArrayList<PortStats> inputPorts;
   public ArrayList<PortStats> outputPorts;
   public long cpuTimeUsed;

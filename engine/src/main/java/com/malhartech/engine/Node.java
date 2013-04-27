@@ -51,7 +51,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected long lastSampleCpuTime = 0;
   protected ThreadMXBean tmb;
   protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
-  protected long backupWindowId;
+  protected long checkpointedWindowId;
 
   public Node(int id, OPERATOR operator)
   {
@@ -186,7 +186,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
   }
 
-  protected void handleRequests(long windowId, boolean applicationWindowBoundary)
+  protected void handleRequests(long windowId)
   {
     /*
      * we prefer to cater to requests at the end of the window boundary.
@@ -206,12 +206,13 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
 
     OperatorStats stats = new OperatorStats();
-    reportStats(stats, applicationWindowBoundary);
-
+    reportStats(stats);
+    stats.checkpointedWindowId = checkpointedWindowId;
+    logger.debug("just assigned the checkpointedwindowId {} when windowId = {}", checkpointedWindowId, windowId);
     context.report(stats, windowId);
   }
 
-  protected void reportStats(OperatorStats stats, boolean applicationWindowBoundary)
+  protected void reportStats(OperatorStats stats)
   {
     stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
     for (Entry<String, InternalCounterSink> e: outputs.entrySet()) {
@@ -252,7 +253,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   public long getBackupWindowId()
   {
-    return backupWindowId;
+    return checkpointedWindowId;
   }
 
   static class ForkingSink implements Sink<Object>

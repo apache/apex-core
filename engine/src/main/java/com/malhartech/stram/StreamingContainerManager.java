@@ -90,6 +90,7 @@ public class StreamingContainerManager implements PlanContext
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsNodeMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
+  private long committedWindowId;
 
   private static class EndWindowStats
   {
@@ -158,8 +159,8 @@ public class StreamingContainerManager implements PlanContext
     }
 
     processEvents();
-    updateCheckpoints();
-
+    committedWindowId = updateCheckpoints();
+    LOG.debug("Calculated committed window Id = {}", committedWindowId);
   }
 
   public int processEvents()
@@ -205,9 +206,11 @@ public class StreamingContainerManager implements PlanContext
     // building the checkpoint dependency,
     // downstream operators will appear first in map
     LinkedHashSet<PTOperator> checkpoints = new LinkedHashSet<PTOperator>();
+
+    MutableLong ml = new MutableLong();
     for (PTOperator node: cs.container.operators) {
       // TODO: traverse inline upstream operators
-      updateRecoveryCheckpoints(node, checkpoints);
+      updateRecoveryCheckpoints(node, checkpoints, ml);
     }
 
     // redeploy cycle for all affected operators
@@ -404,10 +407,18 @@ public class StreamingContainerManager implements PlanContext
         HashMap<String, MutableLong> portToTuples = new HashMap<String, MutableLong>();
 
         for (OperatorStats stats: statsList) {
-          Collection<PortStats> ports = stats.inputPorts;
+          /* report checkpointedWindowId status of the operator */
+          LOG.debug("got checkpoint id {} for operator {}", stats.checkpointedWindowId, status.operator);
+          if (status.operator.recoveryCheckpoint < stats.checkpointedWindowId) {
+            addCheckpoint(status.operator, stats.checkpointedWindowId);
+          }
+          LOG.debug("after if list = {} for operator {}", status.operator.checkpointWindows, status.operator);
+
+          /* report all the other stuff */
           endWindowStatsNodeMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
           Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsNodeMap.get(stats.windowId);
           EndWindowStats endWindowStats = new EndWindowStats();
+          Collection<PortStats> ports = stats.inputPorts;
           if (ports != null) {
             for (PortStats s: ports) {
               PortStatus ps = status.inputPortStatusList.get(s.portname);
@@ -499,11 +510,6 @@ public class StreamingContainerManager implements PlanContext
             }
           }
         }
-
-        // checkpoint tracking
-        if (shb.getLastBackupWindowId() != 0) {
-          addCheckpoint(status.operator, shb.getLastBackupWindowId());
-        }
       }
       status.recordingNames = shb.getRecordingNames();
     }
@@ -577,6 +583,7 @@ public class StreamingContainerManager implements PlanContext
       requests.add(r);
     }
     rsp.nodeRequests = requests;
+    rsp.committedWindowId = committedWindowId;
     return rsp;
   }
 
@@ -626,8 +633,11 @@ public class StreamingContainerManager implements PlanContext
    * @param visited Set into which to collect visited dependencies
    * @return Checkpoint that can be used to recover (along with dependencies in visitedCheckpoints).
    */
-  public long updateRecoveryCheckpoints(PTOperator operator, Set<PTOperator> visited)
+  public long updateRecoveryCheckpoints(PTOperator operator, Set<PTOperator> visited, MutableLong committedWindowId)
   {
+    if (operator.recoveryCheckpoint < committedWindowId.longValue()) {
+      committedWindowId.setValue(operator.recoveryCheckpoint);
+    }
     // checkpoint frozen until deployment complete
     if (operator.getState() == State.PENDING_DEPLOY) {
       return operator.recoveryCheckpoint;
@@ -641,7 +651,7 @@ public class StreamingContainerManager implements PlanContext
         PTOperator sinkOperator = (PTOperator)sink.target;
         if (!visited.contains(sinkOperator)) {
           // downstream traversal
-          updateRecoveryCheckpoints(sinkOperator, visited);
+          updateRecoveryCheckpoints(sinkOperator, visited, committedWindowId);
         }
         maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.recoveryCheckpoint);
       }
@@ -666,7 +676,7 @@ public class StreamingContainerManager implements PlanContext
       }
     }
     visited.add(operator);
-    //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.id, c1, operator.checkpointWindows});
+    LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getId(), c1, operator.checkpointWindows});
     return operator.recoveryCheckpoint = c1;
   }
 
@@ -674,18 +684,22 @@ public class StreamingContainerManager implements PlanContext
    * Visit all operators to update current checkpoint based on updated downstream state.
    * Purge older checkpoints that are no longer needed.
    */
-  private void updateCheckpoints()
+  private long updateCheckpoints()
   {
+    MutableLong committedWindowId = new MutableLong(Long.MAX_VALUE);
+
     Set<PTOperator> visitedCheckpoints = new LinkedHashSet<PTOperator>();
     for (OperatorMeta logicalOperator: plan.getRootOperators()) {
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator: operators) {
-          updateRecoveryCheckpoints(operator, visitedCheckpoints);
+          updateRecoveryCheckpoints(operator, visitedCheckpoints, committedWindowId);
         }
       }
     }
     purgeCheckpoints();
+
+    return committedWindowId.longValue();
   }
 
   private BufferServerController getBufferServerClient(PTOperator operator)

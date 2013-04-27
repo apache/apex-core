@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.junit.*;
@@ -142,7 +143,7 @@ public class CheckpointTest
     File cpFile1 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
-    ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
+    //ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
     ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
 
     // fake heartbeat to propagate checkpoint
@@ -158,7 +159,7 @@ public class CheckpointTest
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     // fake heartbeat to propagate checkpoint
-    ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
+    //ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
     dnm.processHeartbeat(hb);
 
     // purge checkpoints
@@ -193,34 +194,34 @@ public class CheckpointTest
     Assert.assertEquals(1, nodes2.size());
     PTOperator pnode2 = nodes2.get(0);
 
-    long cp = dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>());
+    long cp = dnm.updateRecoveryCheckpoints(pnode2, new HashSet<PTOperator>(), new MutableLong());
     Assert.assertEquals("no checkpoints " + pnode2, 0, cp);
 
     HashSet<PTOperator> s = new HashSet<PTOperator>();
-    cp = dnm.updateRecoveryCheckpoints(pnode1, s);
+    cp = dnm.updateRecoveryCheckpoints(pnode1, s, new MutableLong());
     Assert.assertEquals("no checkpoints " + pnode1, 0, cp);
     Assert.assertEquals("number dependencies " + s, 2, s.size());
 
     // adding checkpoints to upstream only does not move recovery checkpoint
     pnode1.checkpointWindows.add(3L);
     pnode1.checkpointWindows.add(5L);
-    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
     Assert.assertEquals("no checkpoints " + pnode1, 0L, cp);
     Assert.assertEquals("checkpoint " + pnode1, 0, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(3L);
-    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
     Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode2.checkpointWindows.add(4L);
-    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
     Assert.assertEquals("checkpoint pnode1", 3L, cp);
     Assert.assertEquals("checkpoint " + pnode1, 3L, pnode1.getRecoveryCheckpoint());
 
     pnode1.checkpointWindows.add(1, 4L);
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {3L, 4L, 5L}));
-    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>());
+    cp = dnm.updateRecoveryCheckpoints(pnode1, new HashSet<PTOperator>(), new MutableLong());
     Assert.assertEquals("checkpoint pnode1", 4L, cp);
     Assert.assertEquals("checkpoint " + pnode1, 4L, pnode1.getRecoveryCheckpoint());
     Assert.assertEquals(pnode1.checkpointWindows, Arrays.asList(new Long[] {4L, 5L}));

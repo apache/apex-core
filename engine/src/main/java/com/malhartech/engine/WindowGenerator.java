@@ -43,6 +43,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   private int checkPointWindowCount;
   private int checkpointCount = 60; /* default checkpointing after 60 windows */
 
+
   public WindowGenerator(ScheduledExecutorService service, int capacity)
   {
     ses = service;
@@ -77,23 +78,18 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
    */
   private void endCurrentBeginNewWindow() throws InterruptedException
   {
+    masterReservoir.put(new EndWindowTuple(baseSeconds | windowId));
+    if (++checkPointWindowCount == checkpointCount) {
+      masterReservoir.put(new Tuple(MessageType.CHECKPOINT, baseSeconds | windowId));
+      checkPointWindowCount = 0;
+    }
+
     if (windowId == MAX_WINDOW_ID) {
-      masterReservoir.put(new EndWindowTuple(baseSeconds | windowId));
-      if (++checkPointWindowCount == checkpointCount) {
-        masterReservoir.put(new Tuple(MessageType.CHECKPOINT, baseSeconds | windowId));
-        checkPointWindowCount = 0;
-      }
       advanceWindow();
       run();
     }
     else {
-      masterReservoir.put(new EndWindowTuple(baseSeconds | windowId));
-      if (++checkPointWindowCount == checkpointCount) {
-        masterReservoir.put(new Tuple(MessageType.CHECKPOINT, baseSeconds | windowId));
-        checkPointWindowCount = 0;
-      }
       advanceWindow();
-
       masterReservoir.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
     }
   }
