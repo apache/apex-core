@@ -204,8 +204,7 @@ public class StreamingContainerManager implements PlanContext
     endWindowStatsVisited.add(oper);
     EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
     if (endWindowStats == null) {
-      LOG.warn("End window stats is null for operator {}. If you see this, there is a bug!", oper.getId());
-      return;
+      throw new AssertionError("End window stats is null for operator " + oper.getId());
     }
 
     // find the maximum end window emit time from all input ports
@@ -215,8 +214,7 @@ public class StreamingContainerManager implements PlanContext
         PTOperator upstreamOp = (PTOperator)input.source.source;
         EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
         if (upstreamEndWindowStats == null) {
-          LOG.warn("End window stats is null for operator {}. If you see this, there is a bug!", upstreamOp.getId());
-          continue;
+          throw new AssertionError("End window stats is null for operator " + upstreamOp.getId());
         }
         if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
           upstreamMaxEmitTimestamp = upstreamEndWindowStats.emitTimestamp;
@@ -226,8 +224,7 @@ public class StreamingContainerManager implements PlanContext
 
     OperatorStatus operatorStatus = getOperatorStatus(oper);
     if (operatorStatus == null) {
-      LOG.warn("Operator status for operator {} does not exist!", oper.getId());
-      return;
+      throw new AssertionError("Operator status for operator " + oper.getId() + " does not exist!");
     }
     if (upstreamMaxEmitTimestamp > 0) {
       operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
