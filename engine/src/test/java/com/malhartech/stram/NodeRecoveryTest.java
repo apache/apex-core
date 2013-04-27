@@ -43,7 +43,7 @@ public class NodeRecoveryTest
   public static class CollectorOperator extends BaseOperator implements CheckpointListener
   {
     private boolean simulateFailure;
-    private transient long checkPointWindowId;
+    private long checkPointWindowId;
 
     public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>(this)
     {
@@ -106,7 +106,6 @@ public class NodeRecoveryTest
     dag.addStream("connection", rip.output, cm.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
