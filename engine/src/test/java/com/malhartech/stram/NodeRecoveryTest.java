@@ -84,7 +84,7 @@ public class NodeRecoveryTest
     {
       logger.debug("committed window {} and checkPointWindowId {}", windowId, checkPointWindowId);
       if (simulateFailure && windowId > this.checkPointWindowId && this.checkPointWindowId > 0) {
-        throw new RuntimeException("Failure Simulation from " + this);
+        throw new RuntimeException("Failure Simulation from " + this + " checkpointWindowId=" + checkPointWindowId);
       }
     }
 
