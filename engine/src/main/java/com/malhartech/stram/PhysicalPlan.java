@@ -1265,7 +1265,7 @@ public class PhysicalPlan {
     return this.containers;
   }
 
-  protected List<PTOperator> getOperators(OperatorMeta logicalOperator) {
+  public List<PTOperator> getOperators(OperatorMeta logicalOperator) {
     return this.logicalToPTOperator.get(logicalOperator).partitions;
   }
 

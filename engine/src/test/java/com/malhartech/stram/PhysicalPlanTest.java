@@ -170,7 +170,7 @@ public class PhysicalPlanTest {
 
   }
 
-  private class TestPlanContext implements PlanContext, BackupAgent {
+  public static class TestPlanContext implements PlanContext, BackupAgent {
     List<Runnable> events = new ArrayList<Runnable>();
     Collection<PTOperator> undeploy;
     Collection<PTOperator> deploy;
