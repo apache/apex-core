@@ -354,7 +354,7 @@ public class PartitioningTest
         // move to checkpoint to verify that checkpoint state is updated upon repartition
         p.checkpointWindows.add(10L);
         p.recoveryCheckpoint = 10L;
-        new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).backup(p.getId(), 10L, inputDeployed, StramUtils.getNodeSerDe(null));
+        new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath(), StramUtils.getNodeSerDe(null)).backup(p.getId(), 10L, inputDeployed);
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);

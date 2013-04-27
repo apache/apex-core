@@ -83,7 +83,7 @@ public class GenericNodeTest
     long sleeptime = 25L;
     final ArrayList<Object> list = new ArrayList<Object>();
     GenericOperator go = new GenericOperator();
-    final GenericNode gn = new GenericNode("GenericNode", go);
+    final GenericNode gn = new GenericNode(1, go);
     DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
     DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
     Sink<Object> output = new Sink<Object>()

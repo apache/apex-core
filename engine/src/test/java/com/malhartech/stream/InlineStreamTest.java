@@ -31,11 +31,11 @@ public class InlineStreamTest
     final int totalTupleCount = 5000;
 
     final PassThroughNode<Object> operator1 = new PassThroughNode<Object>();
-    final GenericNode node1 = new GenericNode("node1", operator1);
+    final GenericNode node1 = new GenericNode(1, operator1);
     operator1.setup(new OperatorContext(0, null, null, null, null, null));
 
     final PassThroughNode<Object> operator2 = new PassThroughNode<Object>();
-    final GenericNode node2 = new GenericNode("node2", operator2);
+    final GenericNode node2 = new GenericNode(2, operator2);
     operator2.setup(new OperatorContext(0, null, null, null, null, null));
 
     StreamContext streamContext = new StreamContext("node1->node2");

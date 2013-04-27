@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.BackupAgent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -193,17 +194,23 @@ public class PhysicalPlanTest {
     }
 
     @Override
-    public void backup(int operatorId, long windowId, Object o, OperatorCodec serDe) throws IOException {
+    public void backup(int operatorId, long windowId, Object o) throws IOException {
       backupRequests.add(o);
     }
 
     @Override
-    public Object restore(int operatorId, long windowId, OperatorCodec serDe) throws IOException {
+    public Object restore(int operatorId, long windowId) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public void delete(int operatorId, long windowId) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public OperatorCodec getOperatorSerDe()
+    {
       throw new UnsupportedOperationException();
     }
 

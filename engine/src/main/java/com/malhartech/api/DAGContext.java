@@ -77,7 +77,7 @@ public interface DAGContext {
   public static final AttributeKey<Integer> STRAM_MASTER_MEMORY_MB = new AttributeKey<Integer>("stram.masterMemoryMB", Integer.class);
 
   public static final AttributeKey<Integer> STRAM_WINDOW_SIZE_MILLIS = new AttributeKey<Integer>("stram.windowSizeMillis", Integer.class);
-  public static final AttributeKey<Integer> STRAM_CHECKPOINT_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.checkpointIntervalMillis", Integer.class);
+  public static final AttributeKey<Integer> STRAM_CHECKPOINT_WINDOW_COUNT = new AttributeKey<Integer>("stram.checkpointWindowCount", Integer.class);
   public static final AttributeKey<String> STRAM_APP_PATH = new AttributeKey<String>("stram.appPath", String.class);
   public static final AttributeKey<Integer> STRAM_TUPLE_RECORDING_PART_FILE_SIZE = new AttributeKey<Integer>("stram.tupleRecordingPartFileSize", Integer.class);
   public static final AttributeKey<Integer> STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new AttributeKey<Integer>("stram.tupleRecordingPartFileTimeMillis", Integer.class);

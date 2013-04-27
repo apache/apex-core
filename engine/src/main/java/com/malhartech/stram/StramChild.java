@@ -57,7 +57,6 @@ import org.slf4j.LoggerFactory;
  */
 public class StramChild
 {
-  private static final String NODE_PORT_SPLIT_SEPARATOR = "\\.";
   public static final String NODE_PORT_CONCAT_SEPARATOR = ".";
   public static final int PORT_QUEUE_CAPACITY = 1024;
   private static final int SPIN_MILLIS = 20;
@@ -89,7 +88,6 @@ public class StramChild
   /**
    * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
    */
-  private final Map<Integer, Long> backupInfo = new ConcurrentHashMap<Integer, Long>();
   private long firstWindowMillis;
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
@@ -99,6 +97,7 @@ public class StramChild
   private int tupleRecordingPartFileSize;
   private String daemonAddress;
   private long tupleRecordingPartFileTimeMillis;
+  private int checkpointWindowCount;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -114,6 +113,7 @@ public class StramChild
     heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
     windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
+    checkpointWindowCount = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
 
     this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
     this.checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
@@ -509,11 +509,7 @@ public class StramChild
           hb.setState(e.getValue().isAlive() ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
         }
 
-        // propagate the backup window, if any
-        Long backupWindowId = backupInfo.get(e.getKey());
-        if (backupWindowId != null) {
-          hb.setLastBackupWindowId(backupWindowId);
-        }
+        hb.setLastBackupWindowId(e.getValue().getBackupWindowId());
         TupleRecorder tupleRecorder = tupleRecorders.get(String.valueOf(e.getKey()));
         if (tupleRecorder != null) {
           hb.addRecordingName(tupleRecorder.getRecordingName());
@@ -586,6 +582,7 @@ public class StramChild
     umbilical.log(containerId, "[" + containerId + "] Exiting heartbeat loop..");
   }
 
+  private long lastCommittedWindowId = -1;
   protected void processHeartbeatResponse(ContainerHeartbeatResponse rsp)
   {
     if (rsp.shutdown) {
@@ -616,6 +613,11 @@ public class StramChild
         this.exitHeartbeatLoop = true;
         throw new IllegalStateException("Deploy request failed: " + rsp.deployRequest, e);
       }
+    }
+
+    if (rsp.committedWindowId != lastCommittedWindowId) {
+      // TBI call committed on all the operators.
+      lastCommittedWindowId = rsp.committedWindowId;
     }
 
     if (rsp.nodeRequests != null) {
@@ -672,44 +674,6 @@ public class StramChild
     int operatorId = snr.getOperatorId();
     final Node<?> node = nodes.get(operatorId);
     switch (snr.getRequestType()) {
-
-      case CHECKPOINT:
-        // avoid filling queue with checkpoint requests that would write same state multiple times
-        OperatorContext.NodeRequest nr = context.getRequests().peek();
-        if (nr != null && nr instanceof AbstractNodeRequest) {
-          AbstractNodeRequest aor = (AbstractNodeRequest)nr;
-          if (aor.snr.getRequestType() == StramToNodeRequest.RequestType.CHECKPOINT) {
-            aor.snr.setRecoveryCheckpoint(snr.getRecoveryCheckpoint());
-            logger.debug("Duplicates queued request, skipping {}", snr);
-            return;
-          }
-        }
-        context.request(new AbstractNodeRequest(context, snr)
-        {
-          @Override
-          public void execute(Operator operator, int id, long windowId) throws IOException
-          {
-            new HdfsBackupAgent(StramChild.this.conf, StramChild.this.checkpointFsPath).backup(id, windowId, operator, StramUtils.getNodeSerDe(null));
-            // record last backup window id for heartbeat
-            StramChild.this.backupInfo.put(id, windowId);
-
-            node.emitCheckpoint(windowId);
-
-            if (operator instanceof CheckpointListener) {
-              ((CheckpointListener)operator).checkpointed(windowId);
-              ((CheckpointListener)operator).committed(snr.getRecoveryCheckpoint());
-            }
-          }
-
-          @Override
-          public String toString()
-          {
-            return "Checkpoint";
-          }
-
-        });
-        break;
-
       case START_RECORDING: {
         final String portName = snr.getPortName();
         logger.debug("Received start recording request for {}", getRecorderKey(operatorId, portName));
@@ -838,29 +802,42 @@ public class StramChild
   @SuppressWarnings({"unchecked"})
   private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
-    OperatorCodec operatorSerDe = StramUtils.getNodeSerDe(null);
-    BackupAgent backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
     for (OperatorDeployInfo ndi: nodeList) {
+      BackupAgent backupAgent;
+      OperatorCodec operatorSerDe;
+      if (ndi.contextAttributes == null) {
+        backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath, operatorSerDe = StramUtils.getNodeSerDe(null));
+      }
+      else {
+        backupAgent = ndi.contextAttributes.attr(OperatorContext.BACKUP_AGENT).get();
+        if (backupAgent == null) {
+          backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath, operatorSerDe = StramUtils.getNodeSerDe(null));
+          ndi.contextAttributes.attr(OperatorContext.BACKUP_AGENT).set(backupAgent);
+        }
+        else {
+          operatorSerDe = backupAgent.getOperatorSerDe();
+        }
+      }
+
       try {
         final Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
           logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpointWindowId));
-          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId, operatorSerDe);
+          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
         }
         else {
           foreignObject = operatorSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
 
-        String nodeid = Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(foreignObject.getClass().getSimpleName());
         if (foreignObject instanceof InputOperator && ndi.type == OperatorDeployInfo.OperatorType.INPUT) {
-          nodes.put(ndi.id, new InputNode(nodeid, (InputOperator)foreignObject));
+          nodes.put(ndi.id, new InputNode(ndi.id, (InputOperator)foreignObject));
         }
         else if (foreignObject instanceof Unifier && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
-          nodes.put(ndi.id, new UnifierNode(nodeid, (Unifier<Object>)foreignObject));
+          nodes.put(ndi.id, new UnifierNode(ndi.id, (Unifier<Object>)foreignObject));
           massageUnifierDeployInfo(ndi);
         }
         else {
-          nodes.put(ndi.id, new GenericNode(nodeid, (Operator)foreignObject));
+          nodes.put(ndi.id, new GenericNode(ndi.id, (Operator)foreignObject));
         }
       }
       catch (Exception e) {
@@ -1175,6 +1152,7 @@ public class StramChild
     windowGenerator.setFirstWindow(millisAtFirstWindow > firstWindowMillis ? millisAtFirstWindow : firstWindowMillis);
 
     windowGenerator.setWindowWidth(windowWidthMillis);
+    windowGenerator.setCheckpointCount(checkpointWindowCount);
     return windowGenerator;
   }
 
@@ -1203,7 +1181,7 @@ public class StramChild
         outputPortAttributes.put(odi.portName, odi.contextAttributes);
       }
 
-      new Thread(node.id)
+      new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(node.getOperator().getClass().getSimpleName()))
       {
         @Override
         public void run()

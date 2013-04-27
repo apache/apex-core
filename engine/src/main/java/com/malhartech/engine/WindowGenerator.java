@@ -26,35 +26,22 @@ import org.slf4j.LoggerFactory;
  */
 public class WindowGenerator extends MuxReservoir implements Stream, Runnable
 {
-  @Override
-  public void setSink(String id, Sink<Object> sink)
-  {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
   /**
    * corresponds to 2^14 - 1 => maximum bytes needed for varint encoding is 2.
    */
-  private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir
-  {
-    MasterReservoir(int n)
-    {
-      super(n);
-    }
-
-  }
-
-  private final MasterReservoir masterReservoir;
   public static final int WINDOW_MASK = 0x3fff;
   public static final int MAX_WINDOW_ID = WINDOW_MASK - (WINDOW_MASK % 1000) - 1;
   public static final int MAX_WINDOW_WIDTH = (int)(Long.MAX_VALUE / MAX_WINDOW_ID) > 0 ? (int)(Long.MAX_VALUE / MAX_WINDOW_ID) : Integer.MAX_VALUE;
   private final ScheduledExecutorService ses;
+  private final MasterReservoir masterReservoir;
   private long firstWindowMillis; // Window start time
   private int windowWidthMillis; // Window size
   private long currentWindowMillis;
   private long baseSeconds;
   private int windowId;
   private long resetWindowMillis;
+  private int checkPointWindowCount;
+  private int checkpointCount = 60; /* default checkpointing after 60 windows */
 
   public WindowGenerator(ScheduledExecutorService service, int capacity)
   {
@@ -92,12 +79,19 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   {
     if (windowId == MAX_WINDOW_ID) {
       masterReservoir.put(new EndWindowTuple(baseSeconds | windowId));
+      if (++checkPointWindowCount == checkpointCount) {
+        masterReservoir.put(new Tuple(MessageType.CHECKPOINT, baseSeconds | windowId));
+        checkPointWindowCount = 0;
+      }
       advanceWindow();
       run();
     }
     else {
-//      logger.debug("generating end -> begin {}", Integer.toHexString(windowId));
       masterReservoir.put(new EndWindowTuple(baseSeconds | windowId));
+      if (++checkPointWindowCount == checkpointCount) {
+        masterReservoir.put(new Tuple(MessageType.CHECKPOINT, baseSeconds | windowId));
+        checkPointWindowCount = 0;
+      }
       advanceWindow();
 
       masterReservoir.put(new Tuple(MessageType.BEGIN_WINDOW, baseSeconds | windowId));
@@ -131,6 +125,11 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
       throw new IllegalArgumentException(String.format("Window width %d is invalid as it's not in the range 1 to %d", millis, MAX_WINDOW_WIDTH));
     }
     windowWidthMillis = millis;
+  }
+
+  public void setCheckpointCount(int streamingWindowCount)
+  {
+    checkpointCount = streamingWindowCount;
   }
 
   @Override
@@ -213,6 +212,12 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   }
 
   @Override
+  public void setSink(String id, Sink<Object> sink)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
   public boolean isMultiSinkCapable()
   {
     return true;
@@ -229,6 +234,15 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   public Reservoir getMasterReservoir()
   {
     return masterReservoir;
+  }
+
+  private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir
+  {
+    MasterReservoir(int n)
+    {
+      super(n);
+    }
+
   }
 
   private static final Logger logger = LoggerFactory.getLogger(WindowGenerator.class);

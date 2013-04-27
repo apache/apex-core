@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.BackupAgent;
 import com.malhartech.api.OperatorCodec;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
@@ -16,25 +17,26 @@ import org.slf4j.LoggerFactory;
 
 public class HdfsBackupAgent implements BackupAgent
 {
-  private static final Logger logger = LoggerFactory.getLogger(HdfsBackupAgent.class);
-
   final String checkpointFsPath;
   final Configuration conf;
-  HdfsBackupAgent(Configuration conf, String checkpointFsPath)
+  private final OperatorCodec serde;
+
+  HdfsBackupAgent(Configuration conf, String checkpointFsPath, OperatorCodec serDe)
   {
     this.conf = conf;
     this.checkpointFsPath = checkpointFsPath;
+    serde = serDe;
   }
 
   @Override
-  public void backup(int id, long windowId, Object o, OperatorCodec serDe) throws IOException
+  public void backup(int id, long windowId, Object o) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     //logger.debug("Backup path: {}", path);
     FSDataOutputStream output = fs.create(path);
     try {
-      serDe.write(o, output);
+      serde.write(o, output);
     }
     finally {
       output.close();
@@ -43,13 +45,13 @@ public class HdfsBackupAgent implements BackupAgent
   }
 
   @Override
-  public Object restore(int id, long windowId, OperatorCodec serDe) throws IOException
+  public Object restore(int id, long windowId) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     FSDataInputStream input = fs.open(path);
     try {
-      return serDe.read(input);
+      return serde.read(input);
     }
     finally {
       input.close();
@@ -57,11 +59,18 @@ public class HdfsBackupAgent implements BackupAgent
   }
 
   @Override
-  public void delete(int id, long windowId) throws IOException {
+  public void delete(int id, long windowId) throws IOException
+  {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     fs.delete(path, false);
-
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(HdfsBackupAgent.class);
+
+  @Override
+  public OperatorCodec getOperatorSerDe()
+  {
+    return serde;
+  }
 }

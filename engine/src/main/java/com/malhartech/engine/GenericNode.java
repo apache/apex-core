@@ -4,14 +4,13 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.IdleTimeHandler;
-import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Sink;
+import com.malhartech.api.*;
 import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.tuple.Tuple;
+import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
 import org.apache.commons.lang.UnhandledException;
@@ -65,7 +64,7 @@ public class GenericNode extends Node<Operator>
     super.removeSinks(sinks);
   }
 
-  public GenericNode(String id, Operator operator)
+  public GenericNode(int id, Operator operator)
   {
     super(id, operator);
   }
@@ -133,6 +132,7 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings({"SleepWhileInLoop"})
   public final void run()
   {
+    long lastCheckpointedWindowId = 0;
     long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     boolean insideWindow = false;
@@ -209,6 +209,29 @@ public class GenericNode extends Node<Operator>
                 }
                 else {
                   buffers.remove();
+                }
+                break;
+
+              case CHECKPOINT:
+                activePort.remove();
+                if (t.getWindowId() <= lastCheckpointedWindowId) {
+                  for (final Sink<Object> output: outputs.values()) {
+                    output.process(t);
+                  }
+                  BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();
+                  if (ba != null) {
+                    try {
+                      ba.backup(id, t.getWindowId(), operator);
+                      backupWindowId = t.getWindowId();
+                      if (operator instanceof CheckpointListener) {
+                        ((CheckpointListener)operator).checkpointed(backupWindowId);
+                      }
+                    }
+                    catch (IOException ie) {
+                      throw new RuntimeException(ie);
+                    }
+                    lastCheckpointedWindowId = t.getWindowId();
+                  }
                 }
                 break;
 
@@ -377,10 +400,6 @@ public class GenericNode extends Node<Operator>
                 if (break_activequeue) {
                   break activequeue;
                 }
-                break;
-
-              case CHECKPOINT:
-                activePort.remove();
                 break;
 
               default:

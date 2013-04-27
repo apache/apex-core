@@ -94,7 +94,7 @@ public class NodeRecoveryTest
     collection.clear();
     int maxTuples = 30;
     DAG dag = new DAG();
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).set(500);
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
     dag.getAttributes().attr(DAG.STRAM_WINDOW_SIZE_MILLIS).set(300);
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
@@ -116,7 +116,7 @@ public class NodeRecoveryTest
     collection.clear();
     int maxTuples = 30;
     DAG dag = new DAG();
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).set(500);
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
     dag.getAttributes().attr(DAG.STRAM_WINDOW_SIZE_MILLIS).set(300);
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
@@ -142,7 +142,7 @@ public class NodeRecoveryTest
     collection.clear();
     int maxTuples = 30;
     DAG dag = new DAG();
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).set(500);
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
     dag.getAttributes().attr(DAG.STRAM_WINDOW_SIZE_MILLIS).set(300);
     dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);

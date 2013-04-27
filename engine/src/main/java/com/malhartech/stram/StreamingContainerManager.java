@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.BackupAgent;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -77,7 +78,7 @@ public class StreamingContainerManager implements PlanContext
   private int maxWindowsBehindForStats = 100;
   private final int operatorMaxAttemptCount = 5;
   private final AttributeMap<DAGContext> appAttributes;
-  private final int checkpointIntervalMillis;
+  //private final int checkpointIntervalMillis;
   private final String checkpointFsPath;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
@@ -108,8 +109,8 @@ public class StreamingContainerManager implements PlanContext
     appAttributes.attr(DAG.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
     this.checkpointFsPath = appAttributes.attr(DAG.STRAM_APP_PATH).get() + "/" + DAG.SUBDIR_CHECKPOINTS;
 
-    appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).setIfAbsent(30000);
-    this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).get();
+    appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get());
+    //this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).get() * appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get();
     this.heartbeatTimeoutMillis = appAttributes.attrValue(DAG.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
     appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
@@ -129,7 +130,7 @@ public class StreamingContainerManager implements PlanContext
     long currentTms = System.currentTimeMillis();
 
     // look for resource allocation timeout
-    for (PTContainer c : plan.getContainers()) {
+    for (PTContainer c: plan.getContainers()) {
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
@@ -138,10 +139,12 @@ public class StreamingContainerManager implements PlanContext
           LOG.warn(msg);
           forcedShutdown = true;
           shutdownAllContainers(msg);
-        } else {
+        }
+        else {
           LOG.debug("Waiting for resource: {}m {}", c.getRequiredMemoryMB(), c);
         }
-      } else if (c.containerId != null) {
+      }
+      else if (c.containerId != null) {
         StramChildAgent cs = containers.get(c.containerId);
         if (!cs.isComplete && cs.lastHeartbeatMillis + heartbeatTimeoutMillis < currentTms) {
           // TODO: handle containers hung in deploy requests
@@ -228,7 +231,8 @@ public class StreamingContainerManager implements PlanContext
     public final int memoryMB;
     public final int priority;
 
-    public ContainerResource(int priority, String containerId, String host, int memoryMB) {
+    public ContainerResource(int priority, String containerId, String host, int memoryMB)
+    {
       this.containerId = containerId;
       this.host = host;
       this.memoryMB = memoryMB;
@@ -255,18 +259,18 @@ public class StreamingContainerManager implements PlanContext
   {
     PTContainer match = null;
     // match container waiting for resource
-    for (PTContainer c : plan.getContainers()) {
+    for (PTContainer c: plan.getContainers()) {
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         if (c.getResourceRequestPriority() == resource.priority) {
           return c;
         }
         /*
-        if (container.getRequiredMemoryMB() <= resource.memoryMB) {
-          if (match == null || match.getRequiredMemoryMB() < container.getRequiredMemoryMB()) {
-            match = container;
-          }
-        }
-        */
+         if (container.getRequiredMemoryMB() <= resource.memoryMB) {
+         if (match == null || match.getRequiredMemoryMB() < container.getRequiredMemoryMB()) {
+         match = container;
+         }
+         }
+         */
       }
     }
     return match;
@@ -415,7 +419,8 @@ public class StreamingContainerManager implements PlanContext
               ps.totalTuples += s.processedCount;
               if (portToTuples.containsKey(s.portname)) {
                 portToTuples.get(s.portname).add(s.processedCount);
-              } else {
+              }
+              else {
                 portToTuples.put(s.portname, new MutableLong(s.processedCount));
               }
 
@@ -440,7 +445,8 @@ public class StreamingContainerManager implements PlanContext
               ps.totalTuples += s.processedCount;
               if (portToTuples.containsKey(s.portname)) {
                 portToTuples.get(s.portname).add(s.processedCount);
-              } else {
+              }
+              else {
                 portToTuples.put(s.portname, new MutableLong(s.processedCount));
               }
 
@@ -467,7 +473,7 @@ public class StreamingContainerManager implements PlanContext
           status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / lastHeartbeatIntervalMillis);
           status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / lastHeartbeatIntervalMillis);
           status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (lastHeartbeatIntervalMillis * 1000000));
-          for (PortStatus ps : status.inputPortStatusList.values()) {
+          for (PortStatus ps: status.inputPortStatusList.values()) {
             if (portToTuples.containsKey(ps.portName)) {
               ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
             }
@@ -476,7 +482,7 @@ public class StreamingContainerManager implements PlanContext
               ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
             }
           }
-          for (PortStatus ps : status.outputPortStatusList.values()) {
+          for (PortStatus ps: status.outputPortStatusList.values()) {
             if (portToTuples.containsKey(ps.portName)) {
               ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
             }
@@ -547,21 +553,21 @@ public class StreamingContainerManager implements PlanContext
     }
 
     List<StramToNodeRequest> requests = rsp.nodeRequests != null ? rsp.nodeRequests : new ArrayList<StramToNodeRequest>();
-    if (checkpointIntervalMillis > 0) {
-      if (sca.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
-        //System.out.println("\n\n*** sending checkpoint to " + cs.container.containerId + " at " + currentTimeMillis);
-        for (OperatorStatus os: sca.operators.values()) {
-          if (os.lastHeartbeat != null && os.lastHeartbeat.getState().compareTo(DNodeState.ACTIVE.name()) == 0) {
-            StramToNodeRequest backupRequest = new StramToNodeRequest();
-            backupRequest.setOperatorId(os.operator.getId());
-            backupRequest.setRequestType(RequestType.CHECKPOINT);
-            backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
-            requests.add(backupRequest);
-          }
-        }
-        sca.lastCheckpointRequestMillis = currentTimeMillis;
-      }
-    }
+//    if (checkpointIntervalMillis > 0) {
+//      if (sca.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
+//        //System.out.println("\n\n*** sending checkpoint to " + cs.container.containerId + " at " + currentTimeMillis);
+//        for (OperatorStatus os: sca.operators.values()) {
+//          if (os.lastHeartbeat != null && os.lastHeartbeat.getState().compareTo(DNodeState.ACTIVE.name()) == 0) {
+//            StramToNodeRequest backupRequest = new StramToNodeRequest();
+//            backupRequest.setOperatorId(os.operator.getId());
+//            backupRequest.setRequestType(RequestType.CHECKPOINT);
+//            backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
+//            requests.add(backupRequest);
+//          }
+//        }
+//        sca.lastCheckpointRequestMillis = currentTimeMillis;
+//      }
+//    }
     ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = sca.getOperatorRequests();
     while (true) {
       StramToNodeRequest r = operatorRequests.poll();
@@ -692,7 +698,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void purgeCheckpoints()
   {
-    BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath);
+    BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath, StramUtils.getNodeSerDe(null));
     for (Pair<PTOperator, Long> p: purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       try {
@@ -738,7 +744,7 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public BackupAgent getBackupAgent()
   {
-    return new HdfsBackupAgent(new Configuration(), this.checkpointFsPath);
+    return new HdfsBackupAgent(new Configuration(), this.checkpointFsPath, StramUtils.getNodeSerDe(null));
   }
 
   private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators)
@@ -774,7 +780,7 @@ public class StreamingContainerManager implements PlanContext
       ContainerStartRequest dr = new ContainerStartRequest(c);
       containerStartRequests.add(dr);
       lastResourceRequest = System.currentTimeMillis();
-      for (PTOperator operator : c.operators) {
+      for (PTOperator operator: c.operators) {
         operator.setState(PTOperator.State.INACTIVE);
       }
     }
@@ -852,7 +858,7 @@ public class StreamingContainerManager implements PlanContext
           if (os.lastHeartbeat != null) {
             ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
           }
-          for (PortStatus ps : os.inputPortStatusList.values()) {
+          for (PortStatus ps: os.inputPortStatusList.values()) {
             PortInfo pinfo = new PortInfo();
             pinfo.name = ps.portName;
             pinfo.totalTuples = ps.totalTuples;
@@ -860,7 +866,7 @@ public class StreamingContainerManager implements PlanContext
             pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
             ni.addInputPort(pinfo);
           }
-          for (PortStatus ps : os.outputPortStatusList.values()) {
+          for (PortStatus ps: os.outputPortStatusList.values()) {
             PortInfo pinfo = new PortInfo();
             pinfo.name = ps.portName;
             pinfo.totalTuples = ps.totalTuples;

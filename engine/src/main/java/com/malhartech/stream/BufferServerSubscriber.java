@@ -13,10 +13,7 @@ import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.WindowGenerator;
 import com.malhartech.netlet.Client.Fragment;
 import com.malhartech.netlet.EventLoop;
-import com.malhartech.tuple.EndStreamTuple;
-import com.malhartech.tuple.EndWindowTuple;
-import com.malhartech.tuple.ResetWindowTuple;
-import com.malhartech.tuple.Tuple;
+import com.malhartech.tuple.*;
 import com.malhartech.util.CircularBuffer;
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
@@ -244,11 +241,6 @@ public class BufferServerSubscriber extends Subscriber implements Stream
               freeFragments.offer(fm);
               continue;
 
-            case CHECKPOINT:
-              serde.resetState();
-              freeFragments.offer(fm);
-              continue;
-
             case CODEC_STATE:
               dsp.state = data.getData();
               freeFragments.offer(fm);
@@ -257,6 +249,11 @@ public class BufferServerSubscriber extends Subscriber implements Stream
             case PAYLOAD:
               dsp.data = data.getData();
               o = serde.fromByteArray(dsp);
+              break;
+
+            case CHECKPOINT:
+              serde.resetState();
+              o = new CheckpointTuple(baseSeconds | data.getWindowId());
               break;
 
             case END_WINDOW:

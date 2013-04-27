@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
  */
 public class RecoverableInputOperator implements InputOperator, CheckpointListener
 {
-  private static final Logger logger = LoggerFactory.getLogger(RecoverableInputOperator.class);
   public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>(this);
   transient boolean first;
   transient long windowId;
@@ -58,6 +57,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   @Override
   public void setup(OperatorContext context)
   {
+    logger.debug("failed = {}", failed);
     transient_fail = !failed;
     failed = true;
   }
@@ -79,4 +79,6 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   public void committed(long windowId)
   {
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(RecoverableInputOperator.class);
 }

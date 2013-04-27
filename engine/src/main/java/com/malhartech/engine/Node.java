@@ -37,7 +37,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
    */
   public static final String INPUT = "input";
   public static final String OUTPUT = "output";
-  public final String id;
+  public final int id;
   protected final HashMap<String, InternalCounterSink> outputs = new HashMap<String, InternalCounterSink>();
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile InternalCounterSink[] sinks = InternalCounterSink.NO_SINKS;
@@ -51,8 +51,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected long lastSampleCpuTime = 0;
   protected ThreadMXBean tmb;
   protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
+  protected long backupWindowId;
 
-  public Node(String id, OPERATOR operator)
+  public Node(int id, OPERATOR operator)
   {
     this.id = id;
     this.operator = operator;
@@ -150,31 +151,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   }
 
   @Override
-  public boolean equals(Object obj)
-  {
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    final Node<?> other = (Node<?>)obj;
-    if ((this.id == null) ? (other.id != null) : !this.id.equals(other.id)) {
-      return false;
-    }
-    return true;
-  }
-
-  @Override
-  public int hashCode()
-  {
-    return id == null ? super.hashCode() : id.hashCode();
-  }
-
-  @Override
   public String toString()
   {
-    return id;
+    return String.valueOf(id);
   }
 
   protected void emitEndStream()
@@ -200,7 +179,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   public void emitCheckpoint(long windowId)
   {
-    CheckpointTuple ct = new CheckpointTuple();
+    CheckpointTuple ct = new CheckpointTuple(windowId);
     ct.setWindowId(currentWindowId);
     for (final InternalCounterSink output: outputs.values()) {
       output.process(ct);
@@ -269,6 +248,11 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public boolean isAlive()
   {
     return alive;
+  }
+
+  public long getBackupWindowId()
+  {
+    return backupWindowId;
   }
 
   static class ForkingSink implements Sink<Object>

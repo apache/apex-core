@@ -12,9 +12,9 @@ import com.malhartech.bufferserver.packet.MessageType;
  */
 public class CheckpointTuple extends Tuple
 {
-  public CheckpointTuple()
+  public CheckpointTuple(long windowId)
   {
-    super(MessageType.CHECKPOINT);
+    super(MessageType.CHECKPOINT, windowId);
   }
 }
 

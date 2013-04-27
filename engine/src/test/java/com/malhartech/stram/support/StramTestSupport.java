@@ -77,7 +77,6 @@ abstract public class StramTestSupport
   public interface WaitCondition
   {
     boolean isComplete();
-
   }
 
   @SuppressWarnings("SleepWhileInLoop")

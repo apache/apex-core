@@ -46,7 +46,7 @@ public class UnifierNode extends GenericNode
 
   };
 
-  public UnifierNode(String id, Unifier<Object> unifier)
+  public UnifierNode(int id, Unifier<Object> unifier)
   {
     super(id, unifier);
     this.unifier = unifier;

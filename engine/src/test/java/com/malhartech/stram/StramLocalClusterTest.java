@@ -153,7 +153,7 @@ public class StramLocalClusterTest
 
     dag.validate();
 
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_INTERVAL_MILLIS).set(0); // disable auto backup
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
 
     final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
 
@@ -163,6 +163,7 @@ public class StramLocalClusterTest
       public WindowGenerator setupWindowGenerator()
       {
         WindowGenerator wingen = StramTestSupport.setupWindowGenerator(wclock);
+        wingen.setCheckpointCount(2);
         return wingen;
       }
 
@@ -202,7 +203,7 @@ public class StramLocalClusterTest
     wclock.tick(1); // begin window 1
     StramTestSupport.waitForWindowComplete(n1Context, 1);
 
-    backupNode(c0, n1Context.getId()); // backup window 2
+    //backupNode(c0, n1Context.getId()); // backup window 2
 
     wclock.tick(1); // end window 2
     StramTestSupport.waitForWindowComplete(n1Context, 2);
@@ -214,7 +215,7 @@ public class StramLocalClusterTest
 
     StramTestSupport.waitForWindowComplete(n2Context, 3);
     n2.setMyStringProperty("checkpoint3");
-    backupNode(c2, n2Context.getId()); // backup window 4
+    //backupNode(c2, n2Context.getId()); // backup window 4
 
     // move window forward, wait until propagated to module,
     // to ensure backup at previous window end was processed
@@ -225,7 +226,7 @@ public class StramLocalClusterTest
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete
     c0.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint " + ptNode1, 2, ptNode1.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode1, 3, ptNode1.getRecentCheckpoint());
     c2.triggerHeartbeat();
     //Thread.yield();
     Thread.sleep(1); // yield without using yield for heartbeat cycle
@@ -283,8 +284,8 @@ public class StramLocalClusterTest
     Assert.assertNotNull("node active " + ptNode2, n2Context);
 
     StramTestSupport.waitForWindowComplete(n2Context, 5);
-    backupNode(c0Replaced, n1ReplacedContext.getId()); // backup window 6
-    backupNode(c2, n2Context.getId()); // backup window 6
+    //backupNode(c0Replaced, n1ReplacedContext.getId()); // backup window 6
+    //backupNode(c2, n2Context.getId()); // backup window 6
     wclock.tick(1); // end window 6
 
     StramTestSupport.waitForWindowComplete(n1ReplacedContext, 6);
@@ -319,17 +320,6 @@ public class StramLocalClusterTest
     Assert.assertEquals("received " + tuples, 1, tuples.size());
 
     localCluster.shutdown();
-  }
-
-  private void backupNode(StramChild c, int operatorId)
-  {
-    StramToNodeRequest backupRequest = new StramToNodeRequest();
-    backupRequest.setOperatorId(operatorId);
-    backupRequest.setRequestType(RequestType.CHECKPOINT);
-    ContainerHeartbeatResponse rsp = new ContainerHeartbeatResponse();
-    rsp.nodeRequests = Collections.singletonList(backupRequest);
-    LOG.debug("Requesting backup {} node {}", c.getContainerId(), operatorId);
-    c.processHeartbeatResponse(rsp);
   }
 
 }

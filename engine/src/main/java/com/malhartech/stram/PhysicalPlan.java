@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.BackupAgent;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -869,7 +870,7 @@ public class PhysicalPlan {
       Operator partitionedOperator = p.getOperator();
       if (pOperator.recoveryCheckpoint != 0) {
         try {
-          partitionedOperator = (Operator)ctx.getBackupAgent().restore(pOperator.id, pOperator.recoveryCheckpoint, StramUtils.getNodeSerDe(null));
+          partitionedOperator = (Operator)ctx.getBackupAgent().restore(pOperator.id, pOperator.recoveryCheckpoint);
         } catch (IOException e) {
           LOG.warn("Failed to read partition state for " + pOperator, e);
           return; // TODO: emit to event log
@@ -984,7 +985,7 @@ public class PhysicalPlan {
       p.checkpointWindows.add(minCheckpoint);
       p.recoveryCheckpoint = minCheckpoint;
       try {
-        ctx.getBackupAgent().backup(p.id, minCheckpoint, newPartition.getOperator(), StramUtils.getNodeSerDe(null));
+        ctx.getBackupAgent().backup(p.id, minCheckpoint, newPartition.getOperator());
       } catch (IOException e) {
         // inconsistent state, no recovery option, requires shutdown
         throw new IllegalStateException("Failed to write operator state after partition change " + p, e);

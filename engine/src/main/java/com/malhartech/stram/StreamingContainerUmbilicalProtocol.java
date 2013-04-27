@@ -328,7 +328,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     private static final long serialVersionUID = 1L;
 
     enum RequestType {
-      CHECKPOINT, START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY
+      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY
     }
 
     private int operatorId;
@@ -401,20 +401,24 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     /**
      * Set when there are pending requests that wait for dependencies to
-     * complete
+     * complete.
      */
     public boolean hasPendingRequests = false;
 
     /**
-     * Set when operators need to be removed
+     * Set when operators need to be removed.
      */
     public List<OperatorDeployInfo> undeployRequest;
 
     /**
-     * Set when new operators need to be deployed
+     * Set when new operators need to be deployed.
      */
     public List<OperatorDeployInfo> deployRequest;
 
+    /**
+     * Set when dag purges a particular windowId as it's processed by all the operators.
+     */
+    public long committedWindowId = -1;
   }
 
   /**

@@ -148,7 +148,6 @@ public class OperatorContext implements Context.OperatorContext
     return this.attributes;
   }
 
-
   @Override
   public AttributeMap<PortContext> getInputPortAttributes(String portName)
   {

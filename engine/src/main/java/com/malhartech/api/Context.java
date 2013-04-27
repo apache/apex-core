@@ -105,7 +105,11 @@ public interface Context
      */
     public static final AttributeKey<String> LOCALITY_RACK = new AttributeKey<String>("localityRack");
 
-
+    /**
+     * The agent which can be used to checkpoint the windows.
+     */
+    public static final AttributeKey<BackupAgent> BACKUP_AGENT = new AttributeKey<BackupAgent>("backupAgent");
+    
     /**
      * Return the operator runtime id.
      *

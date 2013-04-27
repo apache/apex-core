@@ -4,8 +4,11 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.api.BackupAgent;
+import com.malhartech.api.CheckpointListener;
 import com.malhartech.api.InputOperator;
 import com.malhartech.tuple.Tuple;
+import java.io.IOException;
 import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +22,7 @@ public class InputNode extends Node<InputOperator>
   private ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
   protected SweepableReservoir controlTuples;
 
-  public InputNode(String id, InputOperator operator)
+  public InputNode(int id, InputOperator operator)
   {
     super(id, operator);
   }
@@ -95,6 +98,25 @@ public class InputNode extends Node<InputOperator>
                 sinks[i].process(t);
               }
               handleRequests(currentWindowId, false);
+              break;
+
+            case CHECKPOINT:
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].process(t);
+              }
+              BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();
+              if (ba != null) {
+                try {
+                  ba.backup(id, t.getWindowId(), operator);
+                  backupWindowId = t.getWindowId();
+                  if (operator instanceof CheckpointListener) {
+                    ((CheckpointListener)operator).checkpointed(backupWindowId);
+                  }
+                }
+                catch (IOException io) {
+                  throw new RuntimeException(io);
+                }
+              }
               break;
 
             case END_STREAM:

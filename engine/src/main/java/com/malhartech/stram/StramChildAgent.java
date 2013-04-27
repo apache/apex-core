@@ -177,7 +177,7 @@ public class StramChildAgent {
   boolean shutdownRequested = false;
   boolean isComplete = false;
   long lastHeartbeatMillis = 0;
-  long lastCheckpointRequestMillis = 0;
+  //long lastCheckpointRequestMillis = 0;
   long createdMillis = System.currentTimeMillis();
   final PTContainer container;
   Map<Integer, OperatorStatus> operators;

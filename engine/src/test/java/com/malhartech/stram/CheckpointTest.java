@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.engine.GenericTestOperator;
@@ -20,6 +19,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbe
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.stram.support.StramTestSupport;
 import java.io.File;
 import java.io.IOException;
@@ -62,13 +62,13 @@ public class CheckpointTest
   public void setupEachTest() throws IOException
   {
     StramChild.eventloop = new DefaultEventLoop("CheckpointTestEventLoop");
+    StramChild.eventloop.start();
   }
 
   @After
   public void teardown()
   {
     StramChild.eventloop.stop();
-
   }
 
   /**
@@ -80,6 +80,7 @@ public class CheckpointTest
   public void testBackup() throws Exception
   {
     DAG dag = new DAG();
+    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).set(1);
     // node with no inputs will be connected to window generator
     TestGeneratorInputOperator m1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     m1.setMaxTuples(2);
@@ -94,6 +95,7 @@ public class CheckpointTest
 
     ManualScheduledExecutorService mses = new ManualScheduledExecutorService(1);
     WindowGenerator wingen = StramTestSupport.setupWindowGenerator(mses);
+    wingen.setCheckpointCount(1);
     LocalStramChild container = new LocalStramChild(containerId, null, wingen);
 
     container.setup(sca.getInitContext());
@@ -116,7 +118,7 @@ public class CheckpointTest
 
     dnm.processHeartbeat(hb); // mark deployed
 
-    mses.tick(1); // begin window 0
+    mses.tick(1); // begin window 1
 
     Assert.assertEquals("number operators", 1, container.getNodes().size());
     Operator node = container.getNode(deployInfo.get(0).id);
@@ -126,22 +128,18 @@ public class CheckpointTest
     Assert.assertEquals("nodeId", deployInfo.get(0).id, context.getId());
     Assert.assertEquals("maxTupes", 2, ((TestGeneratorInputOperator)node).getMaxTuples());
 
-    mses.tick(1); // end window 0, begin window 1
+    mses.tick(1); // end window 1, begin window 2
     // await end window 1 to ensure backup is executed at window 2
     StramTestSupport.waitForWindowComplete(context, 1);
-
-    StramToNodeRequest backupRequest = new StramToNodeRequest();
-    backupRequest.setOperatorId(context.getId());
-    backupRequest.setRequestType(RequestType.CHECKPOINT);
+    int operatorid = context.getId();
     rsp = new ContainerHeartbeatResponse();
-    rsp.nodeRequests = Collections.singletonList(backupRequest);
-    container.processHeartbeatResponse(rsp);
 
-    mses.tick(1); // end window 1, begin window 2
+    mses.tick(1); // end window 2 begin window 3
     StramTestSupport.waitForWindowComplete(context, 2);
     Assert.assertEquals("node = window 2", 2, context.getLastProcessedWindowId());
 
-    File cpFile1 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + backupRequest.getOperatorId() + "/2");
+    Thread.sleep(20);
+    File cpFile1 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
     ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
@@ -155,7 +153,8 @@ public class CheckpointTest
     StramTestSupport.waitForWindowComplete(context, 3);
     Assert.assertEquals("node = window 3", 3, context.getLastProcessedWindowId());
 
-    File cpFile2 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + backupRequest.getOperatorId() + "/3");
+    Thread.sleep(20);
+    File cpFile2 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/3");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     // fake heartbeat to propagate checkpoint
