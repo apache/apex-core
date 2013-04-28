@@ -12,6 +12,7 @@ import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import com.malhartech.tuple.EndWindowTuple;
 import com.malhartech.tuple.Tuple;
 import java.io.IOException;
@@ -134,6 +135,17 @@ public class SocketStreamTest
       }
     }
 
+    eventloop.disconnect(oss);
+    StramTestSupport.awaitCompletion(new WaitCondition()
+    {
+      @Override
+      public boolean isComplete()
+      {
+        return messageCount.get() == 1;
+      }
+
+    }, 2000);
+    eventloop.disconnect(iss);
     Assert.assertEquals("Received messages", 1, messageCount.get());
   }
 

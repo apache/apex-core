@@ -213,7 +213,6 @@ public class GenericNode extends Node<Operator>
                 break;
 
               case CHECKPOINT:
-                logger.debug("GenericNode {} got checkpoint {}", this, t.getWindowId());
                 activePort.remove();
                 if (t.getWindowId() > lastCheckpointedWindowId) {
                   BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();

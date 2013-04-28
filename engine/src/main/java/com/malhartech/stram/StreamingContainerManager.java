@@ -408,11 +408,9 @@ public class StreamingContainerManager implements PlanContext
 
         for (OperatorStats stats: statsList) {
           /* report checkpointedWindowId status of the operator */
-          LOG.debug("got checkpoint id {} for operator {}", stats.checkpointedWindowId, status.operator);
           if (status.operator.recoveryCheckpoint < stats.checkpointedWindowId) {
             addCheckpoint(status.operator, stats.checkpointedWindowId);
           }
-          LOG.debug("after if list = {} for operator {}", status.operator.checkpointWindows, status.operator);
 
           /* report all the other stuff */
           endWindowStatsNodeMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());

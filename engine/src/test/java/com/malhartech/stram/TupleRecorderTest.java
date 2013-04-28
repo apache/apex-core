@@ -37,7 +37,7 @@ public class TupleRecorderTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop = new DefaultEventLoop("TupleRecorderTestEventLoop");
+    StramChild.eventloop.start();
   }
 
   @After

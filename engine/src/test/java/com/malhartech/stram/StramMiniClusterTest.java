@@ -83,7 +83,7 @@ public class StramMiniClusterTest
   @Before
   public void setupEachTime() throws IOException
   {
-    StramChild.eventloop = new DefaultEventLoop("StramMiniClusterTestEventLoop");
+    StramChild.eventloop.start();
   }
 
   @After

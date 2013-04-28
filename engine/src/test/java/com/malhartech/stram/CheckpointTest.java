@@ -62,7 +62,6 @@ public class CheckpointTest
   @Before
   public void setupEachTest() throws IOException
   {
-    StramChild.eventloop = new DefaultEventLoop("CheckpointTestEventLoop");
     StramChild.eventloop.start();
   }
 

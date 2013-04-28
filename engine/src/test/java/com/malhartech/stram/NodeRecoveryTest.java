@@ -32,7 +32,7 @@ public class NodeRecoveryTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop = new DefaultEventLoop("NodeRecoveryTestEventLoop");
+    StramChild.eventloop.start();
   }
 
   @After

@@ -9,9 +9,6 @@ import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stream.BufferServerSubscriber;
@@ -20,11 +17,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import static java.lang.Thread.sleep;
-import java.util.*;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +48,7 @@ public class StramLocalClusterTest
    *
    * @throws Exception
    */
+  @Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
@@ -171,7 +169,7 @@ public class StramLocalClusterTest
 
     StramLocalCluster localCluster = new StramLocalCluster(dag, mcf);
     localCluster.setPerContainerBufferServer(true);
-    localCluster.setHeartbeatMonitoringEnabled(false); // driven by test
+    //localCluster.setHeartbeatMonitoringEnabled(false); // driven by test
     localCluster.runAsync();
 
 
@@ -199,27 +197,24 @@ public class StramLocalClusterTest
 
     OperatorContext n1Context = c0.getNodeContext(ptNode1.getId());
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
-    wclock.tick(1); // begin window 0
     wclock.tick(1); // begin window 1
+    wclock.tick(1); // begin window 2
     StramTestSupport.waitForWindowComplete(n1Context, 1);
 
-    //backupNode(c0, n1Context.getId()); // backup window 2
-
-    wclock.tick(1); // end window 2
+    wclock.tick(1); // begin window 3
     StramTestSupport.waitForWindowComplete(n1Context, 2);
 
     OperatorContext n2Context = c2.getNodeContext(ptNode2.getId());
     Assert.assertNotNull("context " + ptNode2);
 
-    wclock.tick(1); // end window 3
+    wclock.tick(1); // begin window 4
 
     StramTestSupport.waitForWindowComplete(n2Context, 3);
     n2.setMyStringProperty("checkpoint3");
-    //backupNode(c2, n2Context.getId()); // backup window 4
 
     // move window forward, wait until propagated to module,
     // to ensure backup at previous window end was processed
-    wclock.tick(1);
+    wclock.tick(1); // begin window 5
     StramTestSupport.waitForWindowComplete(n2Context, 4);
 
     // propagate checkpoints to master
