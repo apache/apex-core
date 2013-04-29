@@ -34,12 +34,14 @@ import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
+import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOperator.State;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.PhysicalPlan.PlanContext;
 import com.malhartech.stram.PhysicalPlan.StatsHandler;
 import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
+import com.malhartech.stram.StramChildAgent.MovingAverageLong;
 import com.malhartech.stram.StramChildAgent.OperatorStatus;
 import com.malhartech.stram.StramChildAgent.PortStatus;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -53,6 +55,7 @@ import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.stram.webapp.PortInfo;
 import com.malhartech.util.AttributeMap;
 import com.malhartech.util.Pair;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -89,7 +92,7 @@ public class StreamingContainerManager implements PlanContext
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
-  private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsNodeMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
+  private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
   private long committedWindowId;
 
   private static class EndWindowStats
@@ -124,7 +127,8 @@ public class StreamingContainerManager implements PlanContext
   }
 
   /**
-   * Check periodically that child containers phone home
+   * Check periodically that child containers phone home.
+   * This is run by the App Master thread (only accessed by one thread).
    */
   public void monitorHeartbeat()
   {
@@ -160,7 +164,93 @@ public class StreamingContainerManager implements PlanContext
 
     processEvents();
     committedWindowId = updateCheckpoints();
-    LOG.debug("Calculated committed window Id = {}", committedWindowId);
+    calculateEndWindowStats();
+  }
+
+  private void calculateEndWindowStats()
+  {
+    if (!endWindowStatsOperatorMap.isEmpty()) {
+      if (endWindowStatsOperatorMap.size() > maxWindowsBehindForStats) {
+        LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", maxWindowsBehindForStats);
+        while (endWindowStatsOperatorMap.size() > maxWindowsBehindForStats) {
+          endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
+        }
+      }
+      int numOperators = plan.getAllOperators().size();
+      Long windowId = endWindowStatsOperatorMap.firstKey();
+      while (windowId != null) {
+        Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(windowId);
+        if (endWindowStatsMap.size() < numOperators) {
+          break;
+        }
+        else {
+          // latency calculation
+          List<OperatorMeta> rootOperatorMetas = plan.getRootOperators();
+          Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
+          for (OperatorMeta root: rootOperatorMetas) {
+            List<PTOperator> rootOperators = plan.getOperators(root);
+            for (PTOperator rootOperator: rootOperators) {
+              // DFS for visiting the nodes for latency calculation
+              calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited);
+            }
+          }
+          endWindowStatsOperatorMap.remove(windowId);
+        }
+        windowId = endWindowStatsOperatorMap.higherKey(windowId);
+      }
+    }
+  }
+
+  private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> endWindowStatsVisited)
+  {
+    endWindowStatsVisited.add(oper);
+    EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
+    if (endWindowStats == null) {
+      throw new AssertionError("End window stats is null for operator " + oper.getId());
+    }
+
+    // find the maximum end window emit time from all input ports
+    long upstreamMaxEmitTimestamp = -1;
+    for (PTInput input: oper.inputs) {
+      if (input.source.source instanceof PTOperator) {
+        PTOperator upstreamOp = (PTOperator)input.source.source;
+        EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
+        if (upstreamEndWindowStats == null) {
+          throw new AssertionError("End window stats is null for operator " + upstreamOp.getId());
+        }
+        if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
+          upstreamMaxEmitTimestamp = upstreamEndWindowStats.emitTimestamp;
+        }
+      }
+    }
+
+    OperatorStatus operatorStatus = getOperatorStatus(oper);
+    if (operatorStatus == null) {
+      throw new AssertionError("Operator status for operator " + oper.getId() + " does not exist!");
+    }
+    if (upstreamMaxEmitTimestamp > 0) {
+      operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
+    }
+
+    for (PTOutput output: oper.outputs) {
+      for (PTInput input: output.sinks) {
+        if (input.target instanceof PTOperator) {
+          PTOperator downStreamOp = (PTOperator)input.target;
+          if (!endWindowStatsVisited.contains(downStreamOp)) {
+            calculateLatency(downStreamOp, endWindowStatsMap, endWindowStatsVisited);
+          }
+        }
+      }
+    }
+  }
+
+  private OperatorStatus getOperatorStatus(PTOperator operator)
+  {
+    StramChildAgent sca = containers.get(operator.container.containerId);
+    if (sca == null) {
+      return null;
+    }
+    return sca.operators.get(operator.getId());
   }
 
   public int processEvents()
@@ -330,6 +420,10 @@ public class StreamingContainerManager implements PlanContext
     return this.containers.values();
   }
 
+  /**
+   * process the heartbeat from each container.
+   * called by the RPC thread for each container. (i.e. called by multiple threads)
+   */
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
     boolean containerIdle = true;
@@ -415,8 +509,8 @@ public class StreamingContainerManager implements PlanContext
           LOG.debug("after if list = {} for operator {}", status.operator.checkpointWindows, status.operator);
 
           /* report all the other stuff */
-          endWindowStatsNodeMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
-          Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsNodeMap.get(stats.windowId);
+
+          endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
           EndWindowStats endWindowStats = new EndWindowStats();
           Collection<PortStats> ports = stats.inputPorts;
           if (ports != null) {
@@ -468,13 +562,20 @@ public class StreamingContainerManager implements PlanContext
             }
           }
 
-          // for input operator, just take the maximum dequeue time for emit timestamp.
+          // for output operator, just take the maximum dequeue time for emit timestamp.
           if (endWindowStats.emitTimestamp < 0) {
             endWindowStats.emitTimestamp = maxDequeueTimestamp;
           }
 
           status.currentWindowId = stats.windowId;
           totalCpuTimeUsed += stats.cpuTimeUsed;
+          /*
+          if (endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>()) == null) {
+            LOG.warn("Putting new map for window id {} for node id {}", stats.windowId, shb.getNodeId());
+          }
+          */
+          endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
+          Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
           endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
         }
 
@@ -512,31 +613,6 @@ public class StreamingContainerManager implements PlanContext
         }
       }
       status.recordingNames = shb.getRecordingNames();
-    }
-
-
-    if (!endWindowStatsNodeMap.isEmpty()) {
-      if (endWindowStatsNodeMap.size() > maxWindowsBehindForStats) {
-        LOG.warn("Some operators are behind for more than {} windows! Trimming the end window stats map", maxWindowsBehindForStats);
-        while (endWindowStatsNodeMap.size() > maxWindowsBehindForStats) {
-          endWindowStatsNodeMap.remove(endWindowStatsNodeMap.firstKey());
-        }
-      }
-      else {
-        int numOperators = plan.getAllOperators().size();
-        Long windowId = endWindowStatsNodeMap.firstKey();
-        while (windowId != null) {
-          Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsNodeMap.get(windowId);
-          if (endWindowStatsMap.size() < numOperators) {
-            break;
-          }
-          else {
-            // TBD do something about the end window dequeue/emit data (endWindowStatsMap)
-            endWindowStatsNodeMap.remove(windowId);
-          }
-          windowId = endWindowStatsNodeMap.higherKey(windowId);
-        }
-      }
     }
 
     sca.lastHeartbeatMillis = currentTimeMillis;
@@ -865,6 +941,7 @@ public class StreamingContainerManager implements PlanContext
           ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
           ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
           ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
+          ni.latencyMA = os.latencyMA.getAvg();
           ni.failureCount = os.operator.failureCount;
           ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
           ni.currentWindowId = os.currentWindowId & 0xFFFF;

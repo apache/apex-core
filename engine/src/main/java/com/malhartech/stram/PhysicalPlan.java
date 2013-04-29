@@ -228,7 +228,7 @@ public class PhysicalPlan {
 
     @Override
     public void onThroughputUpdate(final PTOperator operatorInstance, long tps) {
-      //LOG.debug("onThroughputUpdate " + operatorInstance);
+      //LOG.debug("onThroughputUpdate {} {}", operatorInstance, tps);
       operatorInstance.loadIndicator = getLoadIndicator(operatorInstance, tps);
       if (operatorInstance.loadIndicator != 0) {
         if (lastEvalMillis < (System.currentTimeMillis() - evalIntervalMillis)) {
@@ -962,6 +962,7 @@ public class PhysicalPlan {
       // new partition, add operator instance
       PTOperator p = addPTOperator(currentMapping, newPartition);
       deployOperators.add(p);
+      deployOperators.addAll(p.upstreamMerge.values());
       newOperators.add(p);
 
       // handle parallel partition
@@ -1019,8 +1020,9 @@ public class PhysicalPlan {
           newContainers.add(c);
         }
       }
-      oper.container = c;
-      oper.container.operators.add(oper); // TODO: thread safety
+      setContainer(oper, c); // TODO: thread safety
+      //oper.container = c;
+      //oper.container.operators.add(oper);
     }
 
     deployOperators = this.getDependents(deployOperators);
@@ -1053,7 +1055,6 @@ public class PhysicalPlan {
       }
     }
     // remove the operator
-    LOG.debug("Removing operator " + oper);
     removePTOperator(oper);
     // TODO: remove checkpoint states
 
@@ -1221,6 +1222,7 @@ public class PhysicalPlan {
   }
 
   private void removePTOperator(PTOperator node) {
+    LOG.debug("Removing operator " + node);
     OperatorMeta nodeDecl = node.logicalNode;
     PMapping mapping = logicalToPTOperator.get(node.logicalNode);
     for (Map.Entry<DAG.OutputPortMeta, StreamMeta> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
@@ -1266,11 +1268,11 @@ public class PhysicalPlan {
     return this.containers;
   }
 
-  protected List<PTOperator> getOperators(OperatorMeta logicalOperator) {
+  public List<PTOperator> getOperators(OperatorMeta logicalOperator) {
     return this.logicalToPTOperator.get(logicalOperator).partitions;
   }
 
-  // used for recovery, this can go once plan traversal is fully encapsulated
+  // used for testing only
   protected Map<DAG.OutputPortMeta, PTOperator> getMergeOperators(OperatorMeta logicalOperator) {
     return this.logicalToPTOperator.get(logicalOperator).mergeOperators;
   }
