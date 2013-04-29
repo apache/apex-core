@@ -32,7 +32,6 @@ public class PartitioningTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop = new DefaultEventLoop("PartitioningTestEventLoop");
     StramChild.eventloop.start();
   }
 

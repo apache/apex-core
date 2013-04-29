@@ -9,9 +9,6 @@ import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
 import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stream.BufferServerSubscriber;
@@ -20,11 +17,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import static java.lang.Thread.sleep;
-import java.util.*;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +48,7 @@ public class StramLocalClusterTest
    *
    * @throws Exception
    */
+  @Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
@@ -90,7 +88,7 @@ public class StramLocalClusterTest
 
   private static class TestBufferServerSubscriber
   {
-    final BufferServerSubscriber bsi;
+    final BufferServerSubscriber bss;
     final StreamContext streamContext;
     final TestSink sink;
     SweepableReservoir reservoir;
@@ -107,16 +105,16 @@ public class StramLocalClusterTest
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
-      bsi = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
-      bsi.setup(streamContext);
-      reservoir = bsi.acquireReservoir("testSink", 1024);
+      bss = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
+      bss.setup(streamContext);
+      reservoir = bss.acquireReservoir("testSink", 1024);
       reservoir.setSink(sink);
     }
 
     @SuppressWarnings("SleepWhileInLoop")
     List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException
     {
-      bsi.activate(streamContext);
+      bss.activate(streamContext);
       for (long l = 0; l < timeoutMillis; l += 20) {
         if (reservoir.sweep() != null) {
           reservoir.remove();
@@ -130,7 +128,7 @@ public class StramLocalClusterTest
       Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
       List<Object> result = new ArrayList<Object>(sink.collectedTuples);
 
-      bsi.deactivate();
+      bss.deactivate();
       sink.collectedTuples.clear();
       return result;
     }
@@ -190,36 +188,30 @@ public class StramLocalClusterTest
     GenericTestOperator n2 = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getMeta(node2)).getId()).getOperator();
     Assert.assertNotNull(n2);
 
-    // sink to collect tuples emitted by the input module
-    TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
-
     // input data
     String window0Tuple = "window0Tuple";
     n1.addTuple(window0Tuple);
 
     OperatorContext n1Context = c0.getNodeContext(ptNode1.getId());
     Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
-    wclock.tick(1); // begin window 0
     wclock.tick(1); // begin window 1
+    wclock.tick(1); // begin window 2
     StramTestSupport.waitForWindowComplete(n1Context, 1);
 
-    //backupNode(c0, n1Context.getId()); // backup window 2
-
-    wclock.tick(1); // end window 2
+    wclock.tick(1); // begin window 3
     StramTestSupport.waitForWindowComplete(n1Context, 2);
 
     OperatorContext n2Context = c2.getNodeContext(ptNode2.getId());
     Assert.assertNotNull("context " + ptNode2);
 
-    wclock.tick(1); // end window 3
+    wclock.tick(1); // begin window 4
 
     StramTestSupport.waitForWindowComplete(n2Context, 3);
     n2.setMyStringProperty("checkpoint3");
-    //backupNode(c2, n2Context.getId()); // backup window 4
 
     // move window forward, wait until propagated to module,
     // to ensure backup at previous window end was processed
-    wclock.tick(1);
+    wclock.tick(1); // begin window 5
     StramTestSupport.waitForWindowComplete(n2Context, 4);
 
     // propagate checkpoints to master
@@ -231,9 +223,11 @@ public class StramLocalClusterTest
     //Thread.yield();
     Thread.sleep(1); // yield without using yield for heartbeat cycle
     c2.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint " + ptNode2, 4, ptNode2.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode2, 3, ptNode2.getRecentCheckpoint());
 
     // activated test sink, verify tuple stored at buffer server
+    // sink to collect tuples emitted by the input module
+    TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
     List<Object> tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());
     Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));
@@ -311,8 +305,8 @@ public class StramLocalClusterTest
     // purge checkpoints
     localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
 
-    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
-    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {5L}), ptNode1.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {5L}), ptNode2.checkpointWindows);
 
     sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
     // buffer server data purged

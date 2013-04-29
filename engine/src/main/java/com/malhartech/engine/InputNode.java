@@ -101,7 +101,6 @@ public class InputNode extends Node<InputOperator>
               break;
 
             case CHECKPOINT:
-              logger.debug("InputNode {} got checkpoint {}", this, t.getWindowId());
               BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();
               if (ba != null) {
                 try {

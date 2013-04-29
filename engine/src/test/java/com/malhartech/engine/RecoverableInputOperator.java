@@ -18,9 +18,10 @@ import org.slf4j.LoggerFactory;
 public class RecoverableInputOperator implements InputOperator, CheckpointListener
 {
   public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>(this);
+  long checkpointedWindowId;
+  boolean firstRun = true;
   transient boolean first;
   transient long windowId;
-  int checkpointCount;
   int maximumTuples = 20;
 
   public void setMaximumTuples(int count)
@@ -32,11 +33,10 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   public void emitTuples()
   {
     if (first) {
-//      logger.debug("generating tuple {}", Codec.getStringWindowId(windowId));
       output.emit(windowId);
       first = false;
       if (--maximumTuples == 0) {
-        throw new RuntimeException(new InterruptedException("Just want to stop!"));
+        throw new RuntimeException(new InterruptedException("Done!"));
       }
     }
   }
@@ -56,11 +56,7 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   @Override
   public void setup(OperatorContext context)
   {
-    if (checkpointCount > 0) {
-      checkpointCount = 3;
-    }
-
-    logger.debug("checkpointCount = {}", checkpointCount);
+    firstRun &= checkpointedWindowId == 0;
   }
 
   @Override
@@ -71,14 +67,15 @@ public class RecoverableInputOperator implements InputOperator, CheckpointListen
   @Override
   public void checkpointed(long windowId)
   {
-    checkpointCount++;
+    if (checkpointedWindowId == 0) {
+      checkpointedWindowId = windowId;
+    }
   }
 
   @Override
   public void committed(long windowId)
   {
-    logger.debug("committed window {} and checkpoint {}", windowId, checkpointCount);
-    if (checkpointCount == 2) {
+    if (firstRun && checkpointedWindowId > 0 && windowId > checkpointedWindowId) {
       throw new RuntimeException("Failure Simulation from " + this);
     }
   }

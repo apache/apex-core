@@ -23,7 +23,7 @@ public class NameableThreadFactory implements ThreadFactory
 
   public NameableThreadFactory(String groupname)
   {
-    SecurityManager s = System.getSecurityManager();
+    SecurityManager s = java.lang.System.getSecurityManager();
     group = (s != null) ? s.getThreadGroup()
             : Thread.currentThread().getThreadGroup();
     namePrefix = groupname

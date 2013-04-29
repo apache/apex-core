@@ -10,11 +10,13 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.engine.RecoverableInputOperator;
-import java.io.IOException;
-
-import java.util.HashSet;
 import com.malhartech.netlet.DefaultEventLoop;
-import org.junit.*;
+import java.io.IOException;
+import java.util.HashSet;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +32,7 @@ public class NodeRecoveryTest
   @Before
   public void setup() throws IOException
   {
-    StramChild.eventloop = new DefaultEventLoop("NodeRecoveryTestEventLoop");
+    StramChild.eventloop.start();
   }
 
   @After
@@ -42,8 +44,9 @@ public class NodeRecoveryTest
 
   public static class CollectorOperator extends BaseOperator implements CheckpointListener
   {
-    private int checkpointCount;
     private boolean simulateFailure;
+    private long checkPointWindowId;
+
     public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>(this)
     {
       @Override
@@ -66,32 +69,30 @@ public class NodeRecoveryTest
     @Override
     public void setup(OperatorContext context)
     {
-      if (checkpointCount > 0) {
-        checkpointCount = 7;
-      }
-
-      logger.debug("checkpointcount = {}", checkpointCount);
+      simulateFailure &= (checkPointWindowId == 0);
+      logger.debug("simulateFailure = {}", simulateFailure);
     }
 
     @Override
     public void checkpointed(long windowId)
     {
-      checkpointCount++;
+      if (this.checkPointWindowId == 0) {
+        this.checkPointWindowId = windowId;
+      }
     }
 
     @Override
     public void committed(long windowId)
     {
-      logger.debug("committed window {} and checkpoint {}", windowId, checkpointCount);
-      if (simulateFailure && checkpointCount == 6) {
-        throw new RuntimeException("Failure Simulation from " + this);
+      logger.debug("committed window {} and checkPointWindowId {}", windowId, checkPointWindowId);
+      if (simulateFailure && windowId > this.checkPointWindowId && this.checkPointWindowId > 0) {
+        throw new RuntimeException("Failure Simulation from " + this + " checkpointWindowId=" + checkPointWindowId);
       }
     }
 
   }
 
-  @Ignore
-  @Test
+@Test
   public void testInputOperatorRecovery() throws Exception
   {
     collection.clear();
@@ -107,7 +108,6 @@ public class NodeRecoveryTest
     dag.addStream("connection", rip.output, cm.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
@@ -130,7 +130,6 @@ public class NodeRecoveryTest
     dag.addStream("connection", rip.output, cm.input);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
 //    for (Long l: collection) {
@@ -139,8 +138,7 @@ public class NodeRecoveryTest
     Assert.assertEquals("Generated Outputs", maxTuples, collection.size());
   }
 
-  @Ignore
-  @Test
+@Test
   public void testInlineOperatorsRecovery() throws Exception
   {
     collection.clear();
@@ -158,7 +156,6 @@ public class NodeRecoveryTest
     dag.addStream("connection", rip.output, cm.input).setInline(true);
 
     StramLocalCluster lc = new StramLocalCluster(dag);
-    lc.setHeartbeatMonitoringEnabled(false);
     lc.run();
 
 //    for (Long l: collection) {

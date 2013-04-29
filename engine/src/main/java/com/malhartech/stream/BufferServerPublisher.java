@@ -53,7 +53,8 @@ public class BufferServerPublisher extends Publisher implements Stream
       switch (t.getType()) {
         case CHECKPOINT:
           serde.resetState();
-          array = EmptyTuple.getSerializedTuple(MessageType.CHECKPOINT_VALUE);
+          array = WindowIdTuple.getSerializedTuple((int)t.getWindowId());
+          array[0] = MessageType.CHECKPOINT_VALUE;
           break;
 
         case BEGIN_WINDOW:
@@ -65,7 +66,7 @@ public class BufferServerPublisher extends Publisher implements Stream
           break;
 
         case END_STREAM:
-          array = EndStreamTuple.getSerializedTuple(windowId = (int)t.getWindowId());
+          array = EndStreamTuple.getSerializedTuple((int)t.getWindowId());
           break;
 
         case RESET_WINDOW:

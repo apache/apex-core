@@ -208,7 +208,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     OperatorStats stats = new OperatorStats();
     reportStats(stats);
     stats.checkpointedWindowId = checkpointedWindowId;
-    logger.debug("just assigned the checkpointedwindowId {} when windowId = {}", checkpointedWindowId, windowId);
     context.report(stats, windowId);
   }
 

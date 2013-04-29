@@ -12,9 +12,11 @@ import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import com.malhartech.tuple.EndWindowTuple;
 import com.malhartech.tuple.Tuple;
 import java.io.IOException;
+import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.AfterClass;
@@ -68,7 +70,7 @@ public class SocketStreamTest
    * @throws Exception
    */
   @Test
-  @SuppressWarnings({"rawtypes", "unchecked"})
+  @SuppressWarnings({"rawtypes", "unchecked", "SleepWhileInLoop"})
   public void testBufferServerStream() throws Exception
   {
     final StreamCodec<Object> serde = new DefaultStreamCodec<Object>();
@@ -125,6 +127,7 @@ public class SocketStreamTest
     for (int i = 0; i < 100; i++) {
       Tuple t = reservoir.sweep();
       if (t == null) {
+        sleep(5);
         continue;
       }
 
@@ -134,6 +137,8 @@ public class SocketStreamTest
       }
     }
 
+    eventloop.disconnect(oss);
+    eventloop.disconnect(iss);
     Assert.assertEquals("Received messages", 1, messageCount.get());
   }
 

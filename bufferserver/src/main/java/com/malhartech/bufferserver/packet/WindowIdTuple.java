@@ -60,7 +60,7 @@ public class WindowIdTuple extends Tuple
     return "WindowIdTuple{" + getType() + ", " + Integer.toHexString(getWindowId()) + '}';
   }
 
-  protected static byte[] getSerializedTuple(int windowId)
+  public static byte[] getSerializedTuple(int windowId)
   {
     int offset = 1; /* for type */
 

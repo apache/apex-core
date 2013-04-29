@@ -38,7 +38,7 @@ public abstract class Tuple
         return new NoMessageTuple(buffer, offset, length);
 
       case CHECKPOINT:
-        return new EmptyTuple(buffer, offset, length);
+        return new WindowIdTuple(buffer, offset, length);
 
       case CODEC_STATE:
         return new DataTuple(buffer, offset, length);
