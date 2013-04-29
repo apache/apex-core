@@ -12,11 +12,11 @@ import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.netlet.Client.Fragment;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import com.malhartech.netlet.Client.Fragment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
