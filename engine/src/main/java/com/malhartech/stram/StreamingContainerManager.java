@@ -739,7 +739,7 @@ public class StreamingContainerManager implements PlanContext
           long c2 = 0;
           while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
             operator.checkpointWindows.removeFirst();
-            LOG.debug("Checkpoint to purge: operator={} windowId={}", operator.getId(), c1);
+            //LOG.debug("Checkpoint to purge: operator={} windowId={}", operator.getId(), c1);
             this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
             c1 = c2;
           }
@@ -750,7 +750,7 @@ public class StreamingContainerManager implements PlanContext
       }
     }
     visited.add(operator);
-    LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getId(), c1, operator.checkpointWindows});
+    //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getId(), c1, operator.checkpointWindows});
     return operator.recoveryCheckpoint = c1;
   }
 

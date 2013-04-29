@@ -39,7 +39,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   CircularBuffer<Fragment> polledFragments;
   CircularBuffer<Fragment> freeFragments;
   private final ArrayDeque<CircularBuffer<Fragment>> backlog;
-  private int lastWindowId;
+  private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
   private AtomicLong readByteCount = new AtomicLong(0);
 
   @SuppressWarnings("unchecked")
@@ -246,6 +246,15 @@ public class BufferServerSubscriber extends Subscriber implements Stream
               freeFragments.offer(fm);
               continue;
 
+            case RESET_WINDOW:
+              baseSeconds = (long)data.getBaseSeconds() << 32;
+              if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
+                freeFragments.offer(fm);
+                continue;
+              }
+              o = new ResetWindowTuple(baseSeconds | data.getWindowWidth());
+              break;
+
             case PAYLOAD:
               dsp.data = data.getData();
               o = serde.fromByteArray(dsp);
@@ -265,16 +274,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
               o = new EndStreamTuple(baseSeconds | data.getWindowId());
               break;
 
-            case RESET_WINDOW:
-              baseSeconds = (long)data.getBaseSeconds() << 32;
-              if (lastWindowId < WindowGenerator.MAX_WINDOW_ID) {
-                continue;
-              }
-              o = new ResetWindowTuple(baseSeconds | data.getWindowWidth());
-              break;
-
             case BEGIN_WINDOW:
-              //logger.debug("received {}", data);
               o = new Tuple(data.getType(), baseSeconds | data.getWindowId());
               break;
 

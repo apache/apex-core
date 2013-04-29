@@ -30,7 +30,6 @@ public class BufferServerPublisher extends Publisher implements Stream
 {
   private StreamCodec<Object> serde;
   private AtomicLong publishedByteCount = new AtomicLong(0);
-  private int windowId;
   private EventLoop eventloop;
 
   public BufferServerPublisher(String sourceId, int queueCapacity)
@@ -58,11 +57,11 @@ public class BufferServerPublisher extends Publisher implements Stream
           break;
 
         case BEGIN_WINDOW:
-          array = BeginWindowTuple.getSerializedTuple(windowId = (int)t.getWindowId());
+          array = BeginWindowTuple.getSerializedTuple((int)t.getWindowId());
           break;
 
         case END_WINDOW:
-          array = EndWindowTuple.getSerializedTuple(windowId = (int)t.getWindowId());
+          array = EndWindowTuple.getSerializedTuple((int)t.getWindowId());
           break;
 
         case END_STREAM:
