@@ -88,7 +88,7 @@ public class StramLocalClusterTest
 
   private static class TestBufferServerSubscriber
   {
-    final BufferServerSubscriber bsi;
+    final BufferServerSubscriber bss;
     final StreamContext streamContext;
     final TestSink sink;
     SweepableReservoir reservoir;
@@ -105,16 +105,16 @@ public class StramLocalClusterTest
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
-      bsi = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
-      bsi.setup(streamContext);
-      reservoir = bsi.acquireReservoir("testSink", 1024);
+      bss = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
+      bss.setup(streamContext);
+      reservoir = bss.acquireReservoir("testSink", 1024);
       reservoir.setSink(sink);
     }
 
     @SuppressWarnings("SleepWhileInLoop")
     List<Object> retrieveTuples(int expectedCount, long timeoutMillis) throws InterruptedException
     {
-      bsi.activate(streamContext);
+      bss.activate(streamContext);
       for (long l = 0; l < timeoutMillis; l += 20) {
         if (reservoir.sweep() != null) {
           reservoir.remove();
@@ -128,7 +128,7 @@ public class StramLocalClusterTest
       Assert.assertEquals("received " + sink.collectedTuples, expectedCount, sink.collectedTuples.size());
       List<Object> result = new ArrayList<Object>(sink.collectedTuples);
 
-      bsi.deactivate();
+      bss.deactivate();
       sink.collectedTuples.clear();
       return result;
     }
@@ -169,7 +169,7 @@ public class StramLocalClusterTest
 
     StramLocalCluster localCluster = new StramLocalCluster(dag, mcf);
     localCluster.setPerContainerBufferServer(true);
-    //localCluster.setHeartbeatMonitoringEnabled(false); // driven by test
+    localCluster.setHeartbeatMonitoringEnabled(false); // driven by test
     localCluster.runAsync();
 
 
@@ -187,9 +187,6 @@ public class StramLocalClusterTest
     Assert.assertEquals("number operators downstream", 1, c2NodeMap.size());
     GenericTestOperator n2 = (GenericTestOperator)c2NodeMap.get(localCluster.findByLogicalNode(dag.getMeta(node2)).getId()).getOperator();
     Assert.assertNotNull(n2);
-
-    // sink to collect tuples emitted by the input module
-    TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
 
     // input data
     String window0Tuple = "window0Tuple";
@@ -226,9 +223,11 @@ public class StramLocalClusterTest
     //Thread.yield();
     Thread.sleep(1); // yield without using yield for heartbeat cycle
     c2.waitForHeartbeat(5000);
-    Assert.assertEquals("checkpoint " + ptNode2, 4, ptNode2.getRecentCheckpoint());
+    Assert.assertEquals("checkpoint " + ptNode2, 3, ptNode2.getRecentCheckpoint());
 
     // activated test sink, verify tuple stored at buffer server
+    // sink to collect tuples emitted by the input module
+    TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
     List<Object> tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());
     Assert.assertEquals("received " + tuples, window0Tuple, tuples.get(0));
@@ -306,8 +305,8 @@ public class StramLocalClusterTest
     // purge checkpoints
     localCluster.dnmgr.monitorHeartbeat(); // checkpoint purging
 
-    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {6L}), ptNode1.checkpointWindows);
-    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {6L}), ptNode2.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode1, Arrays.asList(new Long[] {5L}), ptNode1.checkpointWindows);
+    Assert.assertEquals("checkpoints " + ptNode2, Arrays.asList(new Long[] {5L}), ptNode2.checkpointWindows);
 
     sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
     // buffer server data purged
