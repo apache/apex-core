@@ -48,7 +48,6 @@ public class StramLocalClusterTest
    *
    * @throws Exception
    */
-  @Ignore
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
