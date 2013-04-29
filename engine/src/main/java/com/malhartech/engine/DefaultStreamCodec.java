@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 @ShipContainingJars(classes = {Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
 {
-  private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodec.class);
   private final Output data = new Output(4096, Integer.MAX_VALUE);
   private final Output state = new Output(4096, Integer.MAX_VALUE);
   private final Input input = new Input();
@@ -118,7 +117,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
         input.setBuffer(dspair.state.buffer, dspair.state.offset, dspair.state.offset + dspair.state.length);
         while (input.position() < input.limit()) {
           ClassIdPair pair = (ClassIdPair)readClassAndObject(input);
-          logger.debug("registering class {} => {}", pair.classname, pair.id);
+          //logger.debug("registering class {} => {}", pair.classname, pair.id);
           register(Class.forName(pair.classname, false, Thread.currentThread().getContextClassLoader()), pair.id);
         }
       }
@@ -228,4 +227,5 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
 
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
+  private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodec.class);
 }
