@@ -181,7 +181,7 @@ public class TupleRecorderTest
     GenericTestOperator op2 = dag.addOperator("op2", GenericTestOperator.class);
     GenericTestOperator op3 = dag.addOperator("op3", GenericTestOperator.class);
 
-    op1.setEmitInterval(200); // emit every 200 msec
+    op1.setEmitInterval(100); // emit every 100 msec
     dag.addStream("stream1", op1.outport, op2.inport1);//.setInline(true);
     dag.addStream("stream2", op2.outport1, op3.inport1);//.setInline(true);
 
