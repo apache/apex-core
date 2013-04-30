@@ -130,7 +130,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
           outputs.remove(e.getKey());
         }
         else if (sinks1.length == 1) {
-          outputs.put(e.getKey(), sinks1[9]);
+          outputs.put(e.getKey(), sinks1[0]);
         }
       }
     }

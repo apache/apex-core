@@ -7,6 +7,7 @@ package com.malhartech.debug;
 import com.malhartech.api.Sink;
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -50,9 +51,29 @@ public class MuxSink implements Sink<Object>
   @SuppressWarnings({"unchecked"})
   public void remove(Sink<Object>... s)
   {
-    List<Sink<Object>> asList = Arrays.asList(sinks);
-    asList.removeAll(Arrays.asList(s));
-    sinks = (Sink<Object>[])asList.toArray();
+    /* mark all the sinks to be deleted as null */
+    int found = 0;
+    for (int i = s.length; i-- > 0;) {
+      for (int j = sinks.length; j-- > 0;) {
+        if (s[i] == sinks[j]) {
+          sinks[j] = null;
+          found++;
+          break;
+        }
+      }
+    }
+
+    /* copy over rest of the sinks to a new array */
+    Sink<Object>[] newInstance = (Sink<Object>[])Array.newInstance(Sink.class, sinks.length - found);
+    int i = 0;
+    for (int j = sinks.length; j-- > 0;) {
+      if (sinks[j] != null) {
+        newInstance[i++] = sinks[j];
+      }
+    }
+
+    /* now new array is our final list of sinks */
+    sinks = newInstance;
   }
 
   /**
