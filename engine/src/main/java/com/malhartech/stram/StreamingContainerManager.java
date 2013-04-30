@@ -193,7 +193,8 @@ public class StreamingContainerManager implements PlanContext
     endWindowStatsVisited.add(oper);
     EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
     if (endWindowStats == null) {
-      throw new AssertionError("End window stats is null for operator " + oper.getId());
+      LOG.error("End window stats is null for operator {}", oper.getId());
+      return;
     }
 
     // find the maximum end window emit time from all input ports
@@ -203,7 +204,8 @@ public class StreamingContainerManager implements PlanContext
         PTOperator upstreamOp = (PTOperator)input.source.source;
         EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
         if (upstreamEndWindowStats == null) {
-          throw new AssertionError("End window stats is null for operator " + upstreamOp.getId());
+          LOG.error("End window stats is null for operator {}", upstreamOp.getId());
+          return;
         }
         if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
           upstreamMaxEmitTimestamp = upstreamEndWindowStats.emitTimestamp;
