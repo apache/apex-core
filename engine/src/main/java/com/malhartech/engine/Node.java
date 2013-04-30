@@ -217,7 +217,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
     for (Entry<String, InternalCounterSink> e: outputs.entrySet()) {
-      logger.info("end window emit time is {}", endWindowEmitTime);
+      //logger.info("end window emit time is {}", endWindowEmitTime);
       stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount(), endWindowEmitTime));
     }
 
