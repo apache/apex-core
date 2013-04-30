@@ -12,24 +12,34 @@ import com.malhartech.tuple.Tuple;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class TappedReservoir implements SweepableReservoir
+public class TappedReservoir extends MuxSink implements SweepableReservoir
 {
   public final SweepableReservoir reservoir;
+  private Sink<Object> sink;
 
-  public TappedReservoir(SweepableReservoir reservoir, Sink<Object> tapper)
+  @SuppressWarnings({"unchecked", "LeakingThisInConstructor"})
+  public TappedReservoir(SweepableReservoir reservoir, Sink<Object> tap)
   {
     this.reservoir = reservoir;
+    add(tap);
+    sink = reservoir.setSink(this);
   }
 
   @Override
-  public void setSink(Sink<Object> sink)
+  public Sink<Object> setSink(Sink<Object> sink)
   {
+    try {
+      return this.sink;
+    }
+    finally {
+      this.sink = sink;
+    }
   }
 
   @Override
   public Tuple sweep()
   {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return reservoir.sweep();
   }
 
   @Override
@@ -45,9 +55,17 @@ public class TappedReservoir implements SweepableReservoir
   }
 
   @Override
+  public void put(Object tuple)
+  {
+    super.put(tuple);
+    sink.put(tuple);
+  }
+
+  @Override
   public Object remove()
   {
     Object object = reservoir.remove();
+    super.put(object);
     return object;
   }
 

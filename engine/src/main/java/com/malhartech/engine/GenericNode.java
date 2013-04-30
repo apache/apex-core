@@ -38,12 +38,18 @@ public class GenericNode extends Node<Operator>
   protected ArrayList<DeferredInputConnection> deferredInputConnections = new ArrayList<DeferredInputConnection>();
 
   @Override
+  @SuppressWarnings("unchecked")
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
       SweepableReservoir original = inputs.get(e.getKey());
-      if (original != null) {
-        inputs.put(e.getKey(), new TappedReservoir(original, e.getValue()));
+      if (original instanceof TappedReservoir) {
+        TappedReservoir tr = (TappedReservoir)original;
+        tr.add(e.getValue());
+      }
+      else if (original != null) {
+        TappedReservoir tr = new TappedReservoir(original, e.getValue());
+        inputs.put(e.getKey(), tr);
       }
     }
 
@@ -54,10 +60,14 @@ public class GenericNode extends Node<Operator>
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-      SweepableReservoir someReservoir = inputs.get(e.getKey());
-      if (someReservoir instanceof TappedReservoir) {
-        TappedReservoir sr = (TappedReservoir)someReservoir;
-        inputs.put(e.getKey(), sr.reservoir);
+      SweepableReservoir reservoir = inputs.get(e.getKey());
+      if (reservoir instanceof TappedReservoir) {
+        TappedReservoir tr = (TappedReservoir)reservoir;
+        tr.remove(e.getValue());
+        if (tr.getSinks().length == 0) {
+          tr.reservoir.setSink(tr.setSink(null));
+          inputs.put(e.getKey(), tr.reservoir);
+        }
       }
     }
 

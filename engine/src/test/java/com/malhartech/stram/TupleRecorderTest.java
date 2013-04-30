@@ -15,7 +15,6 @@ import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;
-import com.malhartech.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -24,14 +23,12 @@ import org.apache.hadoop.fs.Path;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
  *
  * @author Zhongjian Wang <zhongjian@malhar-inc.com>
  */
-@Ignore
 public class TupleRecorderTest
 {
   @Before

@@ -96,12 +96,20 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+      /* make sure that we ignore all the input ports */
+      if (descriptor.outputPorts.get(e.getKey()) == null) {
+        continue;
+      }
+
       Sink<Object> ics = outputs.get(e.getKey());
       if (ics == null) {
         outputs.put(e.getKey(), e.getValue());
       }
+      else if (ics instanceof MuxSink) {
+        ((MuxSink)ics).add(e.getValue());
+      }
       else {
-        outputs.put(e.getKey(), new MuxSink<Object>(ics, e.getValue()));
+        outputs.put(e.getKey(), new MuxSink(ics, e.getValue()));
       }
     }
   }
@@ -115,7 +123,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         outputs.remove(e.getKey());
       }
       else if (ics instanceof MuxSink) {
-        MuxSink<Object> ms = (MuxSink<Object>)ics;
+        MuxSink ms = (MuxSink)ics;
         ms.remove(e.getValue());
         Sink<Object>[] sinks1 = ms.getSinks();
         if (sinks1.length == 0) {
@@ -201,6 +209,11 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected void handleRequests(long windowId)
   {
     endWindowEmitTime = System.currentTimeMillis();
+    OperatorStats stats = new OperatorStats();
+    reportStats(stats);
+    stats.checkpointedWindowId = checkpointedWindowId;
+    context.report(stats, windowId);
+
     /*
      * we prefer to cater to requests at the end of the window boundary.
      */
@@ -217,11 +230,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     catch (Exception e) {
       throw new RuntimeException(e);
     }
-
-    OperatorStats stats = new OperatorStats();
-    reportStats(stats);
-    stats.checkpointedWindowId = checkpointedWindowId;
-    context.report(stats, windowId);
   }
 
   protected void reportStats(OperatorStats stats)

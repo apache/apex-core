@@ -13,12 +13,12 @@ import java.util.List;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class MuxSink<T> implements Sink<T>
+public class MuxSink implements Sink<Object>
 {
-  Sink<T>[] sinks;
+  Sink<Object>[] sinks;
   private int count;
 
-  public MuxSink(Sink<T>... s)
+  public MuxSink(Sink<Object>... s)
   {
     sinks = s;
   }
@@ -26,11 +26,11 @@ public class MuxSink<T> implements Sink<T>
   @SuppressWarnings("unchecked")
   public MuxSink()
   {
-    sinks = (Sink<T>[])Array.newInstance(Sink.class, 0);
+    sinks = (Sink<Object>[])Array.newInstance(Sink.class, 0);
   }
 
   @Override
-  public void put(T tuple)
+  public void put(Object tuple)
   {
     count++;
     for (int i = sinks.length; i-- > 0;) {
@@ -38,11 +38,11 @@ public class MuxSink<T> implements Sink<T>
     }
   }
 
-  public void add(Sink<T>... s)
+  public void add(Sink<Object>... s)
   {
     int i = sinks.length;
     sinks = Arrays.copyOf(sinks, i + s.length);
-    for (Sink<T> ss: s) {
+    for (Sink<Object> ss: s) {
       sinks[i++] = ss;
     }
   }
@@ -50,9 +50,9 @@ public class MuxSink<T> implements Sink<T>
   @SuppressWarnings({"unchecked"})
   public void remove(Sink<Object>... s)
   {
-    List<Sink<T>> asList = Arrays.asList(sinks);
+    List<Sink<Object>> asList = Arrays.asList(sinks);
     asList.removeAll(Arrays.asList(s));
-    sinks = (Sink<T>[])asList.toArray();
+    sinks = (Sink<Object>[])asList.toArray();
   }
 
   /**
@@ -60,7 +60,7 @@ public class MuxSink<T> implements Sink<T>
    *
    * @return the count of sinks catered.
    */
-  public Sink<T>[] getSinks()
+  public Sink<Object>[] getSinks()
   {
     return Arrays.copyOf(sinks, sinks.length);
   }

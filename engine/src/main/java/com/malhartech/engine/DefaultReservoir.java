@@ -25,9 +25,14 @@ public class DefaultReservoir extends CircularBuffer<Object> implements Sweepabl
   }
 
   @Override
-  public void setSink(Sink<Object> sink)
+  public Sink<Object> setSink(Sink<Object> sink)
   {
-    this.sink = sink;
+    try {
+      return this.sink;
+    }
+    finally {
+      this.sink = sink;
+    }
   }
 
   @Override
