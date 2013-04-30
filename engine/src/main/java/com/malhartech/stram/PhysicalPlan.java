@@ -148,6 +148,8 @@ public class PhysicalPlan {
 
     /**
      * Constructor
+     * @param plan
+     * @param portName 
      * @param logicalStream
      * @param source
      */
@@ -267,6 +269,7 @@ public class PhysicalPlan {
    * Determine operators that should be deployed into the execution environment.
    * Operators can be deployed once all containers are running and any pending
    * undeploy operations are complete.
+   * @param c
    * @return
    */
   public Set<PTOperator> getOperatorsForDeploy(PTContainer c) {
@@ -311,7 +314,7 @@ public class PhysicalPlan {
     Operator merge;
     List<PTInput> inputs;
     List<PTOutput> outputs;
-    LinkedList<Long> checkpointWindows = new LinkedList<Long>();
+    final LinkedList<Long> checkpointWindows = new LinkedList<Long>();
     long recoveryCheckpoint = 0;
     int failureCount = 0;
     int loadIndicator = 0;
@@ -1313,7 +1316,7 @@ public class PhysicalPlan {
   /**
    * Get all operator instances that depend on the specified operator instance(s).
    * Dependencies are all downstream and upstream inline operators.
-   * @param p
+   * @param operators
    * @return
    */
   public Set<PTOperator> getDependents(Collection<PTOperator> operators)
