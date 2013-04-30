@@ -39,12 +39,18 @@ public class WindowGeneratorTest
     reservoir.setSink(new Sink<Object>()
     {
       @Override
-      public void process(Object payload)
+      public void put(Object payload)
       {
         if (loggingEnabled.get()) {
           logger.debug(payload.toString());
         }
 
+      }
+
+      @Override
+      public int getCount(boolean reset)
+      {
+        return 0;
       }
 
     });
@@ -108,7 +114,13 @@ public class WindowGeneratorTest
       boolean firsttime = true;
 
       @Override
-      public void process(Object payload)
+      public int getCount(boolean reset)
+      {
+        return 0;
+      }
+
+      @Override
+      public void put(Object payload)
       {
         assert (false);
         if (firsttime) {
@@ -151,7 +163,13 @@ public class WindowGeneratorTest
     Sink<Object> s = new Sink<Object>()
     {
       @Override
-      public void process(Object payload)
+      public int getCount(boolean reset)
+      {
+        return 0;
+      }
+
+      @Override
+      public void put(Object payload)
       {
         logger.debug("unexpected payload {}", payload);
       }

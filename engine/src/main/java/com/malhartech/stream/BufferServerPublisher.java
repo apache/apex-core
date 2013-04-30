@@ -31,6 +31,7 @@ public class BufferServerPublisher extends Publisher implements Stream
   private StreamCodec<Object> serde;
   private AtomicLong publishedByteCount = new AtomicLong(0);
   private EventLoop eventloop;
+  private int count;
 
   public BufferServerPublisher(String sourceId, int queueCapacity)
   {
@@ -43,8 +44,9 @@ public class BufferServerPublisher extends Publisher implements Stream
    */
   @Override
   @SuppressWarnings("SleepWhileInLoop")
-  public void process(Object payload)
+  public void put(Object payload)
   {
+    count++;
     byte[] array;
     if (payload instanceof Tuple) {
       final Tuple t = (Tuple)payload;
@@ -157,6 +159,19 @@ public class BufferServerPublisher extends Publisher implements Stream
   public void setSink(String id, Sink<Object> sink)
   {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public int getCount(boolean reset)
+  {
+    try {
+      return count;
+    }
+    finally {
+      if (reset) {
+        count = 0;
+      }
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(BufferServerPublisher.class);

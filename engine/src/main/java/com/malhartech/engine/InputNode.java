@@ -7,6 +7,7 @@ package com.malhartech.engine;
 import com.malhartech.api.BackupAgent;
 import com.malhartech.api.CheckpointListener;
 import com.malhartech.api.InputOperator;
+import com.malhartech.api.Sink;
 import com.malhartech.tuple.Tuple;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -55,14 +56,14 @@ public class InputNode extends Node<InputOperator>
           if (insideWindow) {
             int generatedTuples = 0;
 
-            for (InternalCounterSink cs: sinks) {
-              generatedTuples -= cs.getCount();
+            for (Sink<Object> cs: sinks) {
+              generatedTuples -= cs.getCount(false);
             }
 
             operator.emitTuples();
 
-            for (InternalCounterSink cs: sinks) {
-              generatedTuples += cs.getCount();
+            for (Sink<Object> cs: sinks) {
+              generatedTuples += cs.getCount(false);
             }
 
             if (generatedTuples == 0) {
@@ -78,7 +79,7 @@ public class InputNode extends Node<InputOperator>
           switch (t.getType()) {
             case BEGIN_WINDOW:
               for (int i = sinks.length; i-- > 0;) {
-                sinks[i].process(t);
+                sinks[i].put(t);
               }
               currentWindowId = t.getWindowId();
               if (windowCount == 0) {
@@ -95,7 +96,7 @@ public class InputNode extends Node<InputOperator>
                 windowCount = 0;
               }
               for (int i = sinks.length; i-- > 0;) {
-                sinks[i].process(t);
+                sinks[i].put(t);
               }
               handleRequests(currentWindowId);
               break;
@@ -115,14 +116,14 @@ public class InputNode extends Node<InputOperator>
                 }
               }
               for (int i = sinks.length; i-- > 0;) {
-                sinks[i].process(t);
+                sinks[i].put(t);
               }
               break;
 
             case END_STREAM:
               if (deferredInputConnections.isEmpty()) {
                 for (int i = sinks.length; i-- > 0;) {
-                  sinks[i].process(t);
+                  sinks[i].put(t);
                 }
               }
               else {
@@ -132,7 +133,7 @@ public class InputNode extends Node<InputOperator>
 
             default:
               for (int i = sinks.length; i-- > 0;) {
-                sinks[i].process(t);
+                sinks[i].put(t);
               }
               break;
           }

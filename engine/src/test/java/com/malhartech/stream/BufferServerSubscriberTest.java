@@ -61,9 +61,15 @@ public class BufferServerSubscriberTest
     Sink<Object> unbufferedSink = new Sink<Object>()
     {
       @Override
-      public void process(Object tuple)
+      public void put(Object tuple)
       {
         list.add(tuple);
+      }
+
+      @Override
+      public int getCount(boolean reset)
+      {
+        return 0;
       }
 
     };

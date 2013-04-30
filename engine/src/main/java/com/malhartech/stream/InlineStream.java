@@ -77,10 +77,10 @@ public class InlineStream extends DefaultReservoir implements Stream, SweepableR
   }
 
   @Override
-  public void process(Object tuple)
+  public void put(Object tuple)
   {
     try {
-      put(tuple);
+      super.put(tuple);
     }
     catch (InterruptedException ie) {
       logger.debug("Interrupted", ie);

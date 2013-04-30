@@ -89,28 +89,19 @@ public class GenericNodeTest
     Sink<Object> output = new Sink<Object>()
     {
       @Override
-      public void process(Object tuple)
+      public void put(Object tuple)
       {
         list.add(tuple);
       }
 
-    };
-
-    AttributeMap<PortContext> attributes = new AttributeMap<PortContext>()
-    {
       @Override
-      public <T> Attribute<T> attr(AttributeKey<PortContext, T> key)
+      public int getCount(boolean reset)
       {
-        return null;
-      }
-
-      @Override
-      public <T> T attrValue(AttributeKey<PortContext, T> key, T defaultValue)
-      {
-        return defaultValue;
+        return 0;
       }
 
     };
+
     gn.connectInputPort("ip1", reservoir1);
     gn.connectInputPort("ip2", reservoir2);
     gn.connectOutputPort("op", output);

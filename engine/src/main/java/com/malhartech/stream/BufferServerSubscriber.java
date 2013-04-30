@@ -141,7 +141,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
   }
 
   @Override
-  public void process(Object tuple)
+  public void put(Object tuple)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
@@ -179,6 +179,12 @@ public class BufferServerSubscriber extends Subscriber implements Stream
     return readByteCount.getAndSet(0);
   }
 
+  @Override
+  public int getCount(boolean reset)
+  {
+    return 0;
+  }
+
   class BufferReservoir extends CircularBuffer<Object> implements SweepableReservoir
   {
     private Sink<Object> sink;
@@ -205,7 +211,7 @@ public class BufferServerSubscriber extends Subscriber implements Stream
             count += i;
             return (Tuple)peekUnsafe();
           }
-          sink.process(pollUnsafe());
+          sink.put(pollUnsafe());
         }
 
         count += size;
@@ -293,11 +299,16 @@ public class BufferServerSubscriber extends Subscriber implements Stream
     }
 
     @Override
-    public int resetCount()
+    public int getCount(boolean reset)
     {
-      int retvalue = count;
-      count = 0;
-      return retvalue;
+      try {
+        return count;
+      }
+      finally {
+        if (reset) {
+          count = 0;
+        }
+      }
     }
 
   }

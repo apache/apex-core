@@ -7,7 +7,6 @@ package com.malhartech.stream;
 import com.malhartech.api.Sink;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
-import com.malhartech.util.CircularBuffer;
 import java.lang.reflect.Array;
 import java.util.HashMap;
 import org.slf4j.Logger;
@@ -22,6 +21,7 @@ public class MuxStream implements Stream
   private HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   @SuppressWarnings("VolatileArrayField")
   private volatile Sink<Object>[] sinks = NO_SINKS;
+  private int count;
 
   /**
    *
@@ -94,10 +94,11 @@ public class MuxStream implements Stream
    * @param payload
    */
   @Override
-  public void process(Object payload)
+  public void put(Object payload)
   {
+    count++;
     for (int i = sinks.length; i-- > 0;) {
-      sinks[i].process(payload);
+      sinks[i].put(payload);
     }
   }
 
@@ -105,6 +106,19 @@ public class MuxStream implements Stream
   public boolean isMultiSinkCapable()
   {
     return true;
+  }
+
+  @Override
+  public int getCount(boolean reset)
+  {
+    try {
+      return count;
+    }
+    finally {
+      if (reset) {
+        count = 0;
+      }
+    }
   }
 
   private static final Logger logger = LoggerFactory.getLogger(MuxStream.class);

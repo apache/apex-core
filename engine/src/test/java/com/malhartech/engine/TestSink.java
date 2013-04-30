@@ -21,12 +21,18 @@ public class TestSink implements Sink<Object>
 
   @Override
   @SuppressWarnings("fallthrough")
-  public void process(Object payload)
+  public void put(Object payload)
   {
     synchronized (collectedTuples) {
       collectedTuples.add(payload);
       collectedTuples.notifyAll();
     }
+  }
+
+  @Override
+  public int getCount(boolean reset)
+  {
+    return 0;
   }
 
   public int getResultCount()

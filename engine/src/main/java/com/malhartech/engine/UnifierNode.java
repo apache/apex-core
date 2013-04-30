@@ -19,12 +19,15 @@ import org.slf4j.LoggerFactory;
 public class UnifierNode extends GenericNode
 {
   final Unifier<Object> unifier;
-  final InputPort<Object> unifiedPort = new InputPort<Object>()
+
+  class UnifiedPort implements InputPort<Object>, Sink<Object>
   {
+    private int count;
+
     @Override
     public Sink<Object> getSink()
     {
-      return unifier;
+      return this;
     }
 
     @Override
@@ -44,7 +47,28 @@ public class UnifierNode extends GenericNode
       return unifier;
     }
 
-  };
+    @Override
+    public final void put(Object tuple)
+    {
+      count++;
+      unifier.process(tuple);
+    }
+
+    @Override
+    public int getCount(boolean reset)
+    {
+      try {
+      return count;
+      }
+      finally {
+        if (reset) {
+          count = 0;
+        }
+      }
+    }
+  }
+
+  final UnifiedPort unifiedPort = new UnifiedPort();
 
   public UnifierNode(int id, Unifier<Object> unifier)
   {

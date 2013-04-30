@@ -161,7 +161,7 @@ public class GenericNode extends Node<Operator>
                   expectingBeginWindow--;
                   currentWindowId = t.getWindowId();
                   for (int s = sinks.length; s-- > 0;) {
-                    sinks[s].process(t);
+                    sinks[s].put(t);
                   }
                   if (windowCount == 0) {
                     insideWindow = true;
@@ -192,7 +192,7 @@ public class GenericNode extends Node<Operator>
                     }
 
                     for (final Sink<Object> output: outputs.values()) {
-                      output.process(t);
+                      output.put(t);
                     }
 
                     buffers.remove();
@@ -230,7 +230,7 @@ public class GenericNode extends Node<Operator>
                     lastCheckpointedWindowId = t.getWindowId();
                   }
                   for (final Sink<Object> output: outputs.values()) {
-                    output.process(t);
+                    output.put(t);
                   }
                 }
                 break;
@@ -279,7 +279,7 @@ public class GenericNode extends Node<Operator>
                     }
                   }
                   for (int s = sinks.length; s-- > 0;) {
-                    sinks[s].process(t);
+                    sinks[s].put(t);
                   }
 
                   assert (activeQueues.isEmpty());
@@ -393,7 +393,7 @@ public class GenericNode extends Node<Operator>
                  */
                 if (tuple != null) {
                   for (int s = sinks.length; s-- > 0;) {
-                    sinks[s].process(tuple);
+                    sinks[s].put(tuple);
                   }
                 }
 
@@ -467,7 +467,7 @@ public class GenericNode extends Node<Operator>
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
     for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
-      ipstats.add(new PortStats(e.getKey(), ar.resetCount(), endWindowDequeueTimes.get(e.getValue())));
+      ipstats.add(new PortStats(e.getKey(), ar.getCount(true), endWindowDequeueTimes.get(e.getValue())));
     }
 
     stats.inputPorts = ipstats;

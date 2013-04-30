@@ -12,7 +12,6 @@ import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import com.malhartech.tuple.EndWindowTuple;
 import com.malhartech.tuple.Tuple;
 import java.io.IOException;
@@ -78,10 +77,16 @@ public class SocketStreamTest
     Sink<Object> sink = new Sink<Object>()
     {
       @Override
-      public void process(Object tuple)
+      public void put(Object tuple)
       {
         logger.debug("received: " + tuple);
         messageCount.incrementAndGet();
+      }
+
+      @Override
+      public int getCount(boolean reset)
+      {
+        throw new UnsupportedOperationException("Not supported yet.");
       }
 
     };
@@ -119,10 +124,10 @@ public class SocketStreamTest
     LOG.debug("output stream activated");
 
     LOG.debug("Sending hello message");
-    oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
-    oss.process(StramTestSupport.generateTuple("hello", 0));
-    oss.process(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0));
-    oss.process(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
+    oss.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
+    oss.put(StramTestSupport.generateTuple("hello", 0));
+    oss.put(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0));
+    oss.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
 
     for (int i = 0; i < 100; i++) {
       Tuple t = reservoir.sweep();

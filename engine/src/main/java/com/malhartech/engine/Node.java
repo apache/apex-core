@@ -9,6 +9,7 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Sink;
+import com.malhartech.debug.MuxSink;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
@@ -38,9 +39,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public static final String INPUT = "input";
   public static final String OUTPUT = "output";
   public final int id;
-  protected final HashMap<String, InternalCounterSink> outputs = new HashMap<String, InternalCounterSink>();
+  protected final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   @SuppressWarnings(value = "VolatileArrayField")
-  protected volatile InternalCounterSink[] sinks = InternalCounterSink.NO_SINKS;
+  protected volatile Sink<Object>[] sinks = Sink.NO_SINKS;
   protected boolean alive;
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
@@ -78,41 +79,51 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     @SuppressWarnings("unchecked")
     OutputPort<Object> outputPort = (OutputPort<Object>)descriptor.outputPorts.get(port);
     if (outputPort != null) {
-      if (sink instanceof InternalCounterSink) {
-        outputPort.setSink(sink);
-        outputs.put(port, (InternalCounterSink)sink);
-      }
-      else if (sink == null) {
+      if (sink == null) {
         outputPort.setSink(null);
         outputs.remove(port);
       }
       else {
-        InternalCounterSink cs = new InternalCounterSink(sink);
-        outputPort.setSink(cs);
-        outputs.put(port, cs);
+        outputPort.setSink(sink);
+        outputs.put(port, sink);
       }
     }
   }
 
   public abstract void connectInputPort(String port, final SweepableReservoir reservoir);
 
+  @SuppressWarnings({"unchecked"})
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-      InternalCounterSink ics = outputs.get(e.getKey());
-      if (ics != null) {
-        ics.sink = new ForkingSink(ics.sink, e.getValue());
+      Sink<Object> ics = outputs.get(e.getKey());
+      if (ics == null) {
+        outputs.put(e.getKey(), e.getValue());
+      }
+      else {
+        outputs.put(e.getKey(), new MuxSink<Object>(ics, e.getValue()));
       }
     }
   }
 
+  @SuppressWarnings({"unchecked"})
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
-      InternalCounterSink ics = outputs.get(e.getKey());
-      if (ics != null && ics.sink instanceof ForkingSink) {
-        assert (((ForkingSink)ics.sink).second == e.getValue());
-        ics.sink = ((ForkingSink)ics.sink).first;
+      Sink<Object> ics = outputs.get(e.getKey());
+      if (ics == e.getValue()) {
+        outputs.remove(e.getKey());
+      }
+      else if (ics instanceof MuxSink) {
+        MuxSink<Object> ms = (MuxSink<Object>)ics;
+        ms.remove(e.getValue());
+        Sink<Object>[] sinks1 = ms.getSinks();
+        if (sinks1.length == 0) {
+          outputs.remove(e.getKey());
+        }
+        else if (sinks1.length == 1) {
+          outputs.put(e.getKey(), sinks1[9]);
+        }
       }
     }
   }
@@ -163,8 +174,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      * since we are going away, we should let all the downstream operators know that.
      */
     EndStreamTuple est = new EndStreamTuple(currentWindowId);
-    for (final InternalCounterSink output: outputs.values()) {
-      output.process(est);
+    for (final Sink<Object> output: outputs.values()) {
+      output.put(est);
     }
   }
 
@@ -172,7 +183,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
     for (final Sink<Object> output: outputs.values()) {
-      output.process(ewt);
+      output.put(ewt);
     }
     endWindowEmitTime = System.currentTimeMillis();
   }
@@ -181,8 +192,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     CheckpointTuple ct = new CheckpointTuple(windowId);
     ct.setWindowId(currentWindowId);
-    for (final InternalCounterSink output: outputs.values()) {
-      output.process(ct);
+    for (final Sink<Object> output: outputs.values()) {
+      output.put(ct);
     }
   }
 
@@ -214,8 +225,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected void reportStats(OperatorStats stats)
   {
     stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
-    for (Entry<String, InternalCounterSink> e: outputs.entrySet()) {
-      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount(), endWindowEmitTime));
+    for (Entry<String, Sink<Object>> e: outputs.entrySet()) {
+      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().getCount(true), endWindowEmitTime));
     }
 
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
@@ -227,12 +238,12 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     int size = outputs.size();
     if (size == 0) {
-      sinks = InternalCounterSink.NO_SINKS;
+      sinks = Sink.NO_SINKS;
     }
     else {
       @SuppressWarnings("unchecked")
-      InternalCounterSink[] newSinks = (InternalCounterSink[])Array.newInstance(InternalCounterSink.class, size);
-      for (InternalCounterSink s: outputs.values()) {
+      Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, size);
+      for (Sink<Object> s: outputs.values()) {
         newSinks[--size] = s;
       }
 
@@ -242,7 +253,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected void deactivateSinks()
   {
-    sinks = InternalCounterSink.NO_SINKS;
+    sinks = Sink.NO_SINKS;
   }
 
   public boolean isAlive()
@@ -253,59 +264,6 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public long getBackupWindowId()
   {
     return checkpointedWindowId;
-  }
-
-  static class ForkingSink implements Sink<Object>
-  {
-    final Sink<Object> first;
-    final Sink<Object> second;
-
-    ForkingSink(Sink<Object> f, Sink<Object> s)
-    {
-      first = f;
-      second = s;
-    }
-
-    @Override
-    public void process(Object tuple)
-    {
-      first.process(tuple);
-      second.process(tuple);
-    }
-
-  }
-
-  protected static class InternalCounterSink implements Sink<Object>
-  {
-    @SuppressWarnings({"FieldNameHidesFieldInSuperclass", "VolatileArrayField"})
-    public static final InternalCounterSink[] NO_SINKS = new InternalCounterSink[0];
-    int count;
-    Sink<Object> sink;
-
-    InternalCounterSink(Sink<Object> sink)
-    {
-      this.sink = sink;
-    }
-
-    @Override
-    public void process(Object tuple)
-    {
-      count++;
-      sink.process(tuple);
-    }
-
-    public int getCount()
-    {
-      return count;
-    }
-
-    public int resetCount()
-    {
-      int ret = count;
-      count = 0;
-      return ret;
-    }
-
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Node.class);

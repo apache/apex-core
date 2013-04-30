@@ -20,6 +20,7 @@ public class PartitionAwareSink<T> implements Sink<T>
   private final Set<Integer> partitions;
   private final int mask;
   private volatile Sink<T> output;
+  private int count;
 
   /**
    *
@@ -41,13 +42,28 @@ public class PartitionAwareSink<T> implements Sink<T>
    * @param payload
    */
   @Override
-  public void process(T payload)
+  public void put(T payload)
   {
     if (payload instanceof Tuple) {
-      output.process(payload);
+      count++;
+      output.put(payload);
     }
     else if (partitions.contains(serde.getPartition(payload) & mask)) {
-      output.process(payload);
+      count++;
+      output.put(payload);
+    }
+  }
+
+  @Override
+  public int getCount(boolean reset)
+  {
+    try {
+      return count;
+    }
+    finally {
+      if (reset) {
+        count = 0;
+      }
     }
   }
 

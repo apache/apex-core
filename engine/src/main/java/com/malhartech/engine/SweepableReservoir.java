@@ -17,6 +17,6 @@ public interface SweepableReservoir extends Reservoir
 
   public Tuple sweep();
 
-  public int resetCount();
+  public int getCount(boolean reset);
 
 }

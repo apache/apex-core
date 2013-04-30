@@ -53,7 +53,7 @@ public class InlineStreamTest
        * @param t the value of t
        */
       @Override
-      public void process(Object payload)
+      public void put(Object payload)
       {
         if (payload instanceof Tuple) {
           return;
@@ -77,6 +77,12 @@ public class InlineStreamTest
             InlineStreamTest.this.notify();
           }
         }
+      }
+
+      @Override
+      public int getCount(boolean reset)
+      {
+        return 0;
       }
 
     };

@@ -84,7 +84,7 @@ public abstract class MuxReservoir
             count += i;
             return (Tuple)peekUnsafe();
           }
-          sink.process(pollUnsafe());
+          sink.put(pollUnsafe());
         }
 
         count += size;
@@ -116,11 +116,16 @@ public abstract class MuxReservoir
     }
 
     @Override
-    public int resetCount()
+    public int getCount(boolean reset)
     {
-      int retvalue = count;
-      count = 0;
-      return retvalue;
+      try {
+        return count;
+      }
+      finally {
+        if (reset) {
+          count = 0;
+        }
+      }
     }
 
   }

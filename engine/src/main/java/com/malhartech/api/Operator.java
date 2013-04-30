@@ -31,8 +31,9 @@ public interface Operator extends Component<OperatorContext>
    *
    * @param <T> Type of the tuple emitted by the output port which is being unified
    */
-  public interface Unifier<T> extends Operator, Sink<T>
+  public interface Unifier<T> extends Operator
   {
+    public void process(T tuple);
   }
 
   /**

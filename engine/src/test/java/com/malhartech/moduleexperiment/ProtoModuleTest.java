@@ -183,7 +183,7 @@ public class ProtoModuleTest {
     MyProtoModule<Object> m1 = dag.addOperator("operator1", new MyProtoModule<Object>());
     m1.setMyConfigField("someField");
 
-    m1.inport2.getSink().process("something");
+    m1.inport2.getSink().put("something");
 
     MyProtoModule<Object> m2 = dag.addOperator("operator2", new MyProtoModule<Object>());
 

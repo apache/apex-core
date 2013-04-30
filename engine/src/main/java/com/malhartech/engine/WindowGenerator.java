@@ -220,7 +220,7 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   }
 
   @Override
-  public void process(Object tuple)
+  public void put(Object tuple)
   {
     throw new UnsupportedOperationException("Not supported yet.");
   }
@@ -230,6 +230,12 @@ public class WindowGenerator extends MuxReservoir implements Stream, Runnable
   public Reservoir getMasterReservoir()
   {
     return masterReservoir;
+  }
+
+  @Override
+  public int getCount(boolean reset)
+  {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   private class MasterReservoir extends CircularBuffer<Tuple> implements Reservoir

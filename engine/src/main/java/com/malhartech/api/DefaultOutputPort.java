@@ -38,7 +38,7 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
    */
   public void emit(T tuple)
   {
-    sink.process(tuple);
+    sink.put(tuple);
   }
 
   /**

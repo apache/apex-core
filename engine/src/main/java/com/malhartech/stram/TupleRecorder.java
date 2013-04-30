@@ -558,7 +558,7 @@ public class TupleRecorder implements Operator
     }
 
     @Override
-    public void process(Object payload)
+    public void put(Object payload)
     {
       // *** if it's not a control tuple, then (payload instanceof Tuple) returns false
       // In other words, if it's a regular tuple emitted by operators (payload), payload
@@ -577,6 +577,12 @@ public class TupleRecorder implements Operator
       else {
         writeTuple(payload, portName);
       }
+    }
+
+    @Override
+    public int getCount(boolean reset)
+    {
+      throw new UnsupportedOperationException("Not supported yet.");
     }
 
   }

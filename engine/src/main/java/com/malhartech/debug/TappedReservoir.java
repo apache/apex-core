@@ -33,9 +33,9 @@ public class TappedReservoir implements SweepableReservoir
   }
 
   @Override
-  public int resetCount()
+  public int getCount(boolean reset)
   {
-    return reservoir.resetCount();
+    return reservoir.getCount(reset);
   }
 
   @Override

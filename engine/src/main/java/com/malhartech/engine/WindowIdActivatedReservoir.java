@@ -76,7 +76,7 @@ public class WindowIdActivatedReservoir implements SweepableReservoir
   }
 
   @Override
-  public int resetCount()
+  public int getCount(boolean reset)
   {
     return 0;
   }

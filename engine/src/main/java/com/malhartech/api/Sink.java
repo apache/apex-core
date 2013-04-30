@@ -19,8 +19,14 @@ public interface Sink<T>
   public static final Sink<Object> BLACKHOLE = new Sink<Object>()
   {
     @Override
-    public void process(Object tuple)
+    public void put(Object tuple)
     {
+    }
+
+    @Override
+    public int getCount(boolean reset)
+    {
+      return 0;
     }
 
   };
@@ -30,6 +36,14 @@ public interface Sink<T>
    *
    * @param tuple payload to be processed by this sink.
    */
-  public void process(T tuple);
+  public void put(T tuple);
+
+  /**
+   * Give the count of the tuples processed since the last reset.
+   *
+   * @param reset reset the count if true.
+   * @return the count of tuples processed since the last reset.
+   */
+  public int getCount(boolean reset);
 
 }

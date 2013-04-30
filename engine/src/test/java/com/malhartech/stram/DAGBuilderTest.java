@@ -636,8 +636,16 @@ public class DAGBuilderTest {
       private static final long serialVersionUID = 1L;
 
       @Override
-      final public void process(Object payload) {
+      final public void put(Object payload)
+      {
       }
+
+      @Override
+      public int getCount(boolean reset)
+      {
+        return 0;
+      }
+
     };
   }
 

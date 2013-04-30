@@ -14,6 +14,7 @@ import com.malhartech.api.Operator.InputPort;
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
 {
   final private Operator operator;
+  protected int count;
   protected boolean connected = false;
 
   public DefaultInputPort(Operator operator)
@@ -45,9 +46,26 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
     return null;
   }
 
-  /**
-   * Processing logic to be implemented in derived class.
-   */
   @Override
+  public void put(T tuple)
+  {
+    count++;
+    process(tuple);
+  }
+
+  @Override
+  public int getCount(boolean reset)
+  {
+    try {
+      return count;
+    }
+    finally {
+      if (reset) {
+        count = 0;
+      }
+    }
+  }
+
   public abstract void process(T tuple);
+
 }
