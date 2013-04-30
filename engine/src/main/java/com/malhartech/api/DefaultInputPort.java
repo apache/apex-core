@@ -14,7 +14,7 @@ import com.malhartech.api.Operator.InputPort;
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
 {
   final private Operator operator;
-  protected int count;
+  private int count;
   protected boolean connected = false;
 
   public DefaultInputPort(Operator operator)
