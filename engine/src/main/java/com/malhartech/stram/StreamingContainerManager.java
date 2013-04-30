@@ -191,9 +191,15 @@ public class StreamingContainerManager implements PlanContext
   private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> endWindowStatsVisited)
   {
     endWindowStatsVisited.add(oper);
+    OperatorStatus operatorStatus = getOperatorStatus(oper);
+    if (operatorStatus == null) {
+      LOG.info("Operator status for operator " + oper.getId() + " does not exist yet.");
+      return;
+    }
+
     EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
     if (endWindowStats == null) {
-      LOG.error("End window stats is null for operator {}, endWindowStatsMap has keys {}", oper.getId(), endWindowStatsMap.keySet());
+      LOG.info("End window stats is null for operator {}, probably a new operator after partitioning");
       return;
     }
 
@@ -204,7 +210,7 @@ public class StreamingContainerManager implements PlanContext
         PTOperator upstreamOp = (PTOperator)input.source.source;
         EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
         if (upstreamEndWindowStats == null) {
-          LOG.error("End window stats is null for operator {}, endWindowStatsMap has keys {}", upstreamOp.getId(), endWindowStatsMap.keySet());
+          LOG.info("End window stats is null for operator {}");
           return;
         }
         if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
@@ -213,10 +219,6 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    OperatorStatus operatorStatus = getOperatorStatus(oper);
-    if (operatorStatus == null) {
-      throw new AssertionError("Operator status for operator " + oper.getId() + " does not exist!");
-    }
     if (upstreamMaxEmitTimestamp > 0) {
       operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
     }
