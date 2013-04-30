@@ -170,11 +170,12 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected void emitEndWindow()
   {
+    // This function currently only gets called upon END_STREAM.
+    // DO NOT assume this will get called to emit an end window tuple
     EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
     for (final Sink<Object> output: outputs.values()) {
       output.process(ewt);
     }
-    endWindowEmitTime = System.currentTimeMillis();
   }
 
   public void emitCheckpoint(long windowId)
@@ -188,6 +189,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected void handleRequests(long windowId)
   {
+    endWindowEmitTime = System.currentTimeMillis();
     /*
      * we prefer to cater to requests at the end of the window boundary.
      */
@@ -215,6 +217,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
     for (Entry<String, InternalCounterSink> e: outputs.entrySet()) {
+      logger.info("end window emit time is {}", endWindowEmitTime);
       stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount(), endWindowEmitTime));
     }
 
