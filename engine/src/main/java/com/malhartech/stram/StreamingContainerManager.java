@@ -193,7 +193,7 @@ public class StreamingContainerManager implements PlanContext
     endWindowStatsVisited.add(oper);
     EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
     if (endWindowStats == null) {
-      LOG.error("End window stats is null for operator {}", oper.getId());
+      LOG.error("End window stats is null for operator {}, endWindowStatsMap has keys {}", oper.getId(), endWindowStatsMap.keySet());
       return;
     }
 
@@ -204,7 +204,7 @@ public class StreamingContainerManager implements PlanContext
         PTOperator upstreamOp = (PTOperator)input.source.source;
         EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
         if (upstreamEndWindowStats == null) {
-          LOG.error("End window stats is null for operator {}", upstreamOp.getId());
+          LOG.error("End window stats is null for operator {}, endWindowStatsMap has keys {}", upstreamOp.getId(), endWindowStatsMap.keySet());
           return;
         }
         if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
