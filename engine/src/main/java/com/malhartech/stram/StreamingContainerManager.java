@@ -163,24 +163,36 @@ public class StreamingContainerManager implements PlanContext
           endWindowStatsOperatorMap.remove(endWindowStatsOperatorMap.firstKey());
         }
       }
-      int numOperators = plan.getAllOperators().size();
+
+      Set<Integer> allCurrentOperators = new TreeSet<Integer>();
+      for (PTOperator o : plan.getAllOperators()) {
+        allCurrentOperators.add(o.getId());
+      }
+      int numOperators = allCurrentOperators.size();
       Long windowId = endWindowStatsOperatorMap.firstKey();
       while (windowId != null) {
         Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(windowId);
-        if (endWindowStatsMap.size() < numOperators) {
-          break;
-        }
-        else {
-          // latency calculation
-          List<OperatorMeta> rootOperatorMetas = plan.getRootOperators();
-          Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
-          for (OperatorMeta root: rootOperatorMetas) {
-            List<PTOperator> rootOperators = plan.getOperators(root);
-            for (PTOperator rootOperator: rootOperators) {
-              // DFS for visiting the nodes for latency calculation
-              calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited);
+        Set<Integer> endWindowStatsOperators = endWindowStatsMap.keySet();
+
+        if (allCurrentOperators.containsAll(endWindowStatsOperators)) {
+          if (endWindowStatsMap.size() < numOperators) {
+            break;
+          } else {
+            // they are equal.  start latency calculation
+            List<OperatorMeta> rootOperatorMetas = plan.getRootOperators();
+            Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
+            for (OperatorMeta root: rootOperatorMetas) {
+              List<PTOperator> rootOperators = plan.getOperators(root);
+              for (PTOperator rootOperator: rootOperators) {
+                // DFS for visiting the nodes for latency calculation
+                calculateLatency(rootOperator, endWindowStatsMap, endWindowStatsVisited);
+              }
             }
+            endWindowStatsOperatorMap.remove(windowId);
           }
+        } else {
+          // the old stats contains operators that do not exist any more
+          // this is probably right after a partition happens.
           endWindowStatsOperatorMap.remove(windowId);
         }
         windowId = endWindowStatsOperatorMap.higherKey(windowId);
@@ -191,9 +203,15 @@ public class StreamingContainerManager implements PlanContext
   private void calculateLatency(PTOperator oper, Map<Integer, EndWindowStats> endWindowStatsMap, Set<PTOperator> endWindowStatsVisited)
   {
     endWindowStatsVisited.add(oper);
+    OperatorStatus operatorStatus = getOperatorStatus(oper);
+    if (operatorStatus == null) {
+      LOG.info("Operator status for operator " + oper.getId() + " does not exist yet.");
+      return;
+    }
+
     EndWindowStats endWindowStats = endWindowStatsMap.get(oper.getId());
     if (endWindowStats == null) {
-      LOG.error("End window stats is null for operator {}, endWindowStatsMap has keys {}", oper.getId(), endWindowStatsMap.keySet());
+      LOG.info("End window stats is null for operator {}, probably a new operator after partitioning");
       return;
     }
 
@@ -204,7 +222,7 @@ public class StreamingContainerManager implements PlanContext
         PTOperator upstreamOp = (PTOperator)input.source.source;
         EndWindowStats upstreamEndWindowStats = endWindowStatsMap.get(upstreamOp.getId());
         if (upstreamEndWindowStats == null) {
-          LOG.error("End window stats is null for operator {}, endWindowStatsMap has keys {}", upstreamOp.getId(), endWindowStatsMap.keySet());
+          LOG.info("End window stats is null for operator {}");
           return;
         }
         if (upstreamEndWindowStats.emitTimestamp > upstreamMaxEmitTimestamp) {
@@ -213,10 +231,6 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    OperatorStatus operatorStatus = getOperatorStatus(oper);
-    if (operatorStatus == null) {
-      throw new AssertionError("Operator status for operator " + oper.getId() + " does not exist!");
-    }
     if (upstreamMaxEmitTimestamp > 0) {
       operatorStatus.latencyMA.add(endWindowStats.emitTimestamp - upstreamMaxEmitTimestamp);
     }
@@ -361,8 +375,9 @@ public class StreamingContainerManager implements PlanContext
   /**
    * Assign operators to allocated container resource.
    *
-   * @param containerId
-   * @param cdr
+   * @param resource
+   * @param bufferServerAddr
+   * @return
    */
   public StramChildAgent assignContainer(ContainerResource resource, InetSocketAddress bufferServerAddr)
   {
@@ -412,6 +427,8 @@ public class StreamingContainerManager implements PlanContext
   /**
    * process the heartbeat from each container.
    * called by the RPC thread for each container. (i.e. called by multiple threads)
+   * @param heartbeat
+   * @return
    */
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat heartbeat)
   {
@@ -694,6 +711,7 @@ public class StreamingContainerManager implements PlanContext
    *
    * @param operator Operator instance for which to find recovery checkpoint
    * @param visited Set into which to collect visited dependencies
+   * @param committedWindowId
    * @return Checkpoint that can be used to recover (along with dependencies in visitedCheckpoints).
    */
   public long updateRecoveryCheckpoints(PTOperator operator, Set<PTOperator> visited, MutableLong committedWindowId)
@@ -808,6 +826,7 @@ public class StreamingContainerManager implements PlanContext
    * will propagate the shutdown request. This is controlled soft shutdown.
    * If containers don't respond, the application can be forcefully terminated
    * via yarn using forceKillApplication.
+   * @param message 
    */
   public void shutdownAllContainers(String message)
   {
