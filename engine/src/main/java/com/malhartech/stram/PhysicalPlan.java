@@ -856,7 +856,6 @@ public class PhysicalPlan {
 
     final Collection<Partition<?>> newPartitions;
     long minCheckpoint = -1;
-    PTContainer inlineContainer = null;
 
     for (PTOperator pOperator : operators) {
       Partition<?> p = pOperator.partition;
@@ -887,16 +886,6 @@ public class PhysicalPlan {
       PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
-
-      // track existing inline deployment (publishers are not switched dynamically)
-      if (inlineContainer == null) {
-        for (PTInput in : pOperator.inputs) {
-          if (in.source.isDownStreamInline()) {
-            inlineContainer = in.source.source.container;
-            break;
-          }
-        }
-      }
     }
 
     for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
@@ -1010,7 +999,7 @@ public class PhysicalPlan {
       }
 
       // find container
-      PTContainer c = inlineContainer;
+      PTContainer c = null;
       if (c == null) {
         c = findContainer(oper);
         if (c == null) {
@@ -1021,8 +1010,6 @@ public class PhysicalPlan {
         }
       }
       setContainer(oper, c); // TODO: thread safety
-      //oper.container = c;
-      //oper.container.operators.add(oper);
     }
 
     deployOperators = this.getDependents(deployOperators);
