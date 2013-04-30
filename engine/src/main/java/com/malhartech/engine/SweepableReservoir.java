@@ -13,7 +13,7 @@ import com.malhartech.tuple.Tuple;
  */
 public interface SweepableReservoir extends Reservoir
 {
-  public void setSink(Sink<Object> sink);
+  public Sink<Object> setSink(Sink<Object> sink);
 
   public Tuple sweep();
 
