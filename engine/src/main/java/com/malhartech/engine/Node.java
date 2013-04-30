@@ -227,9 +227,9 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected void reportStats(OperatorStats stats)
   {
     stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
-    for (Entry<String, InternalCounterSink> e: outputs.entrySet()) {
+    for (Entry<String, Sink<Object>> e: outputs.entrySet()) {
       //logger.info("end window emit time is {}", endWindowEmitTime);
-      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().resetCount(), endWindowEmitTime));
+      stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().getCount(true), endWindowEmitTime));
     }
 
     long currentCpuTime = tmb.getCurrentThreadCpuTime();
