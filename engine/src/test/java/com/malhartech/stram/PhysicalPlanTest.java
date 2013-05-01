@@ -183,7 +183,7 @@ public class PhysicalPlanTest {
     }
 
     @Override
-    public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
+    public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy) {
       this.undeploy = undeploy;
       this.deploy = deploy;
     }

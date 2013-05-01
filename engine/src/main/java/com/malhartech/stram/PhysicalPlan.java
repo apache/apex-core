@@ -148,6 +148,8 @@ public class PhysicalPlan {
 
     /**
      * Constructor
+     * @param plan
+     * @param portName
      * @param logicalStream
      * @param source
      */
@@ -267,6 +269,7 @@ public class PhysicalPlan {
    * Determine operators that should be deployed into the execution environment.
    * Operators can be deployed once all containers are running and any pending
    * undeploy operations are complete.
+   * @param c
    * @return
    */
   public Set<PTOperator> getOperatorsForDeploy(PTContainer c) {
@@ -311,7 +314,7 @@ public class PhysicalPlan {
     Operator merge;
     List<PTInput> inputs;
     List<PTOutput> outputs;
-    LinkedList<Long> checkpointWindows = new LinkedList<Long>();
+    final LinkedList<Long> checkpointWindows = new LinkedList<Long>();
     long recoveryCheckpoint = 0;
     int failureCount = 0;
     int loadIndicator = 0;
@@ -541,7 +544,7 @@ public class PhysicalPlan {
      * Request deployment change as sequence of undeploy, container start and deploy groups with dependency.
      * Called on initial plan and on dynamic changes during execution.
      */
-    public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy);
+    public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy);
 
     /**
      * Trigger event to perform plan modification.
@@ -768,8 +771,7 @@ public class PhysicalPlan {
     }
 
     // request initial deployment
-    ctx.redeploy(Collections.<PTOperator>emptySet(), Sets.newHashSet(containers), deployOperators);
-
+    ctx.deploy(Collections.<PTContainer>emptySet(), Collections.<PTOperator>emptySet(), Sets.newHashSet(containers), deployOperators);
   }
 
   private void setContainer(PTOperator pOperator, PTContainer container) {
@@ -856,7 +858,6 @@ public class PhysicalPlan {
 
     final Collection<Partition<?>> newPartitions;
     long minCheckpoint = -1;
-    PTContainer inlineContainer = null;
 
     for (PTOperator pOperator : operators) {
       Partition<?> p = pOperator.partition;
@@ -887,16 +888,6 @@ public class PhysicalPlan {
       PartitionImpl partition = new PartitionImpl(partitionedOperator, p.getPartitionKeys(), pOperator.loadIndicator);
       currentPartitions.add(partition);
       currentPartitionMap.put(partition, pOperator);
-
-      // track existing inline deployment (publishers are not switched dynamically)
-      if (inlineContainer == null) {
-        for (PTInput in : pOperator.inputs) {
-          if (in.source.isDownStreamInline()) {
-            inlineContainer = in.source.source.container;
-            break;
-          }
-        }
-      }
     }
 
     for (Map.Entry<Partition<?>, PTOperator> e : currentPartitionMap.entrySet()) {
@@ -979,7 +970,7 @@ public class PhysicalPlan {
           }
         }
         newOperators.add(addPTOperator(this.logicalToPTOperator.get(pp), null));
-        // TODO: set checkpoint
+        // TODO: set checkpoint (or start at wherever partition starts to publish)
       }
 
       // set checkpoint for new operator for deployment
@@ -1010,7 +1001,7 @@ public class PhysicalPlan {
       }
 
       // find container
-      PTContainer c = inlineContainer;
+      PTContainer c = null;
       if (c == null) {
         c = findContainer(oper);
         if (c == null) {
@@ -1021,13 +1012,21 @@ public class PhysicalPlan {
         }
       }
       setContainer(oper, c); // TODO: thread safety
-      //oper.container = c;
-      //oper.container.operators.add(oper);
+    }
+
+    Set<PTContainer> releaseContainers = Sets.newHashSet();
+    // release containers that are no longer used
+    for (PTContainer c : this.containers) {
+      if (c.operators.isEmpty()) {
+        LOG.debug("Container {} to be released", c);
+        releaseContainers.add(c);
+        containers.remove(c);
+      }
     }
 
     deployOperators = this.getDependents(deployOperators);
     containers.addAll(newContainers);
-    ctx.redeploy(undeployOperators, newContainers, deployOperators);
+    ctx.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
 
   }
 
@@ -1056,7 +1055,6 @@ public class PhysicalPlan {
     }
     // remove the operator
     removePTOperator(oper);
-    // TODO: remove checkpoint states
 
     oper.container.operators.remove(oper); // TODO: thread safety
 
@@ -1069,8 +1067,14 @@ public class PhysicalPlan {
     }
   }
 
-  private PTContainer findContainer(PTOperator p) {
+  private PTContainer findContainer(PTOperator oper) {
     // TODO: find container based on utilization
+    for (PTContainer c : this.containers) {
+      if (c.operators.isEmpty() && c.getState() == PTContainer.State.ACTIVE) {
+        LOG.debug("Reusing existing container {} for {}", c, oper);
+        return c;
+      }
+    }
     return null;
   }
 
@@ -1258,6 +1262,14 @@ public class PhysicalPlan {
     for (PTInput in : node.inputs) {
       in.source.sinks.remove(in);
     }
+    // remove checkpoint states
+    try {
+      for (long checkpointWindowId : node.checkpointWindows) {
+        ctx.getBackupAgent().delete(node.id, checkpointWindowId);
+      }
+    } catch (IOException e) {
+      LOG.warn("Failed to remove state for " + node, e);
+    }
   }
 
   public DAG getDAG() {
@@ -1313,7 +1325,7 @@ public class PhysicalPlan {
   /**
    * Get all operator instances that depend on the specified operator instance(s).
    * Dependencies are all downstream and upstream inline operators.
-   * @param p
+   * @param operators
    * @return
    */
   public Set<PTOperator> getDependents(Collection<PTOperator> operators)
