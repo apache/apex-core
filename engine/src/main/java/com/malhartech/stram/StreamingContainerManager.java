@@ -307,7 +307,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // redeploy cycle for all affected operators
-    redeploy(checkpoints, Sets.newHashSet(cs.container), checkpoints);
+    deploy(Collections.<PTContainer>emptySet(), checkpoints, Sets.newHashSet(cs.container), checkpoints);
   }
 
   public void markComplete(String containerId)
@@ -826,7 +826,7 @@ public class StreamingContainerManager implements PlanContext
    * will propagate the shutdown request. This is controlled soft shutdown.
    * If containers don't respond, the application can be forcefully terminated
    * via yarn using forceKillApplication.
-   * @param message 
+   * @param message
    */
   public void shutdownAllContainers(String message)
   {
@@ -858,7 +858,7 @@ public class StreamingContainerManager implements PlanContext
   }
 
   @Override
-  public void redeploy(Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy)
+  public void deploy(Set<PTContainer> releaseContainers, Collection<PTOperator> undeploy, Set<PTContainer> startContainers, Collection<PTOperator> deploy)
   {
 
     Map<PTContainer, List<PTOperator>> undeployGroups = groupByContainer(undeploy);
@@ -866,7 +866,7 @@ public class StreamingContainerManager implements PlanContext
     // stop affected operators (exclude new/failed containers)
     // order does not matter, remove all operators in each container in one sweep
     for (Map.Entry<PTContainer, List<PTOperator>> e: undeployGroups.entrySet()) {
-      if (!startContainers.contains(e.getKey())) {
+      if (!startContainers.contains(e.getKey()) && !releaseContainers.contains(e.getKey())) {
         e.getKey().pendingUndeploy.addAll(e.getValue());
       }
     }
@@ -881,8 +881,8 @@ public class StreamingContainerManager implements PlanContext
       }
     }
 
-    // (re)deploy affected operators (other than those in new containers)
-    // this can happen in parallel after buffer server state for recovered publishers is reset
+    // (re)deploy affected operators
+    // can happen in parallel after buffer server state for recovered publishers is reset
     Map<PTContainer, List<PTOperator>> deployGroups = groupByContainer(deploy);
     for (Map.Entry<PTContainer, List<PTOperator>> e: deployGroups.entrySet()) {
       if (!startContainers.contains(e.getKey())) {
@@ -912,6 +912,16 @@ public class StreamingContainerManager implements PlanContext
       // add to operators that we expect to deploy
       LOG.debug("scheduling deploy {} {}", e.getKey().containerId, e.getValue());
       e.getKey().pendingDeploy.addAll(e.getValue());
+    }
+
+    // stop containers that are no longer used
+    for (PTContainer c : releaseContainers) {
+      StramChildAgent sca = containers.get(c.containerId);
+      if (sca != null) {
+        LOG.debug("Container marked for shutdown: {}", c);
+        // TODO: set deactivated state and monitor soft shutdown
+        sca.shutdownRequested = true;
+      }
     }
 
   }
