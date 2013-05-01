@@ -97,19 +97,23 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
       /* make sure that we ignore all the input ports */
-      if (descriptor.outputPorts.get(e.getKey()) == null) {
+      OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
+      if (port == null) {
         continue;
       }
 
       Sink<Object> ics = outputs.get(e.getKey());
       if (ics == null) {
+        port.setSink(e.getValue());
         outputs.put(e.getKey(), e.getValue());
       }
       else if (ics instanceof MuxSink) {
         ((MuxSink)ics).add(e.getValue());
       }
       else {
-        outputs.put(e.getKey(), new MuxSink(ics, e.getValue()));
+        MuxSink muxSink = new MuxSink(ics, e.getValue());
+        port.setSink(muxSink);
+        outputs.put(e.getKey(), muxSink);
       }
     }
   }
@@ -118,8 +122,15 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
     for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+      /* make sure that we ignore all the input ports */
+      OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
+      if (port == null) {
+        continue;
+      }
+
       Sink<Object> ics = outputs.get(e.getKey());
       if (ics == e.getValue()) {
+        port.setSink(null);
         outputs.remove(e.getKey());
       }
       else if (ics instanceof MuxSink) {
@@ -127,9 +138,11 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
         ms.remove(e.getValue());
         Sink<Object>[] sinks1 = ms.getSinks();
         if (sinks1.length == 0) {
+          port.setSink(null);
           outputs.remove(e.getKey());
         }
         else if (sinks1.length == 1) {
+          port.setSink(sinks1[0]);
           outputs.put(e.getKey(), sinks1[0]);
         }
       }

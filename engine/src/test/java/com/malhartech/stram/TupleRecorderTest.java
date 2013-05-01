@@ -278,7 +278,7 @@ public class TupleRecorderTest
 
     for (String partFile: partFiles) {
       file = new File(dir, partFile);
-      if (partFile != partFiles.get(partFiles.size() - 1)) {
+      if (!partFile.equals(partFiles.get(partFiles.size() - 1))) {
         Assert.assertTrue(partFile + " should be greater than 1KB", file.length() >= 1024);
       }
       Assert.assertTrue(partFile + " should exist", file.exists());
