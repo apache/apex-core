@@ -8,25 +8,23 @@ import com.malhartech.api.DAG;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.ByteBuffer;
+import java.util.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.DataOutputBuffer;
+import org.apache.hadoop.security.Credentials;
+import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.ContainerManager;
 import org.apache.hadoop.yarn.api.protocolrecords.StartContainerRequest;
-import org.apache.hadoop.yarn.api.records.Container;
-import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
-import org.apache.hadoop.yarn.api.records.LocalResource;
-import org.apache.hadoop.yarn.api.records.LocalResourceType;
-import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
@@ -128,6 +126,26 @@ public class LaunchContainerRunnable implements Runnable
     setClasspath(containerEnv);
     // Set the environment
     ctx.setEnvironment(containerEnv);
+
+    if (UserGroupInformation.isSecurityEnabled()) {
+      try {
+        UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+        Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
+        Credentials credentials = new Credentials();
+        for ( Token<? extends TokenIdentifier> token : tokens ) {
+          //if (!token.getKind().toString().equals("YARN_APPLICATION_TOKEN")) {
+            credentials.addToken(token.getService(), token);
+          //}
+        }
+        DataOutputBuffer dataOutput = new DataOutputBuffer();
+        credentials.writeTokenStorageToStream(dataOutput);
+        byte[] tokenBytes = dataOutput.getData();
+        ByteBuffer cTokenBuf = ByteBuffer.wrap(tokenBytes);
+        ctx.setContainerTokens(cTokenBuf);
+      } catch (Exception ex) {
+        LOG.error("Error setting up tokens in launch context for container");
+      }
+    }
 
     // Set the local resources
     Map<String, LocalResource> localResources = new HashMap<String, LocalResource>();
