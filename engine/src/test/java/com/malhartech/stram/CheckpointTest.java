@@ -4,23 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.DAG;
-import com.malhartech.api.Operator;
-import com.malhartech.engine.GenericTestOperator;
-import com.malhartech.engine.OperatorContext;
-import com.malhartech.engine.TestGeneratorInputOperator;
-import com.malhartech.engine.WindowGenerator;
-import com.malhartech.netlet.DefaultEventLoop;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StreamingContainerManager.ContainerResource;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.support.ManualScheduledExecutorService;
-import com.malhartech.stram.support.StramTestSupport;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -28,12 +11,33 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+
 import org.apache.commons.lang.mutable.MutableLong;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.DAG;
+import com.malhartech.api.Operator;
+import com.malhartech.engine.GenericTestOperator;
+import com.malhartech.engine.OperatorContext;
+import com.malhartech.engine.OperatorStats;
+import com.malhartech.engine.TestGeneratorInputOperator;
+import com.malhartech.engine.WindowGenerator;
+import com.malhartech.stram.PhysicalPlan.PTOperator;
+import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.StreamingContainerManager.ContainerResource;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.support.ManualScheduledExecutorService;
+import com.malhartech.stram.support.StramTestSupport;
 
 /**
  *
@@ -72,7 +76,7 @@ public class CheckpointTest
   }
 
   /**
-   * Test saving of node state at window boundary.
+   * Test saving of operator state at window boundary.
    *
    * @throws Exception
    */
@@ -124,8 +128,8 @@ public class CheckpointTest
     Operator node = container.getNode(deployInfo.get(0).id);
     OperatorContext context = container.getNodeContext(deployInfo.get(0).id);
 
-    Assert.assertNotNull("node deployed " + deployInfo.get(0), node);
-    Assert.assertEquals("nodeId", deployInfo.get(0).id, context.getId());
+    Assert.assertNotNull("deployed " + deployInfo.get(0), node);
+    Assert.assertEquals("operator id", deployInfo.get(0).id, context.getId());
     Assert.assertEquals("maxTupes", 2, ((TestGeneratorInputOperator)node).getMaxTuples());
 
     mses.tick(1); // end window 1, begin window 2
@@ -136,30 +140,38 @@ public class CheckpointTest
 
     mses.tick(1); // end window 2 begin window 3
     StramTestSupport.waitForWindowComplete(context, 2);
-    Assert.assertEquals("node = window 2", 2, context.getLastProcessedWindowId());
+    Assert.assertEquals("window 2", 2, context.getLastProcessedWindowId());
 
-    Thread.sleep(20);
-    File cpFile1 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
+    ohb.getWindowStats().clear();
+    context.drainHeartbeatCounters(ohb.getWindowStats());
+    List<OperatorStats> stats = ohb.getWindowStats();
+    Assert.assertEquals("windows stats " + stats, 3, stats.size());
+    Assert.assertEquals("windowId " + stats.get(2), 2, stats.get(2).windowId);
+    Assert.assertEquals("checkpointedWindowId " + stats.get(2), 1, stats.get(2).checkpointedWindowId); // lags windowId
+    dnm.processHeartbeat(hb); // propagate checkpoint
+
+    Thread.sleep(20); // file close delay?
+    File cpFile1 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
-    //ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
     ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
-
-    // fake heartbeat to propagate checkpoint
-    dnm.processHeartbeat(hb);
 
     container.processHeartbeatResponse(rsp);
     mses.tick(1); // end window 3, begin window 4
     StramTestSupport.waitForWindowComplete(context, 3);
-    Assert.assertEquals("node = window 3", 3, context.getLastProcessedWindowId());
+    Assert.assertEquals("window 3", 3, context.getLastProcessedWindowId());
 
-    Thread.sleep(20);
-    File cpFile2 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/3");
+    Thread.sleep(20); // file close delay?
+    File cpFile2 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
-    // fake heartbeat to propagate checkpoint
-    //ohb.setLastBackupWindowId(context.getLastProcessedWindowId());
-    dnm.processHeartbeat(hb);
+    ohb.getWindowStats().clear();
+    context.drainHeartbeatCounters(ohb.getWindowStats());
+    stats = ohb.getWindowStats();
+    Assert.assertEquals("windows stats " + stats, 1, stats.size());
+    Assert.assertEquals("windowId " + stats.get(0), 3, stats.get(0).windowId);
+    Assert.assertEquals("checkpointedWindowId " + stats.get(0), 2, stats.get(0).checkpointedWindowId); // lags windowId
+    dnm.processHeartbeat(hb); // propagate checkpoint
 
     // purge checkpoints
     dnm.monitorHeartbeat();
