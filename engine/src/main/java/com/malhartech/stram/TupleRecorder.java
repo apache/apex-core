@@ -232,10 +232,10 @@ public class TupleRecorder implements Operator
         partOutStr.close();
         if (indexOutStr != null) {
           writeIndex();
-          writeIndexEnd();
         }
       }
       if (indexOutStr != null) {
+        writeIndexEnd();
         indexOutStr.close();
       }
     }
