@@ -384,9 +384,9 @@ public class StramChildAgent {
 
         inputInfo.sourceNodeId = sourceOutput.source.getId();
         inputInfo.sourcePortName = sourceOutput.portName;
-        if (in.partitions != null) {
-          inputInfo.partitionKeys = in.partitions.partitions;
+        if (in.partitions != null && in.partitions.mask != 0) {
           inputInfo.partitionMask = in.partitions.mask;
+          inputInfo.partitionKeys = in.partitions.partitions;
         }
 
         if (sourceOutput.source.container == node.container) {

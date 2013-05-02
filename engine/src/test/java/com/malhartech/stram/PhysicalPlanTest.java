@@ -82,8 +82,8 @@ public class PhysicalPlanTest {
         Partition<PartitioningTestOperator> templatePartition = (Partition<PartitioningTestOperator>)partitions.iterator().next();
         for (int i = 0; i < incrementalCapacity; i++) {
           Partition<PartitioningTestOperator> p = templatePartition.getInstance(new PartitioningTestOperator());
-          p.getPartitionKeys().put(this.inport1, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
-          p.getPartitionKeys().put(this.inportWithCodec, new PartitionKeys(0, Sets.newHashSet(PARTITION_KEYS[i])));
+          p.getPartitionKeys().put(this.inport1, new PartitionKeys(2, Sets.newHashSet(PARTITION_KEYS[i])));
+          p.getPartitionKeys().put(this.inportWithCodec, new PartitionKeys(2, Sets.newHashSet(PARTITION_KEYS[i])));
           newPartitions.add(p);
         }
         return newPartitions;
@@ -381,7 +381,7 @@ public class PhysicalPlanTest {
             newPartitionKeys("1", "0"),
             newPartitionKeys("1", "1"));
 
-    ArrayList<Partition<?>> partitions = new ArrayList<Partition<?>>();
+    final ArrayList<Partition<?>> partitions = new ArrayList<Partition<?>>();
     for (PartitionKeys pks: initialPartitionKeys) {
       Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
       p1Keys.put(operator.inport1, pks);
@@ -434,15 +434,15 @@ public class PhysicalPlanTest {
     );
 
     for (Set<PartitionKeys> expectedKeys: expectedKeysSets) {
-      partitions = new ArrayList<Partition<?>>();
+      List<Partition<?>> clonePartitions = Lists.newArrayList();
       for (PartitionKeys pks: twoBitPartitionKeys) {
         Map<InputPort<?>, PartitionKeys> p1Keys = new HashMap<InputPort<?>, PartitionKeys>();
         p1Keys.put(operator.inport1, pks);
         int load = expectedKeys.contains(pks) ? 0 : -1;
-        partitions.add(new PartitionImpl(operator, p1Keys, load));
+        clonePartitions.add(new PartitionImpl(operator, p1Keys, load));
       }
 
-      newPartitions = dp.repartition(partitions);
+      newPartitions = dp.repartition(clonePartitions);
       Assert.assertEquals("" + newPartitions, 3, newPartitions.size());
 
       for (Partition<?> p: newPartitions) {
@@ -454,6 +454,19 @@ public class PhysicalPlanTest {
       Assert.assertTrue("" + expectedKeys, expectedKeys.isEmpty());
     }
 
+    // merge 2 into single partition
+    lowLoadPartitions = Lists.newArrayList();
+    for (Partition<?> p : partitions) {
+      lowLoadPartitions.add(new PartitionImpl(operator, p.getPartitionKeys(), -1));
+    }
+    newPartitions = dp.repartition(lowLoadPartitions);
+    Assert.assertEquals("" + newPartitions, 1, newPartitions.size());
+    for (Partition<?> p: newPartitions) {
+      Assert.assertEquals("" + p.getPartitionKeys(), 1, p.getPartitionKeys().size());
+      PartitionKeys pks = p.getPartitionKeys().values().iterator().next();
+      Assert.assertEquals("" + pks, 0, pks.mask);
+      Assert.assertEquals("" + pks, Sets.newHashSet(0), pks.partitions);
+    }
   }
 
   private PartitionKeys newPartitionKeys(String mask, String key) {
