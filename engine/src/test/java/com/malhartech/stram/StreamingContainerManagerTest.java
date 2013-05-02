@@ -16,6 +16,7 @@ import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
@@ -176,7 +177,9 @@ public class StreamingContainerManagerTest {
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
     dag.setAttribute(node2, OperatorContext.INITIAL_PARTITION_COUNT, 3);
+    dag.setOutputPortAttribute(node2.outport1, PortContext.QUEUE_CAPACITY, 1111);
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
+    dag.setInputPortAttribute(node3.inport1, PortContext.QUEUE_CAPACITY, 2222);
 
     DAG.StreamMeta n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
     DAG.StreamMeta n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
@@ -218,18 +221,25 @@ public class StreamingContainerManagerTest {
     Assert.assertNotNull("unifier for " + node2, mergeNodeDI);
     Assert.assertEquals("type " + mergeNodeDI, OperatorDeployInfo.OperatorType.UNIFIER, mergeNodeDI.type);
     Assert.assertEquals("inputs " + mergeNodeDI, 3, mergeNodeDI.inputs.size());
-    List<Integer> sourceNodeIds = new ArrayList<Integer>();
+    List<Integer> sourceNodeIds = Lists.newArrayList();
     for (InputDeployInfo nidi : mergeNodeDI.inputs) {
       Assert.assertEquals("streamName " + nidi, n2n3.getId(), nidi.declaredStreamId);
       String mergePortName = "<merge#" +  dag.getMeta(node2).getMeta(node2.outport1).getPortName() + ">";
       Assert.assertEquals("portName " + nidi, mergePortName, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
+      Assert.assertNotNull("contextAttributes " + nidi, nidi.contextAttributes);
+      Assert.assertEquals("contextAttributes " , new Integer(1111), nidi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, 0));
       sourceNodeIds.add(nidi.sourceNodeId);
     }
     for (PTOperator node : dnm.getPhysicalPlan().getOperators(dag.getMeta(node2))) {
       Assert.assertTrue(sourceNodeIds + " contains " + node.getId(), sourceNodeIds.contains(node.getId()));
     }
+
     Assert.assertEquals("outputs " + mergeNodeDI, 1, mergeNodeDI.outputs.size());
+    for (OutputDeployInfo odi : mergeNodeDI.outputs) {
+      Assert.assertNotNull("contextAttributes " + odi, odi.contextAttributes);
+      Assert.assertEquals("contextAttributes " , new Integer(2222), odi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, 0));
+    }
 
     Object operator = new DefaultOperatorSerDe().read(new ByteArrayInputStream(mergeNodeDI.serializedNode));
     Assert.assertTrue("" + operator, operator instanceof DefaultUnifier);

@@ -910,7 +910,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       // add to operators that we expect to deploy
-      LOG.debug("scheduling deploy {} {}", e.getKey().containerId, e.getValue());
+      LOG.debug("scheduling deploy {} {}", e.getKey(), e.getValue());
       e.getKey().pendingDeploy.addAll(e.getValue());
     }
 
