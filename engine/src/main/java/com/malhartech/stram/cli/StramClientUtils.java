@@ -7,24 +7,26 @@ package com.malhartech.stram.cli;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.security.PrivilegedAction;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
+import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
 import org.apache.hadoop.yarn.api.ClientRMProtocol;
 import org.apache.hadoop.yarn.api.ContainerManager;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportRequest;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationReportResponse;
 import org.apache.hadoop.yarn.api.protocolrecords.KillApplicationRequest;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.Container;
-import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.YarnApplicationState;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.ipc.YarnRPC;
+import org.apache.hadoop.yarn.security.ContainerTokenIdentifier;
+import org.apache.hadoop.yarn.util.ProtoUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,7 +134,33 @@ public class StramClientUtils
               + container.getNodeId().getPort();
       InetSocketAddress cmAddress = NetUtils.createSocketAddr(cmIpPortStr);
       LOG.info("Connecting to ContainerManager at " + cmIpPortStr);
-      return ((ContainerManager)rpc.getProxy(ContainerManager.class, cmAddress, conf));
+      //return ((ContainerManager)rpc.getProxy(ContainerManager.class, cmAddress, conf));
+      return getCM(container, cmAddress);
+    }
+
+    private ContainerManager getCM(Container container, final InetSocketAddress cmAddress)
+    {
+      ContainerManager cm = null;
+
+      if (UserGroupInformation.isSecurityEnabled()) {
+        ContainerId containerId = container.getId();
+        ContainerToken containerToken = container.getContainerToken();
+        Token<ContainerTokenIdentifier> token = ProtoUtils.convertFromProtoFormat(containerToken, cmAddress);
+        UserGroupInformation ugi = UserGroupInformation.createRemoteUser(containerId.toString());
+        ugi.addToken(token);
+        cm = ugi.doAs(new PrivilegedAction<ContainerManager>()
+        {
+          @Override
+          public ContainerManager run()
+          {
+            return (ContainerManager)rpc.getProxy(ContainerManager.class, cmAddress, conf);
+          }
+        });
+      }
+      else {
+        cm = (ContainerManager)rpc.getProxy(ContainerManager.class, cmAddress, conf);
+      }
+      return cm;
     }
 
   }

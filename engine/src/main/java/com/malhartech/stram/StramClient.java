@@ -40,6 +40,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.security.client.RMDelegationTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
+import org.apache.hadoop.yarn.util.ProtoUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -414,12 +415,14 @@ public class StramClient
       GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
       DelegationToken rmDelToken = gdresp.getRMDelegationToken();
 
-      // TODO:- Fix the service url
       YarnConfiguration yarnConf = new YarnConfiguration(conf);
       InetSocketAddress rmAddress = yarnConf.getSocketAddr(YarnConfiguration.RM_ADDRESS, YarnConfiguration.DEFAULT_RM_ADDRESS, YarnConfiguration.DEFAULT_RM_PORT);
+      /*
       String rmStrAddress = rmAddress.getHostName() + ":" + rmAddress.getPort();
       Token<RMDelegationTokenIdentifier> rmToken = new Token<RMDelegationTokenIdentifier>(rmDelToken.getIdentifier().array(), rmDelToken.getPassword().array(),
                                                                                                                                             new Text(rmDelToken.getKind()), new Text(rmStrAddress));
+      */
+      Token<RMDelegationTokenIdentifier> rmToken = ProtoUtils.convertFromProtoFormat(rmDelToken, rmAddress);
 
       // Get the NameNode delegation rmToken
       FileSystem dfs = FileSystem.get(conf);
@@ -427,8 +430,8 @@ public class StramClient
 
       // Setup the credentials to serialize the tokens which can be set on the container.
       Credentials credentials = new Credentials();
-      credentials.addToken(new Text("resourcemanager"), rmToken);
-      credentials.addToken(new Text("namenode"), hdfsToken);
+      credentials.addToken(rmToken.getService(), rmToken);
+      credentials.addToken(hdfsToken.getService(), hdfsToken);
 
       DataOutputBuffer dataOutput = new DataOutputBuffer();
       credentials.writeTokenStorageToStream(dataOutput);
