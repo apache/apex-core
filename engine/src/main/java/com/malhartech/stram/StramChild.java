@@ -30,6 +30,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.Thread.State;
 import java.net.*;
 import java.security.PrivilegedExceptionAction;
 import java.util.AbstractMap.SimpleEntry;
@@ -419,7 +420,10 @@ public class StramChild
     try {
       Iterator<Integer> iterator = discoList.iterator();
       for (Thread t: joinList) {
-        t.join();
+        t.join(1000);
+        if (!t.getState().equals(State.TERMINATED)) {
+          t.interrupt();
+        }
         disconnectNode(iterator.next());
       }
       logger.info("undeploy complete");
