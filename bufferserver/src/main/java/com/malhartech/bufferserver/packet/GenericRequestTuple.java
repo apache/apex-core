@@ -8,7 +8,7 @@ import static com.malhartech.bufferserver.packet.Tuple.VERSION;
 import static com.malhartech.bufferserver.packet.Tuple.writeString;
 import com.malhartech.bufferserver.util.Codec;
 import java.util.Arrays;
-import com.malhartech.netlet.Client.Fragment;
+import com.malhartech.util.Fragment;
 
 /**
  *
