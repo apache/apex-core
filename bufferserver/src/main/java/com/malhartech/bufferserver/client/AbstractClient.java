@@ -5,7 +5,6 @@
 package com.malhartech.bufferserver.client;
 
 import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.netlet.Client;
 import com.malhartech.netlet.DefaultEventLoop;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -17,7 +16,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractClient extends Client
+public abstract class AbstractClient extends com.malhartech.netlet.AbstractClient
 {
   protected byte[] buffer;
   protected ByteBuffer byteBuffer;
