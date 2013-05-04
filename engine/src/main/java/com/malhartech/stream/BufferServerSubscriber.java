@@ -11,7 +11,7 @@ import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.WindowGenerator;
-import com.malhartech.netlet.Client.Fragment;
+import com.malhartech.util.Fragment;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.tuple.*;
 import com.malhartech.util.CircularBuffer;
