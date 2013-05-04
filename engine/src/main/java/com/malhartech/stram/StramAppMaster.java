@@ -611,7 +611,8 @@ public class StramAppMaster
           if (exitStatus == 1) {
             // StramChild failure
             appDone = true;
-            LOG.info("Exiting due to unrecoverable failure in container {}", containerStatus.getContainerId());
+            dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
+            LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
           }
           else {
             // Recoverable failure or process killed (externally or via stop request by AM)
