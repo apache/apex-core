@@ -271,7 +271,7 @@ public class StramAppMaster
       System.exit(1);
     }
     if (result) {
-      LOG.info("Application Master completed successfully. exiting");
+      LOG.info("Application Master completed. exiting");
       System.exit(0);
     }
     else {
