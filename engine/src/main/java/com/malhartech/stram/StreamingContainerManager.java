@@ -455,7 +455,12 @@ public class StreamingContainerManager implements PlanContext
       sca.jvmName = heartbeat.jvmName;
     }
 
-    sca.memoryMBFree = heartbeat.getMemoryMBFree();
+    if (heartbeat.restartRequested) {
+      LOG.error("Container {} restart request", sca.container.containerId);
+      containerStopRequests.put(sca.container.containerId, sca.container.containerId);
+    }
+
+    sca.memoryMBFree = heartbeat.memoryMBFree;
 
     long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
