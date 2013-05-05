@@ -25,10 +25,8 @@ public class StramDelegationTokenSelector implements TokenSelector<StramDelegati
   public Token<StramDelegationTokenIdentifier> selectToken(Text text, Collection<Token<? extends TokenIdentifier>> clctn)
   {
     Token<StramDelegationTokenIdentifier> token = null;
-    System.out.println("text " + text);
     if (text  != null) {
       for (Token<? extends TokenIdentifier> ctoken : clctn) {
-       System.out.println("TOKEN check " + ctoken.getKind() + " " + ctoken.getService() + " " + text);
         if (StramDelegationTokenIdentifier.IDENTIFIER_KIND.equals(ctoken.getKind()) && text.equals(ctoken.getService()))
         {
           token = (Token<StramDelegationTokenIdentifier>)ctoken;
