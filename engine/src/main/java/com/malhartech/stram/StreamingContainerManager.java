@@ -455,7 +455,12 @@ public class StreamingContainerManager implements PlanContext
       sca.jvmName = heartbeat.jvmName;
     }
 
-    sca.memoryMBFree = heartbeat.getMemoryMBFree();
+    if (heartbeat.restartRequested) {
+      LOG.error("Container {} restart request", sca.container.containerId);
+      containerStopRequests.put(sca.container.containerId, sca.container.containerId);
+    }
+
+    sca.memoryMBFree = heartbeat.memoryMBFree;
 
     long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
@@ -910,7 +915,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       // add to operators that we expect to deploy
-      LOG.debug("scheduling deploy {} {}", e.getKey().containerId, e.getValue());
+      LOG.debug("scheduling deploy {} {}", e.getKey(), e.getValue());
       e.getKey().pendingDeploy.addAll(e.getValue());
     }
 

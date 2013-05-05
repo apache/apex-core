@@ -336,16 +336,20 @@ public class StramChildAgent {
         portInfo.portName = out.portName;
         portInfo.contextAttributes = streamMeta.getSource().getAttributes();
 
+        if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
+          // input attributes of the downstream operator
+          for (InputPortMeta sink : streamMeta.getSinks()) {
+            portInfo.contextAttributes = sink.getAttributes();
+            break;
+          }
+        }
+
         if (!out.isDownStreamInline()) {
           portInfo.bufferServerHost = node.container.bufferServerAddress.getHostName();
           portInfo.bufferServerPort = node.container.bufferServerAddress.getPort();
           if (streamMeta.getCodecClass() != null) {
             portInfo.serDeClassName = streamMeta.getCodecClass().getName();
           }
-        } else {
-          //LOG.debug("Inline stream {}", out);
-          // target set below
-          //portInfo.inlineTargetNodeId = "-1subscriberInOtherContainer";
         }
 
         ndi.outputs.add(portInfo);
@@ -360,7 +364,6 @@ public class StramChildAgent {
       PTOperator node = nodeEntry.getValue();
       for (PTInput in : node.inputs) {
         final StreamMeta streamMeta = in.logicalStream;
-        // input from other node(s) OR input adapter
         if (streamMeta.getSource() == null) {
           throw new AssertionError("source is null: " + in);
         }
@@ -374,27 +377,28 @@ public class StramChildAgent {
             inputInfo.contextAttributes = e.getKey().getAttributes();
           }
         }
+
+        if (inputInfo.contextAttributes == null && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
+          inputInfo.contextAttributes = in.source.logicalStream.getSource().getAttributes();
+        }
+
         inputInfo.sourceNodeId = sourceOutput.source.getId();
         inputInfo.sourcePortName = sourceOutput.portName;
-        if (in.partitions != null) {
-          inputInfo.partitionKeys = in.partitions.partitions;
+        if (in.partitions != null && in.partitions.mask != 0) {
           inputInfo.partitionMask = in.partitions.mask;
+          inputInfo.partitionKeys = in.partitions.partitions;
         }
 
         if (sourceOutput.source.container == node.container) {
-          // inline input (both operators in same container and inline hint set)
+          // inline input (both operators in same container)
           OutputDeployInfo outputInfo = publishers.get(sourceOutput.source.getId() + "/" + streamMeta.getId());
           if (outputInfo == null) {
             throw new AssertionError("Missing publisher for inline stream " + sourceOutput);
           }
         } else {
           // buffer server input
-          // FIXME: address to come from upstream output port, should be assigned first
           InetSocketAddress addr = sourceOutput.source.container.bufferServerAddress;
           if (addr == null) {
-            // TODO: occurs during undeploy
-            //LOG.warn("upstream address not assigned: " + sourceOutput);
-            //addr = container.bufferServerAddress;
             throw new AssertionError("upstream address not assigned: " + sourceOutput);
           }
           inputInfo.bufferServerHost = addr.getHostName();
