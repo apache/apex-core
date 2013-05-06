@@ -427,6 +427,7 @@ public class StreamingContainerManager implements PlanContext
   /**
    * process the heartbeat from each container.
    * called by the RPC thread for each container. (i.e. called by multiple threads)
+   *
    * @param heartbeat
    * @return
    */
@@ -579,10 +580,10 @@ public class StreamingContainerManager implements PlanContext
           status.currentWindowId = stats.windowId;
           totalCpuTimeUsed += stats.cpuTimeUsed;
           /*
-          if (endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>()) == null) {
-            LOG.warn("Putting new map for window id {} for node id {}", stats.windowId, shb.getNodeId());
-          }
-          */
+           if (endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>()) == null) {
+           LOG.warn("Putting new map for window id {} for node id {}", stats.windowId, shb.getNodeId());
+           }
+           */
           endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
           Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
           endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
@@ -831,6 +832,7 @@ public class StreamingContainerManager implements PlanContext
    * will propagate the shutdown request. This is controlled soft shutdown.
    * If containers don't respond, the application can be forcefully terminated
    * via yarn using forceKillApplication.
+   *
    * @param message
    */
   public void shutdownAllContainers(String message)
@@ -937,7 +939,23 @@ public class StreamingContainerManager implements PlanContext
     this.eventQueue.add(r);
   }
 
-  public ArrayList<OperatorInfo> getOperatorInfoList()
+  public OperatorInfo getOperatorInfo(String operatorId)
+  {
+    for (PTContainer container: this.plan.getContainers()) {
+      String containerId = container.containerId;
+      StramChildAgent sca = containerId != null ? this.containers.get(container.containerId) : null;
+
+      for (PTOperator operator: container.operators) {
+        if (operatorId.equals(Integer.toString(operator.getId()))) {
+          OperatorStatus os = (sca != null) ? sca.operators.get(operator.getId()) : null;
+          return fillOperatorInfo(operator, os);
+        }
+      }
+    }
+    return null;
+  }
+
+   public ArrayList<OperatorInfo> getOperatorInfoList()
   {
     ArrayList<OperatorInfo> infoList = new ArrayList<OperatorInfo>();
 
@@ -947,51 +965,54 @@ public class StreamingContainerManager implements PlanContext
       StramChildAgent sca = containerId != null ? this.containers.get(container.containerId) : null;
 
       for (PTOperator operator: container.operators) {
-
-        OperatorInfo ni = new OperatorInfo();
-        ni.container = container.containerId;
-        ni.host = container.host;
-        ni.id = Integer.toString(operator.getId());
-        ni.name = operator.getName();
-        ni.status = operator.getState().toString();
-
         OperatorStatus os = (sca != null) ? sca.operators.get(operator.getId()) : null;
-        if (os != null) {
-          ni.totalTuplesProcessed = os.totalTuplesProcessed;
-          ni.totalTuplesEmitted = os.totalTuplesEmitted;
-          ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
-          ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
-          ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
-          ni.latencyMA = os.latencyMA.getAvg();
-          ni.failureCount = os.operator.failureCount;
-          ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
-          ni.currentWindowId = os.currentWindowId & 0xFFFF;
-          ni.recordingNames = os.recordingNames;
-          if (os.lastHeartbeat != null) {
-            ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
-          }
-          for (PortStatus ps: os.inputPortStatusList.values()) {
-            PortInfo pinfo = new PortInfo();
-            pinfo.name = ps.portName;
-            pinfo.totalTuples = ps.totalTuples;
-            pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-            pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
-            ni.addInputPort(pinfo);
-          }
-          for (PortStatus ps: os.outputPortStatusList.values()) {
-            PortInfo pinfo = new PortInfo();
-            pinfo.name = ps.portName;
-            pinfo.totalTuples = ps.totalTuples;
-            pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-            pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
-            ni.addOutputPort(pinfo);
-          }
-        }
-        infoList.add(ni);
-
+        infoList.add(fillOperatorInfo(operator, os));
       }
     }
     return infoList;
+  }
+
+  private OperatorInfo fillOperatorInfo(PTOperator operator, OperatorStatus os)
+  {
+    OperatorInfo ni = new OperatorInfo();
+    ni.container = operator.container.containerId;
+    ni.host = operator.container.host;
+    ni.id = Integer.toString(operator.getId());
+    ni.name = operator.getName();
+    ni.status = operator.getState().toString();
+
+    if (os != null) {
+      ni.totalTuplesProcessed = os.totalTuplesProcessed;
+      ni.totalTuplesEmitted = os.totalTuplesEmitted;
+      ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
+      ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
+      ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
+      ni.latencyMA = os.latencyMA.getAvg();
+      ni.failureCount = os.operator.failureCount;
+      ni.recoveryWindowId = os.operator.recoveryCheckpoint;
+      ni.currentWindowId = os.currentWindowId;
+      ni.recordingNames = os.recordingNames;
+      if (os.lastHeartbeat != null) {
+        ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
+      }
+      for (PortStatus ps: os.inputPortStatusList.values()) {
+        PortInfo pinfo = new PortInfo();
+        pinfo.name = ps.portName;
+        pinfo.totalTuples = ps.totalTuples;
+        pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
+        pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
+        ni.addInputPort(pinfo);
+      }
+      for (PortStatus ps: os.outputPortStatusList.values()) {
+        PortInfo pinfo = new PortInfo();
+        pinfo.name = ps.portName;
+        pinfo.totalTuples = ps.totalTuples;
+        pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
+        pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
+        ni.addOutputPort(pinfo);
+      }
+    }
+    return ni;
   }
 
   private static class RecordingRequestFilter implements Predicate<StramToNodeRequest>

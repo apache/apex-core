@@ -43,7 +43,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.SaslRpcServer.AuthMethod;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -180,9 +182,16 @@ public class StramChild
 
     //Token<JobTokenIdentifier> jt = loadCredentials(defaultConf, address);
 
+    UserGroupInformation taskOwner = null;
+    if (!UserGroupInformation.isSecurityEnabled()) {
     // Communicate with parent as actual task owner.
-    UserGroupInformation taskOwner =
+      taskOwner =
             UserGroupInformation.createRemoteUser(StramChild.class.getName());
+    } else {
+      taskOwner = UserGroupInformation.getCurrentUser();
+    }
+    logger.info("Task owner is " + taskOwner.getUserName() );
+
     //taskOwner.addToken(jt);
     final StreamingContainerUmbilicalProtocol umbilical =
             taskOwner.doAs(new PrivilegedExceptionAction<StreamingContainerUmbilicalProtocol>()
@@ -201,10 +210,14 @@ public class StramChild
     int exitStatus = 1;
 
     try {
-      childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
-      // Add tokens to new user so that it may execute its task correctly.
-      for (Token<?> token: UserGroupInformation.getCurrentUser().getTokens()) {
-        childUGI.addToken(token);
+      if (!UserGroupInformation.isSecurityEnabled()) {
+        childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
+        // Add tokens to new user so that it may execute its task correctly.
+        for (Token<?> token: UserGroupInformation.getCurrentUser().getTokens()) {
+          childUGI.addToken(token);
+        }
+      } else {
+        childUGI = taskOwner;
       }
 
       childUGI.doAs(new PrivilegedExceptionAction<Object>()

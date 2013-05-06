@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAGContext;
+import org.apache.hadoop.security.authorize.Service;
 
 /**
  *
@@ -34,13 +35,14 @@ public class StreamingContainerParent extends CompositeService implements Stream
 
   private static final Logger LOG = LoggerFactory.getLogger(StreamingContainerParent.class);
   private Server server;
-  private final SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
+  private SecretManager<? extends TokenIdentifier> tokenSecretManager = null;
   private InetSocketAddress address;
   private final StreamingContainerManager dagManager;
 
-  public StreamingContainerParent(String name, StreamingContainerManager dnodeMgr) {
+  public StreamingContainerParent(String name, StreamingContainerManager dnodeMgr, SecretManager<? extends TokenIdentifier> secretManager) {
     super(name);
     this.dagManager = dnodeMgr;
+    this.tokenSecretManager = secretManager;
   }
 
   @Override
@@ -74,6 +76,17 @@ public class StreamingContainerParent extends CompositeService implements Stream
           CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION,
           false)) {
         //refreshServiceAcls(conf, new MRAMPolicyProvider());
+        server.refreshServiceAcl(conf, new PolicyProvider() {
+
+          @Override
+          public Service[] getServices()
+          {
+            return (new Service[] {
+              new Service(StreamingContainerUmbilicalProtocol.class.getName(), StreamingContainerUmbilicalProtocol.class)
+            });
+          }
+
+        });
       }
 
       server.start();
