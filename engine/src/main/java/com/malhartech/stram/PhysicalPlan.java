@@ -392,6 +392,10 @@ public class PhysicalPlan {
       return plan;
     }
 
+    public Partition<?> getPartition() {
+      return partition;
+    }
+
     private Set<PTOperator> getGrouping(LocalityType type) {
       Set<PTOperator> s = this.groupings.get(type);
       if (s == null) {
@@ -822,7 +826,7 @@ public class PhysicalPlan {
       m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
-    String handlers = dag.getAttributes().attrValue(DAG.STRAM_STATS_HANDLER, null);
+    String handlers = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_STATS_HANDLER, null);
     if (handlers != null) {
       if (m.statsHandlers == null) {
         m.statsHandlers = new ArrayList<StatsHandler>(1);
