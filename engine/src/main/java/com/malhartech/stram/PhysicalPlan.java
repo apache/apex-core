@@ -969,6 +969,7 @@ public class PhysicalPlan {
         for (StreamMeta s : pp.getInputStreams().values()) {
           if (currentMapping.parallelPartitions.contains(s.getSource().getOperatorWrapper()) && pending.contains(s.getSource().getOperatorWrapper())) {
             pending.push(pp);
+            pending.remove(s.getSource().getOperatorWrapper());
             pending.push(s.getSource().getOperatorWrapper());
             continue pendingLoop;
           }
