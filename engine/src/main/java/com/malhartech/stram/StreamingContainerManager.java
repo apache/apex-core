@@ -955,7 +955,7 @@ public class StreamingContainerManager implements PlanContext
     return null;
   }
 
-   public ArrayList<OperatorInfo> getOperatorInfoList()
+  public ArrayList<OperatorInfo> getOperatorInfoList()
   {
     ArrayList<OperatorInfo> infoList = new ArrayList<OperatorInfo>();
 
@@ -989,8 +989,8 @@ public class StreamingContainerManager implements PlanContext
       ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = os.operator.failureCount;
-      ni.recoveryWindowId = os.operator.recoveryCheckpoint;
-      ni.currentWindowId = os.currentWindowId;
+      ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xffffffffL;
+      ni.currentWindowId = os.currentWindowId & 0xffffffffL;
       ni.recordingNames = os.recordingNames;
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
