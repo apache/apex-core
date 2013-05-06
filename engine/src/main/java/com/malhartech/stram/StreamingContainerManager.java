@@ -989,8 +989,8 @@ public class StreamingContainerManager implements PlanContext
       ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = os.operator.failureCount;
-      ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
-      ni.currentWindowId = os.currentWindowId & 0xFFFF;
+      ni.recoveryWindowId = os.operator.recoveryCheckpoint;
+      ni.currentWindowId = os.currentWindowId;
       ni.recordingNames = os.recordingNames;
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
