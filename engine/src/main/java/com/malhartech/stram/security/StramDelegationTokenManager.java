@@ -2,9 +2,9 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.malhartech.stram.security;
 
-import org.apache.hadoop.security.token.TokenIdentifier;
+import com.malhartech.stram.security.StramDelegationTokenIdentifier;
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager;
 
 /**
