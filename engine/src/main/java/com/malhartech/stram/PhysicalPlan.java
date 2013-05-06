@@ -973,6 +973,7 @@ public class PhysicalPlan {
             continue pendingLoop;
           }
         }
+        LOG.debug("Adding to parallel partition {}", pp);
         newOperators.add(addPTOperator(this.logicalToPTOperator.get(pp), null));
         // TODO: set checkpoint (or start at wherever partition starts to publish)
       }
