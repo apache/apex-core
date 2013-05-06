@@ -98,8 +98,6 @@ public interface DAGContext {
    */
   public static final AttributeKey<Integer> STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = new AttributeKey<Integer>("stram.allocateResourceTimeoutMillis", Integer.class);
 
-  public static final AttributeKey<String> STRAM_STATS_HANDLER = new AttributeKey<String>("stram.statsHandler", String.class);
-
   public static final AttributeKey<Integer> STRAM_MAX_WINDOWS_BEHIND_FOR_STATS = new AttributeKey<Integer>("stram.maxWindowsBehindForStats", Integer.class);
 
   public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
