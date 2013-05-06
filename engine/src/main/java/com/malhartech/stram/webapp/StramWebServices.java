@@ -120,6 +120,19 @@ public class StramWebServices
     return nodeList;
   }
 
+  @GET
+  @Path(PATH_OPERATORS + "/{operatorId}")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public OperatorInfo getOperatorInfo(@PathParam("operatorId") String operatorId) throws Exception
+  {
+    init();
+    OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
+    if (oi == null) {
+      throw new WebApplicationException(404);
+    }
+    return oi;
+  }
+
   @POST // not supported by WebAppProxyServlet, can only be called directly
   @Path(PATH_SHUTDOWN)
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
@@ -200,6 +213,19 @@ public class StramWebServices
       ci.add(sca.getContainerInfo());
     }
     return ci;
+  }
+
+  @GET
+  @Path(PATH_CONTAINERS + "/{containerId}")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public ContainerInfo getContainer(@PathParam("containerId") String containerId) throws Exception
+  {
+    init();
+    StramChildAgent sca = dagManager.getContainerAgent(containerId);
+    if (sca == null) {
+      throw new WebApplicationException(404);
+    }
+    return sca.getContainerInfo();
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
