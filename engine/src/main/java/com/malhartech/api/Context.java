@@ -4,6 +4,7 @@
  */
 package com.malhartech.api;
 
+import com.malhartech.api.DAGContext.AttributeKey;
 import com.malhartech.util.AttributeMap;
 
 /**
@@ -82,6 +83,8 @@ public interface Context
     public static final AttributeKey<Integer> INITIAL_PARTITION_COUNT = new AttributeKey<Integer>("initialPartitionCount");
     public static final AttributeKey<Integer> PARTITION_TPS_MIN = new AttributeKey<Integer>("partitionTpsMin");
     public static final AttributeKey<Integer> PARTITION_TPS_MAX = new AttributeKey<Integer>("partitionTpsMax");
+    public static final AttributeKey<String>  PARTITION_STATS_HANDLER = new AttributeKey<String>("statsHandler");
+
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
@@ -109,7 +112,7 @@ public interface Context
      * The agent which can be used to checkpoint the windows.
      */
     public static final AttributeKey<BackupAgent> BACKUP_AGENT = new AttributeKey<BackupAgent>("backupAgent");
-    
+
     /**
      * Return the operator runtime id.
      *

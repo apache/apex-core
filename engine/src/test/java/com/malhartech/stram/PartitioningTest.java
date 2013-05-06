@@ -5,7 +5,6 @@ import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.*;
 import com.malhartech.engine.Node;
-import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.PhysicalPlan.PMapping;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -210,7 +209,6 @@ public class PartitioningTest
 
     DAG dag = new DAG();
     dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, 5);
-    dag.setAttribute(DAG.STRAM_STATS_HANDLER, PartitionLoadWatch.class.getName());
     CollectorOperator.receivedTuples.clear();
 
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
@@ -218,7 +216,8 @@ public class PartitioningTest
 
     CollectorOperator collector = dag.addOperator("partitionedCollector", new CollectorOperator());
     collector.prefix = "" + System.identityHashCode(collector);
-    dag.getMeta(collector).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
+    dag.setAttribute(collector, OperatorContext.INITIAL_PARTITION_COUNT, 2);
+    dag.setAttribute(collector, OperatorContext.PARTITION_STATS_HANDLER, PartitionLoadWatch.class.getName());
     dag.addStream("fromInput", input.output, collector.input);
 
     CollectorOperator singleCollector = dag.addOperator("singleCollector", new CollectorOperator());
@@ -332,10 +331,10 @@ public class PartitioningTest
 
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
       DAG dag = new DAG();
-      dag.getAttributes().attr(DAG.STRAM_STATS_HANDLER).set(PartitionLoadWatch.class.getName());
       dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
+      dag.setAttribute(input, OperatorContext.PARTITION_STATS_HANDLER, PartitionLoadWatch.class.getName());
 
       StramLocalCluster lc = new StramLocalCluster(dag);
       lc.setHeartbeatMonitoringEnabled(false);
