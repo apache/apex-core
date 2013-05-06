@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram.security;
 
-import com.malhartech.stram.security.StramDelegationTokenIdentifier;
 import java.util.Collection;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.token.Token;
