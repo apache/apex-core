@@ -28,7 +28,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataOutputBuffer;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
@@ -534,6 +533,8 @@ public class StramClient
     // Set Xmx based on am memory size
     // default heap size 75% of total memory
     vargs.add("-Xmx" + (amMemory*3/4) + "m");
+    vargs.add("-XX:+HeapDumpOnOutOfMemoryError");
+    vargs.add("-XX:HeapDumpPath=/tmp/stram-heap-" + appId.getId()  + ".bin");
     vargs.add("-Dhadoop.root.logger=" + (dag.isDebug() ? "DEBUG" : "INFO") + ",RFA");
     vargs.add("-Dhadoop.log.dir=" + ApplicationConstants.LOG_DIR_EXPANSION_VAR);
 
