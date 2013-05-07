@@ -66,6 +66,9 @@ public class StreamingContainerManager implements PlanContext
   private long windowStartMillis = System.currentTimeMillis();
   private int heartbeatTimeoutMillis = 30000;
   private int maxWindowsBehindForStats = 100;
+  private int recordStatsInterval = 0;
+  private long lastRecordStatsTime = 0;
+  private HdfsStatsRecorder statsRecorder;
   private final int operatorMaxAttemptCount = 5;
   private final AttributeMap<DAGContext> appAttributes;
   //private final int checkpointIntervalMillis;
@@ -106,6 +109,12 @@ public class StreamingContainerManager implements PlanContext
 
     appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
     this.maxWindowsBehindForStats = appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
+/*
+    this.recordStatsInterval = appAttributes.attr(DAG.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
+    if (this.recordStatsInterval > 0) {
+      statsRecorder = new HdfsStatsRecorder();
+    }
+*/
   }
 
   protected PhysicalPlan getPhysicalPlan()
@@ -152,6 +161,15 @@ public class StreamingContainerManager implements PlanContext
     processEvents();
     committedWindowId = updateCheckpoints();
     calculateEndWindowStats();
+    if (recordStatsInterval > 0 && (lastRecordStatsTime + recordStatsInterval <= System.currentTimeMillis())) {
+      recordStats();
+    }
+  }
+
+  private void recordStats()
+  {
+    statsRecorder.record(containers);
+    lastRecordStatsTime = System.currentTimeMillis();
   }
 
   private void calculateEndWindowStats()
@@ -165,7 +183,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       Set<Integer> allCurrentOperators = new TreeSet<Integer>();
-      for (PTOperator o : plan.getAllOperators()) {
+      for (PTOperator o: plan.getAllOperators()) {
         allCurrentOperators.add(o.getId());
       }
       int numOperators = allCurrentOperators.size();
@@ -177,7 +195,8 @@ public class StreamingContainerManager implements PlanContext
         if (allCurrentOperators.containsAll(endWindowStatsOperators)) {
           if (endWindowStatsMap.size() < numOperators) {
             break;
-          } else {
+          }
+          else {
             // they are equal.  start latency calculation
             List<OperatorMeta> rootOperatorMetas = plan.getRootOperators();
             Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
@@ -190,7 +209,8 @@ public class StreamingContainerManager implements PlanContext
             }
             endWindowStatsOperatorMap.remove(windowId);
           }
-        } else {
+        }
+        else {
           // the old stats contains operators that do not exist any more
           // this is probably right after a partition happens.
           endWindowStatsOperatorMap.remove(windowId);
@@ -922,7 +942,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // stop containers that are no longer used
-    for (PTContainer c : releaseContainers) {
+    for (PTContainer c: releaseContainers) {
       StramChildAgent sca = containers.get(c.containerId);
       if (sca != null) {
         LOG.debug("Container marked for shutdown: {}", c);
