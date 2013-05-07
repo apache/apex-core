@@ -164,7 +164,7 @@ public class FastPublisher implements ClientListener, Stream
     ByteBuffer bb = writeBuffer;
     int position = bb.position();
 
-    int newPosition = position + 4;
+    int newPosition = position + 2;
     if (newPosition > bb.capacity()) {
       bb.position(bb.capacity());
       advanceWriteBuffer();
