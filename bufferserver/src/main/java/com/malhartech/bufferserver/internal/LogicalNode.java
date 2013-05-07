@@ -36,7 +36,7 @@ public class LogicalNode implements DataListener
   private final HashSet<BitVector> partitions;
   private final Policy policy = GiveAll.getInstance();
   private final DataListIterator iterator;
-  private final long windowId;
+  private final long skipWindowId;
   private long baseSeconds;
   private boolean caughtup;
 
@@ -45,9 +45,9 @@ public class LogicalNode implements DataListener
    * @param upstream
    * @param group
    * @param iterator
-   * @param startingWindowId
+   * @param skipUptoWindowId
    */
-  public LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, long startingWindowId)
+  public LogicalNode(String upstream, String group, Iterator<SerializedData> iterator, long skipUptoWindowId)
   {
     this.upstream = upstream;
     this.group = group;
@@ -61,7 +61,7 @@ public class LogicalNode implements DataListener
       throw new IllegalArgumentException("iterator does not belong to DataListIterator class");
     }
 
-    windowId = startingWindowId;
+    skipWindowId = skipUptoWindowId;
   }
 
   /**
@@ -173,9 +173,9 @@ public class LogicalNode implements DataListener
                 upstream,
                 group,
                 Codec.getStringWindowId(baseSeconds | tuple.getWindowId()),
-                Codec.getStringWindowId(windowId)
+                Codec.getStringWindowId(skipWindowId)
               });
-              if ((baseSeconds | tuple.getWindowId()) >= windowId) {
+              if ((baseSeconds | tuple.getWindowId()) > skipWindowId) {
                 logger.debug("caught up {}->{}", upstream, group);
                 ready = GiveAll.getInstance().distribute(physicalNodes, data);
                 caughtup = true;
