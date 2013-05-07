@@ -7,7 +7,6 @@ package com.malhartech.stream;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.netlet.DefaultEventLoop;
@@ -20,7 +19,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,23 +29,31 @@ import org.slf4j.LoggerFactory;
 public class FastPublisher implements ClientListener, Stream
 {
   public static final int EIGHT_KILOBYTES = 8 * 1024;
-  private StreamCodec<Object> codec;
   private SelectionKey key;
   private EventLoop eventloop;
   private int count;
   private long spinMillis;
-  private ByteBuffer[] buffer;
-  private volatile int writer;
-  private volatile int reader;
-  private volatile int readPosition;
-  private AtomicBoolean inProgress = new AtomicBoolean(false);
+  private final int lastIndex;
+  private ByteBuffer[] readBuffers;
+  private ByteBuffer readBuffer;
+  private volatile int readIndex;
+  private ByteBuffer[] writeBuffers;
+  private ByteBuffer writeBuffer;
+  private int writeIndex;
 
   public FastPublisher(int countOf8kBuffers)
   {
-    buffer = new ByteBuffer[countOf8kBuffers];
+    writeBuffers = new ByteBuffer[countOf8kBuffers];
+    readBuffers = new ByteBuffer[countOf8kBuffers];
     for (int i = countOf8kBuffers; i-- > 0;) {
-      buffer[i] = ByteBuffer.allocateDirect(EIGHT_KILOBYTES);
+      writeBuffers[i] = ByteBuffer.allocateDirect(EIGHT_KILOBYTES);
+      readBuffers[i] = writeBuffers[i].asReadOnlyBuffer();
+      readBuffers[i].limit(0);
     }
+
+    writeBuffer = writeBuffers[0];
+    readBuffer = readBuffers[0];
+    lastIndex = countOf8kBuffers - 1;
   }
 
   @Override
@@ -76,47 +82,21 @@ public class FastPublisher implements ClientListener, Stream
   public void write() throws IOException
   {
     SocketChannel sc = (SocketChannel)key.channel();
-    while (reader != writer) {
-      ByteBuffer bb = buffer[reader];
-      sc.write(bb);
-      if (bb.hasRemaining()) {
+    do {
+      sc.write(readBuffer);
+      if (readBuffer.position() < readBuffer.capacity()) {
         return;
       }
+      readBuffer.limit(0);
+      if (readIndex == lastIndex) {
+        readIndex = 0;
+      }
       else {
-        readPosition = 0;
-        bb.clear();
-        reader++;
+        readIndex++;
       }
+      readBuffer = readBuffers[readIndex];
     }
-
-    /* synchronize the access */
-    if (inProgress.compareAndSet(false, true)) {
-      try {
-        ByteBuffer bb = buffer[reader];
-        if (writer == reader) {
-          /* writer has still not finished writing to this block */
-          int writePosition = bb.position();
-          bb.flip();
-          bb.position(readPosition);
-          sc.write(bb);
-          readPosition = bb.position();
-          bb.clear();
-          bb.position(writePosition);
-        }
-        else {
-          /* writer moved on in the meantime */
-          sc.write(bb);
-          if (!bb.hasRemaining()) {
-            readPosition = 0;
-            bb.clear();
-            reader++;
-          }
-        }
-      }
-      finally {
-        inProgress.set(false);
-      }
-    }
+    while (true);
   }
 
   @Override
@@ -168,7 +148,6 @@ public class FastPublisher implements ClientListener, Stream
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
-    codec = context.attr(StreamContext.CODEC).get();
   }
 
   @Override
@@ -182,18 +161,40 @@ public class FastPublisher implements ClientListener, Stream
   public void put(Object tuple)
   {
     count++;
+    ByteBuffer bb = writeBuffer;
+    int position = bb.position();
+
+    int newPosition = position + 4;
+    if (newPosition > bb.capacity()) {
+      bb.position(bb.capacity());
+      advanceWriteBuffer();
+      writeBuffer.position(newPosition - bb.capacity());
+    }
+
+    // write the tuple and find out the size
+
+    // write the size at bb.position
+  }
+
+  @SuppressWarnings("SleepWhileInLoop")
+  public void advanceWriteBuffer()
+  {
+    if (writeIndex == lastIndex) {
+      writeIndex = 0;
+    }
+    else {
+      writeIndex++;
+    }
+
     try {
-      while (!inProgress.compareAndSet(false, true)) {
+      while (writeIndex == readIndex) {
         sleep(spinMillis);
       }
 
-
+      writeBuffer = writeBuffers[writeIndex];
     }
     catch (InterruptedException ie) {
       throw new RuntimeException(ie);
-    }
-    finally {
-      inProgress.set(false);
     }
   }
 
@@ -214,89 +215,60 @@ public class FastPublisher implements ClientListener, Stream
 
   private final Output output = new Output()
   {
-    ByteBuffer bb = buffer[0];
-
-    @SuppressWarnings("SleepWhileInLoop")
-    private void getNextBuffer()
-    {
-      int nextWriter = writer + 1;
-      if (nextWriter == buffer.length) {
-        nextWriter = 0;
-      }
-
-      if (nextWriter == reader) {
-        inProgress.set(false);
-        try {
-          do {
-            sleep(spinMillis);
-          }
-          while (nextWriter == reader);
-        }
-        catch (InterruptedException ie) {
-          throw new RuntimeException(ie);
-        }
-        inProgress.set(true);
-      }
-
-      bb.flip();
-      writer = nextWriter;
-      bb = buffer[writer];
-    }
-
     @Override
     public void write(int value) throws KryoException
     {
-      if (!bb.hasRemaining()) {
-        getNextBuffer();
+      if (!writeBuffer.hasRemaining()) {
+        advanceWriteBuffer();
       }
-      bb.put((byte)value);
+      writeBuffer.put((byte)value);
     }
 
     @Override
     public void write(byte[] bytes) throws KryoException
     {
-      int remaining = bb.remaining();
+      int remaining = writeBuffer.remaining();
       if (bytes.length > remaining) {
-        bb.put(bytes, 0, remaining);
-        getNextBuffer();
+        writeBuffer.put(bytes, 0, remaining);
+        advanceWriteBuffer();
         write(bytes, remaining, bytes.length - remaining);
       }
       else {
-        bb.put(bytes);
+        writeBuffer.put(bytes);
       }
     }
 
     @Override
     public void write(byte[] bytes, int offset, int length) throws KryoException
     {
-      int remaining = bb.remaining();
+      int remaining = writeBuffer.remaining();
       while (length > remaining) {
-        bb.put(bytes, offset, remaining);
+        writeBuffer.put(bytes, offset, remaining);
         offset += remaining;
         length -= remaining;
-        getNextBuffer();
-        remaining = bb.remaining();
+        advanceWriteBuffer();
+        remaining = writeBuffer.remaining();
       }
 
-      bb.put(bytes, offset, length);
+      writeBuffer.put(bytes, offset, length);
     }
 
     @Override
     public void writeByte(byte value) throws KryoException
     {
-      if (!bb.hasRemaining()) {
-        getNextBuffer();
+      if (!writeBuffer.hasRemaining()) {
+        advanceWriteBuffer();
       }
-      bb.put(value);
+      writeBuffer.put(value);
     }
 
     @Override
     public void writeByte(int value) throws KryoException
     {
-      if (!bb.hasRemaining()) {
-        getNextBuffer();
+      if (!writeBuffer.hasRemaining()) {
+        advanceWriteBuffer();
       }
-      bb.put((byte)value);
+      writeBuffer.put((byte)value);
     }
 
     @Override
@@ -315,41 +287,41 @@ public class FastPublisher implements ClientListener, Stream
     public void writeInt(int value) throws KryoException
     {
       int i = 0;
-      switch (bb.remaining()) {
+      switch (writeBuffer.remaining()) {
         case 0:
-          getNextBuffer();
-          bb.putInt(value);
+          advanceWriteBuffer();
+          writeBuffer.putInt(value);
           break;
 
         case 1:
-          bb.put((byte)(value >> 24));
-          getNextBuffer();
-          bb.put((byte)(value >> 16));
-          bb.put((byte)(value >> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >> 24));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >> 16));
+          writeBuffer.put((byte)(value >> 8));
+          writeBuffer.put((byte)value);
           break;
 
         case 2:
-          bb.put((byte)(value >> 24));
-          bb.put((byte)(value >> 16));
-          getNextBuffer();
-          bb.put((byte)(value >> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >> 24));
+          writeBuffer.put((byte)(value >> 16));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >> 8));
+          writeBuffer.put((byte)value);
           break;
 
         case 3:
-          bb.put((byte)(value >> 24));
-          bb.put((byte)(value >> 16));
-          bb.put((byte)(value >> 8));
-          getNextBuffer();
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >> 24));
+          writeBuffer.put((byte)(value >> 16));
+          writeBuffer.put((byte)(value >> 8));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)value);
           break;
 
         default:
-          bb.put((byte)(value >> 24));
-          bb.put((byte)(value >> 16));
-          bb.put((byte)(value >> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >> 24));
+          writeBuffer.put((byte)(value >> 16));
+          writeBuffer.put((byte)(value >> 8));
+          writeBuffer.put((byte)value);
           break;
       }
     }
@@ -361,16 +333,16 @@ public class FastPublisher implements ClientListener, Stream
         value = (value << 1) ^ (value >> 31);
       }
 
-      int remaining = bb.remaining();
+      int remaining = writeBuffer.remaining();
       if (value >>> 7 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)value);
+            advanceWriteBuffer();
+            writeBuffer.put((byte)value);
             break;
 
           default:
-            bb.put((byte)value);
+            writeBuffer.put((byte)value);
             break;
         }
         return 1;
@@ -379,20 +351,20 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 14 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)(value >>> 7));
-            bb.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
             break;
 
           case 1:
-            bb.put((byte)(value >>> 7));
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
             break;
 
           default:
-            bb.put((byte)(value >>> 7));
-            bb.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
             break;
         }
         return 2;
@@ -401,27 +373,27 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 21 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14));
             break;
           case 1:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14));
             break;
           case 2:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 14));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 14));
             break;
           default:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14));
             break;
         }
         return 3;
@@ -430,38 +402,38 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 28 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21));
             break;
           case 1:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21));
             break;
           case 2:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21));
             break;
           case 3:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 21));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 21));
             break;
           default:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21));
             break;
         }
         return 4;
@@ -469,51 +441,51 @@ public class FastPublisher implements ClientListener, Stream
 
       switch (remaining) {
         case 0:
-          getNextBuffer();
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28));
           break;
         case 1:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28));
           break;
         case 2:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28));
           break;
         case 3:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28));
           break;
         case 4:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 28));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 28));
           break;
         default:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28));
           break;
       }
       return 5;
@@ -547,36 +519,36 @@ public class FastPublisher implements ClientListener, Stream
       if (ascii) {
         int charIndex = 0;
         do {
-          for (int i = bb.remaining(); i-- > 0 && charIndex < charCount;) {
-            bb.put((byte)(value.charAt(charIndex++)));
+          for (int i = writeBuffer.remaining(); i-- > 0 && charIndex < charCount;) {
+            writeBuffer.put((byte)(value.charAt(charIndex++)));
           }
           if (charIndex < charCount) {
-            getNextBuffer();
+            advanceWriteBuffer();
             continue;
           }
           break;
         }
         while (true);
 
-        int pos = bb.position() - 1;
-        bb.put(pos, (byte)(bb.get(pos) | 0x80));
+        int pos = writeBuffer.position() - 1;
+        writeBuffer.put(pos, (byte)(writeBuffer.get(pos) | 0x80));
       }
       else {
         writeUtf8Length(charCount + 1);
         int charIndex = 0;
         do {
           int c;
-          for (int i = bb.remaining(); i-- > 0; charIndex++) {
+          for (int i = writeBuffer.remaining(); i-- > 0; charIndex++) {
             c = value.charAt(charIndex);
             if (c > 127) {
               writeString_slow(value, charCount, charIndex);
               return;
             }
-            bb.put((byte)c);
+            writeBuffer.put((byte)c);
           }
 
           if (charIndex < charCount) {
-            getNextBuffer();
+            advanceWriteBuffer();
             continue;
           }
         }
@@ -600,17 +572,17 @@ public class FastPublisher implements ClientListener, Stream
       int charIndex = 0;
       do {
         int c;
-        for (int i = bb.remaining(); i-- > 0; charIndex++) {
+        for (int i = writeBuffer.remaining(); i-- > 0; charIndex++) {
           c = value.charAt(charIndex);
           if (c > 127) {
             writeString_slow(value, charCount, charIndex);
             return;
           }
-          bb.put((byte)c);
+          writeBuffer.put((byte)c);
         }
 
         if (charIndex < charCount) {
-          getNextBuffer();
+          advanceWriteBuffer();
           continue;
         }
       }
@@ -631,142 +603,142 @@ public class FastPublisher implements ClientListener, Stream
       }
       int charIndex = 0;
       do {
-        for (int i = bb.remaining(); i-- > 0 && charIndex < charCount;) {
-          bb.put((byte)(value.charAt(charIndex++)));
+        for (int i = writeBuffer.remaining(); i-- > 0 && charIndex < charCount;) {
+          writeBuffer.put((byte)(value.charAt(charIndex++)));
         }
         if (charIndex < charCount) {
-          getNextBuffer();
+          advanceWriteBuffer();
           continue;
         }
         break;
       }
       while (true);
 
-      int pos = bb.position() - 1;
-      bb.put(pos, (byte)(bb.get(pos) | 0x80));
+      int pos = writeBuffer.position() - 1;
+      writeBuffer.put(pos, (byte)(writeBuffer.get(pos) | 0x80));
     }
 
     @Override
     public void writeShort(int value) throws KryoException
     {
-      if (bb.hasRemaining()) {
-        bb.put((byte)(value >>> 8));
-        if (bb.hasRemaining()) {
-          bb.put((byte)value);
+      if (writeBuffer.hasRemaining()) {
+        writeBuffer.put((byte)(value >>> 8));
+        if (writeBuffer.hasRemaining()) {
+          writeBuffer.put((byte)value);
         }
         else {
-          getNextBuffer();
-          bb.put((byte)value);
+          advanceWriteBuffer();
+          writeBuffer.put((byte)value);
         }
       }
       else {
-        getNextBuffer();
-        bb.put((byte)(value >>> 8));
-        bb.put((byte)value);
+        advanceWriteBuffer();
+        writeBuffer.put((byte)(value >>> 8));
+        writeBuffer.put((byte)value);
       }
     }
 
     @Override
     public void writeLong(long value) throws KryoException
     {
-      switch (bb.remaining()) {
+      switch (writeBuffer.remaining()) {
         case 0:
-          getNextBuffer();
-          bb.put((byte)(value >>> 56));
-          bb.put((byte)(value >>> 48));
-          bb.put((byte)(value >>> 40));
-          bb.put((byte)(value >>> 32));
-          bb.put((byte)(value >>> 24));
-          bb.put((byte)(value >>> 16));
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 56));
+          writeBuffer.put((byte)(value >>> 48));
+          writeBuffer.put((byte)(value >>> 40));
+          writeBuffer.put((byte)(value >>> 32));
+          writeBuffer.put((byte)(value >>> 24));
+          writeBuffer.put((byte)(value >>> 16));
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
         case 1:
-          bb.put((byte)(value >>> 56));
-          getNextBuffer();
-          bb.put((byte)(value >>> 48));
-          bb.put((byte)(value >>> 40));
-          bb.put((byte)(value >>> 32));
-          bb.put((byte)(value >>> 24));
-          bb.put((byte)(value >>> 16));
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 56));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 48));
+          writeBuffer.put((byte)(value >>> 40));
+          writeBuffer.put((byte)(value >>> 32));
+          writeBuffer.put((byte)(value >>> 24));
+          writeBuffer.put((byte)(value >>> 16));
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
         case 2:
-          bb.put((byte)(value >>> 56));
-          bb.put((byte)(value >>> 48));
-          getNextBuffer();
-          bb.put((byte)(value >>> 40));
-          bb.put((byte)(value >>> 32));
-          bb.put((byte)(value >>> 24));
-          bb.put((byte)(value >>> 16));
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 56));
+          writeBuffer.put((byte)(value >>> 48));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 40));
+          writeBuffer.put((byte)(value >>> 32));
+          writeBuffer.put((byte)(value >>> 24));
+          writeBuffer.put((byte)(value >>> 16));
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
         case 3:
-          bb.put((byte)(value >>> 56));
-          bb.put((byte)(value >>> 48));
-          bb.put((byte)(value >>> 40));
-          getNextBuffer();
-          bb.put((byte)(value >>> 32));
-          bb.put((byte)(value >>> 24));
-          bb.put((byte)(value >>> 16));
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 56));
+          writeBuffer.put((byte)(value >>> 48));
+          writeBuffer.put((byte)(value >>> 40));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 32));
+          writeBuffer.put((byte)(value >>> 24));
+          writeBuffer.put((byte)(value >>> 16));
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
         case 4:
-          bb.put((byte)(value >>> 56));
-          bb.put((byte)(value >>> 48));
-          bb.put((byte)(value >>> 40));
-          bb.put((byte)(value >>> 32));
-          getNextBuffer();
-          bb.put((byte)(value >>> 24));
-          bb.put((byte)(value >>> 16));
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 56));
+          writeBuffer.put((byte)(value >>> 48));
+          writeBuffer.put((byte)(value >>> 40));
+          writeBuffer.put((byte)(value >>> 32));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 24));
+          writeBuffer.put((byte)(value >>> 16));
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
         case 5:
-          bb.put((byte)(value >>> 56));
-          bb.put((byte)(value >>> 48));
-          bb.put((byte)(value >>> 40));
-          bb.put((byte)(value >>> 32));
-          bb.put((byte)(value >>> 24));
-          getNextBuffer();
-          bb.put((byte)(value >>> 16));
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 56));
+          writeBuffer.put((byte)(value >>> 48));
+          writeBuffer.put((byte)(value >>> 40));
+          writeBuffer.put((byte)(value >>> 32));
+          writeBuffer.put((byte)(value >>> 24));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 16));
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
         case 6:
-          bb.put((byte)(value >>> 56));
-          bb.put((byte)(value >>> 48));
-          bb.put((byte)(value >>> 40));
-          bb.put((byte)(value >>> 32));
-          bb.put((byte)(value >>> 24));
-          bb.put((byte)(value >>> 16));
-          getNextBuffer();
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 56));
+          writeBuffer.put((byte)(value >>> 48));
+          writeBuffer.put((byte)(value >>> 40));
+          writeBuffer.put((byte)(value >>> 32));
+          writeBuffer.put((byte)(value >>> 24));
+          writeBuffer.put((byte)(value >>> 16));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
         case 7:
-          bb.put((byte)(value >>> 56));
-          bb.put((byte)(value >>> 48));
-          bb.put((byte)(value >>> 40));
-          bb.put((byte)(value >>> 32));
-          bb.put((byte)(value >>> 24));
-          bb.put((byte)(value >>> 16));
-          bb.put((byte)(value >>> 8));
-          getNextBuffer();
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 56));
+          writeBuffer.put((byte)(value >>> 48));
+          writeBuffer.put((byte)(value >>> 40));
+          writeBuffer.put((byte)(value >>> 32));
+          writeBuffer.put((byte)(value >>> 24));
+          writeBuffer.put((byte)(value >>> 16));
+          writeBuffer.put((byte)(value >>> 8));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)value);
           break;
         default:
-          bb.put((byte)(value >>> 56));
-          bb.put((byte)(value >>> 48));
-          bb.put((byte)(value >>> 40));
-          bb.put((byte)(value >>> 32));
-          bb.put((byte)(value >>> 24));
-          bb.put((byte)(value >>> 16));
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 56));
+          writeBuffer.put((byte)(value >>> 48));
+          writeBuffer.put((byte)(value >>> 40));
+          writeBuffer.put((byte)(value >>> 32));
+          writeBuffer.put((byte)(value >>> 24));
+          writeBuffer.put((byte)(value >>> 16));
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
       }
     }
@@ -778,16 +750,16 @@ public class FastPublisher implements ClientListener, Stream
         value = (value << 1) ^ (value >> 63);
       }
 
-      int remaining = bb.remaining();
+      int remaining = writeBuffer.remaining();
       if (value >>> 7 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)value);
+            advanceWriteBuffer();
+            writeBuffer.put((byte)value);
             break;
 
           default:
-            bb.put((byte)value);
+            writeBuffer.put((byte)value);
             break;
         }
         return 1;
@@ -796,20 +768,20 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 14 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)(value >>> 7));
-            bb.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
             break;
 
           case 1:
-            bb.put((byte)(value >>> 7));
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
             break;
 
           default:
-            bb.put((byte)(value >>> 7));
-            bb.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
             break;
         }
         return 2;
@@ -818,27 +790,27 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 21 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14));
             break;
           case 1:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14));
             break;
           case 2:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 14));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 14));
             break;
           default:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14));
             break;
         }
         return 3;
@@ -847,38 +819,38 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 28 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21));
             break;
           case 1:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21));
             break;
           case 2:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21));
             break;
           case 3:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 21));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 21));
             break;
           default:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21));
             break;
         }
         return 4;
@@ -887,51 +859,51 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 35 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28));
             break;
           case 1:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28));
             break;
           case 2:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28));
             break;
           case 3:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28));
             break;
           case 4:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 28));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 28));
             break;
           default:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28));
             break;
         }
         return 5;
@@ -940,66 +912,66 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 42 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35));
             break;
           case 1:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35));
             break;
           case 2:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35));
             break;
           case 3:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35));
             break;
           case 4:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35));
             break;
           case 5:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 35));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 35));
             break;
           default:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35));
             break;
         }
         return 6;
@@ -1008,83 +980,83 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 49 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42));
             break;
           case 1:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42));
             break;
           case 2:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42));
             break;
           case 3:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42));
             break;
           case 4:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42));
             break;
           case 5:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42));
             break;
           case 6:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 42));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 42));
             break;
           default:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42));
             break;
         }
         return 7;
@@ -1093,102 +1065,102 @@ public class FastPublisher implements ClientListener, Stream
       if (value >>> 56 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42 | 0x80));
-            bb.put((byte)(value >>> 49));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            writeBuffer.put((byte)(value >>> 49));
             break;
           case 1:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42 | 0x80));
-            bb.put((byte)(value >>> 49));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            writeBuffer.put((byte)(value >>> 49));
             break;
           case 2:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42 | 0x80));
-            bb.put((byte)(value >>> 49));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            writeBuffer.put((byte)(value >>> 49));
             break;
           case 3:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42 | 0x80));
-            bb.put((byte)(value >>> 49));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            writeBuffer.put((byte)(value >>> 49));
             break;
           case 4:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42 | 0x80));
-            bb.put((byte)(value >>> 49));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            writeBuffer.put((byte)(value >>> 49));
             break;
           case 5:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42 | 0x80));
-            bb.put((byte)(value >>> 49));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            writeBuffer.put((byte)(value >>> 49));
             break;
           case 6:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 42 | 0x80));
-            bb.put((byte)(value >>> 49));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            writeBuffer.put((byte)(value >>> 49));
             break;
           case 7:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42 | 0x80));
-            getNextBuffer();
-            bb.put((byte)(value >>> 49));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 49));
             break;
           default:
-            bb.put((byte)((value & 0x7F) | 0x80));
-            bb.put((byte)(value >>> 7 | 0x80));
-            bb.put((byte)(value >>> 14 | 0x80));
-            bb.put((byte)(value >>> 21 | 0x80));
-            bb.put((byte)(value >>> 28 | 0x80));
-            bb.put((byte)(value >>> 35 | 0x80));
-            bb.put((byte)(value >>> 42 | 0x80));
-            bb.put((byte)(value >>> 49));
+            writeBuffer.put((byte)((value & 0x7F) | 0x80));
+            writeBuffer.put((byte)(value >>> 7 | 0x80));
+            writeBuffer.put((byte)(value >>> 14 | 0x80));
+            writeBuffer.put((byte)(value >>> 21 | 0x80));
+            writeBuffer.put((byte)(value >>> 28 | 0x80));
+            writeBuffer.put((byte)(value >>> 35 | 0x80));
+            writeBuffer.put((byte)(value >>> 42 | 0x80));
+            writeBuffer.put((byte)(value >>> 49));
             break;
         }
         return 8;
@@ -1196,123 +1168,123 @@ public class FastPublisher implements ClientListener, Stream
 
       switch (remaining) {
         case 0:
-          getNextBuffer();
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
         case 1:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
         case 2:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
         case 3:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
         case 4:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
         case 5:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
         case 6:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
         case 7:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
         case 8:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          getNextBuffer();
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 56));
           break;
         default:
-          bb.put((byte)((value & 0x7F) | 0x80));
-          bb.put((byte)(value >>> 7 | 0x80));
-          bb.put((byte)(value >>> 14 | 0x80));
-          bb.put((byte)(value >>> 21 | 0x80));
-          bb.put((byte)(value >>> 28 | 0x80));
-          bb.put((byte)(value >>> 35 | 0x80));
-          bb.put((byte)(value >>> 42 | 0x80));
-          bb.put((byte)(value >>> 49 | 0x80));
-          bb.put((byte)(value >>> 56));
+          writeBuffer.put((byte)((value & 0x7F) | 0x80));
+          writeBuffer.put((byte)(value >>> 7 | 0x80));
+          writeBuffer.put((byte)(value >>> 14 | 0x80));
+          writeBuffer.put((byte)(value >>> 21 | 0x80));
+          writeBuffer.put((byte)(value >>> 28 | 0x80));
+          writeBuffer.put((byte)(value >>> 35 | 0x80));
+          writeBuffer.put((byte)(value >>> 42 | 0x80));
+          writeBuffer.put((byte)(value >>> 49 | 0x80));
+          writeBuffer.put((byte)(value >>> 56));
           break;
       }
       return 9;
@@ -1321,186 +1293,186 @@ public class FastPublisher implements ClientListener, Stream
     @Override
     public void writeBoolean(boolean value) throws KryoException
     {
-      if (bb.hasRemaining()) {
-        bb.put((byte)(value ? 1 : 0));
+      if (writeBuffer.hasRemaining()) {
+        writeBuffer.put((byte)(value ? 1 : 0));
       }
       else {
-        getNextBuffer();
-        bb.put((byte)(value ? 1 : 0));
+        advanceWriteBuffer();
+        writeBuffer.put((byte)(value ? 1 : 0));
       }
     }
 
     @Override
     public void writeChar(char value) throws KryoException
     {
-      switch (bb.remaining()) {
+      switch (writeBuffer.remaining()) {
         case 0:
-          getNextBuffer();
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
 
         case 1:
-          bb.put((byte)(value >>> 8));
-          getNextBuffer();
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 8));
+          advanceWriteBuffer();
+          writeBuffer.put((byte)value);
           break;
 
         default:
-          bb.put((byte)(value >>> 8));
-          bb.put((byte)value);
+          writeBuffer.put((byte)(value >>> 8));
+          writeBuffer.put((byte)value);
           break;
       }
     }
 
     private void writeUtf8Length(int value)
     {
-      int remaining = bb.remaining();
+      int remaining = writeBuffer.remaining();
       if (value >>> 6 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)(value | 0x80));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value | 0x80));
             break;
 
           default:
-            bb.put((byte)(value | 0x80));
+            writeBuffer.put((byte)(value | 0x80));
             break;
         }
       }
       else if (value >>> 13 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)(value >>> 6));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)(value >>> 6));
             break;
 
           case 1:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            getNextBuffer();
-            bb.put((byte)(value >>> 6));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 6));
             break;
 
           default:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)(value >>> 6));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)(value >>> 6));
             break;
         }
       }
       else if (value >>> 20 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 13));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 13));
             break;
           case 1:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            getNextBuffer();
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 13));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 13));
             break;
           case 2:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            getNextBuffer();
-            bb.put((byte)(value >>> 13));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 13));
             break;
           default:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 13));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 13));
             break;
         }
       }
       else if (value >>> 27 == 0) {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 20));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 20));
             break;
           case 1:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            getNextBuffer();
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 20));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 20));
             break;
           case 2:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            getNextBuffer();
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 20));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 20));
             break;
           case 3:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            getNextBuffer();
-            bb.put((byte)(value >>> 20));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 20));
             break;
           default:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 20));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 20));
             break;
         }
       }
       else {
         switch (remaining) {
           case 0:
-            getNextBuffer();
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 27));
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 27));
             break;
           case 1:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            getNextBuffer();
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 27));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 27));
             break;
           case 2:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            getNextBuffer();
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 27));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 27));
             break;
           case 3:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            getNextBuffer();
-            bb.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 27));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 27));
             break;
           case 4:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
-            getNextBuffer();
-            bb.put((byte)(value >>> 27));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
+            advanceWriteBuffer();
+            writeBuffer.put((byte)(value >>> 27));
             break;
           default:
-            bb.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
-            bb.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
-            bb.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
-            bb.put((byte)(value >>> 27));
+            writeBuffer.put((byte)(value | 0x40 | 0x80)); // Set bit 7 and 8.
+            writeBuffer.put((byte)((value >>> 6) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 13) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)((value >>> 20) | 0x80)); // Set bit 8.
+            writeBuffer.put((byte)(value >>> 27));
             break;
         }
       }
@@ -1509,19 +1481,19 @@ public class FastPublisher implements ClientListener, Stream
 
     private void writeString_slow(CharSequence value, int charCount, int charIndex)
     {
-      int remaining = bb.remaining();
+      int remaining = writeBuffer.remaining();
       for (; charIndex < charCount; charIndex++) {
         int c = value.charAt(charIndex);
         if (c <= 0x007F) {
           switch (remaining) {
             case 0:
-              getNextBuffer();
-              bb.put((byte)c);
-              remaining = bb.remaining();
+              advanceWriteBuffer();
+              writeBuffer.put((byte)c);
+              remaining = writeBuffer.remaining();
               break;
 
             default:
-              bb.put((byte)c);
+              writeBuffer.put((byte)c);
               remaining--;
               break;
           }
@@ -1529,33 +1501,33 @@ public class FastPublisher implements ClientListener, Stream
         else if (c > 0x07FF) {
           switch (remaining) {
             case 0:
-              getNextBuffer();
-              bb.put((byte)(0xE0 | c >> 12 & 0x0F));
-              bb.put((byte)(0x80 | c >> 6 & 0x3F));
-              bb.put((byte)(0x80 | c & 0x3F));
-              remaining = bb.remaining();
+              advanceWriteBuffer();
+              writeBuffer.put((byte)(0xE0 | c >> 12 & 0x0F));
+              writeBuffer.put((byte)(0x80 | c >> 6 & 0x3F));
+              writeBuffer.put((byte)(0x80 | c & 0x3F));
+              remaining = writeBuffer.remaining();
               break;
 
             case 1:
-              bb.put((byte)(0xE0 | c >> 12 & 0x0F));
-              getNextBuffer();
-              bb.put((byte)(0x80 | c >> 6 & 0x3F));
-              bb.put((byte)(0x80 | c & 0x3F));
-              remaining = bb.remaining();
+              writeBuffer.put((byte)(0xE0 | c >> 12 & 0x0F));
+              advanceWriteBuffer();
+              writeBuffer.put((byte)(0x80 | c >> 6 & 0x3F));
+              writeBuffer.put((byte)(0x80 | c & 0x3F));
+              remaining = writeBuffer.remaining();
               break;
 
             case 2:
-              bb.put((byte)(0xE0 | c >> 12 & 0x0F));
-              bb.put((byte)(0x80 | c >> 6 & 0x3F));
-              getNextBuffer();
-              bb.put((byte)(0x80 | c & 0x3F));
-              remaining = bb.remaining();
+              writeBuffer.put((byte)(0xE0 | c >> 12 & 0x0F));
+              writeBuffer.put((byte)(0x80 | c >> 6 & 0x3F));
+              advanceWriteBuffer();
+              writeBuffer.put((byte)(0x80 | c & 0x3F));
+              remaining = writeBuffer.remaining();
               break;
 
             default:
-              bb.put((byte)(0xE0 | c >> 12 & 0x0F));
-              bb.put((byte)(0x80 | c >> 6 & 0x3F));
-              bb.put((byte)(0x80 | c & 0x3F));
+              writeBuffer.put((byte)(0xE0 | c >> 12 & 0x0F));
+              writeBuffer.put((byte)(0x80 | c >> 6 & 0x3F));
+              writeBuffer.put((byte)(0x80 | c & 0x3F));
               remaining -= 3;
               break;
           }
@@ -1563,21 +1535,21 @@ public class FastPublisher implements ClientListener, Stream
         else {
           switch (remaining) {
             case 0:
-              getNextBuffer();
-              bb.put((byte)(0xC0 | c >> 6 & 0x1F));
-              bb.put((byte)(0x80 | c & 0x3F));
-              remaining = bb.remaining();
+              advanceWriteBuffer();
+              writeBuffer.put((byte)(0xC0 | c >> 6 & 0x1F));
+              writeBuffer.put((byte)(0x80 | c & 0x3F));
+              remaining = writeBuffer.remaining();
               break;
             case 1:
-              bb.put((byte)(0xC0 | c >> 6 & 0x1F));
-              getNextBuffer();
-              bb.put((byte)(0x80 | c & 0x3F));
-              remaining = bb.remaining();
+              writeBuffer.put((byte)(0xC0 | c >> 6 & 0x1F));
+              advanceWriteBuffer();
+              writeBuffer.put((byte)(0x80 | c & 0x3F));
+              remaining = writeBuffer.remaining();
               break;
 
             default:
-              bb.put((byte)(0xC0 | c >> 6 & 0x1F));
-              bb.put((byte)(0x80 | c & 0x3F));
+              writeBuffer.put((byte)(0xC0 | c >> 6 & 0x1F));
+              writeBuffer.put((byte)(0x80 | c & 0x3F));
               remaining -= 2;
               break;
           }
