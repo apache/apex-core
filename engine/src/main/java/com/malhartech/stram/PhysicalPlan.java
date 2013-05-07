@@ -875,6 +875,7 @@ public class PhysicalPlan {
       Operator partitionedOperator = p.getOperator();
       if (pOperator.recoveryCheckpoint != 0) {
         try {
+          LOG.debug("Loading state for {}", pOperator);
           partitionedOperator = (Operator)ctx.getBackupAgent().restore(pOperator.id, pOperator.recoveryCheckpoint);
         } catch (IOException e) {
           LOG.warn("Failed to read partition state for " + pOperator, e);
