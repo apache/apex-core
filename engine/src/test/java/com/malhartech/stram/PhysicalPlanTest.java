@@ -361,7 +361,7 @@ public class PhysicalPlanTest {
     for (PTOperator oper : ctx.deploy) {
       Assert.assertNotNull("container " + oper , oper.getContainer());
     }
-    Assert.assertEquals("backup for merged operators " + ctx.backupRequests, 4, ctx.backupRequests.size());
+    Assert.assertEquals("backup for merged operators " + ctx.backupRequests, 8, ctx.backupRequests.size());
 
   }
 

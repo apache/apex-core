@@ -980,8 +980,11 @@ public class PhysicalPlan {
           }
         }
         LOG.debug("Adding to parallel partition {}", pp);
-        newOperators.add(addPTOperator(this.logicalToPTOperator.get(pp), null));
-        // TODO: set checkpoint (or start at wherever partition starts to publish)
+        PTOperator ppOper = addPTOperator(this.logicalToPTOperator.get(pp), null);
+        // even though we don't track state for parallel partitions
+        // set recovery windowId to play with upstream checkpoints
+        initCheckpoint(ppOper, pp.getOperator(), minCheckpoint);
+        newOperators.add(ppOper);
       }
     }
 
