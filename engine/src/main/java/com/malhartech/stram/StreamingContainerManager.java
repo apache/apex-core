@@ -483,7 +483,7 @@ public class StreamingContainerManager implements PlanContext
 
     sca.memoryMBFree = heartbeat.memoryMBFree;
 
-    long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;
+    long elapsedMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
     for (StreamingNodeHeartbeat shb: heartbeat.getDnodeEntries()) {
 
@@ -611,30 +611,30 @@ public class StreamingContainerManager implements PlanContext
 
         status.totalTuplesProcessed += tuplesProcessed;
         status.totalTuplesEmitted += tuplesEmitted;
-        if (lastHeartbeatIntervalMillis > 0) {
-          status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / lastHeartbeatIntervalMillis);
-          status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / lastHeartbeatIntervalMillis);
-          status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (lastHeartbeatIntervalMillis * 1000000));
+        if (elapsedMillis > 0) {
+          status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / elapsedMillis);
+          status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / elapsedMillis);
+          status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (elapsedMillis * 1000000));
           for (PortStatus ps: status.inputPortStatusList.values()) {
             if (portToTuples.containsKey(ps.portName)) {
-              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
+              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / elapsedMillis);
             }
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
+              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / elapsedMillis);
             }
           }
           for (PortStatus ps: status.outputPortStatusList.values()) {
             if (portToTuples.containsKey(ps.portName)) {
-              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
+              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / elapsedMillis);
             }
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
+              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / elapsedMillis);
             }
           }
           if (status.operator.statsMonitors != null) {
-            long tps = status.tuplesProcessedPSMA10.getAvg() + status.tuplesEmittedPSMA10.getAvg();
+            long tps = status.operator.inputs.isEmpty() ? status.tuplesEmittedPSMA10.getAvg() : status.tuplesProcessedPSMA10.getAvg();
             for (StatsHandler sm: status.operator.statsMonitors) {
               sm.onThroughputUpdate(status.operator, tps);
               sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA10.getAvg());
@@ -665,21 +665,6 @@ public class StreamingContainerManager implements PlanContext
     }
 
     List<StramToNodeRequest> requests = rsp.nodeRequests != null ? rsp.nodeRequests : new ArrayList<StramToNodeRequest>();
-//    if (checkpointIntervalMillis > 0) {
-//      if (sca.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
-//        //System.out.println("\n\n*** sending checkpoint to " + cs.container.containerId + " at " + currentTimeMillis);
-//        for (OperatorStatus os: sca.operators.values()) {
-//          if (os.lastHeartbeat != null && os.lastHeartbeat.getState().compareTo(DNodeState.ACTIVE.name()) == 0) {
-//            StramToNodeRequest backupRequest = new StramToNodeRequest();
-//            backupRequest.setOperatorId(os.operator.getId());
-//            backupRequest.setRequestType(RequestType.CHECKPOINT);
-//            backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
-//            requests.add(backupRequest);
-//          }
-//        }
-//        sca.lastCheckpointRequestMillis = currentTimeMillis;
-//      }
-//    }
     ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = sca.getOperatorRequests();
     while (true) {
       StramToNodeRequest r = operatorRequests.poll();

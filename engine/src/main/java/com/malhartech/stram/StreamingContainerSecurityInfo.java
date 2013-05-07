@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.security.StramDelegationTokenSelector;
 import java.lang.annotation.Annotation;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.KerberosInfo;

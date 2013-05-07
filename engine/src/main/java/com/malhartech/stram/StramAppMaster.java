@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.security.StramDelegationTokenManager;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -99,6 +100,12 @@ public class StramAppMaster
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
+
+  private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24*60*60*1000;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7*24*60*60*1000;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 24*60*60*1000;
+  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
+
   // Configuration
   private final Configuration conf;
   private final YarnClientHelper yarnClient;
@@ -345,8 +352,11 @@ public class StramAppMaster
     // Set up the configuration and RPC
     this.conf = new YarnConfiguration();
     this.yarnClient = new YarnClientHelper(this.conf);
-    delegationTokenManager = new StramDelegationTokenManager(24*60*60*1000,
-            7*24*60*60*1000,24*60*60*1000,3600000);
+    //TODO :- Need to perform token renewal
+    delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
+                                                                                                      DELEGATION_TOKEN_MAX_LIFETIME,
+                                                                                                      DELEGATION_TOKEN_RENEW_INTERVAL,
+                                                                                                      DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
   }
 
   /**
