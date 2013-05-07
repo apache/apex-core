@@ -1340,9 +1340,9 @@ public class StramChild
       String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
       String defaultName = StramChild.this.containerId + "_" + operatorPortName + "_" + tupleRecorder.getStartTime();
       tupleRecorder.setRecordingName(defaultName);
-      tupleRecorder.setBasePath(basePath);
-      tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
-      tupleRecorder.setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);
+      tupleRecorder.getStorage().setBasePath(basePath);
+      tupleRecorder.getStorage().setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
+      tupleRecorder.getStorage().setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);
       if (StramChild.this.daemonAddress != null) {
         String url = "ws://" + StramChild.this.daemonAddress + "/pubsub";
         try {
@@ -1417,7 +1417,7 @@ public class StramChild
 
       TupleRecorder tupleRecorder = tupleRecorders.get(operatorPortName);
       if (tupleRecorder != null) {
-        tupleRecorder.requestSync();
+        tupleRecorder.getStorage().requestSync();
         logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
       }
     }

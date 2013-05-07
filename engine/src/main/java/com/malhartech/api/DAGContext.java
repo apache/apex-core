@@ -100,6 +100,8 @@ public interface DAGContext {
 
   public static final AttributeKey<Integer> STRAM_MAX_WINDOWS_BEHIND_FOR_STATS = new AttributeKey<Integer>("stram.maxWindowsBehindForStats", Integer.class);
 
+  public static final AttributeKey<Integer> STRAM_RECORD_STATS_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.recordStartsIntervalMillis", Integer.class);
+
   public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
 
   public class AttributeKey<T> extends AttributeMap.AttributeKey<DAGContext, T> {
