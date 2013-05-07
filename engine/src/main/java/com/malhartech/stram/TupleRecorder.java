@@ -378,9 +378,14 @@ public class TupleRecorder implements Operator
   public void writeControlTuple(Tuple tuple, String port)
   {
     try {
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
       PortInfo pi = portMap.get(port);
-      String str = "C:" + pi.id + ":" + tuple.getType().toString() + ":" + tuple.getWindowId() + "\n";
-      storage.writeDataItem(str.getBytes(), false);
+      Fragment f = streamCodec.toByteArray(tuple).data;
+      String str = "C:" + pi.id + ":" + f.length + ":";
+      bos.write(str.getBytes());
+      bos.write(f.buffer, f.offset, f.length);
+      bos.write("\n".getBytes());
+      storage.writeDataItem(bos.toByteArray(), false);
     }
     catch (IOException ex) {
       logger.error(ex.toString());

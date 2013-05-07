@@ -109,12 +109,12 @@ public class StreamingContainerManager implements PlanContext
 
     appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
     this.maxWindowsBehindForStats = appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
-/*
+
+    appAttributes.attr(DAG.STRAM_RECORD_STATS_INTERVAL_MILLIS).setIfAbsent(0);
     this.recordStatsInterval = appAttributes.attr(DAG.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
     if (this.recordStatsInterval > 0) {
       statsRecorder = new HdfsStatsRecorder();
     }
-*/
   }
 
   protected PhysicalPlan getPhysicalPlan()
