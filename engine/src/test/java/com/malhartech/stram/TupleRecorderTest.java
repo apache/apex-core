@@ -120,7 +120,7 @@ public class TupleRecorderTest
 
       ObjectMapper mapper = new ObjectMapper();
       line = br.readLine();
-      Assert.assertEquals("check version", "1.0", line);
+      Assert.assertEquals("check version", "1.1", line);
       line = br.readLine(); // RecordInfo
       RecordInfo ri = mapper.readValue(line, RecordInfo.class);
       line = br.readLine();
@@ -216,7 +216,7 @@ public class TupleRecorderTest
     Assert.assertTrue("meta file should exist", file.exists());
     br = new BufferedReader(new FileReader(file));
     line = br.readLine();
-    Assert.assertEquals("version should be 1.0", line, "1.0");
+    Assert.assertEquals("version should be 1.1", line, "1.1");
     line = br.readLine();
     Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
     line = br.readLine();
