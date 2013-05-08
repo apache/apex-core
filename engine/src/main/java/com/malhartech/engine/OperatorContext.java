@@ -120,8 +120,12 @@ public class OperatorContext implements Context.OperatorContext
    */
   public final synchronized int drainHeartbeatCounters(Collection<? super OperatorStats> counters)
   {
-    logger.debug("{} draining {}", id, statsBuffer);
-    return statsBuffer.drainTo(counters);
+    try {
+      return statsBuffer.drainTo(counters);
+    }
+    finally {
+      logger.debug("{} draining {}", id, counters);
+    }
   }
 
   public final synchronized long getLastProcessedWindowId()
