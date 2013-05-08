@@ -72,7 +72,9 @@ public class StreamingContainerManager implements PlanContext
   private final int operatorMaxAttemptCount = 5;
   private final AttributeMap<DAGContext> appAttributes;
   //private final int checkpointIntervalMillis;
+  private final String appPath;
   private final String checkpointFsPath;
+  private final String statsFsPath;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
@@ -101,7 +103,9 @@ public class StreamingContainerManager implements PlanContext
     windowStartMillis -= (windowStartMillis % 1000);
 
     appAttributes.attr(DAG.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
-    this.checkpointFsPath = appAttributes.attr(DAG.STRAM_APP_PATH).get() + "/" + DAG.SUBDIR_CHECKPOINTS;
+    this.appPath = appAttributes.attr(DAG.STRAM_APP_PATH).get();
+    this.checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
+    this.statsFsPath = this.appPath + "/" + DAG.SUBDIR_STATS;
 
     appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get());
     //this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).get() * appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get();
@@ -114,6 +118,8 @@ public class StreamingContainerManager implements PlanContext
     this.recordStatsInterval = appAttributes.attr(DAG.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
     if (this.recordStatsInterval > 0) {
       statsRecorder = new HdfsStatsRecorder();
+      statsRecorder.setBasePath(this.statsFsPath);
+      statsRecorder.setup();
     }
   }
 
@@ -168,7 +174,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void recordStats()
   {
-    statsRecorder.record(containers);
+    statsRecorder.recordContainers(containers);
     lastRecordStatsTime = System.currentTimeMillis();
   }
 

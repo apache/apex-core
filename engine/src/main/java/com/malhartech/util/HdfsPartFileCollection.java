@@ -25,8 +25,7 @@ public class HdfsPartFileCollection
   private transient FileSystem fs;
   private transient FSDataOutputStream partOutStr;
   private transient FSDataOutputStream indexOutStr;
-  private transient OutputStream localDataOutput;
-  private transient OutputStream localIndexOutput;
+  private transient FSDataOutputStream metaOs;
   private transient String localBasePath;
   public static final String INDEX_FILE = "index.txt";
   public static final String META_FILE = "meta.txt";
@@ -76,10 +75,17 @@ public class HdfsPartFileCollection
     }
     fs = FileSystem.get(new Path(basePath).toUri(), new Configuration());
 
-    Path pa = new Path(basePath, INDEX_FILE);
+    Path pa = new Path(basePath, META_FILE);
     if (isLocalMode) {
-      localIndexOutput = new FileOutputStream(localBasePath + "/" + INDEX_FILE);
-      indexOutStr = new FSDataOutputStream(localIndexOutput, null);
+      metaOs = new FSDataOutputStream(new FileOutputStream(localBasePath + "/" + META_FILE), null);
+    }
+    else {
+      metaOs = fs.create(pa);
+    }
+
+    pa = new Path(basePath, INDEX_FILE);
+    if (isLocalMode) {
+      indexOutStr = new FSDataOutputStream(new FileOutputStream(localBasePath + "/" + INDEX_FILE), null);
     }
     else {
       indexOutStr = fs.create(pa);
@@ -90,6 +96,9 @@ public class HdfsPartFileCollection
   {
     logger.info("Closing down tuple recorder.");
     try {
+      if (metaOs != null) {
+        metaOs.close();
+      }
       if (partOutStr != null) {
         logger.debug("Closing part file");
         partOutStr.close();
@@ -113,8 +122,7 @@ public class HdfsPartFileCollection
     Path path = new Path(basePath, hdfsFile);
     logger.debug("Opening new part file: {}", hdfsFile);
     if (isLocalMode) {
-      localDataOutput = new FileOutputStream(localBasePath + "/" + hdfsFile);
-      partOutStr = new FSDataOutputStream(localDataOutput, null);
+      partOutStr = new FSDataOutputStream(new FileOutputStream(localBasePath + "/" + hdfsFile), null);
     }
     else {
       partOutStr = fs.create(path);
@@ -125,13 +133,10 @@ public class HdfsPartFileCollection
     partFileBytes = 0;
   }
 
-  public void writeMetaFile(byte[] bytes) throws IOException
+  public void writeMetaData(byte[] bytes) throws IOException
   {
-    Path pa = new Path(basePath, META_FILE);
-    FSDataOutputStream metaOs = fs.create(pa);
     metaOs.write(bytes);
     metaOs.hflush();
-    metaOs.close();
   }
 
   public void writeDataItem(byte[] bytes, boolean incrementItemCount) throws IOException

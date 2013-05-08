@@ -247,7 +247,7 @@ public class TupleRecorder implements Operator
         bos.write("\n".getBytes());
       }
 
-      storage.writeMetaFile(bos.toByteArray());
+      storage.writeMetaData(bos.toByteArray());
 
       if (pubSubUrl != null) {
         recordingNameTopic = "tupleRecorder." + recordingName;
