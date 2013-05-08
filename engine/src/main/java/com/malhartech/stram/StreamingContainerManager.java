@@ -175,6 +175,7 @@ public class StreamingContainerManager implements PlanContext
   private void recordStats()
   {
     statsRecorder.recordContainers(containers);
+    statsRecorder.recordOperators(getOperatorInfoList());
     lastRecordStatsTime = System.currentTimeMillis();
   }
 

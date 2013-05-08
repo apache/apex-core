@@ -7,13 +7,13 @@ package com.malhartech.stram;
 import com.malhartech.annotation.RecordField;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.stram.webapp.ContainerInfo;
+import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.util.Fragment;
 import com.malhartech.util.HdfsPartFileCollection;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  *
@@ -24,8 +24,9 @@ public class HdfsStatsRecorder
   public static final String VERSION = "1.0";
   private String basePath = ".";
   private HdfsPartFileCollection containersStorage;
-  private Map<String, HdfsPartFileCollection> logicalOperatorStorage = new HashMap<String, HdfsPartFileCollection>();
+  private Map<String, HdfsPartFileCollection> logicalOperatorStorageMap = new HashMap<String, HdfsPartFileCollection>();
   private Map<String, Integer> knownContainers = new HashMap<String, Integer>();
+  private Set<String> knownOperators = new HashSet<String>();
   @SuppressWarnings("rawtypes")
   private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
   private transient StreamCodec<Object> streamCodec;
@@ -88,10 +89,47 @@ public class HdfsStatsRecorder
     }
   }
 
-  public void recordOperators()
+  public void recordOperators(List<OperatorInfo> operatorList)
   {
+    try {
+      for (OperatorInfo operatorInfo: operatorList) {
+        HdfsPartFileCollection operatorStorage;
+        if (!logicalOperatorStorageMap.containsKey(operatorInfo.name)) {
+          operatorStorage = new HdfsPartFileCollection();
+          operatorStorage.setBasePath(basePath + "/operators/" + operatorInfo.name);
+          operatorStorage.setup();
+          logicalOperatorStorageMap.put(operatorInfo.name, operatorStorage);
+        }
+        else {
+          operatorStorage = logicalOperatorStorageMap.get(operatorInfo.name);
+        }
+        if (!knownOperators.contains(operatorInfo.id)) {
+          knownOperators.add(operatorInfo.id);
+          Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "meta");
+          ByteArrayOutputStream bos = new ByteArrayOutputStream();
+          Fragment f = streamCodec.toByteArray(fieldMap).data;
+          bos.write((operatorInfo.id + ":").getBytes());
+          bos.write(f.buffer, f.offset, f.length);
+          bos.write("\n".getBytes());
+          operatorStorage.writeMetaData(bos.toByteArray());
+        }
+        Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "stats");
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        Fragment f = streamCodec.toByteArray(fieldMap).data;
+        bos.write((operatorInfo.id + ":").getBytes());
+        bos.write(f.buffer, f.offset, f.length);
+        bos.write("\n".getBytes());
+        operatorStorage.writeDataItem(bos.toByteArray(), true);
+      }
+      for (HdfsPartFileCollection operatorStorage: logicalOperatorStorageMap.values()) {
+        operatorStorage.checkTurnover();
+      }
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
   }
-  
+
   public static Map<String, Object> extractRecordFields(Object o, String type)
   {
     Map<String, Object> fieldMap = new HashMap<String, Object>();
