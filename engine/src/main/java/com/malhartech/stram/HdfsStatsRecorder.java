@@ -30,6 +30,8 @@ public class HdfsStatsRecorder
   @SuppressWarnings("rawtypes")
   private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
   private transient StreamCodec<Object> streamCodec;
+  private Map<Class<?>, List<Field>> metaFields = new HashMap<Class<?>, List<Field>>();
+  private Map<Class<?>, List<Field>> statsFields = new HashMap<Class<?>, List<Field>>();
 
   public void setBasePath(String basePath)
   {
@@ -130,20 +132,41 @@ public class HdfsStatsRecorder
     }
   }
 
-  public static Map<String, Object> extractRecordFields(Object o, String type)
+  public Map<String, Object> extractRecordFields(Object o, String type)
   {
     Map<String, Object> fieldMap = new HashMap<String, Object>();
     try {
-      for (Class<?> c = o.getClass(); c != Object.class; c = c.getSuperclass()) {
-        Field[] fields = c.getDeclaredFields();
-        for (int i = 0; i < fields.length; i++) {
-          Field field = fields[i];
-          field.setAccessible(true);
-          RecordField rfa = field.getAnnotation(RecordField.class);
-          if (rfa != null && rfa.type().equals(type)) {
-            fieldMap.put(field.getName(), field.get(o));
+      Map<Class<?>, List<Field>> cacheFields = null;
+      if (type.equals("meta")) {
+        cacheFields = metaFields;
+      }
+      else if (type.equals("stats")) {
+        cacheFields = statsFields;
+      }
+      List<Field> fieldList;
+      if (cacheFields == null || !cacheFields.containsKey(o.getClass())) {
+        fieldList = new ArrayList<Field>();
+        for (Class<?> c = o.getClass(); c != Object.class; c = c.getSuperclass()) {
+          Field[] fields = c.getDeclaredFields();
+          for (int i = 0; i < fields.length; i++) {
+            Field field = fields[i];
+            field.setAccessible(true);
+            RecordField rfa = field.getAnnotation(RecordField.class);
+            if (rfa != null && rfa.type().equals(type)) {
+              fieldList.add(field);
+            }
           }
         }
+        if (cacheFields != null) {
+          cacheFields.put(o.getClass(), fieldList);
+        }
+      }
+      else {
+        fieldList = cacheFields.get(o.getClass());
+      }
+
+      for (Field field: fieldList) {
+        fieldMap.put(field.getName(), field.get(o));
       }
     }
     catch (IllegalAccessException ex) {
