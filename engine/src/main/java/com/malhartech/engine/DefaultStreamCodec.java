@@ -52,7 +52,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
     this.pairs = classResolver.pairs;
     classResolver.init();
   }
-C
+
   @Override
   public Object fromByteArray(DataStatePair dspair)
   {
