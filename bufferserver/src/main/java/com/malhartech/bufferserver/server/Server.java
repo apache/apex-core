@@ -527,7 +527,7 @@ public class Server implements ServerListener
       writeOffset += len;
       do {
         if (size <= 0) {
-          switch (size = readVarInt()) {
+          switch (size = readSize()) {
             case -1:
               if (writeOffset == buffer.length) {
                 if (readOffset > writeOffset - 5) {

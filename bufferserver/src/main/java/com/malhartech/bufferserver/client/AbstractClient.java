@@ -48,7 +48,7 @@ public abstract class AbstractClient extends com.malhartech.netlet.AbstractClien
     return byteBuffer;
   }
 
-  public int readVarInt()
+  public int readSize()
   {
     if (readOffset < writeOffset) {
       int offset = readOffset;
@@ -109,7 +109,7 @@ public abstract class AbstractClient extends com.malhartech.netlet.AbstractClien
     writeOffset += len;
     do {
       while (size == 0) {
-        size = readVarInt();
+        size = readSize();
         if (size == -1) {
           if (writeOffset == buffer.length) {
             if (readOffset > writeOffset - 5) {
