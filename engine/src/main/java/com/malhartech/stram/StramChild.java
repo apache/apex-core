@@ -43,7 +43,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.SaslRpcServer.AuthMethod;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -180,9 +182,16 @@ public class StramChild
 
     //Token<JobTokenIdentifier> jt = loadCredentials(defaultConf, address);
 
+    UserGroupInformation taskOwner = null;
+    if (!UserGroupInformation.isSecurityEnabled()) {
     // Communicate with parent as actual task owner.
-    UserGroupInformation taskOwner =
+      taskOwner =
             UserGroupInformation.createRemoteUser(StramChild.class.getName());
+    } else {
+      taskOwner = UserGroupInformation.getCurrentUser();
+    }
+    logger.info("Task owner is " + taskOwner.getUserName() );
+
     //taskOwner.addToken(jt);
     final StreamingContainerUmbilicalProtocol umbilical =
             taskOwner.doAs(new PrivilegedExceptionAction<StreamingContainerUmbilicalProtocol>()
@@ -201,10 +210,14 @@ public class StramChild
     int exitStatus = 1;
 
     try {
-      childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
-      // Add tokens to new user so that it may execute its task correctly.
-      for (Token<?> token: UserGroupInformation.getCurrentUser().getTokens()) {
-        childUGI.addToken(token);
+      if (!UserGroupInformation.isSecurityEnabled()) {
+        childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
+        // Add tokens to new user so that it may execute its task correctly.
+        for (Token<?> token: UserGroupInformation.getCurrentUser().getTokens()) {
+          childUGI.addToken(token);
+        }
+      } else {
+        childUGI = taskOwner;
       }
 
       childUGI.doAs(new PrivilegedExceptionAction<Object>()
@@ -218,7 +231,7 @@ public class StramChild
           stramChild.setup(ctx);
           try {
             // main thread enters heartbeat loop
-            stramChild.monitorHeartbeat();
+            stramChild.heartbeatLoop();
           }
           finally {
             // teardown
@@ -472,7 +485,7 @@ public class StramChild
     }
   }
 
-  protected void monitorHeartbeat() throws IOException
+  protected void heartbeatLoop() throws IOException
   {
     umbilical.log(containerId, "[" + containerId + "] Entering heartbeat loop..");
     logger.debug("Entering heartbeat loop (interval is {} ms)", this.heartbeatIntervalMillis);
@@ -495,8 +508,12 @@ public class StramChild
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
         msg.bufferServerPort = this.bufferServerAddress.getPort();
+        if (bufferServer != null && !eventloop.isActive()) {
+          logger.warn("Requesting restart due to terminated event loop");
+          msg.restartRequested = true;
+        }
       }
-      msg.setMemoryMBFree((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
+      msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
 
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
@@ -1323,9 +1340,9 @@ public class StramChild
       String basePath = StramChild.this.appPath + "/recordings/" + operatorId + "/" + tupleRecorder.getStartTime();
       String defaultName = StramChild.this.containerId + "_" + operatorPortName + "_" + tupleRecorder.getStartTime();
       tupleRecorder.setRecordingName(defaultName);
-      tupleRecorder.setBasePath(basePath);
-      tupleRecorder.setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
-      tupleRecorder.setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);
+      tupleRecorder.getStorage().setBasePath(basePath);
+      tupleRecorder.getStorage().setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
+      tupleRecorder.getStorage().setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);
       if (StramChild.this.daemonAddress != null) {
         String url = "ws://" + StramChild.this.daemonAddress + "/pubsub";
         try {
@@ -1400,7 +1417,7 @@ public class StramChild
 
       TupleRecorder tupleRecorder = tupleRecorders.get(operatorPortName);
       if (tupleRecorder != null) {
-        tupleRecorder.requestSync();
+        tupleRecorder.getStorage().requestSync();
         logger.debug("Requested sync recording for operator/port {}" + operatorPortName);
       }
     }

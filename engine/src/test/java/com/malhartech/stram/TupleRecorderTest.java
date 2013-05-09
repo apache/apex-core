@@ -12,6 +12,7 @@ import com.malhartech.stram.TupleRecorder.PortInfo;
 import com.malhartech.stram.TupleRecorder.RecordInfo;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stram.support.StramTestSupport.WaitCondition;
+import com.malhartech.util.HdfsPartFileCollection;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;
@@ -59,9 +60,9 @@ public class TupleRecorderTest
   {
     try {
       TupleRecorder recorder = new TupleRecorder();
-      recorder.setBytesPerPartFile(4096);
-      recorder.setLocalMode(true);
-      recorder.setBasePath("file://" + testWorkDir.getAbsolutePath() + "/recordings");
+      recorder.getStorage().setBytesPerPartFile(4096);
+      recorder.getStorage().setLocalMode(true);
+      recorder.getStorage().setBasePath("file://" + testWorkDir.getAbsolutePath() + "/recordings");
 
       recorder.addInputPortInfo("ip1", "str1");
       recorder.addInputPortInfo("ip2", "str2");
@@ -98,28 +99,28 @@ public class TupleRecorderTest
       recorder.teardown();
 
       FileSystem fs = new LocalFileSystem();
-      fs.initialize((new Path(recorder.getBasePath()).toUri()), new Configuration());
+      fs.initialize((new Path(recorder.getStorage().getBasePath()).toUri()), new Configuration());
       Path path;
       FSDataInputStream is;
       String line;
       BufferedReader br;
 
-      path = new Path(recorder.getBasePath(), TupleRecorder.INDEX_FILE);
+      path = new Path(recorder.getStorage().getBasePath(), HdfsPartFileCollection.INDEX_FILE);
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));
 
       line = br.readLine();
       //    Assert.assertEquals("check index", "B:1000:T:0:part0.txt", line);
-      Assert.assertEquals("check index", "F:1000-1000:T:4:33:{\"3\":\"1\",\"1\":\"1\",\"0\":\"1\",\"2\":\"1\"}:part0.txt", line);
+      Assert.assertTrue("check index", line.matches("F:part0.txt:\\d+-\\d+:4:T:1000-1000:33:\\{\"3\":\"1\",\"1\":\"1\",\"0\":\"1\",\"2\":\"1\"\\}"));
 
-      path = new Path(recorder.getBasePath(), TupleRecorder.META_FILE);
+      path = new Path(recorder.getStorage().getBasePath(), HdfsPartFileCollection.META_FILE);
       //fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));
 
       ObjectMapper mapper = new ObjectMapper();
       line = br.readLine();
-      Assert.assertEquals("check version", "1.0", line);
+      Assert.assertEquals("check version", "1.1", line);
       line = br.readLine(); // RecordInfo
       RecordInfo ri = mapper.readValue(line, RecordInfo.class);
       line = br.readLine();
@@ -141,7 +142,7 @@ public class TupleRecorderTest
       Assert.assertEquals("port size", recorder.getPortInfoMap().size(), 4);
       //line = br.readLine();
 
-      path = new Path(recorder.getBasePath(), "part0.txt");
+      path = new Path(recorder.getStorage().getBasePath(), "part0.txt");
       //fs = FileSystem.get(path.toUri(), new Configuration());
       is = fs.open(path);
       br = new BufferedReader(new InputStreamReader(is));
@@ -149,13 +150,13 @@ public class TupleRecorderTest
       line = br.readLine();
       Assert.assertEquals("check part0", "B:1000", line);
       line = br.readLine();
-      Assert.assertEquals("check part0 1", "T:0:31:{\"key\":\"speed\",\"value\":\"5m/h\"}", line);
+      Assert.assertEquals("check part0 1", "T:0:30:{\"key\":\"speed\",\"value\":\"5m/h\"}", line);
       line = br.readLine();
-      Assert.assertEquals("check part0 2", "T:2:31:{\"key\":\"speed\",\"value\":\"4m/h\"}", line);
+      Assert.assertEquals("check part0 2", "T:2:30:{\"key\":\"speed\",\"value\":\"4m/h\"}", line);
       line = br.readLine();
-      Assert.assertEquals("check part0 3", "T:1:31:{\"key\":\"speed\",\"value\":\"6m/h\"}", line);
+      Assert.assertEquals("check part0 3", "T:1:30:{\"key\":\"speed\",\"value\":\"6m/h\"}", line);
       line = br.readLine();
-      Assert.assertEquals("check part0 4", "T:3:31:{\"key\":\"speed\",\"value\":\"2m/h\"}", line);
+      Assert.assertEquals("check part0 4", "T:3:30:{\"key\":\"speed\",\"value\":\"2m/h\"}", line);
       line = br.readLine();
       Assert.assertEquals("check part0 5", "E:1000", line);
     }
@@ -215,7 +216,7 @@ public class TupleRecorderTest
     Assert.assertTrue("meta file should exist", file.exists());
     br = new BufferedReader(new FileReader(file));
     line = br.readLine();
-    Assert.assertEquals("version should be 1.0", line, "1.0");
+    Assert.assertEquals("version should be 1.1", line, "1.1");
     line = br.readLine();
     Assert.assertTrue("should contain start time", line != null && line.contains("\"startTime\""));
     line = br.readLine();
@@ -257,8 +258,7 @@ public class TupleRecorderTest
     int indexCount = 0;
     while ((line = br.readLine()) != null) {
       String partFile = "part" + indexCount + ".txt";
-      if (line.startsWith("F:")) {
-        Assert.assertTrue("index file line should end with :part" + indexCount + ".txt", line.endsWith(":" + partFile));
+      if (line.startsWith("F:" + partFile + ":")) {
         partFiles.add(partFile);
         indexCount++;
       }

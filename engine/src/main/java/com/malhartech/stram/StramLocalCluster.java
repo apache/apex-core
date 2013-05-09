@@ -150,7 +150,7 @@ public class StramLocalCluster implements Runnable
       boolean hasError = true;
       try {
         // main thread enters heartbeat loop
-        stramChild.monitorHeartbeat();
+        stramChild.heartbeatLoop();
         hasError = false;
       }
       finally {

@@ -4,6 +4,8 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.security.StramDelegationTokenManager;
+import com.malhartech.stram.security.StramDelegationTokenIdentifier;
 import com.malhartech.api.DAG;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
@@ -16,10 +18,12 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataOutputBuffer;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.TokenIdentifier;
+import org.apache.hadoop.security.token.delegation.DelegationKey;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.ContainerManager;
@@ -44,17 +48,19 @@ public class LaunchContainerRunnable implements Runnable
   private final Map<String, String> containerEnv = new HashMap<String, String>();
   private final InetSocketAddress heartbeatAddress;
   private final DAG dag;
+  private final StramDelegationTokenManager delegationTokenManager;
   private final Container container;
 
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, DAG topology, InetSocketAddress heartbeatAddress)
+  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, DAG topology, StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
   {
     this.container = lcontainer;
     this.yarnClient = yarnClient;
     this.heartbeatAddress = heartbeatAddress;
     this.dag = topology;
+    this.delegationTokenManager = delegationTokenManager;
   }
 
   private void setClasspath(Map<String, String> env)
@@ -128,6 +134,19 @@ public class LaunchContainerRunnable implements Runnable
     ctx.setEnvironment(containerEnv);
 
     if (UserGroupInformation.isSecurityEnabled()) {
+      Token<StramDelegationTokenIdentifier> stramToken = null;
+      try {
+        UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+        StramDelegationTokenIdentifier identifier = new StramDelegationTokenIdentifier(new Text(ugi.getUserName()), new Text(""), new Text(""));
+        delegationTokenManager.addIdentifier(identifier);
+        byte[] password = delegationTokenManager.retrievePassword(identifier);
+        String service = heartbeatAddress.getAddress().getHostAddress() + ":" + heartbeatAddress.getPort();
+        stramToken = new Token<StramDelegationTokenIdentifier>(identifier.getBytes(), password, identifier.getKind(), new Text(service));
+      }
+      catch (IOException e) {
+        LOG.error("Error generating delegation token", e);
+      }
+
       try {
         UserGroupInformation ugi = UserGroupInformation.getLoginUser();
         Collection<Token<? extends TokenIdentifier>> tokens = ugi.getTokens();
@@ -136,6 +155,9 @@ public class LaunchContainerRunnable implements Runnable
           //if (!token.getKind().toString().equals("YARN_APPLICATION_TOKEN")) {
             credentials.addToken(token.getService(), token);
           //}
+        }
+        if (stramToken != null) {
+          credentials.addToken(stramToken.getService(), stramToken);
         }
         DataOutputBuffer dataOutput = new DataOutputBuffer();
         credentials.writeTokenStorageToStream(dataOutput);

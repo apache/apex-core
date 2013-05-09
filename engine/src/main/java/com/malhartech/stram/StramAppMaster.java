@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.security.StramDelegationTokenManager;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -99,6 +100,12 @@ public class StramAppMaster
   }
 
   private static final Logger LOG = LoggerFactory.getLogger(StramAppMaster.class);
+
+  private static final long DELEGATION_KEY_UPDATE_INTERVAL = 24*60*60*1000;
+  private static final long DELEGATION_TOKEN_MAX_LIFETIME = 7*24*60*60*1000;
+  private static final long DELEGATION_TOKEN_RENEW_INTERVAL = 24*60*60*1000;
+  private static final long DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL = 3600000;
+
   // Configuration
   private final Configuration conf;
   private final YarnClientHelper yarnClient;
@@ -132,6 +139,9 @@ public class StramAppMaster
   private final Clock clock = new SystemClock();
   private final long startTime = clock.getTime();
   private final ClusterAppStats stats = new ClusterAppStats();
+
+  //private AbstractDelegationTokenSecretManager<? extends TokenIdentifier> delegationTokenManager;
+  private StramDelegationTokenManager delegationTokenManager;
 
   /**
    * Overrides getters to pull live info.
@@ -271,7 +281,7 @@ public class StramAppMaster
       System.exit(1);
     }
     if (result) {
-      LOG.info("Application Master completed successfully. exiting");
+      LOG.info("Application Master completed. exiting");
       System.exit(0);
     }
     else {
@@ -342,6 +352,11 @@ public class StramAppMaster
     // Set up the configuration and RPC
     this.conf = new YarnConfiguration();
     this.yarnClient = new YarnClientHelper(this.conf);
+    //TODO :- Need to perform token renewal
+    delegationTokenManager = new StramDelegationTokenManager(DELEGATION_KEY_UPDATE_INTERVAL,
+                                                                                                      DELEGATION_TOKEN_MAX_LIFETIME,
+                                                                                                      DELEGATION_TOKEN_RENEW_INTERVAL,
+                                                                                                      DELEGATION_TOKEN_REMOVER_SCAN_INTERVAL);
   }
 
   /**
@@ -399,8 +414,11 @@ public class StramAppMaster
 
     this.dnmgr = new StreamingContainerManager(dag);
 
+    // start the secret manager
+    delegationTokenManager.startThreads();
+
     // start RPC server
-    rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr);
+    rpcImpl = new StreamingContainerParent(this.getClass().getName(), dnmgr, delegationTokenManager);
     rpcImpl.init(conf);
     rpcImpl.start();
     LOG.info("Container callback server listening at " + rpcImpl.getAddress());
@@ -440,6 +458,7 @@ public class StramAppMaster
       return runStram();
     }
     finally {
+      delegationTokenManager.stopThreads();
       StramChild.eventloop.stop();
     }
   }
@@ -567,7 +586,7 @@ public class StramAppMaster
         else {
           this.allAllocatedContainers.put(allocatedContainer.getId().toString(), allocatedContainer);
           // launch and start the container on a separate thread to keep the main thread unblocked
-          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, dag, rpcImpl.getAddress());
+          LaunchContainerRunnable runnableLaunchContainer = new LaunchContainerRunnable(allocatedContainer, yarnClient, dag, delegationTokenManager, rpcImpl.getAddress());
           Thread launchThread = new Thread(runnableLaunchContainer);
           launchThreads.add(launchThread);
           launchThread.start();
@@ -611,7 +630,8 @@ public class StramAppMaster
           if (exitStatus == 1) {
             // StramChild failure
             appDone = true;
-            LOG.info("Exiting due to unrecoverable failure in container {}", containerStatus.getContainerId());
+            dnmgr.shutdownDiagnosticsMessage = "Unrecoverable failure " + containerStatus.getContainerId();
+            LOG.info("Exiting due to: {}", dnmgr.shutdownDiagnosticsMessage);
           }
           else {
             // Recoverable failure or process killed (externally or via stop request by AM)

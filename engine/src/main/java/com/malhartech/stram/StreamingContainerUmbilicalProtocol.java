@@ -225,7 +225,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.state = state;
     }
 
-    private List<String> recordingNames = new ArrayList<String>();
+    private final List<String> recordingNames = new ArrayList<String>();
 
     public List<String> getRecordingNames() {
       return Collections.unmodifiableList(recordingNames);
@@ -235,7 +235,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.recordingNames.add(recordingName);
     }
 
-    private Map<String, Long> bufferServerBytes = new HashMap<String, Long>();
+    private final Map<String, Long> bufferServerBytes = new HashMap<String, Long>();
 
     public Map<String, Long> getBufferServerBytes()
     {
@@ -268,6 +268,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     public int bufferServerPort;
 
     public String jvmName;
+    public int memoryMBFree;
+    public boolean restartRequested;
 
     public String getContainerId() {
       return containerId;
@@ -288,18 +290,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public void setDnodeEntries(List<StreamingNodeHeartbeat> dnodeEntries) {
       this.dnodeEntries = dnodeEntries;
-    }
-
-    private int memoryMBFree;
-
-    public int getMemoryMBFree()
-    {
-      return memoryMBFree;
-    }
-
-    public void setMemoryMBFree(int memoryMBFree)
-    {
-      this.memoryMBFree = memoryMBFree;
     }
 
   }

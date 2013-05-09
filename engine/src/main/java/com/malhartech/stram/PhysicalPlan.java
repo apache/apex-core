@@ -392,6 +392,10 @@ public class PhysicalPlan {
       return plan;
     }
 
+    public Partition<?> getPartition() {
+      return partition;
+    }
+
     private Set<PTOperator> getGrouping(LocalityType type) {
       Set<PTOperator> s = this.groupings.get(type);
       if (s == null) {
@@ -822,7 +826,7 @@ public class PhysicalPlan {
       m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
-    String handlers = dag.getAttributes().attrValue(DAG.STRAM_STATS_HANDLER, null);
+    String handlers = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_STATS_HANDLER, null);
     if (handlers != null) {
       if (m.statsHandlers == null) {
         m.statsHandlers = new ArrayList<StatsHandler>(1);
@@ -871,6 +875,7 @@ public class PhysicalPlan {
       Operator partitionedOperator = p.getOperator();
       if (pOperator.recoveryCheckpoint != 0) {
         try {
+          LOG.debug("Loading state for {}", pOperator);
           partitionedOperator = (Operator)ctx.getBackupAgent().restore(pOperator.id, pOperator.recoveryCheckpoint);
         } catch (IOException e) {
           LOG.warn("Failed to read partition state for " + pOperator, e);
@@ -952,9 +957,14 @@ public class PhysicalPlan {
     for (Partition<?> newPartition : addedPartitions) {
       // new partition, add operator instance
       PTOperator p = addPTOperator(currentMapping, newPartition);
-      deployOperators.add(p);
-      deployOperators.addAll(p.upstreamMerge.values());
       newOperators.add(p);
+      deployOperators.add(p);
+      initCheckpoint(p, newPartition.getOperator(), minCheckpoint);
+
+      for (PTOperator unifier : p.upstreamMerge.values()) {
+        deployOperators.add(unifier);
+        initCheckpoint(unifier, unifier.merge, minCheckpoint);
+      }
 
       // handle parallel partition
       Stack<OperatorMeta> pending = new Stack<DAG.OperatorMeta>();
@@ -965,22 +975,17 @@ public class PhysicalPlan {
         for (StreamMeta s : pp.getInputStreams().values()) {
           if (currentMapping.parallelPartitions.contains(s.getSource().getOperatorWrapper()) && pending.contains(s.getSource().getOperatorWrapper())) {
             pending.push(pp);
+            pending.remove(s.getSource().getOperatorWrapper());
             pending.push(s.getSource().getOperatorWrapper());
             continue pendingLoop;
           }
         }
-        newOperators.add(addPTOperator(this.logicalToPTOperator.get(pp), null));
-        // TODO: set checkpoint (or start at wherever partition starts to publish)
-      }
-
-      // set checkpoint for new operator for deployment
-      p.checkpointWindows.add(minCheckpoint);
-      p.recoveryCheckpoint = minCheckpoint;
-      try {
-        ctx.getBackupAgent().backup(p.id, minCheckpoint, newPartition.getOperator());
-      } catch (IOException e) {
-        // inconsistent state, no recovery option, requires shutdown
-        throw new IllegalStateException("Failed to write operator state after partition change " + p, e);
+        LOG.debug("Adding to parallel partition {}", pp);
+        PTOperator ppOper = addPTOperator(this.logicalToPTOperator.get(pp), null);
+        // even though we don't track state for parallel partitions
+        // set recovery windowId to play with upstream checkpoints
+        initCheckpoint(ppOper, pp.getOperator(), minCheckpoint);
+        newOperators.add(ppOper);
       }
     }
 
@@ -1028,6 +1033,17 @@ public class PhysicalPlan {
     containers.addAll(newContainers);
     ctx.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
 
+  }
+
+  private void initCheckpoint(PTOperator partition, Operator operator, long windowId) {
+    partition.checkpointWindows.add(windowId);
+    partition.recoveryCheckpoint = windowId;
+    try {
+      ctx.getBackupAgent().backup(partition.id, windowId, operator);
+    } catch (IOException e) {
+      // inconsistent state, no recovery option, requires shutdown
+      throw new IllegalStateException("Failed to write operator state after partition change " + partition, e);
+    }
   }
 
   /**

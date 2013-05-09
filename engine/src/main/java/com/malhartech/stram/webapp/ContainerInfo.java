@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram.webapp;
 
+import com.malhartech.annotation.RecordField;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -11,13 +12,12 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement(name = "container")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ContainerInfo {
-
-  public String id;
-  public String host;
+  @RecordField(type="meta") public String id;
+  @RecordField(type="meta") public String host;
   public String state;
-  public String jvmName;
+  @RecordField(type="meta") public String jvmName;
   public long lastHeartbeat;
-  public int numOperators;
-  public int memoryMBAllocated;
-  public int memoryMBFree;
+  @RecordField(type="stats") public int numOperators;
+  @RecordField(type="meta") public int memoryMBAllocated;
+  @RecordField(type="stats") public int memoryMBFree;
 }

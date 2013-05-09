@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
  */
 public class OperatorContext implements Context.OperatorContext
 {
-  private static final Logger LOG = LoggerFactory.getLogger(OperatorContext.class);
   private final Thread thread;
 
   /**
@@ -39,10 +38,13 @@ public class OperatorContext implements Context.OperatorContext
   {
     /**
      * Command to be executed at subsequent end of window.
+     *
      * @param operator
      */
     public void execute(Operator operator, int id, long windowId) throws IOException;
+
   }
+
   private long lastProcessedWindowId;
   private final int id;
   private final AttributeMap<OperatorContext> attributes;
@@ -89,7 +91,7 @@ public class OperatorContext implements Context.OperatorContext
    * @param outputPortAttributes
    */
   public OperatorContext(int id, Thread worker, AttributeMap<OperatorContext> attributes, AttributeMap<DAGContext> applicationAttributes,
-            Map<String, AttributeMap<PortContext>> inputPortAttributes, Map<String, AttributeMap<PortContext>> outputPortAttributes)
+          Map<String, AttributeMap<PortContext>> inputPortAttributes, Map<String, AttributeMap<PortContext>> outputPortAttributes)
   {
     this.id = id;
     this.attributes = attributes;
@@ -106,7 +108,8 @@ public class OperatorContext implements Context.OperatorContext
   }
 
   @Override
-  public AttributeMap<DAGContext> getApplicationAttributes() {
+  public AttributeMap<DAGContext> getApplicationAttributes()
+  {
     return this.applicationAttributes;
   }
 
@@ -117,6 +120,7 @@ public class OperatorContext implements Context.OperatorContext
    */
   public final synchronized int drainHeartbeatCounters(Collection<? super OperatorStats> counters)
   {
+    //logger.debug("{} draining {}", counters);
     return statsBuffer.drainTo(counters);
   }
 
@@ -138,7 +142,7 @@ public class OperatorContext implements Context.OperatorContext
 
   public void request(NodeRequest request)
   {
-    LOG.debug("Received request {} for (node={})", request, id);
+    //logger.debug("Received request {} for (node={})", request, id);
     requests.add(request);
   }
 
@@ -159,4 +163,6 @@ public class OperatorContext implements Context.OperatorContext
   {
     return outputPortAttributes == null ? null : outputPortAttributes.get(portName);
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(OperatorContext.class);
 }

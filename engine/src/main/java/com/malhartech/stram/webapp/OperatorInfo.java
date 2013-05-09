@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram.webapp;
 
+import com.malhartech.annotation.RecordField;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,16 +31,16 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class OperatorInfo
 {
-  public String id;
-  public String name;
-  public String container;
-  public String host;
-  public long totalTuplesProcessed;
-  public long totalTuplesEmitted;
-  public long tuplesProcessedPSMA10;
-  public long tuplesEmittedPSMA10;
-  public double cpuPercentageMA10;
-  public long latencyMA;
+  @RecordField(type="meta") public String id;
+  @RecordField(type="meta") public String name;
+  @RecordField(type="stats") public String container;
+  @RecordField(type="stats") public String host;
+  @RecordField(type="stats") public long totalTuplesProcessed;
+  @RecordField(type="stats") public long totalTuplesEmitted;
+  @RecordField(type="stats") public long tuplesProcessedPSMA10;
+  @RecordField(type="stats") public long tuplesEmittedPSMA10;
+  @RecordField(type="stats") public double cpuPercentageMA10;
+  @RecordField(type="stats") public long latencyMA;
   public String status;
   public long lastHeartbeat;
   public long failureCount;

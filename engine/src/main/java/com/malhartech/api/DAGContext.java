@@ -28,6 +28,7 @@ public interface DAGContext {
 
   public static final int DEFAULT_HEARTBEAT_LISTENER_THREAD_COUNT = 30;
   public static final String SUBDIR_CHECKPOINTS = "checkpoints";
+  public static final String SUBDIR_STATS = "stats";
   public static final int DEFAULT_STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = 60000;
 
   /**
@@ -98,9 +99,9 @@ public interface DAGContext {
    */
   public static final AttributeKey<Integer> STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS = new AttributeKey<Integer>("stram.allocateResourceTimeoutMillis", Integer.class);
 
-  public static final AttributeKey<String> STRAM_STATS_HANDLER = new AttributeKey<String>("stram.statsHandler", String.class);
-
   public static final AttributeKey<Integer> STRAM_MAX_WINDOWS_BEHIND_FOR_STATS = new AttributeKey<Integer>("stram.maxWindowsBehindForStats", Integer.class);
+
+  public static final AttributeKey<Integer> STRAM_RECORD_STATS_INTERVAL_MILLIS = new AttributeKey<Integer>("stram.recordStatsIntervalMillis", Integer.class);
 
   public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
 

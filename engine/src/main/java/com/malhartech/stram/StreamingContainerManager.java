@@ -66,10 +66,15 @@ public class StreamingContainerManager implements PlanContext
   private long windowStartMillis = System.currentTimeMillis();
   private int heartbeatTimeoutMillis = 30000;
   private int maxWindowsBehindForStats = 100;
+  private int recordStatsInterval = 0;
+  private long lastRecordStatsTime = 0;
+  private HdfsStatsRecorder statsRecorder;
   private final int operatorMaxAttemptCount = 5;
   private final AttributeMap<DAGContext> appAttributes;
   //private final int checkpointIntervalMillis;
+  private final String appPath;
   private final String checkpointFsPath;
+  private final String statsFsPath;
   protected final Map<String, String> containerStopRequests = new ConcurrentHashMap<String, String>();
   protected final ConcurrentLinkedQueue<ContainerStartRequest> containerStartRequests = new ConcurrentLinkedQueue<ContainerStartRequest>();
   protected final ConcurrentLinkedQueue<Runnable> eventQueue = new ConcurrentLinkedQueue<Runnable>();
@@ -98,7 +103,9 @@ public class StreamingContainerManager implements PlanContext
     windowStartMillis -= (windowStartMillis % 1000);
 
     appAttributes.attr(DAG.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
-    this.checkpointFsPath = appAttributes.attr(DAG.STRAM_APP_PATH).get() + "/" + DAG.SUBDIR_CHECKPOINTS;
+    this.appPath = appAttributes.attr(DAG.STRAM_APP_PATH).get();
+    this.checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
+    this.statsFsPath = this.appPath + "/" + DAG.SUBDIR_STATS;
 
     appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get());
     //this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).get() * appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get();
@@ -106,6 +113,14 @@ public class StreamingContainerManager implements PlanContext
 
     appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
     this.maxWindowsBehindForStats = appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
+
+    appAttributes.attr(DAG.STRAM_RECORD_STATS_INTERVAL_MILLIS).setIfAbsent(0);
+    this.recordStatsInterval = appAttributes.attr(DAG.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
+    if (this.recordStatsInterval > 0) {
+      statsRecorder = new HdfsStatsRecorder();
+      statsRecorder.setBasePath(this.statsFsPath);
+      statsRecorder.setup();
+    }
   }
 
   protected PhysicalPlan getPhysicalPlan()
@@ -152,6 +167,16 @@ public class StreamingContainerManager implements PlanContext
     processEvents();
     committedWindowId = updateCheckpoints();
     calculateEndWindowStats();
+    if (recordStatsInterval > 0 && (lastRecordStatsTime + recordStatsInterval <= System.currentTimeMillis())) {
+      recordStats();
+    }
+  }
+
+  private void recordStats()
+  {
+    statsRecorder.recordContainers(containers);
+    statsRecorder.recordOperators(getOperatorInfoList());
+    lastRecordStatsTime = System.currentTimeMillis();
   }
 
   private void calculateEndWindowStats()
@@ -165,7 +190,7 @@ public class StreamingContainerManager implements PlanContext
       }
 
       Set<Integer> allCurrentOperators = new TreeSet<Integer>();
-      for (PTOperator o : plan.getAllOperators()) {
+      for (PTOperator o: plan.getAllOperators()) {
         allCurrentOperators.add(o.getId());
       }
       int numOperators = allCurrentOperators.size();
@@ -177,7 +202,8 @@ public class StreamingContainerManager implements PlanContext
         if (allCurrentOperators.containsAll(endWindowStatsOperators)) {
           if (endWindowStatsMap.size() < numOperators) {
             break;
-          } else {
+          }
+          else {
             // they are equal.  start latency calculation
             List<OperatorMeta> rootOperatorMetas = plan.getRootOperators();
             Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
@@ -190,7 +216,8 @@ public class StreamingContainerManager implements PlanContext
             }
             endWindowStatsOperatorMap.remove(windowId);
           }
-        } else {
+        }
+        else {
           // the old stats contains operators that do not exist any more
           // this is probably right after a partition happens.
           endWindowStatsOperatorMap.remove(windowId);
@@ -427,6 +454,7 @@ public class StreamingContainerManager implements PlanContext
   /**
    * process the heartbeat from each container.
    * called by the RPC thread for each container. (i.e. called by multiple threads)
+   *
    * @param heartbeat
    * @return
    */
@@ -455,9 +483,14 @@ public class StreamingContainerManager implements PlanContext
       sca.jvmName = heartbeat.jvmName;
     }
 
-    sca.memoryMBFree = heartbeat.getMemoryMBFree();
+    if (heartbeat.restartRequested) {
+      LOG.error("Container {} restart request", sca.container.containerId);
+      containerStopRequests.put(sca.container.containerId, sca.container.containerId);
+    }
 
-    long lastHeartbeatIntervalMillis = currentTimeMillis - sca.lastHeartbeatMillis;
+    sca.memoryMBFree = heartbeat.memoryMBFree;
+
+    long elapsedMillis = currentTimeMillis - sca.lastHeartbeatMillis;
 
     for (StreamingNodeHeartbeat shb: heartbeat.getDnodeEntries()) {
 
@@ -574,10 +607,10 @@ public class StreamingContainerManager implements PlanContext
           status.currentWindowId = stats.windowId;
           totalCpuTimeUsed += stats.cpuTimeUsed;
           /*
-          if (endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>()) == null) {
-            LOG.warn("Putting new map for window id {} for node id {}", stats.windowId, shb.getNodeId());
-          }
-          */
+           if (endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>()) == null) {
+           LOG.warn("Putting new map for window id {} for node id {}", stats.windowId, shb.getNodeId());
+           }
+           */
           endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
           Map<Integer, EndWindowStats> endWindowStatsMap = endWindowStatsOperatorMap.get(stats.windowId);
           endWindowStatsMap.put(shb.getNodeId(), endWindowStats);
@@ -585,30 +618,30 @@ public class StreamingContainerManager implements PlanContext
 
         status.totalTuplesProcessed += tuplesProcessed;
         status.totalTuplesEmitted += tuplesEmitted;
-        if (lastHeartbeatIntervalMillis > 0) {
-          status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / lastHeartbeatIntervalMillis);
-          status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / lastHeartbeatIntervalMillis);
-          status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (lastHeartbeatIntervalMillis * 1000000));
+        if (elapsedMillis > 0) {
+          status.tuplesProcessedPSMA10.add((tuplesProcessed * 1000) / elapsedMillis);
+          status.tuplesEmittedPSMA10.add((tuplesEmitted * 1000) / elapsedMillis);
+          status.cpuPercentageMA10.add((double)totalCpuTimeUsed * 100 / (elapsedMillis * 1000000));
           for (PortStatus ps: status.inputPortStatusList.values()) {
             if (portToTuples.containsKey(ps.portName)) {
-              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
+              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / elapsedMillis);
             }
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
+              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / elapsedMillis);
             }
           }
           for (PortStatus ps: status.outputPortStatusList.values()) {
             if (portToTuples.containsKey(ps.portName)) {
-              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / lastHeartbeatIntervalMillis);
+              ps.tuplesPSMA10.add(portToTuples.get(ps.portName).longValue() * 1000 / elapsedMillis);
             }
             Long numBytes = shb.getBufferServerBytes().get(ps.portName);
             if (numBytes != null) {
-              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / lastHeartbeatIntervalMillis);
+              ps.bufferServerBytesPSMA10.add(numBytes * 1000 / elapsedMillis);
             }
           }
           if (status.operator.statsMonitors != null) {
-            long tps = status.tuplesProcessedPSMA10.getAvg() + status.tuplesEmittedPSMA10.getAvg();
+            long tps = status.operator.inputs.isEmpty() ? status.tuplesEmittedPSMA10.getAvg() : status.tuplesProcessedPSMA10.getAvg();
             for (StatsHandler sm: status.operator.statsMonitors) {
               sm.onThroughputUpdate(status.operator, tps);
               sm.onCpuPercentageUpdate(status.operator, status.cpuPercentageMA10.getAvg());
@@ -639,21 +672,6 @@ public class StreamingContainerManager implements PlanContext
     }
 
     List<StramToNodeRequest> requests = rsp.nodeRequests != null ? rsp.nodeRequests : new ArrayList<StramToNodeRequest>();
-//    if (checkpointIntervalMillis > 0) {
-//      if (sca.lastCheckpointRequestMillis + checkpointIntervalMillis < currentTimeMillis) {
-//        //System.out.println("\n\n*** sending checkpoint to " + cs.container.containerId + " at " + currentTimeMillis);
-//        for (OperatorStatus os: sca.operators.values()) {
-//          if (os.lastHeartbeat != null && os.lastHeartbeat.getState().compareTo(DNodeState.ACTIVE.name()) == 0) {
-//            StramToNodeRequest backupRequest = new StramToNodeRequest();
-//            backupRequest.setOperatorId(os.operator.getId());
-//            backupRequest.setRequestType(RequestType.CHECKPOINT);
-//            backupRequest.setRecoveryCheckpoint(os.operator.recoveryCheckpoint);
-//            requests.add(backupRequest);
-//          }
-//        }
-//        sca.lastCheckpointRequestMillis = currentTimeMillis;
-//      }
-//    }
     ConcurrentLinkedQueue<StramToNodeRequest> operatorRequests = sca.getOperatorRequests();
     while (true) {
       StramToNodeRequest r = operatorRequests.poll();
@@ -826,6 +844,7 @@ public class StreamingContainerManager implements PlanContext
    * will propagate the shutdown request. This is controlled soft shutdown.
    * If containers don't respond, the application can be forcefully terminated
    * via yarn using forceKillApplication.
+   *
    * @param message
    */
   public void shutdownAllContainers(String message)
@@ -915,7 +934,7 @@ public class StreamingContainerManager implements PlanContext
     }
 
     // stop containers that are no longer used
-    for (PTContainer c : releaseContainers) {
+    for (PTContainer c: releaseContainers) {
       StramChildAgent sca = containers.get(c.containerId);
       if (sca != null) {
         LOG.debug("Container marked for shutdown: {}", c);
@@ -932,6 +951,22 @@ public class StreamingContainerManager implements PlanContext
     this.eventQueue.add(r);
   }
 
+  public OperatorInfo getOperatorInfo(String operatorId)
+  {
+    for (PTContainer container: this.plan.getContainers()) {
+      String containerId = container.containerId;
+      StramChildAgent sca = containerId != null ? this.containers.get(container.containerId) : null;
+
+      for (PTOperator operator: container.operators) {
+        if (operatorId.equals(Integer.toString(operator.getId()))) {
+          OperatorStatus os = (sca != null) ? sca.operators.get(operator.getId()) : null;
+          return fillOperatorInfo(operator, os);
+        }
+      }
+    }
+    return null;
+  }
+
   public ArrayList<OperatorInfo> getOperatorInfoList()
   {
     ArrayList<OperatorInfo> infoList = new ArrayList<OperatorInfo>();
@@ -942,51 +977,54 @@ public class StreamingContainerManager implements PlanContext
       StramChildAgent sca = containerId != null ? this.containers.get(container.containerId) : null;
 
       for (PTOperator operator: container.operators) {
-
-        OperatorInfo ni = new OperatorInfo();
-        ni.container = container.containerId;
-        ni.host = container.host;
-        ni.id = Integer.toString(operator.getId());
-        ni.name = operator.getName();
-        ni.status = operator.getState().toString();
-
         OperatorStatus os = (sca != null) ? sca.operators.get(operator.getId()) : null;
-        if (os != null) {
-          ni.totalTuplesProcessed = os.totalTuplesProcessed;
-          ni.totalTuplesEmitted = os.totalTuplesEmitted;
-          ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
-          ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
-          ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
-          ni.latencyMA = os.latencyMA.getAvg();
-          ni.failureCount = os.operator.failureCount;
-          ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xFFFF;
-          ni.currentWindowId = os.currentWindowId & 0xFFFF;
-          ni.recordingNames = os.recordingNames;
-          if (os.lastHeartbeat != null) {
-            ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
-          }
-          for (PortStatus ps: os.inputPortStatusList.values()) {
-            PortInfo pinfo = new PortInfo();
-            pinfo.name = ps.portName;
-            pinfo.totalTuples = ps.totalTuples;
-            pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-            pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
-            ni.addInputPort(pinfo);
-          }
-          for (PortStatus ps: os.outputPortStatusList.values()) {
-            PortInfo pinfo = new PortInfo();
-            pinfo.name = ps.portName;
-            pinfo.totalTuples = ps.totalTuples;
-            pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
-            pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
-            ni.addOutputPort(pinfo);
-          }
-        }
-        infoList.add(ni);
-
+        infoList.add(fillOperatorInfo(operator, os));
       }
     }
     return infoList;
+  }
+
+  private OperatorInfo fillOperatorInfo(PTOperator operator, OperatorStatus os)
+  {
+    OperatorInfo ni = new OperatorInfo();
+    ni.container = operator.container.containerId;
+    ni.host = operator.container.host;
+    ni.id = Integer.toString(operator.getId());
+    ni.name = operator.getName();
+    ni.status = operator.getState().toString();
+
+    if (os != null) {
+      ni.totalTuplesProcessed = os.totalTuplesProcessed;
+      ni.totalTuplesEmitted = os.totalTuplesEmitted;
+      ni.tuplesProcessedPSMA10 = os.tuplesProcessedPSMA10.getAvg();
+      ni.tuplesEmittedPSMA10 = os.tuplesEmittedPSMA10.getAvg();
+      ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
+      ni.latencyMA = os.latencyMA.getAvg();
+      ni.failureCount = os.operator.failureCount;
+      ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xffffffffL;
+      ni.currentWindowId = os.currentWindowId & 0xffffffffL;
+      ni.recordingNames = os.recordingNames;
+      if (os.lastHeartbeat != null) {
+        ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
+      }
+      for (PortStatus ps: os.inputPortStatusList.values()) {
+        PortInfo pinfo = new PortInfo();
+        pinfo.name = ps.portName;
+        pinfo.totalTuples = ps.totalTuples;
+        pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
+        pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
+        ni.addInputPort(pinfo);
+      }
+      for (PortStatus ps: os.outputPortStatusList.values()) {
+        PortInfo pinfo = new PortInfo();
+        pinfo.name = ps.portName;
+        pinfo.totalTuples = ps.totalTuples;
+        pinfo.tuplesPSMA10 = ps.tuplesPSMA10.getAvg();
+        pinfo.bufferServerBytesPSMA10 = ps.bufferServerBytesPSMA10.getAvg();
+        ni.addOutputPort(pinfo);
+      }
+    }
+    return ni;
   }
 
   private static class RecordingRequestFilter implements Predicate<StramToNodeRequest>

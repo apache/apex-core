@@ -34,74 +34,18 @@ import org.slf4j.LoggerFactory;
 @ShipContainingJars(classes = {Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
 {
-  private final Output data = new Output(4096, Integer.MAX_VALUE);
-  private final Output state = new Output(4096, Integer.MAX_VALUE);
-  private final Input input = new Input();
-
-  static class ClassIdPair
-  {
-    final int id;
-    final String classname;
-
-    ClassIdPair()
-    {
-      id = 0;
-      classname = null;
-    }
-
-    ClassIdPair(int id, String classname)
-    {
-      this.id = id;
-      this.classname = classname;
-    }
-
-  }
-
-  static class ClassResolver extends DefaultClassResolver
-  {
-    int firstAvailableRegistrationId;
-    int nextAvailableRegistrationId;
-    final ArrayList<ClassIdPair> pairs = new ArrayList<ClassIdPair>();
-
-    public void unregister(int classId)
-    {
-      Registration registration = idToRegistration.remove(classId);
-      classToRegistration.remove(registration.getType());
-      getRegistration(int.class); /* make sure that we bust the memoized cache in superclass */
-    }
-
-    @Override
-    @SuppressWarnings("rawtypes")
-    public Registration registerImplicit(Class type)
-    {
-      while (getRegistration(nextAvailableRegistrationId) != null) {
-        nextAvailableRegistrationId++;
-      }
-
-      //logger.debug("adding new classid pair {} => {}", nextAvailableRegistrationId, type.getName());
-      pairs.add(new ClassIdPair(nextAvailableRegistrationId, type.getName()));
-      return register(new Registration(type, kryo.getDefaultSerializer(type), nextAvailableRegistrationId++));
-    }
-
-    public void init()
-    {
-      firstAvailableRegistrationId = kryo.getNextRegistrationId();
-      nextAvailableRegistrationId = firstAvailableRegistrationId;
-    }
-
-    public void unregisterImplicitlyRegisteredTypes()
-    {
-      while (nextAvailableRegistrationId > firstAvailableRegistrationId) {
-        unregister(--nextAvailableRegistrationId);
-      }
-    }
-
-  }
+  private final Output data;
+  private final Output state;
+  private final Input input;
 
   @SuppressWarnings("OverridableMethodCallInConstructor")
   public DefaultStreamCodec()
   {
     super(new ClassResolver(), new MapReferenceResolver());
+    data = new Output(4096, Integer.MAX_VALUE);
+    state = new Output(4096, Integer.MAX_VALUE);
+    input = new Input();
+
     register(Class.class);
     register(ClassIdPair.class);
     classResolver = (ClassResolver)getClassResolver();
@@ -227,5 +171,66 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
 
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
+
+  static class ClassIdPair
+  {
+    final int id;
+    final String classname;
+
+    ClassIdPair()
+    {
+      id = 0;
+      classname = null;
+    }
+
+    ClassIdPair(int id, String classname)
+    {
+      this.id = id;
+      this.classname = classname;
+    }
+
+  }
+
+  public static class ClassResolver extends DefaultClassResolver
+  {
+    int firstAvailableRegistrationId;
+    int nextAvailableRegistrationId;
+    final ArrayList<ClassIdPair> pairs = new ArrayList<ClassIdPair>();
+
+    public void unregister(int classId)
+    {
+      Registration registration = idToRegistration.remove(classId);
+      classToRegistration.remove(registration.getType());
+      getRegistration(int.class); /* make sure that we bust the memoized cache in superclass */
+    }
+
+    @Override
+    @SuppressWarnings("rawtypes")
+    public Registration registerImplicit(Class type)
+    {
+      while (getRegistration(nextAvailableRegistrationId) != null) {
+        nextAvailableRegistrationId++;
+      }
+
+      //logger.debug("adding new classid pair {} => {}", nextAvailableRegistrationId, type.getName());
+      pairs.add(new ClassIdPair(nextAvailableRegistrationId, type.getName()));
+      return register(new Registration(type, kryo.getDefaultSerializer(type), nextAvailableRegistrationId++));
+    }
+
+    public void init()
+    {
+      firstAvailableRegistrationId = kryo.getNextRegistrationId();
+      nextAvailableRegistrationId = firstAvailableRegistrationId;
+    }
+
+    public void unregisterImplicitlyRegisteredTypes()
+    {
+      while (nextAvailableRegistrationId > firstAvailableRegistrationId) {
+        unregister(--nextAvailableRegistrationId);
+      }
+    }
+
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodec.class);
 }
