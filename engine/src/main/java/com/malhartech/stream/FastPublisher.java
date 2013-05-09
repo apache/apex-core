@@ -4,6 +4,7 @@
  */
 package com.malhartech.stream;
 
+import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.Sink;
@@ -26,7 +27,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class FastPublisher implements ClientListener, Stream
+public class FastPublisher extends Kryo implements ClientListener, Stream
 {
   public static final int EIGHT_KILOBYTES = 8 * 1024;
   private SelectionKey key;
@@ -171,9 +172,46 @@ public class FastPublisher implements ClientListener, Stream
       writeBuffer.position(newPosition - bb.capacity());
     }
 
-    // write the tuple and find out the size
+    writeClassAndObject(output, tuple);
+    int size;
+    if (bb == writeBuffer) {
+      size = bb.position() - position - 2;
+      assert(size <= Short.MAX_VALUE);
+      bb.put(position++, (byte)size);
+      bb.put(position, (byte)(size >> 8));
+    }
+    else {
+      size = EIGHT_KILOBYTES - position - 2 + writeBuffer.position();
+      int index = writeIndex;
+      do {
+        if (index == 0) {
+          index = lastIndex;
+        }
+        else {
+          index--;
+        }
 
-    // write the size at bb.position
+        if (writeBuffers[index] == bb) {
+          break;
+        }
+        size += EIGHT_KILOBYTES;
+      }
+      while (true);
+      assert(size <= Short.MAX_VALUE);
+      if (position < EIGHT_KILOBYTES) {
+        bb.put(position++, (byte)size);
+        if (position < EIGHT_KILOBYTES) {
+          bb.put(position, (byte)(size >> 8));
+        }
+        else {
+          writeBuffers[index + 1].put(0, (byte)(size >> 8));
+        }
+      }
+      else {
+        writeBuffers[++index].put(0, (byte)size);
+        writeBuffers[index].put(1, (byte)(size >> 8));
+      }
+    }
   }
 
   @SuppressWarnings("SleepWhileInLoop")
@@ -286,11 +324,13 @@ public class FastPublisher implements ClientListener, Stream
     @Override
     public void writeInt(int value) throws KryoException
     {
-      int i = 0;
       switch (writeBuffer.remaining()) {
         case 0:
           advanceWriteBuffer();
-          writeBuffer.putInt(value);
+          writeBuffer.put((byte)(value >> 24));
+          writeBuffer.put((byte)(value >> 16));
+          writeBuffer.put((byte)(value >> 8));
+          writeBuffer.put((byte)value);
           break;
 
         case 1:
