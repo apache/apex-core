@@ -27,8 +27,8 @@ public class FastPublisherTest
   @Test
   public void testSerialization() throws Exception
   {
-    FastPublisherImpl publisher = new FastPublisherImpl(2);
-    final String message= "hello!";
+    FastPublisherImpl publisher = new FastPublisherImpl(3);
+    final String message = "hello!";
     publisher.put(message);
     byte[] buffer = publisher.consume();
 
@@ -40,7 +40,7 @@ public class FastPublisherTest
       @Override
       public void put(Object tuple)
       {
-        assert(tuple.equals(message));
+        assert (tuple.equals(message));
       }
 
       @Override
@@ -63,7 +63,7 @@ public class FastPublisherTest
     }
 
     buffer = publisher.consume();
-    assert(buffer.length == (size + 2) * 1024);
+    assert (buffer.length == (size + 2) * 1024);
 
     int index = 0;
     for (int i = 0; i < 1024; i++) {
@@ -75,6 +75,25 @@ public class FastPublisherTest
 
     sr.sweep();
     sr.sweep();
+
+    for (int i = 0; i < 1024; i++) {
+      publisher.put(message);
+    }
+
+    buffer = publisher.consume();
+    assert (buffer.length == (size + 2) * 1024);
+
+    index = 0;
+    for (int i = 0; i < 1024; i++) {
+      size = buffer[index++];
+      size |= buffer[index++] << 8;
+      subscriber.onMessage(buffer, index, size);
+      index += size;
+    }
+
+    sr.sweep();
+    sr.sweep();
+
   }
 
   static class FastPublisherImpl extends FastPublisher

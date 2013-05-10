@@ -20,6 +20,7 @@ import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import org.slf4j.Logger;
@@ -53,6 +54,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
     readBuffers = new ByteBuffer[countOf8kBuffers];
     for (int i = countOf8kBuffers; i-- > 0;) {
       writeBuffers[i] = ByteBuffer.allocateDirect(BUFFER_CAPACITY);
+      writeBuffers[i].order(ByteOrder.LITTLE_ENDIAN);
       readBuffers[i] = writeBuffers[i].asReadOnlyBuffer();
       readBuffers[i].limit(0);
     }
@@ -306,6 +308,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
         size = BUFFER_CAPACITY - position - 2 + writeBuffer.position();
         int index = writeIndex;
         synchronized (readBuffers[index]) {
+          readBuffers[index].position(0);
           readBuffers[index].limit(writeBuffer.position());
         }
         do {
@@ -320,12 +323,14 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             break;
           }
           synchronized (readBuffers[index]) {
+            readBuffers[index].position(0);
             readBuffers[index].limit(BUFFER_CAPACITY);
           }
           size += BUFFER_CAPACITY;
         }
         while (true);
         assert (size <= Short.MAX_VALUE);
+        index = wi;
         switch (position) {
           case BUFFER_CAPACITY:
             position = 0;
@@ -341,7 +346,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             writeBuffers[wi].put(position++, (byte)hashcode);
             writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
             writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
-            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 24));
             break;
 
           case BUFFER_CAPACITY - 1:
@@ -358,7 +363,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             writeBuffers[wi].put(position++, (byte)hashcode);
             writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
             writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
-            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 24));
             break;
 
           case BUFFER_CAPACITY - 2:
@@ -375,7 +380,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             writeBuffers[wi].put(position++, (byte)hashcode);
             writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
             writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
-            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 24));
             break;
 
           case BUFFER_CAPACITY - 3:
@@ -392,7 +397,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             writeBuffers[wi].put(position++, (byte)hashcode);
             writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
             writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
-            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 24));
             break;
 
           case BUFFER_CAPACITY - 4:
@@ -409,7 +414,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             position = 0;
             writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
             writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
-            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 24));
             break;
 
           case BUFFER_CAPACITY - 5:
@@ -426,7 +431,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             }
             position = 0;
             writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
-            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 24));
             break;
 
           case BUFFER_CAPACITY - 6:
@@ -443,7 +448,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
               wi++;
             }
             position = 0;
-            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 24));
             break;
 
           default:
@@ -456,12 +461,12 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             writeBuffers[wi].put(position, (byte)(hashcode >> 24));
             break;
         }
-        synchronized (readBuffers[wi]) {
-          readBuffers[wi].limit(BUFFER_CAPACITY);
+        synchronized (readBuffers[index]) {
+          readBuffers[index].limit(BUFFER_CAPACITY);
         }
       }
 
-      logger.debug("count = {} and capacity = {} and {}", new Object[] {count, readBuffers[0].remaining(), readBuffers[1].remaining()});
+      logger.debug("count = {} and capacity = {} and {}", new Object[] {count, readBuffers[0], readBuffers[1]});
     }
 
     if (!write) {
@@ -486,6 +491,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       }
 
       writeBuffer = writeBuffers[writeIndex];
+      writeBuffer.clear();
     }
     catch (InterruptedException ie) {
       throw new RuntimeException(ie);
