@@ -14,6 +14,7 @@ import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.netlet.Listener;
 import com.malhartech.netlet.Listener.ClientListener;
+import com.malhartech.tuple.Tuple;
 import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
@@ -29,15 +30,15 @@ import org.slf4j.LoggerFactory;
  */
 public class FastPublisher extends Kryo implements ClientListener, Stream
 {
-  public static final int EIGHT_KILOBYTES = 8 * 1024;
+  public static final int BUFFER_CAPACITY = 8 * 1024;
   private SelectionKey key;
   private EventLoop eventloop;
   private int count;
   private long spinMillis;
-  private final int lastIndex;
-  private ByteBuffer[] readBuffers;
-  private ByteBuffer readBuffer;
-  private volatile int readIndex;
+  protected final int lastIndex;
+  protected ByteBuffer[] readBuffers;
+  protected ByteBuffer readBuffer;
+  protected volatile int readIndex;
   private ByteBuffer[] writeBuffers;
   private ByteBuffer writeBuffer;
   private int writeIndex;
@@ -47,7 +48,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
     writeBuffers = new ByteBuffer[countOf8kBuffers];
     readBuffers = new ByteBuffer[countOf8kBuffers];
     for (int i = countOf8kBuffers; i-- > 0;) {
-      writeBuffers[i] = ByteBuffer.allocateDirect(EIGHT_KILOBYTES);
+      writeBuffers[i] = ByteBuffer.allocateDirect(BUFFER_CAPACITY);
       readBuffers[i] = writeBuffers[i].asReadOnlyBuffer();
       readBuffers[i].limit(0);
     }
@@ -84,16 +85,18 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   {
     SocketChannel sc = (SocketChannel)key.channel();
     do {
-      sc.write(readBuffer);
-      if (readBuffer.position() < readBuffer.capacity()) {
-        return;
-      }
-      readBuffer.limit(0);
-      if (readIndex == lastIndex) {
-        readIndex = 0;
-      }
-      else {
-        readIndex++;
+      synchronized (readBuffer) {
+        sc.write(readBuffer);
+        if (readBuffer.position() < readBuffer.capacity()) {
+          return;
+        }
+        readBuffer.limit(0);
+        if (readIndex == lastIndex) {
+          readIndex = 0;
+        }
+        else {
+          readIndex++;
+        }
       }
       readBuffer = readBuffers[readIndex];
     }
@@ -161,56 +164,201 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   @SuppressWarnings("SleepWhileInLoop")
   public void put(Object tuple)
   {
-    count++;
-    ByteBuffer bb = writeBuffer;
-    int position = bb.position();
-
-    int newPosition = position + 2;
-    if (newPosition > bb.capacity()) {
-      bb.position(bb.capacity());
-      advanceWriteBuffer();
-      writeBuffer.position(newPosition - bb.capacity());
-    }
-
-    writeClassAndObject(output, tuple);
-    int size;
-    if (bb == writeBuffer) {
-      size = bb.position() - position - 2;
-      assert(size <= Short.MAX_VALUE);
-      bb.put(position++, (byte)size);
-      bb.put(position, (byte)(size >> 8));
+    if (tuple instanceof Tuple) {
     }
     else {
-      size = EIGHT_KILOBYTES - position - 2 + writeBuffer.position();
-      int index = writeIndex;
-      do {
-        if (index == 0) {
-          index = lastIndex;
-        }
-        else {
-          index--;
-        }
+      count++;
+      int hashcode = tuple.hashCode();
 
-        if (writeBuffers[index] == bb) {
-          break;
-        }
-        size += EIGHT_KILOBYTES;
+      int wi = writeIndex;
+      int position = writeBuffer.position();
+
+      int newPosition = position + 2 /* for short size */ + 1 /* for data type */ + 4 /* for partition */;
+      if (newPosition > BUFFER_CAPACITY) {
+        writeBuffer.position(BUFFER_CAPACITY);
+        advanceWriteBuffer();
+        writeBuffer.position(newPosition - BUFFER_CAPACITY);
       }
-      while (true);
-      assert(size <= Short.MAX_VALUE);
-      if (position < EIGHT_KILOBYTES) {
-        bb.put(position++, (byte)size);
-        if (position < EIGHT_KILOBYTES) {
-          bb.put(position, (byte)(size >> 8));
-        }
-        else {
-          writeBuffers[index + 1].put(0, (byte)(size >> 8));
+      else {
+        writeBuffer.position(newPosition);
+      }
+
+      writeClassAndObject(output, tuple);
+      int size;
+      if (wi == writeIndex) {
+        size = writeBuffer.position() - position - 2 /* for short size */;
+        assert (size <= Short.MAX_VALUE);
+        writeBuffer.put(position++, (byte)size);
+        writeBuffer.put(position++, (byte)(size >> 8));
+        writeBuffer.put(position++, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+        writeBuffer.put(position++, (byte)hashcode);
+        writeBuffer.put(position++, (byte)(hashcode >> 8));
+        writeBuffer.put(position++, (byte)(hashcode >> 16));
+        writeBuffer.put(position, (byte)(hashcode >> 24));
+        synchronized (readBuffers[wi]) {
+          readBuffers[wi].limit(writeBuffer.position());
         }
       }
       else {
-        writeBuffers[++index].put(0, (byte)size);
-        writeBuffers[index].put(1, (byte)(size >> 8));
+        size = BUFFER_CAPACITY - position - 2 + writeBuffer.position();
+        int index = writeIndex;
+        synchronized (readBuffers[index]) {
+          readBuffers[index].limit(writeBuffer.position());
+        }
+        do {
+          if (index == 0) {
+            index = lastIndex;
+          }
+          else {
+            index--;
+          }
+
+          if (index == wi) {
+            break;
+          }
+          synchronized (readBuffers[index]) {
+            readBuffers[index].limit(BUFFER_CAPACITY);
+          }
+          size += BUFFER_CAPACITY;
+        }
+        while (true);
+        assert (size <= Short.MAX_VALUE);
+        switch (position) {
+          case BUFFER_CAPACITY:
+            position = 0;
+            if (wi == lastIndex) {
+              wi = 0;
+            }
+            else {
+              wi++;
+            }
+            writeBuffers[wi].put(position++, (byte)size);
+            writeBuffers[wi].put(position++, (byte)(size >> 8));
+            writeBuffers[wi].put(position++, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+            writeBuffers[wi].put(position++, (byte)hashcode);
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
+            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            break;
+
+          case BUFFER_CAPACITY - 1:
+            writeBuffers[wi].put(position, (byte)size);
+            if (wi == lastIndex) {
+              wi = 0;
+            }
+            else {
+              wi++;
+            }
+            position = 0;
+            writeBuffers[wi].put(position++, (byte)(size >> 8));
+            writeBuffers[wi].put(position++, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+            writeBuffers[wi].put(position++, (byte)hashcode);
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
+            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            break;
+
+          case BUFFER_CAPACITY - 2:
+            writeBuffers[wi].put(position++, (byte)size);
+            writeBuffers[wi].put(position, (byte)(size >> 8));
+            if (wi == lastIndex) {
+              wi = 0;
+            }
+            else {
+              wi++;
+            }
+            position = 0;
+            writeBuffers[wi].put(position++, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+            writeBuffers[wi].put(position++, (byte)hashcode);
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
+            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            break;
+
+          case BUFFER_CAPACITY - 3:
+            writeBuffers[wi].put(position++, (byte)size);
+            writeBuffers[wi].put(position++, (byte)(size >> 8));
+            writeBuffers[wi].put(position, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+            if (wi == lastIndex) {
+              wi = 0;
+            }
+            else {
+              wi++;
+            }
+            position = 0;
+            writeBuffers[wi].put(position++, (byte)hashcode);
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
+            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            break;
+
+          case BUFFER_CAPACITY - 4:
+            writeBuffers[wi].put(position++, (byte)size);
+            writeBuffers[wi].put(position++, (byte)(size >> 8));
+            writeBuffers[wi].put(position++, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+            writeBuffers[wi].put(position, (byte)hashcode);
+            if (wi == lastIndex) {
+              wi = 0;
+            }
+            else {
+              wi++;
+            }
+            position = 0;
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
+            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            break;
+
+          case BUFFER_CAPACITY - 5:
+            writeBuffers[wi].put(position++, (byte)size);
+            writeBuffers[wi].put(position++, (byte)(size >> 8));
+            writeBuffers[wi].put(position++, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+            writeBuffers[wi].put(position++, (byte)hashcode);
+            writeBuffers[wi].put(position, (byte)(hashcode >> 8));
+            if (wi == lastIndex) {
+              wi = 0;
+            }
+            else {
+              wi++;
+            }
+            position = 0;
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
+            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            break;
+
+          case BUFFER_CAPACITY - 6:
+            writeBuffers[wi].put(position++, (byte)size);
+            writeBuffers[wi].put(position++, (byte)(size >> 8));
+            writeBuffers[wi].put(position++, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+            writeBuffers[wi].put(position++, (byte)hashcode);
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 16));
+            if (wi == lastIndex) {
+              wi = 0;
+            }
+            else {
+              wi++;
+            }
+            position = 0;
+            writeBuffers[wi--].put(position, (byte)(hashcode >> 24));
+            break;
+
+          default:
+            writeBuffers[wi].put(position++, (byte)size);
+            writeBuffers[wi].put(position++, (byte)(size >> 8));
+            writeBuffers[wi].put(position++, com.malhartech.bufferserver.packet.MessageType.PAYLOAD_VALUE);
+            writeBuffers[wi].put(position++, (byte)hashcode);
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 8));
+            writeBuffers[wi].put(position++, (byte)(hashcode >> 16));
+            writeBuffers[wi].put(position, (byte)(hashcode >> 24));
+            break;
+        }
+        synchronized (readBuffers[wi]) {
+          readBuffers[wi].limit(BUFFER_CAPACITY);
+        }
       }
+
+      logger.debug("count = {} and capacity = {} and {}", new Object[]{count, readBuffers[0].remaining(), readBuffers[1].remaining()});
     }
   }
 

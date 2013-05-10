@@ -4,7 +4,6 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.util.Fragment;
 
 /**
@@ -27,7 +26,11 @@ public class PayloadTuple extends Tuple
   @Override
   public int getPartition()
   {
-    return readVarInt(offset + 1, offset + length);
+    int p = buffer[offset + 1];
+    p |= buffer[offset + 2] << 8;
+    p |= buffer[offset + 3] << 16;
+    p |= buffer[offset + 4] << 24;
+    return p;
   }
 
   @Override
@@ -39,17 +42,13 @@ public class PayloadTuple extends Tuple
   @Override
   public Fragment getData()
   {
-    int dataOffset = this.offset + 1;
-    while (buffer[dataOffset++] < 0) {
-    }
-
-    return new Fragment(buffer, dataOffset, length + offset - dataOffset);
+    return new Fragment(buffer, offset + 5, length + offset - 5);
   }
 
   @Override
   public String toString()
   {
-    return "PayloadTuple{" + getPartition() + ", " + getData() +  '}';
+    return "PayloadTuple{" + getPartition() + ", " + getData() + '}';
   }
 
   @Override
@@ -66,32 +65,24 @@ public class PayloadTuple extends Tuple
 
   public static byte[] getSerializedTuple(int partition, int size)
   {
-    int bits = 32 - Integer.numberOfLeadingZeros(partition);
-    do {
-      size++;
-    }
-    while ((bits -= 7) > 0);
-
-    byte[] array = new byte[size + 1];
+    byte[] array = new byte[size + 5];
     array[0] = MessageType.PAYLOAD_VALUE;
-    Codec.writeRawVarint32(partition, array, 1);
+    array[1] = (byte)partition;
+    array[2] = (byte)(partition >> 8);
+    array[3] = (byte)(partition >> 16);
+    array[4] = (byte)(partition >> 24);
     return array;
   }
 
   public static byte[] getSerializedTuple(int partition, Fragment f)
   {
-    int size = 0;
-    int bits = 32 - Integer.numberOfLeadingZeros(partition);
-    do {
-      size++;
-    }
-    while ((bits -= 7) > 0);
-    size++;
-
-    byte[] array = new byte[size + f.length];
+    byte[] array = new byte[5 + f.length];
     array[0] = MessageType.PAYLOAD_VALUE;
-    Codec.writeRawVarint32(partition, array, 1);
-    System.arraycopy(f.buffer, f.offset, array, size, f.length);
+    array[1] = (byte)partition;
+    array[2] = (byte)(partition >> 8);
+    array[3] = (byte)(partition >> 16);
+    array[4] = (byte)(partition >> 24);
+    System.arraycopy(f.buffer, f.offset, array, 5, f.length);
     return array;
   }
 
