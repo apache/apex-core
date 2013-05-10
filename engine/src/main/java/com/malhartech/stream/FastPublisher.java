@@ -8,6 +8,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.KryoException;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.Sink;
+import com.malhartech.bufferserver.packet.*;
 import com.malhartech.engine.Stream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.netlet.DefaultEventLoop;
@@ -36,15 +37,18 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   private int count;
   private long spinMillis;
   protected final int lastIndex;
-  protected ByteBuffer[] readBuffers;
+  protected final ByteBuffer[] readBuffers;
   protected ByteBuffer readBuffer;
   protected volatile int readIndex;
-  private ByteBuffer[] writeBuffers;
+  private final ByteBuffer[] writeBuffers;
   private ByteBuffer writeBuffer;
   private int writeIndex;
+  private final String id;
+  private boolean write = true;
 
-  public FastPublisher(int countOf8kBuffers)
+  public FastPublisher(String id, int countOf8kBuffers)
   {
+    this.id = id;
     writeBuffers = new ByteBuffer[countOf8kBuffers];
     readBuffers = new ByteBuffer[countOf8kBuffers];
     for (int i = countOf8kBuffers; i-- > 0;) {
@@ -88,6 +92,14 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       synchronized (readBuffer) {
         sc.write(readBuffer);
         if (readBuffer.position() < readBuffer.capacity()) {
+          if (!readBuffer.hasRemaining()) {
+            synchronized (readBuffers) {
+              if (write) {
+                key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
+                write = false;
+              }
+            }
+          }
           return;
         }
         readBuffer.limit(0);
@@ -113,6 +125,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   public void registered(SelectionKey key)
   {
     this.key = key;
+    write = false;
   }
 
   @Override
@@ -152,6 +165,17 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
+    byte[] serializedRequest = PublishRequestTuple.getSerializedRequest(id, context.getStartingWindowId());
+    writeBuffers[0].put((byte)serializedRequest.length);
+    writeBuffers[0].put((byte)(serializedRequest.length >> 8));
+    writeBuffers[0].put(serializedRequest);
+    synchronized (readBuffers) {
+      readBuffers[0].limit(writeBuffers[0].position());
+      if (!write) {
+        key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+        write = true;
+      }
+    }
   }
 
   @Override
@@ -165,6 +189,85 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   public void put(Object tuple)
   {
     if (tuple instanceof Tuple) {
+      final Tuple t = (Tuple)tuple;
+
+      byte[] array;
+      switch (t.getType()) {
+        case CHECKPOINT:
+          array = WindowIdTuple.getSerializedTuple((int)t.getWindowId());
+          array[0] = MessageType.CHECKPOINT_VALUE;
+          break;
+
+        case BEGIN_WINDOW:
+          array = BeginWindowTuple.getSerializedTuple((int)t.getWindowId());
+          break;
+
+        case END_WINDOW:
+          array = EndWindowTuple.getSerializedTuple((int)t.getWindowId());
+          break;
+
+        case END_STREAM:
+          array = EndStreamTuple.getSerializedTuple((int)t.getWindowId());
+          break;
+
+        case RESET_WINDOW:
+          com.malhartech.tuple.ResetWindowTuple rwt = (com.malhartech.tuple.ResetWindowTuple)t;
+          array = ResetWindowTuple.getSerializedTuple(rwt.getBaseSeconds(), rwt.getIntervalMillis());
+          break;
+
+        default:
+          throw new UnsupportedOperationException("this data type is not handled in the stream");
+      }
+
+      int size = array.length;
+      if (writeBuffer.hasRemaining()) {
+        writeBuffer.put((byte)size);
+        if (writeBuffer.hasRemaining()) {
+          writeBuffer.put((byte)(size >> 8));
+        }
+        else {
+          synchronized (readBuffers) {
+            readBuffers[writeIndex].limit(BUFFER_CAPACITY);
+          }
+          advanceWriteBuffer();
+          writeBuffer.put((byte)(size >> 8));
+        }
+      }
+      else {
+        synchronized (readBuffers) {
+          readBuffers[writeIndex].limit(BUFFER_CAPACITY);
+        }
+        advanceWriteBuffer();
+        writeBuffer.put((byte)size);
+        writeBuffer.put((byte)(size >> 8));
+      }
+
+      int remaining = writeBuffer.remaining();
+      if (remaining < size) {
+        int offset = 0;
+        do {
+          writeBuffer.put(array, offset, remaining);
+          offset += remaining;
+          size -= remaining;
+          synchronized (readBuffers) {
+            readBuffers[writeIndex].limit(BUFFER_CAPACITY);
+          }
+          advanceWriteBuffer();
+          remaining = writeBuffer.remaining();
+          if (size <= remaining) {
+            writeBuffer.put(array, offset, size);
+            break;
+          }
+        }
+        while (true);
+      }
+      else {
+        writeBuffer.put(array);
+      }
+      synchronized (readBuffers) {
+        readBuffers[writeIndex].limit(BUFFER_CAPACITY);
+      }
+
     }
     else {
       count++;
@@ -358,7 +461,12 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
         }
       }
 
-      logger.debug("count = {} and capacity = {} and {}", new Object[]{count, readBuffers[0].remaining(), readBuffers[1].remaining()});
+      logger.debug("count = {} and capacity = {} and {}", new Object[] {count, readBuffers[0].remaining(), readBuffers[1].remaining()});
+    }
+
+    if (!write) {
+      key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+      write = true;
     }
   }
 
