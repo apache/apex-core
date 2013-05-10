@@ -13,9 +13,9 @@ import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.debug.StdOutErrLog;
+import com.malhartech.engine.OperatorContext.NodeRequest;
 import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.engine.*;
-import com.malhartech.engine.OperatorContext.NodeRequest;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
@@ -43,9 +43,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.SaslRpcServer.AuthMethod;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -182,15 +180,16 @@ public class StramChild
 
     //Token<JobTokenIdentifier> jt = loadCredentials(defaultConf, address);
 
-    UserGroupInformation taskOwner = null;
+    UserGroupInformation taskOwner;
     if (!UserGroupInformation.isSecurityEnabled()) {
-    // Communicate with parent as actual task owner.
+      // Communicate with parent as actual task owner.
       taskOwner =
-            UserGroupInformation.createRemoteUser(StramChild.class.getName());
-    } else {
+              UserGroupInformation.createRemoteUser(StramChild.class.getName());
+    }
+    else {
       taskOwner = UserGroupInformation.getCurrentUser();
     }
-    logger.info("Task owner is " + taskOwner.getUserName() );
+    logger.info("Task owner is " + taskOwner.getUserName());
 
     //taskOwner.addToken(jt);
     final StreamingContainerUmbilicalProtocol umbilical =
@@ -216,7 +215,8 @@ public class StramChild
         for (Token<?> token: UserGroupInformation.getCurrentUser().getTokens()) {
           childUGI.addToken(token);
         }
-      } else {
+      }
+      else {
         childUGI = taskOwner;
       }
 
@@ -543,11 +543,9 @@ public class StramChild
           }
           if (bufferServerAddress != null) {
             String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
-            //String bspStreamKey = "tcp://".concat(bufferServerAddress.toString()).concat("/").concat(streamId);
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
-            if (stream != null && (stream.component instanceof BufferServerSubscriber)) {
-              BufferServerSubscriber bss = (BufferServerSubscriber)stream.component;
-              hb.setBufferServerBytes(portName, bss.getAndResetReadByteCount());
+            if (stream != null && (stream.component instanceof ByteCounterStream)) {
+              hb.setBufferServerBytes(portName, ((ByteCounterStream)stream.component).getByteCount(true));
             }
           }
         }
@@ -558,11 +556,9 @@ public class StramChild
           }
           if (bufferServerAddress != null) {
             String streamId = e.getKey().toString().concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(portName);
-            //String bspStreamKey = "tcp://".concat(bufferServerAddress.toString()).concat("/").concat(streamId);
             ComponentContextPair<Stream, StreamContext> stream = streams.get(streamId);
-            if (stream != null && (stream.component instanceof BufferServerPublisher)) {
-              BufferServerPublisher bsp = (BufferServerPublisher)stream.component;
-              hb.setBufferServerBytes(portName, bsp.getAndResetPublishedByteCount());
+            if (stream != null && (stream.component instanceof ByteCounterStream)) {
+              hb.setBufferServerBytes(portName, ((ByteCounterStream)stream.component).getByteCount(true));
             }
           }
         }

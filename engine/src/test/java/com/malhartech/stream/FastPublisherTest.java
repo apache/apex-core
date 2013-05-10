@@ -5,15 +5,12 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.engine.DefaultStreamCodec;
 import com.malhartech.engine.SweepableReservoir;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import junit.framework.Assert;
 import org.junit.Test;
-import static org.junit.Assert.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +28,7 @@ public class FastPublisherTest
   public void testSerialization() throws Exception
   {
     FastPublisherImpl publisher = new FastPublisherImpl(2);
-    String message= "hello!";
+    final String message= "hello!";
     publisher.put(message);
     byte[] buffer = publisher.consume();
 
@@ -43,7 +40,7 @@ public class FastPublisherTest
       @Override
       public void put(Object tuple)
       {
-        logger.debug("{}", tuple);
+        assert(tuple.equals(message));
       }
 
       @Override
@@ -84,7 +81,7 @@ public class FastPublisherTest
   {
     FastPublisherImpl(int buffercount)
     {
-      super(buffercount);
+      super("testpublisher", buffercount);
     }
 
     @Override

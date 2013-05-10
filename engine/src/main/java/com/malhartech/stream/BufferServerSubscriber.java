@@ -7,7 +7,7 @@ import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Subscriber;
-import com.malhartech.engine.Stream;
+import com.malhartech.engine.ByteCounterStream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.WindowGenerator;
@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
  * Extends SocketInputStream as buffer server and node communicate via a socket<br>
  * This buffer server is a read instance of a stream and takes care of connectivity with upstream buffer server<br>
  */
-public class BufferServerSubscriber extends Subscriber implements Stream
+public class BufferServerSubscriber extends Subscriber implements ByteCounterStream
 {
   private boolean suspended;
   private long baseSeconds;
@@ -171,18 +171,20 @@ public class BufferServerSubscriber extends Subscriber implements Stream
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
-  /**
-   * @return the readByteCount
-   */
-  public long getAndResetReadByteCount()
-  {
-    return readByteCount.getAndSet(0);
-  }
-
   @Override
   public int getCount(boolean reset)
   {
     return 0;
+  }
+
+  @Override
+  public long getByteCount(boolean reset)
+  {
+    if (reset) {
+      return readByteCount.getAndSet(0);
+    }
+
+    return readByteCount.get();
   }
 
   class BufferReservoir extends CircularBuffer<Object> implements SweepableReservoir

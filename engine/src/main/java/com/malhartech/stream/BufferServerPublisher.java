@@ -8,7 +8,7 @@ import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Publisher;
 import com.malhartech.bufferserver.packet.*;
-import com.malhartech.engine.Stream;
+import com.malhartech.engine.ByteCounterStream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.tuple.Tuple;
@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * Partitioning is managed by this instance of the buffer server<br>
  * <br>
  */
-public class BufferServerPublisher extends Publisher implements Stream
+public class BufferServerPublisher extends Publisher implements ByteCounterStream
 {
   private StreamCodec<Object> serde;
   private AtomicLong publishedByteCount = new AtomicLong(0);
@@ -150,9 +150,14 @@ public class BufferServerPublisher extends Publisher implements Stream
   {
   }
 
-  public long getAndResetPublishedByteCount()
+  @Override
+  public long getByteCount(boolean reset)
   {
-    return publishedByteCount.getAndSet(0);
+    if (reset) {
+      return publishedByteCount.getAndSet(0);
+    }
+
+    return publishedByteCount.get();
   }
 
   @Override
