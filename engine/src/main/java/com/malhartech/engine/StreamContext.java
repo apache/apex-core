@@ -112,7 +112,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   /**
    * @param startingWindowId the startingWindowId to set
    */
-  public void setStartingWindowId(long startingWindowId)
+  public void setFinishedWindowId(long startingWindowId)
   {
     this.startingWindowId = startingWindowId;
   }
