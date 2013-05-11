@@ -75,7 +75,7 @@ public class SubscribeRequestTuple extends RequestTuple
     }
 
     windowId = readVarInt(dataOffset, limit);
-    if (windowId >= 0) {
+    if (windowId != Integer.MIN_VALUE) {
       while (buffer[dataOffset++] < 0) {
       }
     }
