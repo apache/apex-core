@@ -127,7 +127,6 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   public void registered(SelectionKey key)
   {
     this.key = key;
-    write = false;
   }
 
   @Override
@@ -168,8 +167,8 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
     byte[] serializedRequest = PublishRequestTuple.getSerializedRequest(id, context.getStartingWindowId());
+    assert(serializedRequest.length < 128);
     writeBuffers[0].put((byte)serializedRequest.length);
-    writeBuffers[0].put((byte)(serializedRequest.length >> 8));
     writeBuffers[0].put(serializedRequest);
     synchronized (readBuffers) {
       readBuffers[0].limit(writeBuffers[0].position());
@@ -465,8 +464,6 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
           readBuffers[index].limit(BUFFER_CAPACITY);
         }
       }
-
-      logger.debug("count = {} and capacity = {} and {}", new Object[] {count, readBuffers[0], readBuffers[1]});
     }
 
     if (!write) {
@@ -1861,4 +1858,15 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
   };
   private static final Logger logger = LoggerFactory.getLogger(FastPublisher.class);
+
+  @Override
+  public void connected()
+  {
+    write = false;
+  }
+
+  @Override
+  public void disconnected()
+  {
+  }
 }
