@@ -98,6 +98,7 @@ public class SocketStreamTest
     StreamContext issContext = new StreamContext(streamName);
     issContext.setSourceId(upstreamNodeId);
     issContext.setSinkId(downstreamNodeId);
+    issContext.setFinishedWindowId(-1);
     issContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
     issContext.attr(StreamContext.CODEC).set(serde);
     issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
