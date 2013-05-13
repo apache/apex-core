@@ -218,6 +218,16 @@
       <artifactId>jline</artifactId>
       <version>0.9.94</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>4.2.5</version>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.jersey.contribs</groupId>
+      <artifactId>jersey-apache-client4</artifactId>
+      <version>1.17.1</version>
+    </dependency>
   </dependencies>
   <profiles>
     <!--
