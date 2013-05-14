@@ -825,8 +825,8 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
         }
       }
 
+      int charIndex = 0;
       if (ascii) {
-        int charIndex = 0;
         do {
           for (int i = writeBuffer.remaining(); i-- > 0 && charIndex < charCount;) {
             writeBuffer.put((byte)(value.charAt(charIndex++)));
@@ -844,7 +844,6 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       }
       else {
         writeUtf8Length(charCount + 1);
-        int charIndex = 0;
         do {
           int c;
           for (int i = writeBuffer.remaining(); i-- > 0 && charIndex < charCount; charIndex++) {
