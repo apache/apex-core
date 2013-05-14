@@ -61,7 +61,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
 
   private String sourceId;
   private String sinkId;
-  private long startingWindowId;
+  private long finishedWindowId;
   private int mask;
   private Set<Integer> partitions;
   private String id;
@@ -104,9 +104,9 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   /**
    * @return the startingWindowId
    */
-  public long getStartingWindowId()
+  public long getFinishedWindowId()
   {
-    return startingWindowId;
+    return finishedWindowId;
   }
 
   /**
@@ -114,7 +114,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
    */
   public void setFinishedWindowId(long startingWindowId)
   {
-    this.startingWindowId = startingWindowId;
+    this.finishedWindowId = startingWindowId;
   }
 
   /**

@@ -15,9 +15,9 @@ public class PurgeRequestTuple extends GenericRequestTuple
     super(array, offset, length);
   }
 
-  public static byte[] getSerializedRequest(String id, long windowId)
+  public static byte[] getSerializedRequest(String version, String id, long windowId)
   {
-    return GenericRequestTuple.getSerializedRequest(id, windowId, MessageType.PURGE_REQUEST_VALUE);
+    return GenericRequestTuple.getSerializedRequest(version, id, windowId, MessageType.PURGE_REQUEST_VALUE);
   }
 
 }
