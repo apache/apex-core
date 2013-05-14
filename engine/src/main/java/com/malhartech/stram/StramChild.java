@@ -881,7 +881,7 @@ public class StramChild
     StreamContext bssc = new StreamContext(nodi.declaredStreamId);
     bssc.setSourceId(sourceIdentifier);
     bssc.setSinkId(sinkIdentifier);
-    bssc.setStartingWindowId(startingWindowId);
+    bssc.setFinishedWindowId(startingWindowId);
     bssc.attr(StreamContext.CODEC).set(StramUtils.getSerdeInstance(nodi.serDeClassName));
     bssc.attr(StreamContext.EVENT_LOOP).set(eventloop);
     bssc.setBufferServerAddress(InetSocketAddress.createUnresolved(nodi.bufferServerHost, nodi.bufferServerPort));
@@ -942,7 +942,7 @@ public class StramChild
              */
             StreamContext context = new StreamContext(nodi.declaredStreamId);
             context.setSourceId(sourceIdentifier);
-            context.setStartingWindowId(finishedWindowId);
+            context.setFinishedWindowId(finishedWindowId);
             Stream stream = new MuxStream();
 
             newStreams.put(sourceIdentifier, pair = new ComponentContextPair<Stream, StreamContext>(stream, context));
@@ -952,7 +952,7 @@ public class StramChild
           if (!nodi.isInline()) {
 //            StreamContext context = new StreamContext(nodi.declaredStreamId);
 //            context.setSourceId(sourceIdentifier);
-//            context.setStartingWindowId(startingWindowId);
+//            context.setFinishedWindowId(startingWindowId);
 //
 //            Stream inlineStream = new InlineStream(queueCapacity);
 //            pair.component.setSink(, inlineStream);
@@ -1064,7 +1064,7 @@ public class StramChild
             context.setPartitions(nidi.partitionMask, nidi.partitionKeys);
             context.setSourceId(sourceIdentifier);
             context.setSinkId(sinkIdentifier);
-            context.setStartingWindowId(finishedWindowId);
+            context.setFinishedWindowId(finishedWindowId);
 
             BufferServerSubscriber stream = new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
 
@@ -1101,7 +1101,7 @@ public class StramChild
               /* we come here only if we are trying to augment the dag */
               StreamContext muxContext = new StreamContext(nidi.declaredStreamId);
               muxContext.setSourceId(sourceIdentifier);
-              muxContext.setStartingWindowId(finishedWindowId);
+              muxContext.setFinishedWindowId(finishedWindowId);
               muxContext.setSinkId(originalSinkId);
 
               MuxStream muxStream = new MuxStream();

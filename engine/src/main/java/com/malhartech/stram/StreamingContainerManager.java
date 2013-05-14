@@ -828,7 +828,7 @@ public class StreamingContainerManager implements PlanContext
           // purge everything from buffer server prior to new checkpoint
           BufferServerController bsc = getBufferServerClient(operator);
           try {
-            bsc.purge(sourceIdentifier, operator.checkpointWindows.getFirst() - 1);
+            bsc.purge(null, sourceIdentifier, operator.checkpointWindows.getFirst() - 1);
           }
           catch (Throwable t) {
             LOG.error("Failed to purge " + bsc.addr + " " + sourceIdentifier, t);
@@ -917,7 +917,7 @@ public class StreamingContainerManager implements PlanContext
                 // reset publisher (stale operator may still write data until disconnected)
                 // ensures new subscriber starting to read from checkpoint will wait until publisher redeploy cycle is complete
                 try {
-                  bsc.reset(sourceIdentifier, 0);
+                  bsc.reset(null, sourceIdentifier, 0);
                 }
                 catch (Exception ex) {
                   LOG.error("Failed to reset buffer server {} {}", sourceIdentifier, ex);

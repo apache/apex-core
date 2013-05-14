@@ -26,15 +26,15 @@ public abstract class Controller extends AbstractClient
     this.id = id;
   }
 
-  public void purge(String sourceId, long windowId)
+  public void purge(String version, String sourceId, long windowId)
   {
-    write(PurgeRequestTuple.getSerializedRequest(sourceId, windowId));
+    write(PurgeRequestTuple.getSerializedRequest(version, sourceId, windowId));
     logger.debug("Sent purge request sourceId = {}, windowId = {}", sourceId, windowId);
   }
 
-  public void reset(String sourceId, long windowId)
+  public void reset(String version, String sourceId, long windowId)
   {
-    write(ResetRequestTuple.getSerializedRequest(sourceId, windowId));
+    write(ResetRequestTuple.getSerializedRequest(version, sourceId, windowId));
     logger.debug("Sent reset request sourceId = {}, windowId = {}", sourceId, windowId);
   }
 

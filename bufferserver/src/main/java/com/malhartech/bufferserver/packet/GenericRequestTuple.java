@@ -4,11 +4,10 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import static com.malhartech.bufferserver.packet.Tuple.VERSION;
+import static com.malhartech.bufferserver.packet.Tuple.CLASSIC_VERSION;
 import static com.malhartech.bufferserver.packet.Tuple.writeString;
 import com.malhartech.bufferserver.util.Codec;
 import java.util.Arrays;
-import com.malhartech.util.Fragment;
 
 /**
  *
@@ -119,7 +118,7 @@ public class GenericRequestTuple extends RequestTuple
     return identifier;
   }
 
-  public static byte[] getSerializedRequest(String identifier, long startingWindowId, byte type)
+  public static byte[] getSerializedRequest(String version, String identifier, long startingWindowId, byte type)
   {
     byte[] array = new byte[4096];
     int offset = 0;
@@ -128,7 +127,10 @@ public class GenericRequestTuple extends RequestTuple
     array[offset++] = type;
 
     /* write the version */
-    offset = writeString(VERSION, array, offset);
+    if (version == null) {
+      version = CLASSIC_VERSION;
+    }
+    offset = writeString(version, array, offset);
 
     /* write the identifer */
     offset = writeString(identifier, array, offset);

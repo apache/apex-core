@@ -101,6 +101,7 @@ public class StramLocalClusterTest
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
+      streamContext.setFinishedWindowId(-1);
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
@@ -225,7 +226,7 @@ public class StramLocalClusterTest
     Assert.assertEquals("checkpoint " + ptNode2, 3, ptNode2.getRecentCheckpoint());
 
     // activated test sink, verify tuple stored at buffer server
-    // sink to collect tuples emitted by the input module
+    // sink to collect tuples emitted by the input operator
     TestBufferServerSubscriber sink = new TestBufferServerSubscriber(ptNode1, TestGeneratorInputOperator.OUTPUT_PORT);
     List<Object> tuples = sink.retrieveTuples(1, 3000);
     Assert.assertEquals("received " + tuples, 1, tuples.size());
@@ -235,7 +236,7 @@ public class StramLocalClusterTest
     localCluster.failContainer(c0);
 
     // replacement container starts empty
-    // operators will deploy after downstream node was removed
+    // operators will deploy after downstream operator was removed
     LocalStramChild c0Replaced = StramTestSupport.waitForActivation(localCluster, ptNode1);
     c0Replaced.triggerHeartbeat();
     c0Replaced.waitForHeartbeat(5000); // next heartbeat after setup

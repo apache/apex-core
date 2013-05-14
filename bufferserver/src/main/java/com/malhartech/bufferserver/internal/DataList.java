@@ -30,11 +30,11 @@ public class DataList
   private final String identifier;
   private final Integer blocksize;
   private HashMap<BitVector, HashSet<DataListener>> listeners = new HashMap<BitVector, HashSet<DataListener>>();
-  private HashSet<DataListener> all_listeners = new HashSet<DataListener>();
-  private Block first;
-  private Block last;
-  private Storage storage;
-  private ScheduledExecutorService executor;
+  protected HashSet<DataListener> all_listeners = new HashSet<DataListener>();
+  protected Block first;
+  protected Block last;
+  protected Storage storage;
+  protected ScheduledExecutorService executor;
 
   public int getBlockSize()
   {
@@ -133,7 +133,7 @@ public class DataList
   int size;
   int processingOffset;
 
-  public final void flush(final int writeOffset)
+  public void flush(final int writeOffset)
   {
     //logger.debug("size = {}, processingOffset = {}, nextOffset = {}, writeOffset = {}", size, processingOffset, nextOffset.integer, writeOffset);
     flush:
@@ -187,9 +187,6 @@ public class DataList
           processingOffset = 0;
           size = 0;
         }
-        else {
-          processingOffset = nextOffset.integer;
-        }
         break;
       }
     }
@@ -223,7 +220,7 @@ public class DataList
   /*
    * Iterator related functions.
    */
-  private final HashMap<String, DataListIterator> iterators = new HashMap<String, DataListIterator>();
+  protected final HashMap<String, DataListIterator> iterators = new HashMap<String, DataListIterator>();
 
   public Iterator<SerializedData> newIterator(String identifier, long windowId)
   {
@@ -388,7 +385,8 @@ public class DataList
         oldestBlockIndex = index.intValue();
         oldestReadOffset = entry.getValue().getReadOffset();
         status.slowestConsumer = entry.getKey();
-      } else if (index.intValue() == oldestBlockIndex && entry.getValue().getReadOffset() < oldestReadOffset) {
+      }
+      else if (index.intValue() == oldestBlockIndex && entry.getValue().getReadOffset() < oldestReadOffset) {
         oldestReadOffset = entry.getValue().getReadOffset();
         status.slowestConsumer = entry.getKey();
       }
@@ -400,7 +398,8 @@ public class DataList
       status.numBytesAllocated += b.data.length;
       if (oldestBlockIndex == i) {
         status.numBytesWaiting += b.writingOffset - oldestReadOffset;
-      } else if (oldestBlockIndex < i) {
+      }
+      else if (oldestBlockIndex < i) {
         status.numBytesWaiting += b.writingOffset - b.readingOffset;
       }
       b = b.next;
