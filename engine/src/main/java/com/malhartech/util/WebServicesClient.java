@@ -75,7 +75,11 @@ public class WebServicesClient
   }
 
   public <T> T process(String url, Class<T> clazz, WebServicesHandler<T> handler) throws IOException {
-    final WebResource wr = client.resource(url);
+    WebResource wr = client.resource(url);
+    return process(wr, clazz, handler);
+  }
+
+  public <T> T process(final WebResource wr, Class<T> clazz, WebServicesHandler<T> handler) throws IOException {
     final WebServicesHandler<T> webHandler = handler;
     final Class<T> webClazz = clazz;
     if (UserGroupInformation.isSecurityEnabled()) {
