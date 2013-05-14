@@ -839,6 +839,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
         while (false);
 
         int pos = writeBuffer.position() - 1;
+        logger.debug("position = {}", pos);
         writeBuffer.put(pos, (byte)(writeBuffer.get(pos) | 0x80));
       }
       else {
