@@ -833,13 +833,14 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
           }
           if (charIndex < charCount) {
             advanceWriteBuffer();
-            continue;
+          }
+          else {
+            break;
           }
         }
-        while (false);
+        while (true);
 
         int pos = writeBuffer.position() - 1;
-        logger.debug("position = {}", pos);
         writeBuffer.put(pos, (byte)(writeBuffer.get(pos) | 0x80));
       }
       else {
@@ -857,10 +858,12 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
           if (charIndex < charCount) {
             advanceWriteBuffer();
-            continue;
+          }
+          else {
+            break;
           }
         }
-        while (false);
+        while (true);
       }
     }
 
@@ -891,10 +894,12 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
         if (charIndex < charCount) {
           advanceWriteBuffer();
-          continue;
+        }
+        else {
+          break;
         }
       }
-      while (false);
+      while (true);
     }
 
     @Override
@@ -916,10 +921,12 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
         }
         if (charIndex < charCount) {
           advanceWriteBuffer();
-          continue;
+        }
+        else {
+          break;
         }
       }
-      while (false);
+      while (true);
 
       int pos = writeBuffer.position() - 1;
       writeBuffer.put(pos, (byte)(writeBuffer.get(pos) | 0x80));
