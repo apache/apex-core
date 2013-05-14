@@ -22,7 +22,7 @@ public class PublishRequestTupleTest
   {
     String pubId = "TestPublisher";
     long windowId = 0xcafebabe000000ffL;
-    byte[] serial = PublishRequestTuple.getSerializedRequest(pubId, windowId);
+    byte[] serial = PublishRequestTuple.getSerializedRequest(null, pubId, windowId);
     PublishRequestTuple request = (PublishRequestTuple)Tuple.getTuple(serial, 0, serial.length);
 
     Assert.assertEquals(request.identifier, pubId, "Identifier");

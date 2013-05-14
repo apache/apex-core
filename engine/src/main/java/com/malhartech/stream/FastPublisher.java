@@ -167,7 +167,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getBufferServerAddress()});
-    byte[] serializedRequest = PublishRequestTuple.getSerializedRequest(id, context.getFinishedWindowId());
+    byte[] serializedRequest = PublishRequestTuple.getSerializedRequest("1.1", id, context.getFinishedWindowId());
     assert (serializedRequest.length < 128);
     writeBuffers[0].put((byte)serializedRequest.length);
     writeBuffers[0].put(serializedRequest);

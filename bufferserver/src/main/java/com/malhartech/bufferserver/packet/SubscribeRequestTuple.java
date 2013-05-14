@@ -219,6 +219,7 @@ public class SubscribeRequestTuple extends RequestTuple
   }
 
   public static byte[] getSerializedRequest(
+          String version,
           String id,
           String down_type,
           String upstream_id,
@@ -233,7 +234,10 @@ public class SubscribeRequestTuple extends RequestTuple
     array[offset++] = MessageType.SUBSCRIBER_REQUEST_VALUE;
 
     /* write the version */
-    offset = Tuple.writeString(VERSION, array, offset);
+    if (version == null) {
+      version = VERSION;
+    }
+    offset = Tuple.writeString(version, array, offset);
 
     /* write the identifier */
     offset = Tuple.writeString(id, array, offset);

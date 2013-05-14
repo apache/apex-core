@@ -31,9 +31,9 @@ public abstract class Publisher extends AbstractClient
    *
    * @param windowId
    */
-  public void activate(long windowId)
+  public void activate(String version, long windowId)
   {
-    write(PublishRequestTuple.getSerializedRequest(id, windowId));
+    write(PublishRequestTuple.getSerializedRequest(version, id, windowId));
   }
 
   @Override

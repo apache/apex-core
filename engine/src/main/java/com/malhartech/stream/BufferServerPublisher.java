@@ -119,7 +119,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
 
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getBufferServerAddress()});
     serde = context.attr(StreamContext.CODEC).get();
-    super.activate(context.getFinishedWindowId());
+    super.activate(null, context.getFinishedWindowId());
   }
 
   @Override

@@ -30,7 +30,7 @@ public class SubscribeRequestTupleTest
     ArrayList<Integer> partitions = new ArrayList<Integer>();
     partitions.add(5);
     long startingWindowId = 0xcafebabe00000078L;
-    byte[] serial = SubscribeRequestTuple.getSerializedRequest(id, down_type, upstream_id, mask, partitions, startingWindowId);
+    byte[] serial = SubscribeRequestTuple.getSerializedRequest(null, id, down_type, upstream_id, mask, partitions, startingWindowId);
     SubscribeRequestTuple tuple = (SubscribeRequestTuple)Tuple.getTuple(serial, 0, serial.length);
     Assert.assertEquals(tuple.getIdentifier(), id, "Identifier");
     Assert.assertEquals(tuple.getStreamType(), down_type, "UpstreamType");
