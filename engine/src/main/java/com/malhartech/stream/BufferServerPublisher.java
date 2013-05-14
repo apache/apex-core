@@ -117,9 +117,9 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
     eventloop = context.attr(StreamContext.EVENT_LOOP).get();
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
-    logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getBufferServerAddress()});
+    logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getBufferServerAddress()});
     serde = context.attr(StreamContext.CODEC).get();
-    super.activate(context.getStartingWindowId());
+    super.activate(null, context.getFinishedWindowId());
   }
 
   @Override

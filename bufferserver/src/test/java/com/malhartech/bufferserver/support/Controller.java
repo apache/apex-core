@@ -18,17 +18,17 @@ public class Controller extends com.malhartech.bufferserver.client.Controller
   }
 
   @Override
-  public void purge(String sourceId, long windowId)
+  public void purge(String version, String sourceId, long windowId)
   {
     data = null;
-    super.purge(sourceId, windowId);
+    super.purge(version, sourceId, windowId);
   }
 
   @Override
-  public void reset(String sourceId, long windowId)
+  public void reset(String version, String sourceId, long windowId)
   {
     data = null;
-    super.reset(sourceId, windowId);
+    super.reset(version, sourceId, windowId);
   }
 
   @Override

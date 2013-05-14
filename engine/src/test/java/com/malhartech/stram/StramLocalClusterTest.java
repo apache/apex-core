@@ -101,6 +101,7 @@ public class StramLocalClusterTest
       streamContext = new StreamContext(streamName);
       streamContext.setSourceId(sourceId);
       streamContext.setSinkId(this.getClass().getSimpleName());
+      streamContext.setFinishedWindowId(-1);
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
       streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);

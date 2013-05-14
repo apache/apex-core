@@ -72,8 +72,8 @@ public class ServerTest
     bss = new Subscriber("MySubscriber");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bsp.activate(0L);
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bsp.activate(null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     synchronized (this) {
       wait(100);
@@ -95,8 +95,8 @@ public class ServerTest
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bsp.activate(0L);
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bsp.activate(null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     long resetInfo = 0x7afebabe000000faL;
 
@@ -124,7 +124,7 @@ public class ServerTest
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
@@ -146,11 +146,11 @@ public class ServerTest
   {
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
-    bsp.activate(0x7afebabe, 0);
+    bsp.activate(null, 0x7afebabe, 0);
 
     long windowId = 0x7afebabe00000000L;
 
@@ -198,7 +198,7 @@ public class ServerTest
     bsc = new Controller("MyController");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
 
-    bsc.purge("MyPublisher", 0);
+    bsc.purge(null, "MyPublisher", 0);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -211,7 +211,7 @@ public class ServerTest
 
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() == 205) {
@@ -230,7 +230,7 @@ public class ServerTest
     bsc = new Controller("MyController");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
 
-    bsc.purge("MyPublisher", 0x7afebabe00000000L);
+    bsc.purge(null, "MyPublisher", 0x7afebabe00000000L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -243,7 +243,7 @@ public class ServerTest
 
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() == 103) {
@@ -261,7 +261,7 @@ public class ServerTest
     bsc = new Controller("MyController");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
 
-    bsc.purge("MyPublisher", 0x7afebabe00000001L);
+    bsc.purge(null, "MyPublisher", 0x7afebabe00000001L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -275,7 +275,7 @@ public class ServerTest
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (!bss.resetPayloads.isEmpty()) {
@@ -300,7 +300,7 @@ public class ServerTest
     bsp = new Publisher("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
 
-    bsp.activate(10, 0);
+    bsp.activate(null, 10, 0);
 
     long windowId = 0L;
 
@@ -331,7 +331,7 @@ public class ServerTest
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() == 8) {
@@ -352,7 +352,7 @@ public class ServerTest
     bsc = new Controller("MyController");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsc);
 
-    bsc.reset("MyPublisher", 0x7afebabe00000001L);
+    bsc.reset(null, "MyPublisher", 0x7afebabe00000001L);
     for (int i = 0; i < spinCount * 2; i++) {
       Thread.sleep(10);
       if (bsc.data != null) {
@@ -366,7 +366,7 @@ public class ServerTest
     bss = new Subscriber("MySubscriber");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
     for (int i = 0; i < spinCount; i++) {
       Thread.sleep(10);
       if (bss.tupleCount.get() > 0) {
@@ -397,7 +397,7 @@ public class ServerTest
   {
     bss = new Subscriber("MyPublisher");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 50L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 50L);
 
     /* wait in a hope that the subscriber is able to reach the server */
     Thread.sleep(100);
@@ -405,7 +405,7 @@ public class ServerTest
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bsp);
 
 
-    bsp.activate(0, 0);
+    bsp.activate(null, 0, 0);
 
     for (int i = 0; i < 100; i++) {
       bsp.publishMessage(BeginWindowTuple.getSerializedTuple(i));

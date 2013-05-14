@@ -71,9 +71,9 @@ public class DiskStorageTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testStorage() throws InterruptedException
   {
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
-    bsp.activate(0x7afebabe, 0);
+    bsp.activate(null, 0x7afebabe, 0);
 
     long windowId = 0x7afebabe00000000L;
     bsp.publishMessage(BeginWindowTuple.getSerializedTuple((int)windowId));
@@ -114,7 +114,7 @@ public class DiskStorageTest
     bss = new Subscriber("MySubscriber");
     eventloopClient.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, bss);
 
-    bss.activate("BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
+    bss.activate(null, "BufferServerOutput/BufferServerSubscriber", "MyPublisher", 0, null, 0L);
 
     for (int i = 0; i < spinCount; i++) {
       sleep(10);

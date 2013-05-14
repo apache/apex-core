@@ -18,19 +18,17 @@ import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  *
  */
-public class SocketStreamTest
+@Ignore
+public class FastStreamTest
 {
-  private static final Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FastStreamTest.class);
   private static int bufferServerPort = 0;
   private static Server bufferServer = null;
   static EventLoop eventloop;
@@ -103,7 +101,7 @@ public class SocketStreamTest
     issContext.attr(StreamContext.CODEC).set(serde);
     issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerSubscriber iss = new BufferServerSubscriber(downstreamNodeId, 1024);
+    FastSubscriber iss = new FastSubscriber(downstreamNodeId, 1024);
     iss.setup(issContext);
     SweepableReservoir reservoir = iss.acquireReservoir("testReservoir", 1);
     reservoir.setSink(sink);
@@ -115,7 +113,7 @@ public class SocketStreamTest
     ossContext.attr(StreamContext.CODEC).set(serde);
     ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    BufferServerPublisher oss = new BufferServerPublisher(upstreamNodeId, 1024);
+    FastPublisher oss = new FastPublisher(upstreamNodeId, 8);
     oss.setup(ossContext);
 
     iss.activate(issContext);
@@ -148,5 +146,5 @@ public class SocketStreamTest
     Assert.assertEquals("Received messages", 1, messageCount.get());
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(SocketStreamTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(FastStreamTest.class);
 }

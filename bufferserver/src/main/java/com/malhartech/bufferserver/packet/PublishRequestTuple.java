@@ -4,10 +4,6 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import static com.malhartech.bufferserver.packet.Tuple.VERSION;
-import com.malhartech.bufferserver.util.Codec;
-import java.util.Arrays;
-
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -19,9 +15,9 @@ public class PublishRequestTuple extends GenericRequestTuple
     super(array, offset, len);
   }
 
-  public static byte[] getSerializedRequest(String identifier, long startingWindowId)
+  public static byte[] getSerializedRequest(String version, String identifier, long startingWindowId)
   {
-    return GenericRequestTuple.getSerializedRequest(identifier, startingWindowId, MessageType.PUBLISHER_REQUEST_VALUE);
+    return GenericRequestTuple.getSerializedRequest(version, identifier, startingWindowId, MessageType.PUBLISHER_REQUEST_VALUE);
   }
 
 }

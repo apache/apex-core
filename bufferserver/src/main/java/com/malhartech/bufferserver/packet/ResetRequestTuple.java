@@ -15,9 +15,9 @@ public class ResetRequestTuple extends GenericRequestTuple
     super(array, offset, length);
   }
 
-  public static byte[] getSerializedRequest(String identifier, long startingWindowId)
+  public static byte[] getSerializedRequest(String version, String identifier, long startingWindowId)
   {
-    return GenericRequestTuple.getSerializedRequest(identifier, startingWindowId, MessageType.RESET_REQUEST_VALUE);
+    return GenericRequestTuple.getSerializedRequest(version, identifier, startingWindowId, MessageType.RESET_REQUEST_VALUE);
   }
 
 }

@@ -29,9 +29,10 @@ public abstract class Subscriber extends AbstractClient
     this.id = id;
   }
 
-  public void activate(String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)
+  public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)
   {
     write(SubscribeRequestTuple.getSerializedRequest(
+            version,
             id,
             type,
             sourceId,

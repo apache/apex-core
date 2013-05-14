@@ -27,12 +27,12 @@ public class Subscriber extends com.malhartech.bufferserver.client.Subscriber
   }
 
   @Override
-  public void activate(String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)
+  public void activate(String version, String type, String sourceId, int mask, Collection<Integer> partitions, long windowId)
   {
     tupleCount.set(0);
     firstPayload = lastPayload = null;
     resetPayloads.clear();
-    super.activate(type, sourceId, mask, partitions, windowId);
+    super.activate(version, type, sourceId, mask, partitions, windowId);
   }
 
   @Override

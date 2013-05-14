@@ -36,9 +36,9 @@ public class Publisher extends com.malhartech.bufferserver.client.Publisher
     write(payload);
   }
 
-  public void activate(int baseSeconds, int windowId)
+  public void activate(String version, int baseSeconds, int windowId)
   {
-    super.activate((long)baseSeconds << 32 | windowId);
+    super.activate(version, (long)baseSeconds << 32 | windowId);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Publisher.class);

@@ -33,7 +33,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   private boolean suspended;
   private long baseSeconds;
   protected StreamCodec<Object> serde;
-  private EventLoop eventloop;
+  protected EventLoop eventloop;
   private DataStatePair dsp = new DataStatePair();
   CircularBuffer<Fragment> offeredFragments;
   CircularBuffer<Fragment> polledFragments;
@@ -65,8 +65,8 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
     eventloop = context.attr(StreamContext.EVENT_LOOP).get();
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
-    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getStartingWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-    activate(context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getStartingWindowId());
+    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
+    activate(null, context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getFinishedWindowId());
   }
 
   @Override
@@ -106,7 +106,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   public void setup(StreamContext context)
   {
     serde = context.attr(StreamContext.CODEC).get();
-    baseSeconds = context.getStartingWindowId() & 0xffffffff00000000L;
+    baseSeconds = context.getFinishedWindowId() & 0xffffffff00000000L;
   }
 
   @Override

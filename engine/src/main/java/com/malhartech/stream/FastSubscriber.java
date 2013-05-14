@@ -4,6 +4,11 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.engine.StreamContext;
+import java.net.InetSocketAddress;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
@@ -16,6 +21,17 @@ public class FastSubscriber extends BufferServerSubscriber
   }
 
   @Override
+  public void activate(StreamContext context)
+  {
+    InetSocketAddress address = context.getBufferServerAddress();
+    eventloop = context.attr(StreamContext.EVENT_LOOP).get();
+    eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
+
+    logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
+    activate("1.1", context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getFinishedWindowId());
+  }
+
+  @Override
   public int readSize()
   {
     if (writeOffset - readOffset < 2) {
@@ -25,4 +41,6 @@ public class FastSubscriber extends BufferServerSubscriber
     short s = buffer[readOffset++];
     return s | (buffer[readOffset++] << 8);
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(FastSubscriber.class);
 }
