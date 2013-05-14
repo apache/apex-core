@@ -18,14 +18,16 @@ import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  *
  */
-@Ignore
 public class FastStreamTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(FastStreamTest.class);
@@ -101,32 +103,39 @@ public class FastStreamTest
     issContext.attr(StreamContext.CODEC).set(serde);
     issContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    FastSubscriber iss = new FastSubscriber(downstreamNodeId, 1024);
-    iss.setup(issContext);
-    SweepableReservoir reservoir = iss.acquireReservoir("testReservoir", 1);
+    FastSubscriber subscriber = new FastSubscriber(downstreamNodeId, 1024);
+    subscriber.setup(issContext);
+    SweepableReservoir reservoir = subscriber.acquireReservoir("testReservoir", 1);
     reservoir.setSink(sink);
 
     StreamContext ossContext = new StreamContext(streamName);
     ossContext.setSourceId(upstreamNodeId);
     ossContext.setSinkId(downstreamNodeId);
+    ossContext.setFinishedWindowId(-1);
     ossContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
     ossContext.attr(StreamContext.CODEC).set(serde);
     ossContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
 
-    FastPublisher oss = new FastPublisher(upstreamNodeId, 8);
-    oss.setup(ossContext);
+    FastPublisher publisher = new FastPublisher(upstreamNodeId, 8);
+    StreamContext publisherContext = new StreamContext(streamName);
+    publisherContext.setSourceId(upstreamNodeId);
+    publisherContext.setSinkId(downstreamNodeId);
+    publisherContext.setBufferServerAddress(InetSocketAddress.createUnresolved("localhost", bufferServerPort));
+    publisherContext.attr(StreamContext.CODEC).set(serde);
+    publisherContext.attr(StreamContext.EVENT_LOOP).set(eventloop);
+    publisher.setup(publisherContext);
 
-    iss.activate(issContext);
+    subscriber.activate(issContext);
     LOG.debug("input stream activated");
 
-    oss.activate(ossContext);
+    publisher.activate(publisherContext);
     LOG.debug("output stream activated");
 
     LOG.debug("Sending hello message");
-    oss.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
-    oss.put(StramTestSupport.generateTuple("hello", 0));
-    oss.put(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0));
-    oss.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
+    publisher.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 0));
+    publisher.put(StramTestSupport.generateTuple("hello", 0));
+    publisher.put(StramTestSupport.generateEndWindowTuple(upstreamNodeId, 0));
+    publisher.put(StramTestSupport.generateBeginWindowTuple(upstreamNodeId, 1)); // it's a spurious tuple, presence of it should not affect the outcome of the test.
 
     for (int i = 0; i < 100; i++) {
       Tuple t = reservoir.sweep();
@@ -141,8 +150,8 @@ public class FastStreamTest
       }
     }
 
-    eventloop.disconnect(oss);
-    eventloop.disconnect(iss);
+    eventloop.disconnect(publisher);
+    eventloop.disconnect(subscriber);
     Assert.assertEquals("Received messages", 1, messageCount.get());
   }
 

@@ -235,7 +235,7 @@ public class SubscribeRequestTuple extends RequestTuple
 
     /* write the version */
     if (version == null) {
-      version = VERSION;
+      version = CLASSIC_VERSION;
     }
     offset = Tuple.writeString(version, array, offset);
 

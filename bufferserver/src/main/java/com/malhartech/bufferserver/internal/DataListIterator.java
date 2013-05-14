@@ -17,13 +17,13 @@ import org.slf4j.LoggerFactory;
  *
  * @author chetan
  */
-class DataListIterator implements Iterator<SerializedData>
+public class DataListIterator implements Iterator<SerializedData>
 {
   Block da;
   SerializedData current;
-  private final Storage storage;
-  private byte[] buffer;
-  private int readOffset;
+  protected final Storage storage;
+  protected byte[] buffer;
+  protected int readOffset;
   MutableInt nextOffset = new MutableInt();
   int size;
 
@@ -50,7 +50,7 @@ class DataListIterator implements Iterator<SerializedData>
   {
     return readOffset;
   }
-  
+
   /**
    *
    * @return boolean

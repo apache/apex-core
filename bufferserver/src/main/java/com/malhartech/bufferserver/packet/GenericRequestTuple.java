@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import static com.malhartech.bufferserver.packet.Tuple.VERSION;
+import static com.malhartech.bufferserver.packet.Tuple.CLASSIC_VERSION;
 import static com.malhartech.bufferserver.packet.Tuple.writeString;
 import com.malhartech.bufferserver.util.Codec;
 import java.util.Arrays;
@@ -128,7 +128,7 @@ public class GenericRequestTuple extends RequestTuple
 
     /* write the version */
     if (version == null) {
-      version = VERSION;
+      version = CLASSIC_VERSION;
     }
     offset = writeString(version, array, offset);
 

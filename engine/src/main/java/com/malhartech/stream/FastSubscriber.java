@@ -4,6 +4,7 @@
  */
 package com.malhartech.stream;
 
+import com.malhartech.bufferserver.packet.Tuple;
 import com.malhartech.engine.StreamContext;
 import java.net.InetSocketAddress;
 import org.slf4j.Logger;
@@ -28,7 +29,7 @@ public class FastSubscriber extends BufferServerSubscriber
     eventloop.connect(address.isUnresolved() ? new InetSocketAddress(address.getHostName(), address.getPort()) : address, this);
 
     logger.debug("registering subscriber: id={} upstreamId={} streamLogicalName={} windowId={} mask={} partitions={} server={}", new Object[] {context.getSinkId(), context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getPartitionMask(), context.getPartitions(), context.getBufferServerAddress()});
-    activate("1.1", context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getFinishedWindowId());
+    activate(Tuple.FAST_VERSION, context.getId() + '/' + context.getSinkId(), context.getSourceId(), context.getPartitionMask(), context.getPartitions(), context.getFinishedWindowId());
   }
 
   @Override

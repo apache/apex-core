@@ -6,6 +6,7 @@ package com.malhartech.bufferserver.server;
 
 import com.malhartech.bufferserver.client.AbstractClient;
 import com.malhartech.bufferserver.internal.DataList;
+import com.malhartech.bufferserver.internal.FastDataList;
 import com.malhartech.bufferserver.internal.LogicalNode;
 import com.malhartech.bufferserver.packet.*;
 import com.malhartech.bufferserver.storage.Storage;
@@ -230,7 +231,7 @@ public class Server implements ServerListener
         dl = publisherBuffers.get(upstream_identifier);
       }
       else {
-        dl = new DataList(upstream_identifier, blockSize);
+        dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(upstream_identifier, blockSize) : new DataList(upstream_identifier, blockSize);
         publisherBuffers.put(upstream_identifier, dl);
       }
 
@@ -284,7 +285,7 @@ public class Server implements ServerListener
       }
     }
     else {
-      dl = new DataList(identifier, blockSize);
+      dl = Tuple.FAST_VERSION.equals(request.getVersion()) ? new FastDataList(identifier, blockSize) : new DataList(identifier, blockSize);
       publisherBuffers.put(identifier, dl);
     }
     dl.setSecondaryStorage(storage);
@@ -334,11 +335,32 @@ public class Server implements ServerListener
            */
           unregistered(key);
           logger.info("Received publisher request: {}", request);
+          PublishRequestTuple publisherRequest = (PublishRequestTuple)request;
 
-          DataList dl = handlePublisherRequest((PublishRequestTuple)request, this);
+          DataList dl = handlePublisherRequest(publisherRequest, this);
           dl.setAutoflush(executor);
 
-          Publisher publisher = new Publisher(dl, (long)request.getBaseSeconds() << 32 | request.getWindowId());
+          Publisher publisher;
+          if (publisherRequest.getVersion().equals(Tuple.FAST_VERSION)) {
+            publisher = new Publisher(dl, (long)request.getBaseSeconds() << 32 | request.getWindowId())
+            {
+              @Override
+              public int readSize()
+              {
+                if (writeOffset - readOffset < 2) {
+                  return -1;
+                }
+
+                short s = buffer[readOffset++];
+                return s | (buffer[readOffset++] << 8);
+              }
+
+            };
+          }
+          else {
+            publisher = new Publisher(dl, (long)request.getBaseSeconds() << 32 | request.getWindowId());
+          }
+
           key.attach(publisher);
           key.interestOps(SelectionKey.OP_READ);
           publisher.registered(key);
@@ -360,7 +382,26 @@ public class Server implements ServerListener
           logger.info("Received subscriber request: {}", request);
 
           SubscribeRequestTuple subscriberRequest = (SubscribeRequestTuple)request;
-          AbstractClient subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions());
+          AbstractClient subscriber;
+          if (subscriberRequest.getVersion().equals(Tuple.FAST_VERSION)) {
+            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions());
+          }
+          else {
+            subscriber = new Subscriber(subscriberRequest.getStreamType(), subscriberRequest.getMask(), subscriberRequest.getPartitions())
+            {
+              @Override
+              public int readSize()
+              {
+                if (writeOffset - readOffset < 2) {
+                  return -1;
+                }
+
+                short s = buffer[readOffset++];
+                return s | (buffer[readOffset++] << 8);
+              }
+
+            };
+          }
           key.attach(subscriber);
           key.interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
           subscriber.registered(key);
