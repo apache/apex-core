@@ -27,7 +27,7 @@ public class FastPublisherTest
   @Test
   public void testSerialization() throws Exception
   {
-    FastPublisherImpl publisher = new FastPublisherImpl(3);
+    FastPublisherImpl publisher = new FastPublisherImpl(24 * 1024);
     final String message = "hello!";
     publisher.put(message);
     byte[] buffer = publisher.consume();

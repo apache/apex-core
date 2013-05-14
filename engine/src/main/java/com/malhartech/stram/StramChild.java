@@ -889,8 +889,9 @@ public class StramChild
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
     }
 
-    BufferServerPublisher bsp = new BufferServerPublisher(sourceIdentifier, queueCapacity);
-    return new HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>>(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(bsp, bssc));
+    //BufferServerPublisher publisher = new BufferServerPublisher(sourceIdentifier, queueCapacity);
+    FastPublisher publisher = new FastPublisher(sourceIdentifier, queueCapacity * 256);
+    return new HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>>(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(publisher, bssc));
   }
 
   private HashMap<String, ComponentContextPair<Stream, StreamContext>> deployOutputStreams(
@@ -1066,7 +1067,8 @@ public class StramChild
             context.setSinkId(sinkIdentifier);
             context.setFinishedWindowId(finishedWindowId);
 
-            BufferServerSubscriber stream = new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
+            //BufferServerSubscriber stream = new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
+            BufferServerSubscriber stream = new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
 
             SweepableReservoir reservoir = stream.acquireReservoir(sinkIdentifier, queueCapacity);
             if (finishedWindowId > 0) {

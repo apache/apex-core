@@ -6,9 +6,11 @@ package com.malhartech.bufferserver.internal;
 
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.bufferserver.util.SerializedData;
+import java.io.IOException;
 import java.util.Iterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -85,7 +87,7 @@ public class FastDataList extends DataList
       @Override
       public void run()
       {
-        for (DataListener dl: all_listeners) {
+        for (DataListener dl : all_listeners) {
           dl.addedData();
         }
       }
@@ -109,4 +111,54 @@ public class FastDataList extends DataList
     return dli;
   }
 
+  @Override
+  public void purge(int baseSeconds, int windowId)
+  {
+    long longWindowId = (long)baseSeconds << 32 | windowId;
+
+    Block prev = null;
+    for (Block temp = first; temp != null && temp.starting_window <= longWindowId; temp = temp.next) {
+      if (temp.ending_window > longWindowId || temp == last) {
+        if (prev != null) {
+          first = temp;
+        }
+
+        first.purge(longWindowId, true);
+        break;
+      }
+
+      if (storage != null && temp.uniqueIdentifier > 0) {
+        logger.debug("discarding {} {} in purge", identifier, temp.uniqueIdentifier);
+
+        storage.discard(identifier, temp.uniqueIdentifier);
+      }
+
+      prev = temp;
+    }
+  }
+
+  @Override
+  public void rewind(int baseSeconds, int windowId) throws IOException
+  {
+    long longWindowId = (long)baseSeconds << 32 | windowId;
+
+    for (Block temp = first; temp != null; temp = temp.next) {
+      if (temp.starting_window >= longWindowId || temp.ending_window > longWindowId) {
+        if (temp != last) {
+          temp.next = null;
+          last = temp;
+        }
+
+        this.baseSeconds = temp.rewind(longWindowId, true);
+        processingOffset = temp.writingOffset;
+        size = 0;
+      }
+    }
+
+    for (DataListIterator dli: iterators.values()) {
+      dli.rewind(processingOffset);
+    }
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(FastDataList.class);
 }

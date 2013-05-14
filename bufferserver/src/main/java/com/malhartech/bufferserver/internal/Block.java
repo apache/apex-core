@@ -49,7 +49,6 @@ public class Block
    * the next in the chain.
    */
   Block next;
-
   /**
    * how count of references to this block.
    */
@@ -80,10 +79,10 @@ public class Block
     }
   }
 
-  public long rewind(long windowId)
+  public long rewind(long windowId, boolean fast)
   {
     long bs = starting_window & 0x7fffffff00000000L;
-    DataListIterator dli = new DataListIterator(this, null);
+    DataListIterator dli = fast ? new FastDataListIterator(this, null) : new DataListIterator(this, null);
     done:
     while (dli.hasNext()) {
       SerializedData sd = dli.next();
@@ -118,7 +117,7 @@ public class Block
     return bs;
   }
 
-  public void purge(long longWindowId)
+  public void purge(long longWindowId, boolean fast)
   {
 //    logger.debug("starting_window = {}, longWindowId = {}, ending_window = {}",
 //                 new Object[] {Codec.getStringWindowId(starting_window), Codec.getStringWindowId(longWindowId), Codec.getStringWindowId(ending_window)});
@@ -126,7 +125,7 @@ public class Block
     long bs = starting_window & 0xffffffff00000000L;
     SerializedData lastReset = null;
 
-    DataListIterator dli = new DataListIterator(this, null);
+    DataListIterator dli = fast? new FastDataListIterator(this, null): new DataListIterator(this, null);
     done:
     while (dli.hasNext()) {
       SerializedData sd = dli.next();

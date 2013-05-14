@@ -47,9 +47,18 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   private final String id;
   private boolean write = true;
 
-  public FastPublisher(String id, int countOf8kBuffers)
+  public FastPublisher(String id, int streamingWindowThroughput)
   {
     this.id = id;
+
+    int countOf8kBuffers = streamingWindowThroughput / (8 * 1024);
+    if (streamingWindowThroughput % (8 * 1024) != 0) {
+      countOf8kBuffers++;
+    }
+    if (countOf8kBuffers < 2) {
+      countOf8kBuffers = 2;
+    }
+
     writeBuffers = new ByteBuffer[countOf8kBuffers];
     readBuffers = new ByteBuffer[countOf8kBuffers];
     for (int i = countOf8kBuffers; i-- > 0;) {
@@ -826,9 +835,8 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             advanceWriteBuffer();
             continue;
           }
-          break;
         }
-        while (true);
+        while (false);
 
         int pos = writeBuffer.position() - 1;
         writeBuffer.put(pos, (byte)(writeBuffer.get(pos) | 0x80));
@@ -838,7 +846,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
         int charIndex = 0;
         do {
           int c;
-          for (int i = writeBuffer.remaining(); i-- > 0; charIndex++) {
+          for (int i = writeBuffer.remaining(); i-- > 0 && charIndex < charCount; charIndex++) {
             c = value.charAt(charIndex);
             if (c > 127) {
               writeString_slow(value, charCount, charIndex);
@@ -852,7 +860,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
             continue;
           }
         }
-        while (true);
+        while (false);
       }
     }
 
@@ -886,7 +894,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
           continue;
         }
       }
-      while (true);
+      while (false);
     }
 
     @Override
@@ -910,9 +918,8 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
           advanceWriteBuffer();
           continue;
         }
-        break;
       }
-      while (true);
+      while (false);
 
       int pos = writeBuffer.position() - 1;
       writeBuffer.put(pos, (byte)(writeBuffer.get(pos) | 0x80));
