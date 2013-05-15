@@ -38,7 +38,7 @@ public class FastDataList extends DataList
         if (writeOffset - processingOffset >= 2) {
           size = last.data[processingOffset];
           size |= (last.data[processingOffset + 1] << 8);
-          logger.debug("read item = {} of size = {} at offset = {}", item++, size, processingOffset);
+//          logger.debug("read item = {} of size = {} at offset = {}", item++, size, processingOffset);
         }
         else {
           if (writeOffset == last.data.length) {
@@ -130,7 +130,7 @@ public class FastDataList extends DataList
       }
 
       if (storage != null && temp.uniqueIdentifier > 0) {
-        logger.debug("discarding {} {} in purge", identifier, temp.uniqueIdentifier);
+//        logger.debug("discarding {} {} in purge", identifier, temp.uniqueIdentifier);
 
         storage.discard(identifier, temp.uniqueIdentifier);
       }

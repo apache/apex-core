@@ -102,6 +102,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
     SocketChannel sc = (SocketChannel)key.channel();
     do {
       synchronized (readBuffer) {
+        logger.debug("reading {} and {}", readIndex, readBuffer.limit());
         sc.write(readBuffer);
         if (readBuffer.position() < readBuffer.capacity()) {
           if (!readBuffer.hasRemaining()) {
@@ -233,7 +234,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
       int size = array.length;
       if (writeBuffer.hasRemaining()) {
-        logger.debug("putting control tuple {} of size {}  at {}", new Object[] {item++, size, writeBuffer.position()});
+        //logger.debug("putting control tuple {} of size {}  at {}", new Object[] {item++, size, writeBuffer.position()});
         writeBuffer.put((byte)size);
         if (writeBuffer.hasRemaining()) {
           writeBuffer.put((byte)(size >> 8));
@@ -251,7 +252,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
           readBuffers[writeIndex].limit(BUFFER_CAPACITY);
         }
         advanceWriteBuffer();
-        logger.debug("putting control tuple {} of size {}  at {}", new Object[] {item++, size, writeBuffer.position()});
+        //logger.debug("putting control tuple {} of size {}  at {}", new Object[] {item++, size, writeBuffer.position()});
         writeBuffer.put((byte)size);
         writeBuffer.put((byte)(size >> 8));
       }
@@ -288,7 +289,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
       int wi = writeIndex;
       int position = writeBuffer.position();
-      logger.debug("putting tuple {} of at {}/{}", new Object[] {item++, writeIndex, writeBuffer.position()});
+      //logger.debug("putting tuple {} of at {}/{}", new Object[] {item++, writeIndex, writeBuffer.position()});
 
       int newPosition = position + 2 /* for short size */ + 1 /* for data type */ + 4 /* for partition */;
       if (newPosition > BUFFER_CAPACITY) {
@@ -483,6 +484,8 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
       write = true;
     }
+
+    logger.debug("wrote {} and {}", writeIndex, writeBuffer.position());
   }
 
   @SuppressWarnings("SleepWhileInLoop")

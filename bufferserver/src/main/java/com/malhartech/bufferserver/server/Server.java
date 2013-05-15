@@ -126,7 +126,6 @@ public class Server implements ServerListener
     return identity;
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(Server.class);
   private final HashMap<String, DataList> publisherBuffers = new HashMap<String, DataList>();
   private final HashMap<String, LogicalNode> subscriberGroups = new HashMap<String, LogicalNode>();
   private final ConcurrentHashMap<String, AbstractClient> publisherChannels = new ConcurrentHashMap<String, AbstractClient>();
@@ -565,7 +564,7 @@ public class Server implements ServerListener
     @Override
     public void read(int len)
     {
-      logger.debug("read {} bytes", len);
+      //logger.debug("read {} bytes", len);
       writeOffset += len;
       do {
         if (size <= 0) {
@@ -690,4 +689,5 @@ public class Server implements ServerListener
 
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(Server.class);
 }
