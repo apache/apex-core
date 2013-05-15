@@ -1374,7 +1374,7 @@ public class StramChild
       if (!sinkMap.isEmpty()) {
         logger.debug("Started recording (name: {}) to base path {}", operatorPortName, basePath);
         node.addSinks(sinkMap);
-        tupleRecorder.setup(null);
+        tupleRecorder.setup(node.getOperator());
         tupleRecorders.put(operatorPortName, tupleRecorder);
       }
       else {
