@@ -100,6 +100,7 @@ public class StramChild
   private String daemonAddress;
   private long tupleRecordingPartFileTimeMillis;
   private int checkpointWindowCount;
+  private boolean fastPublisherSubscriber;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -111,17 +112,18 @@ public class StramChild
 
   public void setup(StreamingContainerContext ctx)
   {
-    this.applicationAttributes = ctx.applicationAttributes;
+    applicationAttributes = ctx.applicationAttributes;
     heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
     windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
     checkpointWindowCount = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
 
-    this.appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
-    this.checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
-    this.tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    this.tupleRecordingPartFileTimeMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
-    this.daemonAddress = ctx.applicationAttributes.attrValue(DAG.STRAM_DAEMON_ADDRESS, null);
+    appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
+    checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
+    tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
+    tupleRecordingPartFileTimeMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
+    daemonAddress = ctx.applicationAttributes.attrValue(DAG.STRAM_DAEMON_ADDRESS, null);
+    fastPublisherSubscriber = ctx.applicationAttributes.attrValue(DAG.FAST_PUBLISHER_SUBSCRIBER, false);
 
     try {
       if (ctx.deployBufferServer) {
@@ -889,8 +891,7 @@ public class StramChild
       bssc.setBufferServerAddress(new InetSocketAddress(InetAddress.getByName(null), nodi.bufferServerPort));
     }
 
-    //BufferServerPublisher publisher = new BufferServerPublisher(sourceIdentifier, queueCapacity);
-    FastPublisher publisher = new FastPublisher(sourceIdentifier, queueCapacity * 256);
+    Stream publisher = fastPublisherSubscriber ? new FastPublisher(sourceIdentifier, queueCapacity * 256) : new BufferServerPublisher(sourceIdentifier, queueCapacity);
     return new HashMap.SimpleEntry<String, ComponentContextPair<Stream, StreamContext>>(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(publisher, bssc));
   }
 
@@ -1067,17 +1068,17 @@ public class StramChild
             context.setSinkId(sinkIdentifier);
             context.setFinishedWindowId(finishedWindowId);
 
-            //BufferServerSubscriber stream = new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
-            BufferServerSubscriber stream = new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
-
-            SweepableReservoir reservoir = stream.acquireReservoir(sinkIdentifier, queueCapacity);
+            BufferServerSubscriber subscriber = fastPublisherSubscriber
+                                                ? new FastSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity)
+                                                : new BufferServerSubscriber("tcp://".concat(nidi.bufferServerHost).concat(":").concat(String.valueOf(nidi.bufferServerPort)).concat("/").concat(sourceIdentifier), queueCapacity);
+            SweepableReservoir reservoir = subscriber.acquireReservoir(sinkIdentifier, queueCapacity);
             if (finishedWindowId > 0) {
               node.connectInputPort(nidi.portName, new WindowIdActivatedReservoir(sinkIdentifier, reservoir, finishedWindowId));
             }
             node.connectInputPort(nidi.portName, reservoir);
 
-            newStreams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(stream, context));
-            logger.debug("put input stream {} against key {}", stream, sinkIdentifier);
+            newStreams.put(sinkIdentifier, new ComponentContextPair<Stream, StreamContext>(subscriber, context));
+            logger.debug("put input stream {} against key {}", subscriber, sinkIdentifier);
           }
           else {
             assert (nidi.isInline());
@@ -1341,8 +1342,8 @@ public class StramChild
       tupleRecorder.getStorage().setBasePath(basePath);
       tupleRecorder.getStorage().setBytesPerPartFile(StramChild.this.tupleRecordingPartFileSize);
       tupleRecorder.getStorage().setMillisPerPartFile(StramChild.this.tupleRecordingPartFileTimeMillis);
-      if (StramChild.this.daemonAddress != null) {
-        String url = "ws://" + StramChild.this.daemonAddress + "/pubsub";
+      if (daemonAddress != null) {
+        String url = "ws://" + daemonAddress + "/pubsub";
         try {
           tupleRecorder.setPubSubUrl(url);
         }

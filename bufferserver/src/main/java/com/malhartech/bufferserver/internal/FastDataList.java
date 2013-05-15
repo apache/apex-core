@@ -131,7 +131,6 @@ public class FastDataList extends DataList
 
       if (storage != null && temp.uniqueIdentifier > 0) {
 //        logger.debug("discarding {} {} in purge", identifier, temp.uniqueIdentifier);
-
         storage.discard(identifier, temp.uniqueIdentifier);
       }
 
