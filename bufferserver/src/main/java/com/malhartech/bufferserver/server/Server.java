@@ -565,6 +565,7 @@ public class Server implements ServerListener
     @Override
     public void read(int len)
     {
+      logger.debug("read {} bytes", len);
       writeOffset += len;
       do {
         if (size <= 0) {
