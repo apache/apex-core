@@ -195,6 +195,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
     eventloop.disconnect(this);
   }
 
+  long item;
   @Override
   @SuppressWarnings("SleepWhileInLoop")
   public void put(Object tuple)
@@ -232,6 +233,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
       int size = array.length;
       if (writeBuffer.hasRemaining()) {
+        logger.debug("putting control tuple {} of size {}  at {}", new Object[] {item++, size, writeBuffer.position()});
         writeBuffer.put((byte)size);
         if (writeBuffer.hasRemaining()) {
           writeBuffer.put((byte)(size >> 8));
@@ -249,6 +251,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
           readBuffers[writeIndex].limit(BUFFER_CAPACITY);
         }
         advanceWriteBuffer();
+        logger.debug("putting control tuple {} of size {}  at {}", new Object[] {item++, size, writeBuffer.position()});
         writeBuffer.put((byte)size);
         writeBuffer.put((byte)(size >> 8));
       }
@@ -278,7 +281,6 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       synchronized (readBuffers) {
         readBuffers[writeIndex].limit(writeBuffer.position());
       }
-
     }
     else {
       count++;
@@ -286,6 +288,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
       int wi = writeIndex;
       int position = writeBuffer.position();
+      logger.debug("putting tuple {} of at {}/{}", new Object[] {item++, writeIndex, writeBuffer.position()});
 
       int newPosition = position + 2 /* for short size */ + 1 /* for data type */ + 4 /* for partition */;
       if (newPosition > BUFFER_CAPACITY) {
