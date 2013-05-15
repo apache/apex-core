@@ -28,6 +28,7 @@ public class FastDataList extends DataList
     super(identifier, blocksize);
   }
 
+  long item;
   @Override
   public void flush(final int writeOffset)
   {
@@ -37,7 +38,7 @@ public class FastDataList extends DataList
         if (writeOffset - processingOffset >= 2) {
           size = last.data[processingOffset];
           size |= (last.data[processingOffset + 1] << 8);
-          logger.debug("read size = {} at offset = {}", size, processingOffset);
+          logger.debug("read item = {} of size = {} at offset = {}", item++, size, processingOffset);
         }
         else {
           if (writeOffset == last.data.length) {
