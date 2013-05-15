@@ -36,7 +36,8 @@ public class FastDataList extends DataList
       while (size == 0) {
         if (writeOffset - processingOffset >= 2) {
           size = last.data[processingOffset];
-          size |= (last.data[processingOffset] << 16);
+          size |= (last.data[processingOffset + 1] << 8);
+          logger.debug("read size = {} at offset = {}", size, processingOffset);
         }
         else {
           if (writeOffset == last.data.length) {

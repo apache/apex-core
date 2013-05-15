@@ -24,7 +24,7 @@ public class FastDataListIterator extends DataListIterator
     while (size == 0) {
       if (da.writingOffset - readOffset >= 2) {
         size = buffer[readOffset];
-        size |= (buffer[readOffset + 1] << 16);
+        size |= (buffer[readOffset + 1] << 8);
       }
       else {
         if (da.writingOffset == buffer.length) {
