@@ -46,7 +46,6 @@
     <module>poc</module>
     <module>contrib</module>
     <module>daemon</module>
-    <!--module>premium-dist</module-->
   </modules>
 
   <build>
@@ -112,9 +111,9 @@
     </profile>
 
     <profile>
-    <id>premium-release</id>
+    <id>release</id>
       <modules>
-        <module>premium-dist</module>
+        <module>dist</module>
       </modules>
       <build>
         <plugins>
