@@ -19,6 +19,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import com.malhartech.util.Fragment;
 import com.malhartech.util.HdfsPartFileCollection;
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Method;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -31,7 +35,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
-public class TupleRecorder implements Operator
+public class TupleRecorder
 {
   public static final String VERSION = "1.1";
   private int totalTupleCount = 0;
@@ -148,6 +152,7 @@ public class TupleRecorder implements Operator
   {
     public long startTime;
     public String recordingName;
+    public Map<String, Object> properties = new HashMap<String, Object>();
   }
 
   public static class Range
@@ -216,16 +221,14 @@ public class TupleRecorder implements Operator
     portCountMap.put(portName, pc);
   }
 
-  @Override
   public void teardown()
   {
     logger.info("Closing down tuple recorder.");
     this.storage.teardown();
   }
 
-  @Override
   @SuppressWarnings("unchecked")
-  public void setup(OperatorContext context)
+  public void setup(Operator operator)
   {
     try {
       streamCodec = streamCodecClass.newInstance();
@@ -237,6 +240,21 @@ public class TupleRecorder implements Operator
       RecordInfo recordInfo = new RecordInfo();
       recordInfo.startTime = startTime;
       recordInfo.recordingName = recordingName;
+
+      if (operator != null) {
+        BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
+        PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
+        for (PropertyDescriptor pd: propertyDescriptors) {
+          String name = pd.getName();
+          Method readMethod = pd.getReadMethod();
+
+          if (readMethod != null) {
+            readMethod.setAccessible(true);
+            recordInfo.properties.put(name, readMethod.invoke(operator));
+          }
+        }
+      }
+
       Fragment f = streamCodec.toByteArray(recordInfo).data;
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
@@ -294,7 +312,6 @@ public class TupleRecorder implements Operator
     wsClient.subscribeNumSubscribers(recordingNameTopic);
   }
 
-  @Override
   public void beginWindow(long windowId)
   {
     if (this.currentWindowId != windowId) {
@@ -322,7 +339,6 @@ public class TupleRecorder implements Operator
     }
   }
 
-  @Override
   public void endWindow()
   {
     if (++endWindowTuplesProcessed == portMap.size()) {

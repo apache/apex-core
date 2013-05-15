@@ -75,9 +75,11 @@ public class WebServicesClient
   }
 
   public <T> T process(String url, Class<T> clazz, WebServicesHandler<T> handler) throws IOException {
-    final WebResource wr = client.resource(url);
-    final WebServicesHandler<T> webHandler = handler;
-    final Class<T> webClazz = clazz;
+    WebResource wr = client.resource(url);
+    return process(wr, clazz, handler);
+  }
+
+  public <T> T process(final WebResource wr, final Class<T> clazz, final WebServicesHandler<T> handler) throws IOException {
     if (UserGroupInformation.isSecurityEnabled()) {
       UserGroupInformation loginUser = UserGroupInformation.getLoginUser();
       return loginUser.doAs(new PrivilegedAction<T>() {
@@ -85,12 +87,12 @@ public class WebServicesClient
         @Override
         public T run()
         {
-          return webHandler.process(wr, webClazz);
+          return handler.process(wr, clazz);
         }
 
       });
     } else {
-      return webHandler.process(wr, webClazz);
+      return handler.process(wr, clazz);
     }
   }
 
