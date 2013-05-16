@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.util;
+package com.malhartech.common;
 
 import java.io.Serializable;
 
