@@ -8,7 +8,7 @@ import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.PurgeRequestTuple;
 import com.malhartech.bufferserver.packet.ResetRequestTuple;
 import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

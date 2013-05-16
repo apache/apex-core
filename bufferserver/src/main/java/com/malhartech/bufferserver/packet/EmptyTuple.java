@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 
 /**
  *

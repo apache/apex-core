@@ -17,7 +17,7 @@ import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 import com.malhartech.util.HdfsPartFileCollection;
 import java.beans.BeanInfo;
 import java.beans.Introspector;

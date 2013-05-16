@@ -5,7 +5,7 @@
 package com.malhartech.bufferserver.packet;
 
 import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 
 /**
  *

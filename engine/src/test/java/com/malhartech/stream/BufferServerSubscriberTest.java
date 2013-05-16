@@ -11,7 +11,7 @@ import com.malhartech.bufferserver.packet.DataTuple;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.PayloadTuple;
 import com.malhartech.engine.SweepableReservoir;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 import java.util.ArrayList;
 import java.util.List;
 import junit.framework.Assert;

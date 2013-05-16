@@ -12,7 +12,7 @@ import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
