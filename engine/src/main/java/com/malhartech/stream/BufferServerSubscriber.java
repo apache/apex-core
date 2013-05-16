@@ -14,7 +14,7 @@ import com.malhartech.engine.WindowGenerator;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.tuple.*;
 import com.malhartech.util.CircularBuffer;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
 import java.util.HashMap;

@@ -2,13 +2,11 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.lib.util;
+package com.malhartech.common;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.commons.lang.StringUtils;
 
 /**
  *
@@ -71,7 +69,7 @@ public class Combinations
     }
     return false;
   }
-  
+
   public static void main(String[] args)
   {
     String[] list = new String[] {"a", "b", "c", "d", "e"};

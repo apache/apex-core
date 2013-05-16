@@ -4,7 +4,7 @@
  *
  */
 /**
- * <b>{@link com.malhartech.lib.util}</b> is a library of utility classes that can be extended for business logic<p>
+ * <b>{@link com.malhartech.common}</b> is a library of utility classes that are open source and shared by all other malhar libraries<p>
  * <br>
  */
-package com.malhartech.lib.util;
+package com.malhartech.common;
