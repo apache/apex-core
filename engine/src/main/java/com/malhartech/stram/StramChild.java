@@ -87,9 +87,6 @@ public class StramChild
     }
   }
 
-  /**
-   * Map of last backup window id that is used to communicate checkpoint state back to Stram. TODO: Consider adding this to the node context instead.
-   */
   private long firstWindowMillis;
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
