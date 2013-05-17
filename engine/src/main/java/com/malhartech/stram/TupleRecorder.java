@@ -65,7 +65,7 @@ public class TupleRecorder
       str += ":";
       String countStr;
       countStr = "{";
-      for (String key: portCountMap.keySet()) {
+      for (String key : portCountMap.keySet()) {
         PortCount pc = portCountMap.get(key);
         if (i != 0) {
           countStr += ",";
@@ -240,7 +240,7 @@ public class TupleRecorder
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
         PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
-        for (PropertyDescriptor pd: propertyDescriptors) {
+        for (PropertyDescriptor pd : propertyDescriptors) {
           String name = pd.getName();
           Method readMethod = pd.getReadMethod();
 
@@ -255,7 +255,7 @@ public class TupleRecorder
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
-      for (PortInfo pi: portMap.values()) {
+      for (PortInfo pi : portMap.values()) {
         f = streamCodec.toByteArray(pi).data;
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
@@ -377,10 +377,10 @@ public class TupleRecorder
       storage.writeDataItem(bos.toByteArray(), true);
       //logger.debug("Writing tuple for port id {}", pi.id);
       //fsOutput.hflush();
+      ++totalTupleCount;
       if (numSubscribers > 0) {
         publishTupleData(pi.id, obj);
       }
-      ++totalTupleCount;
     }
     catch (IOException ex) {
       logger.error(ex.toString());
@@ -408,7 +408,7 @@ public class TupleRecorder
   {
     String result = "";
     int i = 0;
-    for (Range range: ranges) {
+    for (Range range : ranges) {
       if (i++ > 0) {
         result += ",";
       }
@@ -426,6 +426,7 @@ public class TupleRecorder
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("portId", String.valueOf(portId));
         map.put("windowId", currentWindowId);
+        map.put("tupleCount", totalTupleCount);
         map.put("data", obj);
         wsClient.publish(recordingNameTopic, map);
       }

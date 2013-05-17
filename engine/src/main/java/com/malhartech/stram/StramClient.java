@@ -225,6 +225,7 @@ public class StramClient
     // platform dependencies that are not part of Hadoop and need to be deployed,
     // entry below will cause containing jar file from client to be copied to cluster
     Class<?>[] defaultClasses = new Class<?>[]{
+      com.malhartech.common.Fragment.class,
       com.malhartech.netlet.EventLoop.class,
       com.malhartech.bufferserver.server.Server.class,
       com.malhartech.stram.StramAppMaster.class,
