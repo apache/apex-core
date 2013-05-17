@@ -4,7 +4,6 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.util.AttributeMap;
 import java.util.HashSet;
 import java.util.Set;
 

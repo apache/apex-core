@@ -6,7 +6,7 @@ package com.malhartech.stram;
 
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.util.AttributeMap;
+import com.malhartech.api.AttributeMap;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Set;

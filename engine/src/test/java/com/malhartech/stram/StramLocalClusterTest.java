@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.codec.DefaultStreamCodec;
 import com.malhartech.api.DAG;
 import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;

@@ -32,7 +32,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.stram.webapp.PortInfo;
-import com.malhartech.util.AttributeMap;
+import com.malhartech.api.AttributeMap;
 import com.malhartech.common.Pair;
 import java.net.InetSocketAddress;
 import java.util.*;

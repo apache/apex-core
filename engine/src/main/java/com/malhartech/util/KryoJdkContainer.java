@@ -4,6 +4,7 @@
  */
 package com.malhartech.util;
 
+import com.malhartech.codec.KryoJdkSerializer;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import java.io.Serializable;
 

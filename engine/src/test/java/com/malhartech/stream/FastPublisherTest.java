@@ -5,7 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.engine.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStreamCodec;
 import com.malhartech.engine.SweepableReservoir;
 import java.io.IOException;
 import java.nio.ByteBuffer;

@@ -4,13 +4,13 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.codec.JsonStreamCodec;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.tuple.Tuple;
-import com.malhartech.util.PubSubWebSocketClient;
+import com.malhartech.api.PubSubWebSocketClient;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -23,10 +23,6 @@ import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

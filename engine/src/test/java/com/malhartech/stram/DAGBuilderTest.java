@@ -58,7 +58,7 @@ import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.engine.TestOutputOperator;
 import com.malhartech.stram.cli.StramClientUtils;
-import com.malhartech.util.KryoJdkSerializer;
+import com.malhartech.codec.KryoJdkSerializer;
 
 public class DAGBuilderTest {
 

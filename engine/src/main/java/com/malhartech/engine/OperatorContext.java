@@ -7,7 +7,7 @@ package com.malhartech.engine;
 import com.malhartech.api.Context;
 import com.malhartech.api.DAGContext;
 import com.malhartech.api.Operator;
-import com.malhartech.util.AttributeMap;
+import com.malhartech.api.AttributeMap;
 import com.malhartech.util.CircularBuffer;
 import java.io.IOException;
 import java.util.Collection;

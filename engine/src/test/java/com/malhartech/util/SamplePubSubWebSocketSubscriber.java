@@ -4,6 +4,7 @@
  */
 package com.malhartech.util;
 
+import com.malhartech.api.PubSubWebSocketClient;
 import java.net.URI;
 import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.eclipse.jetty.websocket.WebSocket;

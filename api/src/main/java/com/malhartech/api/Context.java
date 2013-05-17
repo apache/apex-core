@@ -4,8 +4,6 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.api.DAGContext.AttributeKey;
-import com.malhartech.util.AttributeMap;
 
 /**
  *

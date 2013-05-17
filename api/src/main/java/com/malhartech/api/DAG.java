@@ -10,10 +10,7 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.engine.Operators;
-import com.malhartech.stram.StramUtils;
-import com.malhartech.util.AttributeMap;
-import com.malhartech.util.AttributeMap.DefaultAttributeMap;
+import com.malhartech.api.AttributeMap.DefaultAttributeMap;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.util.Map.Entry;
@@ -459,7 +456,12 @@ public class DAG implements Serializable, DAGContext
    */
   public <T extends Operator> T addOperator(String name, Class<T> clazz)
   {
-    T instance = StramUtils.newInstance(clazz);
+    T instance;
+    try {
+      instance = clazz.newInstance();
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(ex);
+    }
     addOperator(name, instance);
     return instance;
   }
