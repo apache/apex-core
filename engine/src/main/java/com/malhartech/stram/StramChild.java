@@ -14,7 +14,7 @@ import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.engine.OperatorContext.NodeRequest;
-import com.malhartech.engine.Operators.PortMappingDescriptor;
+import com.malhartech.api.Operators.PortMappingDescriptor;
 import com.malhartech.engine.*;
 import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
@@ -24,7 +24,6 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContain
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stream.*;
-import com.malhartech.util.AttributeMap;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

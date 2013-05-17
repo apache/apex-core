@@ -6,7 +6,6 @@ package com.malhartech.api;
 
 import com.malhartech.api.Context.OperatorContext;
 
-
 /**
  * Base class for operator implementations that provides empty implementations
  * for all interface methods.

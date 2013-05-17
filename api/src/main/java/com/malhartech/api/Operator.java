@@ -6,6 +6,7 @@ package com.malhartech.api;
 
 import com.malhartech.api.Context.OperatorContext;
 
+
 public interface Operator extends Component<OperatorContext>
 {
   /**

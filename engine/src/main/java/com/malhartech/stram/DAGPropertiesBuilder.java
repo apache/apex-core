@@ -30,7 +30,7 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.Operator;
-import com.malhartech.engine.Operators;
+import com.malhartech.api.Operators;
 
 /**
  *

@@ -26,6 +26,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
+    <hadoop.version>2.0.4-alpha</hadoop.version>
   </properties>
 
   <dependencies>
@@ -47,6 +48,7 @@
     <module>poc</module>
     <module>contrib</module>
     <module>daemon</module>
+    <module>api</module>
   </modules>
 
   <build>

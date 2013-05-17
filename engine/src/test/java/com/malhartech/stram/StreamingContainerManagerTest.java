@@ -36,7 +36,7 @@ import com.malhartech.stram.PhysicalPlanTest.PartitioningTestOperator;
 import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.util.AttributeMap;
+import com.malhartech.api.AttributeMap;
 
 public class StreamingContainerManagerTest {
 
