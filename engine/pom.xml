@@ -223,6 +223,11 @@
       <artifactId>malhar-api</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>malhar-license</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>
