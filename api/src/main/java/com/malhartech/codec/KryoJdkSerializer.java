@@ -1,4 +1,4 @@
-package com.malhartech.util;
+package com.malhartech.codec;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;

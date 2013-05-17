@@ -6,7 +6,7 @@ package com.malhartech.stream;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.server.Server;
-import com.malhartech.engine.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStreamCodec;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.DefaultEventLoop;

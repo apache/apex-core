@@ -2,10 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.malhartech.codec;
 
 import com.malhartech.api.StreamCodec;
-import com.malhartech.util.ObjectMapperString;
+import com.malhartech.api.ObjectMapperString;
 import java.io.*;
 import com.malhartech.common.Fragment;
 import org.codehaus.jackson.JsonGenerator;

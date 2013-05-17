@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.util;
+package com.malhartech.api;
 
 import java.io.IOException;
 import java.net.URI;

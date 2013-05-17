@@ -23,7 +23,7 @@ import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DefaultOperatorSerDe;
-import com.malhartech.engine.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
