@@ -4,29 +4,25 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.codec.JsonStreamCodec;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.tuple.Tuple;
-import com.malhartech.util.PubSubWebSocketClient;
+import com.malhartech.api.PubSubWebSocketClient;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 import com.malhartech.util.HdfsPartFileCollection;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +65,7 @@ public class TupleRecorder
       str += ":";
       String countStr;
       countStr = "{";
-      for (String key: portCountMap.keySet()) {
+      for (String key : portCountMap.keySet()) {
         PortCount pc = portCountMap.get(key);
         if (i != 0) {
           countStr += ",";
@@ -244,7 +240,7 @@ public class TupleRecorder
       if (operator != null) {
         BeanInfo beanInfo = Introspector.getBeanInfo(operator.getClass());
         PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
-        for (PropertyDescriptor pd: propertyDescriptors) {
+        for (PropertyDescriptor pd : propertyDescriptors) {
           String name = pd.getName();
           Method readMethod = pd.getReadMethod();
 
@@ -259,7 +255,7 @@ public class TupleRecorder
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
-      for (PortInfo pi: portMap.values()) {
+      for (PortInfo pi : portMap.values()) {
         f = streamCodec.toByteArray(pi).data;
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
@@ -381,10 +377,10 @@ public class TupleRecorder
       storage.writeDataItem(bos.toByteArray(), true);
       //logger.debug("Writing tuple for port id {}", pi.id);
       //fsOutput.hflush();
+      ++totalTupleCount;
       if (numSubscribers > 0) {
         publishTupleData(pi.id, obj);
       }
-      ++totalTupleCount;
     }
     catch (IOException ex) {
       logger.error(ex.toString());
@@ -412,7 +408,7 @@ public class TupleRecorder
   {
     String result = "";
     int i = 0;
-    for (Range range: ranges) {
+    for (Range range : ranges) {
       if (i++ > 0) {
         result += ",";
       }
@@ -430,6 +426,7 @@ public class TupleRecorder
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("portId", String.valueOf(portId));
         map.put("windowId", currentWindowId);
+        map.put("tupleCount", totalTupleCount);
         map.put("data", obj);
         wsClient.publish(recordingNameTopic, map);
       }

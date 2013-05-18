@@ -45,8 +45,8 @@ import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.engine.DefaultUnifier;
-import com.malhartech.engine.Operators;
-import com.malhartech.engine.Operators.PortMappingDescriptor;
+import com.malhartech.api.Operators;
+import com.malhartech.api.Operators.PortMappingDescriptor;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
 
 /**

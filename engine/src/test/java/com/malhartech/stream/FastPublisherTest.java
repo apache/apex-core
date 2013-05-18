@@ -5,7 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.engine.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStreamCodec;
 import com.malhartech.engine.SweepableReservoir;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,7 +27,7 @@ public class FastPublisherTest
   @Test
   public void testSerialization() throws Exception
   {
-    FastPublisherImpl publisher = new FastPublisherImpl(3);
+    FastPublisherImpl publisher = new FastPublisherImpl(24 * 1024);
     final String message = "hello!";
     publisher.put(message);
     byte[] buffer = publisher.consume();

@@ -47,9 +47,18 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   private final String id;
   private boolean write = true;
 
-  public FastPublisher(String id, int countOf8kBuffers)
+  public FastPublisher(String id, int streamingWindowThroughput)
   {
     this.id = id;
+
+    int countOf8kBuffers = streamingWindowThroughput / (8 * 1024);
+    if (streamingWindowThroughput % (8 * 1024) != 0) {
+      countOf8kBuffers++;
+    }
+    if (countOf8kBuffers < 2) {
+      countOf8kBuffers = 2;
+    }
+
     writeBuffers = new ByteBuffer[countOf8kBuffers];
     readBuffers = new ByteBuffer[countOf8kBuffers];
     for (int i = countOf8kBuffers; i-- > 0;) {
@@ -186,6 +195,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
     eventloop.disconnect(this);
   }
 
+  long item;
   @Override
   @SuppressWarnings("SleepWhileInLoop")
   public void put(Object tuple)
@@ -269,7 +279,6 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       synchronized (readBuffers) {
         readBuffers[writeIndex].limit(writeBuffer.position());
       }
-
     }
     else {
       count++;
@@ -816,17 +825,18 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
         }
       }
 
+      int charIndex = 0;
       if (ascii) {
-        int charIndex = 0;
         do {
           for (int i = writeBuffer.remaining(); i-- > 0 && charIndex < charCount;) {
             writeBuffer.put((byte)(value.charAt(charIndex++)));
           }
           if (charIndex < charCount) {
             advanceWriteBuffer();
-            continue;
           }
-          break;
+          else {
+            break;
+          }
         }
         while (true);
 
@@ -835,10 +845,9 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
       }
       else {
         writeUtf8Length(charCount + 1);
-        int charIndex = 0;
         do {
           int c;
-          for (int i = writeBuffer.remaining(); i-- > 0; charIndex++) {
+          for (int i = writeBuffer.remaining(); i-- > 0 && charIndex < charCount; charIndex++) {
             c = value.charAt(charIndex);
             if (c > 127) {
               writeString_slow(value, charCount, charIndex);
@@ -849,7 +858,9 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
           if (charIndex < charCount) {
             advanceWriteBuffer();
-            continue;
+          }
+          else {
+            break;
           }
         }
         while (true);
@@ -883,7 +894,9 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
 
         if (charIndex < charCount) {
           advanceWriteBuffer();
-          continue;
+        }
+        else {
+          break;
         }
       }
       while (true);
@@ -908,9 +921,10 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
         }
         if (charIndex < charCount) {
           advanceWriteBuffer();
-          continue;
         }
-        break;
+        else {
+          break;
+        }
       }
       while (true);
 

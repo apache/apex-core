@@ -5,12 +5,10 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.ActivationListener;
-import com.malhartech.api.DAG;
-import com.malhartech.api.Operator;
+import com.malhartech.api.*;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.Sink;
+import com.malhartech.api.Operators.PortMappingDescriptor;
 import com.malhartech.debug.MuxSink;
-import com.malhartech.engine.Operators.PortMappingDescriptor;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
 import com.malhartech.tuple.EndWindowTuple;

@@ -6,7 +6,7 @@ package com.malhartech.stram;
 
 import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
-import com.malhartech.util.AttributeMap;
+import com.malhartech.api.AttributeMap;
 
 import java.io.*;
 import java.lang.reflect.AccessibleObject;

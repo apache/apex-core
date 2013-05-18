@@ -141,26 +141,6 @@
       <version>4.10</version>
       <scope>test</scope>
     </dependency>
-
-    <dependency>
-      <groupId>org.apache.activemq</groupId>
-      <artifactId>activemq-core</artifactId>
-      <version>5.6.0</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>hadoop-core</artifactId>
-          <groupId>org.apache.hadoop</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>geronimo-jms_1.1_spec</artifactId>
-          <groupId>org.apache.geronimo.specs</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>scala-library</artifactId>
-          <groupId>org.scala-lang</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
     <dependency>
       <groupId>javax.jms</groupId>
       <artifactId>jms-api</artifactId>
@@ -177,21 +157,11 @@
         <artifactId>reflections</artifactId>
         <version>0.9.8</version>
     </dependency-->
-    <dependency>
-      <groupId>com.esotericsoftware.kryo</groupId>
-      <artifactId>kryo</artifactId>
-      <version>2.21</version>
-    </dependency>
 
     <dependency>
       <groupId>org.apache.bval</groupId>
       <artifactId>bval-jsr303</artifactId>
       <version>0.5</version>
-    </dependency>
-    <dependency>
-      <groupId>javax.validation</groupId>
-      <artifactId>validation-api</artifactId>
-      <version>1.0.0.GA</version>
     </dependency>
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
@@ -228,57 +198,33 @@
       <artifactId>jersey-apache-client4</artifactId>
       <version>1.17.1</version>
     </dependency>
+    <dependency>
+      <!-- required for JarFinder -->
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>${hadoop.version}</version>
+      <type>test-jar</type>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-yarn-client</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-yarn-server-tests</artifactId>
+      <version>${hadoop.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>malhar-api</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
   <profiles>
-    <!--
-      profile for building against Hadoop 2.0.
-    -->
-    <profile>
-      <id>hadoop-2.0</id>
-      <activation>
-        <property>
-          <name>!hadoop.profile</name>
-          <!--value>23</value-->
-        </property>
-      </activation>
-      <properties>
-        <hadoop.version>2.0.4-alpha</hadoop.version>
-        <test.excludedGroups>com.malhartech.annotation.PerformanceTestCategory</test.excludedGroups>
-      </properties>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-common</artifactId>
-          <version>${hadoop.version}</version>
-        </dependency>
-        <dependency>
-          <!-- required for JarFinder -->
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-common</artifactId>
-          <version>${hadoop.version}</version>
-          <type>test-jar</type>
-          <scope>compile</scope>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-yarn-client</artifactId>
-          <version>${hadoop.version}</version>
-        </dependency>
-        <!-- test deps for hadoop-2.0 profile -->
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-yarn-server-tests</artifactId>
-          <version>${hadoop.version}</version>
-          <type>test-jar</type>
-          <scope>test</scope>
-        </dependency>
-      </dependencies>
-      <build>
-        <plugins>
-        </plugins>
-      </build>
-    </profile>
-
     <profile>
       <id>fullTests</id>
       <properties>

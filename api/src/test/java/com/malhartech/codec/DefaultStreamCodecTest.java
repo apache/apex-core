@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.engine;
+package com.malhartech.codec;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
@@ -11,12 +11,11 @@ import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
-import com.malhartech.engine.DefaultStreamCodec.ClassIdPair;
-import com.malhartech.util.KryoJdkSerializer;
+import com.malhartech.codec.DefaultStreamCodec.ClassIdPair;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 import org.junit.Assert;
 import org.junit.Test;
 

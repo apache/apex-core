@@ -7,8 +7,6 @@ package com.malhartech.api;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.malhartech.util.AttributeMap;
-
 /**
  *
  */
@@ -83,6 +81,7 @@ public interface DAGContext {
   public static final AttributeKey<Integer> STRAM_TUPLE_RECORDING_PART_FILE_SIZE = new AttributeKey<Integer>("stram.tupleRecordingPartFileSize", Integer.class);
   public static final AttributeKey<Integer> STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS = new AttributeKey<Integer>("stram.tupleRecordingPartFileTimeMillis", Integer.class);
   public static final AttributeKey<String> STRAM_DAEMON_ADDRESS = new AttributeKey<String>("stram.daemon.address", String.class);
+  public static final AttributeKey<Boolean> FAST_PUBLISHER_SUBSCRIBER = new AttributeKey<Boolean>("stram.bufferserver.fast", Boolean.class);
   /**
    * How frequently should operators heartbeat to stram. Recommended setting is
    * 1000ms. Value 0 will disable heartbeat (for unit testing).

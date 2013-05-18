@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 public class DataList
 {
   private static final Logger logger = LoggerFactory.getLogger(DataList.class);
-  private final String identifier;
+  protected final String identifier;
   private final Integer blocksize;
   private HashMap<BitVector, HashSet<DataListener>> listeners = new HashMap<BitVector, HashSet<DataListener>>();
   protected HashSet<DataListener> all_listeners = new HashSet<DataListener>();
@@ -52,7 +52,7 @@ public class DataList
           last = temp;
         }
 
-        this.baseSeconds = temp.rewind(longWindowId);
+        this.baseSeconds = temp.rewind(longWindowId, false);
         processingOffset = temp.writingOffset;
         size = 0;
       }
@@ -90,7 +90,7 @@ public class DataList
           first = temp;
         }
 
-        first.purge(longWindowId);
+        first.purge(longWindowId, false);
         break;
       }
 

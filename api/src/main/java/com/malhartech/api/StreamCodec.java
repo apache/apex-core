@@ -8,7 +8,7 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 
 
 /**

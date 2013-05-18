@@ -4,6 +4,8 @@
  */
 package com.malhartech.util;
 
+import com.malhartech.api.PubSubWebSocketClient;
+import com.malhartech.api.ObjectMapperString;
 import static java.lang.Thread.sleep;
 import java.net.URI;
 import org.eclipse.jetty.websocket.WebSocket;

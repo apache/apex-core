@@ -4,11 +4,12 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.codec.JsonStreamCodec;
 import com.malhartech.annotation.RecordField;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.stram.webapp.ContainerInfo;
 import com.malhartech.stram.webapp.OperatorInfo;
-import com.malhartech.util.Fragment;
+import com.malhartech.common.Fragment;
 import com.malhartech.util.HdfsPartFileCollection;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

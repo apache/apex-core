@@ -7,7 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.OperatorCodec;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.engine.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStreamCodec;
 
 /**
  *

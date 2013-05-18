@@ -1,5 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.malhartech</groupId>
@@ -26,6 +26,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
+    <hadoop.version>2.0.4-alpha</hadoop.version>
   </properties>
 
   <dependencies>
@@ -38,6 +39,7 @@
   </dependencies>
 
   <modules>
+    <module>common</module>
     <module>netlet</module>
     <module>bufferserver</module>
     <module>stram</module>
@@ -46,7 +48,7 @@
     <module>poc</module>
     <module>contrib</module>
     <module>daemon</module>
-    <!--module>premium-dist</module-->
+    <module>api</module>
   </modules>
 
   <build>
@@ -111,45 +113,6 @@
       </build>
     </profile>
 
-    <profile>
-    <id>premium-release</id>
-      <modules>
-        <module>premium-dist</module>
-      </modules>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <executions>
-              <execution>
-                <!-- build javadoc jars per jar for publishing to maven -->
-                <id>module-javadocs</id>
-                <phase>prepare-package</phase>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-                <configuration>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>2.2.1</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
   </profiles>
 
 </project>
