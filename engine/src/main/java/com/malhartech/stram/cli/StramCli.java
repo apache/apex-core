@@ -50,6 +50,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import java.util.Arrays;
+import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  *
@@ -74,9 +75,13 @@ import java.util.Arrays;
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
 public class StramCli
 {
+
+  private static final String STRAM_USER_PRINCIPAL = "stram.user.principal";
+  private static final String STRAM_USER_KEYTAB = "stram.user.keytab";
+
   private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
   private final Configuration conf = new Configuration();
-  private final ClientRMHelper rmClient;
+  private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
   private String currentDir = "/";
 
@@ -108,14 +113,30 @@ public class StramCli
 
   }
 
-  public StramCli() throws Exception
+  public StramCli()
   {
-    YarnClientHelper yarnClient = new YarnClientHelper(conf);
-    rmClient = new ClientRMHelper(yarnClient);
+    StramClientUtils.addStramResources(conf);
   }
 
-  public void init()
+  public void init() throws IOException
   {
+    // Need to initialize security before starting RPC for the credentials to
+    // take effect
+    if (UserGroupInformation.isSecurityEnabled()) {
+      String userPrincipal = conf.get(STRAM_USER_PRINCIPAL);
+      String userKeytab = conf.get(STRAM_USER_KEYTAB);
+      if ((userPrincipal != null) && (userKeytab != null)) {
+        try {
+          UserGroupInformation.loginUserFromKeytab(userPrincipal, userKeytab);
+          LOG.info("Login user " + UserGroupInformation.getCurrentUser());
+        }
+        catch (IOException ie) {
+          LOG.error("Error login with user principal {}", userPrincipal, ie);
+        }
+      }
+    }
+    YarnClientHelper yarnClient = new YarnClientHelper(conf);
+    rmClient = new ClientRMHelper(yarnClient);
   }
 
   /**
@@ -484,7 +505,7 @@ public class StramCli
     WebResource r = client.resource("http://" + currentApp.getTrackingUrl()).path(StramWebServices.PATH).path(resourcePath);
     try {
       return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>() {
-        
+
         @Override
         public ClientResponse process(WebResource webResource, Class<ClientResponse> clazz)
         {
