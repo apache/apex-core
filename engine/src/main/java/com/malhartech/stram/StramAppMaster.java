@@ -267,8 +267,9 @@ public class StramAppMaster
     LOG.info("appmaster env:" + sw.toString());
 
     boolean result = false;
+    StramAppMaster appMaster = null;
     try {
-      StramAppMaster appMaster = new StramAppMaster();
+      appMaster = new StramAppMaster();
       LOG.info("Initializing ApplicationMaster");
       boolean doRun = appMaster.init(args);
       if (!doRun) {
@@ -279,6 +280,10 @@ public class StramAppMaster
     catch (Throwable t) {
       LOG.error("Error running ApplicationMaster", t);
       System.exit(1);
+    } finally {
+      if (appMaster != null) {
+        appMaster.destroy();
+      }
     }
     if (result) {
       LOG.info("Application Master completed. exiting");
@@ -441,6 +446,13 @@ public class StramAppMaster
     return true;
   }
 
+  public void destroy() {
+    if (delegationTokenManager != null)
+    {
+      delegationTokenManager.stopThreads();
+    }
+  }
+
   /**
    * Helper function to print usage
    *
@@ -458,7 +470,6 @@ public class StramAppMaster
       return runStram();
     }
     finally {
-      delegationTokenManager.stopThreads();
       StramChild.eventloop.stop();
     }
   }
