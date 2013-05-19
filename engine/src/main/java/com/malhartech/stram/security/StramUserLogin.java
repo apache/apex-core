@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 public class StramUserLogin
 {
 
-    private static final Logger LOG = LoggerFactory.getLogger(StramUserLogin.class);
+  private static final Logger LOG = LoggerFactory.getLogger(StramUserLogin.class);
   private static final String STRAM_USER_PRINCIPAL = "stram.user.principal";
   private static final String STRAM_USER_KEYTAB = "stram.user.keytab";
 
@@ -26,10 +26,11 @@ public class StramUserLogin
     if (UserGroupInformation.isSecurityEnabled()) {
       String userPrincipal = conf.get(STRAM_USER_PRINCIPAL);
       String userKeytab = conf.get(STRAM_USER_KEYTAB);
-      if ((userPrincipal != null) && (userKeytab != null)) {
+      if ((userPrincipal != null) && !userPrincipal.isEmpty()
+              && (userKeytab != null) && !userKeytab.isEmpty()) {
         try {
           UserGroupInformation.loginUserFromKeytab(userPrincipal, userKeytab);
-          LOG.info("Login user " + UserGroupInformation.getCurrentUser());
+          LOG.info("Login user " + UserGroupInformation.getCurrentUser().getUserName());
         }
         catch (IOException ie) {
           LOG.error("Error login with user principal {}", userPrincipal, ie);
