@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.security.StramUserLogin;
 import com.malhartech.stram.webapp.StramWebServices;
 import com.malhartech.util.VersionInfo;
 import com.malhartech.util.WebServicesClient;
@@ -75,10 +76,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
 public class StramCli
 {
-
-  private static final String STRAM_USER_PRINCIPAL = "stram.user.principal";
-  private static final String STRAM_USER_KEYTAB = "stram.user.keytab";
-
   private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
   private final Configuration conf = new Configuration();
   private ClientRMHelper rmClient;
@@ -122,19 +119,7 @@ public class StramCli
   {
     // Need to initialize security before starting RPC for the credentials to
     // take effect
-    if (UserGroupInformation.isSecurityEnabled()) {
-      String userPrincipal = conf.get(STRAM_USER_PRINCIPAL);
-      String userKeytab = conf.get(STRAM_USER_KEYTAB);
-      if ((userPrincipal != null) && (userKeytab != null)) {
-        try {
-          UserGroupInformation.loginUserFromKeytab(userPrincipal, userKeytab);
-          LOG.info("Login user " + UserGroupInformation.getCurrentUser());
-        }
-        catch (IOException ie) {
-          LOG.error("Error login with user principal {}", userPrincipal, ie);
-        }
-      }
-    }
+    StramUserLogin.attemptAuthentication(conf);
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
     rmClient = new ClientRMHelper(yarnClient);
   }
