@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.security.StramUserLogin;
 import com.malhartech.stram.webapp.StramWebServices;
 import com.malhartech.util.VersionInfo;
 import com.malhartech.util.WebServicesClient;
@@ -50,6 +51,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import java.util.Arrays;
+import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  *
@@ -76,7 +78,7 @@ public class StramCli
 {
   private static final Logger LOG = LoggerFactory.getLogger(StramCli.class);
   private final Configuration conf = new Configuration();
-  private final ClientRMHelper rmClient;
+  private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
   private String currentDir = "/";
 
@@ -108,14 +110,18 @@ public class StramCli
 
   }
 
-  public StramCli() throws Exception
+  public StramCli()
   {
-    YarnClientHelper yarnClient = new YarnClientHelper(conf);
-    rmClient = new ClientRMHelper(yarnClient);
+    StramClientUtils.addStramResources(conf);
   }
 
-  public void init()
+  public void init() throws IOException
   {
+    // Need to initialize security before starting RPC for the credentials to
+    // take effect
+    StramUserLogin.attemptAuthentication(conf);
+    YarnClientHelper yarnClient = new YarnClientHelper(conf);
+    rmClient = new ClientRMHelper(yarnClient);
   }
 
   /**
@@ -484,7 +490,7 @@ public class StramCli
     WebResource r = client.resource("http://" + currentApp.getTrackingUrl()).path(StramWebServices.PATH).path(resourcePath);
     try {
       return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>() {
-        
+
         @Override
         public ClientResponse process(WebResource webResource, Class<ClientResponse> clazz)
         {

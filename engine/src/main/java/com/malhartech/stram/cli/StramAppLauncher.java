@@ -277,12 +277,14 @@ public class StramAppLauncher {
   private static Configuration getConfig(String launchMode) {
     Configuration conf = new Configuration(false);
     StramClientUtils.addStramResources(conf);
+    /*
     // user settings
     File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.STRAM_SITE_XML_FILE);
     if (cfgResource.exists()) {
       LOG.info("Loading settings: " + cfgResource.toURI());
       conf.addResource(new Path(cfgResource.toURI()));
     }
+    */
     //File appDir = new File(StramClientUtils.getSettingsRootDir(), jarFile.getName());
     //cfgResource = new File(appDir, StramClientUtils.STRAM_SITE_XML_FILE);
     //if (cfgResource.exists()) {

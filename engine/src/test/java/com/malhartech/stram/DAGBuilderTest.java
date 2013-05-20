@@ -250,7 +250,7 @@ public class DAGBuilderTest {
 
   }
 
-  static class ValidationOperator extends BaseOperator {
+  public static class ValidationOperator extends BaseOperator {
     @OutputPortFieldAnnotation(name="goodOutputPort")
     final public transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>(this);
 
@@ -258,7 +258,7 @@ public class DAGBuilderTest {
     final public transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>(this);
   }
 
-  static class CounterOperator extends BaseOperator {
+  public static class CounterOperator extends BaseOperator {
     @InputPortFieldAnnotation(name="countInputPort")
     final public transient InputPort<Object> countInputPort = new DefaultInputPort<Object>(this) {
       @Override

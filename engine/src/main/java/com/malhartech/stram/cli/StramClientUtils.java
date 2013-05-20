@@ -11,6 +11,7 @@ import java.security.PrivilegedAction;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
@@ -273,6 +274,7 @@ public class StramClientUtils
 
   }
 
+  private static final Logger LOG = LoggerFactory.getLogger(StramClientUtils.class);
   public static final String MALHAR_HOME = System.getenv("MALHAR_HOME");
 
   public static File getSettingsRootDir()
@@ -291,6 +293,11 @@ public class StramClientUtils
   {
     conf.addResource(STRAM_DEFAULT_XML_FILE);
     conf.addResource(STRAM_SITE_XML_FILE);
+    File cfgResource = new File(StramClientUtils.getSettingsRootDir(), StramClientUtils.STRAM_SITE_XML_FILE);
+    if (cfgResource.exists()) {
+      LOG.info("Loading settings: " + cfgResource.toURI());
+      conf.addResource(new Path(cfgResource.toURI()));
+    }
     return conf;
   }
 
