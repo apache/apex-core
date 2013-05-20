@@ -131,6 +131,26 @@
           <excludedGroups>${test.excludedGroups}</excludedGroups>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>2.1.4</version>
+        <executions>
+          <execution>
+            <id>create-git-version-info</id>
+            <phase>${create-git-version-info-phase}</phase>
+            <goals>
+               <goal>revision</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <verbose>true</verbose>
+          <prefix>git</prefix>
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+          <generateGitPropertiesFilename>target/classes/malhar-stram-git.properties</generateGitPropertiesFilename>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
@@ -244,30 +264,10 @@
           <missing>target/classes/malhar-stram-git.properties</missing>
         </file>
       </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>pl.project13.maven</groupId>
-            <artifactId>git-commit-id-plugin</artifactId>
-            <version>2.1.4</version>
-            <executions>
-              <execution>
-                <id>create-git-version-info</id>
-                <phase>generate-resources</phase>
-                <goals>
-                  <goal>revision</goal>
-                </goals>
-              </execution>
-            </executions>
-            <configuration>
-              <verbose>true</verbose>
-              <prefix>git</prefix>
-              <generateGitPropertiesFile>true</generateGitPropertiesFile>
-              <generateGitPropertiesFilename>target/classes/malhar-stram-git.properties</generateGitPropertiesFilename>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
+      <properties>
+        <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
+      </properties>
     </profile>
+
   </profiles>
 </project>

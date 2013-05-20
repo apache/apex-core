@@ -78,6 +78,10 @@
       <modules>
         <module>dist</module>
       </modules>
+      <properties>
+        <!-- always generate on release build -->
+        <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
+      </properties>
       <build>
         <plugins>
           <plugin>
