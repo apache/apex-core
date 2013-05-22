@@ -4,9 +4,9 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.security.StramDelegationTokenManager;
 import com.malhartech.stram.security.StramDelegationTokenIdentifier;
-import com.malhartech.api.DAG;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -47,14 +47,14 @@ public class LaunchContainerRunnable implements Runnable
   private final YarnClientHelper yarnClient;
   private final Map<String, String> containerEnv = new HashMap<String, String>();
   private final InetSocketAddress heartbeatAddress;
-  private final DAG dag;
+  private final LogicalPlan dag;
   private final StramDelegationTokenManager delegationTokenManager;
   private final Container container;
 
   /**
    * @param lcontainer Allocated container
    */
-  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, DAG topology, StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
+  public LaunchContainerRunnable(Container lcontainer, YarnClientHelper yarnClient, LogicalPlan topology, StramDelegationTokenManager delegationTokenManager, InetSocketAddress heartbeatAddress)
   {
     this.container = lcontainer;
     this.yarnClient = yarnClient;
@@ -176,7 +176,7 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(yarnClient.getConf());
-      addLibJarsToLocalResources(dag.getAttributes().attr(DAG.STRAM_LIBJARS).get(), localResources, fs);
+      addLibJarsToLocalResources(dag.getAttributes().attr(LogicalPlan.STRAM_LIBJARS).get(), localResources, fs);
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
@@ -235,7 +235,7 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
 
-    String jvmOpts = dag.getAttributes().attrValue(DAG.STRAM_CONTAINER_JVM_OPTS, null);
+    String jvmOpts = dag.getAttributes().attrValue(LogicalPlan.STRAM_CONTAINER_JVM_OPTS, null);
     if (jvmOpts != null) {
       Map<String, String> params = new HashMap<String, String>();
       params.put("applicationId", Integer.toString(container.getId().getApplicationAttemptId().getApplicationId().getId()));

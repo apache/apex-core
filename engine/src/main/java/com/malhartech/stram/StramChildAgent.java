@@ -19,8 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.malhartech.api.DAG.InputPortMeta;
-import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.OperatorCodec;
@@ -37,6 +35,8 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.malhartech.stram.webapp.ContainerInfo;
 
 /**

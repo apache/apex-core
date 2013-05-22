@@ -8,8 +8,6 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
 import com.malhartech.api.BackupAgent;
 import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
@@ -30,6 +28,8 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.stram.webapp.PortInfo;
 import com.malhartech.api.AttributeMap;
@@ -93,29 +93,29 @@ public class StreamingContainerManager implements PlanContext
     HashMap<String, Long> dequeueTimestamps = new HashMap<String, Long>();
   }
 
-  public StreamingContainerManager(DAG dag)
+  public StreamingContainerManager(LogicalPlan dag)
   {
     this.plan = new PhysicalPlan(dag, this);
     this.appAttributes = dag.getAttributes();
 
-    appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).setIfAbsent(500);
+    appAttributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).setIfAbsent(500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
 
-    appAttributes.attr(DAG.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
-    this.appPath = appAttributes.attr(DAG.STRAM_APP_PATH).get();
-    this.checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
-    this.statsFsPath = this.appPath + "/" + DAG.SUBDIR_STATS;
+    appAttributes.attr(LogicalPlan.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
+    this.appPath = appAttributes.attr(LogicalPlan.STRAM_APP_PATH).get();
+    this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
+    this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
 
-    appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get());
+    appAttributes.attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / appAttributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).get());
     //this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).get() * appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get();
-    this.heartbeatTimeoutMillis = appAttributes.attrValue(DAG.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
+    this.heartbeatTimeoutMillis = appAttributes.attrValue(LogicalPlan.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
-    appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
-    this.maxWindowsBehindForStats = appAttributes.attr(DAG.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
+    appAttributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
+    this.maxWindowsBehindForStats = appAttributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
 
-    appAttributes.attr(DAG.STRAM_RECORD_STATS_INTERVAL_MILLIS).setIfAbsent(0);
-    this.recordStatsInterval = appAttributes.attr(DAG.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
+    appAttributes.attr(LogicalPlan.STRAM_RECORD_STATS_INTERVAL_MILLIS).setIfAbsent(0);
+    this.recordStatsInterval = appAttributes.attr(LogicalPlan.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
     if (this.recordStatsInterval > 0) {
       statsRecorder = new HdfsStatsRecorder();
       statsRecorder.setBasePath(this.statsFsPath);
@@ -141,7 +141,7 @@ public class StreamingContainerManager implements PlanContext
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
-        if (lastResourceRequest + appAttributes.attrValue(DAG.STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS, DAG.DEFAULT_STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
+        if (lastResourceRequest + appAttributes.attrValue(LogicalPlan.STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
           String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.containerId, c.getState().name());
           LOG.warn(msg);
           forcedShutdown = true;

@@ -6,10 +6,11 @@ package com.malhartech.moduleexperiment;
 
 import com.google.inject.TypeLiteral;
 import com.malhartech.api.BaseOperator;
-import com.malhartech.api.DAG;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
@@ -178,7 +179,7 @@ public class ProtoModuleTest {
   @Test
   public void testDAG() throws Exception {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     MyProtoModule<Object> m1 = dag.addOperator("operator1", new MyProtoModule<Object>());
     m1.setMyConfigField("someField");
@@ -196,12 +197,12 @@ public class ProtoModuleTest {
     dag.validate();
 
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-    DAG.write(dag, outStream);
+    LogicalPlan.write(dag, outStream);
     outStream.close();
 
     byte[] dagBytes = outStream.toByteArray();
     LOG.debug("dag bytes size: " + dagBytes.length);
-    DAG clonedDag = DAG.read(new ByteArrayInputStream(dagBytes));
+    LogicalPlan clonedDag = LogicalPlan.read(new ByteArrayInputStream(dagBytes));
     Assert.assertEquals(dag.getAllOperators().size(), clonedDag.getAllOperators().size());
     Operator clonedModule = clonedDag.getOperatorMeta("operator1").getOperator();
     Assert.assertNotNull("", clonedModule);

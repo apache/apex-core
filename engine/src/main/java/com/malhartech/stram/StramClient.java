@@ -7,9 +7,10 @@ package com.malhartech.stram;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import com.malhartech.annotation.ShipContainingJars;
-import com.malhartech.api.DAG;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -66,7 +67,7 @@ public class StramClient
   // User to run app master as
   private String amUser = "";
   private ApplicationId appId;
-  private DAG dag;
+  private LogicalPlan dag;
   public String javaCmd = "${JAVA_HOME}" + "/bin/java";
   // log4j.properties file
   // if available, add to local resources and set into classpath
@@ -124,7 +125,7 @@ public class StramClient
     this(new Configuration());
   }
 
-  public StramClient(DAG dag) throws Exception
+  public StramClient(LogicalPlan dag) throws Exception
   {
     this(new Configuration());
     this.dag = dag;
@@ -185,7 +186,7 @@ public class StramClient
     dag = DAGPropertiesBuilder.create(new Configuration(false), propertyFileName);
     dag.validate();
     if (cliParser.hasOption("debug")) {
-      dag.getAttributes().attr(DAG.STRAM_DEBUG).set(true);
+      dag.getAttributes().attr(LogicalPlan.STRAM_DEBUG).set(true);
     }
 
     amPriority = Integer.parseInt(cliParser.getOptionValue("priority", String.valueOf(amPriority)));
@@ -207,9 +208,9 @@ public class StramClient
                                          + ", numContainer=" + containerCount);
     }
 
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(containerCount);
-    dag.getAttributes().attr(DAG.STRAM_MASTER_MEMORY_MB).set(amMemory);
-    dag.getAttributes().attr(DAG.STRAM_CONTAINER_MEMORY_MB).set(containerMemory);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(containerCount);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MASTER_MEMORY_MB).set(amMemory);
+    dag.getAttributes().attr(LogicalPlan.STRAM_CONTAINER_MEMORY_MB).set(containerMemory);
 
     clientTimeout = Integer.parseInt(cliParser.getOptionValue("timeout", "600000"));
     if (clientTimeout == 0) {
@@ -221,7 +222,7 @@ public class StramClient
     return true;
   }
 
-  public static LinkedHashSet<String> findJars(DAG dag) {
+  public static LinkedHashSet<String> findJars(LogicalPlan dag) {
     // platform dependencies that are not part of Hadoop and need to be deployed,
     // entry below will cause containing jar file from client to be copied to cluster
     Class<?>[] defaultClasses = new Class<?>[]{
@@ -296,7 +297,7 @@ public class StramClient
       localJarFiles.add(jar);
     }
 
-    String libJarsPath = dag.getAttributes().attrValue(DAG.STRAM_LIBJARS, null);
+    String libJarsPath = dag.getAttributes().attrValue(LogicalPlan.STRAM_LIBJARS, null);
     if (!StringUtils.isEmpty(libJarsPath)) {
       String[] libJars = StringUtils.splitByWholeSeparator(libJarsPath, ",");
       localJarFiles.addAll(Arrays.asList(libJars));
@@ -388,8 +389,8 @@ public class StramClient
       amMemory = maxMem;
     }
 
-    dag.getAttributes().attr(DAG.STRAM_APPNAME).setIfAbsent(DEFAULT_APPNAME);
-    dag.getAttributes().attr(DAG.STRAM_APP_ID).setIfAbsent(appId.toString());
+    dag.getAttributes().attr(LogicalPlan.STRAM_APPNAME).setIfAbsent(DEFAULT_APPNAME);
+    dag.getAttributes().attr(LogicalPlan.STRAM_APP_ID).setIfAbsent(appId.toString());
 
     // Create launch context for app master
     LOG.info("Setting up application submission context for ASM");
@@ -398,7 +399,7 @@ public class StramClient
     // set the application id
     appContext.setApplicationId(appId);
     // set the application name
-    appContext.setApplicationName(dag.getAttributes().attr(DAG.STRAM_APPNAME).get());
+    appContext.setApplicationName(dag.getAttributes().attr(LogicalPlan.STRAM_APPNAME).get());
 
     // Set up the container launch context for the application master
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
@@ -458,8 +459,8 @@ public class StramClient
     }
 
     LOG.info("libjars: {}", libJarsCsv);
-    dag.getAttributes().attr(DAG.STRAM_LIBJARS).set(libJarsCsv);
-    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(new Path(fs.getHomeDirectory(), pathSuffix).toString());
+    dag.getAttributes().attr(LogicalPlan.STRAM_LIBJARS).set(libJarsCsv);
+    dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).set(new Path(fs.getHomeDirectory(), pathSuffix).toString());
 
     // set local resources for the application master
     // local files or archives as needed
@@ -483,9 +484,9 @@ public class StramClient
     }
 
     // push application configuration to dfs location
-    Path cfgDst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + DAG.SER_FILE_NAME);
+    Path cfgDst = new Path(fs.getHomeDirectory(), pathSuffix + "/" + LogicalPlan.SER_FILE_NAME);
     FSDataOutputStream outStream = fs.create(cfgDst, true);
-    DAG.write(this.dag, outStream);
+    LogicalPlan.write(this.dag, outStream);
     outStream.close();
 
     FileStatus topologyFileStatus = fs.getFileStatus(cfgDst);
@@ -495,7 +496,7 @@ public class StramClient
     topologyRsrc.setResource(ConverterUtils.getYarnUrlFromURI(cfgDst.toUri()));
     topologyRsrc.setTimestamp(topologyFileStatus.getModificationTime());
     topologyRsrc.setSize(topologyFileStatus.getLen());
-    localResources.put(DAG.SER_FILE_NAME, topologyRsrc);
+    localResources.put(LogicalPlan.SER_FILE_NAME, topologyRsrc);
 
     // Set local resource info into app master container launch context
     amContainer.setLocalResources(localResources);

@@ -5,10 +5,11 @@
 package com.malhartech.engine;
 
 import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.DAG;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.stram.StramLocalCluster;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -94,8 +95,8 @@ public class NodeTest
   @Test
   public void testStreamingWindowGenericNode() throws Exception
   {
-    DAG dag = new DAG(new Configuration(false));
-    dag.getAttributes().attr(DAG.STRAM_WINDOW_SIZE_MILLIS).set(10);
+    LogicalPlan dag = new LogicalPlan(new Configuration(false));
+    dag.getAttributes().attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).set(10);
     dag.addOperator("GenericOperator", new TestGenericOperator());
 
     final StramLocalCluster lc = new StramLocalCluster(dag);

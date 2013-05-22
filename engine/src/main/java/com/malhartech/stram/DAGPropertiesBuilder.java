@@ -27,10 +27,11 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Maps;
 import com.malhartech.api.ApplicationFactory;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorMeta;
-import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operators;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  *
@@ -183,7 +184,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       return id;
     }
 
-    private String getModuleClassNameReqd() {
+    private String getClassNameReqd() {
       String className = properties.getProperty(OPERATOR_CLASSNAME);
       if (className == null) {
         throw new IllegalArgumentException(String.format("Operator '%s' is missing property '%s'", getId(), DAGPropertiesBuilder.OPERATOR_CLASSNAME));
@@ -375,7 +376,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   }
 
   @Override
-  public DAG getApplication(Configuration appConf) {
+  public void getApplication(DAG dag, Configuration appConf) {
 
     Configuration conf = new Configuration(appConf);
     for (final String propertyName : this.properties.stringPropertyNames()) {
@@ -383,13 +384,11 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       conf.setIfUnset(propertyName, propertyValue);
     }
 
-    DAG dag = new DAG(conf);
-
     Map<NodeConf, Operator> nodeMap = new HashMap<NodeConf, Operator>(this.nodes.size());
     // add all operators first
     for (Map.Entry<String, NodeConf> nodeConfEntry : this.nodes.entrySet()) {
       NodeConf nodeConf = nodeConfEntry.getValue();
-      Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getModuleClassNameReqd(), Operator.class);
+      Class<? extends Operator> nodeClass = StramUtils.classForName(nodeConf.getClassNameReqd(), Operator.class);
       Operator nd = dag.addOperator(nodeConfEntry.getKey(), nodeClass);
       setOperatorProperties(nd, nodeConf.getProperties());
       nodeMap.put(nodeConf, nd);
@@ -398,7 +397,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     // wire operators
     for (Map.Entry<String, StreamConf> streamConfEntry : this.streams.entrySet()) {
       StreamConf streamConf = streamConfEntry.getValue();
-      StreamMeta sd = dag.addStream(streamConfEntry.getKey());
+      DAG.StreamMeta sd = dag.addStream(streamConfEntry.getKey());
       sd.setInline(streamConf.isInline());
 
       if (streamConf.sourceNode != null) {
@@ -428,14 +427,15 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
       }
     }
 
-    return dag;
   }
 
-  public static DAG create(Configuration conf, String tplgPropsFile) throws IOException {
+  public static LogicalPlan create(Configuration conf, String tplgPropsFile) throws IOException {
     Properties topologyProperties = readProperties(tplgPropsFile);
     DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
     tb.addFromProperties(topologyProperties);
-    return tb.getApplication(conf);
+    LogicalPlan lp = new LogicalPlan();
+    tb.getApplication(lp, conf);
+    return lp;
   }
 
   public static Properties readProperties(String filePath) throws IOException
@@ -497,7 +497,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
         tm.put(3, t);
         continue;
       } else if (t.classNameRegExp != null
-          && nodeConf.getModuleClassNameReqd().matches(t.classNameRegExp)) {
+          && nodeConf.getClassNameReqd().matches(t.classNameRegExp)) {
         tm.put(4, t);
         continue;
       }
@@ -533,7 +533,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
    *
    * @param dag
    */
-  public void setOperatorProperties(DAG dag, String applicationName) {
+  public void setOperatorProperties(LogicalPlan dag, String applicationName) {
     for (OperatorMeta ow : dag.getAllOperators()) {
       Map<String, String> properties = getProperties(ow, applicationName);
       setOperatorProperties(ow.getOperator(), properties);

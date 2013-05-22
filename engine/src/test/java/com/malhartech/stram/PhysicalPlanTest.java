@@ -25,8 +25,6 @@ import com.google.common.collect.Sets;
 import com.malhartech.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.Unifier;
@@ -44,6 +42,8 @@ import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlan.PTOutput;
 import com.malhartech.stram.PhysicalPlan.PlanContext;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 
 public class PhysicalPlanTest {
   public static class PartitioningTestStreamCodec extends DefaultStreamCodec<Object> {
@@ -94,7 +94,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testStaticPartitioning() {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PartitioningTestOperator node2 = dag.addOperator("node2", PartitioningTestOperator.class);
@@ -104,7 +104,7 @@ public class PhysicalPlanTest {
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
     dag.getMeta(node2).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(3);
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
 
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
 
@@ -128,7 +128,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testDefaultPartitioning() {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -218,7 +218,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testRepartitioningScaleUp() {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -227,7 +227,7 @@ public class PhysicalPlanTest {
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(node2.getName());
     node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
@@ -276,7 +276,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testRepartitioningScaleDown() {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -290,7 +290,7 @@ public class PhysicalPlanTest {
     dag.setInputPortAttribute(o3parallel.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.addStream("o3parallel_outport1", o3parallel.outport1, mergeNode.inport1);
 
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(node2.getName());
     node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(8);
@@ -477,7 +477,7 @@ public class PhysicalPlanTest {
   @SuppressWarnings("unchecked")
   public void testInline() {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
@@ -496,7 +496,7 @@ public class PhysicalPlanTest {
     dag.addStream("o3_outport1", o3.outport1, partNode.inport2);
 
     int maxContainers = 4;
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(maxContainers);
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
     Assert.assertEquals("operators container 0", 1, plan.getContainers().get(0).operators.size());
@@ -522,7 +522,7 @@ public class PhysicalPlanTest {
   @Test
   public void testInlineMultipleInputs() {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -535,7 +535,7 @@ public class PhysicalPlanTest {
             .setInline(true);
 
     int maxContainers = 5;
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(maxContainers);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(maxContainers);
 
     PhysicalPlan deployer = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
@@ -552,7 +552,7 @@ public class PhysicalPlanTest {
   @Test
   public void testNodeLocality() {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
@@ -570,7 +570,7 @@ public class PhysicalPlanTest {
     dag.addStream("partitionedParallel_outport1", partitionedParallel.outport1, single.inport1);
 
     int maxContainers = 7;
-    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, maxContainers);
+    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, maxContainers);
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
@@ -606,7 +606,7 @@ public class PhysicalPlanTest {
   @Test
   public void testParallelPartitioning() {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
 
@@ -645,7 +645,7 @@ public class PhysicalPlanTest {
     dag.addStream("o4outport1", o4.outport1, o5single.inport1);
 
     int maxContainers = 5;
-    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, maxContainers);
+    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, maxContainers);
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
@@ -676,7 +676,7 @@ public class PhysicalPlanTest {
     }
 
     // container 4: merge operator for o4
-    Map<DAG.OutputPortMeta, PTOperator> o4Unifiers = plan.getMergeOperators(o4Meta);
+    Map<LogicalPlan.OutputPortMeta, PTOperator> o4Unifiers = plan.getMergeOperators(o4Meta);
     Assert.assertEquals("unifier " + o4Meta + ": " + o4Unifiers, 1, o4Unifiers.size());
     PTContainer container4 = plan.getContainers().get(3);
     Assert.assertEquals("number operators " + container4, 1, container4.operators.size());
@@ -702,7 +702,7 @@ public class PhysicalPlanTest {
   @Test
   public void testUnifierPartitioning() {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator o1 = dag.addOperator("o1", TestGeneratorInputOperator.class);
     dag.setAttribute(o1, OperatorContext.INITIAL_PARTITION_COUNT, 2);
@@ -715,7 +715,7 @@ public class PhysicalPlanTest {
     dag.addStream("o1.outport1", o1.outport, o2.inport1);
 
     int maxContainers = 10;
-    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, maxContainers);
+    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, maxContainers);
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());

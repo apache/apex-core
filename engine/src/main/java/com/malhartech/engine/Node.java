@@ -4,11 +4,11 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.ActivationListener;
 import com.malhartech.api.*;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operators.PortMappingDescriptor;
 import com.malhartech.debug.MuxSink;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
 import com.malhartech.tuple.EndWindowTuple;
@@ -158,7 +158,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     this.alive = true;
     this.context = context;
     this.applicationWindowCount = context.getAttributes().attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
-    this.stramWindowSize = context.getApplicationAttributes().attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
+    this.stramWindowSize = context.getApplicationAttributes().attrValue(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS, 500);
 
     if (activationListener) {
       ((ActivationListener)operator).activate(context);

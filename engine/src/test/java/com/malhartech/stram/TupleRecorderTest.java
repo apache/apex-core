@@ -4,12 +4,12 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.DAG;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.TupleRecorder.PortInfo;
 import com.malhartech.stram.TupleRecorder.RecordInfo;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import com.malhartech.util.HdfsPartFileCollection;
@@ -173,10 +173,10 @@ public class TupleRecorderTest
   public void testRecordingFlow() throws Exception
   {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
-    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set("file://" + testWorkDir.getAbsolutePath());
-    dag.getAttributes().attr(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE).set(1024);  // 1KB per part
+    dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).set("file://" + testWorkDir.getAbsolutePath());
+    dag.getAttributes().attr(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_SIZE).set(1024);  // 1KB per part
 
     TestGeneratorInputOperator op1 = dag.addOperator("op1", TestGeneratorInputOperator.class);
     GenericTestOperator op2 = dag.addOperator("op2", GenericTestOperator.class);

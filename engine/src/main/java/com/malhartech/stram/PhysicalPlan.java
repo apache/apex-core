@@ -34,10 +34,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.InputPortMeta;
-import com.malhartech.api.DAG.OperatorMeta;
-import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.Unifier;
@@ -48,6 +44,10 @@ import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.api.Operators;
 import com.malhartech.api.Operators.PortMappingDescriptor;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -96,7 +96,7 @@ public class PhysicalPlan {
    * <br>
    */
   public static class PTInput {
-    final DAG.StreamMeta logicalStream;
+    final LogicalPlan.StreamMeta logicalStream;
     final PTComponent target;
     final PartitionKeys partitions;
     final PTOutput source;
@@ -140,7 +140,7 @@ public class PhysicalPlan {
    * <br>
    */
   public static class PTOutput {
-    final DAG.StreamMeta logicalStream;
+    final LogicalPlan.StreamMeta logicalStream;
     final PTComponent source;
     final String portName;
     final PhysicalPlan plan;
@@ -307,7 +307,7 @@ public class PhysicalPlan {
 
     private State state = State.NEW;
     private final PhysicalPlan plan;
-    private DAG.OperatorMeta logicalNode;
+    private LogicalPlan.OperatorMeta logicalNode;
     private final int id;
     private final String name;
     Partition<?> partition;
@@ -515,7 +515,7 @@ public class PhysicalPlan {
   private final AtomicInteger containerSeq = new AtomicInteger();
   private final LinkedHashMap<OperatorMeta, PMapping> logicalToPTOperator = new LinkedHashMap<OperatorMeta, PMapping>();
   private final List<PTContainer> containers = new CopyOnWriteArrayList<PTContainer>();
-  private final DAG dag;
+  private final LogicalPlan dag;
   private final PlanContext ctx;
   private int maxContainers = 1;
   private final LocalityPrefs localityPrefs = new LocalityPrefs();
@@ -568,7 +568,7 @@ public class PhysicalPlan {
 
     final private OperatorMeta logicalOperator;
     private List<PTOperator> partitions = new LinkedList<PTOperator>();
-    private Map<DAG.OutputPortMeta, PTOperator> mergeOperators = new HashMap<DAG.OutputPortMeta, PTOperator>();
+    private Map<LogicalPlan.OutputPortMeta, PTOperator> mergeOperators = new HashMap<LogicalPlan.OutputPortMeta, PTOperator>();
     volatile private boolean shouldRedoPartitions = false;
     private List<StatsHandler> statsHandlers;
 
@@ -671,7 +671,7 @@ public class PhysicalPlan {
    * @param dag
    * @param ctx
    */
-  public PhysicalPlan(DAG dag, PlanContext ctx) {
+  public PhysicalPlan(LogicalPlan dag, PlanContext ctx) {
 
     this.dag = dag;
     this.ctx = ctx;
@@ -710,7 +710,7 @@ public class PhysicalPlan {
 
         PMapping upstreamPartitioned = null;
 
-        for (Map.Entry<DAG.InputPortMeta, StreamMeta> e : n.getInputStreams().entrySet()) {
+        for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> e : n.getInputStreams().entrySet()) {
           PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorWrapper());
           if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false).equals(true)) {
             // operator partitioned with upstream
@@ -967,7 +967,7 @@ public class PhysicalPlan {
       }
 
       // handle parallel partition
-      Stack<OperatorMeta> pending = new Stack<DAG.OperatorMeta>();
+      Stack<OperatorMeta> pending = new Stack<LogicalPlan.OperatorMeta>();
       pending.addAll(currentMapping.parallelPartitions);
       pendingLoop:
       while (!pending.isEmpty()) {
@@ -1053,13 +1053,13 @@ public class PhysicalPlan {
    * @param oper
    * @return
    */
-  private void removePartition(PTOperator oper, Set<DAG.OperatorMeta> parallelPartitions) {
+  private void removePartition(PTOperator oper, Set<LogicalPlan.OperatorMeta> parallelPartitions) {
 
     // remove any parallel partition
     for (PTOutput out : oper.outputs) {
       // copy list as it is modified by recursive remove
       for (PTInput in : Lists.newArrayList(out.sinks)) {
-        for (DAG.InputPortMeta im : in.logicalStream.getSinks()) {
+        for (LogicalPlan.InputPortMeta im : in.logicalStream.getSinks()) {
           PMapping m = this.logicalToPTOperator.get(im.getOperatorWrapper());
           if (m.parallelPartitions == parallelPartitions) {
             // associated operator parallel partitioned
@@ -1098,12 +1098,12 @@ public class PhysicalPlan {
     PTOperator pOperator = createInstance(nodeDecl, partition);
     nodeDecl.addPartition(pOperator);
 
-    Map<DAG.InputPortMeta, PartitionKeys> partitionKeys = Collections.emptyMap();
+    Map<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Collections.emptyMap();
     if (partition != null) {
-      partitionKeys = new HashMap<DAG.InputPortMeta, PartitionKeys>(partition.getPartitionKeys().size());
+      partitionKeys = new HashMap<LogicalPlan.InputPortMeta, PartitionKeys>(partition.getPartitionKeys().size());
       Map<InputPort<?>, PartitionKeys> partKeys = partition.getPartitionKeys();
       for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
-        DAG.InputPortMeta pportMeta = nodeDecl.logicalOperator.getMeta(portEntry.getKey());
+        LogicalPlan.InputPortMeta pportMeta = nodeDecl.logicalOperator.getMeta(portEntry.getKey());
         if (pportMeta == null) {
           throw new IllegalArgumentException("Invalid port reference " + portEntry);
         }
@@ -1111,7 +1111,7 @@ public class PhysicalPlan {
       }
     }
 
-    for (Map.Entry<DAG.InputPortMeta, StreamMeta> inputEntry : nodeDecl.logicalOperator.getInputStreams().entrySet()) {
+    for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : nodeDecl.logicalOperator.getInputStreams().entrySet()) {
       // find upstream node(s), (can be multiple partitions)
       StreamMeta streamDecl = inputEntry.getValue();
       if (streamDecl.getSource() != null) {
@@ -1203,7 +1203,7 @@ public class PhysicalPlan {
     pOperator.partition = partition;
 
     // output port objects - these could be deferred until inputs are connected
-    for (Map.Entry<DAG.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
+    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
       PTOutput out = new PTOutput(this, outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
       pOperator.outputs.add(out);
 
@@ -1245,7 +1245,7 @@ public class PhysicalPlan {
     LOG.debug("Removing operator " + node);
     OperatorMeta nodeDecl = node.logicalNode;
     PMapping mapping = logicalToPTOperator.get(node.logicalNode);
-    for (Map.Entry<DAG.OutputPortMeta, StreamMeta> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
+    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : nodeDecl.getOutputStreams().entrySet()) {
       PTOperator merge = mapping.mergeOperators.get(outputEntry.getKey());
       if (merge != null) {
         List<PTInput> newInputs = new ArrayList<PTInput>(merge.inputs.size());
@@ -1257,7 +1257,7 @@ public class PhysicalPlan {
         merge.inputs = newInputs;
       } else {
         StreamMeta streamDecl = outputEntry.getValue();
-        for (DAG.InputPortMeta inp : streamDecl.getSinks()) {
+        for (LogicalPlan.InputPortMeta inp : streamDecl.getSinks()) {
           List<PTOperator> sinkNodes = logicalToPTOperator.get(inp.getOperatorWrapper()).partitions;
           for (PTOperator sinkNode : sinkNodes) {
             // unlink from downstream operators
@@ -1288,7 +1288,7 @@ public class PhysicalPlan {
     }
   }
 
-  public DAG getDAG() {
+  public LogicalPlan getDAG() {
     return this.dag;
   }
 
@@ -1301,7 +1301,7 @@ public class PhysicalPlan {
   }
 
   // used for testing only
-  protected Map<DAG.OutputPortMeta, PTOperator> getMergeOperators(OperatorMeta logicalOperator) {
+  protected Map<LogicalPlan.OutputPortMeta, PTOperator> getMergeOperators(OperatorMeta logicalOperator) {
     return this.logicalToPTOperator.get(logicalOperator).mergeOperators;
   }
 

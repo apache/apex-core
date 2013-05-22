@@ -20,8 +20,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.codec.DefaultStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
@@ -36,6 +34,8 @@ import com.malhartech.stram.PhysicalPlanTest.PartitioningTestOperator;
 import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.api.AttributeMap;
 
 public class StreamingContainerManagerTest {
@@ -93,7 +93,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testAssignContainer() {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator node1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -105,7 +105,7 @@ public class StreamingContainerManagerTest {
     dag.addStream("n2n3", node2.outport1, node3.inport1)
       .setInline(true);
 
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
 
     Assert.assertEquals("number operators", 3, dag.getAllOperators().size());
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
@@ -172,7 +172,7 @@ public class StreamingContainerManagerTest {
 
   @Test
   public void testStaticPartitioning() {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
@@ -181,10 +181,10 @@ public class StreamingContainerManagerTest {
     GenericTestOperator node3 = dag.addOperator("node3", GenericTestOperator.class);
     dag.setInputPortAttribute(node3.inport1, PortContext.QUEUE_CAPACITY, 2222);
 
-    DAG.StreamMeta n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
-    DAG.StreamMeta n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
+    LogicalPlan.StreamMeta n1n2 = dag.addStream("n1n2", node1.outport1, node2.inport1);
+    LogicalPlan.StreamMeta n2n3 = dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, 6);
+    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, 6);
 
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
     Assert.assertEquals("number required containers", 6, dnm.getPhysicalPlan().getContainers().size());
@@ -265,7 +265,7 @@ public class StreamingContainerManagerTest {
    */
   @Test
   public void testBufferServerAssignment() {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -275,7 +275,7 @@ public class StreamingContainerManagerTest {
 
     dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
 
     // node1 and node3 are assigned, node2 unassigned
     StreamingContainerManager dnmgr = new StreamingContainerManager(dag);
@@ -285,7 +285,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testRecoveryOrder() throws Exception
   {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -294,7 +294,7 @@ public class StreamingContainerManagerTest {
     dag.addStream("n1n2", node1.outport1, node2.inport1);
     dag.addStream("n2n3", node2.outport1, node3.inport1);
 
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
 
     StreamingContainerManager scm = new StreamingContainerManager(dag);
     Assert.assertEquals(""+scm.containerStartRequests, 2, scm.containerStartRequests.size());

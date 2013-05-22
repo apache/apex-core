@@ -6,6 +6,7 @@ package com.malhartech.api;
 
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.stram.StramLocalCluster;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import com.malhartech.util.CircularBuffer;
@@ -103,7 +104,7 @@ public class InputOperatorTest
   @Test
   public void testSomeMethod() throws Exception
   {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     EvenOddIntegerGeneratorInputOperator generator = dag.addOperator("NumberGenerator", EvenOddIntegerGeneratorInputOperator.class);
     final CollectorModule<Number> collector = dag.addOperator("NumberCollector", new CollectorModule<Number>());
 

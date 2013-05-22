@@ -46,9 +46,6 @@ import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorMeta;
-import com.malhartech.api.DAG.StreamMeta;
-import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
@@ -58,11 +55,14 @@ import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.engine.TestOutputOperator;
 import com.malhartech.stram.cli.StramClientUtils;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.malhartech.codec.KryoJdkSerializer;
 
 public class DAGBuilderTest {
 
-  public static OperatorMeta assertNode(DAG dag, String id) {
+  public static OperatorMeta assertNode(LogicalPlan dag, String id) {
       OperatorMeta n = dag.getOperatorMeta(id);
       assertNotNull("operator exists id=" + id, n);
       return n;
@@ -73,13 +73,15 @@ public class DAGBuilderTest {
    */
   @Test
   public void testLoadFromConfigXml() {
-    Configuration conf = StramClientUtils.addStramResources(new Configuration());
+    Configuration conf = new Configuration(false);
+    conf.addResource(StramClientUtils.STRAM_SITE_XML_FILE);
     //Configuration.dumpConfiguration(conf, new PrintWriter(System.out));
 
     DAGPropertiesBuilder builder = new DAGPropertiesBuilder();
     builder.addFromConfiguration(conf);
 
-    DAG dag = builder.getApplication(new Configuration(false));
+    LogicalPlan dag = new LogicalPlan();
+    builder.getApplication(dag, new Configuration(false));
     dag.validate();
 
 //    Map<String, NodeConf> operatorConfs = tb.getAllOperators();
@@ -118,7 +120,7 @@ public class DAGBuilderTest {
     StreamMeta fromNode2 = operator2.getOutputStreams().values().iterator().next();
 
     Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
-    for (DAG.InputPortMeta ip : fromNode2.getSinks()) {
+    for (LogicalPlan.InputPortMeta ip : fromNode2.getSinks()) {
       targetNodes.add(ip.getOperatorWrapper());
     }
     Assert.assertEquals("outputs " + fromNode2, Sets.newHashSet(operator3, operator4), targetNodes);
@@ -144,7 +146,7 @@ public class DAGBuilderTest {
       System.out.println(prefix + operator.getId());
       for (StreamMeta downStream : operator.getOutputStreams().values()) {
           if (!downStream.getSinks().isEmpty()) {
-            for (DAG.InputPortMeta targetNode : downStream.getSinks()) {
+            for (LogicalPlan.InputPortMeta targetNode : downStream.getSinks()) {
               printTopology(targetNode.getOperatorWrapper(), tplg, level+1);
             }
           }
@@ -163,7 +165,8 @@ public class DAGBuilderTest {
       DAGPropertiesBuilder pb = new DAGPropertiesBuilder()
         .addFromProperties(props);
 
-      DAG dag = pb.getApplication(new Configuration(false));
+      LogicalPlan dag = new LogicalPlan();
+      pb.getApplication(dag, new Configuration(false));
       dag.validate();
 
       assertEquals("number of operator confs", 5, dag.getAllOperators().size());
@@ -190,7 +193,7 @@ public class DAGBuilderTest {
       assertNotNull(input1);
       Assert.assertEquals("input1 source", dag.getOperatorMeta("inputOperator"), input1.getSource().getOperatorWrapper());
       Set<OperatorMeta> targetNodes = new HashSet<OperatorMeta>();
-      for (DAG.InputPortMeta targetPort : input1.getSinks()) {
+      for (LogicalPlan.InputPortMeta targetPort : input1.getSinks()) {
         targetNodes.add(targetPort.getOperatorWrapper());
       }
 
@@ -200,7 +203,7 @@ public class DAGBuilderTest {
 
   @Test
   public void testCycleDetection() {
-     DAG dag = new DAG();
+     LogicalPlan dag = new LogicalPlan();
 
      //NodeConf operator1 = b.getOrAddNode("operator1");
      GenericTestOperator operator2 = dag.addOperator("operator2", GenericTestOperator.class);
@@ -270,7 +273,7 @@ public class DAGBuilderTest {
   @Test
   public void testJavaBuilder() throws Exception {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     ValidationOperator validationNode = dag.addOperator("validationNode", ValidationOperator.class);
     CounterOperator countGoodNode = dag.addOperator("countGoodNode", CounterOperator.class);
@@ -290,12 +293,12 @@ public class DAGBuilderTest {
     dag.getContextAttributes(countGoodNode).attr(OperatorContext.SPIN_MILLIS).set(10);
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    DAG.write(dag, bos);
+    LogicalPlan.write(dag, bos);
 
     System.out.println("serialized size: " + bos.toByteArray().length);
 
     ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
-    DAG dagClone = DAG.read(bis);
+    LogicalPlan dagClone = LogicalPlan.read(bis);
     Assert.assertNotNull(dagClone);
     Assert.assertEquals("number operators in clone", dag.getAllOperators().size(), dagClone.getAllOperators().size());
     Assert.assertEquals("number root operators in clone", 1, dagClone.getRootOperators().size());
@@ -393,7 +396,7 @@ public class DAGBuilderTest {
     Assert.assertEquals("", "intField1", cv.getPropertyPath().toString());
 
     // ensure DAG validation produces matching results
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     bean = dag.addOperator("testOperator", bean);
 
     try {
@@ -449,7 +452,7 @@ public class DAGBuilderTest {
   @Test
   public void testPortConnectionValidation() {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     TestGeneratorInputOperator input = dag.addOperator("input1", TestGeneratorInputOperator.class);
 
     try {
@@ -476,7 +479,6 @@ public class DAGBuilderTest {
   private class TestAnnotationsOperator2 extends BaseOperator {
     // multiple ports w/o annotation, one of them must be connected
     final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
-    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>(this);
   }
 
   private class TestAnnotationsOperator3 extends BaseOperator {
@@ -489,7 +491,7 @@ public class DAGBuilderTest {
 
   @Test
   public void testOutputPortAnnotation() {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     TestAnnotationsOperator ta1 = dag.addOperator("testAnnotationsOperator", new TestAnnotationsOperator());
 
     try {
@@ -515,7 +517,7 @@ public class DAGBuilderTest {
     TestOutputOperator o3 = dag.addOperator("o3", new TestOutputOperator());
     dag.addStream("s2", ta2.outport1, o3.inport);
 
-    TestAnnotationsOperator3 ta3 = dag.addOperator("multiOutputPorts3", new TestAnnotationsOperator3());
+    dag.addOperator("multiOutputPorts3", new TestAnnotationsOperator3());
     dag.validate();
 
   }
@@ -541,7 +543,7 @@ public class DAGBuilderTest {
     // direct setting
     props.put("stram.operator.operator3.emitFormat", "emitFormatValue");
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     Operator operator1 = dag.addOperator("operator1", new ValidationTestOperator());
     Operator operator2 = dag.addOperator("operator2", new ValidationTestOperator());
     Operator operator3 = dag.addOperator("operator3", new GenericTestOperator());
@@ -572,7 +574,7 @@ public class DAGBuilderTest {
     conf.set("stram.operator.o1.myStringProperty", "myStringPropertyValue");
     conf.set("stram.operator.o2.stringArrayField", "a,b,c");
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     GenericTestOperator o1 = dag.addOperator("o1", new GenericTestOperator());
     ValidationTestOperator o2 = dag.addOperator("o2", new ValidationTestOperator());
 
@@ -591,7 +593,7 @@ public class DAGBuilderTest {
 
   @Test
   public void testDuplicatePort() {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     DuplicatePortOperator o1 = dag.addOperator("o1", new DuplicatePortOperator());
     try {
       dag.setOutputPortAttribute(o1.outport1, PortContext.QUEUE_CAPACITY, 0);
@@ -651,14 +653,14 @@ public class DAGBuilderTest {
 
   @Test
   public void testJdkSerializableOperator() throws Exception {
-    DAG dag = new DAG();
-    JdkSerializableOperator o1 = dag.addOperator("o1", new JdkSerializableOperator());
+    LogicalPlan dag = new LogicalPlan();
+    dag.addOperator("o1", new JdkSerializableOperator());
 
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-    DAG.write(dag, outStream);
+    LogicalPlan.write(dag, outStream);
     outStream.close();
 
-    DAG clonedDag = DAG.read(new ByteArrayInputStream(outStream.toByteArray()));
+    LogicalPlan clonedDag = LogicalPlan.read(new ByteArrayInputStream(outStream.toByteArray()));
     JdkSerializableOperator o1Clone = (JdkSerializableOperator)clonedDag.getOperatorMeta("o1").getOperator();
     Assert.assertNotNull("port object null", o1Clone.inport1);
     Assert.assertEquals("", o1Clone, o1Clone.inport1.getOperator());
