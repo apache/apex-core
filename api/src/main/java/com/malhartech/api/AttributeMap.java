@@ -27,12 +27,6 @@ public interface AttributeMap<CONTEXT>
 
     T getAndSet(T value);
 
-    /**
-     * Set the value to newValue if current value == oldValue.
-     *
-     * @param value
-     * @return previous value
-     */
     T setIfAbsent(T value);
 
     boolean compareAndSet(T oldValue, T newValue);

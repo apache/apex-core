@@ -8,6 +8,7 @@ import com.malhartech.engine.Node;
 import com.malhartech.stram.PhysicalPlan.PMapping;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import java.io.File;
@@ -126,7 +127,7 @@ public class PartitioningTest
   @Test
   public void testDefaultPartitioning() throws Exception
   {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     Integer[][] testData = {
       {4, 5}
@@ -185,7 +186,7 @@ public class PartitioningTest
 
   }
 
-  private static List<PTOperator> assertNumberPartitions(final int count, final StramLocalCluster lc, final DAG.OperatorMeta ow) throws Exception
+  private static List<PTOperator> assertNumberPartitions(final int count, final StramLocalCluster lc, final LogicalPlan.OperatorMeta ow) throws Exception
   {
     WaitCondition c = new WaitCondition()
     {
@@ -207,8 +208,8 @@ public class PartitioningTest
   public void testDynamicDefaultPartitioning() throws Exception
   {
 
-    DAG dag = new DAG();
-    dag.setAttribute(DAG.STRAM_MAX_CONTAINERS, 5);
+    LogicalPlan dag = new LogicalPlan();
+    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, 5);
     CollectorOperator.receivedTuples.clear();
 
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
@@ -330,8 +331,8 @@ public class PartitioningTest
     {
 
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
-      DAG dag = new DAG();
-      dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(checkpointDir.getPath());
+      LogicalPlan dag = new LogicalPlan();
+      dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).set(checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
       dag.setAttribute(input, OperatorContext.PARTITION_STATS_HANDLER, PartitionLoadWatch.class.getName());

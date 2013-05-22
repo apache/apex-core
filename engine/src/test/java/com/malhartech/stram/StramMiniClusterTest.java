@@ -57,11 +57,11 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.annotation.ShipContainingJars;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.DAG;
 import com.malhartech.api.InputOperator;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -198,10 +198,10 @@ public class StramMiniClusterTest
     dagProps.put("stram.stream.n1n2.source", "module1.output1");
     dagProps.put("stram.stream.n1n2.sinks", "module2.input1");
 
-    dagProps.setProperty(DAG.STRAM_MASTER_MEMORY_MB.name(), "128");
-    dagProps.setProperty(DAG.STRAM_CONTAINER_MEMORY_MB.name(), "512");
-    dagProps.setProperty(DAG.STRAM_DEBUG.name(), "true");
-    dagProps.setProperty(DAG.STRAM_MAX_CONTAINERS.name(), "2");
+    dagProps.setProperty(LogicalPlan.STRAM_MASTER_MEMORY_MB.name(), "128");
+    dagProps.setProperty(LogicalPlan.STRAM_CONTAINER_MEMORY_MB.name(), "512");
+    dagProps.setProperty(LogicalPlan.STRAM_DEBUG.name(), "true");
+    dagProps.setProperty(LogicalPlan.STRAM_MAX_CONTAINERS.name(), "2");
     tb.addFromProperties(dagProps);
 
     Properties tplgProperties = tb.getProperties();
@@ -361,7 +361,7 @@ public class StramMiniClusterTest
   public void testOperatorFailureRecovery() throws Exception
   {
 
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     FailingOperator badOperator = dag.addOperator("badOperator", FailingOperator.class);
     dag.getContextAttributes(badOperator).attr(OperatorContext.RECOVERY_ATTEMPTS).set(1);
 
@@ -398,11 +398,11 @@ public class StramMiniClusterTest
   @Test
   public void testShipContainingJars()
   {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
     dag.getClassNames();
     LinkedHashSet<String> baseJars = StramClient.findJars(dag);
 
-    dag = new DAG();
+    dag = new LogicalPlan();
     dag.addOperator("foo", new ShipJarsOperator());
     dag.getClassNames();
     LinkedHashSet<String> jars = StramClient.findJars(dag);

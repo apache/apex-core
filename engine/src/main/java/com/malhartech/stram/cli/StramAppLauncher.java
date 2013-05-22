@@ -35,6 +35,7 @@ import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramClient;
 import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.StramUtils;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 
 
 /**
@@ -43,7 +44,7 @@ import com.malhartech.stram.StramUtils;
  * <br>
  * Parses the jar file for
  * dependency pom and topology files. Dependency resolution is based on the
- * bundled pom.xml (if any) and the application is lauched with a modified
+ * bundled pom.xml (if any) and the application is launched with a modified
  * client classpath that includes application dependencies so that classes
  * defined in the topology can be loaded and {@link ShipContainingJars}
  * annotations processed. Caching is performed for dependency classpath
@@ -92,7 +93,7 @@ public class StramAppLauncher {
 
 
   public static interface AppConfig {
-      DAG createApp(Configuration conf);
+      LogicalPlan createApp(Configuration conf);
       String getName();
   }
 
@@ -104,7 +105,7 @@ public class StramAppLauncher {
     }
 
     @Override
-    public DAG createApp(Configuration conf) {
+    public LogicalPlan createApp(Configuration conf) {
       try {
         return DAGPropertiesBuilder.create(conf, propertyFile.getAbsolutePath());
       } catch (IOException e) {
@@ -261,11 +262,13 @@ public class StramAppLauncher {
             }
 
             @Override
-            public DAG createApp(Configuration conf) {
+            public LogicalPlan createApp(Configuration conf) {
               // load class from current context class loader
               Class<? extends ApplicationFactory> c = StramUtils.classForName(className, ApplicationFactory.class);
               ApplicationFactory f = StramUtils.newInstance(c);
-              return f.getApplication(conf);
+              LogicalPlan lp = new LogicalPlan(conf);
+              f.getApplication(lp, conf);
+              return lp;
             }
           });
         }
@@ -296,9 +299,9 @@ public class StramAppLauncher {
     return conf;
   }
 
-  public static DAG prepareDAG(AppConfig appConfig, String launchMode) {
+  public static LogicalPlan prepareDAG(AppConfig appConfig, String launchMode) {
     Configuration conf = getConfig(launchMode);
-    DAG dag = appConfig.createApp(conf);
+    LogicalPlan dag = appConfig.createApp(conf);
     dag.getAttributes().attr(DAG.STRAM_APPNAME).setIfAbsent(appConfig.getName());
     // inject external operator configuration
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
@@ -349,7 +352,7 @@ public class StramAppLauncher {
   public static String runApp(AppConfig appConfig) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
 
-    DAG dag = prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+    LogicalPlan dag = prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
     StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();

@@ -6,15 +6,16 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.Sets;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.InputPortMeta;
-import com.malhartech.api.DAG.StreamMeta;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
+
 import java.util.*;
 
 import org.slf4j.Logger;
@@ -22,9 +23,9 @@ import org.slf4j.LoggerFactory;
 
 public class OperatorPartitions {
 
-  final DAG.OperatorMeta operatorWrapper;
+  final LogicalPlan.OperatorMeta operatorWrapper;
 
-  public OperatorPartitions(DAG.OperatorMeta operator) {
+  public OperatorPartitions(LogicalPlan.OperatorMeta operator) {
     this.operatorWrapper = operator;
   }
 
@@ -158,7 +159,7 @@ public class OperatorPartitions {
   public static class DefaultPartitioner {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPartitioner.class);
 
-    public List<Partition<?>> defineInitialPartitions(DAG.OperatorMeta logicalOperator, int initialPartitionCnt) {
+    public List<Partition<?>> defineInitialPartitions(LogicalPlan.OperatorMeta logicalOperator, int initialPartitionCnt) {
 
       //int partitionBits = 0;
       //if (initialPartitionCnt > 0) {

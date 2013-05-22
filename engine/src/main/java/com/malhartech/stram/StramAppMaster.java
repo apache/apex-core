@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.security.StramDelegationTokenManager;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -59,7 +60,6 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.DAG;
 import com.malhartech.debug.StdOutErrLog;
 import com.malhartech.license.License;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
@@ -109,7 +109,7 @@ public class StramAppMaster extends License
   // Configuration
   private final Configuration conf;
   private final YarnClientHelper yarnClient;
-  private DAG dag;
+  private LogicalPlan dag;
   // Handle to communicate with the Resource Manager
   private AMRMProtocol resourceManager;
   // Application Attempt Id ( combination of attemptId and fail count )
@@ -196,7 +196,7 @@ public class StramAppMaster extends License
     public String getApplicationName()
     {
       if (dag != null) {
-        return dag.getAttributes().attr(DAG.STRAM_APPNAME).get();
+        return dag.getAttributes().attr(LogicalPlan.STRAM_APPNAME).get();
       }
       return "unknown";
     }
@@ -211,7 +211,7 @@ public class StramAppMaster extends License
     public String getApplicationPath()
     {
       if (dag != null) {
-        return dag.getAttributes().attr(DAG.STRAM_APP_PATH).get();
+        return dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).get();
       }
       return "unknown";
     }
@@ -244,7 +244,7 @@ public class StramAppMaster extends License
     public String getDaemonAddress()
     {
       if (dag != null) {
-        return dag.getAttributes().attrValue(DAG.STRAM_DAEMON_ADDRESS, null);
+        return dag.getAttributes().attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
       }
       return "unknown";
     }
@@ -409,8 +409,8 @@ public class StramAppMaster extends License
             + ", clustertimestamp=" + appAttemptID.getApplicationId().getClusterTimestamp()
             + ", attemptId=" + appAttemptID.getAttemptId());
 
-    FileInputStream fis = new FileInputStream("./" + DAG.SER_FILE_NAME);
-    this.dag = DAG.read(fis);
+    FileInputStream fis = new FileInputStream("./" + LogicalPlan.SER_FILE_NAME);
+    this.dag = LogicalPlan.read(fis);
     fis.close();
     // "debug" simply dumps all data using LOG.info
     if (dag.isDebug()) {

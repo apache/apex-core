@@ -23,6 +23,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stream.*;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.io.ByteArrayInputStream;
@@ -109,17 +110,17 @@ public class StramChild
   public void setup(StreamingContainerContext ctx)
   {
     applicationAttributes = ctx.applicationAttributes;
-    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
+    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_WINDOW_SIZE_MILLIS, 500);
-    checkpointWindowCount = ctx.applicationAttributes.attrValue(DAG.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
+    windowWidthMillis = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS, 500);
+    checkpointWindowCount = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
 
-    appPath = ctx.applicationAttributes.attrValue(DAG.STRAM_APP_PATH, "app-dfs-path-not-configured");
-    checkpointFsPath = this.appPath + "/" + DAG.SUBDIR_CHECKPOINTS;
-    tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    tupleRecordingPartFileTimeMillis = ctx.applicationAttributes.attrValue(DAG.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
-    daemonAddress = ctx.applicationAttributes.attrValue(DAG.STRAM_DAEMON_ADDRESS, null);
-    fastPublisherSubscriber = ctx.applicationAttributes.attrValue(DAG.FAST_PUBLISHER_SUBSCRIBER, false);
+    appPath = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_APP_PATH, "app-dfs-path-not-configured");
+    checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
+    tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
+    tupleRecordingPartFileTimeMillis = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
+    daemonAddress = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
+    fastPublisherSubscriber = ctx.applicationAttributes.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
 
     try {
       if (ctx.deployBufferServer) {

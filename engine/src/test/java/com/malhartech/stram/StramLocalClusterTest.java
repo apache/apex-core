@@ -5,11 +5,11 @@
 package com.malhartech.stram;
 
 import com.malhartech.codec.DefaultStreamCodec;
-import com.malhartech.api.DAG;
 import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
 import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stream.BufferServerSubscriber;
@@ -52,7 +52,7 @@ public class StramLocalClusterTest
   @Test
   public void testLocalClusterInitShutdown() throws Exception
   {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator genNode = dag.addOperator("genNode", TestGeneratorInputOperator.class);
     genNode.setMaxTuples(2);
@@ -70,7 +70,7 @@ public class StramLocalClusterTest
 
     dag.addStream("fromNode1", node1.outport1, outNode.inport);
 
-    dag.getAttributes().attr(DAG.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
 
     StramLocalCluster localCluster = new StramLocalCluster(dag);
     localCluster.setHeartbeatMonitoringEnabled(false);
@@ -140,7 +140,7 @@ public class StramLocalClusterTest
   @SuppressWarnings("SleepWhileInLoop")
   public void testRecovery() throws Exception
   {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     TestGeneratorInputOperator node1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     // data will be added externally from test
@@ -152,7 +152,7 @@ public class StramLocalClusterTest
 
     dag.validate();
 
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
 
     final ManualScheduledExecutorService wclock = new ManualScheduledExecutorService(1);
 

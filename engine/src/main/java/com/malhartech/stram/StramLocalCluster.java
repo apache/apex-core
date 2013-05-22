@@ -5,8 +5,8 @@
 package com.malhartech.stram;
 
 import com.malhartech.api.DAG;
-import com.malhartech.api.DAG.OperatorMeta;
 import com.malhartech.api.Operator;
+import com.malhartech.api.LocalMode.Controller;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.engine.Node;
@@ -17,6 +17,9 @@ import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -25,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import com.malhartech.netlet.DefaultEventLoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
@@ -38,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * Launcher for topologies in local mode within a single process.
  * Child containers are mapped to threads.
  */
-public class StramLocalCluster implements Runnable
+public class StramLocalCluster implements Runnable, Controller
 {
   private static final Logger logger = LoggerFactory.getLogger(StramLocalCluster.class);
   // assumes execution as unit test
@@ -251,7 +253,7 @@ public class StramLocalCluster implements Runnable
 
   }
 
-  public StramLocalCluster(DAG dag) throws Exception
+  public StramLocalCluster(LogicalPlan dag) throws Exception
   {
     dag.validate();
     // convert to URI so we always write to local file system,
@@ -265,8 +267,8 @@ public class StramLocalCluster implements Runnable
       throw new RuntimeException("could not cleanup test dir", e);
     }
 
-    dag.getAttributes().attr(DAG.STRAM_APP_ID).set("app_local_" + System.currentTimeMillis());
-    dag.getAttributes().attr(DAG.STRAM_APP_PATH).setIfAbsent(pathUri);
+    dag.getAttributes().attr(LogicalPlan.STRAM_APP_ID).set("app_local_" + System.currentTimeMillis());
+    dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).setIfAbsent(pathUri);
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 
@@ -290,7 +292,11 @@ public class StramLocalCluster implements Runnable
     return dnmgr;
   }
 
-  public StramLocalCluster(DAG dag, MockComponentFactory mcf) throws Exception
+  public DAG getDAG() {
+    return dnmgr.getPhysicalPlan().getDAG();
+  }
+
+  public StramLocalCluster(LogicalPlan dag, MockComponentFactory mcf) throws Exception
   {
     this(dag);
     this.mockComponentFactory = mcf;
@@ -350,16 +356,19 @@ public class StramLocalCluster implements Runnable
     return this.dnmgr.getContainerAgent(c.getContainerId());
   }
 
+  @Override
   public void runAsync()
   {
     new Thread(this, "master").start();
   }
 
+  @Override
   public void shutdown()
   {
     appDone = true;
   }
 
+  @Override
   public void setHeartbeatMonitoringEnabled(boolean enabled)
   {
     this.heartbeatMonitoringEnabled = enabled;

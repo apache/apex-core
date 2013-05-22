@@ -2,9 +2,8 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.util;
+package com.malhartech.codec;
 
-import com.malhartech.codec.KryoJdkSerializer;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import java.io.Serializable;
 
@@ -46,7 +45,7 @@ public class KryoJdkContainer<T> implements Serializable
   public boolean equals(Object o) {
     boolean equal = false;
     if (o instanceof KryoJdkContainer) {
-      KryoJdkContainer k = (KryoJdkContainer)o;
+      KryoJdkContainer<?> k = (KryoJdkContainer<?>)o;
       equal = t.equals(k.getComponent());
     }
     return equal;

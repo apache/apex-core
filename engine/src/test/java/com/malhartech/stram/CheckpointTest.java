@@ -23,7 +23,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.OperatorContext;
@@ -36,6 +35,7 @@ import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.stram.support.StramTestSupport;
 
@@ -83,12 +83,12 @@ public class CheckpointTest
   @Test
   public void testBackup() throws Exception
   {
-    DAG dag = new DAG();
-    dag.getAttributes().attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).set(1);
+    LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).set(1);
     // node with no inputs will be connected to window generator
     TestGeneratorInputOperator m1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     m1.setMaxTuples(2);
-    dag.getAttributes().attr(DAG.STRAM_APP_PATH).set(testWorkDir.getPath());
+    dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).set(testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());
@@ -151,7 +151,7 @@ public class CheckpointTest
     dnm.processHeartbeat(hb); // propagate checkpoint
 
     Thread.sleep(20); // file close delay?
-    File cpFile1 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
+    File cpFile1 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/1");
     Assert.assertTrue("checkpoint file not found: " + cpFile1, cpFile1.exists() && cpFile1.isFile());
 
     ohb.setState(StreamingNodeHeartbeat.DNodeState.ACTIVE.name());
@@ -162,7 +162,7 @@ public class CheckpointTest
     Assert.assertEquals("window 3", 3, context.getLastProcessedWindowId());
 
     Thread.sleep(20); // file close delay?
-    File cpFile2 = new File(testWorkDir, DAG.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
+    File cpFile2 = new File(testWorkDir, LogicalPlan.SUBDIR_CHECKPOINTS + "/" + operatorid + "/2");
     Assert.assertTrue("checkpoint file not found: " + cpFile2, cpFile2.exists() && cpFile2.isFile());
 
     ohb.getWindowStats().clear();
@@ -186,7 +186,7 @@ public class CheckpointTest
   @Test
   public void testUpdateRecoveryCheckpoint() throws Exception
   {
-    DAG dag = new DAG();
+    LogicalPlan dag = new LogicalPlan();
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);

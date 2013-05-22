@@ -7,6 +7,7 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.*;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.stram.StramLocalCluster;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.tuple.Tuple;
@@ -285,7 +286,7 @@ public class WindowGeneratorTest
   public void testOutofSequenceError() throws Exception
   {
     logger.info("Testing Out of Sequence Error");
-    DAG dag = new DAG(new Configuration());
+    LogicalPlan dag = new LogicalPlan(new Configuration());
 
     RandomNumberGenerator rng = dag.addOperator("random", new RandomNumberGenerator());
     MyLogger ml = dag.addOperator("logger", new MyLogger());
