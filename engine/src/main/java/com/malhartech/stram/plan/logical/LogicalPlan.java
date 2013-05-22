@@ -80,6 +80,7 @@ public class LogicalPlan implements Serializable, DAG
 
   public static class ExternalizableModule implements Externalizable
   {
+    private static final long serialVersionUID = 201305221606L;
     private Operator module;
 
     private void set(Operator module)
@@ -475,6 +476,7 @@ public class LogicalPlan implements Serializable, DAG
       return this.moduleHolder.module;
     }
 
+    @Override
     public AttributeMap<OperatorContext> getAttributes()
     {
       return this.attributes;
@@ -562,7 +564,7 @@ public class LogicalPlan implements Serializable, DAG
    * @see com.malhartech.stram.plan.logical.DAGIF#addStream(java.lang.String, com.malhartech.api.Operator.OutputPort, com.malhartech.api.Operator.InputPort)
    */
   @Override
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"rawtypes", "unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
   {
     return addStream(id, source, new Operator.InputPort[] {sink1});
@@ -572,7 +574,7 @@ public class LogicalPlan implements Serializable, DAG
    * @see com.malhartech.stram.plan.logical.DAGIF#addStream(java.lang.String, com.malhartech.api.Operator.OutputPort, com.malhartech.api.Operator.InputPort, com.malhartech.api.Operator.InputPort)
    */
   @Override
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"rawtypes", "unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2)
   {
     return addStream(id, source, new Operator.InputPort[] {sink1, sink2});
