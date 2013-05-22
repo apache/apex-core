@@ -47,7 +47,7 @@ public class InputNode extends Node<InputOperator>
   {
     long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
     boolean insideWindow = false;
-    int windowCount = 0;
+    windowCount = 0;
 
     try {
       while (alive) {

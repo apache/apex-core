@@ -4,10 +4,9 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.ActivationListener;
-import com.malhartech.api.*;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operators.PortMappingDescriptor;
+import com.malhartech.api.*;
 import com.malhartech.debug.MuxSink;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
@@ -51,6 +50,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected ThreadMXBean tmb;
   protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
   protected long checkpointedWindowId;
+  protected int windowCount;
 
   public Node(int id, OPERATOR operator)
   {
@@ -286,6 +286,11 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public long getBackupWindowId()
   {
     return checkpointedWindowId;
+  }
+
+  public boolean isApplicationWindowBoundary()
+  {
+    return windowCount == 0;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Node.class);

@@ -146,7 +146,7 @@ public class GenericNode extends Node<Operator>
     long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     boolean insideWindow = false;
-    int windowCount = 0;
+    windowCount = 0;
     int totalQueues = inputs.size();
 
     ArrayList<SweepableReservoir> activeQueues = new ArrayList<SweepableReservoir>();
