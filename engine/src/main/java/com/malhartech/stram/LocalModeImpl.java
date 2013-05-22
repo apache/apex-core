@@ -11,8 +11,8 @@ import com.malhartech.api.DAG;
 import com.malhartech.api.LocalMode;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 
-public class LocalModeAppImpl extends LocalMode {
-  private static final Logger LOG = LoggerFactory.getLogger(LocalModeAppImpl.class);
+public class LocalModeImpl extends LocalMode {
+  private static final Logger LOG = LoggerFactory.getLogger(LocalModeImpl.class);
 
   private final LogicalPlan lp = new LogicalPlan();
 

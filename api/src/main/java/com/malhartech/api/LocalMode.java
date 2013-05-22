@@ -1,5 +1,8 @@
 package com.malhartech.api;
 
+import java.util.Iterator;
+import java.util.ServiceLoader;
+
 import org.apache.hadoop.conf.Configuration;
 
 /**
@@ -20,20 +23,12 @@ public abstract class LocalMode {
   }
 
   public static LocalMode newInstance() {
-    String className = "com.malhartech.stram.LocalModeAppImpl";
-    try {
-      Class<? extends LocalMode> clazz = Thread.currentThread().getContextClassLoader().loadClass(className).asSubclass(LocalMode.class);
-      try {
-        return clazz.newInstance();
-      } catch (IllegalAccessException e) {
-        throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
-      } catch (InstantiationException e) {
-        throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
-      }
+    ServiceLoader<LocalMode> loader = ServiceLoader.load(LocalMode.class);
+    Iterator<LocalMode> impl = loader.iterator();
+    if (!impl.hasNext()) {
+      throw new RuntimeException("No implementation for " + LocalMode.class);
     }
-    catch (ClassNotFoundException e) {
-      throw new IllegalArgumentException("Class not found: " + className, e);
-    }
+    return impl.next();
   }
 
   /**
