@@ -33,9 +33,9 @@ public class VersionInfo {
       while (resources.hasMoreElements()) {
         Manifest manifest = new Manifest(resources.nextElement().openStream());
         Attributes mainAttribs = manifest.getMainAttributes();
-        String version = mainAttribs.getValue("malhar-buildversion");
-        if(version != null) {
-          VersionInfo.version = version;
+        String lversion = mainAttribs.getValue("malhar-buildversion");
+        if(lversion != null) {
+          VersionInfo.version = lversion;
           VersionInfo.date = mainAttribs.getValue("malhar-buildtime");
           VersionInfo.user = mainAttribs.getValue("Built-By");
           break;
@@ -100,6 +100,7 @@ public class VersionInfo {
     return VersionInfo.getVersion() + " from " + VersionInfo.getRevision() + " by " + VersionInfo.getUser() + " on " + VersionInfo.getDate();
   }
 
+  @SuppressWarnings("UseOfSystemOutOrSystemErr")
   public static void main(String[] args) {
     System.out.println("Malhar " + getVersion());
     System.out.println("Revision " + getRevision());

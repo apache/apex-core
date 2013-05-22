@@ -4,14 +4,13 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.security.StramDelegationTokenManager;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import static java.lang.Thread.sleep;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -65,10 +64,11 @@ import com.malhartech.license.License;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.security.StramDelegationTokenManager;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
 import com.malhartech.util.VersionInfo;
-import static java.lang.Thread.sleep;
 
 /**
  *
