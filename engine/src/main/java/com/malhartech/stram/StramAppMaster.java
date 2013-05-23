@@ -467,7 +467,7 @@ public class StramAppMaster extends License
   {
     try {
       StramChild.eventloop.start();
-      execute();
+      executeLicensedCode();
     }
     catch (RuntimeException re) {
       if (re.getCause() instanceof YarnRemoteException) {
