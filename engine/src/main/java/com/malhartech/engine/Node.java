@@ -12,6 +12,7 @@ import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
 import com.malhartech.tuple.EndWindowTuple;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Array;
@@ -51,6 +52,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected ThreadMXBean tmb;
   protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
   protected long checkpointedWindowId;
+  public int windowCount;
 
   public Node(int id, OPERATOR operator)
   {
@@ -286,6 +288,40 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public long getBackupWindowId()
   {
     return checkpointedWindowId;
+  }
+
+  public boolean isApplicationWindowBoundary()
+  {
+    return windowCount == 0;
+  }
+
+  protected boolean checkpoint(long windowId)
+  {
+    BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();
+    if (ba != null) {
+      try {
+        OperatorWrapper ow = new OperatorWrapper();
+        ow.operator = operator;
+        ow.windowCount = windowCount;
+        ba.backup(id, windowId, ow);
+        checkpointedWindowId = windowId;
+        if (operator instanceof CheckpointListener) {
+          ((CheckpointListener)operator).checkpointed(checkpointedWindowId);
+        }
+        return true;
+      }
+      catch (IOException ie) {
+        throw new RuntimeException(ie);
+      }
+    }
+
+    return false;
+  }
+
+  public static class OperatorWrapper
+  {
+    public Operator operator;
+    public int windowCount;
   }
 
   private static final Logger logger = LoggerFactory.getLogger(Node.class);

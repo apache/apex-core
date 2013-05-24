@@ -524,7 +524,7 @@ public class StramClient
     amContainer.setEnvironment(env);
 
     // Set the necessary command to execute the application master
-    Vector<CharSequence> vargs = new Vector<CharSequence>(30);
+    ArrayList<CharSequence> vargs = new ArrayList<CharSequence>(30);
 
     // Set java executable command
     LOG.info("Setting up app master command");

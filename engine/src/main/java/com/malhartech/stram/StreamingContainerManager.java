@@ -706,7 +706,9 @@ public class StreamingContainerManager implements PlanContext
             // list needs to have max windowId last
             LOG.warn("Out of sequence checkpoint {} last {} (operator {})", new Object[] {backupWindowId, lastCheckpoint, node});
             ListIterator<Long> li = node.checkpointWindows.listIterator();
-            while (li.hasNext() && li.next().longValue() < backupWindowId);
+            while (li.hasNext() && li.next().longValue() < backupWindowId) {
+              continue;
+            }
             if (li.previous() != backupWindowId) {
               li.add(backupWindowId);
             }
@@ -785,20 +787,20 @@ public class StreamingContainerManager implements PlanContext
    */
   private long updateCheckpoints()
   {
-    MutableLong committedWindowId = new MutableLong(Long.MAX_VALUE);
+    MutableLong lCommittedWindowId = new MutableLong(Long.MAX_VALUE);
 
     Set<PTOperator> visitedCheckpoints = new LinkedHashSet<PTOperator>();
     for (OperatorMeta logicalOperator: plan.getRootOperators()) {
       List<PTOperator> operators = plan.getOperators(logicalOperator);
       if (operators != null) {
         for (PTOperator operator: operators) {
-          updateRecoveryCheckpoints(operator, visitedCheckpoints, committedWindowId);
+          updateRecoveryCheckpoints(operator, visitedCheckpoints, lCommittedWindowId);
         }
       }
     }
     purgeCheckpoints();
 
-    return committedWindowId.longValue();
+    return lCommittedWindowId.longValue();
   }
 
   private BufferServerController getBufferServerClient(PTOperator operator)
