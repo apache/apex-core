@@ -28,8 +28,8 @@ import com.google.common.collect.Maps;
 import com.malhartech.api.ApplicationFactory;
 import com.malhartech.api.DAG;
 import com.malhartech.api.Operator;
-import com.malhartech.api.Operators;
 import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.Operators;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 
