@@ -842,7 +842,7 @@ public class StramChild
       }
 
       try {
-        final Object foreignObject;
+        Object foreignObject;
         if (ndi.checkpointWindowId > 0) {
           logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpointWindowId));
           foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
@@ -851,16 +851,29 @@ public class StramChild
           foreignObject = operatorSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
         }
 
+        int windowCount;
+        if (foreignObject instanceof Node.OperatorWrapper) {
+          windowCount = ((Node.OperatorWrapper)foreignObject).windowCount;
+          foreignObject = ((Node.OperatorWrapper)foreignObject).operator;
+        }
+        else {
+          windowCount = 0;
+        }
+
+        Node<?> node;
         if (foreignObject instanceof InputOperator && ndi.type == OperatorDeployInfo.OperatorType.INPUT) {
-          nodes.put(ndi.id, new InputNode(ndi.id, (InputOperator)foreignObject));
+          node = new InputNode(ndi.id, (InputOperator)foreignObject);
         }
         else if (foreignObject instanceof Unifier && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
-          nodes.put(ndi.id, new UnifierNode(ndi.id, (Unifier<Object>)foreignObject));
+          node = new UnifierNode(ndi.id, (Unifier<Object>)foreignObject);
           massageUnifierDeployInfo(ndi);
         }
         else {
-          nodes.put(ndi.id, new GenericNode(ndi.id, (Operator)foreignObject));
+          node = new GenericNode(ndi.id, (Operator)foreignObject);
         }
+
+        node.windowCount = windowCount;
+        nodes.put(ndi.id, node);
       }
       catch (Exception e) {
         logger.error(e.getLocalizedMessage());
