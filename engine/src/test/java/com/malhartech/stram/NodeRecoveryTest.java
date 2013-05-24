@@ -9,7 +9,6 @@ import com.malhartech.api.CheckpointListener;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.engine.RecoverableInputOperator;
-import com.malhartech.netlet.DefaultEventLoop;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 
 import java.io.IOException;

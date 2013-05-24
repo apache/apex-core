@@ -224,20 +224,9 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                if (t.getWindowId() > lastCheckpointedWindowId) {
-                  BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();
-                  if (ba != null) {
-                    try {
-                      ba.backup(id, t.getWindowId(), operator);
-                      checkpointedWindowId = t.getWindowId();
-                      if (operator instanceof CheckpointListener) {
-                        ((CheckpointListener)operator).checkpointed(checkpointedWindowId);
-                      }
-                    }
-                    catch (IOException ie) {
-                      throw new RuntimeException(ie);
-                    }
-                    lastCheckpointedWindowId = t.getWindowId();
+                if (currentWindowId > lastCheckpointedWindowId) {
+                  if (checkpoint(currentWindowId)) {
+                    lastCheckpointedWindowId = currentWindowId;
                   }
                   for (final Sink<Object> output: outputs.values()) {
                     output.put(t);
