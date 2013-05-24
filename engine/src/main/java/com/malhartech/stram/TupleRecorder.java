@@ -439,6 +439,7 @@ public class TupleRecorder
   public class RecorderSink implements Sink<Object>
   {
     private final String portName;
+    private int count;
 
     public RecorderSink(String portName)
     {
@@ -451,6 +452,7 @@ public class TupleRecorder
       // *** if it's not a control tuple, then (payload instanceof Tuple) returns false
       // In other words, if it's a regular tuple emitted by operators (payload), payload
       // is not an instance of Tuple (confusing... I know)
+      ++count;
       if (payload instanceof Tuple) {
         Tuple tuple = (Tuple)payload;
         MessageType messageType = tuple.getType();
@@ -470,7 +472,14 @@ public class TupleRecorder
     @Override
     public int getCount(boolean reset)
     {
-      throw new UnsupportedOperationException("Not supported yet.");
+      try {
+        return count;
+      }
+      finally {
+        if (reset) {
+          count = 0;
+        }
+      }
     }
 
   }
