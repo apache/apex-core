@@ -53,7 +53,6 @@ import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.Operators;
 import com.malhartech.api.StreamCodec;
 
 /**
@@ -351,7 +350,7 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   /**
-   * Operator meta object. Intended for internal use.
+   * Operator meta object.
    */
   public final class OperatorMeta implements DAG.OperatorMeta, Serializable
   {
@@ -492,9 +491,6 @@ public class LogicalPlan implements Serializable, DAG
     }
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#addOperator(java.lang.String, java.lang.Class)
-   */
   @Override
   public <T extends Operator> T addOperator(String name, Class<T> clazz)
   {
@@ -508,9 +504,6 @@ public class LogicalPlan implements Serializable, DAG
     return instance;
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#addOperator(java.lang.String, T)
-   */
   @Override
   public <T extends Operator> T addOperator(String name, T operator)
   {
@@ -531,9 +524,6 @@ public class LogicalPlan implements Serializable, DAG
     return operator;
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#addStream(java.lang.String)
-   */
   @Override
   public StreamMeta addStream(String id)
   {
@@ -546,9 +536,6 @@ public class LogicalPlan implements Serializable, DAG
     throw new IllegalArgumentException("duplicate stream id: " + o);
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#addStream(java.lang.String, com.malhartech.api.Operator.OutputPort, com.malhartech.api.Operator.InputPort)
-   */
   @Override
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T>... sinks)
   {
@@ -560,9 +547,6 @@ public class LogicalPlan implements Serializable, DAG
     return s;
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#addStream(java.lang.String, com.malhartech.api.Operator.OutputPort, com.malhartech.api.Operator.InputPort)
-   */
   @Override
   @SuppressWarnings({"rawtypes", "unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
@@ -570,9 +554,6 @@ public class LogicalPlan implements Serializable, DAG
     return addStream(id, source, new Operator.InputPort[] {sink1});
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#addStream(java.lang.String, com.malhartech.api.Operator.OutputPort, com.malhartech.api.Operator.InputPort, com.malhartech.api.Operator.InputPort)
-   */
   @Override
   @SuppressWarnings({"rawtypes", "unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2)
@@ -596,36 +577,24 @@ public class LogicalPlan implements Serializable, DAG
     return getMeta(operator).attributes;
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#setAttribute(com.malhartech.api.DAGContext.AttributeKey, T)
-   */
   @Override
   public <T> void setAttribute(DAGContext.AttributeKey<T> key, T value)
   {
     this.getAttributes().attr(key).set(value);
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#setAttribute(com.malhartech.api.Operator, com.malhartech.api.Context.OperatorContext.AttributeKey, T)
-   */
   @Override
   public <T> void setAttribute(Operator operator, OperatorContext.AttributeKey<T> key, T value)
   {
     this.getMeta(operator).attributes.attr(key).set(value);
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#setOutputPortAttribute(com.malhartech.api.Operator.OutputPort, com.malhartech.api.Context.PortContext.AttributeKey, T)
-   */
   @Override
   public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
     getMeta(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
   }
 
-  /* (non-Javadoc)
-   * @see com.malhartech.stram.plan.logical.DAGIF#setInputPortAttribute(com.malhartech.api.Operator.InputPort, com.malhartech.api.Context.PortContext.AttributeKey, T)
-   */
   @Override
   public <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {

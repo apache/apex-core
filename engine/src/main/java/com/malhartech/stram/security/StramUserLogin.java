@@ -33,7 +33,8 @@ public class StramUserLogin
           LOG.info("Login user " + UserGroupInformation.getCurrentUser().getUserName());
         }
         catch (IOException ie) {
-          LOG.error("Error login with user principal {}", userPrincipal, ie);
+          LOG.error("Error login user with principal {}", userPrincipal, ie);
+          throw ie;
         }
       }
     }
