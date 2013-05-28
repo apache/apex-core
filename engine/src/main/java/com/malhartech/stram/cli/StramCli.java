@@ -9,14 +9,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-
-import javax.ws.rs.core.MediaType;
-
 import jline.ArgumentCompletor;
 import jline.Completor;
 import jline.ConsoleReader;
@@ -24,6 +22,8 @@ import jline.FileNameCompletor;
 import jline.History;
 import jline.MultiCompletor;
 import jline.SimpleCompletor;
+
+import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -34,6 +34,7 @@ import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.Records;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -53,7 +54,6 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import java.util.*;
 import org.apache.commons.cli.*;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
@@ -168,7 +168,6 @@ public class StramCli
             searchHistory();
           }
           catch (IOException ex) {
-            return; // ignore
           }
         }
 
@@ -198,7 +197,9 @@ public class StramCli
       String matchingCmd = null;
       int historyIndex = -1;
       while (true) {
-        while (backspace());
+        while (backspace()) {
+          continue;
+        }
         String line = prompt + searchTerm;
         if (matchingCmd != null) {
           line = line.concat(": ").concat(matchingCmd);
@@ -227,14 +228,14 @@ public class StramCli
           }
         }
         else {
-          while (backspace());
-          //if (c == 10) { // enter
+          while (backspace()) {
+            continue;
+          }
           if (!StringUtils.isBlank(matchingCmd)) {
             this.putString(matchingCmd);
             this.flushConsole();
           }
           return;
-          //}
         }
       }
     }
@@ -739,6 +740,7 @@ public class StramCli
 
   }
 
+  @SuppressWarnings({"null", "ConstantConditions"})
   private void killApp(String line)
   {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
@@ -773,7 +775,7 @@ public class StramCli
       }
     }
     catch (YarnRemoteException e) {
-      throw new CliException("Failed to kill " + app.getApplicationId() + ". Aborting killing of any additional applications.", e);
+      throw new CliException("Failed to kill " + (app.getApplicationId() == null? "unknown application": app.getApplicationId()) + ". Aborting killing of any additional applications.", e);
     }
     catch (NumberFormatException nfe) {
       throw new CliException("Invalid application Id " + args[i], nfe);
