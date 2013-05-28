@@ -52,6 +52,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import java.util.*;
+import org.apache.commons.cli.*;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.codehaus.jackson.map.ObjectMapper;
 
@@ -83,6 +84,8 @@ public class StramCli
   private ClientRMHelper rmClient;
   private ApplicationReport currentApp = null;
   private String currentDir = "/";
+  private boolean consolePresent;
+  private String[] commandsToExecute;
 
   protected ApplicationReport getApplication(int appSeq)
   {
@@ -117,8 +120,26 @@ public class StramCli
     StramClientUtils.addStramResources(conf);
   }
 
-  public void init() throws IOException
+  public void init(String[] args) throws IOException
   {
+    consolePresent = (System.console() != null);
+    Options options = new Options();
+    options.addOption("e", true, "Commands are read from the argument");
+    CommandLineParser parser = new BasicParser();
+    try {
+      CommandLine cmd = parser.parse(options, args);
+      if (cmd.hasOption("e")) {
+        commandsToExecute = cmd.getOptionValues("e");
+        consolePresent = false;
+        for (String command : commandsToExecute) {
+          LOG.debug("Command to be executed: {}", command);
+        }
+      }
+    }
+    catch (ParseException ex) {
+      System.err.println("Invalid argument: " + ex);
+      System.exit(1);
+    }
     // Need to initialize security before starting RPC for the credentials to
     // take effect
     StramUserLogin.attemptAuthentication(conf);
@@ -222,89 +243,104 @@ public class StramCli
 
   public void run() throws IOException
   {
-    printWelcomeMessage();
     ConsoleReader reader = new ConsoleReaderExt();
     reader.setBellEnabled(false);
+    if (consolePresent) {
+      printWelcomeMessage();
+      String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill",
+                                            "startrecording", "stoprecording", "syncrecording", "operator-property-set",
+                                            "begin-logical-plan-change",
+                                            "exit"};
+      List<Completor> completors = new LinkedList<Completor>();
+      completors.add(new SimpleCompletor(commandsList));
 
-    String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill",
-                                          "startrecording", "stoprecording", "syncrecording", "operator-property-set",
-                                          "begin-logical-plan-change",
-                                          "exit"};
-    List<Completor> completors = new LinkedList<Completor>();
-    completors.add(new SimpleCompletor(commandsList));
+      List<Completor> launchCompletors = new LinkedList<Completor>();
+      launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local"}));
+      launchCompletors.add(new FileNameCompletor()); // jarFile
+      launchCompletors.add(new FileNameCompletor()); // topology
+      completors.add(new ArgumentCompletor(launchCompletors));
 
-    List<Completor> launchCompletors = new LinkedList<Completor>();
-    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local"}));
-    launchCompletors.add(new FileNameCompletor()); // jarFile
-    launchCompletors.add(new FileNameCompletor()); // topology
-    completors.add(new ArgumentCompletor(launchCompletors));
-
-    reader.addCompletor(new MultiCompletor(completors));
+      reader.addCompletor(new MultiCompletor(completors));
 
 
-    File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
-    historyFile.getParentFile().mkdirs();
-    try {
-      History history = new History(historyFile);
-      reader.setHistory(history);
+      File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
+      historyFile.getParentFile().mkdirs();
+      try {
+        History history = new History(historyFile);
+        reader.setHistory(history);
+      }
+      catch (IOException exp) {
+        System.err.printf("Unable to open %s for writing.", historyFile);
+      }
     }
-    catch (IOException exp) {
-      System.err.printf("Unable to open %s for writing.", historyFile);
-    }
-
     String line;
     PrintWriter out = new PrintWriter(System.out);
+    int i = 0;
+    while (true) {
+      if (commandsToExecute != null) {
+        if (i >= commandsToExecute.length) {
+          break;
+        }
+        line = commandsToExecute[i++];
+      } else {
+        line = readLine(reader, "");
+        if (line == null) {
+          break;
+        }
+      }
 
-    while ((line = readLine(reader, "")) != null) {
       try {
-        if ("help".equals(line)) {
-          printHelp();
-        }
-        else if (line.startsWith("ls")) {
-          ls(line);
-        }
-        else if (line.startsWith("cd")) {
-          connect(line);
-        }
-        else if (line.startsWith("listoperators")) {
-          listOperators(null);
-        }
-        else if (line.startsWith("launch")) {
-          launchApp(line, reader);
-        }
-        else if (line.startsWith("shutdown")) {
-          shutdownApp(line);
-        }
-        else if (line.startsWith("timeout")) {
-          timeoutApp(line, reader);
-        }
-        else if (line.startsWith("kill")) {
-          killApp(line);
-        }
-        else if (line.startsWith("container-kill")) {
-          killContainer(line);
-        }
-        else if (line.startsWith("startrecording")) {
-          startRecording(line);
-        }
-        else if (line.startsWith("stoprecording")) {
-          stopRecording(line);
-        }
-        else if (line.startsWith("syncrecording")) {
-          syncRecording(line);
-        }
-        else if (line.startsWith("operator-property-set")) {
-          setOperatorProperty(line);
-        }
-        else if (line.startsWith("begin-logical-plan-change")) {
-          beginLogicalPlanChange(line, reader);
-        }
-        else if ("exit".equals(line)) {
-          System.out.println("Exiting application");
-          return;
-        }
-        else {
-          System.err.println("Invalid command, For assistance press TAB or type \"help\" then hit ENTER.");
+        String[] commands = line.split("\\s*;\\s*");
+        for (String command : commands) {
+          if ("help".equals(command)) {
+            printHelp();
+          }
+          else if (command.startsWith("ls")) {
+            ls(command);
+          }
+          else if (command.startsWith("cd")) {
+            connect(command);
+          }
+          else if (command.startsWith("listoperators")) {
+            listOperators(null);
+          }
+          else if (command.startsWith("launch")) {
+            launchApp(command, reader);
+          }
+          else if (command.startsWith("shutdown")) {
+            shutdownApp(command);
+          }
+          else if (command.startsWith("timeout")) {
+            timeoutApp(command, reader);
+          }
+          else if (command.startsWith("kill")) {
+            killApp(command);
+          }
+          else if (command.startsWith("container-kill")) {
+            killContainer(command);
+          }
+          else if (command.startsWith("startrecording")) {
+            startRecording(command);
+          }
+          else if (command.startsWith("stoprecording")) {
+            stopRecording(command);
+          }
+          else if (command.startsWith("syncrecording")) {
+            syncRecording(command);
+          }
+          else if (command.startsWith("operator-property-set")) {
+            setOperatorProperty(command);
+          }
+          else if (command.startsWith("begin-logical-plan-change")) {
+            beginLogicalPlanChange(command, reader);
+          }
+          else if ("exit".equals(command)) {
+            System.out.println("Exiting application");
+            return;
+          }
+          else {
+            System.err.println("Invalid command, For assistance press TAB or type \"help\" then hit ENTER.");
+          }
         }
       }
       catch (CliException e) {
@@ -355,10 +391,10 @@ public class StramCli
     System.out.println("submit            - Submit the logical plan change");
   }
 
-  private String readLine(ConsoleReader reader, String promtMessage)
+  private String readLine(ConsoleReader reader, String promptMessage)
           throws IOException
   {
-    String line = reader.readLine(promtMessage + "\nstramcli> ");
+    String line = reader.readLine(promptMessage + (consolePresent ? "\nstramcli> " : ""));
     if (line == null) {
       return null;
     }
@@ -1179,7 +1215,7 @@ public class StramCli
   public static void main(String[] args) throws Exception
   {
     StramCli shell = new StramCli();
-    shell.init();
+    shell.init(args);
     shell.run();
   }
 
