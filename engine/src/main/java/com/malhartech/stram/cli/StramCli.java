@@ -51,7 +51,8 @@ import com.malhartech.util.WebServicesClient;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-import java.util.Arrays;
+import java.util.*;
+import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  *
@@ -705,6 +706,7 @@ public class StramCli
 
   }
 
+  @SuppressWarnings({"null", "ConstantConditions"})
   private void killApp(String line)
   {
     String[] args = StringUtils.splitByWholeSeparator(line, " ");

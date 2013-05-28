@@ -35,7 +35,6 @@ import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Unifier;
-import com.malhartech.api.Operators.PortMappingDescriptor;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
@@ -50,6 +49,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContain
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.malhartech.stream.*;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
 
