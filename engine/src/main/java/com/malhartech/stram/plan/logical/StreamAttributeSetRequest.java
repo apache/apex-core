@@ -8,31 +8,20 @@ package com.malhartech.stram.plan.logical;
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
-public class PortAttributeSetRequest extends LogicalPlanRequest
+public class StreamAttributeSetRequest extends LogicalPlanRequest
 {
-  private String operatorName;
-  private String portName;
+  private String streamName;
   private String attributeName;
   private String attributeValue;
 
-  public String getOperatorName()
+  public String getStreamName()
   {
-    return operatorName;
+    return streamName;
   }
 
-  public void setOperatorName(String operatorName)
+  public void setStreamName(String streamName)
   {
-    this.operatorName = operatorName;
-  }
-
-  public String getPortName()
-  {
-    return portName;
-  }
-
-  public void setPortName(String portName)
-  {
-    this.portName = portName;
+    this.streamName = streamName;
   }
 
   public String getAttributeName()

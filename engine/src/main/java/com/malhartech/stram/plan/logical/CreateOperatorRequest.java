@@ -4,8 +4,6 @@
  */
 package com.malhartech.stram.plan.logical;
 
-import com.malhartech.api.BaseOperator;
-
 /**
  *
  * @author David Yan <davidyan@malhar-inc.com>
@@ -13,7 +11,7 @@ import com.malhartech.api.BaseOperator;
 public class CreateOperatorRequest extends LogicalPlanRequest
 {
   private String operatorName;
-  private Class<BaseOperator> operatorClass;
+  private String operatorFQCN;
 
   public String getOperatorName()
   {
@@ -25,14 +23,14 @@ public class CreateOperatorRequest extends LogicalPlanRequest
     this.operatorName = operatorName;
   }
 
-  public Class<BaseOperator> getOperatorClass()
+  public String getOperatorFQCN()
   {
-    return operatorClass;
+    return operatorFQCN;
   }
 
-  public void setOperatorClass(Class<BaseOperator> operatorClass)
+  public void setOperatorFQCN(String operatorFQCN)
   {
-    this.operatorClass = operatorClass;
+    this.operatorFQCN = operatorFQCN;
   }
 
   @Override

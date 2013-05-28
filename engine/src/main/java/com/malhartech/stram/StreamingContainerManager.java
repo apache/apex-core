@@ -34,6 +34,7 @@ import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.stram.webapp.PortInfo;
 import com.malhartech.api.AttributeMap;
 import com.malhartech.common.Pair;
+import com.malhartech.stram.plan.logical.LogicalPlanRequest;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1157,6 +1158,13 @@ public class StreamingContainerManager implements PlanContext
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
 
+  }
+
+  public void logicalPlanModification(List<LogicalPlanRequest> requests)
+  {
+    for (LogicalPlanRequest request : requests) {
+      LOG.info("Logical Plan Modification not supported yet - {}", request);
+    }
   }
 
 }

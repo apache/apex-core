@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.malhartech.stram.plan.logical.*;
 import com.malhartech.stram.security.StramUserLogin;
 import com.malhartech.stram.webapp.StramWebServices;
 import com.malhartech.util.VersionInfo;
@@ -226,7 +227,10 @@ public class StramCli
     ConsoleReader reader = new ConsoleReaderExt();
     reader.setBellEnabled(false);
 
-    String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill", "startrecording", "stoprecording", "syncrecording", "operator-property-set", "exit"};
+    String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill",
+                                          "startrecording", "stoprecording", "syncrecording", "operator-property-set",
+                                          "begin-logical-plan-change",
+                                          "exit"};
     List<Completor> completors = new LinkedList<Completor>();
     completors.add(new SimpleCompletor(commandsList));
 
@@ -293,6 +297,9 @@ public class StramCli
         else if (line.startsWith("operator-property-set")) {
           setOperatorProperty(line);
         }
+        else if (line.startsWith("begin-logical-plan-change")) {
+          beginLogicalPlanChange(line, reader);
+        }
         else if ("exit".equals(line)) {
           System.out.println("Exiting application");
           return;
@@ -329,8 +336,24 @@ public class StramCli
     System.out.println("startrecording <operId> [<portName>] - Start recording tuples for the given operator id");
     System.out.println("stoprecording <operId> [<portName>] - Stop recording tuples for the given operator id");
     System.out.println("syncrecording <operId> [<portName>] - Sync recording tuples for the given operator id");
+    System.out.println("operator-property-set <operId> <name> <value> - Set the property of the given operator id");
+    System.out.println("begin-logical-plan-change - Begin changing the logical plan for the current application");
     System.out.println("exit             - Exit the app");
 
+  }
+
+  private void printHelpLogicalPlanChange()
+  {
+    System.out.println("help              - Show help");
+    System.out.println("create-operator <name> <class> - Create an operator with the given name and the given class");
+    System.out.println("remove-operator <name>         - Remove an operator with the given name");
+    System.out.println("create-stream <name> <operator-source-name> <operator-source-port-name> <operator-sink-name> <operator-sink-port-name> - Create a stream");
+    System.out.println("remove-stream <name");
+    System.out.println("operator-property-set <name> <property-name> <property-value> - Set the property of the given operator name");
+    System.out.println("operator-attribute-set <name> <attribute-name> <attribute-value> - Set the attribute of the given operator name");
+    System.out.println("port-attribute-set <operator-name> <port-name> <attribute-name> <attribute-value> - Set the attribute of the given port of the given operator");
+    System.out.println("abort             - Abort the logical plan change");
+    System.out.println("submit            - Submit the logical plan change");
   }
 
   private String readLine(ConsoleReader reader, String promtMessage)
@@ -345,6 +368,7 @@ public class StramCli
 
   private String[] assertArgs(String line, int num, String msg)
   {
+    line = line.trim();
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
     if (args.length < num) {
       throw new CliException(msg);
@@ -828,6 +852,9 @@ public class StramCli
 
   private void startRecording(String line)
   {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
     if (args.length != 2 && args.length != 3) {
       System.err.println("Invalid arguments");
@@ -860,6 +887,9 @@ public class StramCli
 
   private void stopRecording(String line)
   {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
     if (args.length != 2 && args.length != 3) {
       System.err.println("Invalid arguments");
@@ -893,6 +923,9 @@ public class StramCli
 
   private void syncRecording(String line)
   {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
     String[] args = StringUtils.splitByWholeSeparator(line, " ");
     if (args.length != 2 && args.length != 3) {
       System.err.println("Invalid arguments");
@@ -951,6 +984,202 @@ public class StramCli
       throw new CliException("Failed to request " + r.getURI(), e);
     }
   }
+
+  private void beginLogicalPlanChange(String line, ConsoleReader reader)
+  {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    try {
+      List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
+      while (true) {
+        String line2 = reader.readLine("logical-plan-change> ");
+        LogicalPlanRequest request = null;
+        if ("help".equals(line2)) {
+          printHelpLogicalPlanChange();
+        }
+        else if ("submit".equals(line2)) {
+          // submit change
+          System.out.println("Logical plan change submitted.");
+          submitLogicalPlanChange(requests);
+          return;
+        }
+        else if ("abort".equals(line2)) {
+          System.out.println("Logical plan change aborted.");
+          return;
+        }
+        else if (line2.startsWith("create-operator")) {
+          request = logicalPlanCreateOperatorRequest(line2);
+        }
+        else if (line2.startsWith("remove-operator")) {
+          request = logicalPlanRemoveOperatorRequest(line2);
+        }
+        else if (line2.startsWith("create-stream")) {
+          request = logicalPlanCreateStreamRequest(line2);
+        }
+        else if (line2.startsWith("remove-stream")) {
+          request = logicalPlanRemoveStreamRequest(line2);
+        }
+        else if (line2.startsWith("operator-attribute-set")) {
+          request = logicalPlanOperatorAttributeSetRequest(line2);
+        }
+        else if (line2.startsWith("operator-property-set")) {
+          request = logicalPlanOperatorPropertySetRequest(line2);
+        }
+        else if (line2.startsWith("port-attribute-set")) {
+          request = logicalPlanPortAttributeSetRequest(line2);
+        }
+        else if (line2.startsWith("stream-attribute-set")) {
+          request = logicalPlanStreamAttributeSetRequest(line2);
+        }
+        else if (line2.startsWith("queue")) {
+          ObjectMapper mapper = new ObjectMapper();
+          System.out.println(mapper.defaultPrettyPrintingWriter().writeValueAsString(requests));
+          System.out.println("Total operations in queue: " + requests.size());
+        }
+        else {
+          System.out.println("Invalid command. Ignored.");
+        }
+        if (request != null) {
+          requests.add(request);
+        }
+      }
+    } catch (Exception ex) {
+      throw new CliException("Failed to submit logical plan change", ex);
+    }
+  }
+
+  private LogicalPlanRequest logicalPlanCreateOperatorRequest(String line)
+  {
+    String[] args = assertArgs(line, 3, "required arguments: <operatorName> <className>");
+    String operatorName = args[1];
+    String className = args[2];
+    CreateOperatorRequest request = new CreateOperatorRequest();
+    request.setOperatorName(operatorName);
+    request.setOperatorFQCN(className);
+    return request;
+  }
+
+  private LogicalPlanRequest logicalPlanRemoveOperatorRequest(String line)
+  {
+    String[] args = assertArgs(line, 2, "required arguments: <operatorName>");
+    String operatorName = args[1];
+    RemoveOperatorRequest request = new RemoveOperatorRequest();
+    request.setOperatorName(operatorName);
+    return request;
+  }
+
+  private LogicalPlanRequest logicalPlanCreateStreamRequest(String line)
+  {
+    String[] args = assertArgs(line, 6, "required arguments: <streamName> <sourceOperatorName> <sourcePortName> <sinkOperatorName> <sinkPortName>");
+    String streamName = args[1];
+    String sourceOperatorName = args[2];
+    String sourcePortName = args[3];
+    String sinkOperatorName = args[4];
+    String sinkPortName = args[5];
+    CreateStreamRequest request = new CreateStreamRequest();
+    request.setStreamName(streamName);
+    request.setSourceOperatorName(sourceOperatorName);
+    request.setSinkOperatorName(sinkOperatorName);
+    request.setSourceOperatorPortName(sourcePortName);
+    request.setSinkOperatorPortName(sinkPortName);
+    return request;
+  }
+
+  private LogicalPlanRequest logicalPlanRemoveStreamRequest(String line)
+  {
+    String[] args = assertArgs(line, 2, "required arguments: <streamName>");
+    String streamName = args[1];
+    RemoveStreamRequest request = new RemoveStreamRequest();
+    request.setStreamName(streamName);
+    return request;
+  }
+
+  private LogicalPlanRequest logicalPlanOperatorAttributeSetRequest(String line)
+  {
+    String[] args = assertArgs(line, 4, "required arguments: <operatorName> <attributeName> <attributeValue>");
+    String operatorName = args[1];
+    String attributeName = args[2];
+    String attributeValue = args[3];
+    OperatorAttributeSetRequest request = new OperatorAttributeSetRequest();
+    request.setOperatorName(operatorName);
+    request.setAttributeName(attributeName);
+    request.setAttributeValue(attributeValue);
+    return request;
+  }
+
+  private LogicalPlanRequest logicalPlanOperatorPropertySetRequest(String line)
+  {
+    String[] args = assertArgs(line, 4, "required arguments: <operatorName> <propertyName> <propertyValue>");
+    String operatorName = args[1];
+    String propertyName = args[2];
+    String propertyValue = args[3];
+    OperatorPropertySetRequest request = new OperatorPropertySetRequest();
+    request.setOperatorName(operatorName);
+    request.setPropertyName(propertyName);
+    request.setPropertyValue(propertyValue);
+    return request;
+  }
+
+  private LogicalPlanRequest logicalPlanPortAttributeSetRequest(String line)
+  {
+    String[] args = assertArgs(line, 5, "required arguments: <operatorName> <portName> <attributeName> <attributeValue>");
+    String operatorName = args[1];
+    String attributeName = args[2];
+    String attributeValue = args[3];
+    PortAttributeSetRequest request = new PortAttributeSetRequest();
+    request.setOperatorName(operatorName);
+    request.setAttributeName(attributeName);
+    request.setAttributeValue(attributeValue);
+    return request;
+  }
+
+  private LogicalPlanRequest logicalPlanStreamAttributeSetRequest(String line)
+  {
+    String[] args = assertArgs(line, 4, "required arguments: <streamName> <attributeName> <attributeValue>");
+    String streamName = args[1];
+    String attributeName = args[2];
+    String attributeValue = args[3];
+    StreamAttributeSetRequest request = new StreamAttributeSetRequest();
+    request.setStreamName(streamName);
+    request.setAttributeName(attributeName);
+    request.setAttributeValue(attributeValue);
+    return request;
+  }
+
+  private void submitLogicalPlanChange(List<LogicalPlanRequest> requests)
+  {
+    if (currentApp == null) {
+      throw new CliException("No application selected");
+    }
+    if (requests.isEmpty()) {
+      throw new CliException("Nothing to submit");
+    }
+    WebServicesClient webServicesClient = new WebServicesClient();
+    WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_MODIFICATION);
+    try {
+      final Map<String, Object> m = new HashMap<String, Object>();
+      ObjectMapper mapper = new ObjectMapper();
+      m.put("requests", requests);
+      final JSONObject jsonRequest = new JSONObject(mapper.writeValueAsString(m));
+
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
+
+        @Override
+        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, jsonRequest);
+        }
+      });
+
+      System.out.println("request submitted: " + response);
+    }
+    catch (Exception e) {
+      throw new CliException("Failed to request " + r.getURI(), e);
+    }
+  }
+
 
   public static void main(String[] args) throws Exception
   {
