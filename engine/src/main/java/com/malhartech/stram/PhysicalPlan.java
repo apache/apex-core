@@ -41,13 +41,13 @@ import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.engine.DefaultUnifier;
-import com.malhartech.api.Operators;
-import com.malhartech.api.Operators.PortMappingDescriptor;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
 import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.Operators;
 import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
