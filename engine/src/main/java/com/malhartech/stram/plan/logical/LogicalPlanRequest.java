@@ -10,15 +10,9 @@ package com.malhartech.stram.plan.logical;
  */
 public abstract class LogicalPlanRequest
 {
-  private String appId;
-
-  public void setAppId(String appId) {
-    this.appId = appId;
+  public String getRequestType() {
+    return this.getClass().getName();
   }
-
-  public String getAppId() {
-    return appId;
-  }
-
+  
   public abstract void execute();
 }
