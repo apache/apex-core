@@ -393,7 +393,17 @@ public class StramCli
   private String readLine(ConsoleReader reader, String promptMessage)
           throws IOException
   {
-    String line = reader.readLine(promptMessage + (consolePresent ? "\nstramcli> " : ""));
+    String prompt = "";
+    if (consolePresent) {
+      prompt = promptMessage + "\nstramcli";
+      if (currentApp != null) {
+        prompt += " (";
+        prompt += currentApp.getApplicationId().toString();
+        prompt += ") ";
+      }
+      prompt += "> ";
+    }
+    String line = reader.readLine(prompt);
     if (line == null) {
       return null;
     }
