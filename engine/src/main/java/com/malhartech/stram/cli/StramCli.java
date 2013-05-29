@@ -1030,7 +1030,7 @@ public class StramCli
     try {
       List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
       while (true) {
-        String line2 = reader.readLine("logical-plan-change> ");
+        String line2 = reader.readLine("logical-plan-change (" + currentApp.getApplicationId().toString() + ") > ");
         LogicalPlanRequest request = null;
         if ("help".equals(line2)) {
           printHelpLogicalPlanChange();
