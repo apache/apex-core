@@ -4,15 +4,6 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.*;
-import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.debug.MuxSink;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.Operators;
-import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.malhartech.tuple.CheckpointTuple;
-import com.malhartech.tuple.EndStreamTuple;
-import com.malhartech.tuple.EndWindowTuple;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
@@ -22,8 +13,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.*;
+import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.debug.MuxSink;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.Operators;
+import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.malhartech.tuple.CheckpointTuple;
+import com.malhartech.tuple.EndStreamTuple;
+import com.malhartech.tuple.EndWindowTuple;
 
 /**
  *
