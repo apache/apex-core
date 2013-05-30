@@ -243,7 +243,7 @@ public class StramCli
     if (consolePresent) {
       printWelcomeMessage();
       String[] commandsList = new String[] {"help", "ls", "cd", "shutdown", "timeout", "kill", "container-kill",
-                                            "startrecording", "stoprecording", "syncrecording", "operator-property-set",
+                                            "startrecording", "stoprecording", "syncrecording", "set-operator-property",
                                             "begin-logical-plan-change",
                                             "exit"};
       List<Completor> completors = new LinkedList<Completor>();
@@ -323,7 +323,7 @@ public class StramCli
           else if (command.startsWith("syncrecording")) {
             syncRecording(command);
           }
-          else if (command.startsWith("operator-property-set")) {
+          else if (command.startsWith("set-operator-property")) {
             setOperatorProperty(command);
           }
           else if (command.startsWith("begin-logical-plan-change")) {
@@ -366,7 +366,7 @@ public class StramCli
     System.out.println("startrecording <operId> [<portName>] - Start recording tuples for the given operator id");
     System.out.println("stoprecording <operId> [<portName>] - Stop recording tuples for the given operator id");
     System.out.println("syncrecording <operId> [<portName>] - Sync recording tuples for the given operator id");
-    System.out.println("operator-property-set <operId> <name> <value> - Set the property of the given operator id");
+    System.out.println("set-operator-property <operId> <name> <value> - Set the property of the given operator id");
     System.out.println("begin-logical-plan-change - Begin changing the logical plan for the current application");
     System.out.println("exit             - Exit the app");
 
@@ -379,9 +379,9 @@ public class StramCli
     System.out.println("remove-operator <name>         - Remove an operator with the given name");
     System.out.println("create-stream <name> <operator-source-name> <operator-source-port-name> <operator-sink-name> <operator-sink-port-name> - Create a stream");
     System.out.println("remove-stream <name");
-    System.out.println("operator-property-set <name> <property-name> <property-value> - Set the property of the given operator name");
-    System.out.println("operator-attribute-set <name> <attribute-name> <attribute-value> - Set the attribute of the given operator name");
-    System.out.println("port-attribute-set <operator-name> <port-name> <attribute-name> <attribute-value> - Set the attribute of the given port of the given operator");
+    System.out.println("set-operator-property <name> <property-name> <property-value> - Set the property of the given operator name");
+    System.out.println("set-operator-attribute <name> <attribute-name> <attribute-value> - Set the attribute of the given operator name");
+    System.out.println("set-port-attribute <operator-name> <port-name> <attribute-name> <attribute-value> - Set the attribute of the given port of the given operator");
     System.out.println("abort             - Abort the logical plan change");
     System.out.println("submit            - Submit the logical plan change");
   }
@@ -1057,17 +1057,17 @@ public class StramCli
         else if (line2.startsWith("remove-stream")) {
           request = logicalPlanRemoveStreamRequest(line2);
         }
-        else if (line2.startsWith("operator-attribute-set")) {
-          request = logicalPlanOperatorAttributeSetRequest(line2);
+        else if (line2.startsWith("set-operator-attribute")) {
+          request = logicalPlanSetOperatorAttributeRequest(line2);
         }
-        else if (line2.startsWith("operator-property-set")) {
-          request = logicalPlanOperatorPropertySetRequest(line2);
+        else if (line2.startsWith("set-operator-property")) {
+          request = logicalPlanSetOperatorPropertyRequest(line2);
         }
-        else if (line2.startsWith("port-attribute-set")) {
-          request = logicalPlanPortAttributeSetRequest(line2);
+        else if (line2.startsWith("set-port-attribute")) {
+          request = logicalPlanSetPortAttributeRequest(line2);
         }
-        else if (line2.startsWith("stream-attribute-set")) {
-          request = logicalPlanStreamAttributeSetRequest(line2);
+        else if (line2.startsWith("set-stream-attribute")) {
+          request = logicalPlanSetStreamAttributeRequest(line2);
         }
         else if (line2.startsWith("queue")) {
           ObjectMapper mapper = new ObjectMapper();
@@ -1132,52 +1132,52 @@ public class StramCli
     return request;
   }
 
-  private LogicalPlanRequest logicalPlanOperatorAttributeSetRequest(String line)
+  private LogicalPlanRequest logicalPlanSetOperatorAttributeRequest(String line)
   {
     String[] args = assertArgs(line, 4, "required arguments: <operatorName> <attributeName> <attributeValue>");
     String operatorName = args[1];
     String attributeName = args[2];
     String attributeValue = args[3];
-    OperatorAttributeSetRequest request = new OperatorAttributeSetRequest();
+    SetOperatorAttributeRequest request = new SetOperatorAttributeRequest();
     request.setOperatorName(operatorName);
     request.setAttributeName(attributeName);
     request.setAttributeValue(attributeValue);
     return request;
   }
 
-  private LogicalPlanRequest logicalPlanOperatorPropertySetRequest(String line)
+  private LogicalPlanRequest logicalPlanSetOperatorPropertyRequest(String line)
   {
     String[] args = assertArgs(line, 4, "required arguments: <operatorName> <propertyName> <propertyValue>");
     String operatorName = args[1];
     String propertyName = args[2];
     String propertyValue = args[3];
-    OperatorPropertySetRequest request = new OperatorPropertySetRequest();
+    SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
     request.setOperatorName(operatorName);
     request.setPropertyName(propertyName);
     request.setPropertyValue(propertyValue);
     return request;
   }
 
-  private LogicalPlanRequest logicalPlanPortAttributeSetRequest(String line)
+  private LogicalPlanRequest logicalPlanSetPortAttributeRequest(String line)
   {
     String[] args = assertArgs(line, 5, "required arguments: <operatorName> <portName> <attributeName> <attributeValue>");
     String operatorName = args[1];
     String attributeName = args[2];
     String attributeValue = args[3];
-    PortAttributeSetRequest request = new PortAttributeSetRequest();
+    SetPortAttributeRequest request = new SetPortAttributeRequest();
     request.setOperatorName(operatorName);
     request.setAttributeName(attributeName);
     request.setAttributeValue(attributeValue);
     return request;
   }
 
-  private LogicalPlanRequest logicalPlanStreamAttributeSetRequest(String line)
+  private LogicalPlanRequest logicalPlanSetStreamAttributeRequest(String line)
   {
     String[] args = assertArgs(line, 4, "required arguments: <streamName> <attributeName> <attributeValue>");
     String streamName = args[1];
     String attributeName = args[2];
     String attributeValue = args[3];
-    StreamAttributeSetRequest request = new StreamAttributeSetRequest();
+    SetStreamAttributeRequest request = new SetStreamAttributeRequest();
     request.setStreamName(streamName);
     request.setAttributeName(attributeName);
     request.setAttributeValue(attributeValue);

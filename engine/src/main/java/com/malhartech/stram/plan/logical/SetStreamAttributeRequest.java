@@ -8,7 +8,7 @@ package com.malhartech.stram.plan.logical;
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
-public class StreamAttributeSetRequest extends LogicalPlanRequest
+public class SetStreamAttributeRequest extends LogicalPlanRequest
 {
   private String streamName;
   private String attributeName;

@@ -8,11 +8,11 @@ package com.malhartech.stram.plan.logical;
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
-public class OperatorPropertySetRequest extends LogicalPlanRequest
+public class SetOperatorAttributeRequest extends LogicalPlanRequest
 {
   private String operatorName;
-  private String propertyName;
-  private String propertyValue;
+  private String attributeName;
+  private String attributeValue;
 
   public String getOperatorName()
   {
@@ -24,24 +24,24 @@ public class OperatorPropertySetRequest extends LogicalPlanRequest
     this.operatorName = operatorName;
   }
 
-  public String getPropertyName()
+  public String getAttributeName()
   {
-    return propertyName;
+    return attributeName;
   }
 
-  public void setPropertyName(String propertyName)
+  public void setAttributeName(String attributeName)
   {
-    this.propertyName = propertyName;
+    this.attributeName = attributeName;
   }
 
-  public String getPropertyValue()
+  public String getAttributeValue()
   {
-    return propertyValue;
+    return attributeValue;
   }
 
-  public void setPropertyValue(String propertyValue)
+  public void setAttributeValue(String attributeValue)
   {
-    this.propertyValue = propertyValue;
+    this.attributeValue = attributeValue;
   }
 
   @Override
@@ -49,5 +49,6 @@ public class OperatorPropertySetRequest extends LogicalPlanRequest
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
+
 
 }
