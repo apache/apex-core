@@ -60,7 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.debug.StdOutErrLog;
-import com.malhartech.license.License;
+//import com.malhartech.license.License; for licensing using native
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
@@ -85,7 +85,7 @@ import com.malhartech.util.VersionInfo;
  * <br>
  *
  */
-public class StramAppMaster extends License
+public class StramAppMaster //extends License for licensing using native
 {
   static {
     // set system properties so they can be used in logger configuration
@@ -467,7 +467,8 @@ public class StramAppMaster extends License
   {
     try {
       StramChild.eventloop.start();
-      executeLicensedCode();
+      //executeLicensedCode(); for licensing using native
+      execute();
     }
     catch (RuntimeException re) {
       if (re.getCause() instanceof YarnRemoteException) {
@@ -488,7 +489,7 @@ public class StramAppMaster extends License
    */
   private boolean status = true;
 
-  @Override
+  //@Override - for licensing using native
   @SuppressWarnings("SleepWhileInLoop")
   public void execute()
   {

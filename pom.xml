@@ -40,7 +40,6 @@
   </dependencies>
 
   <modules>
-    <module>license</module>
     <module>common</module>
     <module>netlet</module>
     <module>bufferserver</module>
