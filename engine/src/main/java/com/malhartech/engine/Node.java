@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.*;
+import com.malhartech.api.AttributeMap.Attribute;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.debug.MuxSink;
 import com.malhartech.stram.plan.logical.LogicalPlan;
@@ -34,12 +35,18 @@ import com.malhartech.tuple.EndWindowTuple;
  */
 public abstract class Node<OPERATOR extends Operator> implements Runnable
 {
-  /*
+  /**
    * if the Component is capable of taking only 1 input, call it INPUT.
-   * if the Component is capable of providing only 1 output, call it OUTPUT.
    */
   public static final String INPUT = "input";
+  /**
+   * if the Component is capable of providing only 1 output, call it OUTPUT.
+   */
   public static final String OUTPUT = "output";
+  protected int APPLICATION_WINDOW_COUNT; /* this is write once variable */
+
+  protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
+
   public final int id;
   protected final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   @SuppressWarnings(value = "VolatileArrayField")
@@ -48,14 +55,13 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected final OPERATOR operator;
   protected final PortMappingDescriptor descriptor;
   protected long currentWindowId;
-  protected int applicationWindowCount;
-  protected long stramWindowSize;
   protected long endWindowEmitTime = 0;
   protected long lastSampleCpuTime = 0;
   protected ThreadMXBean tmb;
   protected HashMap<SweepableReservoir, Long> endWindowDequeueTimes = new HashMap<SweepableReservoir, Long>(); // end window dequeue time for input ports
   protected long checkpointedWindowId;
-  public int windowCount;
+  public int applicationWindowCount;
+  public int checkpointWindowCount;
 
   public Node(int id, OPERATOR operator)
   {
@@ -98,7 +104,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   @SuppressWarnings({"unchecked"})
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
-    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+    for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       /* make sure that we ignore all the input ports */
       OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
       if (port == null) {
@@ -124,7 +130,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   @SuppressWarnings({"unchecked"})
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
-    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+    for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       /* make sure that we ignore all the input ports */
       OutputPort<?> port = descriptor.outputPorts.get(e.getKey());
       if (port == null) {
@@ -160,10 +166,10 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     boolean activationListener = operator instanceof ActivationListener;
 
     activateSinks();
-    this.alive = true;
+    alive = true;
     this.context = context;
-    this.applicationWindowCount = context.getAttributes().attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
-    this.stramWindowSize = context.getApplicationAttributes().attrValue(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS, 500);
+    APPLICATION_WINDOW_COUNT = context.getAttributes().attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
+    CHECKPOINT_WINDOW_COUNT = context.getAttributes().attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
 
     if (activationListener) {
       ((ActivationListener)operator).activate(context);
@@ -198,7 +204,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
      * since we are going away, we should let all the downstream operators know that.
      */
     EndStreamTuple est = new EndStreamTuple(currentWindowId);
-    for (final Sink<Object> output: outputs.values()) {
+    for (final Sink<Object> output : outputs.values()) {
       output.put(est);
     }
   }
@@ -208,7 +214,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     // This function currently only gets called upon END_STREAM.
     // DO NOT assume this will get called to emit an end window tuple
     EndWindowTuple ewt = new EndWindowTuple(currentWindowId);
-    for (final Sink<Object> output: outputs.values()) {
+    for (final Sink<Object> output : outputs.values()) {
       output.put(ewt);
     }
   }
@@ -217,7 +223,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   {
     CheckpointTuple ct = new CheckpointTuple(windowId);
     ct.setWindowId(currentWindowId);
-    for (final Sink<Object> output: outputs.values()) {
+    for (final Sink<Object> output : outputs.values()) {
       output.put(ct);
     }
   }
@@ -251,7 +257,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   protected void reportStats(OperatorStats stats)
   {
     stats.outputPorts = new ArrayList<OperatorStats.PortStats>();
-    for (Entry<String, Sink<Object>> e: outputs.entrySet()) {
+    for (Entry<String, Sink<Object>> e : outputs.entrySet()) {
       //logger.info("end window emit time is {}", endWindowEmitTime);
       stats.outputPorts.add(new OperatorStats.PortStats(e.getKey(), e.getValue().getCount(true), endWindowEmitTime));
     }
@@ -270,7 +276,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     else {
       @SuppressWarnings("unchecked")
       Sink<Object>[] newSinks = (Sink<Object>[])Array.newInstance(Sink.class, size);
-      for (Sink<Object> s: outputs.values()) {
+      for (Sink<Object> s : outputs.values()) {
         newSinks[--size] = s;
       }
 
@@ -295,7 +301,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   public boolean isApplicationWindowBoundary()
   {
-    return windowCount == 0;
+    return applicationWindowCount == 0;
   }
 
   protected boolean checkpoint(long windowId)
@@ -305,7 +311,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
       try {
         OperatorWrapper ow = new OperatorWrapper();
         ow.operator = operator;
-        ow.windowCount = windowCount;
+        ow.windowCount = applicationWindowCount;
         ba.backup(id, windowId, ow);
         checkpointedWindowId = windowId;
         if (operator instanceof CheckpointListener) {

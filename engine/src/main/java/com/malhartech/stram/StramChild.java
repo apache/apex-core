@@ -870,7 +870,7 @@ public class StramChild
           node = new GenericNode(ndi.id, (Operator)foreignObject);
         }
 
-        node.windowCount = windowCount;
+        node.applicationWindowCount = windowCount;
         nodes.put(ndi.id, node);
       }
       catch (Exception e) {
