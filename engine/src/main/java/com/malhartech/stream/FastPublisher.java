@@ -101,7 +101,7 @@ public class FastPublisher extends Kryo implements ClientListener, Stream
   {
     SocketChannel sc = (SocketChannel)key.channel();
     do {
-      synchronized (readBuffer) {
+      synchronized (readBuffer) { /* it continues to give warning in netbeans even though I have put appropriate suppresswarnings */
         sc.write(readBuffer);
         if (readBuffer.position() < readBuffer.capacity()) {
           if (!readBuffer.hasRemaining()) {

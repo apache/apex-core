@@ -4,28 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.Operator.Unifier;
-import com.malhartech.api.*;
-import com.malhartech.bufferserver.server.Server;
-import com.malhartech.bufferserver.storage.DiskStorage;
-import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.debug.StdOutErrLog;
-import com.malhartech.engine.OperatorContext.NodeRequest;
-import com.malhartech.engine.*;
-import com.malhartech.netlet.DefaultEventLoop;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.malhartech.stream.*;
-import com.malhartech.util.ScheduledThreadPoolExecutor;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -33,11 +11,12 @@ import java.io.PrintStream;
 import java.lang.Thread.State;
 import java.net.*;
 import java.security.PrivilegedExceptionAction;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
@@ -50,6 +29,29 @@ import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.*;
+import com.malhartech.api.Context.PortContext;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.api.Operator.Unifier;
+import com.malhartech.bufferserver.server.Server;
+import com.malhartech.bufferserver.storage.DiskStorage;
+import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.debug.StdOutErrLog;
+import com.malhartech.engine.*;
+import com.malhartech.engine.OperatorContext.NodeRequest;
+import com.malhartech.netlet.DefaultEventLoop;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.malhartech.stream.*;
+import com.malhartech.util.ScheduledThreadPoolExecutor;
 
 /**
  *

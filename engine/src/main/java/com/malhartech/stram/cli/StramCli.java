@@ -555,8 +555,8 @@ public class StramCli
     client.setFollowRedirects(true);
     WebResource r = client.resource("http://" + currentApp.getTrackingUrl()).path(StramWebServices.PATH).path(resourcePath);
     try {
-      return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>() {
-
+      return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>()
+      {
         @Override
         public ClientResponse process(WebResource webResource, Class<ClientResponse> clazz)
         {
@@ -566,6 +566,7 @@ public class StramCli
           }
           return response;
         }
+
       });
     }
     catch (Exception e) {
@@ -811,12 +812,12 @@ public class StramCli
     try {
       JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
       {
-
         @Override
         public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
         {
           return webResource.accept(MediaType.APPLICATION_JSON).post(clazz);
         }
+
       });
       System.out.println("shutdown requested: " + response);
       currentDir = "/";
@@ -881,6 +882,7 @@ public class StramCli
         {
           return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, new JSONObject());
         }
+
       });
       System.out.println("container stop requested: " + response);
     }
@@ -910,12 +912,12 @@ public class StramCli
       }
       JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
       {
-
         @Override
         public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
         {
           return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, request);
         }
+
       });
       System.out.println("start recording requested: " + response);
     }
@@ -944,13 +946,14 @@ public class StramCli
       if (args.length == 3) {
         request.put("portName", args[2]);
       }
-      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
-
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
         @Override
         public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
         {
           return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, request);
         }
+
       });
       System.out.println("stop recording requested: " + response);
     }
@@ -979,13 +982,14 @@ public class StramCli
       if (args.length == 3) {
         request.put("portName", args[2]);
       }
-      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>() {
-
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
         @Override
         public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
         {
           return webResource.accept(MediaType.APPLICATION_JSON).post(clazz, request);
         }
+
       });
       System.out.println("sync recording requested: " + response);
     }
@@ -1008,12 +1012,12 @@ public class StramCli
       request.put("propertyValue", args[3]);
       JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
       {
-
         @Override
         public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
         {
           return webResource.accept(MediaType.APPLICATION_JSON).post(JSONObject.class, request);
         }
+
       });
       System.out.println("request submitted: " + response);
     }

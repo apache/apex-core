@@ -35,6 +35,12 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-nar-plugin</artifactId>
+        <version>2.1-SNAPSHOT</version>
+        <extensions>true</extensions>
+      </plugin>
       <!-- Publish tests jar -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -242,6 +248,12 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>malhar-api</artifactId>
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>malhar-license</artifactId>
+      <version>${project.version}</version>
+      <type>nar</type>
     </dependency>
   </dependencies>
   <profiles>

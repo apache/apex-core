@@ -18,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.*;
-import com.malhartech.api.AttributeMap.Attribute;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.debug.MuxSink;
 import com.malhartech.stram.plan.logical.LogicalPlan;
