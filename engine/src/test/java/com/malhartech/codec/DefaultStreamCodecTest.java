@@ -12,6 +12,7 @@ import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.codec.DefaultStreamCodec.ClassIdPair;
+import com.malhartech.codec.KryoJdkSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
