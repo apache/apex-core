@@ -435,7 +435,7 @@ public class StramCli
     for (Map.Entry<String, CommandSpec> entry : commandSpecs.entrySet()) {
       CommandSpec cs = entry.getValue();
       if (consolePresent) {
-        System.out.print("\033[1m");
+        System.out.print("\033[0;93m");
         System.out.print(entry.getKey());
         System.out.print("\033[0m");
       }
@@ -483,15 +483,6 @@ public class StramCli
     return line.trim();
   }
 
-  private String[] assertArgs(String line, int num, String msg)
-  {
-    line = line.trim();
-    String[] args = StringUtils.splitByWholeSeparator(line, " ");
-    if (args.length < num) {
-      throw new CliException(msg);
-    }
-    return args;
-  }
 
   private List<ApplicationReport> getApplicationList()
   {
@@ -581,17 +572,15 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      if (changingLogicalPlan) {
-        printHelp(logicalPlanChangeCommands);
-      }
-      else if (currentApp == null) {
-        printHelp(globalCommands);
-      }
-      else {
-        Map<String, CommandSpec> m = new TreeMap<String, CommandSpec>(globalCommands);
-        m.putAll(connectedCommands);
-        printHelp(m);
-      }
+      System.out.println("GLOBAL COMMANDS EXCEPT WHEN CHANGING LOGICAL PLAN:\n");
+      printHelp(globalCommands);
+      System.out.println();
+      System.out.println("COMMANDS WHEN CONNECTED TO AN APP (via connect <appid>) EXCEPT WHEN CHANGING LOGICAL PLAN\n");
+      printHelp(connectedCommands);
+      System.out.println();
+      System.out.println("COMMANDS WHEN CHANGING LOGICAL PLAN:\n");
+      printHelp(logicalPlanChangeCommands);
+      System.out.println();
     }
 
   }
