@@ -326,7 +326,7 @@ public class StramCli
     ConsoleReader reader = new ConsoleReaderExt();
     reader.setBellEnabled(false);
     try {
-      processSourceFile(System.getProperty("user.home") + "/.stramclirc", reader);
+      processSourceFile(System.getProperty("user.home") + "/.stram/clirc", reader);
     }
     catch (Exception ex) {
       // ignore
