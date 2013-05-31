@@ -21,7 +21,7 @@ import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DefaultOperatorSerDe;
-import com.malhartech.codec.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
@@ -337,7 +337,7 @@ public class StreamingContainerManagerTest {
   }
 
 
-  public static class TestStaticPartitioningSerDe extends DefaultStreamCodec<Object> {
+  public static class TestStaticPartitioningSerDe extends DefaultStatefulStreamCodec<Object> {
 
     public final static int[] partitions = new int[]{
       0, 1, 2

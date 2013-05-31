@@ -71,7 +71,7 @@ public class StramChildAgent {
       if (index == periods) {
         filled = true;
       }
-      index = index % periods;
+      index %= periods;
     }
 
     long getAvg() {
@@ -105,7 +105,7 @@ public class StramChildAgent {
       if (index == periods) {
         filled = true;
       }
-      index = index % periods;
+      index %= periods;
     }
 
     double getAvg() {
@@ -122,7 +122,7 @@ public class StramChildAgent {
     }
   }
 
-  class OperatorStatus
+  protected class OperatorStatus
   {
     StreamingNodeHeartbeat lastHeartbeat;
     final PTOperator operator;
@@ -234,6 +234,7 @@ public class StramChildAgent {
     this.operatorRequests.add(r);
   }
 
+  @SuppressWarnings("ReturnOfCollectionOrArrayField")
   protected ConcurrentLinkedQueue<StramToNodeRequest> getOperatorRequests() {
     return this.operatorRequests;
   }

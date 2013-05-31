@@ -72,6 +72,7 @@ public class StramAppLauncher {
     private volatile boolean finished = false;
     private volatile int rc;
 
+    @SuppressWarnings("CallToThreadStartDuringObjectConstruction")
     public ProcessWatcher(Process p) {
         this.p = p;
         new Thread(this).start();
@@ -125,6 +126,7 @@ public class StramAppLauncher {
     init();
   }
 
+  @SuppressWarnings("UseOfSystemOutOrSystemErr")
   private void init() throws Exception {
 
     File baseDir =  StramClientUtils.getSettingsRootDir();
@@ -341,7 +343,7 @@ public class StramAppLauncher {
     // below would be needed w/o parent delegation only
     // using parent delegation assumes that stram is in the JVM launch classpath
     Class<?> childClass = cl.loadClass(StramAppLauncher.class.getName());
-    Method runApp = childClass.getMethod("runApp", new Class[] {AppConfig.class});
+    Method runApp = childClass.getMethod("runApp", new Class<?>[] {AppConfig.class});
     // TODO: with class loader isolation, pass serialized appConfig to launch loader
     Object appIdStr = runApp.invoke(null, appConfig);
     return ConverterUtils.toApplicationId(""+appIdStr);

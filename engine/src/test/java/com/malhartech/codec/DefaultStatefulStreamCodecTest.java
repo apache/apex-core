@@ -4,26 +4,27 @@
  */
 package com.malhartech.codec;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.Serializable;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.api.DefaultOperatorSerDe;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.StreamCodec.DataStatePair;
-import com.malhartech.codec.DefaultStreamCodec.ClassIdPair;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.Serializable;
+import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
+import com.malhartech.codec.DefaultStatefulStreamCodec.ClassIdPair;
 import com.malhartech.common.Fragment;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class DefaultStreamCodecTest
+public class DefaultStatefulStreamCodecTest
 {
   static class TestClass
   {
@@ -72,7 +73,7 @@ public class DefaultStreamCodecTest
 
   }
 
-  public DefaultStreamCodecTest()
+  public DefaultStatefulStreamCodecTest()
   {
   }
 
@@ -95,46 +96,46 @@ public class DefaultStreamCodecTest
   @Test
   public void testString()
   {
-    StreamCodec<Object> coder = new DefaultStreamCodec<Object>();
-    StreamCodec<Object> decoder = new DefaultStreamCodec<Object>();
+    StatefulStreamCodec<Object> coder = new DefaultStatefulStreamCodec<Object>();
+    StatefulStreamCodec<Object> decoder = new DefaultStatefulStreamCodec<Object>();
 
     String hello = "hello";
 
-    DataStatePair dsp = coder.toByteArray(hello);
-    Assert.assertEquals("both are hello", hello, decoder.fromByteArray(dsp));
+    DataStatePair dsp = coder.toDataStatePair(hello);
+    Assert.assertEquals("both are hello", hello, decoder.fromDataStatePair(dsp));
   }
 
   @Test
   public void testCustomObject()
   {
-    DefaultStreamCodec<Object> coder = new DefaultStreamCodec<Object>();
-    DefaultStreamCodec<Object> decoder = new DefaultStreamCodec<Object>();
+    DefaultStatefulStreamCodec<Object> coder = new DefaultStatefulStreamCodec<Object>();
+    DefaultStatefulStreamCodec<Object> decoder = new DefaultStatefulStreamCodec<Object>();
 
     TestClass tc = new TestClass("hello!", 42);
     //String tc = "hello";
 
-    DataStatePair dsp1 = coder.toByteArray(tc);
+    DataStatePair dsp1 = coder.toDataStatePair(tc);
     Fragment state1 = dsp1.state;
-    DataStatePair dsp2 = coder.toByteArray(tc);
+    DataStatePair dsp2 = coder.toDataStatePair(tc);
     Fragment state2 = dsp2.state;
     assert (state1 != null);
     assert (state2 == null);
     Assert.assertEquals(dsp1.data, dsp2.data);
 
-    Object tcObject1 = decoder.fromByteArray(dsp1);
+    Object tcObject1 = decoder.fromDataStatePair(dsp1);
     assert (tc.equals(tcObject1));
 
-    Object tcObject2 = decoder.fromByteArray(dsp2);
+    Object tcObject2 = decoder.fromDataStatePair(dsp2);
     assert (tc.equals(tcObject2));
 
     coder.resetState();
 
-    dsp2 = coder.toByteArray(tc);
+    dsp2 = coder.toDataStatePair(tc);
     state2 = dsp2.state;
     Assert.assertEquals(state1, state2);
 
-    dsp1 = coder.toByteArray(tc);
-    dsp2 = coder.toByteArray(tc);
+    dsp1 = coder.toDataStatePair(tc);
+    dsp2 = coder.toDataStatePair(tc);
     Assert.assertEquals(dsp1.data, dsp2.data);
     Assert.assertEquals(dsp1.state, dsp2.state);
   }
@@ -160,9 +161,9 @@ public class DefaultStreamCodecTest
   public void testFinalFieldSerialization() throws Exception
   {
     TestTuple t1 = new TestTuple(5);
-    DefaultStreamCodec<Object> c = new DefaultStreamCodec<Object>();
-    DataStatePair dsp = c.toByteArray(t1);
-    TestTuple t2 = (TestTuple)c.fromByteArray(dsp);
+    DefaultStatefulStreamCodec<Object> c = new DefaultStatefulStreamCodec<Object>();
+    DataStatePair dsp = c.toDataStatePair(t1);
+    TestTuple t2 = (TestTuple)c.fromDataStatePair(dsp);
     Assert.assertEquals("", t1.finalField, t2.finalField);
   }
 
@@ -186,9 +187,9 @@ public class DefaultStreamCodecTest
     Object inner = outer.new InnerClass();
 
     for (Object o: new Object[] {outer, inner}) {
-      DefaultStreamCodec<Object> c = new DefaultStreamCodec<Object>();
-      DataStatePair dsp = c.toByteArray(o);
-      c.fromByteArray(dsp);
+      DefaultStatefulStreamCodec<Object> c = new DefaultStatefulStreamCodec<Object>();
+      DataStatePair dsp = c.toDataStatePair(o);
+      c.fromDataStatePair(dsp);
 
       DefaultOperatorSerDe os = new DefaultOperatorSerDe();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();

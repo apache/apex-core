@@ -105,17 +105,6 @@ public class GenericNode extends Node<Operator>
       inputPort.setConnected(true);
       inputs.put(port, reservoir);
       reservoir.setSink(inputPort.getSink());
-//      SweepableReservoir reservoir = inputs.get(port);
-//      if (reservoir == null) {
-//        int bufferCapacity = attributes == null ? 16 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 16 * 1024);
-//        int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
-//        if (sink instanceof BufferServerSubscriber) {
-//          reservoir = new BufferServerReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds, ((BufferServerSubscriber)sink).getSerde(), ((BufferServerSubscriber)sink).getBaseSeconds());
-//        }
-//        else {
-//          reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
-//        }
-//      }
     }
   }
 
@@ -174,7 +163,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
-                  if (windowCount == 0) {
+                  if (applicationWindowCount == 0) {
                     insideWindow = true;
                     operator.beginWindow(currentWindowId);
                   }
@@ -195,14 +184,10 @@ public class GenericNode extends Node<Operator>
                   endWindowDequeueTimes.put(activePort, System.currentTimeMillis());
 
                   if (++receivedEndWindow == totalQueues) {
-                    if (++windowCount == applicationWindowCount) {
+                    if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
                       operator.endWindow();
                       insideWindow = false;
-                      windowCount = 0;
-                      if (checkpoint && checkpoint(currentWindowId)) {
-                        lastCheckpointedWindowId = currentWindowId;
-                        checkpoint = false;
-                      }
+                      applicationWindowCount = 0;
                     }
 
                     for (final Sink<Object> output : outputs.values()) {
@@ -211,6 +196,14 @@ public class GenericNode extends Node<Operator>
 
                     buffers.remove();
                     assert (activeQueues.isEmpty());
+
+                    if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+                      if (checkpoint && checkpoint(currentWindowId)) {
+                        lastCheckpointedWindowId = currentWindowId;
+                        checkpoint = false;
+                      }
+                      checkpointWindowCount = 0;
+                    }
                     handleRequests(currentWindowId);
 
                     activeQueues.addAll(inputs.values());
@@ -228,8 +221,8 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                if (!checkpoint && lastCheckpointedWindowId < currentWindowId) {
-                  if (windowCount == 0) {
+                if (lastCheckpointedWindowId < currentWindowId && !checkpoint) {
+                  if (checkpointWindowCount == 0) {
                     if (checkpoint(currentWindowId)) {
                       lastCheckpointedWindowId = currentWindowId;
                     }
@@ -345,14 +338,10 @@ public class GenericNode extends Node<Operator>
                   /*
                    * Do the same sequence as the end window since the current window is not ended.
                    */
-                  if (++windowCount == applicationWindowCount) {
+                  if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
                     operator.endWindow();
                     insideWindow = false;
-                    windowCount = 0;
-                    if (checkpoint && checkpoint(currentWindowId)) {
-                      lastCheckpointedWindowId = currentWindowId;
-                      checkpoint = false;
-                    }
+                    applicationWindowCount = 0;
                   }
 
                   emitEndWindow();
@@ -360,6 +349,13 @@ public class GenericNode extends Node<Operator>
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
 
+                  if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+                    if (checkpoint && checkpoint(currentWindowId)) {
+                      lastCheckpointedWindowId = currentWindowId;
+                      checkpoint = false;
+                    }
+                    checkpointWindowCount = 0;
+                  }
                   handleRequests(currentWindowId);
                   break_activequeue = true;
                 }
@@ -473,11 +469,15 @@ public class GenericNode extends Node<Operator>
 
     if (insideWindow) {
       operator.endWindow();
-      if (++windowCount == applicationWindowCount) {
-        windowCount = 0;
+      if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
+        applicationWindowCount = 0;
+      }
+
+      if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
         if (checkpoint) {
           checkpoint(currentWindowId);
         }
+        checkpointWindowCount = 0;
       }
     }
   }

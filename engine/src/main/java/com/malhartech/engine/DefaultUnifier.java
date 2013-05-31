@@ -1,11 +1,13 @@
 package com.malhartech.engine;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator.Unifier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Default unifier passes through all tuples received. Used when an operator has

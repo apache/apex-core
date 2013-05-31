@@ -1009,7 +1009,6 @@ public class StramCli
         throw new CliException("Failed to kill " + currentApp.getApplicationId(), e);
       }
 
-    }
 
   }
 

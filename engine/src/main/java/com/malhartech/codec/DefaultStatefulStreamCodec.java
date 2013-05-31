@@ -4,6 +4,14 @@
  */
 package com.malhartech.codec;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.EnumSet;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
 import com.esotericsoftware.kryo.io.Input;
@@ -11,14 +19,7 @@ import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import com.malhartech.annotation.ShipContainingJars;
-import com.malhartech.api.StreamCodec;
 import com.malhartech.common.Fragment;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of the StreamCodec.
@@ -32,14 +33,14 @@ import org.slf4j.LoggerFactory;
  * @param <T>
  */
 @ShipContainingJars(classes = {Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
-public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
+public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStreamCodec<T>
 {
   private final Output data;
   private final Output state;
   private final Input input;
 
   @SuppressWarnings("OverridableMethodCallInConstructor")
-  public DefaultStreamCodec()
+  public DefaultStatefulStreamCodec()
   {
     super(new ClassResolver(), new MapReferenceResolver());
     data = new Output(4096, Integer.MAX_VALUE);
@@ -54,7 +55,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   }
 
   @Override
-  public Object fromByteArray(DataStatePair dspair)
+  public Object fromDataStatePair(DataStatePair dspair)
   {
     if (dspair.state != null) {
       try {
@@ -98,7 +99,7 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   }
 
   @Override
-  public DataStatePair toByteArray(T o)
+  public DataStatePair toDataStatePair(T o)
   {
     DataStatePair pair = new DataStatePair();
     data.setPosition(0);
@@ -172,6 +173,18 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
   final ClassResolver classResolver;
   final ArrayList<ClassIdPair> pairs;
 
+  @Override
+  public Object fromByteArray(Fragment fragment)
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
+  @Override
+  public Fragment toByteArray(T o)
+  {
+    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+
   static class ClassIdPair
   {
     final int id;
@@ -232,5 +245,5 @@ public class DefaultStreamCodec<T> extends Kryo implements StreamCodec<T>
 
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(DefaultStreamCodec.class);
+  private static final Logger logger = LoggerFactory.getLogger(DefaultStatefulStreamCodec.class);
 }

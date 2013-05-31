@@ -81,7 +81,7 @@ public class InputNode extends Node<InputOperator>
                 sinks[i].put(t);
               }
               currentWindowId = t.getWindowId();
-              if (windowCount == 0) {
+              if (applicationWindowCount == 0) {
                 insideWindow = true;
                 operator.beginWindow(currentWindowId);
               }
@@ -89,22 +89,27 @@ public class InputNode extends Node<InputOperator>
               break;
 
             case END_WINDOW:
-              if (++windowCount == applicationWindowCount) {
+              if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
                 operator.endWindow();
                 insideWindow = false;
-                windowCount = 0;
+                applicationWindowCount = 0;
+              }
+
+              for (int i = sinks.length; i-- > 0;) {
+                sinks[i].put(t);
+              }
+
+              if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
                 if (checkpoint && checkpoint(currentWindowId)) {
                   checkpoint = false;
                 }
-              }
-              for (int i = sinks.length; i-- > 0;) {
-                sinks[i].put(t);
+                checkpointWindowCount = 0;
               }
               handleRequests(currentWindowId);
               break;
 
             case CHECKPOINT:
-              if (windowCount == 0) {
+              if (checkpointWindowCount == 0) {
                 checkpoint(currentWindowId);
               }
               else {
@@ -150,11 +155,14 @@ public class InputNode extends Node<InputOperator>
 
     if (insideWindow) {
       operator.endWindow();
-      if (++windowCount == applicationWindowCount) {
-        windowCount = 0;
+      if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
+        applicationWindowCount = 0;
+      }
+      if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
         if (checkpoint) {
           checkpoint(currentWindowId);
         }
+        checkpointWindowCount = 0;
       }
       handleRequests(currentWindowId);
     }
