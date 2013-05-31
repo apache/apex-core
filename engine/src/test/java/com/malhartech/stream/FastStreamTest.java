@@ -6,7 +6,7 @@ package com.malhartech.stream;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.server.Server;
-import com.malhartech.codec.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.netlet.DefaultEventLoop;
@@ -72,7 +72,7 @@ public class FastStreamTest
   @SuppressWarnings({"rawtypes", "unchecked", "SleepWhileInLoop"})
   public void testBufferServerStream() throws Exception
   {
-    final StreamCodec<Object> serde = new DefaultStreamCodec<Object>();
+    final StreamCodec<Object> serde = new DefaultStatefulStreamCodec<Object>();
     final AtomicInteger messageCount = new AtomicInteger();
     Sink<Object> sink = new Sink<Object>()
     {

@@ -4,20 +4,20 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.StreamCodec.DataStatePair;
-import com.malhartech.bufferserver.packet.DataTuple;
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.packet.PayloadTuple;
-import com.malhartech.engine.SweepableReservoir;
-import com.malhartech.common.Fragment;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import junit.framework.Assert;
+
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
+import com.malhartech.bufferserver.packet.PayloadTuple;
+import com.malhartech.common.Fragment;
+import com.malhartech.engine.SweepableReservoir;
 
 /**
  *
@@ -32,28 +32,26 @@ public class BufferServerSubscriberTest
     final StreamCodec<Object> myserde = new StreamCodec<Object>()
     {
       @Override
-      public Object fromByteArray(DataStatePair dspair)
+      public Object fromByteArray(Fragment fragment)
       {
-        return dspair.data;
+        if (fragment.offset == 0 && fragment.length == fragment.buffer.length) {
+          return fragment.buffer;
+        }
+        else {
+          return Arrays.copyOfRange(fragment.buffer, fragment.offset, fragment.offset + fragment.length);
+        }
       }
 
       @Override
-      public DataStatePair toByteArray(Object o)
+      public Fragment toByteArray(Object o)
       {
-        DataStatePair dsp = new DataStatePair();
-        dsp.data = new Fragment((byte[])o, 0, ((byte[])o).length);
-        return dsp;
+        return new Fragment((byte[])o, 0, ((byte[])o).length);
       }
 
       @Override
       public int getPartition(Object o)
       {
         return 0;
-      }
-
-      @Override
-      public void resetState()
-      {
       }
 
     };
@@ -99,13 +97,8 @@ public class BufferServerSubscriberTest
 
     int i = 0;
     while (i++ < 10) {
-      DataStatePair dsp = myserde.toByteArray(new byte[]{(byte)i});
-      if (dsp.state != null) {
-        byte[] buffer = DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state);
-        bss.onMessage(buffer, 0, buffer.length);
-      }
-
-      byte buffer[] = PayloadTuple.getSerializedTuple(myserde.getPartition(i), dsp.data);
+      Fragment fragment = myserde.toByteArray(new byte[]{(byte)i});
+      byte buffer[] = PayloadTuple.getSerializedTuple(myserde.getPartition(i), fragment);
       bss.onMessage(buffer, 0, buffer.length);
     }
 

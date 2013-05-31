@@ -28,8 +28,6 @@ public class HdfsStatsRecorder
   private Map<String, HdfsPartFileCollection> logicalOperatorStorageMap = new HashMap<String, HdfsPartFileCollection>();
   private Map<String, Integer> knownContainers = new HashMap<String, Integer>();
   private Set<String> knownOperators = new HashSet<String>();
-  @SuppressWarnings("rawtypes")
-  private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
   private transient StreamCodec<Object> streamCodec;
   private Map<Class<?>, List<Field>> metaFields = new HashMap<Class<?>, List<Field>>();
   private Map<Class<?>, List<Field>> statsFields = new HashMap<Class<?>, List<Field>>();
@@ -42,7 +40,7 @@ public class HdfsStatsRecorder
   public void setup()
   {
     try {
-      streamCodec = streamCodecClass.newInstance();
+      streamCodec = new JsonStreamCodec<Object>();
       containersStorage = new HdfsPartFileCollection();
       containersStorage.setBasePath(basePath + "/containers");
       containersStorage.setup();
@@ -62,13 +60,13 @@ public class HdfsStatsRecorder
         if (!containerInfo.state.equals("ACTIVE")) {
           continue;
         }
-        int containerIndex = knownContainers.size();
+        int containerIndex;
         if (!knownContainers.containsKey(entry.getKey())) {
           containerIndex = knownContainers.size();
           knownContainers.put(entry.getKey(), containerIndex);
           Map<String, Object> fieldMap = extractRecordFields(containerInfo, "meta");
           ByteArrayOutputStream bos = new ByteArrayOutputStream();
-          Fragment f = streamCodec.toByteArray(fieldMap).data;
+          Fragment f = streamCodec.toByteArray(fieldMap);
           bos.write((String.valueOf(containerIndex) + ":").getBytes());
           bos.write(f.buffer, f.offset, f.length);
           bos.write("\n".getBytes());
@@ -79,7 +77,7 @@ public class HdfsStatsRecorder
         }
         Map<String, Object> fieldMap = extractRecordFields(containerInfo, "stats");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        Fragment f = streamCodec.toByteArray(fieldMap).data;
+        Fragment f = streamCodec.toByteArray(fieldMap);
         bos.write((String.valueOf(containerIndex) + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
@@ -110,7 +108,7 @@ public class HdfsStatsRecorder
           knownOperators.add(operatorInfo.id);
           Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "meta");
           ByteArrayOutputStream bos = new ByteArrayOutputStream();
-          Fragment f = streamCodec.toByteArray(fieldMap).data;
+          Fragment f = streamCodec.toByteArray(fieldMap);
           bos.write((operatorInfo.id + ":").getBytes());
           bos.write(f.buffer, f.offset, f.length);
           bos.write("\n".getBytes());
@@ -118,7 +116,7 @@ public class HdfsStatsRecorder
         }
         Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "stats");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        Fragment f = streamCodec.toByteArray(fieldMap).data;
+        Fragment f = streamCodec.toByteArray(fieldMap);
         bos.write((operatorInfo.id + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());

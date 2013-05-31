@@ -3,10 +3,20 @@
  */
 package com.malhartech.stream;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.api.Sink;
+import com.malhartech.codec.StatefulStreamCodec;
+import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Subscriber;
+import com.malhartech.common.Fragment;
 import com.malhartech.engine.ByteCounterStream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.SweepableReservoir;
@@ -14,13 +24,6 @@ import com.malhartech.engine.WindowGenerator;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.tuple.*;
 import com.malhartech.util.CircularBuffer;
-import com.malhartech.common.Fragment;
-import java.net.InetSocketAddress;
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Implement tuple flow from buffer server to the node in a logical stream<p>
@@ -33,6 +36,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   private boolean suspended;
   private long baseSeconds;
   protected StreamCodec<Object> serde;
+  protected StatefulStreamCodec<Object> statefulSerde;
   protected EventLoop eventloop;
   private DataStatePair dsp = new DataStatePair();
   CircularBuffer<Fragment> offeredFragments;
@@ -106,6 +110,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   public void setup(StreamContext context)
   {
     serde = context.attr(StreamContext.CODEC).get();
+    statefulSerde = serde instanceof StatefulStreamCodec ? (StatefulStreamCodec<Object>)serde : null;
     baseSeconds = context.getFinishedWindowId() & 0xffffffff00000000L;
   }
 
@@ -269,12 +274,19 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
               break;
 
             case PAYLOAD:
-              dsp.data = data.getData();
-              o = serde.fromByteArray(dsp);
+              if (statefulSerde == null) {
+                o = serde.fromByteArray(data.getData());
+              }
+              else {
+                dsp.data = data.getData();
+                o = statefulSerde.fromDataStatePair(dsp);
+              }
               break;
 
             case CHECKPOINT:
-              serde.resetState();
+              if (statefulSerde != null) {
+                statefulSerde.resetState();
+              }
               o = new CheckpointTuple(baseSeconds | data.getWindowId());
               break;
 
