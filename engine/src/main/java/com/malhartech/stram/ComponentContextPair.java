@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.malhartech.api.ComponentComplementPair;
 import com.malhartech.api.Component;
 import com.malhartech.api.Context;
 

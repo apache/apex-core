@@ -20,7 +20,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestOperator;
@@ -37,6 +36,10 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbe
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.api.AttributeMap;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import org.apache.hadoop.conf.Configuration;
 
 public class StreamingContainerManagerTest {
 
@@ -128,7 +131,6 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("type " + node1DI, OperatorDeployInfo.OperatorType.INPUT, node1DI.type);
     Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
     Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
-    Assert.assertNotNull("serializedNode " + node1DI.declaredId, node1DI.serializedNode);
     Assert.assertNotNull("contextAttributes " + node1DI.declaredId, node1DI.contextAttributes);
 
     OutputDeployInfo c1n1n2 = node1DI.outputs.get(0);
@@ -241,8 +243,15 @@ public class StreamingContainerManagerTest {
       Assert.assertEquals("contextAttributes " , new Integer(2222), odi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, 0));
     }
 
-    Object operator = new DefaultOperatorSerDe().read(new ByteArrayInputStream(mergeNodeDI.serializedNode));
-    Assert.assertTrue("" + operator, operator instanceof DefaultUnifier);
+    try {
+      ObjectInputStream loadStream = new ObjectInputStream(new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).getLoadStream(mergeNodeDI.id, -1));
+      Object operator = loadStream.readObject();
+      loadStream.close();
+      Assert.assertTrue("" + operator, operator instanceof DefaultUnifier);
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
 
     // node3 container
     String node3ContainerId = "node3Container";

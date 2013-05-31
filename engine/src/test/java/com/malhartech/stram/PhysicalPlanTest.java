@@ -4,8 +4,9 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.BackupAgent;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -15,7 +16,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import junit.framework.Assert;
 
 import org.junit.Test;
@@ -28,10 +28,10 @@ import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.Unifier;
-import com.malhartech.api.OperatorCodec;
 import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
+import com.malhartech.api.StorageAgent;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.GenericTestOperator;
@@ -171,14 +171,14 @@ public class PhysicalPlanTest {
 
   }
 
-  public static class TestPlanContext implements PlanContext, BackupAgent {
+  public static class TestPlanContext implements PlanContext, StorageAgent {
     List<Runnable> events = new ArrayList<Runnable>();
     Collection<PTOperator> undeploy;
     Collection<PTOperator> deploy;
-    List<Object> backupRequests = new ArrayList<Object>();
+    int backupRequests;
 
     @Override
-    public BackupAgent getBackupAgent() {
+    public StorageAgent getStorageAgent() {
       return this;
     }
 
@@ -194,23 +194,32 @@ public class PhysicalPlanTest {
     }
 
     @Override
-    public void backup(int operatorId, long windowId, Object o) throws IOException {
-      backupRequests.add(o);
+    public OutputStream getSaveStream(int operatorId, long windowId) throws IOException
+    {
+      return new OutputStream()
+      {
+        @Override
+        public void write(int b) throws IOException
+        {
+        }
+
+        @Override
+        public void close() throws IOException
+        {
+          super.close();
+          backupRequests++;
+        }
+
+      };
     }
 
     @Override
-    public Object restore(int operatorId, long windowId) throws IOException {
+    public InputStream getLoadStream(int operatorId, long windowId) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public void delete(int operatorId, long windowId) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public OperatorCodec getOperatorSerDe()
-    {
       throw new UnsupportedOperationException();
     }
 
@@ -270,8 +279,7 @@ public class PhysicalPlanTest {
     expDeploy.addAll(plan.getMergeOperators(node2Meta).values());
 
     Assert.assertEquals("" + ctx.deploy, expDeploy, ctx.deploy);
-    Assert.assertEquals("backup for new operators" + ctx.backupRequests, 2, ctx.backupRequests.size());
-
+    Assert.assertEquals("Count of storage requests", 2, ctx.backupRequests);
   }
 
   @Test
@@ -361,8 +369,7 @@ public class PhysicalPlanTest {
     for (PTOperator oper : ctx.deploy) {
       Assert.assertNotNull("container " + oper , oper.getContainer());
     }
-    Assert.assertEquals("backup for merged operators " + ctx.backupRequests, 8, ctx.backupRequests.size());
-
+    Assert.assertEquals("Count of storage requests", 8, ctx.backupRequests);
   }
 
   @Test

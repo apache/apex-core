@@ -152,11 +152,6 @@ public class OperatorDeployInfo implements Serializable
   }
 
   /**
-   * Serialized state of the node. Either by serializing the declared node object or checkpoint state.
-   */
-  public byte[] serializedNode;
-
-  /**
    * Unique id in the DAG, assigned by the master and immutable (restart/recovery)
    */
   public int id;

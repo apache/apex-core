@@ -21,8 +21,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
-import com.malhartech.api.OperatorCodec;
+import com.malhartech.api.StorageAgent;
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.engine.OperatorContext;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
@@ -35,9 +36,12 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.malhartech.stram.webapp.ContainerInfo;
+import java.io.ObjectOutputStream;
+import org.apache.hadoop.conf.Configuration;
 
 /**
  *
@@ -183,7 +187,6 @@ public class StramChildAgent {
   final PTContainer container;
   Map<Integer, OperatorStatus> operators;
   final StreamingContainerContext initCtx;
-  private final OperatorCodec nodeSerDe = StramUtils.getNodeSerDe(null);
   Runnable onAck = null;
   String jvmName;
   int memoryMBFree;
@@ -459,12 +462,18 @@ public class StramChildAgent {
     } else if (node.partition != null) {
       operator = node.partition.getOperator();
     }
-    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    StorageAgent agent = node.getOperatorMeta().getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
+    if (agent == null) {
+      String appPath = getInitContext().applicationAttributes.attrValue(LogicalPlan.STRAM_APP_PATH, "app-dfs-path-not-configured");
+      agent = new HdfsBackupAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
+    }
+
     try {
-      this.nodeSerDe.write(operator, os);
-      ndi.serializedNode = os.toByteArray();
-      os.close();
-    } catch (Exception e) {
+      ObjectOutputStream oos = new ObjectOutputStream(agent.getSaveStream(node.getId(), -1));
+      oos.writeObject(operator);
+      oos.close();
+    }
+    catch (Exception e) {
       throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getClass() + ")", e);
     }
     ndi.declaredId = node.getOperatorMeta().getId();

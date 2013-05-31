@@ -15,10 +15,11 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
 import com.malhartech.codec.DefaultStatefulStreamCodec.ClassIdPair;
 import com.malhartech.common.Fragment;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 /**
  *
@@ -191,10 +192,13 @@ public class DefaultStatefulStreamCodecTest
       DataStatePair dsp = c.toDataStatePair(o);
       c.fromDataStatePair(dsp);
 
-      DefaultOperatorSerDe os = new DefaultOperatorSerDe();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      os.write(o, bos);
-      os.read(new ByteArrayInputStream(bos.toByteArray()));
+      ObjectOutputStream oos = new ObjectOutputStream(bos);
+      oos.writeObject(o);
+      oos.close();
+
+      ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bos.toByteArray()));
+      ois.readObject();
     }
   }
 

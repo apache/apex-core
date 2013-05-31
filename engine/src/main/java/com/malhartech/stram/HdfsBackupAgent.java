@@ -4,58 +4,44 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.BackupAgent;
-import com.malhartech.api.OperatorCodec;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HdfsBackupAgent implements BackupAgent
+import com.malhartech.api.StorageAgent;
+
+public class HdfsBackupAgent implements StorageAgent
 {
   final String checkpointFsPath;
   final Configuration conf;
-  private final OperatorCodec serde;
 
-  HdfsBackupAgent(Configuration conf, String checkpointFsPath, OperatorCodec serDe)
+  HdfsBackupAgent(Configuration conf, String checkpointFsPath)
   {
     this.conf = conf;
     this.checkpointFsPath = checkpointFsPath;
-    serde = serDe;
   }
 
   @Override
-  public void backup(int id, long windowId, Object o) throws IOException
+  public OutputStream getSaveStream(int id, long windowId) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     logger.debug("Writing: {}", path);
-    FSDataOutputStream output = fs.create(path);
-    try {
-      serde.write(o, output);
-    }
-    finally {
-      output.close();
-    }
-
+    return fs.create(path);
   }
 
   @Override
-  public Object restore(int id, long windowId) throws IOException
+  public InputStream getLoadStream(int id, long windowId) throws IOException
   {
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
-    FSDataInputStream input = fs.open(path);
-    try {
-      return serde.read(input);
-    }
-    finally {
-      input.close();
-    }
+    return fs.open(path);
   }
 
   @Override
@@ -67,10 +53,4 @@ public class HdfsBackupAgent implements BackupAgent
   }
 
   private static final Logger logger = LoggerFactory.getLogger(HdfsBackupAgent.class);
-
-  @Override
-  public OperatorCodec getOperatorSerDe()
-  {
-    return serde;
-  }
 }

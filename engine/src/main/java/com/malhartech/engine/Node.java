@@ -20,12 +20,12 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.*;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.debug.MuxSink;
-import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.Operators;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
 import com.malhartech.tuple.EndWindowTuple;
+import java.io.ObjectOutputStream;
 
 /**
  *
@@ -305,13 +305,17 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected boolean checkpoint(long windowId)
   {
-    BackupAgent ba = context.getAttributes().attr(OperatorContext.BACKUP_AGENT).get();
+    StorageAgent ba = context.getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
     if (ba != null) {
       try {
         OperatorWrapper ow = new OperatorWrapper();
         ow.operator = operator;
         ow.windowCount = applicationWindowCount;
-        ba.backup(id, windowId, ow);
+
+        ObjectOutputStream oos = new ObjectOutputStream(ba.getSaveStream(id, windowId));
+        oos.writeObject(ow);
+        oos.close();
+
         checkpointedWindowId = windowId;
         if (operator instanceof CheckpointListener) {
           ((CheckpointListener)operator).checkpointed(checkpointedWindowId);

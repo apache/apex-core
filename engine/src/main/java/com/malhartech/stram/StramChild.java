@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -52,6 +51,7 @@ import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.malhartech.stream.*;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
+import java.io.ObjectInputStream;
 
 /**
  *
@@ -213,7 +213,7 @@ public class StramChild
       if (!UserGroupInformation.isSecurityEnabled()) {
         childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
         // Add tokens to new user so that it may execute its task correctly.
-        for (Token<?> token: UserGroupInformation.getCurrentUser().getTokens()) {
+        for (Token<?> token : UserGroupInformation.getCurrentUser().getTokens()) {
           childUGI.addToken(token);
         }
       }
@@ -281,7 +281,7 @@ public class StramChild
     ArrayList<Thread> activeThreads = new ArrayList<Thread>();
     ArrayList<Integer> activeOperators = new ArrayList<Integer>();
 
-    for (Entry<Integer, Node<?>> e: nodes.entrySet()) {
+    for (Entry<Integer, Node<?>> e : nodes.entrySet()) {
       OperatorContext oc = activeNodes.get(e.getKey());
       if (oc == null) {
         disconnectNode(e.getKey());
@@ -295,7 +295,7 @@ public class StramChild
 
     try {
       Iterator<Integer> iterator = activeOperators.iterator();
-      for (Thread t: activeThreads) {
+      for (Thread t : activeThreads) {
         t.join();
         disconnectNode(iterator.next());
       }
@@ -305,12 +305,12 @@ public class StramChild
       logger.info("Aborting wait for for operators to get deactivated as got interrupted with {}", ex);
     }
 
-    for (WindowGenerator wg: activeGenerators.keySet()) {
+    for (WindowGenerator wg : activeGenerators.keySet()) {
       wg.deactivate();
     }
     activeGenerators.clear();
 
-    for (Stream stream: activeStreams.keySet()) {
+    for (Stream stream : activeStreams.keySet()) {
       stream.deactivate();
     }
     activeStreams.clear();
@@ -383,7 +383,7 @@ public class StramChild
       // should we send the closure of the port to the node?
 
       int count = 0;
-      for (WindowGenerator wg: generators.values()) {
+      for (WindowGenerator wg : generators.values()) {
         if (chosen1 == wg) {
           count++;
         }
@@ -404,7 +404,7 @@ public class StramChild
      * make sure that all the operators which we are asked to undeploy are in this container.
      */
     HashMap<Integer, Node<?>> toUndeploy = new HashMap<Integer, Node<?>>();
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       Node<?> node = nodes.get(ndi.id);
       if (node == null) {
         throw new IllegalArgumentException("Node " + ndi.id + " is not hosted in this container!");
@@ -419,7 +419,7 @@ public class StramChild
 
     ArrayList<Thread> joinList = new ArrayList<Thread>();
     ArrayList<Integer> discoList = new ArrayList<Integer>();
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       OperatorContext oc = activeNodes.get(ndi.id);
       if (oc == null) {
         disconnectNode(ndi.id);
@@ -433,7 +433,7 @@ public class StramChild
 
     try {
       Iterator<Integer> iterator = discoList.iterator();
-      for (Thread t: joinList) {
+      for (Thread t : joinList) {
         t.join(1000);
         if (!t.getState().equals(State.TERMINATED)) {
           t.interrupt();
@@ -446,7 +446,7 @@ public class StramChild
       logger.warn("Aborted waiting for the deactivate to finish!");
     }
 
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       nodes.remove(ndi.id);
     }
   }
@@ -459,7 +459,7 @@ public class StramChild
 
     nodes.clear();
 
-    for (TupleRecorder entry: tupleRecorders.values()) {
+    for (TupleRecorder entry : tupleRecorders.values()) {
       entry.teardown();
     }
     tupleRecorders.clear();
@@ -467,7 +467,7 @@ public class StramChild
     HashSet<WindowGenerator> gens = new HashSet<WindowGenerator>();
     gens.addAll(generators.values());
     generators.clear();
-    for (WindowGenerator wg: gens) {
+    for (WindowGenerator wg : gens) {
       wg.teardown();
     }
 
@@ -519,7 +519,7 @@ public class StramChild
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all operators
-      for (Map.Entry<Integer, Node<?>> e: nodes.entrySet()) {
+      for (Map.Entry<Integer, Node<?>> e : nodes.entrySet()) {
         StreamingNodeHeartbeat hb = new StreamingNodeHeartbeat();
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
@@ -537,7 +537,7 @@ public class StramChild
           hb.addRecordingName(tupleRecorder.getRecordingName());
         }
         PortMappingDescriptor portMappingDescriptor = e.getValue().getPortMappingDescriptor();
-        for (String portName: portMappingDescriptor.inputPorts.keySet()) {
+        for (String portName : portMappingDescriptor.inputPorts.keySet()) {
           tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
           if (tupleRecorder != null) {
             hb.addRecordingName(tupleRecorder.getRecordingName());
@@ -550,7 +550,7 @@ public class StramChild
             }
           }
         }
-        for (String portName: portMappingDescriptor.outputPorts.keySet()) {
+        for (String portName : portMappingDescriptor.outputPorts.keySet()) {
           tupleRecorder = tupleRecorders.get(this.getRecorderKey(e.getKey(), portName));
           if (tupleRecorder != null) {
             hb.addRecordingName(tupleRecorder.getRecordingName());
@@ -637,7 +637,7 @@ public class StramChild
     NodeRequest nr = null;
     if (rsp.committedWindowId != lastCommittedWindowId) {
       lastCommittedWindowId = rsp.committedWindowId;
-      for (Entry<Integer, OperatorContext> e: activeNodes.entrySet()) {
+      for (Entry<Integer, OperatorContext> e : activeNodes.entrySet()) {
         if (nodes.get(e.getKey()).getOperator() instanceof CheckpointListener) {
           if (nr == null) {
             nr = new NodeRequest()
@@ -657,7 +657,7 @@ public class StramChild
 
     if (rsp.nodeRequests != null) {
       // processing of per operator requests
-      for (StramToNodeRequest req: rsp.nodeRequests) {
+      for (StramToNodeRequest req : rsp.nodeRequests) {
         OperatorContext oc = activeNodes.get(req.getOperatorId());
         if (oc == null) {
           logger.warn("Received request with invalid operator id {} ({})", req.getOperatorId(), req);
@@ -672,9 +672,9 @@ public class StramChild
 
   private int getOutputQueueCapacity(List<OperatorDeployInfo> operatorList, int sourceOperatorId, String sourcePortName)
   {
-    for (OperatorDeployInfo odi: operatorList) {
+    for (OperatorDeployInfo odi : operatorList) {
       if (odi.id == sourceOperatorId) {
-        for (OperatorDeployInfo.OutputDeployInfo odiodi: odi.outputs) {
+        for (OperatorDeployInfo.OutputDeployInfo odiodi : odi.outputs) {
           if (odiodi.portName.equals(sourcePortName)) {
             return odiodi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
           }
@@ -791,7 +791,7 @@ public class StramChild
     /*
      * A little bit of up front sanity check would reduce the percentage of deploy failures later.
      */
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       if (nodes.containsKey(ndi.id)) {
         throw new IllegalStateException("Node with id: " + ndi.id + " already present in the container");
       }
@@ -800,13 +800,13 @@ public class StramChild
     deployNodes(nodeList);
 
     HashMap<String, ArrayList<String>> groupedInputStreams = new HashMap<String, ArrayList<String>>();
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       groupInputStreams(groupedInputStreams, ndi);
     }
 
     HashMap<String, ComponentContextPair<Stream, StreamContext>> newStreams = deployOutputStreams(nodeList, groupedInputStreams);
     deployInputStreams(nodeList, newStreams);
-    for (ComponentContextPair<Stream, StreamContext> pair: newStreams.values()) {
+    for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
       pair.component.setup(pair.context);
     }
     streams.putAll(newStreams);
@@ -816,7 +816,7 @@ public class StramChild
 
   private void massageUnifierDeployInfo(OperatorDeployInfo odi)
   {
-    for (OperatorDeployInfo.InputDeployInfo idi: odi.inputs) {
+    for (OperatorDeployInfo.InputDeployInfo idi : odi.inputs) {
       idi.portName += "(" + idi.sourceNodeId + NODE_PORT_CONCAT_SEPARATOR + idi.sourcePortName + ")";
     }
   }
@@ -824,32 +824,23 @@ public class StramChild
   @SuppressWarnings({"unchecked"})
   private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
-    for (OperatorDeployInfo ndi: nodeList) {
-      BackupAgent backupAgent;
-      OperatorCodec operatorSerDe;
+    for (OperatorDeployInfo ndi : nodeList) {
+      StorageAgent backupAgent;
       if (ndi.contextAttributes == null) {
-        backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath, operatorSerDe = StramUtils.getNodeSerDe(null));
+        backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
       }
       else {
-        backupAgent = ndi.contextAttributes.attr(OperatorContext.BACKUP_AGENT).get();
+        backupAgent = ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).get();
         if (backupAgent == null) {
-          backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath, operatorSerDe = StramUtils.getNodeSerDe(null));
-          ndi.contextAttributes.attr(OperatorContext.BACKUP_AGENT).set(backupAgent);
-        }
-        else {
-          operatorSerDe = backupAgent.getOperatorSerDe();
+          backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
+          ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).set(backupAgent);
         }
       }
 
       try {
-        Object foreignObject;
-        if (ndi.checkpointWindowId > 0) {
-          logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpointWindowId));
-          foreignObject = backupAgent.restore(ndi.id, ndi.checkpointWindowId);
-        }
-        else {
-          foreignObject = operatorSerDe.read(new ByteArrayInputStream(ndi.serializedNode));
-        }
+        logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpointWindowId));
+        ObjectInputStream ois = new ObjectInputStream(backupAgent.getLoadStream(ndi.id, ndi.checkpointWindowId));
+        Object foreignObject = ois.readObject();
 
         int windowCount;
         if (foreignObject instanceof Node.OperatorWrapper) {
@@ -919,11 +910,11 @@ public class StramChild
      * share the output port with other inline streams are mapped against the Buffer Server port to
      * avoid collision and at the same time keep track of these buffer streams.
      */
-    for (OperatorDeployInfo ndi: nodeList) {
+    for (OperatorDeployInfo ndi : nodeList) {
       Node<?> node = nodes.get(ndi.id);
       long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
 
-      for (OperatorDeployInfo.OutputDeployInfo nodi: ndi.outputs) {
+      for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
         int queueCapacity = nodi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
@@ -1029,7 +1020,7 @@ public class StramChild
      * other streams,and many such streams may exist, we hash them against buffer server
      * info as we did for outputs but throw in the sinkid in the mix as well.
      */
-    for (OperatorDeployInfo ndi: operatorList) {
+    for (OperatorDeployInfo ndi : operatorList) {
       if (ndi.inputs == null || ndi.inputs.isEmpty()) {
         /*
          * This has to be InputNode, so let's hook the WindowGenerator to it.
@@ -1047,7 +1038,7 @@ public class StramChild
       else {
         Node<?> node = nodes.get(ndi.id);
 
-        for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
+        for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
@@ -1155,7 +1146,7 @@ public class StramChild
 
     if (!inputNodes.isEmpty()) {
       WindowGenerator windowGenerator = setupWindowGenerator(smallestCheckpointedWindowId);
-      for (OperatorDeployInfo ndi: inputNodes) {
+      for (OperatorDeployInfo ndi : inputNodes) {
         generators.put(ndi.id, windowGenerator);
 
         Node<?> node = nodes.get(ndi.id);
@@ -1196,7 +1187,7 @@ public class StramChild
   @SuppressWarnings({"SleepWhileInLoop", "SleepWhileHoldingLock"})
   public synchronized void activate(List<OperatorDeployInfo> nodeList, Map<String, ComponentContextPair<Stream, StreamContext>> newStreams)
   {
-    for (ComponentContextPair<Stream, StreamContext> pair: newStreams.values()) {
+    for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
       if (!(pair.component instanceof BufferServerSubscriber)) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
@@ -1204,16 +1195,16 @@ public class StramChild
     }
 
     final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
-    for (final OperatorDeployInfo ndi: nodeList) {
+    for (final OperatorDeployInfo ndi : nodeList) {
       final Node<?> node = nodes.get(ndi.id);
       final Map<String, AttributeMap<PortContext>> inputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
       final Map<String, AttributeMap<PortContext>> outputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
       assert (!activeNodes.containsKey(ndi.id));
 
-      for (OperatorDeployInfo.InputDeployInfo idi: ndi.inputs) {
+      for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
         inputPortAttributes.put(idi.portName, idi.contextAttributes);
       }
-      for (OperatorDeployInfo.OutputDeployInfo odi: ndi.outputs) {
+      for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
         outputPortAttributes.put(odi.portName, odi.contextAttributes);
       }
 
@@ -1225,14 +1216,14 @@ public class StramChild
           try {
             OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes, inputPortAttributes, outputPortAttributes);
             node.getOperator().setup(context);
-            for (Map.Entry<String, AttributeMap<PortContext>> entry: inputPortAttributes.entrySet()) {
+            for (Map.Entry<String, AttributeMap<PortContext>> entry : inputPortAttributes.entrySet()) {
               AttributeMap<PortContext> attrMap = entry.getValue();
               if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
                 logger.info("Automatically start recording for operator {}, input port {}", ndi.id, entry.getKey());
                 startRecording(node, ndi.id, entry.getKey(), true);
               }
             }
-            for (Map.Entry<String, AttributeMap<PortContext>> entry: outputPortAttributes.entrySet()) {
+            for (Map.Entry<String, AttributeMap<PortContext>> entry : outputPortAttributes.entrySet()) {
               AttributeMap<PortContext> attrMap = entry.getValue();
               if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
                 logger.info("Automatically start recording for operator {}, output port {}", ndi.id, entry.getKey());
@@ -1273,14 +1264,14 @@ public class StramChild
       logger.debug(ex.getLocalizedMessage());
     }
 
-    for (ComponentContextPair<Stream, StreamContext> pair: newStreams.values()) {
+    for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
       if (pair.component instanceof BufferServerSubscriber) {
         activeStreams.put(pair.component, pair.context);
         pair.component.activate(pair.context);
       }
     }
 
-    for (WindowGenerator wg: generators.values()) {
+    for (WindowGenerator wg : generators.values()) {
       if (!activeGenerators.containsKey(wg)) {
         activeGenerators.put(wg, generators);
         wg.activate(null);
@@ -1290,7 +1281,7 @@ public class StramChild
 
   private void groupInputStreams(HashMap<String, ArrayList<String>> groupedInputStreams, OperatorDeployInfo ndi)
   {
-    for (OperatorDeployInfo.InputDeployInfo nidi: ndi.inputs) {
+    for (OperatorDeployInfo.InputDeployInfo nidi : ndi.inputs) {
       String source = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
 
       /*
@@ -1326,13 +1317,13 @@ public class StramChild
       conflict = true;
     }
     else if (portName == null) {
-      for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
+      for (Map.Entry<String, InputPort<?>> entry : descriptor.inputPorts.entrySet()) {
         if (tupleRecorders.containsKey(getRecorderKey(operatorId, entry.getKey()))) {
           conflict = true;
           break;
         }
       }
-      for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
+      for (Map.Entry<String, OutputPort<?>> entry : descriptor.outputPorts.entrySet()) {
         if (tupleRecorders.containsKey(getRecorderKey(operatorId, entry.getKey()))) {
           conflict = true;
           break;
@@ -1364,7 +1355,7 @@ public class StramChild
         }
       }
       HashMap<String, Sink<Object>> sinkMap = new HashMap<String, Sink<Object>>();
-      for (Map.Entry<String, InputPort<?>> entry: descriptor.inputPorts.entrySet()) {
+      for (Map.Entry<String, InputPort<?>> entry : descriptor.inputPorts.entrySet()) {
         String streamId = getDeclaredStreamId(operatorId, entry.getKey());
         if (recordEvenIfNotConnected && streamId == null) {
           streamId = portName + "_implicit_stream";
@@ -1375,7 +1366,7 @@ public class StramChild
           sinkMap.put(entry.getKey(), tupleRecorder.newSink(entry.getKey()));
         }
       }
-      for (Map.Entry<String, OutputPort<?>> entry: descriptor.outputPorts.entrySet()) {
+      for (Map.Entry<String, OutputPort<?>> entry : descriptor.outputPorts.entrySet()) {
         String streamId = getDeclaredStreamId(operatorId, entry.getKey());
         if (recordEvenIfNotConnected && streamId == null) {
           streamId = portName + "_implicit_stream";

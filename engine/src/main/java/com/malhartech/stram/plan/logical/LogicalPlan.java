@@ -4,8 +4,6 @@
  */
 package com.malhartech.stram.plan.logical;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.Externalizable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,7 +47,6 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAGContext;
-import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
@@ -80,33 +77,25 @@ public class LogicalPlan implements Serializable, DAG
   public static class ExternalizableModule implements Externalizable
   {
     private static final long serialVersionUID = 201305221606L;
-    private Operator module;
+    private Operator operator;
 
     private void set(Operator module)
     {
-      this.module = module;
+      this.operator = module;
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
     {
-      int len = in.readInt();
-      byte[] bytes = new byte[len];
-      in.read(bytes);
-      ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-      set((Operator)new DefaultOperatorSerDe().read(bis));
-      bis.close();
+      set((Operator)in.readObject());
+      in.close();
     }
 
     @Override
     public void writeExternal(ObjectOutput out) throws IOException
     {
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      new DefaultOperatorSerDe().write(module, bos);
-      bos.close();
-      byte[] bytes = bos.toByteArray();
-      out.writeInt(bytes.length);
-      out.write(bytes);
+      out.writeObject(operator);
+      out.close();
     }
   }
 
@@ -472,7 +461,7 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public Operator getOperator()
     {
-      return this.moduleHolder.module;
+      return this.moduleHolder.operator;
     }
 
     @Override
@@ -627,7 +616,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     // TODO: cache mapping
     for (OperatorMeta o: getAllOperators()) {
-      if (o.moduleHolder.module == operator) {
+      if (o.moduleHolder.operator == operator) {
         return o;
       }
     }

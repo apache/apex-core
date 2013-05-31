@@ -13,6 +13,8 @@ import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import static java.lang.Thread.sleep;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -353,7 +355,10 @@ public class PartitioningTest
         // move to checkpoint to verify that checkpoint state is updated upon repartition
         p.checkpointWindows.add(10L);
         p.recoveryCheckpoint = 10L;
-        new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath(), StramUtils.getNodeSerDe(null)).backup(p.getId(), 10L, inputDeployed);
+        
+        ObjectOutputStream saveStream = new ObjectOutputStream(new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L));
+        saveStream.writeObject(inputDeployed);
+        saveStream.close();
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);
