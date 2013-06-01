@@ -30,9 +30,9 @@ public class HdfsBackupAgent implements StorageAgent
   @Override
   public OutputStream getSaveStream(int id, long windowId) throws IOException
   {
+    logger.debug("Writing: {}/{}/{}", checkpointFsPath, id, windowId);
     Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
-    logger.debug("Writing: {}", path);
     return fs.create(path);
   }
 
