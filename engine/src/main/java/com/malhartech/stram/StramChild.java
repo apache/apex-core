@@ -819,12 +819,12 @@ public class StramChild
     for (OperatorDeployInfo ndi : nodeList) {
       StorageAgent backupAgent;
       if (ndi.contextAttributes == null) {
-        backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
+        backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
       }
       else {
         backupAgent = ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).get();
         if (backupAgent == null) {
-          backupAgent = new HdfsBackupAgent(this.conf, this.checkpointFsPath);
+          backupAgent = new HdfsStorageAgent(this.conf, this.checkpointFsPath);
           ndi.contextAttributes.attr(OperatorContext.STORAGE_AGENT).set(backupAgent);
         }
       }

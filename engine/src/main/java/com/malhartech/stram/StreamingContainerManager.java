@@ -817,7 +817,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void purgeCheckpoints()
   {
-    StorageAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath);
+    StorageAgent ba = new HdfsStorageAgent(new Configuration(), checkpointFsPath);
     for (Pair<PTOperator, Long> p: purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       try {
@@ -865,7 +865,7 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public StorageAgent getStorageAgent()
   {
-    return new HdfsBackupAgent(new Configuration(), this.checkpointFsPath);
+    return new HdfsStorageAgent(new Configuration(), this.checkpointFsPath);
   }
 
   private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators)

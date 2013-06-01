@@ -16,12 +16,13 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.StorageAgent;
 
-public class HdfsBackupAgent implements StorageAgent
+public class HdfsStorageAgent implements StorageAgent
 {
+  private static final String PATH_SEPARATOR = "/";
   final String checkpointFsPath;
   final Configuration conf;
 
-  HdfsBackupAgent(Configuration conf, String checkpointFsPath)
+  HdfsStorageAgent(Configuration conf, String checkpointFsPath)
   {
     this.conf = conf;
     this.checkpointFsPath = checkpointFsPath;
@@ -30,8 +31,8 @@ public class HdfsBackupAgent implements StorageAgent
   @Override
   public OutputStream getSaveStream(int id, long windowId) throws IOException
   {
-    logger.debug("Writing: {}/{}/{}", checkpointFsPath, id, windowId);
-    Path path = new Path(this.checkpointFsPath + "-" + id + "-" + windowId);
+    //logger.debug("Saving: {}{}{}{}{}", checkpointFsPath, PATH_SEPARATOR, id, PATH_SEPARATOR, windowId);
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     return fs.create(path);
   }
@@ -39,7 +40,8 @@ public class HdfsBackupAgent implements StorageAgent
   @Override
   public InputStream getLoadStream(int id, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + "-" + id + "-" + windowId);
+    //logger.debug("Loading: {}{}{}{}{}", checkpointFsPath, PATH_SEPARATOR, id, PATH_SEPARATOR, windowId);
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     return fs.open(path);
   }
@@ -47,10 +49,11 @@ public class HdfsBackupAgent implements StorageAgent
   @Override
   public void delete(int id, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + "-" + id + "-" + windowId);
+    //logger.debug("Deleting: {}{}{}{}{}", checkpointFsPath, PATH_SEPARATOR, id, PATH_SEPARATOR, windowId);
+    Path path = new Path(this.checkpointFsPath + PATH_SEPARATOR + id + PATH_SEPARATOR + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     fs.delete(path, false);
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(HdfsBackupAgent.class);
+  private static final Logger logger = LoggerFactory.getLogger(HdfsStorageAgent.class);
 }

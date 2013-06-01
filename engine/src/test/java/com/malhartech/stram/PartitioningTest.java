@@ -354,7 +354,7 @@ public class PartitioningTest
         // move to checkpoint to verify that checkpoint state is updated upon repartition
         p.checkpointWindows.add(10L);
         p.recoveryCheckpoint = 10L;
-        OutputStream stream = new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L);
+        OutputStream stream = new HdfsStorageAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L);
         Node.storeOperator(stream, inputDeployed);
         stream.close();
       }
