@@ -302,7 +302,7 @@ public class StramCli
     completors.add(new SimpleCompletor(logicalPlanChangeCommands.keySet().toArray(new String[] {})));
 
     List<Completor> launchCompletors = new LinkedList<Completor>();
-    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local"}));
+    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local", "source"}));
     launchCompletors.add(new FileNameCompletor()); // jarFile
     launchCompletors.add(new FileNameCompletor()); // topology
     completors.add(new ArgumentCompletor(launchCompletors));
