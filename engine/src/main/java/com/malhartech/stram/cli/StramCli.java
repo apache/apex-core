@@ -366,13 +366,12 @@ public class StramCli
 
     for (String line : lines) {
       int previousIndex = 0;
-      int currentIndex = 0;
       String expandedLine = "";
       while (true) {
-        currentIndex = line.indexOf('$', previousIndex);
+        int currentIndex = line.indexOf('$', previousIndex);
         if (currentIndex > 0 && line.length() > currentIndex + 1) {
           int argIndex = line.charAt(currentIndex + 1) - '0';
-          if (args.length > argIndex) {
+          if (args.length > argIndex && argIndex >= 0) {
             expandedLine += line.substring(previousIndex, currentIndex);
             expandedLine += args[argIndex];
           } else {
@@ -386,7 +385,7 @@ public class StramCli
           break;
         }
         previousIndex = currentIndex;
-      };
+      }
     }
     return expandedLines;
   }
@@ -626,7 +625,7 @@ public class StramCli
       System.out.println("GLOBAL COMMANDS EXCEPT WHEN CHANGING LOGICAL PLAN:\n");
       printHelp(globalCommands);
       System.out.println();
-      System.out.println("COMMANDS WHEN CONNECTED TO AN APP (via connect <appid>) EXCEPT WHEN CHANGING LOGICAL PLAN\n");
+      System.out.println("COMMANDS WHEN CONNECTED TO AN APP (via connect <appid>) EXCEPT WHEN CHANGING LOGICAL PLAN:\n");
       printHelp(connectedCommands);
       System.out.println();
       System.out.println("COMMANDS WHEN CHANGING LOGICAL PLAN:\n");
@@ -879,7 +878,7 @@ public class StramCli
         }
       }
       catch (YarnRemoteException e) {
-        throw new CliException("Failed to kill " + (app.getApplicationId() == null ? "unknown application" : app.getApplicationId()) + ". Aborting killing of any additional applications.", e);
+        throw new CliException("Failed to kill " + ((app == null || app.getApplicationId() == null) ? "unknown application" : app.getApplicationId()) + ". Aborting killing of any additional applications.", e);
       }
       catch (NumberFormatException nfe) {
         throw new CliException("Invalid application Id " + args[i], nfe);
