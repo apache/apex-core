@@ -64,6 +64,7 @@ public class StramCli
   private final Map<String, CommandSpec> connectedCommands = new TreeMap<String, CommandSpec>();
   private final Map<String, CommandSpec> logicalPlanChangeCommands = new TreeMap<String, CommandSpec>();
   private final Map<String, String> aliases = new HashMap<String, String>();
+  private final Map<String, List<String>> macros = new HashMap<String, List<String>>();
   private boolean changingLogicalPlan = false;
   List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
 
@@ -103,6 +104,7 @@ public class StramCli
     globalCommands.put("alias", new CommandSpec(new AliasCommand(), new String[] {"alias-name", "command"}, null, "Create a command alias"));
     globalCommands.put("source", new CommandSpec(new SourceCommand(), new String[] {"file"}, null, "Execute the commands in a file"));
     globalCommands.put("exit", new CommandSpec(new ExitCommand(), null, null, "Exit the CLI"));
+    globalCommands.put("begin-macro", new CommandSpec(new BeginMacroCommand(), new String[] {"name"}, null, "Begin Macro Definition"));
 
     connectedCommands.put("list-containers", new CommandSpec(new ListContainersCommand(), null, null, "List containers"));
     connectedCommands.put("list-operators", new CommandSpec(new ListOperatorsCommand(), null, new String[] {"pattern"}, "List operators"));
@@ -358,6 +360,37 @@ public class StramCli
     System.out.println("exit");
   }
 
+  private List<String> expandMacro(List<String> lines, String[] args)
+  {
+    List<String> expandedLines = new ArrayList<String>();
+
+    for (String line : lines) {
+      int previousIndex = 0;
+      int currentIndex = 0;
+      String expandedLine = "";
+      while (true) {
+        currentIndex = line.indexOf('$', previousIndex);
+        if (currentIndex > 0 && line.length() > currentIndex + 1) {
+          int argIndex = line.charAt(currentIndex + 1) - '0';
+          if (args.length > argIndex) {
+            expandedLine += line.substring(previousIndex, currentIndex);
+            expandedLine += args[argIndex];
+          } else {
+            expandedLine += line.substring(previousIndex, currentIndex + 2);
+          }
+          currentIndex += 2;
+        }
+        else {
+          expandedLine += line.substring(previousIndex);
+          expandedLines.add(expandedLine);
+          break;
+        }
+        previousIndex = currentIndex;
+      };
+    }
+    return expandedLines;
+  }
+
   private void processLine(String line, ConsoleReader reader)
   {
     try {
@@ -368,6 +401,15 @@ public class StramCli
         if (StringUtils.isBlank(args[0])) {
           continue;
         }
+        if (macros.containsKey(args[0])) {
+          List<String> macroItems = expandMacro(macros.get(args[0]), args);
+          for (String macroItem : macroItems) {
+            System.out.println("expanded-macro> " + macroItem);
+            processLine(macroItem, reader);
+          }
+          continue;
+        }
+
         if (aliases.containsKey(args[0])) {
           args[0] = aliases.get(args[0]);
         }
@@ -444,12 +486,22 @@ public class StramCli
       }
       if (cs.requiredArgs != null) {
         for (String arg : cs.requiredArgs) {
-          System.out.print(" <" + arg + ">");
+          if (consolePresent) {
+            System.out.print(" \033[3m" + arg + "\033[0m");
+          }
+          else {
+            System.out.print(" <" + arg + ">");
+          }
         }
       }
       if (cs.optionalArgs != null) {
         for (String arg : cs.optionalArgs) {
-          System.out.print(" [<" + arg + ">]");
+          if (consolePresent) {
+            System.out.print(" [\033[3m" + arg + "\033[0m]");
+          }
+          else {
+            System.out.print(" [<" + arg + ">]");
+          }
         }
       }
       System.out.println("\n\t" + cs.description);
@@ -482,7 +534,6 @@ public class StramCli
     }
     return line.trim();
   }
-
 
   private List<ApplicationReport> getApplicationList()
   {
@@ -1349,6 +1400,40 @@ public class StramCli
       ObjectMapper mapper = new ObjectMapper();
       System.out.println(mapper.defaultPrettyPrintingWriter().writeValueAsString(logicalPlanRequestQueue));
       System.out.println("Total operations in queue: " + logicalPlanRequestQueue.size());
+    }
+
+  }
+
+  private class BeginMacroCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String name = args[1];
+      if (macros.containsKey(name) || aliases.containsKey(name)) {
+        System.err.println("Name '" + name + "' already exists.");
+        return;
+      }
+      try {
+        List<String> commands = new ArrayList<String>();
+        while (true) {
+          String line = reader.readLine("macro def (" + name + ") > ");
+          if (line.equals("end")) {
+            macros.put(name, commands);
+            return;
+          }
+          else if (line.equals("abort")) {
+            System.err.println("Aborted");
+            return;
+          }
+          else {
+            commands.add(line);
+          }
+        }
+      }
+      catch (IOException ex) {
+        System.err.println("Aborted");
+      }
     }
 
   }
