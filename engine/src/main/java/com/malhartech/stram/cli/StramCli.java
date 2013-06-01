@@ -120,12 +120,12 @@ public class StramCli
 
     logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(), new String[] {"operator-name", "class-name"}, null, "Create an operator"));
-    logicalPlanChangeCommands.put("create-stream", new CommandSpec(new CreateStreamCommand(), new String[] {"stream-name", "operator-name.port-name", "operator-name.port-name"}, null, "Create a stream"));
+    logicalPlanChangeCommands.put("create-stream", new CommandSpec(new CreateStreamCommand(), new String[] {"stream-name", "from-operator-name", "from-port-name", "to-operator-name", "to-port-name"}, null, "Create a stream"));
     logicalPlanChangeCommands.put("remove-operator", new CommandSpec(new RemoveOperatorCommand(), new String[] {"operator-name"}, null, "Remove an operator"));
     logicalPlanChangeCommands.put("remove-stream", new CommandSpec(new RemoveStreamCommand(), new String[] {"stream-name"}, null, "Remove a stream"));
     logicalPlanChangeCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(), new String[] {"operator-name", "property-name", "property-value"}, null, "Set a property of an operator"));
     logicalPlanChangeCommands.put("set-operator-attribute", new CommandSpec(new SetOperatorAttributeCommand(), new String[] {"operator-name", "attr-name", "attr-value"}, null, "Set an attribute of an operator"));
-    logicalPlanChangeCommands.put("set-port-attribute", new CommandSpec(new SetPortAttributeCommand(), new String[] {"operator-name.port-name", "attr-name", "attr-value"}, null, "Set an attribute of a port"));
+    logicalPlanChangeCommands.put("set-port-attribute", new CommandSpec(new SetPortAttributeCommand(), new String[] {"operator-name", "port-name", "attr-name", "attr-value"}, null, "Set an attribute of a port"));
     logicalPlanChangeCommands.put("set-stream-attribute", new CommandSpec(new SetStreamAttributeCommand(), new String[] {"stream-name", "attr-name", "attr-value"}, null, "Set an attribute of a stream"));
     logicalPlanChangeCommands.put("queue", new CommandSpec(new QueueCommand(), null, null, "Show the queue of the plan change"));
     logicalPlanChangeCommands.put("submit", new CommandSpec(new SubmitCommand(), null, null, "Submit the plan change"));
