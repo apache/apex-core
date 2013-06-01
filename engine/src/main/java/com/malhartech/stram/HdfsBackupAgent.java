@@ -31,7 +31,7 @@ public class HdfsBackupAgent implements StorageAgent
   public OutputStream getSaveStream(int id, long windowId) throws IOException
   {
     logger.debug("Writing: {}/{}/{}", checkpointFsPath, id, windowId);
-    Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
+    Path path = new Path(this.checkpointFsPath + "-" + id + "-" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     return fs.create(path);
   }
@@ -39,7 +39,7 @@ public class HdfsBackupAgent implements StorageAgent
   @Override
   public InputStream getLoadStream(int id, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
+    Path path = new Path(this.checkpointFsPath + "-" + id + "-" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     return fs.open(path);
   }
@@ -47,7 +47,7 @@ public class HdfsBackupAgent implements StorageAgent
   @Override
   public void delete(int id, long windowId) throws IOException
   {
-    Path path = new Path(this.checkpointFsPath + "/" + id + "/" + windowId);
+    Path path = new Path(this.checkpointFsPath + "-" + id + "-" + windowId);
     FileSystem fs = FileSystem.get(path.toUri(), conf);
     fs.delete(path, false);
   }
