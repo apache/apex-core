@@ -164,11 +164,9 @@ public class StramChild
   public static void main(String[] args) throws Throwable
   {
     StdOutErrLog.tieSystemOutAndErrToLog();
-
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
-    //defaultConf.addResource(MRJobConfig.JOB_CONF_FILE);
     UserGroupInformation.setConfiguration(defaultConf);
 
     String host = args[0];
@@ -178,20 +176,16 @@ public class StramChild
 
     final String childId = System.getProperty("stram.cid");
 
-    //Token<JobTokenIdentifier> jt = loadCredentials(defaultConf, address);
-
     UserGroupInformation taskOwner;
     if (!UserGroupInformation.isSecurityEnabled()) {
       // Communicate with parent as actual task owner.
-      taskOwner =
-              UserGroupInformation.createRemoteUser(StramChild.class.getName());
+      taskOwner = UserGroupInformation.createRemoteUser(StramChild.class.getName());
     }
     else {
       taskOwner = UserGroupInformation.getCurrentUser();
     }
     logger.info("Task owner is " + taskOwner.getUserName());
 
-    //taskOwner.addToken(jt);
     final StreamingContainerUmbilicalProtocol umbilical =
             taskOwner.doAs(new PrivilegedExceptionAction<StreamingContainerUmbilicalProtocol>()
     {

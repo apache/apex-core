@@ -69,6 +69,8 @@ import com.malhartech.stram.security.StramDelegationTokenManager;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
 import com.malhartech.util.VersionInfo;
+import java.security.PrivilegedExceptionAction;
+import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  *
@@ -254,9 +256,10 @@ public class StramAppMaster //extends License for licensing using native
   /**
    * @param args Command line args
    */
-  public static void main(String[] args)
+  public static void main(final String[] args) throws Throwable
   {
     StdOutErrLog.tieSystemOutAndErrToLog();
+    LOG.info("Master starting with classpath: {}", System.getProperty("java.class.path"));
 
     LOG.info("version: {}", VersionInfo.getBuildVersion());
     StringWriter sw = new StringWriter();
@@ -265,25 +268,51 @@ public class StramAppMaster //extends License for licensing using native
     }
     LOG.info("appmaster env:" + sw.toString());
 
-    boolean result = false;
-    StramAppMaster appMaster = null;
-    try {
-      appMaster = new StramAppMaster();
-      LOG.info("Initializing ApplicationMaster");
-      boolean doRun = appMaster.init(args);
-      if (!doRun) {
-        System.exit(0);
-      }
-      result = appMaster.run();
+    final Configuration defaultConf = new Configuration();
+    UserGroupInformation.setConfiguration(defaultConf);
+    UserGroupInformation taskOwner;
+
+    if (!UserGroupInformation.isSecurityEnabled()) {
+      // Communicate with parent as actual task owner.
+      taskOwner = UserGroupInformation.createRemoteUser(StramAppMaster.class.getName());
     }
-    catch (Throwable t) {
-      LOG.error("Error running ApplicationMaster", t);
-      System.exit(1);
-    } finally {
-      if (appMaster != null) {
-        appMaster.destroy();
-      }
+    else {
+      taskOwner = UserGroupInformation.getCurrentUser();
     }
+    LOG.info("Task owner is " + taskOwner.getUserName());
+
+    Boolean result = taskOwner.doAs(new PrivilegedExceptionAction<Boolean>()
+    {
+      @Override
+      public Boolean run() throws Exception
+      {
+        boolean result = false;
+        StramAppMaster appMaster = null;
+
+        try {
+          appMaster = new StramAppMaster();
+          LOG.info("Initializing ApplicationMaster");
+          boolean doRun = appMaster.init(args);
+          if (!doRun) {
+            System.exit(0);
+          }
+          result = appMaster.run();
+        }
+        catch (Throwable t) {
+          LOG.error("Error running ApplicationMaster", t);
+          System.exit(1);
+        }
+        finally {
+          if (appMaster != null) {
+            appMaster.destroy();
+          }
+        }
+
+        return result;
+      }
+
+    });
+
     if (result) {
       LOG.info("Application Master completed. exiting");
       System.exit(0);
@@ -446,9 +475,9 @@ public class StramAppMaster //extends License for licensing using native
     return true;
   }
 
-  public void destroy() {
-    if (delegationTokenManager != null)
-    {
+  public void destroy()
+  {
+    if (delegationTokenManager != null) {
       delegationTokenManager.stopThreads();
     }
   }
