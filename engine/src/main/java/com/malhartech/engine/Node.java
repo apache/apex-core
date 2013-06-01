@@ -4,6 +4,9 @@
  */
 package com.malhartech.engine;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
@@ -19,13 +22,15 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.*;
 import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.api.Operator.Unifier;
 import com.malhartech.debug.MuxSink;
+import com.malhartech.stram.OperatorDeployInfo;
 import com.malhartech.stram.plan.logical.Operators;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.malhartech.tuple.CheckpointTuple;
 import com.malhartech.tuple.EndStreamTuple;
 import com.malhartech.tuple.EndWindowTuple;
-import java.io.ObjectOutputStream;
+import java.io.*;
 
 /**
  *
@@ -46,7 +51,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
 
   protected int CHECKPOINT_WINDOW_COUNT; /* this is write once variable */
 
-  public final int id;
+  private int id;
   protected final HashMap<String, Sink<Object>> outputs = new HashMap<String, Sink<Object>>();
   @SuppressWarnings(value = "VolatileArrayField")
   protected volatile Sink<Object>[] sinks = Sink.NO_SINKS;
@@ -62,9 +67,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public int applicationWindowCount;
   public int checkpointWindowCount;
 
-  public Node(int id, OPERATOR operator)
+  public Node(OPERATOR operator)
   {
-    this.id = id;
     this.operator = operator;
 
     descriptor = new PortMappingDescriptor();
@@ -193,7 +197,7 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   @Override
   public String toString()
   {
-    return String.valueOf(id);
+    return String.valueOf(getId());
   }
 
   protected void emitEndStream()
@@ -303,18 +307,47 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     return applicationWindowCount == 0;
   }
 
+  public static void storeNode(OutputStream stream, Node<?> node) throws IOException
+  {
+    OperatorWrapper ow = new OperatorWrapper();
+    ow.operator = node.operator;
+    ow.windowCount = node.applicationWindowCount;
+    storeOperatorWrapper(stream, ow);
+  }
+
+  public static void storeOperator(OutputStream stream, Operator operator) throws IOException
+  {
+    OperatorWrapper ow = new OperatorWrapper();
+    ow.operator = operator;
+    ow.windowCount = 0;
+    storeOperatorWrapper(stream, ow);
+  }
+
+  private static void storeOperatorWrapper(OutputStream stream, OperatorWrapper ow) throws IOException
+  {
+    Output output = new Output(4096, Integer.MAX_VALUE);
+    output.setOutputStream(stream);
+    final Kryo k = new Kryo();
+    k.writeClassAndObject(output, ow);
+    output.flush();
+  }
+
+  private static OperatorWrapper retrieveOperatorWrapper(InputStream stream)
+  {
+    final Kryo k = new Kryo();
+    k.setClassLoader(Thread.currentThread().getContextClassLoader());
+    Input input = new Input(stream);
+    return (OperatorWrapper)k.readClassAndObject(input);
+  }
+
   protected boolean checkpoint(long windowId)
   {
     StorageAgent ba = context.getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
     if (ba != null) {
       try {
-        OperatorWrapper ow = new OperatorWrapper();
-        ow.operator = operator;
-        ow.windowCount = applicationWindowCount;
-
-        ObjectOutputStream oos = new ObjectOutputStream(ba.getSaveStream(id, windowId));
-        oos.writeObject(ow);
-        oos.close();
+        OutputStream stream = ba.getSaveStream(id, windowId);
+        Node.storeNode(stream, this);
+        stream.close();
 
         checkpointedWindowId = windowId;
         if (operator instanceof CheckpointListener) {
@@ -328,6 +361,52 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     }
 
     return false;
+  }
+
+  public static Operator retrieveOperator(InputStream stream)
+  {
+    return retrieveOperatorWrapper(stream).operator;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static Node<?> retrieveNode(InputStream stream, OperatorDeployInfo.OperatorType type)
+  {
+    OperatorWrapper ow = retrieveOperatorWrapper(stream);
+
+    Node<?> node;
+    if (ow.operator instanceof InputOperator && type == OperatorDeployInfo.OperatorType.INPUT) {
+      node = new InputNode((InputOperator)ow.operator);
+    }
+    else if (ow.operator instanceof Unifier && type == OperatorDeployInfo.OperatorType.UNIFIER) {
+      node = new UnifierNode((Unifier<Object>)ow.operator);
+    }
+    else {
+      node = new GenericNode(ow.operator);
+    }
+
+    node.applicationWindowCount = ow.windowCount;
+    return node;
+  }
+
+  /**
+   * @return the id
+   */
+  public int getId()
+  {
+    return id;
+  }
+
+  /**
+   * @param id the id to set
+   */
+  public void setId(int id)
+  {
+    if (this.id == 0) {
+      this.id = id;
+    }
+    else {
+      throw new RuntimeException("Id cannot be changed from " + this.id + " to " + id);
+    }
   }
 
   public static class OperatorWrapper

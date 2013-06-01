@@ -33,7 +33,6 @@ import com.malhartech.api.*;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.Operator.Unifier;
 import com.malhartech.bufferserver.server.Server;
 import com.malhartech.bufferserver.storage.DiskStorage;
 import com.malhartech.bufferserver.util.Codec;
@@ -51,7 +50,7 @@ import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.malhartech.stream.*;
 import com.malhartech.util.ScheduledThreadPoolExecutor;
-import java.io.ObjectInputStream;
+import java.io.InputStream;
 
 /**
  *
@@ -112,13 +111,13 @@ public class StramChild
   public void setup(StreamingContainerContext ctx)
   {
     applicationAttributes = ctx.applicationAttributes;
-    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
+    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAGContext.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS, 500);
-    checkpointWindowCount = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
+    windowWidthMillis = ctx.applicationAttributes.attrValue(DAGContext.STRAM_WINDOW_SIZE_MILLIS, 500);
+    checkpointWindowCount = ctx.applicationAttributes.attrValue(DAGContext.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
 
-    appPath = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_APP_PATH, "app-dfs-path-not-configured");
-    checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
+    appPath = ctx.applicationAttributes.attrValue(DAGContext.STRAM_APP_PATH, "app-dfs-path-not-configured");
+    checkpointFsPath = this.appPath + "/" + DAGContext.SUBDIR_CHECKPOINTS;
     tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
     tupleRecordingPartFileTimeMillis = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
     daemonAddress = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
@@ -839,31 +838,13 @@ public class StramChild
 
       try {
         logger.debug("Restoring node {} to checkpoint {}", ndi.id, Codec.getStringWindowId(ndi.checkpointWindowId));
-        ObjectInputStream ois = new ObjectInputStream(backupAgent.getLoadStream(ndi.id, ndi.checkpointWindowId));
-        Object foreignObject = ois.readObject();
-
-        int windowCount;
-        if (foreignObject instanceof Node.OperatorWrapper) {
-          windowCount = ((Node.OperatorWrapper)foreignObject).windowCount;
-          foreignObject = ((Node.OperatorWrapper)foreignObject).operator;
-        }
-        else {
-          windowCount = 0;
-        }
-
-        Node<?> node;
-        if (foreignObject instanceof InputOperator && ndi.type == OperatorDeployInfo.OperatorType.INPUT) {
-          node = new InputNode(ndi.id, (InputOperator)foreignObject);
-        }
-        else if (foreignObject instanceof Unifier && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
-          node = new UnifierNode(ndi.id, (Unifier<Object>)foreignObject);
+        InputStream stream = backupAgent.getLoadStream(ndi.id, ndi.checkpointWindowId);
+        Node<?> node = Node.retrieveNode(stream, ndi.type);
+        stream.close();
+        if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           massageUnifierDeployInfo(ndi);
         }
-        else {
-          node = new GenericNode(ndi.id, (Operator)foreignObject);
-        }
-
-        node.applicationWindowCount = windowCount;
+        node.setId(ndi.id);
         nodes.put(ndi.id, node);
       }
       catch (Exception e) {
@@ -1243,7 +1224,7 @@ public class StramChild
           finally {
             activeNodes.remove(ndi.id);
             node.getOperator().teardown();
-            logger.info("deactivated {}", node.id);
+            logger.info("deactivated {}", node.getId());
           }
         }
 

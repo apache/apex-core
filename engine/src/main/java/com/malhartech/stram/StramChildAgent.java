@@ -23,6 +23,7 @@ import com.malhartech.api.InputOperator;
 import com.malhartech.api.Operator;
 import com.malhartech.api.StorageAgent;
 import com.malhartech.bufferserver.util.Codec;
+import com.malhartech.engine.Node;
 import com.malhartech.engine.OperatorContext;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
@@ -41,6 +42,7 @@ import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.malhartech.stram.webapp.ContainerInfo;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import org.apache.hadoop.conf.Configuration;
 
 /**
@@ -469,9 +471,9 @@ public class StramChildAgent {
     }
 
     try {
-      ObjectOutputStream oos = new ObjectOutputStream(agent.getSaveStream(node.getId(), -1));
-      oos.writeObject(operator);
-      oos.close();
+      OutputStream stream = agent.getSaveStream(node.getId(), -1);
+      Node.storeOperator(stream, operator);
+      stream.close();
     }
     catch (Exception e) {
       throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getClass() + ")", e);

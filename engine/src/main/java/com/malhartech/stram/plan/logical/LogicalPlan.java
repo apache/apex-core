@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram.plan.logical;
 
-import java.io.Externalizable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInput;
@@ -51,6 +50,8 @@ import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.engine.Node;
+import com.malhartech.stram.OperatorDeployInfo.OperatorType;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -74,29 +75,26 @@ public class LogicalPlan implements Serializable, DAG
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
 
-  public static class ExternalizableModule implements Externalizable
+  public static class OperatorProxy implements Serializable
   {
     private static final long serialVersionUID = 201305221606L;
     private Operator operator;
 
-    private void set(Operator module)
+    private void set(Operator operator)
     {
-      this.operator = module;
+      this.operator = operator;
     }
 
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    private void writeObject(ObjectOutputStream out) throws IOException
     {
-      set((Operator)in.readObject());
-      in.close();
+      Node.storeOperator(out, operator);
     }
 
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException
+    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException
     {
-      out.writeObject(operator);
-      out.close();
+      operator = Node.retrieveOperator(input);
     }
+
   }
 
   public LogicalPlan()
@@ -347,15 +345,15 @@ public class LogicalPlan implements Serializable, DAG
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
     private final AttributeMap<OperatorContext> attributes = new DefaultAttributeMap<OperatorContext>();
-    private final ExternalizableModule moduleHolder;
+    private final OperatorProxy operatorProxy;
     private final String id;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
-    private OperatorMeta(String id, Operator module)
+    private OperatorMeta(String id, Operator operator)
     {
-      this.moduleHolder = new ExternalizableModule();
-      this.moduleHolder.set(module);
+      this.operatorProxy = new OperatorProxy();
+      this.operatorProxy.set(operator);
       this.id = id;
     }
 
@@ -461,7 +459,7 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public Operator getOperator()
     {
-      return this.moduleHolder.operator;
+      return this.operatorProxy.operator;
     }
 
     @Override
@@ -616,7 +614,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     // TODO: cache mapping
     for (OperatorMeta o: getAllOperators()) {
-      if (o.moduleHolder.operator == operator) {
+      if (o.operatorProxy.operator == operator) {
         return o;
       }
     }

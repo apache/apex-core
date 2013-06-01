@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram;
 
+import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import com.malhartech.annotation.ShipContainingJars;
@@ -235,6 +236,7 @@ public class StramClient
       org.eclipse.jetty.websocket.WebSocketFactory.class,
       org.eclipse.jetty.io.nio.SelectorManager.class,
       org.eclipse.jetty.http.HttpParser.class,
+      Kryo.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));

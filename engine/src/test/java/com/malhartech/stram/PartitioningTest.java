@@ -331,7 +331,6 @@ public class PartitioningTest
     @Test
     public void testInputOperatorPartitioning() throws Exception
     {
-
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
       LogicalPlan dag = new LogicalPlan();
       dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).set(checkpointDir.getPath());
@@ -355,10 +354,9 @@ public class PartitioningTest
         // move to checkpoint to verify that checkpoint state is updated upon repartition
         p.checkpointWindows.add(10L);
         p.recoveryCheckpoint = 10L;
-        
-        ObjectOutputStream saveStream = new ObjectOutputStream(new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L));
-        saveStream.writeObject(inputDeployed);
-        saveStream.close();
+        OutputStream stream = new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L);
+        Node.storeOperator(stream, inputDeployed);
+        stream.close();
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);

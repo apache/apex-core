@@ -255,10 +255,10 @@ public class DAGBuilderTest {
 
   public static class ValidationOperator extends BaseOperator {
     @OutputPortFieldAnnotation(name="goodOutputPort")
-    final public transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>(this);
+    public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>(this);
 
     @OutputPortFieldAnnotation(name="badOutputPort")
-    final public transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>(this);
+    public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>(this);
   }
 
   public static class CounterOperator extends BaseOperator {

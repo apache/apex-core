@@ -2,17 +2,11 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.malhartech.api;
 
 import com.malhartech.common.Fragment;
 
-
 /**
- *
  * Serializing and Deserializing the data tuples and controlling the partitioning
  * <p>
  * Data flows from one Operator to another Operator through a stream.Typically
@@ -29,9 +23,9 @@ import com.malhartech.common.Fragment;
  * and deserializer instance which attaches itself to input stream of downstream
  * operator.
  *
- * @param <T>
- *          data type of the tuples on the stream
- * @author chetan
+ * @param <T> data type of the tuples on the stream
+ *
+ * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public interface StreamCodec<T>
 {

@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,9 +35,14 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbe
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.api.AttributeMap;
+import com.malhartech.api.DAGContext;
+import com.malhartech.api.Operator;
+import com.malhartech.engine.Node;
+import com.malhartech.stram.OperatorDeployInfo.OperatorType;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import org.apache.hadoop.conf.Configuration;
 
 public class StreamingContainerManagerTest {
@@ -97,6 +101,7 @@ public class StreamingContainerManagerTest {
   public void testAssignContainer() {
 
     LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().attr(DAGContext.STRAM_APP_PATH).set(new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
 
     TestGeneratorInputOperator node1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -175,6 +180,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testStaticPartitioning() {
     LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().attr(DAGContext.STRAM_APP_PATH).set(new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
@@ -244,10 +250,10 @@ public class StreamingContainerManagerTest {
     }
 
     try {
-      ObjectInputStream loadStream = new ObjectInputStream(new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath()).getLoadStream(mergeNodeDI.id, -1));
-      Object operator = loadStream.readObject();
-      loadStream.close();
-      Assert.assertTrue("" + operator, operator instanceof DefaultUnifier);
+      InputStream stream = new HdfsBackupAgent(new Configuration(false), dag.getAttributes().attr(DAGContext.STRAM_APP_PATH).get() + "/" + DAGContext.SUBDIR_CHECKPOINTS).getLoadStream(mergeNodeDI.id, -1);
+      Operator operator = Node.retrieveNode(stream, OperatorType.UNIFIER).getOperator();
+      stream.close();
+      Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);
@@ -255,7 +261,7 @@ public class StreamingContainerManagerTest {
 
     // node3 container
     String node3ContainerId = "node3Container";
-    List<OperatorDeployInfo> cmerge = assignContainer(dnm, node3ContainerId, "localhost").getDeployInfo();;
+    List<OperatorDeployInfo> cmerge = assignContainer(dnm, node3ContainerId, "localhost").getDeployInfo();
     Assert.assertEquals("number operators assigned to " + node3ContainerId, 1, cmerge.size());
 
     OperatorDeployInfo node3DI = getNodeDeployInfo(cmerge,  dag.getMeta(node3));

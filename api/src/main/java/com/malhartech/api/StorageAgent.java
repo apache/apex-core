@@ -28,6 +28,14 @@ public interface StorageAgent
    */
   public OutputStream getSaveStream(int operatorId, long windowId) throws IOException;
 
+  /**
+   * Get the input stream from which can be used to retrieve the stored objects back.
+   *
+   * @param operatorId Operator of the id for which the object was previously saved
+   * @param windowId WindowId for which the object was previously saved
+   * @return Input stream which can be used to retrieve the serialized object
+   * @throws IOException
+   */
   public InputStream getLoadStream(int operatorId, long windowId) throws IOException;
 
   public void delete(int operatorId, long windowId) throws IOException;
