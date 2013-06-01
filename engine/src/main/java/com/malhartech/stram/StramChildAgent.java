@@ -476,7 +476,7 @@ public class StramChildAgent {
       stream.close();
     }
     catch (Exception e) {
-      throw new RuntimeException("Failed to initialize " + operator + "(" + operator.getClass() + ")", e);
+      throw new RuntimeException("Failed to serialize and distribute " + operator + "(" + operator.getClass() + ")", e);
     }
     ndi.declaredId = node.getOperatorMeta().getId();
     ndi.id = node.getId();
