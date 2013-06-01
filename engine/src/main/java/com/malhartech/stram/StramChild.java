@@ -167,7 +167,7 @@ public class StramChild
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
-    UserGroupInformation.setConfiguration(defaultConf);
+    //UserGroupInformation.setConfiguration(defaultConf);
 
     String host = args[0];
     int port = Integer.parseInt(args[1]);
@@ -176,49 +176,48 @@ public class StramChild
 
     final String childId = System.getProperty("stram.cid");
 
-    UserGroupInformation taskOwner;
-    if (!UserGroupInformation.isSecurityEnabled()) {
+    //UserGroupInformation taskOwner;
+    //if (!UserGroupInformation.isSecurityEnabled()) {
       // Communicate with parent as actual task owner.
-      taskOwner = UserGroupInformation.createRemoteUser(StramChild.class.getName());
-    }
-    else {
-      taskOwner = UserGroupInformation.getCurrentUser();
-    }
-    logger.info("Task owner is " + taskOwner.getUserName());
+      //taskOwner = UserGroupInformation.createRemoteUser(StramChild.class.getName());
+    //}
+    //else {
+      //taskOwner = UserGroupInformation.getCurrentUser();
+    //}
+    //logger.info("Task owner is " + taskOwner.getUserName());
 
-    final StreamingContainerUmbilicalProtocol umbilical =
-            taskOwner.doAs(new PrivilegedExceptionAction<StreamingContainerUmbilicalProtocol>()
-    {
-      @Override
-      public StreamingContainerUmbilicalProtocol run() throws Exception
-      {
-        return RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
+    final StreamingContainerUmbilicalProtocol umbilical = //taskOwner.doAs(new PrivilegedExceptionAction<StreamingContainerUmbilicalProtocol>()
+    //{
+      //@Override
+      //public StreamingContainerUmbilicalProtocol run() throws Exception
+      //{
+        /* return */ RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
                             StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
-      }
+      //}
 
-    });
+    //});
 
     logger.debug("PID: " + System.getenv().get("JVM_PID"));
-    UserGroupInformation childUGI;
+    //UserGroupInformation childUGI;
     int exitStatus = 1;
 
     try {
       if (!UserGroupInformation.isSecurityEnabled()) {
-        childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
+        //childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
         // Add tokens to new user so that it may execute its task correctly.
-        for (Token<?> token : UserGroupInformation.getCurrentUser().getTokens()) {
-          childUGI.addToken(token);
-        }
+        //for (Token<?> token : UserGroupInformation.getCurrentUser().getTokens()) {
+          //childUGI.addToken(token);
+        //}
       }
       else {
-        childUGI = taskOwner;
+        //childUGI = taskOwner;
       }
 
-      childUGI.doAs(new PrivilegedExceptionAction<Object>()
-      {
-        @Override
-        public Object run() throws Exception
-        {
+      //childUGI.doAs(new PrivilegedExceptionAction<Object>()
+      //{
+        //@Override
+        //public Object run() throws Exception
+        //{
           StreamingContainerContext ctx = umbilical.getInitContext(childId);
           StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
           logger.debug("Got context: " + ctx);
@@ -231,10 +230,10 @@ public class StramChild
             // teardown
             stramChild.teardown();
           }
-          return null;
-        }
+          //return null;
+        //}
 
-      });
+      //});
       exitStatus = 0;
     }
     catch (Exception exception) {

@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import static java.lang.Thread.sleep;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.net.NetUtils;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.Clock;
 import org.apache.hadoop.yarn.SystemClock;
 import org.apache.hadoop.yarn.api.AMRMProtocol;
@@ -60,7 +62,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.debug.StdOutErrLog;
-//import com.malhartech.license.License; for licensing using native
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
@@ -69,8 +70,6 @@ import com.malhartech.stram.security.StramDelegationTokenManager;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
 import com.malhartech.util.VersionInfo;
-import java.security.PrivilegedExceptionAction;
-import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  *
@@ -268,24 +267,24 @@ public class StramAppMaster //extends License for licensing using native
     }
     LOG.info("appmaster env:" + sw.toString());
 
-    final Configuration defaultConf = new Configuration();
-    UserGroupInformation.setConfiguration(defaultConf);
-    UserGroupInformation taskOwner;
+    //final Configuration defaultConf = new Configuration();
+    //UserGroupInformation.setConfiguration(defaultConf);
+    //UserGroupInformation taskOwner;
 
-    if (!UserGroupInformation.isSecurityEnabled()) {
+    //if (!UserGroupInformation.isSecurityEnabled()) {
       // Communicate with parent as actual task owner.
-      taskOwner = UserGroupInformation.createRemoteUser(StramAppMaster.class.getName());
-    }
-    else {
-      taskOwner = UserGroupInformation.getCurrentUser();
-    }
-    LOG.info("Task owner is " + taskOwner.getUserName());
+      //taskOwner = UserGroupInformation.createRemoteUser(StramAppMaster.class.getName());
+    //}
+    //else {
+      //taskOwner = UserGroupInformation.getCurrentUser();
+    //}
+    //LOG.info("Task owner is " + taskOwner.getUserName());
 
-    Boolean result = taskOwner.doAs(new PrivilegedExceptionAction<Boolean>()
-    {
-      @Override
-      public Boolean run() throws Exception
-      {
+    //Boolean result = taskOwner.doAs(new PrivilegedAction<Boolean>()
+    //{
+      //@Override
+      //public Boolean run()
+      //{
         boolean result = false;
         StramAppMaster appMaster = null;
 
@@ -308,10 +307,10 @@ public class StramAppMaster //extends License for licensing using native
           }
         }
 
-        return result;
-      }
+       // return result;
+      //}
 
-    });
+    //});
 
     if (result) {
       LOG.info("Application Master completed. exiting");
