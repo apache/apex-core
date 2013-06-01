@@ -1419,6 +1419,7 @@ public class StramCli
           String line = reader.readLine("macro def (" + name + ") > ");
           if (line.equals("end")) {
             macros.put(name, commands);
+            System.out.println("Macro '" + name + "' created.");
             return;
           }
           else if (line.equals("abort")) {
