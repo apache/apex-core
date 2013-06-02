@@ -338,6 +338,20 @@ public class LogicalPlan implements Serializable, DAG
       return this;
     }
 
+    public void remove() {
+      for (InputPortMeta ipm : this.sinks) {
+        ipm.getOperatorWrapper().inputStreams.remove(ipm);
+        if (ipm.getOperatorWrapper().inputStreams.isEmpty()) {
+          rootOperators.add(ipm.getOperatorWrapper());
+        }
+      }
+      this.sinks.clear();
+      if (this.source != null) {
+        this.source.getOperatorWrapper().outputStreams.remove(this.source);
+      }
+      this.source = null;
+    }
+
     @Override
     public String toString()
     {
@@ -739,12 +753,12 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     if (!cycles.isEmpty()) {
-      throw new IllegalStateException("Loops detected in the graph: " + cycles);
+      throw new IllegalStateException("Loops in graph: " + cycles);
     }
 
     for (StreamMeta s: streams.values()) {
-      if (s.source == null && (s.sinks.isEmpty())) {
-        throw new IllegalStateException(String.format("stream needs to be connected to at least on node %s", s.getId()));
+      if (s.source == null || (s.sinks.isEmpty())) {
+        throw new IllegalStateException(String.format("stream not connected: %s", s.getId()));
       }
     }
   }
