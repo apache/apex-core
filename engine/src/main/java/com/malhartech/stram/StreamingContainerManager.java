@@ -1148,6 +1148,10 @@ public class StreamingContainerManager implements PlanContext
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
 
+    Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
+    DAGPropertiesBuilder.setOperatorProperties(logicalOperator.getOperator(), properties);
+    // need to record this to a log in the future when review history is supported
+
     List<PTOperator> operators = plan.getOperators(logicalOperator);
     for (PTOperator o: operators) {
       StramChildAgent sca = getContainerAgent(o.getContainer().containerId);
@@ -1161,6 +1165,15 @@ public class StreamingContainerManager implements PlanContext
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
 
+  }
+
+  public Map<String, Object> getOperatorProperties(String operatorId, String propertyName)
+  {
+    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    if (logicalOperator == null) {
+      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+    }
+    return DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
   }
 
   public void logicalPlanModification(List<LogicalPlanRequest> requests)

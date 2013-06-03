@@ -116,6 +116,7 @@ public class StramCli
     connectedCommands.put("start-recording", new CommandSpec(new StartRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Start recording"));
     connectedCommands.put("stop-recording", new CommandSpec(new StopRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Stop recording"));
     connectedCommands.put("sync-recording", new CommandSpec(new SyncRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Sync recording"));
+    connectedCommands.put("get-operator-properties", new CommandSpec(new GetOperatorPropertiesLiveCommand(), new String[] {"operator-name"}, new String[] {"property-name"}, "Get properties of an operator"));
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyLiveCommand(), new String[] {"operator-name", "property-name", "property-value"}, null, "Set a property of an operator"));
     connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(), null, null, "Begin Logical Plan Change"));
 
@@ -1150,6 +1151,37 @@ public class StramCli
       }
     }
 
+  }
+
+  private class GetOperatorPropertiesLiveCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getProperties");
+      if (args.length > 1) {
+        r.queryParam("propertyName", args[1]);
+      }
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        System.out.println(response);
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
   }
 
   private class SetOperatorPropertyLiveCommand implements Command
