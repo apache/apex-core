@@ -4,8 +4,9 @@
  */
 package com.malhartech.codec;
 
-import com.esotericsoftware.kryo.DefaultSerializer;
 import java.io.Serializable;
+
+import com.esotericsoftware.kryo.DefaultSerializer;
 
 /**
  * KryoJdkContainer wraps a Java serializable object and sets up a Kryo Serializer.
@@ -18,6 +19,7 @@ import java.io.Serializable;
  * KryoJdkSerializer directly.<br>
  * <br>
  *
+ * @param <T> - Type of the object which you would like to serialize using KryoJdkSerializer.
  * @author Pramod Immaneni <pramod@malhar-inc.com>
  */
 @DefaultSerializer(KryoJdkSerializer.class)
@@ -26,23 +28,28 @@ public class KryoJdkContainer<T> implements Serializable
   private static final long serialVersionUID = 1L;
   private T t;
 
-  public KryoJdkContainer(){
+  public KryoJdkContainer()
+  {
   }
 
-  public KryoJdkContainer(T t) {
+  public KryoJdkContainer(T t)
+  {
     this.t = t;
   }
 
-  public void setComponent(T t) {
+  public void setComponent(T t)
+  {
     this.t = t;
   }
 
-  public T getComponent() {
+  public T getComponent()
+  {
     return t;
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(Object o)
+  {
     boolean equal = false;
     if (o instanceof KryoJdkContainer) {
       KryoJdkContainer<?> k = (KryoJdkContainer<?>)o;

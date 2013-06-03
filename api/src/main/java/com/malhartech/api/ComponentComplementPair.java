@@ -2,10 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
-
-import com.malhartech.api.Component;
-import com.malhartech.api.Context;
+package com.malhartech.api;
 
 /**
  *

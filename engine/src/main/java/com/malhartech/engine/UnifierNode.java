@@ -70,9 +70,9 @@ public class UnifierNode extends GenericNode
 
   final UnifiedPort unifiedPort = new UnifiedPort();
 
-  public UnifierNode(int id, Unifier<Object> unifier)
+  public UnifierNode(Unifier<Object> unifier)
   {
-    super(id, unifier);
+    super(unifier);
     this.unifier = unifier;
   }
 

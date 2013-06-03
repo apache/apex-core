@@ -60,7 +60,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.debug.StdOutErrLog;
-//import com.malhartech.license.License; for licensing using native
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
@@ -253,10 +252,12 @@ public class StramAppMaster //extends License for licensing using native
 
   /**
    * @param args Command line args
+   * @throws Throwable
    */
-  public static void main(String[] args)
+  public static void main(final String[] args) throws Throwable
   {
     StdOutErrLog.tieSystemOutAndErrToLog();
+    LOG.info("Master starting with classpath: {}", System.getProperty("java.class.path"));
 
     LOG.info("version: {}", VersionInfo.getBuildVersion());
     StringWriter sw = new StringWriter();
@@ -267,6 +268,7 @@ public class StramAppMaster //extends License for licensing using native
 
     boolean result = false;
     StramAppMaster appMaster = null;
+
     try {
       appMaster = new StramAppMaster();
       LOG.info("Initializing ApplicationMaster");
@@ -279,11 +281,13 @@ public class StramAppMaster //extends License for licensing using native
     catch (Throwable t) {
       LOG.error("Error running ApplicationMaster", t);
       System.exit(1);
-    } finally {
+    }
+    finally {
       if (appMaster != null) {
         appMaster.destroy();
       }
     }
+
     if (result) {
       LOG.info("Application Master completed. exiting");
       System.exit(0);
@@ -446,9 +450,9 @@ public class StramAppMaster //extends License for licensing using native
     return true;
   }
 
-  public void destroy() {
-    if (delegationTokenManager != null)
-    {
+  public void destroy()
+  {
+    if (delegationTokenManager != null) {
       delegationTokenManager.stopThreads();
     }
   }

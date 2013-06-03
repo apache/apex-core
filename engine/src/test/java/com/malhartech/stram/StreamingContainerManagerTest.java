@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,7 +19,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestOperator;
@@ -37,6 +35,15 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbe
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.api.AttributeMap;
+import com.malhartech.api.DAGContext;
+import com.malhartech.api.Operator;
+import com.malhartech.engine.Node;
+import com.malhartech.stram.OperatorDeployInfo.OperatorType;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import org.apache.hadoop.conf.Configuration;
 
 public class StreamingContainerManagerTest {
 
@@ -94,6 +101,7 @@ public class StreamingContainerManagerTest {
   public void testAssignContainer() {
 
     LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().attr(DAGContext.STRAM_APP_PATH).set(new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
 
     TestGeneratorInputOperator node1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     GenericTestOperator node2 = dag.addOperator("node2", GenericTestOperator.class);
@@ -128,7 +136,6 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("type " + node1DI, OperatorDeployInfo.OperatorType.INPUT, node1DI.type);
     Assert.assertEquals("inputs " + node1DI.declaredId, 0, node1DI.inputs.size());
     Assert.assertEquals("outputs " + node1DI.declaredId, 1, node1DI.outputs.size());
-    Assert.assertNotNull("serializedNode " + node1DI.declaredId, node1DI.serializedNode);
     Assert.assertNotNull("contextAttributes " + node1DI.declaredId, node1DI.contextAttributes);
 
     OutputDeployInfo c1n1n2 = node1DI.outputs.get(0);
@@ -173,6 +180,7 @@ public class StreamingContainerManagerTest {
   @Test
   public void testStaticPartitioning() {
     LogicalPlan dag = new LogicalPlan();
+    dag.getAttributes().attr(DAGContext.STRAM_APP_PATH).set(new File("target", StreamingContainerManagerTest.class.getName()).getAbsolutePath());
 
     GenericTestOperator node1 = dag.addOperator("node1", GenericTestOperator.class);
     PhysicalPlanTest.PartitioningTestOperator node2 = dag.addOperator("node2", PhysicalPlanTest.PartitioningTestOperator.class);
@@ -241,12 +249,19 @@ public class StreamingContainerManagerTest {
       Assert.assertEquals("contextAttributes " , new Integer(2222), odi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, 0));
     }
 
-    Object operator = new DefaultOperatorSerDe().read(new ByteArrayInputStream(mergeNodeDI.serializedNode));
-    Assert.assertTrue("" + operator, operator instanceof DefaultUnifier);
+    try {
+      InputStream stream = new HdfsStorageAgent(new Configuration(false), dag.getAttributes().attr(DAGContext.STRAM_APP_PATH).get() + "/" + DAGContext.SUBDIR_CHECKPOINTS).getLoadStream(mergeNodeDI.id, -1);
+      Operator operator = Node.retrieveNode(stream, OperatorType.UNIFIER).getOperator();
+      stream.close();
+      Assert.assertTrue("" + operator,  operator instanceof DefaultUnifier);
+    }
+    catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
 
     // node3 container
     String node3ContainerId = "node3Container";
-    List<OperatorDeployInfo> cmerge = assignContainer(dnm, node3ContainerId, "localhost").getDeployInfo();;
+    List<OperatorDeployInfo> cmerge = assignContainer(dnm, node3ContainerId, "localhost").getDeployInfo();
     Assert.assertEquals("number operators assigned to " + node3ContainerId, 1, cmerge.size());
 
     OperatorDeployInfo node3DI = getNodeDeployInfo(cmerge,  dag.getMeta(node3));

@@ -1,13 +1,15 @@
 package com.malhartech.codec;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.Serializer;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.Serializer;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.malhartech.annotation.ShipContainingJars;
 
 /**
  * Kryo serializer implementation that can be annotated to operator or tuple
@@ -32,9 +34,9 @@ import java.io.ObjectOutputStream;
  * operators that have to be transient when using Kryo have to be non-transient /
  * serializable, when using JDK serialization.
  *
- * @param <T>
- *          type of serialized object
+ * @param <T> type of serialized object
  */
+@ShipContainingJars(classes={com.esotericsoftware.kryo.Kryo.class})
 public class KryoJdkSerializer<T> extends Serializer<T> {
 
   @Override

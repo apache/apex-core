@@ -112,7 +112,7 @@ public interface Context
     /**
      * The agent which can be used to checkpoint the windows.
      */
-    public static final AttributeKey<BackupAgent> BACKUP_AGENT = new AttributeKey<BackupAgent>("backupAgent");
+    public static final AttributeKey<StorageAgent> STORAGE_AGENT = new AttributeKey<StorageAgent>("backupAgent");
 
     /**
      * Return the operator runtime id.

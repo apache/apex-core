@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.BackupAgent;
+import com.malhartech.api.StorageAgent;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -41,6 +41,7 @@ import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.engine.DefaultUnifier;
+import com.malhartech.engine.Node;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.Operators;
@@ -48,6 +49,8 @@ import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 
 /**
  * Translates the logical DAG into physical model. Is the initial query planner
@@ -350,7 +353,7 @@ public class PhysicalPlan {
 
     /**
      * Return the most recent checkpoint for this operator,
-     * representing the last backup reported.
+     * representing the last getSaveStream reported.
      * @return long
      */
     public long getRecentCheckpoint() {
@@ -542,7 +545,7 @@ public class PhysicalPlan {
      * Dynamic partitioning requires access to operator state for split or merge.
      * @return
      */
-    public BackupAgent getBackupAgent();
+    public StorageAgent getStorageAgent();
 
     /**
      * Request deployment change as sequence of undeploy, container start and deploy groups with dependency.
@@ -876,7 +879,7 @@ public class PhysicalPlan {
       if (pOperator.recoveryCheckpoint != 0) {
         try {
           LOG.debug("Loading state for {}", pOperator);
-          partitionedOperator = (Operator)ctx.getBackupAgent().restore(pOperator.id, pOperator.recoveryCheckpoint);
+          partitionedOperator = (Operator)ctx.getStorageAgent().getLoadStream(pOperator.id, pOperator.recoveryCheckpoint);
         } catch (IOException e) {
           LOG.warn("Failed to read partition state for " + pOperator, e);
           return; // TODO: emit to event log
@@ -1039,7 +1042,9 @@ public class PhysicalPlan {
     partition.checkpointWindows.add(windowId);
     partition.recoveryCheckpoint = windowId;
     try {
-      ctx.getBackupAgent().backup(partition.id, windowId, operator);
+      OutputStream stream = ctx.getStorageAgent().getSaveStream(partition.id, windowId);
+      Node.storeOperator(stream, operator);
+      stream.close();
     } catch (IOException e) {
       // inconsistent state, no recovery option, requires shutdown
       throw new IllegalStateException("Failed to write operator state after partition change " + partition, e);
@@ -1281,7 +1286,7 @@ public class PhysicalPlan {
     // remove checkpoint states
     try {
       for (long checkpointWindowId : node.checkpointWindows) {
-        ctx.getBackupAgent().delete(node.id, checkpointWindowId);
+        ctx.getStorageAgent().delete(node.id, checkpointWindowId);
       }
     } catch (IOException e) {
       LOG.warn("Failed to remove state for " + node, e);

@@ -82,23 +82,6 @@ public class StramClientUtils
      */
     public ClientRMProtocol connectToASM() throws IOException
     {
-
-      /*
-       UserGroupInformation user = UserGroupInformation.getCurrentUser();
-       applicationsManager = user.doAs(new PrivilegedAction<ClientRMProtocol>() {
-       public ClientRMProtocol run() {
-       InetSocketAddress rmAddress = NetUtils.createSocketAddr(conf.get(
-       YarnConfiguration.RM_SCHEDULER_ADDRESS,
-       YarnConfiguration.DEFAULT_RM_SCHEDULER_ADDRESS));
-       LOG.info("Connecting to ResourceManager at " + rmAddress);
-       Configuration appsManagerServerConf = new Configuration(conf);
-       appsManagerServerConf.setClass(YarnConfiguration.YARN_SECURITY_INFO,
-       ClientRMSecurityInfo.class, SecurityInfo.class);
-       ClientRMProtocol asm = ((ClientRMProtocol) rpc.getProxy(ClientRMProtocol.class, rmAddress, appsManagerServerConf));
-       return asm;
-       }
-       });
-       */
       YarnConfiguration yarnConf = new YarnConfiguration(conf);
       InetSocketAddress rmAddress = yarnConf.getSocketAddr(
               YarnConfiguration.RM_ADDRESS,

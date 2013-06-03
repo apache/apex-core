@@ -4,8 +4,6 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.DefaultOperatorSerDe;
-import com.malhartech.api.OperatorCodec;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.codec.DefaultStatefulStreamCodec;
 
@@ -49,14 +47,6 @@ public abstract class StramUtils
     catch (InstantiationException e) {
       throw new IllegalArgumentException("Failed to instantiate " + clazz, e);
     }
-  }
-
-  public static OperatorCodec getNodeSerDe(String className)
-  {
-    if (className != null) {
-      return newInstance(classForName(className, OperatorCodec.class));
-    }
-    return new DefaultOperatorSerDe();
   }
 
 }
