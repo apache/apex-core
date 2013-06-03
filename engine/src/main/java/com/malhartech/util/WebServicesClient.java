@@ -96,8 +96,18 @@ public class WebServicesClient
     }
   }
 
+  /**
+   *
+   * @param <T>
+   */
   public static abstract class WebServicesHandler<T> {
     public abstract T process(WebResource webResource, Class<T> clazz);
+
+    @Override
+    public String toString()
+    {
+      return "WebServicesHandler{Abstract class Useful in Future}";
+    }
   }
 
   public static class GetWebServicesHandler<T> extends WebServicesHandler<T> {

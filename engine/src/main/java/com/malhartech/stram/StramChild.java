@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.Thread.State;
 import java.net.*;
-import java.security.PrivilegedExceptionAction;
 import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
@@ -21,10 +20,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,82 +160,39 @@ public class StramChild
   public static void main(String[] args) throws Throwable
   {
     StdOutErrLog.tieSystemOutAndErrToLog();
+    logger.debug("PID: " + System.getenv().get("JVM_PID"));
     logger.info("Child starting with classpath: {}", System.getProperty("java.class.path"));
 
     final Configuration defaultConf = new Configuration();
-    //UserGroupInformation.setConfiguration(defaultConf);
 
     String host = args[0];
     int port = Integer.parseInt(args[1]);
     final InetSocketAddress address =
             NetUtils.createSocketAddrForHost(host, port);
 
-    final String childId = System.getProperty("stram.cid");
+    final StreamingContainerUmbilicalProtocol umbilical = RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
+                                                                       StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
 
-    //UserGroupInformation taskOwner;
-    //if (!UserGroupInformation.isSecurityEnabled()) {
-      // Communicate with parent as actual task owner.
-      //taskOwner = UserGroupInformation.createRemoteUser(StramChild.class.getName());
-    //}
-    //else {
-      //taskOwner = UserGroupInformation.getCurrentUser();
-    //}
-    //logger.info("Task owner is " + taskOwner.getUserName());
-
-    final StreamingContainerUmbilicalProtocol umbilical = //taskOwner.doAs(new PrivilegedExceptionAction<StreamingContainerUmbilicalProtocol>()
-    //{
-      //@Override
-      //public StreamingContainerUmbilicalProtocol run() throws Exception
-      //{
-        /* return */ RPC.getProxy(StreamingContainerUmbilicalProtocol.class,
-                            StreamingContainerUmbilicalProtocol.versionID, address, defaultConf);
-      //}
-
-    //});
-
-    logger.debug("PID: " + System.getenv().get("JVM_PID"));
-    //UserGroupInformation childUGI;
     int exitStatus = 1;
 
+    final String childId = System.getProperty("stram.cid");
     try {
-      if (!UserGroupInformation.isSecurityEnabled()) {
-        //childUGI = UserGroupInformation.createRemoteUser(System.getenv(ApplicationConstants.Environment.USER.toString()));
-        // Add tokens to new user so that it may execute its task correctly.
-        //for (Token<?> token : UserGroupInformation.getCurrentUser().getTokens()) {
-          //childUGI.addToken(token);
-        //}
+      StreamingContainerContext ctx = umbilical.getInitContext(childId);
+      StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
+      logger.debug("Got context: " + ctx);
+      stramChild.setup(ctx);
+      try {
+        /* main thread enters heartbeat loop */
+        stramChild.heartbeatLoop();
       }
-      else {
-        //childUGI = taskOwner;
+      finally {
+        stramChild.teardown();
       }
-
-      //childUGI.doAs(new PrivilegedExceptionAction<Object>()
-      //{
-        //@Override
-        //public Object run() throws Exception
-        //{
-          StreamingContainerContext ctx = umbilical.getInitContext(childId);
-          StramChild stramChild = new StramChild(childId, defaultConf, umbilical);
-          logger.debug("Got context: " + ctx);
-          stramChild.setup(ctx);
-          try {
-            // main thread enters heartbeat loop
-            stramChild.heartbeatLoop();
-          }
-          finally {
-            // teardown
-            stramChild.teardown();
-          }
-          //return null;
-        //}
-
-      //});
       exitStatus = 0;
     }
     catch (Exception exception) {
-      logger.warn("Exception running child : "
-              + StringUtils.stringifyException(exception));
-      // Report back any failures, for diagnostic purposes
+      logger.warn("Exception running child : " + exception);
+      /* Report back any failures, for diagnostic purposes */
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       exception.printStackTrace(new PrintStream(baos));
       umbilical.log(childId, "FATAL: " + baos.toString());
