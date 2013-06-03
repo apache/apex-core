@@ -9,6 +9,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.malhartech.annotation.ShipContainingJars;
 
 /**
  * Kryo serializer implementation that can be annotated to operator or tuple
@@ -35,6 +36,7 @@ import com.esotericsoftware.kryo.io.Output;
  *
  * @param <T> type of serialized object
  */
+@ShipContainingJars(classes={com.esotericsoftware.kryo.Kryo.class})
 public class KryoJdkSerializer<T> extends Serializer<T> {
 
   @Override
