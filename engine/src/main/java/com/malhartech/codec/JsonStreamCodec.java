@@ -8,6 +8,7 @@ import com.malhartech.api.StreamCodec;
 import com.malhartech.api.ObjectMapperString;
 import java.io.*;
 import com.malhartech.common.Fragment;
+import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -29,6 +30,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
     SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
     module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
+    module.addSerializer(AppConfig.class, new AppConfigSerializer());
     mapper.registerModule(module);
   }
 
