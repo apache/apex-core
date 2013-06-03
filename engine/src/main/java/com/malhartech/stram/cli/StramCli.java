@@ -289,7 +289,7 @@ public class StramCli
     BufferedReader br = new BufferedReader(new FileReader(fileName));
     String line;
     while ((line = br.readLine()) != null) {
-      processLine(line, reader);
+      processLine(line, reader, true);
     }
     br.close();
   }
@@ -354,7 +354,7 @@ public class StramCli
           break;
         }
       }
-      processLine(line, reader);
+      processLine(line, reader, true);
       out.flush();
     }
     System.out.println("exit");
@@ -374,7 +374,8 @@ public class StramCli
           if (args.length > argIndex && argIndex >= 0) {
             expandedLine += line.substring(previousIndex, currentIndex);
             expandedLine += args[argIndex];
-          } else {
+          }
+          else {
             expandedLine += line.substring(previousIndex, currentIndex + 2);
           }
           currentIndex += 2;
@@ -390,7 +391,7 @@ public class StramCli
     return expandedLines;
   }
 
-  private void processLine(String line, ConsoleReader reader)
+  private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
       String[] commands = line.split("\\s*;\\s*");
@@ -400,17 +401,19 @@ public class StramCli
         if (StringUtils.isBlank(args[0])) {
           continue;
         }
-        if (macros.containsKey(args[0])) {
-          List<String> macroItems = expandMacro(macros.get(args[0]), args);
-          for (String macroItem : macroItems) {
-            System.out.println("expanded-macro> " + macroItem);
-            processLine(macroItem, reader);
+        if (expandMacroAlias) {
+          if (macros.containsKey(args[0])) {
+            List<String> macroItems = expandMacro(macros.get(args[0]), args);
+            for (String macroItem : macroItems) {
+              System.out.println("expanded-macro> " + macroItem);
+              processLine(macroItem, reader, false);
+            }
+            continue;
           }
-          continue;
-        }
 
-        if (aliases.containsKey(args[0])) {
-          args[0] = aliases.get(args[0]);
+          if (aliases.containsKey(args[0])) {
+            args[0] = aliases.get(args[0]);
+          }
         }
         CommandSpec cs = null;
         if (changingLogicalPlan) {
@@ -640,10 +643,6 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      if (args.length != 2) {
-        System.err.println("Invalid arguments");
-        return;
-      }
 
       currentApp = getApplication(Integer.parseInt(args[1]));
       if (currentApp == null) {
@@ -896,6 +895,9 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      if (args[1].equals(args[2])) {
+        throw new CliException("Alias to itself!");
+      }
       aliases.put(args[1], args[2]);
     }
 
@@ -1056,10 +1058,6 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      if (args.length != 2 && args.length != 3) {
-        System.err.println("Invalid arguments");
-        return;
-      }
 
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_STARTRECORDING);
@@ -1092,10 +1090,6 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      if (args.length != 2 && args.length != 3) {
-        System.err.println("Invalid arguments");
-        return;
-      }
 
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_STOPRECORDING);
@@ -1129,10 +1123,6 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      if (args.length != 2 && args.length != 3) {
-        System.err.println("Invalid arguments");
-        return;
-      }
 
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_SYNCRECORDING);
