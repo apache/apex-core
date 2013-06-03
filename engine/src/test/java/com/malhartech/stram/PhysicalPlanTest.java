@@ -33,7 +33,7 @@ import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.codec.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.stram.OperatorPartitions.PartitionImpl;
@@ -46,7 +46,7 @@ import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 
 public class PhysicalPlanTest {
-  public static class PartitioningTestStreamCodec extends DefaultStreamCodec<Object> {
+  public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {
     @Override
     public int getPartition(Object o) {
       return PartitioningTestOperator.PARTITION_KEYS[ o.hashCode() % PartitioningTestOperator.PARTITION_KEYS.length];

@@ -408,7 +408,7 @@ public class StramMiniClusterTest
     LinkedHashSet<String> jars = StramClient.findJars(dag);
 
     // operator class from test + 2 annotated dependencies
-    Assert.assertEquals("" + jars, baseJars.size() + 3, jars.size());
+    Assert.assertEquals("" + jars, baseJars.size() + 2, jars.size());
 
     Assert.assertTrue("", jars.contains(JarFinder.getJar(Logger.class)));
     Assert.assertTrue("", jars.contains(JarFinder.getJar(javax.jms.Message.class)));

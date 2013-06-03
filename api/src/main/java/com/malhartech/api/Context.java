@@ -4,7 +4,6 @@
  */
 package com.malhartech.api;
 
-
 /**
  *
  * The base interface for context for all of the streaming platform objects<p>
@@ -42,7 +41,6 @@ public interface Context
      * At the moment each partition would be deployed to a single container (inline).
      */
     public static final AttributeKey<Boolean> PARTITION_PARALLEL = new AttributeKey<Boolean>("partitionInline");
-
     /**
      * Whether or not to auto record the tuples
      */
@@ -81,8 +79,7 @@ public interface Context
     public static final AttributeKey<Integer> INITIAL_PARTITION_COUNT = new AttributeKey<Integer>("initialPartitionCount");
     public static final AttributeKey<Integer> PARTITION_TPS_MIN = new AttributeKey<Integer>("partitionTpsMin");
     public static final AttributeKey<Integer> PARTITION_TPS_MAX = new AttributeKey<Integer>("partitionTpsMax");
-    public static final AttributeKey<String>  PARTITION_STATS_HANDLER = new AttributeKey<String>("statsHandler");
-
+    public static final AttributeKey<String> PARTITION_STATS_HANDLER = new AttributeKey<String>("statsHandler");
     /**
      * Attribute of the operator that conveys to the stram whether the Operator is stateful or stateless.
      */
@@ -95,17 +92,23 @@ public interface Context
      * Attribute of the operator that tells the platform how many streaming windows make 1 application window.
      */
     public static final AttributeKey<Integer> APPLICATION_WINDOW_COUNT = new AttributeKey<Integer>("applicationWindowCount");
-
+    /**
+     * Attribute of the operator that hints at the optimal checkpoint boundary.
+     * By default checkpointing happens after every predetermined streaming windows. But application developer can override
+     * this behavior by defining the following attribute. When this attribute is defined, checkpointing will be done after
+     * completion of later of regular checkpointing window and the window whose serial number is divisible by the attribute
+     * value. Typically user would define this value to be the same as that of APPLICATION_WINDOW_COUNT so checkpointing
+     * will be done at application window boundary.
+     */
+    public static final AttributeKey<Integer> CHECKPOINT_WINDOW_COUNT = new AttributeKey<Integer>("checkpointWindowCount");
     /**
      * Logical name of a host to control locality between operators (even when not connected through stream)
      */
     public static final AttributeKey<String> LOCALITY_HOST = new AttributeKey<String>("localityHost");
-
     /**
      * Logical name of a rack to control locality between operators (even when not connected through stream)
      */
     public static final AttributeKey<String> LOCALITY_RACK = new AttributeKey<String>("localityRack");
-
     /**
      * The agent which can be used to checkpoint the windows.
      */
@@ -143,6 +146,7 @@ public interface Context
      * @return
      */
     AttributeMap<PortContext> getOutputPortAttributes(String portName);
+
   }
 
 }

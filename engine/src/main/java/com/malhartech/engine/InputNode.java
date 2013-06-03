@@ -4,15 +4,14 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.BackupAgent;
-import com.malhartech.api.CheckpointListener;
+import java.util.ArrayList;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.api.InputOperator;
 import com.malhartech.api.Sink;
 import com.malhartech.tuple.Tuple;
-import java.io.IOException;
-import java.util.ArrayList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -47,7 +46,7 @@ public class InputNode extends Node<InputOperator>
   {
     long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
     boolean insideWindow = false;
-    int windowCount = 0;
+    boolean checkpoint = false;
 
     try {
       while (alive) {
@@ -56,13 +55,13 @@ public class InputNode extends Node<InputOperator>
           if (insideWindow) {
             int generatedTuples = 0;
 
-            for (Sink<Object> cs: sinks) {
+            for (Sink<Object> cs : sinks) {
               generatedTuples -= cs.getCount(false);
             }
 
             operator.emitTuples();
 
-            for (Sink<Object> cs: sinks) {
+            for (Sink<Object> cs : sinks) {
               generatedTuples += cs.getCount(false);
             }
 
@@ -82,7 +81,7 @@ public class InputNode extends Node<InputOperator>
                 sinks[i].put(t);
               }
               currentWindowId = t.getWindowId();
-              if (windowCount == 0) {
+              if (applicationWindowCount == 0) {
                 insideWindow = true;
                 operator.beginWindow(currentWindowId);
               }
@@ -90,19 +89,32 @@ public class InputNode extends Node<InputOperator>
               break;
 
             case END_WINDOW:
-              if (++windowCount == applicationWindowCount) {
+              if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
                 operator.endWindow();
                 insideWindow = false;
-                windowCount = 0;
+                applicationWindowCount = 0;
               }
+
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
+              }
+
+              if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+                if (checkpoint && checkpoint(currentWindowId)) {
+                  checkpoint = false;
+                }
+                checkpointWindowCount = 0;
               }
               handleRequests(currentWindowId);
               break;
 
             case CHECKPOINT:
-              checkpoint(currentWindowId);
+              if (checkpointWindowCount == 0) {
+                checkpoint(currentWindowId);
+              }
+              else {
+                checkpoint = true;
+              }
               for (int i = sinks.length; i-- > 0;) {
                 sinks[i].put(t);
               }
@@ -113,6 +125,7 @@ public class InputNode extends Node<InputOperator>
                 for (int i = sinks.length; i-- > 0;) {
                   sinks[i].put(t);
                 }
+                alive = false;
               }
               else {
                 controlTuples = deferredInputConnections.remove(0);
@@ -142,6 +155,16 @@ public class InputNode extends Node<InputOperator>
 
     if (insideWindow) {
       operator.endWindow();
+      if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
+        applicationWindowCount = 0;
+      }
+      if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+        if (checkpoint) {
+          checkpoint(currentWindowId);
+        }
+        checkpointWindowCount = 0;
+      }
+      handleRequests(currentWindowId);
     }
   }
 

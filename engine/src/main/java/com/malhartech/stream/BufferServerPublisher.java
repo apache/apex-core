@@ -3,20 +3,23 @@
  */
 package com.malhartech.stream;
 
+import static java.lang.Thread.sleep;
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.api.Sink;
+import com.malhartech.codec.StatefulStreamCodec;
+import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.api.StreamCodec.DataStatePair;
 import com.malhartech.bufferserver.client.Publisher;
 import com.malhartech.bufferserver.packet.*;
 import com.malhartech.engine.ByteCounterStream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.tuple.Tuple;
-import static java.lang.Thread.sleep;
-import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicLong;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Implements tuple flow of node to then buffer server in a logical stream<p>
@@ -32,6 +35,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
   private AtomicLong publishedByteCount = new AtomicLong(0);
   private EventLoop eventloop;
   private int count;
+  private StatefulStreamCodec<Object> statefulSerde;
 
   public BufferServerPublisher(String sourceId, int queueCapacity)
   {
@@ -53,7 +57,9 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
 
       switch (t.getType()) {
         case CHECKPOINT:
-          serde.resetState();
+          if (statefulSerde != null) {
+            statefulSerde.resetState();
+          }
           array = WindowIdTuple.getSerializedTuple((int)t.getWindowId());
           array[0] = MessageType.CHECKPOINT_VALUE;
           break;
@@ -80,19 +86,22 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
       }
     }
     else {
-      DataStatePair dsp = serde.toByteArray(payload);
-
-      /*
-       * if there is any state write that for the subscriber before we write the data.
-       */
-      if (dsp.state != null) {
-        write(DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state));
+      if (statefulSerde == null) {
+        array = PayloadTuple.getSerializedTuple(serde.getPartition(payload), serde.toByteArray(payload));
       }
-
-      /*
-       * Now that the state if any has been sent, we can proceed with the actual data we want to send.
-       */
-      array = PayloadTuple.getSerializedTuple(serde.getPartition(payload), dsp.data);
+      else {
+        DataStatePair dsp = statefulSerde.toDataStatePair(payload);
+        /*
+         * if there is any state write that for the subscriber before we write the data.
+         */
+        if (dsp.state != null) {
+          write(DataTuple.getSerializedTuple(MessageType.CODEC_STATE_VALUE, dsp.state));
+        }
+        /*
+         * Now that the state if any has been sent, we can proceed with the actual data we want to send.
+         */
+        array = PayloadTuple.getSerializedTuple(statefulSerde.getPartition(payload), dsp.data);
+      }
     }
 
     try {
@@ -119,6 +128,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
 
     logger.debug("registering publisher: {} {} windowId={} server={}", new Object[] {context.getSourceId(), context.getId(), context.getFinishedWindowId(), context.getBufferServerAddress()});
     serde = context.attr(StreamContext.CODEC).get();
+    statefulSerde = serde instanceof StatefulStreamCodec ? (StatefulStreamCodec<Object>)serde : null;
     super.activate(null, context.getFinishedWindowId());
   }
 

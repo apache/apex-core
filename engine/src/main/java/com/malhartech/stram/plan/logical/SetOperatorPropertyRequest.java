@@ -8,7 +8,7 @@ package com.malhartech.stram.plan.logical;
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
-public class OperatorPropertySetRequest extends LogicalPlanRequest
+public class SetOperatorPropertyRequest extends LogicalPlanRequest
 {
   private String operatorName;
   private String propertyName;
@@ -49,5 +49,5 @@ public class OperatorPropertySetRequest extends LogicalPlanRequest
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
-  
+
 }

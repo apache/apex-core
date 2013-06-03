@@ -8,7 +8,7 @@ package com.malhartech.stram.plan.logical;
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
-public class PortAttributeSetRequest extends LogicalPlanRequest
+public class SetPortAttributeRequest extends LogicalPlanRequest
 {
   private String operatorName;
   private String portName;
@@ -61,5 +61,5 @@ public class PortAttributeSetRequest extends LogicalPlanRequest
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
-  
+
 }

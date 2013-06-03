@@ -10,7 +10,7 @@ import com.malhartech.common.KeyValPair;
  *
  * @author Locknath Shil <locknath@malhar-inc.com>
  */
-public class DefaultPartitionCodec<K, V> extends DefaultStreamCodec<KeyValPair<K, V>>
+public class DefaultPartitionCodec<K, V> extends JavaSerializationStreamCodec<KeyValPair<K, V>>
 {
   /**
    * A codec to enable partitioning to be done by key

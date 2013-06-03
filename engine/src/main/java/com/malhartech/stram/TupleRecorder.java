@@ -4,28 +4,30 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.codec.JsonStreamCodec;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.tuple.Tuple;
-import com.malhartech.api.PubSubWebSocketClient;
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.io.*;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import com.malhartech.common.Fragment;
-import com.malhartech.util.HdfsPartFileCollection;
-import java.beans.BeanInfo;
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
+
 import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.Operator;
+import com.malhartech.api.PubSubWebSocketClient;
+import com.malhartech.api.Sink;
+import com.malhartech.api.StreamCodec;
+import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.codec.JsonStreamCodec;
+import com.malhartech.common.Fragment;
+import com.malhartech.tuple.Tuple;
+import com.malhartech.util.HdfsPartFileCollection;
 
 /**
  *
@@ -45,9 +47,7 @@ public class TupleRecorder
   private int nextPortIndex = 0;
   private HashMap<String, Sink<Object>> sinks = new HashMap<String, Sink<Object>>();
   private transient long endWindowTuplesProcessed = 0;
-  @SuppressWarnings("rawtypes")
-  private Class<? extends StreamCodec> streamCodecClass = JsonStreamCodec.class;
-  private transient StreamCodec<Object> streamCodec;
+  private transient StreamCodec<Object> streamCodec = new JsonStreamCodec<Object>();
   private static final Logger logger = LoggerFactory.getLogger(TupleRecorder.class);
   private URI pubSubUrl = null;
   private int numSubscribers = 0;
@@ -101,11 +101,11 @@ public class TupleRecorder
    * The serialization method must not produce newlines.
    * For serializations that produces binary, base64 is recommended.
    *
-   * @param streamCodecClass
+   * @param streamCodec
    */
-  public void setStreamCodec(Class<? extends StreamCodec<Object>> streamCodecClass)
+  public void setStreamCodec(StreamCodec<Object> streamCodec)
   {
-    this.streamCodecClass = streamCodecClass;
+    this.streamCodec = streamCodec;
   }
 
   public void setPubSubUrl(String pubSubUrl) throws URISyntaxException
@@ -227,7 +227,6 @@ public class TupleRecorder
   public void setup(Operator operator)
   {
     try {
-      streamCodec = streamCodecClass.newInstance();
       storage.setup();
 
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -251,12 +250,12 @@ public class TupleRecorder
         }
       }
 
-      Fragment f = streamCodec.toByteArray(recordInfo).data;
+      Fragment f = streamCodec.toByteArray(recordInfo);
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
       for (PortInfo pi : portMap.values()) {
-        f = streamCodec.toByteArray(pi).data;
+        f = streamCodec.toByteArray(pi);
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
       }
@@ -364,7 +363,7 @@ public class TupleRecorder
   {
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      Fragment f = streamCodec.toByteArray(obj).data;
+      Fragment f = streamCodec.toByteArray(obj);
       PortInfo pi = portMap.get(port);
       String str = "T:" + pi.id + ":" + f.length + ":";
       bos.write(str.getBytes());
@@ -392,7 +391,7 @@ public class TupleRecorder
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       PortInfo pi = portMap.get(port);
-      Fragment f = streamCodec.toByteArray(tuple).data;
+      Fragment f = streamCodec.toByteArray(tuple);
       String str = "C:" + pi.id + ":" + f.length + ":";
       bos.write(str.getBytes());
       bos.write(f.buffer, f.offset, f.length);

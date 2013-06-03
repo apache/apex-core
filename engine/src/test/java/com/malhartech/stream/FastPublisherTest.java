@@ -5,7 +5,7 @@
 package com.malhartech.stream;
 
 import com.malhartech.api.Sink;
-import com.malhartech.codec.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.SweepableReservoir;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,7 +33,7 @@ public class FastPublisherTest
     byte[] buffer = publisher.consume();
 
     FastSubscriber subscriber = new FastSubscriber("subscriber", 1024);
-    subscriber.serde = new DefaultStreamCodec<Object>();
+    subscriber.serde = subscriber.statefulSerde = new DefaultStatefulStreamCodec<Object>();
     SweepableReservoir sr = subscriber.acquireReservoir("res", 1024);
     sr.setSink(new Sink<Object>()
     {

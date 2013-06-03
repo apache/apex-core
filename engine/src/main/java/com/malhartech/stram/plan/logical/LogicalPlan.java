@@ -79,6 +79,7 @@ public class LogicalPlan implements Serializable, DAG
 
   public static class ExternalizableModule implements Externalizable
   {
+    private static final long serialVersionUID = 201305221606L;
     private Operator module;
 
     private void set(Operator module)
@@ -561,14 +562,14 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"rawtypes", "unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
   {
     return addStream(id, source, new Operator.InputPort[] {sink1});
   }
 
   @Override
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"rawtypes", "unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2)
   {
     return addStream(id, source, new Operator.InputPort[] {sink1, sink2});

@@ -16,16 +16,18 @@ import com.malhartech.api.Context.PortContext;
  * The DAG will be serialized and deployed to the cluster, where it is translated
  * into the physical plan.
  */
-public interface DAG extends DAGContext, Serializable {
-
+public interface DAG extends DAGContext, Serializable
+{
   public interface InputPortMeta extends Serializable
   {
     public AttributeMap<PortContext> getAttributes();
+
   }
 
   public interface OutputPortMeta extends Serializable
   {
     public AttributeMap<PortContext> getAttributes();
+
   }
 
   /**
@@ -51,6 +53,7 @@ public interface DAG extends DAGContext, Serializable {
     public StreamMeta setSource(Operator.OutputPort<?> port);
 
     public StreamMeta addSink(Operator.InputPort<?> port);
+
   }
 
   /**
@@ -59,9 +62,13 @@ public interface DAG extends DAGContext, Serializable {
   public interface OperatorMeta extends Serializable
   {
     public Operator getOperator();
+
     public InputPortMeta getMeta(Operator.InputPort<?> port);
+
     public OutputPortMeta getMeta(Operator.OutputPort<?> port);
+
     public AttributeMap<OperatorContext> getAttributes();
+
   }
 
   /**
@@ -70,6 +77,7 @@ public interface DAG extends DAGContext, Serializable {
    * If the class extends {@link BaseOperator}, the name is passed on to the instance.
    * Throws exception if the name is already linked to another operator instance.
    *
+   * @param <T>
    * @param name
    * @param clazz
    * @return <T extends Operator> T
@@ -102,6 +110,7 @@ public interface DAG extends DAGContext, Serializable {
    * Overload varargs version to avoid generic array type safety warnings in calling code.
    * "Type safety: A generic array of Operator.InputPort<> is created for a varargs parameter"
    *
+   * @param <T>
    * @link <a href=http://www.angelikalanger.com/GenericsFAQ/FAQSections/ProgrammingIdioms.html#FAQ300>Programming Idioms</a>
    * @param id
    * @param source
@@ -123,6 +132,7 @@ public interface DAG extends DAGContext, Serializable {
   public AttributeMap<DAGContext> getAttributes();
 
   public abstract OperatorMeta getOperatorMeta(String operatorId);
+
   public abstract OperatorMeta getMeta(Operator operator);
 
 }

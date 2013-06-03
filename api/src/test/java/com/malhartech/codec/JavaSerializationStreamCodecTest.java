@@ -4,7 +4,7 @@
  */
 package com.malhartech.codec;
 
-import com.malhartech.api.StreamCodec.DataStatePair;
+import com.malhartech.common.Fragment;
 import java.io.IOException;
 import java.io.Serializable;
 import org.junit.Assert;
@@ -18,8 +18,6 @@ import org.slf4j.LoggerFactory;
  */
 public class JavaSerializationStreamCodecTest
 {
-  private static final Logger logger = LoggerFactory.getLogger(JavaSerializationStreamCodecTest.class);
-
   static class TestClass implements Serializable
   {
     private static final long serialVersionUID = 201301081743L;
@@ -76,11 +74,9 @@ public class JavaSerializationStreamCodecTest
 
     TestClass tc = new TestClass("hello!", 42);
 
-    DataStatePair dsp1 = coder.toByteArray(tc);
-    DataStatePair dsp2 = coder.toByteArray(tc);
-    assert (dsp1.state == null);
-    assert (dsp2.state == null);
-    Assert.assertEquals(dsp1.data, dsp2.data);
+    Fragment dsp1 = coder.toByteArray(tc);
+    Fragment dsp2 = coder.toByteArray(tc);
+    Assert.assertEquals(dsp1, dsp2);
 
     Object tcObject1 = decoder.fromByteArray(dsp1);
     assert (tc.equals(tcObject1));
@@ -88,15 +84,9 @@ public class JavaSerializationStreamCodecTest
     Object tcObject2 = decoder.fromByteArray(dsp2);
     assert (tc.equals(tcObject2));
 
-    coder.resetState();
-
-    dsp2 = coder.toByteArray(tc);
-    Assert.assertEquals(dsp1.state, dsp2.state);
-
     dsp1 = coder.toByteArray(tc);
     dsp2 = coder.toByteArray(tc);
-    Assert.assertEquals(dsp1.data, dsp2.data);
-    Assert.assertEquals(dsp1.state, dsp2.state);
+    Assert.assertEquals(dsp1, dsp2);
   }
 
   public static class TestTuple implements Serializable
@@ -122,9 +112,10 @@ public class JavaSerializationStreamCodecTest
   {
     TestTuple t1 = new TestTuple(5);
     JavaSerializationStreamCodec<Serializable> c = new JavaSerializationStreamCodec<Serializable>();
-    DataStatePair dsp = c.toByteArray(t1);
+    Fragment dsp = c.toByteArray(t1);
     TestTuple t2 = (TestTuple)c.fromByteArray(dsp);
     Assert.assertEquals("", t1.finalField, t2.finalField);
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(JavaSerializationStreamCodecTest.class);
 }

@@ -31,6 +31,10 @@ import com.google.inject.Inject;
 import com.malhartech.stram.StramAppContext;
 import com.malhartech.stram.StramChildAgent;
 import com.malhartech.stram.StreamingContainerManager;
+import com.malhartech.stram.plan.logical.LogicalPlanRequest;
+import java.util.*;
+import org.apache.commons.beanutils.BeanUtils;
+import org.codehaus.jettison.json.JSONArray;
 
 /**
  *
@@ -53,7 +57,9 @@ public class StramWebServices
   public static final String PATH_STOPRECORDING = "stopRecording";
   public static final String PATH_SYNCRECORDING = "syncRecording";
   public static final String PATH_CONTAINERS = "containers";
-  public static final String PATH_LOGICAL_PLAN_OPERATORS = "logicalPlan/operators";
+  public static final String PATH_LOGICAL_PLAN = "logicalPlan";
+  public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
+  public static final String PATH_LOGICAL_PLAN_MODIFICATION = PATH_LOGICAL_PLAN + "/modification";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
@@ -254,6 +260,42 @@ public class StramWebServices
     catch (JSONException ex) {
       ex.printStackTrace();
     }
+    return response;
+  }
+
+  @POST // not supported by WebAppProxyServlet, can only be called directly
+  @Path(PATH_LOGICAL_PLAN_MODIFICATION)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject logicalPlanModification(JSONObject request)
+  {
+    JSONObject response = new JSONObject();
+    try {
+      JSONArray jsonArray = request.getJSONArray("requests");
+      List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
+      for (int i = 0; i < jsonArray.length(); i++) {
+        JSONObject jsonObj = (JSONObject)jsonArray.get(i);
+        LogicalPlanRequest requestObj = (LogicalPlanRequest)Class.forName(jsonObj.getString("requestType")).newInstance();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> properties = BeanUtils.describe(requestObj);
+        @SuppressWarnings("unchecked")
+        Iterator<String> keys = jsonObj.keys();
+
+        while (keys.hasNext()) {
+          String key = keys.next();
+          if (!key.equals("requestType")) {
+            properties.put(key, jsonObj.get(key));
+          }
+        }
+        BeanUtils.populate(requestObj, properties);
+        requests.add(requestObj);
+      }
+      dagManager.logicalPlanModification(requests);
+    }
+    catch (Exception ex) {
+      ex.printStackTrace();
+    }
+
     return response;
   }
 

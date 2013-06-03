@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.codec.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.*;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.StramLocalCluster.LocalStramChild;
@@ -104,7 +104,7 @@ public class StramLocalClusterTest
       streamContext.setSinkId(this.getClass().getSimpleName());
       streamContext.setFinishedWindowId(-1);
       streamContext.setBufferServerAddress(publisherOperator.container.bufferServerAddress);
-      streamContext.attr(StreamContext.CODEC).set(new DefaultStreamCodec<Object>());
+      streamContext.attr(StreamContext.CODEC).set(new DefaultStatefulStreamCodec<Object>());
       streamContext.attr(StreamContext.EVENT_LOOP).set(StramChild.eventloop);
       bss = new BufferServerSubscriber(streamContext.getSinkId(), 1024);
       bss.setup(streamContext);

@@ -7,7 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.OperatorCodec;
 import com.malhartech.api.StreamCodec;
-import com.malhartech.codec.DefaultStreamCodec;
+import com.malhartech.codec.DefaultStatefulStreamCodec;
 
 /**
  *
@@ -23,7 +23,7 @@ public abstract class StramUtils
       return newInstance(classForName(className, StreamCodec.class));
     }
     else {
-      return new DefaultStreamCodec<Object>();
+      return new DefaultStatefulStreamCodec<Object>();
     }
   }
 

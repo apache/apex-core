@@ -33,9 +33,9 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   }
 
   @Override
-  public Object fromByteArray(DataStatePair dspair)
+  public Object fromByteArray(Fragment data)
   {
-    ByteArrayInputStream bis = new ByteArrayInputStream(dspair.data.buffer, dspair.data.offset, dspair.data.length);
+    ByteArrayInputStream bis = new ByteArrayInputStream(data.buffer, data.offset, data.length);
     try {
       return mapper.readValue(bis, Object.class);
     }
@@ -45,16 +45,14 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   }
 
   @Override
-  public DataStatePair toByteArray(T o)
+  public Fragment toByteArray(T o)
   {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
     try {
       mapper.writeValue(bos, o);
-      DataStatePair dsp = new DataStatePair();
       byte[] bytes = bos.toByteArray();
-      dsp.data = new Fragment(bytes, 0, bytes.length);
-      return dsp;
+      return new Fragment(bytes, 0, bytes.length);
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);
@@ -65,11 +63,6 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   public int getPartition(T o)
   {
     return o.hashCode();
-  }
-
-  @Override
-  public void resetState()
-  {
   }
 
 }

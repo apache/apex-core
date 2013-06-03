@@ -43,12 +43,35 @@ public class MuxSink implements Sink<Object>
   {
     int i = sinks.length;
     sinks = Arrays.copyOf(sinks, i + s.length);
-    for (Sink<Object> ss: s) {
+    for (Sink<Object> ss : s) {
       sinks[i++] = ss;
     }
   }
 
-  @SuppressWarnings({"unchecked"})
+  public void remove(Sink<Object> s)
+  {
+    boolean found = false;
+    for (int i = sinks.length; i-- > 0;) {
+      if (sinks[i] == s) {
+        sinks[i] = null;
+        found = true;
+      }
+    }
+
+    if (found) {
+      @SuppressWarnings("unchecked")
+      Sink<Object>[] newInstance = (Sink<Object>[])Array.newInstance(Sink.class, sinks.length - 1);
+      int i = 0;
+      for (int j = sinks.length; j-- > 0;) {
+        if (sinks[j] != null) {
+          newInstance[i++] = sinks[j];
+        }
+      }
+
+      sinks = newInstance;
+    }
+  }
+
   public void remove(Sink<Object>... s)
   {
     /* mark all the sinks to be deleted as null */
@@ -64,6 +87,7 @@ public class MuxSink implements Sink<Object>
     }
 
     /* copy over rest of the sinks to a new array */
+    @SuppressWarnings({"unchecked"})
     Sink<Object>[] newInstance = (Sink<Object>[])Array.newInstance(Sink.class, sinks.length - found);
     int i = 0;
     for (int j = sinks.length; j-- > 0;) {

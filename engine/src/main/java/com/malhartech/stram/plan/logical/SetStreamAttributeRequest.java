@@ -8,20 +8,20 @@ package com.malhartech.stram.plan.logical;
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
-public class OperatorAttributeSetRequest extends LogicalPlanRequest
+public class SetStreamAttributeRequest extends LogicalPlanRequest
 {
-  private String operatorName;
+  private String streamName;
   private String attributeName;
   private String attributeValue;
 
-  public String getOperatorName()
+  public String getStreamName()
   {
-    return operatorName;
+    return streamName;
   }
 
-  public void setOperatorName(String operatorName)
+  public void setStreamName(String streamName)
   {
-    this.operatorName = operatorName;
+    this.streamName = streamName;
   }
 
   public String getAttributeName()
@@ -50,5 +50,5 @@ public class OperatorAttributeSetRequest extends LogicalPlanRequest
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
-  
+
 }

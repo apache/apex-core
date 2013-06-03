@@ -51,4 +51,12 @@ public class KryoJdkContainer<T> implements Serializable
     return equal;
   }
 
+  @Override
+  public int hashCode()
+  {
+    int hash = 7;
+    hash = 29 * hash + (this.t != null ? this.t.hashCode() : 0);
+    return hash;
+  }
+
 }

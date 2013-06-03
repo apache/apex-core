@@ -4,18 +4,19 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Operator.InputPort;
+import java.util.*;
+import java.util.Map.Entry;
+
+import org.apache.commons.lang.UnhandledException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.malhartech.api.*;
+import com.malhartech.api.Operator.InputPort;
 import com.malhartech.debug.TappedReservoir;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.tuple.Tuple;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import org.apache.commons.lang.UnhandledException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 // inflight changes to the port connections should be captured.
 /**
@@ -41,7 +42,7 @@ public class GenericNode extends Node<Operator>
   @SuppressWarnings("unchecked")
   public void addSinks(Map<String, Sink<Object>> sinks)
   {
-    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+    for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       SweepableReservoir original = inputs.get(e.getKey());
       if (original instanceof TappedReservoir) {
         TappedReservoir tr = (TappedReservoir)original;
@@ -59,7 +60,7 @@ public class GenericNode extends Node<Operator>
   @Override
   public void removeSinks(Map<String, Sink<Object>> sinks)
   {
-    for (Entry<String, Sink<Object>> e: sinks.entrySet()) {
+    for (Entry<String, Sink<Object>> e : sinks.entrySet()) {
       SweepableReservoir reservoir = inputs.get(e.getKey());
       if (reservoir instanceof TappedReservoir) {
         TappedReservoir tr = (TappedReservoir)reservoir;
@@ -104,17 +105,6 @@ public class GenericNode extends Node<Operator>
       inputPort.setConnected(true);
       inputs.put(port, reservoir);
       reservoir.setSink(inputPort.getSink());
-//      SweepableReservoir reservoir = inputs.get(port);
-//      if (reservoir == null) {
-//        int bufferCapacity = attributes == null ? 16 * 1024 : attributes.attrValue(PortContext.BUFFER_SIZE, 16 * 1024);
-//        int spinMilliseconds = attributes == null ? 15 : attributes.attrValue(PortContext.SPIN_MILLIS, 15);
-//        if (sink instanceof BufferServerSubscriber) {
-//          reservoir = new BufferServerReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds, ((BufferServerSubscriber)sink).getSerde(), ((BufferServerSubscriber)sink).getBaseSeconds());
-//        }
-//        else {
-//          reservoir = new InputReservoir(inputPort.getSink(), port, bufferCapacity, spinMilliseconds);
-//        }
-//      }
     }
   }
 
@@ -146,7 +136,7 @@ public class GenericNode extends Node<Operator>
     long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     boolean insideWindow = false;
-    int windowCount = 0;
+    boolean checkpoint = false;
     int totalQueues = inputs.size();
 
     ArrayList<SweepableReservoir> activeQueues = new ArrayList<SweepableReservoir>();
@@ -173,7 +163,7 @@ public class GenericNode extends Node<Operator>
                   for (int s = sinks.length; s-- > 0;) {
                     sinks[s].put(t);
                   }
-                  if (windowCount == 0) {
+                  if (applicationWindowCount == 0) {
                     insideWindow = true;
                     operator.beginWindow(currentWindowId);
                   }
@@ -191,22 +181,29 @@ public class GenericNode extends Node<Operator>
               case END_WINDOW:
                 if (t.getWindowId() == currentWindowId) {
                   activePort.remove();
-
                   endWindowDequeueTimes.put(activePort, System.currentTimeMillis());
 
                   if (++receivedEndWindow == totalQueues) {
-                    if (++windowCount == applicationWindowCount) {
-                      insideWindow = false;
+                    if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
                       operator.endWindow();
-                      windowCount = 0;
+                      insideWindow = false;
+                      applicationWindowCount = 0;
                     }
 
-                    for (final Sink<Object> output: outputs.values()) {
+                    for (final Sink<Object> output : outputs.values()) {
                       output.put(t);
                     }
 
                     buffers.remove();
                     assert (activeQueues.isEmpty());
+
+                    if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+                      if (checkpoint && checkpoint(currentWindowId)) {
+                        lastCheckpointedWindowId = currentWindowId;
+                        checkpoint = false;
+                      }
+                      checkpointWindowCount = 0;
+                    }
                     handleRequests(currentWindowId);
 
                     activeQueues.addAll(inputs.values());
@@ -224,11 +221,16 @@ public class GenericNode extends Node<Operator>
 
               case CHECKPOINT:
                 activePort.remove();
-                if (currentWindowId > lastCheckpointedWindowId) {
-                  if (checkpoint(currentWindowId)) {
-                    lastCheckpointedWindowId = currentWindowId;
+                if (lastCheckpointedWindowId < currentWindowId && !checkpoint) {
+                  if (checkpointWindowCount == 0) {
+                    if (checkpoint(currentWindowId)) {
+                      lastCheckpointedWindowId = currentWindowId;
+                    }
                   }
-                  for (final Sink<Object> output: outputs.values()) {
+                  else {
+                    checkpoint = true;
+                  }
+                  for (final Sink<Object> output : outputs.values()) {
                     output.put(t);
                   }
                 }
@@ -319,8 +321,9 @@ public class GenericNode extends Node<Operator>
                  * We are not going to receive begin window on this ever!
                  */
                 expectingBeginWindow--;
+
                 /**
-                 * Since one of the operators we care about it gone, we should relook at our operators.
+                 * Since one of the operators we care about it gone, we should relook at our ports.
                  * We need to make sure that the END_STREAM comes outside of the window.
                  */
                 totalQueues--;
@@ -335,14 +338,24 @@ public class GenericNode extends Node<Operator>
                   /*
                    * Do the same sequence as the end window since the current window is not ended.
                    */
-                  operator.endWindow();
-                  insideWindow = false;
+                  if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
+                    operator.endWindow();
+                    insideWindow = false;
+                    applicationWindowCount = 0;
+                  }
 
                   emitEndWindow();
 
                   activeQueues.addAll(inputs.values());
                   expectingBeginWindow = activeQueues.size();
 
+                  if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+                    if (checkpoint && checkpoint(currentWindowId)) {
+                      lastCheckpointedWindowId = currentWindowId;
+                      checkpoint = false;
+                    }
+                    checkpointWindowCount = 0;
+                  }
                   handleRequests(currentWindowId);
                   break_activequeue = true;
                 }
@@ -413,7 +426,7 @@ public class GenericNode extends Node<Operator>
         }
         else {
           boolean need2sleep = true;
-          for (SweepableReservoir cb: activeQueues) {
+          for (SweepableReservoir cb : activeQueues) {
             if (cb.size() > 0) {
               need2sleep = false;
               break;
@@ -423,7 +436,7 @@ public class GenericNode extends Node<Operator>
           if (need2sleep) {
             Thread.sleep(spinMillis);
             if (handleIdleTime) {
-              for (SweepableReservoir cb: activeQueues) {
+              for (SweepableReservoir cb : activeQueues) {
                 if (cb.size() > 0) {
                   need2sleep = false;
                   break;
@@ -456,15 +469,24 @@ public class GenericNode extends Node<Operator>
 
     if (insideWindow) {
       operator.endWindow();
-    }
+      if (++applicationWindowCount == APPLICATION_WINDOW_COUNT) {
+        applicationWindowCount = 0;
+      }
 
+      if (++checkpointWindowCount == CHECKPOINT_WINDOW_COUNT) {
+        if (checkpoint) {
+          checkpoint(currentWindowId);
+        }
+        checkpointWindowCount = 0;
+      }
+    }
   }
 
   @Override
   protected void reportStats(OperatorStats stats)
   {
     ArrayList<PortStats> ipstats = new ArrayList<PortStats>();
-    for (Entry<String, SweepableReservoir> e: inputs.entrySet()) {
+    for (Entry<String, SweepableReservoir> e : inputs.entrySet()) {
       SweepableReservoir ar = e.getValue();
       ipstats.add(new PortStats(e.getKey(), ar.getCount(true), endWindowDequeueTimes.get(e.getValue())));
     }
