@@ -45,7 +45,7 @@ public class OperatorContext implements Context.OperatorContext
 
   }
 
-  private long lastProcessedWindowId;
+  private long lastProcessedWindowId = -1;
   private final int id;
   private final AttributeMap<OperatorContext> attributes;
   private final AttributeMap<DAGContext> applicationAttributes;

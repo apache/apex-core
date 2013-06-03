@@ -32,7 +32,10 @@ import com.malhartech.common.Fragment;
  *
  * @param <T>
  */
-@ShipContainingJars(classes = {Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
+@ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class,
+                               org.objenesis.instantiator.ObjectInstantiator.class,
+                               com.esotericsoftware.minlog.Log.class,
+                               com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStreamCodec<T>
 {
   private final Output data;
@@ -107,7 +110,7 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
 
     if (!pairs.isEmpty()) {
       state.setPosition(0);
-      for (ClassIdPair cip: pairs) {
+      for (ClassIdPair cip : pairs) {
         writeClassAndObject(state, cip);
       }
       pairs.clear();
