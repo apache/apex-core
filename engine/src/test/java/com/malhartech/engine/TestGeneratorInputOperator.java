@@ -3,7 +3,7 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.InputOperator;

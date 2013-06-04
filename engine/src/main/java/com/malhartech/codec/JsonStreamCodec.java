@@ -5,9 +5,9 @@
 package com.malhartech.codec;
 
 import com.malhartech.api.StreamCodec;
-import com.malhartech.api.ObjectMapperString;
+import com.malhartech.api.util.ObjectMapperString;
 import java.io.*;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -33,7 +33,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   }
 
   @Override
-  public Object fromByteArray(Fragment data)
+  public Object fromByteArray(Slice data)
   {
     ByteArrayInputStream bis = new ByteArrayInputStream(data.buffer, data.offset, data.length);
     try {
@@ -45,14 +45,14 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
   }
 
   @Override
-  public Fragment toByteArray(T o)
+  public Slice toByteArray(T o)
   {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
     try {
       mapper.writeValue(bos, o);
       byte[] bytes = bos.toByteArray();
-      return new Fragment(bytes, 0, bytes.length);
+      return new Slice(bytes, 0, bytes.length);
     }
     catch (IOException ex) {
       throw new RuntimeException(ex);

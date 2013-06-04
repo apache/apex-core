@@ -45,7 +45,7 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.malhartech.stream.*;
-import com.malhartech.util.ScheduledThreadPoolExecutor;
+import com.malhartech.stram.util.ScheduledThreadPoolExecutor;
 import java.io.InputStream;
 
 /**

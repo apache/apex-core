@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram.webapp;
 
-import com.malhartech.annotation.RecordField;
+import com.malhartech.api.annotation.RecordField;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;

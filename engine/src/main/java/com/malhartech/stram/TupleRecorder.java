@@ -20,14 +20,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.Operator;
-import com.malhartech.api.PubSubWebSocketClient;
+import com.malhartech.api.util.PubSubWebSocketClient;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.codec.JsonStreamCodec;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 import com.malhartech.tuple.Tuple;
-import com.malhartech.util.HdfsPartFileCollection;
+import com.malhartech.stram.util.HdfsPartFileCollection;
 
 /**
  *
@@ -250,7 +250,7 @@ public class TupleRecorder
         }
       }
 
-      Fragment f = streamCodec.toByteArray(recordInfo);
+      Slice f = streamCodec.toByteArray(recordInfo);
       bos.write(f.buffer, f.offset, f.length);
       bos.write("\n".getBytes());
 
@@ -363,7 +363,7 @@ public class TupleRecorder
   {
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      Fragment f = streamCodec.toByteArray(obj);
+      Slice f = streamCodec.toByteArray(obj);
       PortInfo pi = portMap.get(port);
       String str = "T:" + pi.id + ":" + f.length + ":";
       bos.write(str.getBytes());
@@ -391,7 +391,7 @@ public class TupleRecorder
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       PortInfo pi = portMap.get(port);
-      Fragment f = streamCodec.toByteArray(tuple);
+      Slice f = streamCodec.toByteArray(tuple);
       String str = "C:" + pi.id + ":" + f.length + ":";
       bos.write(str.getBytes());
       bos.write(f.buffer, f.offset, f.length);

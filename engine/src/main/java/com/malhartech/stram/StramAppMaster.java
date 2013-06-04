@@ -67,7 +67,7 @@ import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.security.StramDelegationTokenManager;
 import com.malhartech.stram.webapp.AppInfo;
 import com.malhartech.stram.webapp.StramWebApp;
-import com.malhartech.util.VersionInfo;
+import com.malhartech.stram.util.VersionInfo;
 
 /**
  *

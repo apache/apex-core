@@ -4,7 +4,7 @@
  */
 package com.malhartech.api;
 
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 
 /**
  * Serializing and Deserializing the data tuples and controlling the partitioning
@@ -35,7 +35,7 @@ public interface StreamCodec<T>
    * @param fragment
    * @return plain old java object, the type is intentionally not T since the consumer does not care about it.
    */
-  Object fromByteArray(Fragment fragment);
+  Object fromByteArray(Slice fragment);
 
   /**
    * Serialize the POJO emitted by the upstream node to byte array so that
@@ -44,7 +44,7 @@ public interface StreamCodec<T>
    * @param o plain old java object
    * @return serialized representation of the object
    */
-  Fragment toByteArray(T o);
+  Slice toByteArray(T o);
 
   /**
    * Get the partition on the object to be delivered to the downstream
