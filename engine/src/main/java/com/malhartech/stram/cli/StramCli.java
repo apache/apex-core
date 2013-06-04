@@ -3,6 +3,7 @@
  */
 package com.malhartech.stram.cli;
 
+import com.malhartech.codec.AppConfigSerializer;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
@@ -100,7 +101,7 @@ public class StramCli
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), new String[] {"app-id"}, null, "Shutdown an app"));
     globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(), null, new String[] {"app-id"}, "List applications"));
     globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(), new String[] {"app-id"}, null, "Kill an app"));
-    globalCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), new String[] {"app-id"}, null, "Show logical plan of an app class"));
+    globalCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), new String[] {"jar-file", "class-name"}, null, "Show logical plan of an app class"));
     globalCommands.put("alias", new CommandSpec(new AliasCommand(), new String[] {"alias-name", "command"}, null, "Create a command alias"));
     globalCommands.put("source", new CommandSpec(new SourceCommand(), new String[] {"file"}, null, "Execute the commands in a file"));
     globalCommands.put("exit", new CommandSpec(new ExitCommand(), null, null, "Exit the CLI"));
@@ -115,6 +116,7 @@ public class StramCli
     connectedCommands.put("start-recording", new CommandSpec(new StartRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Start recording"));
     connectedCommands.put("stop-recording", new CommandSpec(new StopRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Stop recording"));
     connectedCommands.put("sync-recording", new CommandSpec(new SyncRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Sync recording"));
+    connectedCommands.put("get-operator-properties", new CommandSpec(new GetOperatorPropertiesLiveCommand(), new String[] {"operator-name"}, new String[] {"property-name"}, "Get properties of an operator"));
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyLiveCommand(), new String[] {"operator-name", "property-name", "property-value"}, null, "Set a property of an operator"));
     connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(), null, null, "Begin Logical Plan Change"));
 
@@ -302,7 +304,7 @@ public class StramCli
     completors.add(new SimpleCompletor(logicalPlanChangeCommands.keySet().toArray(new String[] {})));
 
     List<Completor> launchCompletors = new LinkedList<Completor>();
-    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local", "source"}));
+    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local", "show-logical-plan", "source"}));
     launchCompletors.add(new FileNameCompletor()); // jarFile
     launchCompletors.add(new FileNameCompletor()); // topology
     completors.add(new ArgumentCompletor(launchCompletors));
@@ -1151,6 +1153,37 @@ public class StramCli
 
   }
 
+  private class GetOperatorPropertiesLiveCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getProperties");
+      if (args.length > 1) {
+        r.queryParam("propertyName", args[1]);
+      }
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        System.out.println(response);
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+  }
+
   private class SetOperatorPropertyLiveCommand implements Command
   {
     @Override
@@ -1215,7 +1248,20 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+      String jarfile = args[1];
+      String appName = args[2];
+      File jf = new File(jarfile);
+      StramAppLauncher submitApp = new StramAppLauncher(jf);
+      submitApp.loadDependencies();
+      List<AppConfig> cfgList = submitApp.getBundledTopologies();
+      for (AppConfig appConfig : cfgList) {
+        if (appName.equals(appConfig.getName())) {
+          ObjectMapper mapper = new ObjectMapper();
+          System.out.println(mapper.defaultPrettyPrintingWriter().writeValueAsString(AppConfigSerializer.convertToMap(appConfig)));
+          return;
+        }
+      }
+      System.out.println("Name not found in jar file");
     }
 
   }

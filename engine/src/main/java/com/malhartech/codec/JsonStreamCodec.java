@@ -29,6 +29,7 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
     SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
     module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
+    module.addSerializer(AppConfig.class, new AppConfigSerializer());
     mapper.registerModule(module);
   }
 
