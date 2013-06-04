@@ -35,11 +35,17 @@ import com.malhartech.stram.webapp.PortInfo;
 import com.malhartech.api.AttributeMap;
 import com.malhartech.common.Pair;
 import com.malhartech.stram.plan.logical.LogicalPlanRequest;
+import com.malhartech.stram.plan.physical.PlanModifier;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.FutureTask;
+
 import javax.annotation.Nullable;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -1160,10 +1166,53 @@ public class StreamingContainerManager implements PlanContext
 
   }
 
-  public void logicalPlanModification(List<LogicalPlanRequest> requests)
+  /**
+   * Asynchronously process the logical, physical plan and execution layer changes.
+   * Caller can use the returned future to block until processing is complete.
+   * @param requests
+   * @return
+   * @throws Exception
+   */
+  public FutureTask<Object> logicalPlanModification(List<LogicalPlanRequest> requests) throws Exception
   {
-    for (LogicalPlanRequest request : requests) {
-      LOG.info("Logical Plan Modification not supported yet - {}", request);
+    // delegate processing to dispatch thread
+    FutureTask<Object> future = new FutureTask<Object>(new LogicalPlanChangeRunnable(requests));
+    dispatch(future);
+    return future;
+  }
+
+  private class LogicalPlanChangeRunnable implements java.util.concurrent.Callable<Object> {
+    final List<LogicalPlanRequest> requests;
+
+    private LogicalPlanChangeRunnable(List<LogicalPlanRequest> requests)
+    {
+      this.requests = requests;
+    }
+
+    @Override
+    public Object call() throws Exception {
+      // clone logical plan, for dry run and validation
+      LogicalPlan lp = plan.getDAG();
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      LogicalPlan.write(lp, bos);
+      bos.flush();
+      ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+      lp = LogicalPlan.read(bis);
+
+      PlanModifier pm = new PlanModifier(lp);
+      for (LogicalPlanRequest request : requests) {
+        request.execute(pm);
+      }
+
+      lp.validate();
+
+      // perform changes on live plan
+      pm = new PlanModifier(plan);
+      for (LogicalPlanRequest request : requests) {
+        request.execute(pm);
+      }
+      pm.applyChanges(StreamingContainerManager.this);
+      return null;
     }
   }
 

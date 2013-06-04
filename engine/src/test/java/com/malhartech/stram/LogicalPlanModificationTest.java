@@ -1,26 +1,28 @@
 package com.malhartech.stram;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.FutureTask;
 
 import junit.framework.Assert;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.common.collect.Sets;
 import com.malhartech.engine.GenericTestOperator;
+import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTInput;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.PhysicalPlanTest.TestPlanContext;
+import com.malhartech.stram.plan.logical.CreateOperatorRequest;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.malhartech.stram.plan.logical.LogicalPlanRequest;
 import com.malhartech.stram.plan.physical.PlanModifier;
 
 public class LogicalPlanModificationTest {
 
-  @Ignore
   @Test
   public void testAddOperator()
   {
@@ -35,15 +37,19 @@ public class LogicalPlanModificationTest {
 
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    ctx.deploy.clear();
+    ctx.undeploy.clear();
 
-    PlanModifier pm = new PlanModifier(plan, ctx);
+    PlanModifier pm = new PlanModifier(plan);
     GenericTestOperator added1 = new GenericTestOperator();
     pm.addOperator("added1", added1);
 
-    @SuppressWarnings("unchecked")
-    StreamMeta sm = pm.addStream("added1.outport1", added1.outport1, o3.inport2);
+    pm.addStream("added1.outport1", added1.outport1, o3.inport2);
 
-    pm.applyChanges();
+    Assert.assertEquals("undeploy " + ctx.undeploy, 0, ctx.undeploy.size());
+    Assert.assertEquals("deploy " + ctx.deploy, 0, ctx.deploy.size());
+
+    pm.applyChanges(ctx);
 
     Assert.assertEquals("undeploy " + ctx.undeploy, 1, ctx.undeploy.size());
     Assert.assertEquals("deploy " + ctx.deploy, 2, ctx.deploy.size());
@@ -63,9 +69,9 @@ public class LogicalPlanModificationTest {
     TestPlanContext ctx = new TestPlanContext();
     PhysicalPlan plan = new PhysicalPlan(dag, ctx);
 
-    PlanModifier pm = new PlanModifier(plan, ctx);
+    PlanModifier pm = new PlanModifier(plan);
     pm.removeStream("o1.outport1");
-    pm.applyChanges();
+    pm.applyChanges(ctx);
 
     Assert.assertEquals("undeploy " + ctx.undeploy, 2, ctx.undeploy.size());
     Assert.assertEquals("deploy " + ctx.deploy, 2, ctx.deploy.size());
@@ -94,10 +100,10 @@ public class LogicalPlanModificationTest {
     Assert.assertEquals("outputs " + o1p1, 0, o1p1.outputs.size());
     Assert.assertEquals("inputs " + o2p1, 0, o2p1.inputs.size());
 
-    PlanModifier pm = new PlanModifier(plan, ctx);
+    PlanModifier pm = new PlanModifier(plan);
     pm.addStream("o1.outport1", o1.outport1, o2.inport1);
     pm.addStream("o1.outport1", o1.outport1, o2.inport2);
-    pm.applyChanges();
+    pm.applyChanges(ctx);
 
     Assert.assertEquals("undeploy " + ctx.undeploy, 2, ctx.undeploy.size());
     Assert.assertEquals("deploy " + ctx.deploy, 2, ctx.deploy.size());
@@ -110,6 +116,37 @@ public class LogicalPlanModificationTest {
     }
     Set<String> expPortNames = Sets.newHashSet(GenericTestOperator.IPORT1, GenericTestOperator.IPORT2);
     Assert.assertEquals("input port names " + o2p1.inputs, expPortNames, portNames);
+
+  }
+
+  @Test
+  public void testExecutionManager() throws Exception {
+
+    LogicalPlan dag = new LogicalPlan();
+    StreamingContainerManager dnm = new StreamingContainerManager(dag);
+    Assert.assertEquals(""+dnm.containerStartRequests, dnm.containerStartRequests.size(), 0);
+
+
+    CreateOperatorRequest cor = new CreateOperatorRequest();
+    cor.setOperatorFQCN(GenericTestOperator.class.getName());
+    cor.setOperatorName("o1");
+
+    FutureTask<?> lpmf = dnm.logicalPlanModification(Collections.<LogicalPlanRequest>singletonList(cor));
+    while (!lpmf.isDone()) {
+      dnm.processEvents();
+    }
+
+    lpmf.get();
+
+    Assert.assertEquals(""+dnm.containerStartRequests, 1, dnm.containerStartRequests.size());
+    PTContainer c = dnm.containerStartRequests.poll().container;
+    Assert.assertEquals("operators "+c, 1, c.operators.size());
+
+    Assert.assertEquals("deploy requests " + c, 1, c.pendingDeploy.size());
+
+    PTOperator oper = c.operators.get(0);
+    Assert.assertEquals("operator name", "o1", oper.getOperatorMeta().getId());
+    Assert.assertEquals("operator class", GenericTestOperator.class, oper.getOperatorMeta().getOperator().getClass());
 
   }
 

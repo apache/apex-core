@@ -4,6 +4,8 @@
  */
 package com.malhartech.stram.plan.logical;
 
+import com.malhartech.stram.plan.physical.PlanModifier;
+
 /**
  *
  * @author David Yan <davidyan@malhar-inc.com>
@@ -13,6 +15,6 @@ public abstract class LogicalPlanRequest
   public String getRequestType() {
     return this.getClass().getName();
   }
-  
-  public abstract void execute();
+
+  public abstract void execute(PlanModifier pm);
 }

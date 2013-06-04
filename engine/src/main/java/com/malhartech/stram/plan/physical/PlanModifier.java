@@ -13,23 +13,38 @@ import com.malhartech.stram.PhysicalPlan.PTOperator;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.malhartech.stram.plan.logical.Operators;
 
+/**
+ * Modification of the query plan on running application. Will first apply
+ * logical plan changes on a copy of the logical plan and then apply changes to
+ * the original and physical plan after validation passes.
+ */
 public class PlanModifier {
 
   final private LogicalPlan logicalPlan;
   final private PhysicalPlan physicalPlan;
-  final private PhysicalPlan.PlanContext physicalPlanContext;
 
   private final Set<PTOperator> affectedOperators = Sets.newHashSet();
-  private final Set<OperatorMeta> newLogicalOperators = Sets.newHashSet();
+  private final Set<PTOperator> newOperators = Sets.newHashSet();
 
-  public PlanModifier(PhysicalPlan plan, PhysicalPlan.PlanContext ctx) {
+  /**
+   * For dry run on logical plan only
+   * @param logicalPlan
+   */
+  public PlanModifier(LogicalPlan logicalPlan) {
+    this.logicalPlan = logicalPlan;
+    this.physicalPlan = null;
+  }
+
+  /**
+   * For modification of physical plan
+   * @param plan
+   */
+  public PlanModifier(PhysicalPlan plan) {
     this.physicalPlan = plan;
     this.logicalPlan = plan.getDAG();
-    this.physicalPlanContext = ctx;
   }
 
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<?>... sinks) {
@@ -61,7 +76,7 @@ public class PlanModifier {
 
   /**
    * Add stream to logical plan. If a stream with same name and source already
-   * exists, it will be connected to the new downstream operator.
+   * exists, the new downstream operator will be attached to it.
    *
    * @param streamName
    * @param sourceOperName
@@ -124,25 +139,31 @@ public class PlanModifier {
    * Add operator to logical plan.
    * @param name
    */
-  public void addOperator(String name, Operator operator) {
+  public void addOperator(String name, Operator operator)
+  {
     logicalPlan.addOperator(name, operator);
     // add to physical plan after all changes are done
-    newLogicalOperators.add(logicalPlan.getMeta(operator));
+    if (physicalPlan != null) {
+      OperatorMeta om = logicalPlan.getMeta(operator);
+      physicalPlan.addLogicalOperator(om);
+      // keep track of new instances
+      newOperators.addAll(physicalPlan.getOperators(om));
+    }
+  }
+
+  /**
+   * Remove named operator and any stream associations.
+   * @param name
+   */
+  public void removeOperator(String name)
+  {
+    throw new UnsupportedOperationException();
   }
 
   /**
    * Process all changes in the logical plan.
    */
-  public void applyChanges() {
-
-    Set<PTOperator> newOperators = Sets.newHashSet();
-    if (physicalPlan != null) {
-      for (OperatorMeta om : this.newLogicalOperators) {
-        physicalPlan.addLogicalOperator(om);
-        // keep track of new instances
-        newOperators.addAll(physicalPlan.getOperators(om));
-      }
-    }
+  public void applyChanges(PhysicalPlan.PlanContext physicalPlanContext) {
 
     // assign containers
     Set<PTContainer> newContainers = Sets.newHashSet();
@@ -156,10 +177,11 @@ public class PlanModifier {
 
     Set<PTOperator> redeployOperators = physicalPlan.getDependents(this.affectedOperators);
     undeployOperators.addAll(redeployOperators);
+    undeployOperators.removeAll(newOperators);
+
     deployOperators.addAll(redeployOperators);
 
     physicalPlanContext.deploy(Collections.<PTContainer>emptySet(), undeployOperators, newContainers, deployOperators);
-
   }
 
 }
