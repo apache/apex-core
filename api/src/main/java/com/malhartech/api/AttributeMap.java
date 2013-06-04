@@ -39,6 +39,7 @@ public interface AttributeMap<CONTEXT>
    * Return the attribute value for the given key. If the map does not have an
    * entry for the key, a default attribute value will be returned.
    *
+   * @param <T>
    * @param key
    * @return <T> Attribute<T>
    */
@@ -50,6 +51,7 @@ public interface AttributeMap<CONTEXT>
    * default without creating empty default attributes when asked for a key that
    * is not mapped.
    *
+   * @param <T>
    * @param key
    * @param defaultValue
    * @return <T> T
@@ -58,6 +60,8 @@ public interface AttributeMap<CONTEXT>
 
   /**
    * Scoped attribute key. Subclasses define scope.
+   * @param <CONTEXT>
+   * @param <T>
    */
   abstract public static class AttributeKey<CONTEXT, T>
   {
@@ -94,6 +98,7 @@ public interface AttributeMap<CONTEXT>
   /**
    * Attribute map records values against String keys and can therefore be serialized
    * ({@link AttributeKey} cannot be serialized)
+   * @param <CONTEXT>
    */
   public class DefaultAttributeMap<CONTEXT> implements AttributeMap<CONTEXT>, Serializable
   {
