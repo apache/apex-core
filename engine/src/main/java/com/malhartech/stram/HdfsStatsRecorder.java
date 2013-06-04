@@ -4,13 +4,13 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.codec.JsonStreamCodec;
-import com.malhartech.annotation.RecordField;
+import com.malhartech.api.codec.JsonStreamCodec;
+import com.malhartech.api.annotation.RecordField;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.stram.webapp.ContainerInfo;
 import com.malhartech.stram.webapp.OperatorInfo;
-import com.malhartech.common.Fragment;
-import com.malhartech.util.HdfsPartFileCollection;
+import com.malhartech.common.util.Slice;
+import com.malhartech.stram.util.HdfsPartFileCollection;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -66,7 +66,7 @@ public class HdfsStatsRecorder
           knownContainers.put(entry.getKey(), containerIndex);
           Map<String, Object> fieldMap = extractRecordFields(containerInfo, "meta");
           ByteArrayOutputStream bos = new ByteArrayOutputStream();
-          Fragment f = streamCodec.toByteArray(fieldMap);
+          Slice f = streamCodec.toByteArray(fieldMap);
           bos.write((String.valueOf(containerIndex) + ":").getBytes());
           bos.write(f.buffer, f.offset, f.length);
           bos.write("\n".getBytes());
@@ -77,7 +77,7 @@ public class HdfsStatsRecorder
         }
         Map<String, Object> fieldMap = extractRecordFields(containerInfo, "stats");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        Fragment f = streamCodec.toByteArray(fieldMap);
+        Slice f = streamCodec.toByteArray(fieldMap);
         bos.write((String.valueOf(containerIndex) + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());
@@ -108,7 +108,7 @@ public class HdfsStatsRecorder
           knownOperators.add(operatorInfo.id);
           Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "meta");
           ByteArrayOutputStream bos = new ByteArrayOutputStream();
-          Fragment f = streamCodec.toByteArray(fieldMap);
+          Slice f = streamCodec.toByteArray(fieldMap);
           bos.write((operatorInfo.id + ":").getBytes());
           bos.write(f.buffer, f.offset, f.length);
           bos.write("\n".getBytes());
@@ -116,7 +116,7 @@ public class HdfsStatsRecorder
         }
         Map<String, Object> fieldMap = extractRecordFields(operatorInfo, "stats");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        Fragment f = streamCodec.toByteArray(fieldMap);
+        Slice f = streamCodec.toByteArray(fieldMap);
         bos.write((operatorInfo.id + ":").getBytes());
         bos.write(f.buffer, f.offset, f.length);
         bos.write("\n".getBytes());

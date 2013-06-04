@@ -40,8 +40,8 @@ import org.junit.Test;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.google.common.collect.Sets;
-import com.malhartech.annotation.InputPortFieldAnnotation;
-import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
@@ -58,7 +58,7 @@ import com.malhartech.stram.cli.StramClientUtils;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.malhartech.codec.KryoJdkSerializer;
+import com.malhartech.api.codec.KryoJdkSerializer;
 
 public class DAGBuilderTest {
 

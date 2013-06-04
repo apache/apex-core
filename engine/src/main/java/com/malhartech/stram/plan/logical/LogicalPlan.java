@@ -37,8 +37,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.annotation.InputPortFieldAnnotation;
-import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.AttributeMap;
 import com.malhartech.api.AttributeMap.DefaultAttributeMap;
 import com.malhartech.api.BaseOperator;

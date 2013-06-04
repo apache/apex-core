@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 
 /**
  *
@@ -30,9 +30,9 @@ public class DataTuple extends Tuple
   }
 
   @Override
-  public Fragment getData()
+  public Slice getData()
   {
-    return new Fragment(buffer, offset + 1, length - 1);
+    return new Slice(buffer, offset + 1, length - 1);
   }
 
   @Override
@@ -47,7 +47,7 @@ public class DataTuple extends Tuple
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
-  public static byte[] getSerializedTuple(byte type, Fragment f)
+  public static byte[] getSerializedTuple(byte type, Slice f)
   {
     byte[] array = new byte[f.length + 1];
     array[0] = type;

@@ -5,7 +5,13 @@
 package com.malhartech.api;
 
 /**
+ * A utility class to club component along with the entity such as context or configuration.
  *
+ * We use ComponentComplementPair for better readability of the code compared to using a bare
+ * pair where first and second do not have semantic meaning.
+ *
+ * @param <COMPONENT>
+ * @param <COMPLEMENT>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
 public abstract class ComponentComplementPair<COMPONENT extends Component<?>, COMPLEMENT>
@@ -47,4 +53,5 @@ public abstract class ComponentComplementPair<COMPONENT extends Component<?>, CO
   }
 
   public abstract COMPLEMENT getComplement();
+
 }

@@ -4,6 +4,7 @@
  */
 package com.malhartech.codec;
 
+import com.malhartech.api.codec.KryoJdkSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
@@ -17,7 +18,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
 import com.malhartech.codec.DefaultStatefulStreamCodec.ClassIdPair;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
@@ -116,9 +117,9 @@ public class DefaultStatefulStreamCodecTest
     //String tc = "hello";
 
     DataStatePair dsp1 = coder.toDataStatePair(tc);
-    Fragment state1 = dsp1.state;
+    Slice state1 = dsp1.state;
     DataStatePair dsp2 = coder.toDataStatePair(tc);
-    Fragment state2 = dsp2.state;
+    Slice state2 = dsp2.state;
     assert (state1 != null);
     assert (state2 == null);
     Assert.assertEquals(dsp1.data, dsp2.data);

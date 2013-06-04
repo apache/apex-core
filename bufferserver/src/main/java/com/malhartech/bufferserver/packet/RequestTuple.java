@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 
 /**
  *
@@ -32,7 +32,7 @@ public abstract class RequestTuple extends Tuple
   }
 
   @Override
-  public Fragment getData()
+  public Slice getData()
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }

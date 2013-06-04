@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.malhartech.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DefaultInputPort;

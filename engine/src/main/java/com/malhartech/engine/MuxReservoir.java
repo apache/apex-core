@@ -6,7 +6,7 @@ package com.malhartech.engine;
 
 import com.malhartech.api.Sink;
 import com.malhartech.tuple.Tuple;
-import com.malhartech.util.CircularBuffer;
+import com.malhartech.netlet.util.CircularBuffer;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

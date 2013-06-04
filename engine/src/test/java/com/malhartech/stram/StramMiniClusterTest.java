@@ -54,7 +54,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.annotation.ShipContainingJars;
+import com.malhartech.api.annotation.ShipContainingJars;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.InputOperator;

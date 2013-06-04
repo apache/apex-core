@@ -27,7 +27,7 @@ import com.malhartech.api.AttributeMap;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAGContext;
 import com.malhartech.api.StorageAgent;
-import com.malhartech.common.Pair;
+import com.malhartech.common.util.Pair;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;

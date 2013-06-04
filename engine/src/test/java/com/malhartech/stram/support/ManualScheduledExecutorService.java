@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram.support;
 
-import com.malhartech.util.ScheduledExecutorService;
+import com.malhartech.stram.util.ScheduledExecutorService;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.ScheduledFuture;
