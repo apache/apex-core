@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.api;
+package com.malhartech.api.util;
 
 import java.io.IOException;
 import java.net.URI;
@@ -23,21 +23,11 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class PubSubWebSocketClient
 {
-  private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketClient.class);
   private static final WebSocketClientFactory factory = new WebSocketClientFactory();
   private WebSocketClient client;
   private WebSocket.Connection connection;
   private ObjectMapper mapper = (new JacksonObjectMapperProvider()).getContext(null);
   private URI uri;
-
-  static {
-    try {
-      factory.start();
-    }
-    catch (Exception ex) {
-      LOG.warn("WebSocket initialization failure", ex);
-    }
-  }
 
   private class PubSubWebSocket implements WebSocket.OnTextMessage
   {
@@ -46,6 +36,7 @@ public abstract class PubSubWebSocketClient
     {
       LOG.debug("onMessage {}", message);
       try {
+        @SuppressWarnings("unchecked")
         HashMap<String, Object> map = mapper.readValue(message, HashMap.class);
         PubSubWebSocketClient.this.onMessage((String)map.get("type"), (String)map.get("topic"), map.get("data"));
       }
@@ -171,5 +162,16 @@ public abstract class PubSubWebSocketClient
   public abstract void onMessage(String type, String topic, Object data);
 
   public abstract void onClose(int code, String message);
+
+  private static final Logger LOG = LoggerFactory.getLogger(PubSubWebSocketClient.class);
+
+  static {
+    try {
+      factory.start();
+    }
+    catch (Exception ex) {
+      LOG.warn("WebSocket initialization failure", ex);
+    }
+  }
 
 }
