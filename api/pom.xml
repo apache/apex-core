@@ -9,7 +9,7 @@
   </parent>
 
   <artifactId>malhar-api</artifactId>
-  <name>Malhar API</name>
+  <name>DataTorrent API</name>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

@@ -32,6 +32,7 @@ public class JacksonObjectMapperProvider implements ContextResolver<ObjectMapper
     objectMapper.registerModule(module);
   }
 
+  @Override
   public ObjectMapper getContext(Class<?> type)
   {
     return objectMapper;
