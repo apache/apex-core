@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.codec.JsonStreamCodec;
+import com.malhartech.api.codec.JsonStreamCodec;
 import com.malhartech.api.annotation.RecordField;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.stram.webapp.ContainerInfo;

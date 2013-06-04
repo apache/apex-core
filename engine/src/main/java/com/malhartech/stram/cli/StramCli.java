@@ -3,7 +3,8 @@
  */
 package com.malhartech.stram.cli;
 
-import com.malhartech.codec.AppConfigSerializer;
+import com.malhartech.api.ApplicationFactory;
+import com.malhartech.codec.LogicalPlanSerializer;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
@@ -1257,7 +1258,11 @@ public class StramCli
       for (AppConfig appConfig : cfgList) {
         if (appName.equals(appConfig.getName())) {
           ObjectMapper mapper = new ObjectMapper();
-          System.out.println(mapper.defaultPrettyPrintingWriter().writeValueAsString(AppConfigSerializer.convertToMap(appConfig)));
+          Map<String, Object> map = new HashMap<String, Object>();
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+          map.put("applicationName", appConfig.getName());
+          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
+          System.out.println(mapper.defaultPrettyPrintingWriter().writeValueAsString(map));
           return;
         }
       }

@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.codec;
+package com.malhartech.api.codec;
 
 import java.io.*;
 
@@ -15,7 +15,6 @@ import org.codehaus.jackson.map.ser.impl.RawSerializer;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.api.util.ObjectMapperString;
 import com.malhartech.common.util.Slice;
-import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 
 /**
  *
@@ -32,7 +31,6 @@ public class JsonStreamCodec<T> implements StreamCodec<T>
     mapper.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
     SimpleModule module = new SimpleModule("MyModule", new Version(1, 0, 0, null));
     module.addSerializer(ObjectMapperString.class, new RawSerializer<Object>(Object.class));
-    module.addSerializer(AppConfig.class, new AppConfigSerializer());
     mapper.registerModule(module);
   }
 

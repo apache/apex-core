@@ -24,7 +24,7 @@ import com.malhartech.api.util.PubSubWebSocketClient;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.codec.JsonStreamCodec;
+import com.malhartech.api.codec.JsonStreamCodec;
 import com.malhartech.common.util.Slice;
 import com.malhartech.tuple.Tuple;
 import com.malhartech.stram.util.HdfsPartFileCollection;
