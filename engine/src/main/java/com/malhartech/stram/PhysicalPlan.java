@@ -539,7 +539,7 @@ public class PhysicalPlan {
   /**
    * Interface to execution context that can be mocked for plan testing.
    */
-  interface PlanContext {
+  public interface PlanContext {
 
     /**
      * Dynamic partitioning requires access to operator state for split or merge.
@@ -707,52 +707,7 @@ public class PhysicalPlan {
       }
 
       if (upstreamDeployed) {
-        // ready to look at this node
-        PMapping pnodes = new PMapping(n);
-        localityPrefs.add(pnodes, pnodes.logicalOperator.getAttributes().attrValue(OperatorContext.LOCALITY_HOST, null));
-
-        PMapping upstreamPartitioned = null;
-
-        for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> e : n.getInputStreams().entrySet()) {
-          PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorWrapper());
-          if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false).equals(true)) {
-            // operator partitioned with upstream
-            if (upstreamPartitioned != null) {
-              // need to have common root
-              if (!upstreamPartitioned.parallelPartitions.contains(m.logicalOperator)) {
-                String msg = String.format("operator cannot extend multiple partitions (%s and %s)", upstreamPartitioned.logicalOperator, m.logicalOperator);
-                throw new AssertionError(msg);
-              }
-            }
-            m.parallelPartitions.add(pnodes.logicalOperator);
-            pnodes.parallelPartitions = m.parallelPartitions;
-            upstreamPartitioned = m;
-          }
-
-          if (e.getValue().isInline()) {
-            inlinePrefs.setLocal(m, pnodes);
-          } else if (e.getValue().isNodeLocal()) {
-            localityPrefs.setLocal(m, pnodes);
-          }
-        }
-
-        //
-        // create operator instances
-        //
-        if (pnodes.isPartitionable()) {
-          initPartitioning(pnodes);
-        } else {
-          if (upstreamPartitioned != null) {
-            // parallel partition
-            for (int i=0; i<upstreamPartitioned.partitions.size(); i++) {
-              addPTOperator(pnodes, null);
-            }
-          } else {
-            // single instance, no partitions
-            addPTOperator(pnodes, null);
-          }
-        }
-        this.logicalToPTOperator.put(n, pnodes);
+        addLogicalOperator(n);
       }
     }
 
@@ -992,6 +947,25 @@ public class PhysicalPlan {
       }
     }
 
+    assignContainers(newOperators, newContainers);
+
+    Set<PTContainer> releaseContainers = Sets.newHashSet();
+    // release containers that are no longer used
+    for (PTContainer c : this.containers) {
+      if (c.operators.isEmpty()) {
+        LOG.debug("Container {} to be released", c);
+        releaseContainers.add(c);
+        containers.remove(c);
+      }
+    }
+
+    deployOperators = this.getDependents(deployOperators);
+    containers.addAll(newContainers);
+    ctx.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
+
+  }
+
+  public void assignContainers(Set<PTOperator> newOperators, Set<PTContainer> newContainers) {
     // assign containers to new operators
     for (PTOperator oper : newOperators) {
       PTContainer newContainer = null;
@@ -1019,23 +993,8 @@ public class PhysicalPlan {
           newContainers.add(c);
         }
       }
-      setContainer(oper, c); // TODO: thread safety
+      setContainer(oper, c);
     }
-
-    Set<PTContainer> releaseContainers = Sets.newHashSet();
-    // release containers that are no longer used
-    for (PTContainer c : this.containers) {
-      if (c.operators.isEmpty()) {
-        LOG.debug("Container {} to be released", c);
-        releaseContainers.add(c);
-        containers.remove(c);
-      }
-    }
-
-    deployOperators = this.getDependents(deployOperators);
-    containers.addAll(newContainers);
-    ctx.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
-
   }
 
   private void initCheckpoint(PTOperator partition, Operator operator, long windowId) {
@@ -1099,96 +1058,29 @@ public class PhysicalPlan {
     return null;
   }
 
+  private Map<LogicalPlan.InputPortMeta, PartitionKeys> getPartitionKeys(PTOperator oper) {
+
+    if (oper.partition == null) {
+      return Collections.emptyMap();
+    }
+    HashMap<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Maps.newHashMapWithExpectedSize(oper.partition.getPartitionKeys().size());
+    Map<InputPort<?>, PartitionKeys> partKeys = oper.partition.getPartitionKeys();
+    for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
+      LogicalPlan.InputPortMeta pportMeta = oper.logicalNode.getMeta(portEntry.getKey());
+      if (pportMeta == null) {
+        throw new AssertionError("Invalid port reference " + portEntry);
+      }
+      partitionKeys.put(pportMeta, portEntry.getValue());
+    }
+    return partitionKeys;
+  }
+
   private PTOperator addPTOperator(PMapping nodeDecl, Partition<?> partition) {
     PTOperator pOperator = createInstance(nodeDecl, partition);
     nodeDecl.addPartition(pOperator);
 
-    Map<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = Collections.emptyMap();
-    if (partition != null) {
-      partitionKeys = new HashMap<LogicalPlan.InputPortMeta, PartitionKeys>(partition.getPartitionKeys().size());
-      Map<InputPort<?>, PartitionKeys> partKeys = partition.getPartitionKeys();
-      for (Map.Entry<InputPort<?>, PartitionKeys> portEntry : partKeys.entrySet()) {
-        LogicalPlan.InputPortMeta pportMeta = nodeDecl.logicalOperator.getMeta(portEntry.getKey());
-        if (pportMeta == null) {
-          throw new IllegalArgumentException("Invalid port reference " + portEntry);
-        }
-        partitionKeys.put(pportMeta, portEntry.getValue());
-      }
-    }
-
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : nodeDecl.logicalOperator.getInputStreams().entrySet()) {
-      // find upstream node(s), (can be multiple partitions)
-      StreamMeta streamDecl = inputEntry.getValue();
-      if (streamDecl.getSource() != null) {
-        PMapping upstream = logicalToPTOperator.get(streamDecl.getSource().getOperatorWrapper());
-        Collection<PTOperator> upstreamNodes = upstream.partitions;
-        if (inputEntry.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false)) {
-          if (upstream.partitions.size() < nodeDecl.partitions.size()) {
-            throw new AssertionError("Number of partitions don't match in parallel mapping");
-          }
-          // pick upstream partition for new instance to attach to
-          upstreamNodes = Collections.singletonList(upstream.partitions.get(nodeDecl.partitions.size()-1));
-        }
-        else if (upstream.partitions.size() > 1) {
-          PTOperator mergeNode = upstream.mergeOperators.get(streamDecl.getSource());
-          if (mergeNode == null) {
-            // create the merge operator
-            Unifier<?> unifier = streamDecl.getSource().getUnifier();
-            if (unifier == null) {
-              LOG.debug("Using default unifier for {}", streamDecl.getSource());
-              unifier = new DefaultUnifier();
-            }
-            PortMappingDescriptor mergeDesc = new PortMappingDescriptor();
-            Operators.describe(unifier, mergeDesc);
-            if (mergeDesc.outputPorts.size() != 1) {
-              throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
-            }
-            mergeNode = new PTOperator(this, idSequence.incrementAndGet(), upstream.logicalOperator.getId() + "#merge#" + streamDecl.getSource().getPortName());
-            mergeNode.logicalNode = upstream.logicalOperator;
-            mergeNode.inputs = new ArrayList<PTInput>();
-            mergeNode.outputs = new ArrayList<PTOutput>();
-            mergeNode.merge = unifier;
-            mergeNode.outputs.add(new PTOutput(this, mergeDesc.outputPorts.keySet().iterator().next(), streamDecl, mergeNode));
-
-            PartitionKeys pks = partitionKeys.get(inputEntry.getKey());
-
-            // add existing partitions as inputs
-            for (PTOperator upstreamInstance : upstream.partitions) {
-              for (PTOutput upstreamOut : upstreamInstance.outputs) {
-                if (upstreamOut.logicalStream == streamDecl) {
-                  // merge operator input
-                  PTInput input = new PTInput("<merge#" + streamDecl.getSource().getPortName() + ">", streamDecl, mergeNode, pks, upstreamOut);
-                  mergeNode.inputs.add(input);
-                }
-              }
-            }
-
-            if (pks == null) {
-              upstream.mergeOperators.put(streamDecl.getSource(), mergeNode);
-            } else {
-              // NxM partitioning: create unifier per upstream partition
-              LOG.debug("Partitioned unifier for {} {} {}", new Object[] {pOperator, inputEntry.getKey().getPortName(), pks});
-              pOperator.upstreamMerge.put(inputEntry.getKey(), mergeNode);
-            }
-
-          }
-          upstreamNodes = Collections.singletonList(mergeNode);
-        }
-
-        for (PTOperator upNode : upstreamNodes) {
-          // link to upstream output(s) for this stream
-          for (PTOutput upstreamOut : upNode.outputs) {
-            if (upstreamOut.logicalStream == streamDecl) {
-              PartitionKeys pks = partitionKeys.get(inputEntry.getKey());
-              if (pOperator.upstreamMerge.containsKey(inputEntry.getKey())) {
-                pks = null; // partitions applied to unifier input
-              }
-              PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, pks, upstreamOut);
-              pOperator.inputs.add(input);
-            }
-          }
-        }
-      }
+      connectInput(nodeDecl, pOperator, inputEntry);
     }
 
     //
@@ -1200,6 +1092,128 @@ public class PhysicalPlan {
     return pOperator;
   }
 
+  /**
+   * Create output port mapping for given operator and port.
+   * Occurs when adding new operator (partition) or new logical stream.
+   * Does nothing if source was already setup (on add sink to existing stream).
+   * @param mapping
+   * @param pOperator
+   * @param outputEntry
+   */
+  private void setupOutput(PMapping mapping, PTOperator pOperator, Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry)
+  {
+    for (PTOutput out : pOperator.outputs) {
+      if (out.logicalStream == outputEntry.getValue()) {
+        // already processed
+        return;
+      }
+    }
+
+    PTOutput out = new PTOutput(this, outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
+    pOperator.outputs.add(out);
+
+    PTOperator merge = mapping.mergeOperators.get(outputEntry.getKey());
+    if (merge != null) {
+      // dynamically added partitions need to feed into existing unifier
+      PTInput input = new PTInput("<merge#" + out.portName + ">", out.logicalStream, merge, null, out);
+      merge.inputs.add(input);
+    } else {
+/*
+      // non partitioned operator
+      List<InputPortMeta> inputs = outputEntry.getValue().getSinks();
+      for (InputPortMeta inputMeta : inputs) {
+        PMapping m = this.logicalToPTOperator.get(inputMeta.getOperatorWrapper());
+        if (m != null) {
+          // connect existing operators
+          for (PTOperator downstreamOper : m.partitions) {
+            Map<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = getPartitionKeys(downstreamOper);
+            PartitionKeys pks = partitionKeys.get(inputMeta);
+            PTInput input = new PTInput(inputMeta.getPortName(), outputEntry.getValue(), downstreamOper, pks, out);
+            downstreamOper.inputs.add(input);
+          }
+        }
+      }
+*/
+    }
+  }
+
+  private void connectInput(PMapping nodeDecl, PTOperator pOperator, Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry)
+  {
+    Map<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = getPartitionKeys(pOperator);
+    StreamMeta streamDecl = inputEntry.getValue();
+
+    PMapping upstream = logicalToPTOperator.get(streamDecl.getSource().getOperatorWrapper());
+    Collection<PTOperator> upstreamNodes = upstream.partitions;
+
+    if (inputEntry.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false)) {
+      if (upstream.partitions.size() < nodeDecl.partitions.size()) {
+        throw new AssertionError("Number of partitions don't match in parallel mapping");
+      }
+      // pick upstream partition for new instance to attach to
+      upstreamNodes = Collections.singletonList(upstream.partitions.get(nodeDecl.partitions.size()-1));
+    }
+    else if (upstream.partitions.size() > 1) {
+      PTOperator mergeNode = upstream.mergeOperators.get(streamDecl.getSource());
+      if (mergeNode == null) {
+        // create the merge operator
+        Unifier<?> unifier = streamDecl.getSource().getUnifier();
+        if (unifier == null) {
+          LOG.debug("Using default unifier for {}", streamDecl.getSource());
+          unifier = new DefaultUnifier();
+        }
+        PortMappingDescriptor mergeDesc = new PortMappingDescriptor();
+        Operators.describe(unifier, mergeDesc);
+        if (mergeDesc.outputPorts.size() != 1) {
+          throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
+        }
+        mergeNode = new PTOperator(this, idSequence.incrementAndGet(), upstream.logicalOperator.getId() + "#merge#" + streamDecl.getSource().getPortName());
+        mergeNode.logicalNode = upstream.logicalOperator;
+        mergeNode.inputs = new ArrayList<PTInput>();
+        mergeNode.outputs = new ArrayList<PTOutput>();
+        mergeNode.merge = unifier;
+        mergeNode.outputs.add(new PTOutput(this, mergeDesc.outputPorts.keySet().iterator().next(), streamDecl, mergeNode));
+
+        PartitionKeys pks = partitionKeys.get(inputEntry.getKey());
+
+        // add existing partitions as inputs
+        for (PTOperator upstreamInstance : upstream.partitions) {
+          for (PTOutput upstreamOut : upstreamInstance.outputs) {
+            if (upstreamOut.logicalStream == streamDecl) {
+              // merge operator input
+              PTInput input = new PTInput("<merge#" + streamDecl.getSource().getPortName() + ">", streamDecl, mergeNode, pks, upstreamOut);
+              mergeNode.inputs.add(input);
+            }
+          }
+        }
+
+        if (pks == null) {
+          upstream.mergeOperators.put(streamDecl.getSource(), mergeNode);
+        } else {
+          // NxM partitioning: create unifier per upstream partition
+          LOG.debug("Partitioned unifier for {} {} {}", new Object[] {pOperator, inputEntry.getKey().getPortName(), pks});
+          pOperator.upstreamMerge.put(inputEntry.getKey(), mergeNode);
+        }
+
+      }
+      upstreamNodes = Collections.singletonList(mergeNode);
+    }
+
+    for (PTOperator upNode : upstreamNodes) {
+      // link to upstream output(s) for this stream
+      for (PTOutput upstreamOut : upNode.outputs) {
+        if (upstreamOut.logicalStream == streamDecl) {
+          PartitionKeys pks = partitionKeys.get(inputEntry.getKey());
+          if (pOperator.upstreamMerge.containsKey(inputEntry.getKey())) {
+            pks = null; // partitions applied to unifier input
+          }
+          PTInput input = new PTInput(inputEntry.getKey().getPortName(), streamDecl, pOperator, pks, upstreamOut);
+          pOperator.inputs.add(input);
+        }
+      }
+    }
+
+  }
+
   private PTOperator createInstance(PMapping mapping, Partition<?> partition) {
     PTOperator pOperator = new PTOperator(this, idSequence.incrementAndGet(), mapping.logicalOperator.getId());
     pOperator.logicalNode = mapping.logicalOperator;
@@ -1207,6 +1221,12 @@ public class PhysicalPlan {
     pOperator.outputs = new ArrayList<PTOutput>();
     pOperator.partition = partition;
 
+    // output port objects
+    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
+      setupOutput(mapping, pOperator, outputEntry);
+    }
+
+/*
     // output port objects - these could be deferred until inputs are connected
     for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
       PTOutput out = new PTOutput(this, outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
@@ -1217,8 +1237,24 @@ public class PhysicalPlan {
         // dynamically added partitions need to feed into existing unifier
         PTInput input = new PTInput("<merge#" + out.portName + ">", out.logicalStream, merge, null, out);
         merge.inputs.add(input);
+      } else {
+        // non partitioned operator
+        List<InputPortMeta> inputs = outputEntry.getValue().getSinks();
+        for (InputPortMeta inputMeta : inputs) {
+          PMapping m = this.logicalToPTOperator.get(inputMeta.getOperatorWrapper());
+          if (m != null) {
+            // connect existing operators
+            for (PTOperator downstreamOper : m.partitions) {
+              Map<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = getPartitionKeys(downstreamOper);
+              PartitionKeys pks = partitionKeys.get(inputMeta);
+              PTInput input = new PTInput(inputMeta.getPortName(), outputEntry.getValue(), downstreamOper, pks, out);
+              downstreamOper.inputs.add(input);
+            }
+          }
+        }
       }
     }
+*/
     return pOperator;
   }
 
@@ -1358,6 +1394,151 @@ public class PhysicalPlan {
       }
     }
     return visited;
+  }
+
+  /**
+   * Add logical operator to the plan. Assumes that upstream operators have been added before.
+   * @param om
+   */
+  public void addLogicalOperator(OperatorMeta om) {
+
+    PMapping pnodes = new PMapping(om);
+    localityPrefs.add(pnodes, pnodes.logicalOperator.getAttributes().attrValue(OperatorContext.LOCALITY_HOST, null));
+
+    PMapping upstreamPartitioned = null;
+
+    for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> e : om.getInputStreams().entrySet()) {
+      PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorWrapper());
+      if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false).equals(true)) {
+        // operator partitioned with upstream
+        if (upstreamPartitioned != null) {
+          // need to have common root
+          if (!upstreamPartitioned.parallelPartitions.contains(m.logicalOperator)) {
+            String msg = String.format("operator cannot extend multiple partitions (%s and %s)", upstreamPartitioned.logicalOperator, m.logicalOperator);
+            throw new AssertionError(msg);
+          }
+        }
+        m.parallelPartitions.add(pnodes.logicalOperator);
+        pnodes.parallelPartitions = m.parallelPartitions;
+        upstreamPartitioned = m;
+      }
+
+      if (e.getValue().isInline()) {
+        inlinePrefs.setLocal(m, pnodes);
+      } else if (e.getValue().isNodeLocal()) {
+        localityPrefs.setLocal(m, pnodes);
+      }
+    }
+
+    //
+    // create operator instances
+    //
+    if (pnodes.isPartitionable()) {
+      initPartitioning(pnodes);
+    } else {
+      if (upstreamPartitioned != null) {
+        // parallel partition
+        for (int i=0; i<upstreamPartitioned.partitions.size(); i++) {
+          addPTOperator(pnodes, null);
+        }
+      } else {
+        // single instance, no partitions
+        addPTOperator(pnodes, null);
+      }
+    }
+    this.logicalToPTOperator.put(om, pnodes);
+  }
+
+  public void removeLogicalStream(StreamMeta sm, Set<PTOperator> affectedOperators)
+  {
+    // remove incoming connections for logical stream
+    for (InputPortMeta ipm : sm.getSinks()) {
+      OperatorMeta om = ipm.getOperatorWrapper();
+      PMapping m = this.logicalToPTOperator.get(om);
+      if (m == null) {
+        throw new AssertionError("Unknown operator " + om);
+      }
+      for (PTOperator oper : m.partitions) {
+        List<PTInput> inputsCopy = Lists.newArrayList(oper.inputs);
+        for (PTInput input : oper.inputs) {
+          if (input.logicalStream == sm) {
+            input.source.sinks.remove(input);
+            inputsCopy.remove(input);
+            affectedOperators.add(oper);
+          }
+        }
+        oper.inputs = inputsCopy;
+      }
+    }
+    // remove outgoing connections for logical stream
+    PMapping m = this.logicalToPTOperator.get(sm.getSource().getOperatorWrapper());
+    for (PTOperator oper : m.partitions) {
+      List<PTOutput> outputsCopy = Lists.newArrayList(oper.outputs);
+      for (PTOutput out : oper.outputs) {
+        if (out.logicalStream == sm) {
+          for (PTInput input : out.sinks) {
+            PTOperator downstreamOper = (PTOperator)input.source.source;
+            downstreamOper.inputs.remove(input);
+            affectedOperators.add(downstreamOper);
+          }
+          outputsCopy.remove(out);
+          affectedOperators.add(oper);
+        }
+      }
+      oper.outputs = outputsCopy;
+    }
+  }
+
+  /**
+   * Connect operators through stream. Currently new stream will not affect container or node locality.
+   * @param sm
+   * @param affectedOperators
+   */
+/*
+  public void addLogicalStream(StreamMeta sm, Set<PTOperator> affectedOperators)
+  {
+    // initialize outputs for existing operators
+    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : sm.getSource().getOperatorWrapper().getOutputStreams().entrySet()) {
+      PMapping sourceOpers = this.logicalToPTOperator.get(outputEntry.getKey().getOperatorWrapper());
+      for (PTOperator oper : sourceOpers.partitions) {
+        setupOutput(sourceOpers, oper, outputEntry);
+        affectedOperators.add(oper);
+      }
+    }
+
+    // downstream inputs
+    for (InputPortMeta sink : sm.getSinks()) {
+      for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : sink.getOperatorWrapper().getInputStreams().entrySet()) {
+        if (inputEntry.getKey() == sink) {
+          PMapping m = this.logicalToPTOperator.get(sink.getOperatorWrapper());
+          for (PTOperator oper : m.partitions) {
+            connectInput(m, oper, inputEntry);
+            affectedOperators.add(oper);
+          }
+        }
+      }
+    }
+  }
+*/
+  public void connectInput(InputPortMeta ipm, Set<PTOperator> affectedOperators)
+  {
+    for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> inputEntry : ipm.getOperatorWrapper().getInputStreams().entrySet()) {
+      if (inputEntry.getKey() == ipm) {
+        // initialize outputs for existing operators
+        for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : inputEntry.getValue().getSource().getOperatorWrapper().getOutputStreams().entrySet()) {
+          PMapping sourceOpers = this.logicalToPTOperator.get(outputEntry.getKey().getOperatorWrapper());
+          for (PTOperator oper : sourceOpers.partitions) {
+            setupOutput(sourceOpers, oper, outputEntry); // idempotent
+            affectedOperators.add(oper);
+          }
+        }
+        PMapping m = this.logicalToPTOperator.get(ipm.getOperatorWrapper());
+        for (PTOperator oper : m.partitions) {
+          connectInput(m, oper, inputEntry);
+          affectedOperators.add(oper);
+        }
+      }
+    }
   }
 
 }

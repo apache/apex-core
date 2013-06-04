@@ -28,13 +28,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
+import com.malhartech.codec.LogicalPlanSerializer;
 import com.malhartech.stram.StramAppContext;
 import com.malhartech.stram.StramChildAgent;
 import com.malhartech.stram.StreamingContainerManager;
+import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlanRequest;
+import java.io.IOException;
 import java.util.*;
 import javax.ws.rs.*;
 import org.apache.commons.beanutils.BeanUtils;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
 
 /**
@@ -281,6 +285,16 @@ public class StramWebServices
       }
       return json;
     }
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject getLogicalPlan() throws JSONException, IOException
+  {
+    ObjectMapper mapper = new ObjectMapper();
+    LogicalPlan lp = dagManager.getLogicalPlan();
+    return new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(lp)));
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
