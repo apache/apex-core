@@ -4,6 +4,8 @@
  */
 package com.malhartech.stram.plan.logical;
 
+import com.malhartech.stram.plan.physical.PlanModifier;
+
 /**
  *
  * @author David Yan <davidyan@malhar-inc.com>
@@ -45,7 +47,7 @@ public class SetOperatorAttributeRequest extends LogicalPlanRequest
   }
 
   @Override
-  public void execute()
+  public void execute(PlanModifier pm)
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }

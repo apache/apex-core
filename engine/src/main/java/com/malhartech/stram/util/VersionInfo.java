@@ -27,7 +27,6 @@ public class VersionInfo {
   private static String revision = "Unknown";
 
   static {
-    LOG.debug("Version from manifest");
     try {
       Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources(JarFile.MANIFEST_NAME);
       while (resources.hasMoreElements()) {
