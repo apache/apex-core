@@ -787,6 +787,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       try {
+        JSONObject singleKeyObj = new JSONObject();
         JSONArray jsonArray = new JSONArray();
         List<ApplicationReport> appList = getApplicationList();
         Collections.sort(appList, new Comparator<ApplicationReport>()
@@ -838,7 +839,8 @@ public class StramCli
             }
           }
         }
-        System.out.println(jsonArray.toString(2));
+        singleKeyObj.put("apps", jsonArray);
+        System.out.println(singleKeyObj.toString(2));
         System.out.println(runningCnt + " active, total " + totalCnt + " applications.");
       }
       catch (Exception ex) {
@@ -977,9 +979,14 @@ public class StramCli
         // filter operators
         JSONArray arr = json.getJSONArray(singleKey);
         for (int i = 0; i < arr.length(); i++) {
-          Object val = arr.get(i);
-          if (val.toString().matches(args[1])) {
-            matches.put(val);
+          JSONObject oper = arr.getJSONObject(i);
+          @SuppressWarnings("unchecked")
+          Iterator<String> keys = oper.keys();
+          while (keys.hasNext()) {
+            if (oper.get(keys.next()).toString().matches(".*"+args[1]+".*")) {
+              matches.put(oper);
+              break;
+            }
           }
         }
         json.put(singleKey, matches);
