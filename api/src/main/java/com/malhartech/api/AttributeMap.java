@@ -5,8 +5,7 @@
 package com.malhartech.api;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -57,6 +56,14 @@ public interface AttributeMap<CONTEXT>
    * @return <T> T
    */
   <T> T attrValue(AttributeKey<CONTEXT, T> key, T defaultValue);
+
+
+  /**
+   * Return the value map
+   *
+   * @return
+   */
+  Map<String, Object> valueMap();
 
   /**
    * Scoped attribute key. Subclasses define scope.
@@ -137,6 +144,17 @@ public interface AttributeMap<CONTEXT>
       T val = attr.get();
       return val != null ? val : defaultValue;
     }
+
+    @Override
+    public Map<String, Object> valueMap()
+    {
+      Map<String, Object> valueMap = new HashMap<String, Object>();
+      for (Map.Entry<String, DefaultAttribute<?>> entry : this.map.entrySet()) {
+        valueMap.put(entry.getKey(), entry.getValue().get());
+      }
+      return valueMap;
+    }
+
 
     private class DefaultAttribute<T> extends AtomicReference<T> implements Attribute<T>, Serializable
     {

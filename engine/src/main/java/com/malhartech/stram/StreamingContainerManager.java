@@ -37,8 +37,12 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
 import com.malhartech.api.AttributeMap;
+import com.malhartech.api.AttributeMap.AttributeKey;
 import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAGContext;
+import com.malhartech.api.Operator.InputPort;
+import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.StorageAgent;
 import com.malhartech.common.util.Pair;
 import com.malhartech.engine.OperatorStats;
@@ -61,8 +65,10 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContain
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlanRequest;
+import com.malhartech.stram.plan.logical.Operators;
 import com.malhartech.stram.plan.physical.PlanModifier;
 import com.malhartech.stram.webapp.OperatorInfo;
 import com.malhartech.stram.webapp.PortInfo;
@@ -1182,7 +1188,46 @@ public class StreamingContainerManager implements PlanContext
 
   }
 
-  public Map<String, Object> getOperatorProperties(String operatorId, String propertyName)
+  public Map<String, Object> getApplicationAttributes()
+  {
+    LogicalPlan lp = getLogicalPlan();
+    AttributeMap<DAGContext> attributes = lp.getAttributes();
+    return attributes.valueMap();
+  }
+
+  public Map<String, Object> getOperatorAttributes(String operatorId)
+  {
+    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    if (logicalOperator == null) {
+      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+    }
+    AttributeMap<OperatorContext> attributes = logicalOperator.getAttributes();
+    return attributes.valueMap();
+  }
+
+  public Map<String, Object> getPortAttributes(String operatorId, String portName)
+  {
+    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    if (logicalOperator == null) {
+      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+    }
+    AttributeMap<PortContext> attributes;
+    Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
+    Operators.describe(logicalOperator.getOperator(), portMap);
+    InputPort<?> inputPort = portMap.inputPorts.get(portName);
+    if (inputPort != null) {
+      attributes = logicalOperator.getMeta(inputPort).getAttributes();
+    } else {
+      OutputPort<?> outputPort = portMap.outputPorts.get(portName);
+      if (outputPort == null) {
+        throw new IllegalArgumentException("Invalid port name " + portName);
+      }
+      attributes = logicalOperator.getMeta(outputPort).getAttributes();
+    }
+    return attributes.valueMap();
+  }
+
+  public Map<String, Object> getOperatorProperties(String operatorId)
   {
     OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
     if (logicalOperator == null) {

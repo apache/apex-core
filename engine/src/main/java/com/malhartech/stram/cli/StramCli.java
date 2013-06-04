@@ -117,8 +117,11 @@ public class StramCli
     connectedCommands.put("start-recording", new CommandSpec(new StartRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Start recording"));
     connectedCommands.put("stop-recording", new CommandSpec(new StopRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Stop recording"));
     connectedCommands.put("sync-recording", new CommandSpec(new SyncRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Sync recording"));
-    connectedCommands.put("get-operator-properties", new CommandSpec(new GetOperatorPropertiesLiveCommand(), new String[] {"operator-name"}, new String[] {"property-name"}, "Get properties of an operator"));
-    connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyLiveCommand(), new String[] {"operator-name", "property-name", "property-value"}, null, "Set a property of an operator"));
+    connectedCommands.put("get-operator-attributes", new CommandSpec(new GetOperatorAttributesCommand(), new String[] {"operator-name"}, new String[] {"attribute-name"}, "Get attributes of an operator"));
+    connectedCommands.put("get-operator-properties", new CommandSpec(new GetOperatorPropertiesCommand(), new String[] {"operator-name"}, new String[] {"property-name"}, "Get properties of an operator"));
+    connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyCommand(), new String[] {"operator-name", "property-name", "property-value"}, null, "Set a property of an operator"));
+    connectedCommands.put("get-app-attributes", new CommandSpec(new GetAppAttributesCommand(), null, new String[] {"attribute-name"}, "Get attributes of the connected app"));
+    connectedCommands.put("get-port-attributes", new CommandSpec(new GetPortAttributesCommand(), new String[] {"operator-name", "port-name"}, new String[] {"attribute-name"}, "Get attributes of a port"));
     connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(), null, null, "Begin Logical Plan Change"));
     connectedCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), null, new String[] {"jar-file", "class-name"}, "Show logical plan of an app class"));
 
@@ -983,7 +986,7 @@ public class StramCli
           @SuppressWarnings("unchecked")
           Iterator<String> keys = oper.keys();
           while (keys.hasNext()) {
-            if (oper.get(keys.next()).toString().matches(".*"+args[1]+".*")) {
+            if (oper.get(keys.next()).toString().matches(".*" + args[1] + ".*")) {
               matches.put(oper);
               break;
             }
@@ -1163,7 +1166,100 @@ public class StramCli
 
   }
 
-  private class GetOperatorPropertiesLiveCommand implements Command
+  private class GetAppAttributesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN).path("getAttributes");
+      if (args.length > 1) {
+        r.queryParam("attributeName", args[1]);
+      }
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        System.out.println(response.toString(2));
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+  }
+
+  private class GetOperatorAttributesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getAttributes");
+      if (args.length > 1) {
+        r.queryParam("attributeName", args[1]);
+      }
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        System.out.println(response.toString(2));
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+  }
+
+  private class GetPortAttributesCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (currentApp == null) {
+        throw new CliException("No application selected");
+      }
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path(args[2]).path("getAttributes");
+      if (args.length > 1) {
+        r.queryParam("attributeName", args[1]);
+      }
+      try {
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        System.out.println(response.toString(2));
+      }
+      catch (Exception e) {
+        throw new CliException("Failed to request " + r.getURI(), e);
+      }
+    }
+  }
+
+  private class GetOperatorPropertiesCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
@@ -1195,7 +1291,7 @@ public class StramCli
 
   }
 
-  private class SetOperatorPropertyLiveCommand implements Command
+  private class SetOperatorPropertyCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
@@ -1203,9 +1299,19 @@ public class StramCli
       if (currentApp == null) {
         throw new CliException("No application selected");
       }
-      WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("setProperty");
-      try {
+      if (changingLogicalPlan) {
+        String operatorName = args[1];
+        String propertyName = args[2];
+        String propertyValue = args[3];
+        SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
+        request.setOperatorName(operatorName);
+        request.setPropertyName(propertyName);
+        request.setPropertyValue(propertyValue);
+        logicalPlanRequestQueue.add(request);
+      }
+      else {
+        WebServicesClient webServicesClient = new WebServicesClient();
+        WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("setProperty");
         final JSONObject request = new JSONObject();
         request.put("propertyName", args[2]);
         request.put("propertyValue", args[3]);
@@ -1220,26 +1326,6 @@ public class StramCli
         });
         System.out.println("request submitted: " + response);
       }
-      catch (Exception e) {
-        throw new CliException("Failed to request " + r.getURI(), e);
-      }
-    }
-
-  }
-
-  private class SetOperatorPropertyCommand implements Command
-  {
-    @Override
-    public void execute(String[] args, ConsoleReader reader) throws Exception
-    {
-      String operatorName = args[1];
-      String propertyName = args[2];
-      String propertyValue = args[3];
-      SetOperatorPropertyRequest request = new SetOperatorPropertyRequest();
-      request.setOperatorName(operatorName);
-      request.setPropertyName(propertyName);
-      request.setPropertyValue(propertyValue);
-      logicalPlanRequestQueue.add(request);
     }
 
   }
