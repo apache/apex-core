@@ -29,19 +29,18 @@ import org.codehaus.jackson.map.SerializerProvider;
  */
 @Provider
 @Produces("application/json")
-public class AppConfigSerializer extends JsonSerializer<AppConfig>
+public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
 {
 
-  public static Map<String, Object> convertToMap(AppConfig appConfig)
+  public static Map<String, Object> convertToMap(LogicalPlan dag)
   {
     HashMap<String, Object> result = new HashMap<String, Object>();
     HashMap<String, Object> operatorMap = new HashMap<String, Object>();
     HashMap<String, Object> streamMap = new HashMap<String, Object>();
-    result.put("applicationName", appConfig.getName());
+    //result.put("applicationName", appConfig.getName());
     result.put("operators", operatorMap);
     result.put("streams", streamMap);
-    LogicalPlan dag = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
-
+    //LogicalPlan dag = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
     //
     // should we put the DAGContext info here?
     //
@@ -135,8 +134,8 @@ public class AppConfigSerializer extends JsonSerializer<AppConfig>
   }
 
   @Override
-  public void serialize(AppConfig appConfig, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException
+  public void serialize(LogicalPlan dag, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException
   {
-    jg.writeObject(convertToMap(appConfig));
+    jg.writeObject(convertToMap(dag));
   }
 }

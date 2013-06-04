@@ -1176,6 +1176,11 @@ public class StreamingContainerManager implements PlanContext
     return DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
   }
 
+  public LogicalPlan getLogicalPlan()
+  {
+    return plan.getDAG();
+  }
+
   public void logicalPlanModification(List<LogicalPlanRequest> requests)
   {
     for (LogicalPlanRequest request : requests) {
