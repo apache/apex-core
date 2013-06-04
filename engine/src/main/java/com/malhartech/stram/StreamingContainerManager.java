@@ -1011,6 +1011,7 @@ public class StreamingContainerManager implements PlanContext
     ni.host = operator.container.host;
     ni.id = Integer.toString(operator.getId());
     ni.name = operator.getName();
+    ni.className = operator.getOperatorMeta().getOperator().getClass().getName();
     ni.status = operator.getState().toString();
 
     if (os != null) {
