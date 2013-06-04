@@ -5,7 +5,7 @@
 package com.malhartech.codec;
 
 import com.malhartech.api.StreamCodec;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 
 /**
  *
@@ -22,7 +22,7 @@ public interface StatefulStreamCodec<T> extends StreamCodec<T>
     /**
      * This byte array corresponds to serialized form of the tuple of type T.
      */
-    public Fragment data;
+    public Slice data;
     /**
      * This byte array corresponds to serialized form the incremental state the
      * codec built while serializing the tuple into data field.
@@ -42,7 +42,7 @@ public interface StatefulStreamCodec<T> extends StreamCodec<T>
      * this serializer in the same order as it was created. Due to the nature of the partitioning
      * the accompanying data field may not make it to the deserializer.
      */
-    public Fragment state;
+    public Slice state;
   }
 
   /**

@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram.webapp;
 
-import com.malhartech.annotation.RecordField;
+import com.malhartech.api.annotation.RecordField;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;

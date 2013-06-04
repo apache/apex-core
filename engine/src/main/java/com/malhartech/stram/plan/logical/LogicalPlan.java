@@ -4,9 +4,6 @@
  */
 package com.malhartech.stram.plan.logical;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.Externalizable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInput;
@@ -40,8 +37,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.annotation.InputPortFieldAnnotation;
-import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.AttributeMap;
 import com.malhartech.api.AttributeMap.DefaultAttributeMap;
 import com.malhartech.api.BaseOperator;
@@ -49,11 +46,12 @@ import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAG;
 import com.malhartech.api.DAGContext;
-import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.engine.Node;
+import com.malhartech.stram.OperatorDeployInfo.OperatorType;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -77,37 +75,26 @@ public class LogicalPlan implements Serializable, DAG
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
 
-  public static class ExternalizableModule implements Externalizable
+  public static class OperatorProxy implements Serializable
   {
     private static final long serialVersionUID = 201305221606L;
-    private Operator module;
+    private Operator operator;
 
-    private void set(Operator module)
+    private void set(Operator operator)
     {
-      this.module = module;
+      this.operator = operator;
     }
 
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    private void writeObject(ObjectOutputStream out) throws IOException
     {
-      int len = in.readInt();
-      byte[] bytes = new byte[len];
-      in.read(bytes);
-      ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-      set((Operator)new DefaultOperatorSerDe().read(bis));
-      bis.close();
+      Node.storeOperator(out, operator);
     }
 
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException
+    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException
     {
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      new DefaultOperatorSerDe().write(module, bos);
-      bos.close();
-      byte[] bytes = bos.toByteArray();
-      out.writeInt(bytes.length);
-      out.write(bytes);
+      operator = Node.retrieveOperator(input);
     }
+
   }
 
   public LogicalPlan()
@@ -372,15 +359,15 @@ public class LogicalPlan implements Serializable, DAG
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
     private final AttributeMap<OperatorContext> attributes = new DefaultAttributeMap<OperatorContext>();
-    private final ExternalizableModule moduleHolder;
+    private final OperatorProxy operatorProxy;
     private final String id;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
-    private OperatorMeta(String id, Operator module)
+    private OperatorMeta(String id, Operator operator)
     {
-      this.moduleHolder = new ExternalizableModule();
-      this.moduleHolder.set(module);
+      this.operatorProxy = new OperatorProxy();
+      this.operatorProxy.set(operator);
       this.id = id;
     }
 
@@ -486,7 +473,7 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public Operator getOperator()
     {
-      return this.moduleHolder.module;
+      return this.operatorProxy.operator;
     }
 
     @Override
@@ -641,7 +628,7 @@ public class LogicalPlan implements Serializable, DAG
   {
     // TODO: cache mapping
     for (OperatorMeta o: getAllOperators()) {
-      if (o.moduleHolder.module == operator) {
+      if (o.operatorProxy.operator == operator) {
         return o;
       }
     }

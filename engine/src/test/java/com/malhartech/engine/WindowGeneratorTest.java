@@ -11,7 +11,7 @@ import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.ManualScheduledExecutorService;
 import com.malhartech.tuple.ResetWindowTuple;
 import com.malhartech.tuple.Tuple;
-import com.malhartech.util.ScheduledThreadPoolExecutor;
+import com.malhartech.stram.util.ScheduledThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;

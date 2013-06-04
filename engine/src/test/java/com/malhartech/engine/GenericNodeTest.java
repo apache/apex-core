@@ -4,23 +4,24 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Context;
-import com.malhartech.api.Sink;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.Operator;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.*;
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.tuple.EndStreamTuple;
-import com.malhartech.tuple.EndWindowTuple;
-import com.malhartech.tuple.Tuple;
-import com.malhartech.api.AttributeMap.DefaultAttributeMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.Assert;
+
 import org.junit.Test;
+
+import com.malhartech.api.AttributeMap;
+import com.malhartech.api.AttributeMap.DefaultAttributeMap;
+import com.malhartech.api.Context;
+import com.malhartech.api.DefaultInputPort;
+import com.malhartech.api.DefaultOutputPort;
+import com.malhartech.api.Operator;
+import com.malhartech.api.Sink;
+import com.malhartech.bufferserver.packet.MessageType;
+import com.malhartech.tuple.EndStreamTuple;
+import com.malhartech.tuple.EndWindowTuple;
+import com.malhartech.tuple.Tuple;
 
 /**
  *
@@ -86,7 +87,8 @@ public class GenericNodeTest
     long sleeptime = 25L;
     final ArrayList<Object> list = new ArrayList<Object>();
     GenericOperator go = new GenericOperator();
-    final GenericNode gn = new GenericNode(1, go);
+    final GenericNode gn = new GenericNode(go);
+    gn.setId(1);
     DefaultReservoir reservoir1 = new DefaultReservoir("ip1Res", 1024);
     DefaultReservoir reservoir2 = new DefaultReservoir("ip2Res", 1024);
     Sink<Object> output = new Sink<Object>()

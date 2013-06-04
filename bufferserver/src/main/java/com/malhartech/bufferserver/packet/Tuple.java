@@ -5,7 +5,7 @@
 package com.malhartech.bufferserver.packet;
 
 import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,7 +157,7 @@ public abstract class Tuple
 
   public abstract int getPartition();
 
-  public abstract Fragment getData();
+  public abstract Slice getData();
 
   public abstract int getBaseSeconds();
 

@@ -12,7 +12,7 @@ import com.malhartech.stram.TupleRecorder.RecordInfo;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stram.support.StramTestSupport.WaitCondition;
-import com.malhartech.util.HdfsPartFileCollection;
+import com.malhartech.stram.util.HdfsPartFileCollection;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;

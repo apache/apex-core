@@ -1,7 +1,7 @@
 package com.malhartech.stram;
 
 import com.google.common.collect.Sets;
-import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.*;
 import com.malhartech.engine.Node;
@@ -13,6 +13,8 @@ import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stram.support.StramTestSupport.WaitCondition;
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import static java.lang.Thread.sleep;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -329,7 +331,6 @@ public class PartitioningTest
     @Test
     public void testInputOperatorPartitioning() throws Exception
     {
-
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
       LogicalPlan dag = new LogicalPlan();
       dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).set(checkpointDir.getPath());
@@ -353,7 +354,9 @@ public class PartitioningTest
         // move to checkpoint to verify that checkpoint state is updated upon repartition
         p.checkpointWindows.add(10L);
         p.recoveryCheckpoint = 10L;
-        new HdfsBackupAgent(new Configuration(false), checkpointDir.getPath(), StramUtils.getNodeSerDe(null)).backup(p.getId(), 10L, inputDeployed);
+        OutputStream stream = new HdfsStorageAgent(new Configuration(false), checkpointDir.getPath()).getSaveStream(p.getId(), 10L);
+        Node.storeOperator(stream, inputDeployed);
+        stream.close();
       }
 
       Assert.assertEquals("", Sets.newHashSet("partition_0", "partition_1", "partition_2"), partProperties);

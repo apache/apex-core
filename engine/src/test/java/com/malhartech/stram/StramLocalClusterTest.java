@@ -173,7 +173,6 @@ public class StramLocalClusterTest
     localCluster.setHeartbeatMonitoringEnabled(false); // driven by test
     localCluster.runAsync();
 
-
     PTOperator ptNode1 = localCluster.findByLogicalNode(dag.getMeta(node1));
     PTOperator ptNode2 = localCluster.findByLogicalNode(dag.getMeta(node2));
 
@@ -194,7 +193,7 @@ public class StramLocalClusterTest
     n1.addTuple(window0Tuple);
 
     OperatorContext n1Context = c0.getNodeContext(ptNode1.getId());
-    Assert.assertEquals("initial window id", 0, n1Context.getLastProcessedWindowId());
+    Assert.assertEquals("initial window id", -1, n1Context.getLastProcessedWindowId());
     wclock.tick(1); // begin window 1
     wclock.tick(1); // begin window 2
     StramTestSupport.waitForWindowComplete(n1Context, 1);
@@ -203,7 +202,7 @@ public class StramLocalClusterTest
     StramTestSupport.waitForWindowComplete(n1Context, 2);
 
     OperatorContext n2Context = c2.getNodeContext(ptNode2.getId());
-    Assert.assertNotNull("context " + ptNode2);
+    Assert.assertNotNull("context ", n2Context);
 
     wclock.tick(1); // begin window 4
 
@@ -215,6 +214,7 @@ public class StramLocalClusterTest
     wclock.tick(1); // begin window 5
     StramTestSupport.waitForWindowComplete(n2Context, 4);
 
+    wclock.tick(1); // begin window 6
     // propagate checkpoints to master
     c0.triggerHeartbeat();
     // wait for heartbeat cycle to complete

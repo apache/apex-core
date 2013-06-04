@@ -4,9 +4,10 @@
  */
 package com.malhartech.stram;
 
+import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
-import com.malhartech.annotation.ShipContainingJars;
+import com.malhartech.api.annotation.ShipContainingJars;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.plan.logical.LogicalPlan;
@@ -226,7 +227,7 @@ public class StramClient
     // platform dependencies that are not part of Hadoop and need to be deployed,
     // entry below will cause containing jar file from client to be copied to cluster
     Class<?>[] defaultClasses = new Class<?>[]{
-      com.malhartech.common.Fragment.class,
+      com.malhartech.common.util.Slice.class,
       com.malhartech.netlet.EventLoop.class,
       com.malhartech.bufferserver.server.Server.class,
       com.malhartech.stram.StramAppMaster.class,
@@ -235,6 +236,7 @@ public class StramClient
       org.eclipse.jetty.websocket.WebSocketFactory.class,
       org.eclipse.jetty.io.nio.SelectorManager.class,
       org.eclipse.jetty.http.HttpParser.class,
+      Kryo.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));

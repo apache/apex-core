@@ -4,7 +4,7 @@
  */
 package com.malhartech.bufferserver.packet;
 
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 
 /**
  *
@@ -40,9 +40,9 @@ public class PayloadTuple extends Tuple
   }
 
   @Override
-  public Fragment getData()
+  public Slice getData()
   {
-    return new Fragment(buffer, offset + 5, length + offset - 5);
+    return new Slice(buffer, offset + 5, length + offset - 5);
   }
 
   @Override
@@ -74,7 +74,7 @@ public class PayloadTuple extends Tuple
     return array;
   }
 
-  public static byte[] getSerializedTuple(int partition, Fragment f)
+  public static byte[] getSerializedTuple(int partition, Slice f)
   {
     byte[] array = new byte[5 + f.length];
     array[0] = MessageType.PAYLOAD_VALUE;

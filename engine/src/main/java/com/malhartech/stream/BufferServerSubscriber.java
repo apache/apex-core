@@ -16,14 +16,14 @@ import com.malhartech.codec.StatefulStreamCodec;
 import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.client.Subscriber;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 import com.malhartech.engine.ByteCounterStream;
 import com.malhartech.engine.StreamContext;
 import com.malhartech.engine.SweepableReservoir;
 import com.malhartech.engine.WindowGenerator;
 import com.malhartech.netlet.EventLoop;
 import com.malhartech.tuple.*;
-import com.malhartech.util.CircularBuffer;
+import com.malhartech.netlet.util.CircularBuffer;
 
 /**
  * Implement tuple flow from buffer server to the node in a logical stream<p>
@@ -39,10 +39,10 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   protected StatefulStreamCodec<Object> statefulSerde;
   protected EventLoop eventloop;
   private DataStatePair dsp = new DataStatePair();
-  CircularBuffer<Fragment> offeredFragments;
-  CircularBuffer<Fragment> polledFragments;
-  CircularBuffer<Fragment> freeFragments;
-  private final ArrayDeque<CircularBuffer<Fragment>> backlog;
+  CircularBuffer<Slice> offeredFragments;
+  CircularBuffer<Slice> polledFragments;
+  CircularBuffer<Slice> freeFragments;
+  private final ArrayDeque<CircularBuffer<Slice>> backlog;
   private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
   private AtomicLong readByteCount = new AtomicLong(0);
 
@@ -50,9 +50,9 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   public BufferServerSubscriber(String id, int queueCapacity)
   {
     super(id);
-    polledFragments = offeredFragments = new CircularBuffer<Fragment>(queueCapacity);
-    freeFragments = new CircularBuffer<Fragment>(queueCapacity);
-    backlog = new ArrayDeque<CircularBuffer<Fragment>>();
+    polledFragments = offeredFragments = new CircularBuffer<Slice>(queueCapacity);
+    freeFragments = new CircularBuffer<Slice>(queueCapacity);
+    backlog = new ArrayDeque<CircularBuffer<Slice>>();
   }
 
   @Override
@@ -76,9 +76,9 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   @Override
   public void onMessage(byte[] buffer, int offset, int length)
   {
-    Fragment f;
+    Slice f;
     if (freeFragments.isEmpty()) {
-      f = new Fragment(buffer, offset, length);
+      f = new Slice(buffer, offset, length);
     }
     else {
       f = freeFragments.pollUnsafe();
@@ -94,7 +94,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
           suspended = true;
         }
         int newsize = offeredFragments.capacity() == 32 * 1024 ? offeredFragments.capacity() : offeredFragments.capacity() << 1;
-        backlog.add(offeredFragments = new CircularBuffer<Fragment>(newsize));
+        backlog.add(offeredFragments = new CircularBuffer<Slice>(newsize));
         offeredFragments.add(f);
       }
     }
@@ -251,7 +251,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
         }
 
         while (min-- > 0) {
-          Fragment fm = polledFragments.pollUnsafe();
+          Slice fm = polledFragments.pollUnsafe();
           com.malhartech.bufferserver.packet.Tuple data = com.malhartech.bufferserver.packet.Tuple.getTuple(fm.buffer, fm.offset, fm.length);
           Object o;
           switch (data.getType()) {

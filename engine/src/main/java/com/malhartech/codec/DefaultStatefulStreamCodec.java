@@ -18,8 +18,8 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
-import com.malhartech.annotation.ShipContainingJars;
-import com.malhartech.common.Fragment;
+import com.malhartech.api.annotation.ShipContainingJars;
+import com.malhartech.common.util.Slice;
 
 /**
  * Default implementation of the StreamCodec.
@@ -32,7 +32,10 @@ import com.malhartech.common.Fragment;
  *
  * @param <T>
  */
-@ShipContainingJars(classes = {Kryo.class, org.objenesis.instantiator.ObjectInstantiator.class, com.esotericsoftware.minlog.Log.class, com.esotericsoftware.reflectasm.ConstructorAccess.class})
+@ShipContainingJars(classes = {com.esotericsoftware.kryo.Kryo.class,
+                               org.objenesis.instantiator.ObjectInstantiator.class,
+                               com.esotericsoftware.minlog.Log.class,
+                               com.esotericsoftware.reflectasm.ConstructorAccess.class})
 public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStreamCodec<T>
 {
   private final Output data;
@@ -107,18 +110,18 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
 
     if (!pairs.isEmpty()) {
       state.setPosition(0);
-      for (ClassIdPair cip: pairs) {
+      for (ClassIdPair cip : pairs) {
         writeClassAndObject(state, cip);
       }
       pairs.clear();
 
       // can we optimize this?
       byte[] bytes = state.toBytes();
-      pair.state = new Fragment(bytes, 0, bytes.length);
+      pair.state = new Slice(bytes, 0, bytes.length);
     }
 
     byte[] bytes = data.toBytes();
-    pair.data = new Fragment(bytes, 0, bytes.length);
+    pair.data = new Slice(bytes, 0, bytes.length);
     return pair;
   }
 
@@ -174,13 +177,13 @@ public class DefaultStatefulStreamCodec<T> extends Kryo implements StatefulStrea
   final ArrayList<ClassIdPair> pairs;
 
   @Override
-  public Object fromByteArray(Fragment fragment)
+  public Object fromByteArray(Slice fragment)
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
 
   @Override
-  public Fragment toByteArray(T o)
+  public Slice toByteArray(T o)
   {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }

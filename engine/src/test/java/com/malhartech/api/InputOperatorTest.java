@@ -9,7 +9,7 @@ import com.malhartech.stram.StramLocalCluster;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.support.StramTestSupport;
 import com.malhartech.stram.support.StramTestSupport.WaitCondition;
-import com.malhartech.util.CircularBuffer;
+import com.malhartech.netlet.util.CircularBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

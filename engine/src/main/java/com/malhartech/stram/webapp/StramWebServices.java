@@ -33,6 +33,7 @@ import com.malhartech.stram.StramChildAgent;
 import com.malhartech.stram.StreamingContainerManager;
 import com.malhartech.stram.plan.logical.LogicalPlanRequest;
 import java.util.*;
+import javax.ws.rs.*;
 import org.apache.commons.beanutils.BeanUtils;
 import org.codehaus.jettison.json.JSONArray;
 
@@ -261,6 +262,25 @@ public class StramWebServices
       ex.printStackTrace();
     }
     return response;
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/getProperties")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
+  {
+    Map<String, Object> m = dagManager.getOperatorProperties(operatorId, propertyName);
+    if (propertyName == null) {
+      return new JSONObject(m);
+    } else {
+      JSONObject json = new JSONObject();
+      try {
+        json.put(propertyName, m.get(propertyName));
+      } catch (JSONException ex) {
+        ex.printStackTrace();
+      }
+      return json;
+    }
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly

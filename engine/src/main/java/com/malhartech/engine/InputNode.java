@@ -22,9 +22,9 @@ public class InputNode extends Node<InputOperator>
   private ArrayList<SweepableReservoir> deferredInputConnections = new ArrayList<SweepableReservoir>();
   protected SweepableReservoir controlTuples;
 
-  public InputNode(int id, InputOperator operator)
+  public InputNode(InputOperator operator)
   {
-    super(id, operator);
+    super(operator);
   }
 
   @Override

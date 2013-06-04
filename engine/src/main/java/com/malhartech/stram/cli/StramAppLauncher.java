@@ -28,7 +28,7 @@ import org.apache.log4j.lf5.util.StreamUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.annotation.ShipContainingJars;
+import com.malhartech.api.annotation.ShipContainingJars;
 import com.malhartech.api.ApplicationFactory;
 import com.malhartech.api.DAG;
 import com.malhartech.stram.DAGPropertiesBuilder;

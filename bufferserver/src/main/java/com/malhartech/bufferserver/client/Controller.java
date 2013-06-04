@@ -8,7 +8,7 @@ import com.malhartech.bufferserver.packet.MessageType;
 import com.malhartech.bufferserver.packet.PurgeRequestTuple;
 import com.malhartech.bufferserver.packet.ResetRequestTuple;
 import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +43,7 @@ public abstract class Controller extends AbstractClient
   {
     Tuple t = Tuple.getTuple(buffer, offset, size);
     assert (t.getType() == MessageType.PAYLOAD);
-    Fragment f = t.getData();
+    Slice f = t.getData();
     onMessage(new String(f.buffer, f.offset, f.length));
   }
 

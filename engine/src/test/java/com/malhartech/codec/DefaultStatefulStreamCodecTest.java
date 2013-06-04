@@ -4,6 +4,7 @@
  */
 package com.malhartech.codec;
 
+import com.malhartech.api.codec.KryoJdkSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
@@ -15,10 +16,11 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.malhartech.api.DefaultOperatorSerDe;
 import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
 import com.malhartech.codec.DefaultStatefulStreamCodec.ClassIdPair;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 /**
  *
@@ -115,9 +117,9 @@ public class DefaultStatefulStreamCodecTest
     //String tc = "hello";
 
     DataStatePair dsp1 = coder.toDataStatePair(tc);
-    Fragment state1 = dsp1.state;
+    Slice state1 = dsp1.state;
     DataStatePair dsp2 = coder.toDataStatePair(tc);
-    Fragment state2 = dsp2.state;
+    Slice state2 = dsp2.state;
     assert (state1 != null);
     assert (state2 == null);
     Assert.assertEquals(dsp1.data, dsp2.data);
@@ -191,10 +193,13 @@ public class DefaultStatefulStreamCodecTest
       DataStatePair dsp = c.toDataStatePair(o);
       c.fromDataStatePair(dsp);
 
-      DefaultOperatorSerDe os = new DefaultOperatorSerDe();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      os.write(o, bos);
-      os.read(new ByteArrayInputStream(bos.toByteArray()));
+      ObjectOutputStream oos = new ObjectOutputStream(bos);
+      oos.writeObject(o);
+      oos.close();
+
+      ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bos.toByteArray()));
+      ois.readObject();
     }
   }
 

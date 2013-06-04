@@ -54,7 +54,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.annotation.ShipContainingJars;
+import com.malhartech.api.annotation.ShipContainingJars;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.InputOperator;
@@ -407,8 +407,8 @@ public class StramMiniClusterTest
     dag.getClassNames();
     LinkedHashSet<String> jars = StramClient.findJars(dag);
 
-    // operator class from test + 2 annotated dependencies
-    Assert.assertEquals("" + jars, baseJars.size() + 2, jars.size());
+    // operator class from test + 3 annotated dependencies
+    Assert.assertEquals("" + jars, baseJars.size() + 3, jars.size());
 
     Assert.assertTrue("", jars.contains(JarFinder.getJar(Logger.class)));
     Assert.assertTrue("", jars.contains(JarFinder.getJar(javax.jms.Message.class)));

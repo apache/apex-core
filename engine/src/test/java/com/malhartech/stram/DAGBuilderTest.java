@@ -40,8 +40,8 @@ import org.junit.Test;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.google.common.collect.Sets;
-import com.malhartech.annotation.InputPortFieldAnnotation;
-import com.malhartech.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
@@ -58,7 +58,7 @@ import com.malhartech.stram.cli.StramClientUtils;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.malhartech.codec.KryoJdkSerializer;
+import com.malhartech.api.codec.KryoJdkSerializer;
 
 public class DAGBuilderTest {
 
@@ -255,10 +255,10 @@ public class DAGBuilderTest {
 
   public static class ValidationOperator extends BaseOperator {
     @OutputPortFieldAnnotation(name="goodOutputPort")
-    final public transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>(this);
+    public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>(this);
 
     @OutputPortFieldAnnotation(name="badOutputPort")
-    final public transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>(this);
+    public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>(this);
   }
 
   public static class CounterOperator extends BaseOperator {

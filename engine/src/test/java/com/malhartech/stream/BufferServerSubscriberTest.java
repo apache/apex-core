@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
 import com.malhartech.bufferserver.packet.PayloadTuple;
-import com.malhartech.common.Fragment;
+import com.malhartech.common.util.Slice;
 import com.malhartech.engine.SweepableReservoir;
 
 /**
@@ -32,7 +32,7 @@ public class BufferServerSubscriberTest
     final StreamCodec<Object> myserde = new StreamCodec<Object>()
     {
       @Override
-      public Object fromByteArray(Fragment fragment)
+      public Object fromByteArray(Slice fragment)
       {
         if (fragment.offset == 0 && fragment.length == fragment.buffer.length) {
           return fragment.buffer;
@@ -43,9 +43,9 @@ public class BufferServerSubscriberTest
       }
 
       @Override
-      public Fragment toByteArray(Object o)
+      public Slice toByteArray(Object o)
       {
-        return new Fragment((byte[])o, 0, ((byte[])o).length);
+        return new Slice((byte[])o, 0, ((byte[])o).length);
       }
 
       @Override
@@ -97,7 +97,7 @@ public class BufferServerSubscriberTest
 
     int i = 0;
     while (i++ < 10) {
-      Fragment fragment = myserde.toByteArray(new byte[]{(byte)i});
+      Slice fragment = myserde.toByteArray(new byte[]{(byte)i});
       byte buffer[] = PayloadTuple.getSerializedTuple(myserde.getPartition(i), fragment);
       bss.onMessage(buffer, 0, buffer.length);
     }

@@ -4,11 +4,43 @@
  */
 package com.malhartech.stram;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.FutureTask;
+
+import javax.annotation.Nullable;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.builder.ToStringStyle;
+import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.webapp.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
-import com.malhartech.api.BackupAgent;
+import com.malhartech.api.AttributeMap;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.DAGContext;
+import com.malhartech.api.StorageAgent;
+import com.malhartech.common.util.Pair;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.engine.OperatorStats.PortStats;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
@@ -30,31 +62,10 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.webapp.OperatorInfo;
-import com.malhartech.stram.webapp.PortInfo;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.common.Pair;
 import com.malhartech.stram.plan.logical.LogicalPlanRequest;
 import com.malhartech.stram.plan.physical.PlanModifier;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.FutureTask;
-
-import javax.annotation.Nullable;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.builder.ToStringBuilder;
-import org.apache.commons.lang.builder.ToStringStyle;
-import org.apache.commons.lang.mutable.MutableLong;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.webapp.NotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.malhartech.stram.webapp.OperatorInfo;
+import com.malhartech.stram.webapp.PortInfo;
 
 /**
  *
@@ -773,7 +784,7 @@ public class StreamingContainerManager implements PlanContext
           long c2 = 0;
           while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
             operator.checkpointWindows.removeFirst();
-            //LOG.debug("Checkpoint to purge: operator={} windowId={}", operator.getId(), c1);
+            //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getId(), c1);
             this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
             c1 = c2;
           }
@@ -820,7 +831,7 @@ public class StreamingContainerManager implements PlanContext
 
   private void purgeCheckpoints()
   {
-    BackupAgent ba = new HdfsBackupAgent(new Configuration(), checkpointFsPath, StramUtils.getNodeSerDe(null));
+    StorageAgent ba = new HdfsStorageAgent(new Configuration(), checkpointFsPath);
     for (Pair<PTOperator, Long> p: purgeCheckpoints) {
       PTOperator operator = p.getFirst();
       try {
@@ -829,12 +840,12 @@ public class StreamingContainerManager implements PlanContext
       catch (Exception e) {
         LOG.error("Failed to purge checkpoint " + p, e);
       }
-      // purge stream state when using buffer server
+      // delete stream state when using buffer server
       for (PTOutput out: operator.outputs) {
         if (!out.isDownStreamInline()) {
           // following needs to match the concat logic in StramChild
           String sourceIdentifier = Integer.toString(operator.getId()).concat(StramChild.NODE_PORT_CONCAT_SEPARATOR).concat(out.portName);
-          // purge everything from buffer server prior to new checkpoint
+          // delete everything from buffer server prior to new checkpoint
           BufferServerController bsc = getBufferServerClient(operator);
           try {
             bsc.purge(null, sourceIdentifier, operator.checkpointWindows.getFirst() - 1);
@@ -866,9 +877,9 @@ public class StreamingContainerManager implements PlanContext
   }
 
   @Override
-  public BackupAgent getBackupAgent()
+  public StorageAgent getStorageAgent()
   {
-    return new HdfsBackupAgent(new Configuration(), this.checkpointFsPath, StramUtils.getNodeSerDe(null));
+    return new HdfsStorageAgent(new Configuration(), this.checkpointFsPath);
   }
 
   private Map<PTContainer, List<PTOperator>> groupByContainer(Collection<PTOperator> operators)
@@ -1151,6 +1162,10 @@ public class StreamingContainerManager implements PlanContext
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
 
+    Map<String, String> properties = Collections.singletonMap(propertyName, propertyValue);
+    DAGPropertiesBuilder.setOperatorProperties(logicalOperator.getOperator(), properties);
+    // need to record this to a log in the future when review history is supported
+
     List<PTOperator> operators = plan.getOperators(logicalOperator);
     for (PTOperator o: operators) {
       StramChildAgent sca = getContainerAgent(o.getContainer().containerId);
@@ -1164,6 +1179,20 @@ public class StreamingContainerManager implements PlanContext
       updateOnDeployRequests(o, new SetOperatorPropertyRequestFilter(propertyName), request);
     }
 
+  }
+
+  public Map<String, Object> getOperatorProperties(String operatorId, String propertyName)
+  {
+    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
+    if (logicalOperator == null) {
+      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+    }
+    return DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
+  }
+
+  public LogicalPlan getLogicalPlan()
+  {
+    return plan.getDAG();
   }
 
   /**
