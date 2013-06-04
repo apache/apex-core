@@ -4,15 +4,18 @@
  */
 package com.malhartech.codec;
 
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.util.ObjectMapperString;
 import java.io.*;
-import com.malhartech.common.util.Slice;
+
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.impl.RawSerializer;
+
+import com.malhartech.api.StreamCodec;
+import com.malhartech.api.util.ObjectMapperString;
+import com.malhartech.common.util.Slice;
+import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 
 /**
  *
