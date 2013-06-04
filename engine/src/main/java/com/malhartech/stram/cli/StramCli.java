@@ -120,6 +120,7 @@ public class StramCli
     connectedCommands.put("get-operator-properties", new CommandSpec(new GetOperatorPropertiesLiveCommand(), new String[] {"operator-name"}, new String[] {"property-name"}, "Get properties of an operator"));
     connectedCommands.put("set-operator-property", new CommandSpec(new SetOperatorPropertyLiveCommand(), new String[] {"operator-name", "property-name", "property-value"}, null, "Set a property of an operator"));
     connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(), null, null, "Begin Logical Plan Change"));
+    connectedCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), null, new String[] {"jar-file", "class-name"}, "Show logical plan of an app class"));
 
     logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(), new String[] {"operator-name", "class-name"}, null, "Create an operator"));
@@ -786,6 +787,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       try {
+        JSONArray jsonArray = new JSONArray();
         List<ApplicationReport> appList = getApplicationList();
         Collections.sort(appList, new Comparator<ApplicationReport>()
         {
@@ -796,7 +798,6 @@ public class StramCli
           }
 
         });
-        System.out.println("Applications:");
         int totalCnt = 0;
         int runningCnt = 0;
 
@@ -808,7 +809,7 @@ public class StramCli
           /*
            * This is inefficient, but what the heck, if this can be passed through the command line, can anyone notice slowness.
            */
-          if (args.length == 1 || args.length == 2 && (args[1].equals("/") || args[1].equals(".."))) {
+          if (args.length == 1) {
             show = true;
           }
           else {
@@ -823,20 +824,21 @@ public class StramCli
           }
 
           if (show) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("startTime: ").append(sdf.format(new java.util.Date(ar.getStartTime()))).
-                    append(", id: ").append(ar.getApplicationId().getId()).
-                    append(", name: ").append(ar.getName()).
-                    append(", state: ").append(ar.getYarnApplicationState().name()).
-                    append(", trackingUrl: ").append(ar.getTrackingUrl()).
-                    append(", finalStatus: ").append(ar.getFinalApplicationStatus());
-            System.out.println(sb);
+            JSONObject jsonObj = new JSONObject();
+            jsonObj.put("startTime", sdf.format(new java.util.Date(ar.getStartTime())));
+            jsonObj.put("id", ar.getApplicationId().getId());
+            jsonObj.put("name", ar.getName());
+            jsonObj.put("state", ar.getYarnApplicationState().name());
+            jsonObj.put("trackingUrl", ar.getTrackingUrl());
+            jsonObj.put("finalStatus", ar.getFinalApplicationStatus());
+            jsonArray.put(jsonObj);
             totalCnt++;
             if (ar.getYarnApplicationState() == YarnApplicationState.RUNNING) {
               runningCnt++;
             }
           }
         }
+        System.out.println(jsonArray.toString(2));
         System.out.println(runningCnt + " active, total " + totalCnt + " applications.");
       }
       catch (Exception ex) {
@@ -1177,12 +1179,13 @@ public class StramCli
           }
 
         });
-        System.out.println(response);
+        System.out.println(response.toString(2));
       }
       catch (Exception e) {
         throw new CliException("Failed to request " + r.getURI(), e);
       }
     }
+
   }
 
   private class SetOperatorPropertyLiveCommand implements Command
@@ -1249,24 +1252,41 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String jarfile = args[1];
-      String appName = args[2];
-      File jf = new File(jarfile);
-      StramAppLauncher submitApp = new StramAppLauncher(jf);
-      submitApp.loadDependencies();
-      List<AppConfig> cfgList = submitApp.getBundledTopologies();
-      for (AppConfig appConfig : cfgList) {
-        if (appName.equals(appConfig.getName())) {
-          ObjectMapper mapper = new ObjectMapper();
-          Map<String, Object> map = new HashMap<String, Object>();
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
-          map.put("applicationName", appConfig.getName());
-          map.put("logicalPlan", LogicalPlanSerializer.convertToMap(logicalPlan));
-          System.out.println(mapper.defaultPrettyPrintingWriter().writeValueAsString(map));
-          return;
+      if (args.length > 2) {
+        String jarfile = args[1];
+        String appName = args[2];
+        File jf = new File(jarfile);
+        StramAppLauncher submitApp = new StramAppLauncher(jf);
+        submitApp.loadDependencies();
+        List<AppConfig> cfgList = submitApp.getBundledTopologies();
+        for (AppConfig appConfig : cfgList) {
+          if (appName.equals(appConfig.getName())) {
+            ObjectMapper mapper = new ObjectMapper();
+            LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+            System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
+            return;
+          }
         }
+        System.out.println("Name not found in jar file");
       }
-      System.out.println("Name not found in jar file");
+      else {
+        if (currentApp == null) {
+          throw new CliException("No application selected");
+        }
+        WebServicesClient webServicesClient = new WebServicesClient();
+        WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN);
+
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        System.out.println(response.toString(2));
+      }
     }
 
   }
@@ -1438,7 +1458,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       ObjectMapper mapper = new ObjectMapper();
-      System.out.println(mapper.defaultPrettyPrintingWriter().writeValueAsString(logicalPlanRequestQueue));
+      System.out.println(new JSONObject(mapper.writeValueAsString(logicalPlanRequestQueue)).toString(2));
       System.out.println("Total operations in queue: " + logicalPlanRequestQueue.size());
     }
 
