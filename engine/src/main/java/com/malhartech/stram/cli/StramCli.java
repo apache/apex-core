@@ -97,8 +97,8 @@ public class StramCli
   {
     globalCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     globalCommands.put("connect", new CommandSpec(new ConnectCommand(), new String[] {"app-id"}, null, "Connect to an app"));
-    globalCommands.put("launch", new CommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name"}, "Launch an app"));
-    globalCommands.put("launch-local", new CommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name"}, "Launch an app in local mode"));
+    globalCommands.put("launch", new CommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app"));
+    globalCommands.put("launch-local", new CommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app in local mode"));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), new String[] {"app-id"}, null, "Shutdown an app"));
     globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(), null, new String[] {"app-id"}, "List applications"));
     globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(), new String[] {"app-id"}, null, "Kill an app"));
@@ -112,7 +112,7 @@ public class StramCli
     connectedCommands.put("list-operators", new CommandSpec(new ListOperatorsCommand(), null, new String[] {"pattern"}, "List operators"));
     connectedCommands.put("kill-container", new CommandSpec(new KillContainerCommand(), new String[] {"container-id"}, null, "Kill a container"));
     connectedCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), null, null, "Shutdown an app"));
-    connectedCommands.put("kill-app", new CommandSpec(new KillAppCommand(), null, null, "Kill an app"));
+    connectedCommands.put("kill-app", new CommandSpec(new KillAppCommand(), null, new String[] {"app-id"}, "Kill an app"));
     connectedCommands.put("wait", new CommandSpec(new WaitCommand(), new String[] {"timeout"}, null, "Wait for completion of current application"));
     connectedCommands.put("start-recording", new CommandSpec(new StartRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Start recording"));
     connectedCommands.put("stop-recording", new CommandSpec(new StopRecordingCommand(), new String[] {"operator-id"}, new String[] {"port-name"}, "Stop recording"));
