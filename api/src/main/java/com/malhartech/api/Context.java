@@ -130,23 +130,6 @@ public interface Context
      * @return
      */
     AttributeMap<DAGContext> getApplicationAttributes();
-
-    /**
-     * Return the port attributes given the port name
-     *
-     * @param portName
-     * @return
-     */
-    AttributeMap<PortContext> getInputPortAttributes(String portName);
-
-    /**
-     * Return the port attributes given the port name
-     *
-     * @param portName
-     * @return
-     */
-    AttributeMap<PortContext> getOutputPortAttributes(String portName);
-
   }
 
 }

@@ -6,6 +6,7 @@ package com.malhartech.stram;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.Thread.State;
 import java.net.*;
@@ -43,9 +44,8 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.malhartech.stream.*;
 import com.malhartech.stram.util.ScheduledThreadPoolExecutor;
-import java.io.InputStream;
+import com.malhartech.stream.*;
 
 /**
  *
@@ -1124,16 +1124,7 @@ public class StramChild
     final ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo> activatedOrFailed = new ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo>();
     for (final OperatorDeployInfo ndi : nodeList) {
       final Node<?> node = nodes.get(ndi.id);
-      final Map<String, AttributeMap<PortContext>> inputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
-      final Map<String, AttributeMap<PortContext>> outputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
       assert (!activeNodes.containsKey(ndi.id));
-
-      for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
-        inputPortAttributes.put(idi.portName, idi.contextAttributes);
-      }
-      for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
-        outputPortAttributes.put(odi.portName, odi.contextAttributes);
-      }
 
       new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(node.getOperator().getClass().getSimpleName()))
       {
@@ -1142,8 +1133,18 @@ public class StramChild
         {
           try {
             failedNodes.remove(ndi.id);
-            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes, inputPortAttributes, outputPortAttributes);
+            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes);
             node.getOperator().setup(context);
+
+            final Map<String, AttributeMap<PortContext>> inputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
+            final Map<String, AttributeMap<PortContext>> outputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
+            for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
+              inputPortAttributes.put(idi.portName, idi.contextAttributes);
+            }
+            for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
+              outputPortAttributes.put(odi.portName, odi.contextAttributes);
+            }
+
             for (Map.Entry<String, AttributeMap<PortContext>> entry : inputPortAttributes.entrySet()) {
               AttributeMap<PortContext> attrMap = entry.getValue();
               if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {

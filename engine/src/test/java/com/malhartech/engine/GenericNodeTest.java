@@ -118,7 +118,10 @@ public class GenericNodeTest
       public void run()
       {
         ab.set(true);
-        gn.activate(new OperatorContext(0, this, new DefaultAttributeMap<com.malhartech.api.Context.OperatorContext>(), new DefaultAttributeMap<com.malhartech.api.DAGContext>(), new HashMap<String, AttributeMap<com.malhartech.api.Context.PortContext>>(), new HashMap<String, AttributeMap<com.malhartech.api.Context.PortContext>>()));
+        gn.activate(new OperatorContext(0,
+                                        this,
+                                        new DefaultAttributeMap<com.malhartech.api.Context.OperatorContext>(),
+                                        new DefaultAttributeMap<com.malhartech.api.DAGContext>()));
       }
 
     };

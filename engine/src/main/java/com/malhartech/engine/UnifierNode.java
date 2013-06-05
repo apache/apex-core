@@ -4,6 +4,7 @@
  */
 package com.malhartech.engine;
 
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.Unifier;
@@ -65,6 +66,16 @@ public class UnifierNode extends GenericNode
           count = 0;
         }
       }
+    }
+
+    @Override
+    public void setup(PortContext context)
+    {
+    }
+
+    @Override
+    public void teardown()
+    {
     }
   }
 

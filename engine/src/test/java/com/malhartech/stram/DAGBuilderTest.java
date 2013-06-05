@@ -628,6 +628,16 @@ public class DAGBuilderTest {
       }
 
       @Override
+      public void setup(PortContext context)
+      {
+      }
+
+      @Override
+      public void teardown()
+      {
+      }
+
+      @Override
       public Class<? extends StreamCodec<T>> getStreamCodec() {
         return null;
       }
