@@ -13,7 +13,6 @@ import java.util.*;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -63,6 +62,7 @@ public class StramChild
   private final Configuration conf;
   private final StreamingContainerUmbilicalProtocol umbilical;
   protected final Map<Integer, Node<?>> nodes = new ConcurrentHashMap<Integer, Node<?>>();
+  protected final Set<Integer> failedNodes = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
   private final Map<String, ComponentContextPair<Stream, StreamContext>> streams = new ConcurrentHashMap<String, ComponentContextPair<Stream, StreamContext>>();
   protected final Map<Integer, WindowGenerator> generators = new ConcurrentHashMap<Integer, WindowGenerator>();
   protected final Map<Integer, OperatorContext> activeNodes = new ConcurrentHashMap<Integer, OperatorContext>();
@@ -324,7 +324,7 @@ public class StramChild
   {
     WindowGenerator chosen1 = generators.remove(nodeid);
     if (chosen1 != null) {
-      SweepableReservoir releaseReservoir = chosen1.releaseReservoir(Integer.toString(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT));
+      chosen1.releaseReservoir(Integer.toString(nodeid).concat(NODE_PORT_CONCAT_SEPARATOR).concat(Node.INPUT));
       // should we send the closure of the port to the node?
 
       int count = 0;
@@ -460,7 +460,6 @@ public class StramChild
         }
       }
       msg.memoryMBFree = ((int)(Runtime.getRuntime().freeMemory() / (1024 * 1024)));
-
       List<StreamingNodeHeartbeat> heartbeats = new ArrayList<StreamingNodeHeartbeat>(nodes.size());
 
       // gather heartbeat info for all operators
@@ -469,12 +468,13 @@ public class StramChild
         hb.setNodeId(e.getKey());
         hb.setGeneratedTms(currentTime);
         hb.setIntervalMs(heartbeatIntervalMillis);
-        if (activeNodes.containsKey(e.getKey())) {
-          activeNodes.get(e.getKey()).drainHeartbeatCounters(hb.getWindowStats());
+        OperatorContext ctx = activeNodes.get(e.getKey());
+        if (ctx != null) {
+          ctx.drainHeartbeatCounters(hb.getWindowStats());
           hb.setState(DNodeState.ACTIVE.toString());
         }
         else {
-          hb.setState(e.getValue().isAlive() ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
+          hb.setState(failedNodes.contains(e.getKey()) ? DNodeState.FAILED.toString() : DNodeState.IDLE.toString());
         }
 
         TupleRecorder tupleRecorder = tupleRecorders.get(String.valueOf(e.getKey()));
@@ -766,7 +766,6 @@ public class StramChild
     }
   }
 
-  @SuppressWarnings({"unchecked"})
   private void deployNodes(List<OperatorDeployInfo> nodeList) throws Exception
   {
     for (OperatorDeployInfo ndi : nodeList) {
@@ -792,9 +791,10 @@ public class StramChild
         }
         node.setId(ndi.id);
         nodes.put(ndi.id, node);
+        logger.debug("Marking deployed {}", node);
       }
       catch (Exception e) {
-        logger.error(e.getLocalizedMessage());
+        logger.error("Deploy error", e);
         throw e;
       }
     }
@@ -1121,7 +1121,7 @@ public class StramChild
       }
     }
 
-    final AtomicInteger activatedNodeCount = new AtomicInteger(activeNodes.size());
+    final ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo> activatedOrFailed = new ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo>();
     for (final OperatorDeployInfo ndi : nodeList) {
       final Node<?> node = nodes.get(ndi.id);
       final Map<String, AttributeMap<PortContext>> inputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
@@ -1141,6 +1141,7 @@ public class StramChild
         public void run()
         {
           try {
+            failedNodes.remove(ndi.id);
             OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes, inputPortAttributes, outputPortAttributes);
             node.getOperator().setup(context);
             for (Map.Entry<String, AttributeMap<PortContext>> entry : inputPortAttributes.entrySet()) {
@@ -1160,14 +1161,16 @@ public class StramChild
 
             activeNodes.put(ndi.id, context);
 
-            activatedNodeCount.incrementAndGet();
+            activatedOrFailed.put(ndi, ndi);
             logger.info("activating {} in container {}", node, containerId);
             node.activate(context);
           }
           catch (Throwable ex) {
             logger.error("Node stopped abnormally because of exception", ex);
+            failedNodes.add(ndi.id);
           }
           finally {
+            activatedOrFailed.put(ndi, ndi);
             activeNodes.remove(ndi.id);
             node.getOperator().teardown();
             logger.info("deactivated {}", node.getId());
@@ -1185,10 +1188,10 @@ public class StramChild
       do {
         Thread.sleep(SPIN_MILLIS);
       }
-      while (activatedNodeCount.get() < nodes.size());
+      while (activatedOrFailed.size() < nodeList.size());
     }
     catch (InterruptedException ex) {
-      logger.debug(ex.getLocalizedMessage());
+      logger.debug("Error waiting for activation", ex);
     }
 
     for (ComponentContextPair<Stream, StreamContext> pair : newStreams.values()) {
