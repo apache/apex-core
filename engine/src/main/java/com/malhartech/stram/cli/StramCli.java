@@ -690,7 +690,9 @@ public class StramCli
       AppConfig appConfig = null;
       if (args.length == 3) {
         File file = new File(args[2]);
-        appConfig = new StramAppLauncher.PropertyFileAppConfig(file);
+        if (file.exists()) {
+          appConfig = new StramAppLauncher.PropertyFileAppConfig(file);
+        }
       }
 
       try {
@@ -705,31 +707,48 @@ public class StramCli
             appConfig = cfgList.get(0);
           }
           else {
-            for (int i = 0; i < cfgList.size(); i++) {
-              System.out.printf("%3d. %s\n", i + 1, cfgList.get(i).getName());
-            }
-
-            boolean useHistory = reader.getUseHistory();
-            reader.setUseHistory(false);
-            @SuppressWarnings("unchecked")
-            List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
-            for (Completor c : completors) {
-              reader.removeCompletor(c);
-            }
-            String optionLine = reader.readLine("Pick application? ");
-            reader.setUseHistory(useHistory);
-            for (Completor c : completors) {
-              reader.addCompletor(c);
-            }
-
-            try {
-              int option = Integer.parseInt(optionLine);
-              if (0 < option && option <= cfgList.size()) {
-                appConfig = cfgList.get(option - 1);
+            if (args.length == 3) {
+              int numMatchedAppConfig = 0;
+              for (AppConfig ac : cfgList) {
+                if (ac.getName().matches(".*" + args[2] + ".*")) {
+                  numMatchedAppConfig++;
+                  appConfig = ac;
+                }
+              }
+              if (numMatchedAppConfig == 0) {
+                throw new CliException("No application in jar file matches " + args[2]);
+              }
+              if (numMatchedAppConfig > 1) {
+                throw new CliException("More than one application in jar file match " + args[2]);
               }
             }
-            catch (Exception e) {
-              // ignore
+            else {
+              for (int i = 0; i < cfgList.size(); i++) {
+                System.out.printf("%3d. %s\n", i + 1, cfgList.get(i).getName());
+              }
+
+              boolean useHistory = reader.getUseHistory();
+              reader.setUseHistory(false);
+              @SuppressWarnings("unchecked")
+              List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
+              for (Completor c : completors) {
+                reader.removeCompletor(c);
+              }
+              String optionLine = reader.readLine("Pick application? ");
+              reader.setUseHistory(useHistory);
+              for (Completor c : completors) {
+                reader.addCompletor(c);
+              }
+
+              try {
+                int option = Integer.parseInt(optionLine);
+                if (0 < option && option <= cfgList.size()) {
+                  appConfig = cfgList.get(option - 1);
+                }
+              }
+              catch (Exception e) {
+                // ignore
+              }
             }
           }
         }
@@ -1195,6 +1214,7 @@ public class StramCli
         throw new CliException("Failed to request " + r.getURI(), e);
       }
     }
+
   }
 
   private class GetOperatorAttributesCommand implements Command
@@ -1226,6 +1246,7 @@ public class StramCli
         throw new CliException("Failed to request " + r.getURI(), e);
       }
     }
+
   }
 
   private class GetPortAttributesCommand implements Command
@@ -1257,6 +1278,7 @@ public class StramCli
         throw new CliException("Failed to request " + r.getURI(), e);
       }
     }
+
   }
 
   private class GetOperatorPropertiesCommand implements Command
