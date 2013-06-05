@@ -1573,7 +1573,9 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       ObjectMapper mapper = new ObjectMapper();
-      System.out.println(new JSONObject(mapper.writeValueAsString(logicalPlanRequestQueue)).toString(2));
+      JSONObject singleKeyObj = new JSONObject();
+      singleKeyObj.put("queue", new JSONArray(mapper.writeValueAsString(logicalPlanRequestQueue)));
+      System.out.println(singleKeyObj.toString(2));
       System.out.println("Total operations in queue: " + logicalPlanRequestQueue.size());
     }
 
