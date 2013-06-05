@@ -108,6 +108,7 @@ public interface DAGContext {
     public final Class<T> attributeType;
     private final static Set<AttributeKey<?>> INSTANCES = new HashSet<AttributeKey<?>>();
 
+    @SuppressWarnings("LeakingThisInConstructor")
     private AttributeKey(String name, Class<T> type) {
       super(DAGContext.class, name);
       this.attributeType = type;

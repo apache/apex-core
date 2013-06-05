@@ -269,11 +269,68 @@ public class StramWebServices
   }
 
   @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/getAttributes")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject getOperatorAttributes(@PathParam("operatorId") String operatorId, @QueryParam("attributeName") String attributeName)
+  {
+    Map<String, Object> m = dagManager.getOperatorAttributes(operatorId);
+    if (attributeName == null) {
+      return new JSONObject(m);
+    } else {
+      JSONObject json = new JSONObject();
+      try {
+        json.put(attributeName, m.get(attributeName));
+      } catch (JSONException ex) {
+        ex.printStackTrace();
+      }
+      return json;
+    }
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN + "/getAttributes")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject getApplicationAttributes(@QueryParam("attributeName") String attributeName)
+  {
+    Map<String, Object> m = dagManager.getApplicationAttributes();
+    if (attributeName == null) {
+      return new JSONObject(m);
+    } else {
+      JSONObject json = new JSONObject();
+      try {
+        json.put(attributeName, m.get(attributeName));
+      } catch (JSONException ex) {
+        ex.printStackTrace();
+      }
+      return json;
+    }
+  }
+
+  @GET
+  @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/{portName}/getAttributes")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject getPortAttributes(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName, @QueryParam("attributeName") String attributeName)
+  {
+    Map<String, Object> m = dagManager.getPortAttributes(operatorId, portName);
+    if (attributeName == null) {
+      return new JSONObject(m);
+    } else {
+      JSONObject json = new JSONObject();
+      try {
+        json.put(attributeName, m.get(attributeName));
+      } catch (JSONException ex) {
+        ex.printStackTrace();
+      }
+      return json;
+    }
+  }
+
+  @GET
   @Path(PATH_LOGICAL_PLAN_OPERATORS + "/{operatorId}/getProperties")
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
   {
-    Map<String, Object> m = dagManager.getOperatorProperties(operatorId, propertyName);
+    Map<String, Object> m = dagManager.getOperatorProperties(operatorId);
     if (propertyName == null) {
       return new JSONObject(m);
     } else {

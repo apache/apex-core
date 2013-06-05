@@ -5,8 +5,7 @@
 package com.malhartech.api;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,6 +38,7 @@ public interface AttributeMap<CONTEXT>
    * Return the attribute value for the given key. If the map does not have an
    * entry for the key, a default attribute value will be returned.
    *
+   * @param <T>
    * @param key
    * @return <T> Attribute<T>
    */
@@ -50,14 +50,25 @@ public interface AttributeMap<CONTEXT>
    * default without creating empty default attributes when asked for a key that
    * is not mapped.
    *
+   * @param <T>
    * @param key
    * @param defaultValue
    * @return <T> T
    */
   <T> T attrValue(AttributeKey<CONTEXT, T> key, T defaultValue);
 
+
+  /**
+   * Return the value map
+   *
+   * @return
+   */
+  Map<String, Object> valueMap();
+
   /**
    * Scoped attribute key. Subclasses define scope.
+   * @param <CONTEXT>
+   * @param <T>
    */
   abstract public static class AttributeKey<CONTEXT, T>
   {
@@ -94,6 +105,7 @@ public interface AttributeMap<CONTEXT>
   /**
    * Attribute map records values against String keys and can therefore be serialized
    * ({@link AttributeKey} cannot be serialized)
+   * @param <CONTEXT>
    */
   public class DefaultAttributeMap<CONTEXT> implements AttributeMap<CONTEXT>, Serializable
   {
@@ -132,6 +144,17 @@ public interface AttributeMap<CONTEXT>
       T val = attr.get();
       return val != null ? val : defaultValue;
     }
+
+    @Override
+    public Map<String, Object> valueMap()
+    {
+      Map<String, Object> valueMap = new HashMap<String, Object>();
+      for (Map.Entry<String, DefaultAttribute<?>> entry : this.map.entrySet()) {
+        valueMap.put(entry.getKey(), entry.getValue().get());
+      }
+      return valueMap;
+    }
+
 
     private class DefaultAttribute<T> extends AtomicReference<T> implements Attribute<T>, Serializable
     {
