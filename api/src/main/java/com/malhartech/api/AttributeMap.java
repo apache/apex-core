@@ -14,9 +14,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * Parameterized and scoped context attribute map that supports serialization.
  * Derived from {@link io.netty.util.AttributeMap}
  *
- * @param <CONTEXT>
  */
-public interface AttributeMap<CONTEXT>
+public interface AttributeMap
 {
   public interface Attribute<T>
   {
@@ -94,27 +93,23 @@ public interface AttributeMap<CONTEXT>
    *
    * @param <CONTEXT>
    */
-  public class DefaultAttributeMap<CONTEXT> implements AttributeMap<CONTEXT>, Serializable
+  public class DefaultAttributeMap implements AttributeMap, Serializable
   {
     private static final long serialVersionUID = 201306051022L;
     private final Map<String, DefaultAttribute<?>> map = new HashMap<String, DefaultAttribute<?>>();
     // if there is at least one attribute, serialize scope for key object lookup
-    private Class<?> scope;
+    private final Class<?> scope;
+    public DefaultAttributeMap(Class<?> scope)
+    {
+      this.scope = scope;
+    }
 
     @Override
     public <T> Attribute<T> attr(AttributeKey<T> key)
     {
       @SuppressWarnings("unchecked")
       DefaultAttribute<T> attr = (DefaultAttribute<T>)map.get(key.name());
-      if (attr == null) {
-        if (scope == null) {
-          scope = key.scope;
-        }
-        else {
-          if (scope != key.scope) {
-            throw new IllegalArgumentException("Invalid scope: " + scope.getName());
-          }
-        }
+      if (attr == null && scope == key.scope) {
         attr = new DefaultAttribute<T>();
         map.put(key.name(), attr);
       }
@@ -159,7 +154,7 @@ public interface AttributeMap<CONTEXT>
      *
      * @param target
      */
-    public void copyTo(AttributeMap<CONTEXT> target)
+    public void copyTo(AttributeMap target)
     {
       for (Map.Entry<String, DefaultAttribute<?>> e : map.entrySet()) {
         AttributeKey<Object> key = AttributeKey.getKey(this.scope, e.getKey());

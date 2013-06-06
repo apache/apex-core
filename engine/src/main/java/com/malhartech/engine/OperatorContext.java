@@ -37,7 +37,7 @@ public class OperatorContext implements Context.OperatorContext
 
   private long lastProcessedWindowId = -1;
   private final int id;
-  private final AttributeMap<OperatorContext> attributes;
+  private final AttributeMap attributes;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
@@ -75,7 +75,7 @@ public class OperatorContext implements Context.OperatorContext
    * @param attributes the value of attributes
    * @param parentContext
    */
-  public OperatorContext(int id, Thread worker, AttributeMap<OperatorContext> attributes, Context parentContext)
+  public OperatorContext(int id, Thread worker, AttributeMap attributes, Context parentContext)
   {
     this.id = id;
     this.attributes = attributes;
@@ -124,12 +124,9 @@ public class OperatorContext implements Context.OperatorContext
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public AttributeMap<Context> getAttributes()
+  public AttributeMap getAttributes()
   {
-    @SuppressWarnings("rawtypes")
-    AttributeMap map = attributes;
-    return map;
+    return attributes;
   }
 
   @Override

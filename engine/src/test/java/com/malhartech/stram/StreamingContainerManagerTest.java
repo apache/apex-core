@@ -21,6 +21,7 @@ import org.junit.Test;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.AttributeMap;
+import com.malhartech.api.Context;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAGContext;
@@ -51,7 +52,7 @@ public class StreamingContainerManagerTest {
     ndi.declaredId = "node1";
     ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
     ndi.id = 1;
-    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap<OperatorContext>();
+    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap(Context.OperatorContext.class);
     ndi.contextAttributes.attr(OperatorContext.SPIN_MILLIS).set(100);
 
     OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();

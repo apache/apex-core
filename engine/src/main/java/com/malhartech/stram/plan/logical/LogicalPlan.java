@@ -66,17 +66,14 @@ public class LogicalPlan implements Serializable, DAG
   private final Map<String, StreamMeta> streams = new HashMap<String, StreamMeta>();
   private final Map<String, OperatorMeta> operators = new HashMap<String, OperatorMeta>();
   private final List<OperatorMeta> rootOperators = new ArrayList<OperatorMeta>();
-  private final AttributeMap<DAGContext> attributes = new DefaultAttributeMap<DAGContext>();
+  private final AttributeMap attributes = new DefaultAttributeMap(DAGContext.class);
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
 
   @Override
-  @SuppressWarnings("unchecked")
-  public AttributeMap<Context> getAttributes()
+  public AttributeMap getAttributes()
   {
-    @SuppressWarnings("rawtypes")
-    AttributeMap map = attributes;
-    return (AttributeMap<Context>)map;
+    return attributes;
   }
 
   @Override
@@ -144,7 +141,7 @@ public class LogicalPlan implements Serializable, DAG
     private OperatorMeta operatorWrapper;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
-    private final AttributeMap<PortContext> attributes = new DefaultAttributeMap<PortContext>();
+    private final AttributeMap attributes = new DefaultAttributeMap(PortContext.class);
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -176,12 +173,9 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public AttributeMap<Context> getAttributes()
+    public AttributeMap getAttributes()
     {
-      @SuppressWarnings("rawtypes")
-      AttributeMap map = attributes;
-      return (AttributeMap<Context>)map;
+      return attributes;
     }
 
     @Override
@@ -202,7 +196,7 @@ public class LogicalPlan implements Serializable, DAG
     private OperatorMeta operatorWrapper;
     private String fieldName;
     private OutputPortFieldAnnotation portAnnotation;
-    private final DefaultAttributeMap<PortContext> attributes = new DefaultAttributeMap<PortContext>();
+    private final DefaultAttributeMap attributes = new DefaultAttributeMap(PortContext.class);
 
     public OperatorMeta getOperatorWrapper()
     {
@@ -224,12 +218,9 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public AttributeMap<Context> getAttributes()
+    public AttributeMap getAttributes()
     {
-      @SuppressWarnings("rawtypes")
-      AttributeMap map = attributes;
-      return (AttributeMap<Context>)map;
+      return attributes;
     }
 
     @Override
@@ -403,7 +394,7 @@ public class LogicalPlan implements Serializable, DAG
     private static final long serialVersionUID = 1L;
     private final LinkedHashMap<InputPortMeta, StreamMeta> inputStreams = new LinkedHashMap<InputPortMeta, StreamMeta>();
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
-    private final AttributeMap<OperatorContext> attributes = new DefaultAttributeMap<OperatorContext>();
+    private final AttributeMap attributes = new DefaultAttributeMap(OperatorContext.class);
     private final OperatorProxy operatorProxy;
     private final String name;
     private transient Integer nindex; // for cycle detection
@@ -429,12 +420,9 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public AttributeMap<Context> getAttributes()
+    public AttributeMap getAttributes()
     {
-      @SuppressWarnings("rawtypes")
-      AttributeMap map = attributes;
-      return (AttributeMap<Context>)map;
+      return attributes;
     }
 
     @Override
@@ -639,7 +627,7 @@ public class LogicalPlan implements Serializable, DAG
    * @param operator
    * @return AttributeMap<OperatorContext>
    */
-  public AttributeMap<OperatorContext> getContextAttributes(Operator operator)
+  public AttributeMap getContextAttributes(Operator operator)
   {
     return getMeta(operator).attributes;
   }

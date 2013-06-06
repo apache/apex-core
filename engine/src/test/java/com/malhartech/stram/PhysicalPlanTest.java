@@ -222,7 +222,7 @@ public class PhysicalPlanTest {
     }
 
     @Override
-    public AttributeMap<Context> getAttributes()
+    public AttributeMap getAttributes()
     {
       throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }

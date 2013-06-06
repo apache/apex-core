@@ -95,7 +95,7 @@ public class StreamingContainerManager implements PlanContext
   private long lastRecordStatsTime = 0;
   private HdfsStatsRecorder statsRecorder;
   private final int operatorMaxAttemptCount = 5;
-  private final AttributeMap<DAGContext> appAttributes;
+  private final AttributeMap appAttributes;
   //private final int checkpointIntervalMillis;
   private final String appPath;
   private final String checkpointFsPath;
@@ -119,12 +119,9 @@ public class StreamingContainerManager implements PlanContext
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public AttributeMap<Context> getAttributes()
+  public AttributeMap getAttributes()
   {
-    @SuppressWarnings("rawtypes")
-    AttributeMap map = appAttributes;
-    return (AttributeMap<Context>)map;
+    return appAttributes;
   }
 
   @Override
@@ -479,8 +476,7 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext()
   {
-    StreamingContainerContext scc = new StreamingContainerContext();
-    scc.applicationAttributes = this.appAttributes;
+    StreamingContainerContext scc = new StreamingContainerContext(appAttributes);
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }
@@ -1215,7 +1211,7 @@ public class StreamingContainerManager implements PlanContext
   public Map<String, Object> getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
-    AttributeMap<Context> attributes = lp.getAttributes();
+    AttributeMap attributes = lp.getAttributes();
     return attributes.valueMap();
   }
 

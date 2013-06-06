@@ -88,7 +88,6 @@ public class StramChild
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
   private com.malhartech.bufferserver.server.Server bufferServer;
-  private AttributeMap<DAGContext> applicationAttributes;
   protected HashMap<String, TupleRecorder> tupleRecorders = new HashMap<String, TupleRecorder>();
   private int tupleRecordingPartFileSize;
   private String daemonAddress;
@@ -1138,8 +1137,8 @@ public class StramChild
             OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, parentContext);
             node.getOperator().setup(context);
 
-            final Map<String, AttributeMap<PortContext>> inputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
-            final Map<String, AttributeMap<PortContext>> outputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
+            final Map<String, AttributeMap> inputPortAttributes = new HashMap<String, AttributeMap>();
+            final Map<String, AttributeMap> outputPortAttributes = new HashMap<String, AttributeMap>();
             for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
               inputPortAttributes.put(idi.portName, idi.contextAttributes);
             }

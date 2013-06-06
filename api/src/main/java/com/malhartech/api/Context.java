@@ -13,7 +13,7 @@ package com.malhartech.api;
  */
 public interface Context
 {
-  public AttributeMap<Context> getAttributes();
+  public AttributeMap getAttributes();
 
   public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue);
 

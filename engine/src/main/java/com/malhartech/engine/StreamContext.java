@@ -26,7 +26,7 @@ import com.malhartech.netlet.EventLoop;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class StreamContext extends DefaultAttributeMap<StreamContext> implements Context
+public class StreamContext extends DefaultAttributeMap implements Context
 {
   private static final long serialVersionUID = 201212042146L;
   public static final AttributeKey<InetSocketAddress> BUFFER_SERVER_ADDRESS = new AttributeKey<InetSocketAddress>(StreamContext.class, "BUFFER_SERVER");
@@ -34,12 +34,9 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
   public static final AttributeKey<StreamCodec<Object>> CODEC = new AttributeKey<StreamCodec<Object>>(StreamContext.class, "CODEC");
 
   @Override
-  @SuppressWarnings("unchecked")
-  public AttributeMap<Context> getAttributes()
+  public AttributeMap getAttributes()
   {
-    @SuppressWarnings("rawtypes")
-    AttributeMap context = this;
-    return (AttributeMap<Context>)context;
+    return this;
   }
 
   @Override
@@ -111,6 +108,7 @@ public class StreamContext extends DefaultAttributeMap<StreamContext> implements
 
   public StreamContext(String id)
   {
+    super(StreamContext.class);
     this.id = id;
   }
 

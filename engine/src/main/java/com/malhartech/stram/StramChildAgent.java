@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.malhartech.api.*;
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.Node;
 import com.malhartech.engine.OperatorContext;
@@ -337,20 +336,12 @@ public class StramChildAgent {
         OutputDeployInfo portInfo = new OutputDeployInfo();
         portInfo.declaredStreamId = streamMeta.getId();
         portInfo.portName = out.portName;
-        @SuppressWarnings("rawtypes")
-        AttributeMap attributes = streamMeta.getSource().getAttributes();
-        @SuppressWarnings("unchecked")
-        AttributeMap<PortContext> castedAttribute = attributes;
-        portInfo.contextAttributes = castedAttribute;
+        portInfo.contextAttributes =streamMeta.getSource().getAttributes();
 
         if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           // input attributes of the downstream operator
           for (InputPortMeta sink : streamMeta.getSinks()) {
-            @SuppressWarnings("rawtypes")
-            AttributeMap attributes1 = sink.getAttributes();
-            @SuppressWarnings("unchecked")
-            AttributeMap<PortContext> castedAttributes1 = attributes1;
-            portInfo.contextAttributes = castedAttributes1;
+            portInfo.contextAttributes = sink.getAttributes();
             break;
           }
         }
@@ -385,20 +376,12 @@ public class StramChildAgent {
         inputInfo.portName = in.portName;
         for (Map.Entry<InputPortMeta, StreamMeta> e : node.getOperatorMeta().getInputStreams().entrySet()) {
           if (e.getValue() == streamMeta) {
-            @SuppressWarnings("rawtypes")
-            AttributeMap attributes = e.getKey().getAttributes();
-            @SuppressWarnings("unchecked")
-            AttributeMap<PortContext> castedAttributes = attributes;
-            inputInfo.contextAttributes = castedAttributes;
+            inputInfo.contextAttributes = e.getKey().getAttributes();
           }
         }
 
         if (inputInfo.contextAttributes == null && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
-          @SuppressWarnings("rawtypes")
-          AttributeMap attributes = in.source.logicalStream.getSource().getAttributes();
-          @SuppressWarnings("unchecked")
-          AttributeMap<PortContext> castedAttributes = attributes;
-          inputInfo.contextAttributes = castedAttributes;
+          inputInfo.contextAttributes = in.source.logicalStream.getSource().getAttributes();
         }
 
         inputInfo.sourceNodeId = sourceOutput.source.getId();
@@ -493,11 +476,7 @@ public class StramChildAgent {
     }
     ndi.declaredId = node.getOperatorMeta().getName();
     ndi.id = node.getId();
-    @SuppressWarnings("rawtypes")
-    AttributeMap attributes = node.getOperatorMeta().getAttributes();
-    @SuppressWarnings("unchecked")
-    AttributeMap<Context.OperatorContext> castedAttributes = attributes;
-    ndi.contextAttributes = castedAttributes;
+    ndi.contextAttributes = node.getOperatorMeta().getAttributes();
     return ndi;
   }
 

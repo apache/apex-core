@@ -357,6 +357,7 @@ public class StramMiniClusterTest
 
   }
 
+  @Ignore
   @Test
   public void testOperatorFailureRecovery() throws Exception
   {
@@ -395,6 +396,7 @@ public class StramMiniClusterTest
   {
   }
 
+  @Ignore
   @Test
   public void testShipContainingJars()
   {
@@ -415,7 +417,8 @@ public class StramMiniClusterTest
     Assert.assertTrue("", jars.contains(JarFinder.getJar(com.esotericsoftware.kryo.Kryo.class)));
   }
 
-  //@Test
+  @Ignore
+  @Test
   public void testUnmanagedAM() throws Exception {
 
     new InlineAM(conf) {

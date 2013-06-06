@@ -4,11 +4,13 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.api.AttributeMap;
+import com.malhartech.api.AttributeMap.DefaultAttributeMap;
 import com.malhartech.api.Context;
-import com.malhartech.api.DAGContext.AttributeKey;
+import com.malhartech.api.DAGContext;
+import com.malhartech.stram.api.BaseContext;
+import com.malhartech.stram.util.AbstractWritableAdapter;
 
 import java.io.*;
 import java.lang.reflect.AccessibleObject;
@@ -40,65 +42,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   void log(String containerId, String msg) throws IOException;
 
   /**
-   * TODO: quick hack to focus on protocol instead of serialization code -
-   * replace with PB
-   */
-  public static abstract class WritableAdapter implements Writable, Serializable {
-    private static final long serialVersionUID = 1L;
-
-    @Override
-    public void readFields(DataInput arg0) throws IOException {
-      int len = arg0.readInt();
-      byte[] bytes = new byte[len];
-      arg0.readFully(bytes);
-      try {
-        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> properties = (Map<String, Object>) ois.readObject();
-        Field[] fields = this.getClass().getDeclaredFields();
-        AccessibleObject.setAccessible(fields, true);
-        for (int i = 0; i < fields.length; i++) {
-          Field field = fields[i];
-          String fieldName = field.getName();
-          if (properties.containsKey(fieldName)) {
-            field.set(this, properties.get(fieldName));
-          }
-        }
-        ois.close();
-      } catch (Exception e) {
-        throw new IOException(e);
-      }
-    }
-
-    @Override
-    public void write(DataOutput arg0) throws IOException {
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      ObjectOutputStream oos = new ObjectOutputStream(bos);
-      try {
-        Map<String, Object> properties = new java.util.HashMap<String, Object>();
-        Field[] fields = this.getClass().getDeclaredFields();
-        AccessibleObject.setAccessible(fields, true);
-        for (int i = 0; i < fields.length; i++) {
-          Field field = fields[i];
-          if (!Modifier.isStatic(field.getModifiers())) {
-            String fieldName = field.getName();
-            Object fieldValue = field.get(this);
-            properties.put(fieldName, fieldValue);
-          }
-        }
-        oos.writeObject(properties);
-      } catch (Exception e) {
-        throw new IOException(e);
-      }
-      oos.flush();
-      byte[] bytes = bos.toByteArray();
-      arg0.writeInt(bytes.length);
-      arg0.write(bytes);
-      oos.close();
-    }
-  }
-
-  /**
    * Initialization parameters for StramChild container. Container
    * wide settings remain effective as long as the process is running. Operators can
    * be deployed and removed dynamically.
@@ -106,11 +49,13 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StreamingContainerContext extends WritableAdapter implements Context {
+  public static class StreamingContainerContext extends BaseContext {
     private static final long serialVersionUID = 201209071402L;
 
-    public AttributeMap<DAGContext> applicationAttributes;
-
+    public StreamingContainerContext(AttributeMap map)
+    {
+      super(map, null);
+    }
     /**
      * Operators should start processing the initial window at this time.
      */
@@ -121,29 +66,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-              .append("applicationAttributes", this.applicationAttributes).toString();
+              .append("applicationAttributes", getAttributes()).toString();
     }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public AttributeMap<Context> getAttributes()
-    {
-      @SuppressWarnings("rawtypes")
-      AttributeMap map = applicationAttributes;
-      return (AttributeMap<Context>)map;
-    }
-
-    @Override
-    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
-    {
-      T retval = applicationAttributes.attr(key).get();
-      if (retval == null) {
-        return defaultValue;
-      }
-
-      return retval;
-    }
-
   }
 
   /**
@@ -168,7 +92,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * Hadoop container wraps this together with stats from other operators and sends
    * it to stram <br>
    */
-  public static class StreamingNodeHeartbeat extends WritableAdapter {
+  public static class StreamingNodeHeartbeat extends AbstractWritableAdapter {
     private static final long serialVersionUID = 201208171625L;
     private ArrayList<OperatorStats> windowStats = new ArrayList<OperatorStats>();
 
@@ -279,7 +203,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class ContainerHeartbeat extends WritableAdapter {
+  public static class ContainerHeartbeat extends AbstractWritableAdapter {
     private static final long serialVersionUID = 1L;
     private String containerId;
 
@@ -327,7 +251,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StramToNodeRequest extends WritableAdapter {
+  public static class StramToNodeRequest extends AbstractWritableAdapter {
     private static final long serialVersionUID = 1L;
 
     enum RequestType {
@@ -390,7 +314,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class ContainerHeartbeatResponse extends WritableAdapter {
+  public static class ContainerHeartbeatResponse extends AbstractWritableAdapter {
     private static final long serialVersionUID = 1L;
     /**
      * Indicate container to exit heartbeat loop and shutdown.

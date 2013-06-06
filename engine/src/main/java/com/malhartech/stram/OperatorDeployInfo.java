@@ -4,15 +4,15 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.Context;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
+
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+
+import com.malhartech.api.AttributeMap;
+import com.malhartech.api.Context.PortContext;
 
 /**
  * Operator deployment info passed from master to container as part of initialization
@@ -81,7 +81,7 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Context attributes for input port
      */
-    public AttributeMap<PortContext> contextAttributes;
+    public AttributeMap contextAttributes;
 
     @Override
     public String toString()
@@ -98,12 +98,9 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public AttributeMap<Context> getAttributes()
+    public AttributeMap getAttributes()
     {
-      @SuppressWarnings("rawtypes")
-      AttributeMap map = contextAttributes;
-      return (AttributeMap<Context>)map;
+      return contextAttributes;
     }
 
     @Override
@@ -159,7 +156,7 @@ public class OperatorDeployInfo implements Serializable
     /**
      * Context attributes for output port
      */
-    public AttributeMap<PortContext> contextAttributes;
+    public AttributeMap contextAttributes;
 
     @Override
     public String toString()
@@ -172,12 +169,9 @@ public class OperatorDeployInfo implements Serializable
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public AttributeMap<Context> getAttributes()
+    public AttributeMap getAttributes()
     {
-      @SuppressWarnings("rawtypes")
-      AttributeMap map = contextAttributes;
-      return (AttributeMap<Context>)map;
+      return contextAttributes;
     }
 
     @Override
@@ -229,7 +223,7 @@ public class OperatorDeployInfo implements Serializable
   /**
    * Context attributes for operator
    */
-  public AttributeMap<OperatorContext> contextAttributes;
+  public AttributeMap contextAttributes;
 
 
   /**
