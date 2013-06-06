@@ -4,8 +4,14 @@
  */
 package com.malhartech.stram.webapp;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
@@ -16,12 +22,16 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
@@ -34,12 +44,6 @@ import com.malhartech.stram.StramChildAgent;
 import com.malhartech.stram.StreamingContainerManager;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlanRequest;
-import java.io.IOException;
-import java.util.*;
-import javax.ws.rs.*;
-import org.apache.commons.beanutils.BeanUtils;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jettison.json.JSONArray;
 
 /**
  *
@@ -381,10 +385,16 @@ public class StramWebServices
         BeanUtils.populate(requestObj, properties);
         requests.add(requestObj);
       }
-      dagManager.logicalPlanModification(requests);
+      Future<?> fr = dagManager.logicalPlanModification(requests);
+      fr.get(3000, TimeUnit.MILLISECONDS);
     }
     catch (Exception ex) {
-      ex.printStackTrace();
+      LOG.error("Error processing plan change", ex);
+      try {
+        response.put("error", ex.toString());
+      } catch (Exception e) {
+        // ignore
+      }
     }
 
     return response;
