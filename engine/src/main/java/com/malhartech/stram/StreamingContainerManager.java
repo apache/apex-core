@@ -1275,6 +1275,7 @@ public class StreamingContainerManager implements PlanContext
     // delegate processing to dispatch thread
     FutureTask<Object> future = new FutureTask<Object>(new LogicalPlanChangeRunnable(requests));
     dispatch(future);
+    //LOG.info("Scheduled plan changes: {}", requests);
     return future;
   }
 
@@ -1289,6 +1290,7 @@ public class StreamingContainerManager implements PlanContext
     @Override
     public Object call() throws Exception {
       // clone logical plan, for dry run and validation
+      LOG.info("Begin plan changes: {}", requests);
       LogicalPlan lp = plan.getDAG();
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       LogicalPlan.write(lp, bos);
@@ -1298,6 +1300,7 @@ public class StreamingContainerManager implements PlanContext
 
       PlanModifier pm = new PlanModifier(lp);
       for (LogicalPlanRequest request : requests) {
+        LOG.debug("Dry run plan change: {}", request);
         request.execute(pm);
       }
 
@@ -1309,6 +1312,7 @@ public class StreamingContainerManager implements PlanContext
         request.execute(pm);
       }
       pm.applyChanges(StreamingContainerManager.this);
+      LOG.info("Plan changes applied: {}", requests);
       return null;
     }
   }
