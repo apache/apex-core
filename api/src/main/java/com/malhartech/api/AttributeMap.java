@@ -42,21 +42,7 @@ public interface AttributeMap<CONTEXT>
    * @param key
    * @return <T> Attribute<T>
    */
-  <T> Attribute<T> attr(AttributeKey<CONTEXT, T> key);
-
-  /**
-   * Return the value of the attribute (instead of the attribute object) or the
-   * default, if no value exists or value is null. This allows to retrieve the
-   * default without creating empty default attributes when asked for a key that
-   * is not mapped.
-   *
-   * @param <T>
-   * @param key
-   * @param defaultValue
-   * @return <T> T
-   */
-  <T> T attrValue(AttributeKey<CONTEXT, T> key, T defaultValue);
-
+  <T> Attribute<T> attr(AttributeKey<T> key);
 
   /**
    * Return the value map
@@ -67,17 +53,17 @@ public interface AttributeMap<CONTEXT>
 
   /**
    * Scoped attribute key. Subclasses define scope.
-   * @param <CONTEXT>
+   *
    * @param <T>
    */
-  abstract public static class AttributeKey<CONTEXT, T>
+  public static class AttributeKey<T>
   {
-    private static final ConcurrentMap<String, AttributeKey<?, ?>> keys = new ConcurrentHashMap<String, AttributeKey<?, ?>>();
-    private final Class<CONTEXT> scope;
+    private static final ConcurrentMap<String, AttributeKey<?>> keys = new ConcurrentHashMap<String, AttributeKey<?>>();
+    private final Class<?> scope;
     private final String name;
 
     @SuppressWarnings("LeakingThisInConstructor")
-    protected AttributeKey(Class<CONTEXT> scope, String name)
+    public AttributeKey(Class<?> scope, String name)
     {
       this.scope = scope;
       this.name = name;
@@ -95,7 +81,7 @@ public interface AttributeMap<CONTEXT>
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static <CONTEXT, T> AttributeKey<CONTEXT, T> getKey(Class<CONTEXT> scope, String key)
+    private static <T> AttributeKey<T> getKey(Class<?> scope, String key)
     {
       return (AttributeKey)keys.get(stringKey(scope, key));
     }
@@ -105,17 +91,18 @@ public interface AttributeMap<CONTEXT>
   /**
    * Attribute map records values against String keys and can therefore be serialized
    * ({@link AttributeKey} cannot be serialized)
+   *
    * @param <CONTEXT>
    */
   public class DefaultAttributeMap<CONTEXT> implements AttributeMap<CONTEXT>, Serializable
   {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 201306051022L;
     private final Map<String, DefaultAttribute<?>> map = new HashMap<String, DefaultAttribute<?>>();
     // if there is at least one attribute, serialize scope for key object lookup
-    private Class<CONTEXT> scope;
+    private Class<?> scope;
 
     @Override
-    public synchronized <T> Attribute<T> attr(AttributeKey<CONTEXT, T> key)
+    public <T> Attribute<T> attr(AttributeKey<T> key)
     {
       @SuppressWarnings("unchecked")
       DefaultAttribute<T> attr = (DefaultAttribute<T>)map.get(key.name());
@@ -135,17 +122,6 @@ public interface AttributeMap<CONTEXT>
     }
 
     @Override
-    public synchronized <T> T attrValue(AttributeKey<CONTEXT, T> key, T defaultValue)
-    {
-      if (!this.map.containsKey(key.name)) {
-        return defaultValue;
-      }
-      Attribute<T> attr = this.attr(key);
-      T val = attr.get();
-      return val != null ? val : defaultValue;
-    }
-
-    @Override
     public Map<String, Object> valueMap()
     {
       Map<String, Object> valueMap = new HashMap<String, Object>();
@@ -154,7 +130,6 @@ public interface AttributeMap<CONTEXT>
       }
       return valueMap;
     }
-
 
     private class DefaultAttribute<T> extends AtomicReference<T> implements Attribute<T>, Serializable
     {
@@ -186,8 +161,8 @@ public interface AttributeMap<CONTEXT>
      */
     public void copyTo(AttributeMap<CONTEXT> target)
     {
-      for (Map.Entry<String, DefaultAttribute<?>> e: map.entrySet()) {
-        AttributeKey<CONTEXT, Object> key = AttributeKey.getKey(this.scope, e.getKey());
+      for (Map.Entry<String, DefaultAttribute<?>> e : map.entrySet()) {
+        AttributeKey<Object> key = AttributeKey.getKey(this.scope, e.getKey());
         if (key == null) {
           throw new IllegalStateException("Unknown key: " + e.getKey());
         }

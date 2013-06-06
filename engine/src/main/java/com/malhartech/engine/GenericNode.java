@@ -133,7 +133,7 @@ public class GenericNode extends Node<Operator>
   public final void run()
   {
     long lastCheckpointedWindowId = 0;
-    long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
+    long spinMillis = context.attrValue(OperatorContext.SPIN_MILLIS, 10);
     final boolean handleIdleTime = operator instanceof IdleTimeHandler;
     boolean insideWindow = false;
     boolean checkpoint = false;

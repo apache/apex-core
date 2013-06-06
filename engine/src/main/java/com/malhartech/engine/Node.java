@@ -171,8 +171,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     activateSinks();
     alive = true;
     this.context = context;
-    APPLICATION_WINDOW_COUNT = context.getAttributes().attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
-    CHECKPOINT_WINDOW_COUNT = context.getAttributes().attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
+    APPLICATION_WINDOW_COUNT = context.attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
+    CHECKPOINT_WINDOW_COUNT = context.attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
 
     if (activationListener) {
       ((ActivationListener)operator).activate(context);

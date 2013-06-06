@@ -13,9 +13,13 @@ package com.malhartech.api;
  */
 public interface Context
 {
+  public AttributeMap<Context> getAttributes();
+
+  public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue);
+
   public interface PortContext extends Context
   {
-    public class AttributeKey<T> extends AttributeMap.AttributeKey<PortContext, T>
+    public class AttributeKey<T> extends AttributeMap.AttributeKey<T>
     {
       private AttributeKey(String name)
       {
@@ -45,14 +49,11 @@ public interface Context
      * Whether or not to auto record the tuples
      */
     public static final AttributeKey<Boolean> AUTO_RECORD = new AttributeKey<Boolean>("autoRecord");
-
-    AttributeMap<PortContext> getAttributes();
-
   }
 
   public interface OperatorContext extends Context
   {
-    public class AttributeKey<T> extends AttributeMap.AttributeKey<OperatorContext, T>
+    public class AttributeKey<T> extends AttributeMap.AttributeKey<T>
     {
       private AttributeKey(String name)
       {
@@ -121,15 +122,6 @@ public interface Context
      */
     int getId();
 
-    AttributeMap<OperatorContext> getAttributes();
-
-    /**
-     * Return the application level attributes.
-     * This will be the same set for all operators in the system.
-     *
-     * @return
-     */
-    AttributeMap<DAGContext> getApplicationAttributes();
   }
 
 }

@@ -7,6 +7,7 @@ package com.malhartech.stram;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.AttributeMap;
+import com.malhartech.api.Context;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
@@ -28,7 +29,7 @@ public class OperatorDeployInfo implements Serializable
   /**
    * Input to node, either inline or from socket stream.
    */
-  public static class InputDeployInfo implements Serializable
+  public static class InputDeployInfo implements Serializable, PortContext
   {
     private static final long serialVersionUID = 201208271957L;
 
@@ -96,6 +97,27 @@ public class OperatorDeployInfo implements Serializable
                 .toString();
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public AttributeMap<Context> getAttributes()
+    {
+      @SuppressWarnings("rawtypes")
+      AttributeMap map = contextAttributes;
+      return (AttributeMap<Context>)map;
+    }
+
+    @Override
+    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    {
+      T retvalue = contextAttributes.attr(key).get();
+      if (retvalue == null) {
+        return defaultValue;
+      }
+
+      return retvalue;
+    }
+
+
   }
 
   /**
@@ -104,7 +126,7 @@ public class OperatorDeployInfo implements Serializable
    * For inline streams, input info will have source node for wiring.
    * For buffer server output, node id/port will be used as publisher id and referenced by subscribers.
    */
-  public static class OutputDeployInfo implements Serializable
+  public static class OutputDeployInfo implements PortContext, Serializable
   {
     private static final long serialVersionUID = 201208271958L;
 
@@ -147,6 +169,26 @@ public class OperatorDeployInfo implements Serializable
                 .append("streamId", this.declaredStreamId)
                 .append("inline", this.isInline())
                 .toString();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public AttributeMap<Context> getAttributes()
+    {
+      @SuppressWarnings("rawtypes")
+      AttributeMap map = contextAttributes;
+      return (AttributeMap<Context>)map;
+    }
+
+    @Override
+    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    {
+      T retvalue = contextAttributes.attr(key).get();
+      if (retvalue == null) {
+        return defaultValue;
+      }
+
+      return retvalue;
     }
 
   }

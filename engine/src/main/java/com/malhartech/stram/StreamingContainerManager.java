@@ -38,6 +38,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
 import com.malhartech.api.AttributeMap;
 import com.malhartech.api.AttributeMap.AttributeKey;
+import com.malhartech.api.Context;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.DAGContext;
@@ -117,10 +118,33 @@ public class StreamingContainerManager implements PlanContext
     HashMap<String, Long> dequeueTimestamps = new HashMap<String, Long>();
   }
 
+  @Override
+  @SuppressWarnings("unchecked")
+  public AttributeMap<Context> getAttributes()
+  {
+    @SuppressWarnings("rawtypes")
+    AttributeMap map = appAttributes;
+    return (AttributeMap<Context>)map;
+  }
+
+  @Override
+  public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+  {
+    T retvalue = appAttributes.attr(key).get();
+    if (retvalue == null) {
+      return defaultValue;
+    }
+
+    return retvalue;
+  }
+
+  @SuppressWarnings("unchecked")
   public StreamingContainerManager(LogicalPlan dag)
   {
     this.plan = new PhysicalPlan(dag, this);
-    this.appAttributes = dag.getAttributes();
+    @SuppressWarnings("rawtypes")
+    AttributeMap attributes = dag.getAttributes();
+    this.appAttributes = attributes;
 
     appAttributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).setIfAbsent(500);
     // try to align to it pleases eyes.
@@ -133,7 +157,7 @@ public class StreamingContainerManager implements PlanContext
 
     appAttributes.attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / appAttributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).get());
     //this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).get() * appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get();
-    this.heartbeatTimeoutMillis = appAttributes.attrValue(LogicalPlan.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
+    this.heartbeatTimeoutMillis = this.attrValue(LogicalPlan.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
     appAttributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
     this.maxWindowsBehindForStats = appAttributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
@@ -165,7 +189,7 @@ public class StreamingContainerManager implements PlanContext
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
-        if (lastResourceRequest + appAttributes.attrValue(LogicalPlan.STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
+        if (lastResourceRequest + this.attrValue(LogicalPlan.STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
           String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.containerId, c.getState().name());
           LOG.warn(msg);
           forcedShutdown = true;
@@ -535,7 +559,7 @@ public class StreamingContainerManager implements PlanContext
         if (previousHeartbeat == null || DNodeState.FAILED.name().compareTo(previousHeartbeat.getState()) != 0) {
           status.operator.failureCount++;
           LOG.warn("Operator failure: {} count: {}", status.operator, status.operator.failureCount);
-          Integer maxAttempts = status.operator.getOperatorMeta().getAttributes().attrValue(OperatorContext.RECOVERY_ATTEMPTS, this.operatorMaxAttemptCount);
+          Integer maxAttempts = status.operator.getOperatorMeta().attrValue(OperatorContext.RECOVERY_ATTEMPTS, this.operatorMaxAttemptCount);
           if (status.operator.failureCount <= maxAttempts) {
             // restart entire container in attempt to recover operator
             // in the future a more sophisticated recovery strategy could
@@ -790,7 +814,7 @@ public class StreamingContainerManager implements PlanContext
           long c2 = 0;
           while (operator.checkpointWindows.size() > 1 && (c2 = operator.checkpointWindows.get(1).longValue()) <= maxCheckpoint) {
             operator.checkpointWindows.removeFirst();
-            //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getId(), c1);
+            //LOG.debug("Checkpoint to delete: operator={} windowId={}", operator.getName(), c1);
             this.purgeCheckpoints.add(new Pair<PTOperator, Long>(operator, c1));
             c1 = c2;
           }
@@ -801,7 +825,7 @@ public class StreamingContainerManager implements PlanContext
       }
     }
     visited.add(operator);
-    //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getId(), c1, operator.checkpointWindows});
+    //LOG.debug("Operator {} checkpoints: commit {} recent {}", new Object[] {operator.getName(), c1, operator.checkpointWindows});
     return operator.recoveryCheckpoint = c1;
   }
 
@@ -1191,7 +1215,7 @@ public class StreamingContainerManager implements PlanContext
   public Map<String, Object> getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
-    AttributeMap<DAGContext> attributes = lp.getAttributes();
+    AttributeMap<Context> attributes = lp.getAttributes();
     return attributes.valueMap();
   }
 
@@ -1201,8 +1225,7 @@ public class StreamingContainerManager implements PlanContext
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
-    AttributeMap<OperatorContext> attributes = logicalOperator.getAttributes();
-    return attributes.valueMap();
+    return logicalOperator.getAttributes().valueMap();
   }
 
   public Map<String, Object> getPortAttributes(String operatorId, String portName)
@@ -1211,20 +1234,19 @@ public class StreamingContainerManager implements PlanContext
     if (logicalOperator == null) {
       throw new IllegalArgumentException("Invalid operatorId " + operatorId);
     }
-    AttributeMap<PortContext> attributes;
+
     Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
     Operators.describe(logicalOperator.getOperator(), portMap);
     InputPort<?> inputPort = portMap.inputPorts.get(portName);
     if (inputPort != null) {
-      attributes = logicalOperator.getMeta(inputPort).getAttributes();
+      return logicalOperator.getMeta(inputPort).getAttributes().valueMap();
     } else {
       OutputPort<?> outputPort = portMap.outputPorts.get(portName);
       if (outputPort == null) {
         throw new IllegalArgumentException("Invalid port name " + portName);
       }
-      attributes = logicalOperator.getMeta(outputPort).getAttributes();
+      return logicalOperator.getMeta(outputPort).getAttributes().valueMap();
     }
-    return attributes.valueMap();
   }
 
   public Map<String, Object> getOperatorProperties(String operatorId)

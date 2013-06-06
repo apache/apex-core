@@ -44,7 +44,7 @@ public class InputNode extends Node<InputOperator>
   @SuppressWarnings(value = "SleepWhileInLoop")
   public final void run()
   {
-    long spinMillis = context.getAttributes().attrValue(OperatorContext.SPIN_MILLIS, 10);
+    long spinMillis = context.attrValue(OperatorContext.SPIN_MILLIS, 10);
     boolean insideWindow = false;
     boolean checkpoint = false;
 

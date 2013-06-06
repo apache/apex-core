@@ -4,7 +4,7 @@
  */
 package com.malhartech.stram;
 
-import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,14 +14,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.malhartech.api.InputOperator;
-import com.malhartech.api.Operator;
-import com.malhartech.api.StorageAgent;
+import com.malhartech.api.*;
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.bufferserver.util.Codec;
 import com.malhartech.engine.Node;
 import com.malhartech.engine.OperatorContext;
@@ -41,9 +41,6 @@ import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.malhartech.stram.webapp.ContainerInfo;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import org.apache.hadoop.conf.Configuration;
 
 /**
  *
@@ -340,12 +337,20 @@ public class StramChildAgent {
         OutputDeployInfo portInfo = new OutputDeployInfo();
         portInfo.declaredStreamId = streamMeta.getId();
         portInfo.portName = out.portName;
-        portInfo.contextAttributes = streamMeta.getSource().getAttributes();
+        @SuppressWarnings("rawtypes")
+        AttributeMap attributes = streamMeta.getSource().getAttributes();
+        @SuppressWarnings("unchecked")
+        AttributeMap<PortContext> castedAttribute = attributes;
+        portInfo.contextAttributes = castedAttribute;
 
         if (ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
           // input attributes of the downstream operator
           for (InputPortMeta sink : streamMeta.getSinks()) {
-            portInfo.contextAttributes = sink.getAttributes();
+            @SuppressWarnings("rawtypes")
+            AttributeMap attributes1 = sink.getAttributes();
+            @SuppressWarnings("unchecked")
+            AttributeMap<PortContext> castedAttributes1 = attributes1;
+            portInfo.contextAttributes = castedAttributes1;
             break;
           }
         }
@@ -380,12 +385,20 @@ public class StramChildAgent {
         inputInfo.portName = in.portName;
         for (Map.Entry<InputPortMeta, StreamMeta> e : node.getOperatorMeta().getInputStreams().entrySet()) {
           if (e.getValue() == streamMeta) {
-            inputInfo.contextAttributes = e.getKey().getAttributes();
+            @SuppressWarnings("rawtypes")
+            AttributeMap attributes = e.getKey().getAttributes();
+            @SuppressWarnings("unchecked")
+            AttributeMap<PortContext> castedAttributes = attributes;
+            inputInfo.contextAttributes = castedAttributes;
           }
         }
 
         if (inputInfo.contextAttributes == null && ndi.type == OperatorDeployInfo.OperatorType.UNIFIER) {
-          inputInfo.contextAttributes = in.source.logicalStream.getSource().getAttributes();
+          @SuppressWarnings("rawtypes")
+          AttributeMap attributes = in.source.logicalStream.getSource().getAttributes();
+          @SuppressWarnings("unchecked")
+          AttributeMap<PortContext> castedAttributes = attributes;
+          inputInfo.contextAttributes = castedAttributes;
         }
 
         inputInfo.sourceNodeId = sourceOutput.source.getId();
@@ -466,7 +479,7 @@ public class StramChildAgent {
     }
     StorageAgent agent = node.getOperatorMeta().getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
     if (agent == null) {
-      String appPath = getInitContext().applicationAttributes.attrValue(LogicalPlan.STRAM_APP_PATH, "app-dfs-path-not-configured");
+      String appPath = getInitContext().attrValue(LogicalPlan.STRAM_APP_PATH, "app-dfs-path-not-configured");
       agent = new HdfsStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
     }
 
@@ -478,9 +491,13 @@ public class StramChildAgent {
     catch (Exception e) {
       throw new RuntimeException("Failed to serialize and store " + operator + "(" + operator.getClass() + ")", e);
     }
-    ndi.declaredId = node.getOperatorMeta().getId();
+    ndi.declaredId = node.getOperatorMeta().getName();
     ndi.id = node.getId();
-    ndi.contextAttributes = node.getOperatorMeta().getAttributes();
+    @SuppressWarnings("rawtypes")
+    AttributeMap attributes = node.getOperatorMeta().getAttributes();
+    @SuppressWarnings("unchecked")
+    AttributeMap<Context.OperatorContext> castedAttributes = attributes;
+    ndi.contextAttributes = castedAttributes;
     return ndi;
   }
 

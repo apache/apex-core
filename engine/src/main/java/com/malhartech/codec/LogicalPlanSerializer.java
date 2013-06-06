@@ -4,23 +4,23 @@
  */
 package com.malhartech.codec;
 
-import com.malhartech.api.ApplicationFactory;
+import java.io.IOException;
+import java.util.*;
+
+import javax.ws.rs.Produces;
+import javax.ws.rs.ext.Provider;
+
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.JsonProcessingException;
+import org.codehaus.jackson.map.JsonSerializer;
+import org.codehaus.jackson.map.SerializerProvider;
+
 import com.malhartech.api.Context;
-import com.malhartech.stram.cli.StramAppLauncher;
-import com.malhartech.stram.cli.StramAppLauncher.AppConfig;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
-import java.io.IOException;
-import java.util.*;
-import javax.ws.rs.Produces;
-import javax.ws.rs.ext.Provider;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.SerializerProvider;
 
 
 /**
@@ -50,7 +50,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     for (OperatorMeta operatorMeta : allOperators) {
       HashMap<String, Object> operatorDetailMap = new HashMap<String, Object>();
       HashMap<String, Object> portMap = new HashMap<String, Object>();
-      String operatorName = operatorMeta.getId();
+      String operatorName = operatorMeta.getName();
       operatorMap.put(operatorName, operatorDetailMap);
       operatorDetailMap.put("ports", portMap);
       operatorDetailMap.put("class", operatorMeta.getOperator().getClass().getName());
@@ -64,7 +64,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
         Context.OperatorContext.RECOVERY_ATTEMPTS,
         Context.OperatorContext.SPIN_MILLIS,
         Context.OperatorContext.STATELESS}) {
-        Object attrValue = operatorMeta.getAttributes().attrValue(attrKey, null);
+        Object attrValue = operatorMeta.getAttributes().attr(attrKey).get();
         if (attrValue != null) {
           operatorDetailMap.put(attrKey.name(), attrValue);
         }
@@ -81,7 +81,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
           Context.PortContext.QUEUE_CAPACITY,
           Context.PortContext.PARTITION_PARALLEL,
           Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().attrValue(attrKey, null);
+          Object attrValue = portMeta.getAttributes().attr(attrKey).get();
           if (attrValue != null) {
             operatorDetailMap.put(attrKey.name(), attrValue);
           }
@@ -99,7 +99,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
           Context.PortContext.QUEUE_CAPACITY,
           Context.PortContext.PARTITION_PARALLEL,
           Context.PortContext.SPIN_MILLIS}) {
-          Object attrValue = portMeta.getAttributes().attrValue(attrKey, null);
+          Object attrValue = portMeta.getAttributes().attr(attrKey).get();
           if (attrValue != null) {
             operatorDetailMap.put(attrKey.name(), attrValue);
           }
@@ -116,14 +116,14 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
       String sourcePortName = streamMeta.getSource().getPortName();
       OperatorMeta operatorMeta = streamMeta.getSource().getOperatorWrapper();
       HashMap<String, Object> sourcePortDetailMap = new HashMap<String, Object>();
-      sourcePortDetailMap.put("operatorName", operatorMeta.getId());
+      sourcePortDetailMap.put("operatorName", operatorMeta.getName());
       sourcePortDetailMap.put("portName", sourcePortName);
       streamDetailMap.put("source", sourcePortDetailMap);
       List<InputPortMeta> sinks = streamMeta.getSinks();
       ArrayList<HashMap<String, Object>> sinkPortList = new ArrayList<HashMap<String, Object>>();
       for (InputPortMeta sinkPort : sinks) {
         HashMap<String, Object> sinkPortDetailMap = new HashMap<String, Object>();
-        sinkPortDetailMap.put("operatorName", sinkPort.getOperatorWrapper().getId());
+        sinkPortDetailMap.put("operatorName", sinkPort.getOperatorWrapper().getName());
         sinkPortDetailMap.put("portName", sinkPort.getPortName());
         sinkPortList.add(sinkPortDetailMap);
       }

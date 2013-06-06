@@ -95,6 +95,7 @@ public class StramChild
   private long tupleRecordingPartFileTimeMillis;
   private int checkpointWindowCount;
   private boolean fastPublisherSubscriber;
+  private StreamingContainerContext parentContext;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -106,18 +107,19 @@ public class StramChild
 
   public void setup(StreamingContainerContext ctx)
   {
-    applicationAttributes = ctx.applicationAttributes;
-    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAGContext.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
-    firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.applicationAttributes.attrValue(DAGContext.STRAM_WINDOW_SIZE_MILLIS, 500);
-    checkpointWindowCount = ctx.applicationAttributes.attrValue(DAGContext.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
+    parentContext = ctx;
 
-    appPath = ctx.applicationAttributes.attrValue(DAGContext.STRAM_APP_PATH, "app-dfs-path-not-configured");
+    heartbeatIntervalMillis = ctx.attrValue(DAGContext.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
+    firstWindowMillis = ctx.startWindowMillis;
+    windowWidthMillis = ctx.attrValue(DAGContext.STRAM_WINDOW_SIZE_MILLIS, 500);
+    checkpointWindowCount = ctx.attrValue(DAGContext.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
+
+    appPath = ctx.attrValue(DAGContext.STRAM_APP_PATH, "app-dfs-path-not-configured");
     checkpointFsPath = this.appPath + "/" + DAGContext.SUBDIR_CHECKPOINTS;
-    tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    tupleRecordingPartFileTimeMillis = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
-    daemonAddress = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
-    fastPublisherSubscriber = ctx.applicationAttributes.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
+    tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
+    tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
+    daemonAddress = ctx.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
+    fastPublisherSubscriber = ctx.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
 
     try {
       if (ctx.deployBufferServer) {
@@ -621,7 +623,7 @@ public class StramChild
       if (odi.id == sourceOperatorId) {
         for (OperatorDeployInfo.OutputDeployInfo odiodi : odi.outputs) {
           if (odiodi.portName.equals(sourcePortName)) {
-            return odiodi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+            return odiodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
           }
         }
       }
@@ -843,7 +845,7 @@ public class StramChild
 
       for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
-        int queueCapacity = nodi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+        int queueCapacity = nodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
@@ -969,7 +971,7 @@ public class StramChild
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
-          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
           long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
 
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
@@ -1133,7 +1135,7 @@ public class StramChild
         {
           try {
             failedNodes.remove(ndi.id);
-            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes);
+            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, parentContext);
             node.getOperator().setup(context);
 
             final Map<String, AttributeMap<PortContext>> inputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
@@ -1145,20 +1147,20 @@ public class StramChild
               outputPortAttributes.put(odi.portName, odi.contextAttributes);
             }
 
-            for (Map.Entry<String, AttributeMap<PortContext>> entry : inputPortAttributes.entrySet()) {
-              AttributeMap<PortContext> attrMap = entry.getValue();
-              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
-                logger.info("Automatically start recording for operator {}, input port {}", ndi.id, entry.getKey());
-                startRecording(node, ndi.id, entry.getKey(), true);
-              }
-            }
-            for (Map.Entry<String, AttributeMap<PortContext>> entry : outputPortAttributes.entrySet()) {
-              AttributeMap<PortContext> attrMap = entry.getValue();
-              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
-                logger.info("Automatically start recording for operator {}, output port {}", ndi.id, entry.getKey());
-                startRecording(node, ndi.id, entry.getKey(), true);
-              }
-            }
+//            for (Map.Entry<String, AttributeMap<PortContext>> entry : inputPortAttributes.entrySet()) {
+//              AttributeMap<PortContext> attrMap = entry.getValue();
+//              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
+//                logger.info("Automatically start recording for operator {}, input port {}", ndi.id, entry.getKey());
+//                startRecording(node, ndi.id, entry.getKey(), true);
+//              }
+//            }
+//            for (Map.Entry<String, AttributeMap<PortContext>> entry : outputPortAttributes.entrySet()) {
+//              AttributeMap<PortContext> attrMap = entry.getValue();
+//              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
+//                logger.info("Automatically start recording for operator {}, output port {}", ndi.id, entry.getKey());
+//                startRecording(node, ndi.id, entry.getKey(), true);
+//              }
+//            }
 
             activeNodes.put(ndi.id, context);
 

@@ -4,6 +4,7 @@
  */
 package com.malhartech.stram.plan.logical;
 
+import com.malhartech.api.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInput;
@@ -39,17 +40,11 @@ import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.AttributeMap;
 import com.malhartech.api.AttributeMap.DefaultAttributeMap;
-import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DAGContext;
-import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.StreamCodec;
 import com.malhartech.engine.Node;
 import com.malhartech.stram.OperatorDeployInfo.OperatorType;
 
@@ -74,6 +69,26 @@ public class LogicalPlan implements Serializable, DAG
   private final AttributeMap<DAGContext> attributes = new DefaultAttributeMap<DAGContext>();
   private transient int nodeIndex = 0; // used for cycle validation
   private transient Stack<OperatorMeta> stack = new Stack<OperatorMeta>(); // used for cycle validation
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public AttributeMap<Context> getAttributes()
+  {
+    @SuppressWarnings("rawtypes")
+    AttributeMap map = attributes;
+    return (AttributeMap<Context>)map;
+  }
+
+  @Override
+  public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+  {
+    T retval = attributes.attr(key).get();
+    if (retval == null) {
+      return defaultValue;
+    }
+
+    return retval;
+  }
 
   public static class OperatorProxy implements Serializable
   {
@@ -151,11 +166,6 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public AttributeMap<PortContext> getAttributes() {
-      return attributes;
-    }
-
-    @Override
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
@@ -163,6 +173,26 @@ public class LogicalPlan implements Serializable, DAG
               append("portAnnotation", this.portAnnotation).
               append("field", this.fieldName).
               toString();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public AttributeMap<Context> getAttributes()
+    {
+      @SuppressWarnings("rawtypes")
+      AttributeMap map = attributes;
+      return (AttributeMap<Context>)map;
+    }
+
+    @Override
+    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    {
+      T retval = attributes.attr(key).get();
+      if (retval == null) {
+        return defaultValue;
+      }
+
+      return retval;
     }
   }
 
@@ -194,8 +224,23 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public AttributeMap<PortContext> getAttributes() {
-      return this.attributes;
+    @SuppressWarnings("unchecked")
+    public AttributeMap<Context> getAttributes()
+    {
+      @SuppressWarnings("rawtypes")
+      AttributeMap map = attributes;
+      return (AttributeMap<Context>)map;
+    }
+
+    @Override
+    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    {
+      T retval = attributes.attr(key).get();
+      if (retval == null) {
+        return defaultValue;
+      }
+
+      return retval;
     }
 
     @Override
@@ -284,7 +329,7 @@ public class LogicalPlan implements Serializable, DAG
       }
       this.source = portMeta;
       if (op.outputStreams.containsKey(portMeta)) {
-        String msg = String.format("Operator %s already connected to %s", op.id, op.outputStreams.get(portMeta).id);
+        String msg = String.format("Operator %s already connected to %s", op.name, op.outputStreams.get(portMeta).id);
         throw new IllegalArgumentException(msg);
       }
       op.outputStreams.put(portMeta, this);
@@ -360,20 +405,47 @@ public class LogicalPlan implements Serializable, DAG
     private final LinkedHashMap<OutputPortMeta, StreamMeta> outputStreams = new LinkedHashMap<OutputPortMeta, StreamMeta>();
     private final AttributeMap<OperatorContext> attributes = new DefaultAttributeMap<OperatorContext>();
     private final OperatorProxy operatorProxy;
-    private final String id;
+    private final String name;
     private transient Integer nindex; // for cycle detection
     private transient Integer lowlink; // for cycle detection
 
-    private OperatorMeta(String id, Operator operator)
+    private OperatorMeta(String name, Operator operator)
     {
       this.operatorProxy = new OperatorProxy();
       this.operatorProxy.set(operator);
-      this.id = id;
+      this.name = name;
     }
 
-    public String getId()
+    @Override
+    public int getId()
     {
-      return id;
+      /* since nobody uses it */
+      return 0;
+    }
+
+    public String getName()
+    {
+      return name;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public AttributeMap<Context> getAttributes()
+    {
+      @SuppressWarnings("rawtypes")
+      AttributeMap map = attributes;
+      return (AttributeMap<Context>)map;
+    }
+
+    @Override
+    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    {
+      T retval = attributes.attr(key).get();
+      if (retval == null) {
+        return defaultValue;
+      }
+
+      return retval;
     }
 
     private class PortMapping implements Operators.OperatorDescriptor
@@ -477,16 +549,10 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     @Override
-    public AttributeMap<OperatorContext> getAttributes()
-    {
-      return this.attributes;
-    }
-
-    @Override
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("id", this.id).
+              append("id", this.name).
               append("operator", this.getOperator().getClass().getSimpleName()).
               toString();
     }
@@ -635,29 +701,24 @@ public class LogicalPlan implements Serializable, DAG
     throw new IllegalArgumentException("Operator not associated with the DAG: " + operator);
   }
 
-  @Override
-  public AttributeMap<DAGContext> getAttributes() {
-    return this.attributes;
-  }
-
   public int getMaxContainerCount()
   {
-    return this.attributes.attrValue(STRAM_MAX_CONTAINERS, 3);
+    return this.attrValue(STRAM_MAX_CONTAINERS, 3);
   }
 
   public boolean isDebug()
   {
-    return this.attributes.attrValue(STRAM_DEBUG, false);
+    return this.attrValue(STRAM_DEBUG, false);
   }
 
   public int getContainerMemoryMB()
   {
-    return this.attributes.attrValue(STRAM_CONTAINER_MEMORY_MB, 1024);
+    return this.attrValue(STRAM_CONTAINER_MEMORY_MB, 1024);
   }
 
   public int getMasterMemoryMB()
   {
-    return this.attributes.attrValue(STRAM_MASTER_MEMORY_MB, 1024);
+    return this.attrValue(STRAM_MASTER_MEMORY_MB, 1024);
   }
 
   /**
@@ -706,7 +767,7 @@ public class LogicalPlan implements Serializable, DAG
         for (ConstraintViolation<Operator> cv: constraintViolations) {
           copySet.add(cv);
         }
-        throw new ConstraintViolationException("Operator " + n.getId() + " violates constraints", copySet);
+        throw new ConstraintViolationException("Operator " + n.getName() + " violates constraints", copySet);
       }
 
       // check that non-optional ports are connected
@@ -714,7 +775,7 @@ public class LogicalPlan implements Serializable, DAG
       for (InputPortMeta pm: portMapping.inPortMap.values()) {
         if (!n.inputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
-            throw new IllegalArgumentException("Input port connection required: " + n.id + "." + pm.getPortName());
+            throw new IllegalArgumentException("Input port connection required: " + n.name + "." + pm.getPortName());
           }
         }
       }
@@ -723,13 +784,13 @@ public class LogicalPlan implements Serializable, DAG
       for (OutputPortMeta pm: portMapping.outPortMap.values()) {
         if (!n.outputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
-            throw new IllegalArgumentException("Output port connection required: " + n.id + "." + pm.getPortName());
+            throw new IllegalArgumentException("Output port connection required: " + n.name + "." + pm.getPortName());
           }
         }
         allPortsOptional &= (pm.portAnnotation != null && pm.portAnnotation.optional());
       }
       if (!allPortsOptional && n.outputStreams.isEmpty()) {
-        throw new IllegalArgumentException("At least one output port must be connected: " + n.id);
+        throw new IllegalArgumentException("At least one output port must be connected: " + n.name);
       }
     }
     stack = new Stack<OperatorMeta>();
@@ -776,7 +837,7 @@ public class LogicalPlan implements Serializable, DAG
         }
         // check for self referencing node
         if (n == successor) {
-          cycles.add(Collections.singletonList(n.id));
+          cycles.add(Collections.singletonList(n.name));
         }
         if (successor.nindex == null) {
           // not visited yet
@@ -794,14 +855,14 @@ public class LogicalPlan implements Serializable, DAG
       List<String> connectedIds = new ArrayList<String>();
       while (!stack.isEmpty()) {
         OperatorMeta n2 = stack.pop();
-        connectedIds.add(n2.id);
+        connectedIds.add(n2.name);
         if (n2 == n) {
           break; // collected all connected operators
         }
       }
       // strongly connected (cycle) if more than one node in stack
       if (connectedIds.size() > 1) {
-        LOG.debug("detected cycle from node {}: {}", n.id, connectedIds);
+        LOG.debug("detected cycle from node {}: {}", n.name, connectedIds);
         cycles.add(connectedIds);
       }
     }

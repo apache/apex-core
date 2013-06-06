@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.malhartech.api.Context;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator;
@@ -379,7 +380,7 @@ public class PhysicalPlan {
      */
     @Override
     public String getLogicalId() {
-      return logicalNode.getId();
+      return logicalNode.getName();
     }
 
     @Override
@@ -539,7 +540,7 @@ public class PhysicalPlan {
   /**
    * Interface to execution context that can be mocked for plan testing.
    */
-  public interface PlanContext {
+  public interface PlanContext extends Context {
 
     /**
      * Dynamic partitioning requires access to operator state for split or merge.
@@ -598,7 +599,7 @@ public class PhysicalPlan {
     }
 
     private boolean isPartitionable() {
-      int partitionCnt = logicalOperator.getAttributes().attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
+      int partitionCnt = logicalOperator.attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
       return (partitionCnt > 0);
     }
 
@@ -754,7 +755,7 @@ public class PhysicalPlan {
      * partitioning is enabled through initial count attribute.
      * if the attribute is not present or set to zero, partitioning is off
      */
-    int partitionCnt = m.logicalOperator.getAttributes().attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
+    int partitionCnt = m.logicalOperator.attrValue(OperatorContext.INITIAL_PARTITION_COUNT, 0);
     if (partitionCnt == 0) {
       throw new AssertionError("operator not partitionable " + m.logicalOperator);
     }
@@ -774,8 +775,8 @@ public class PhysicalPlan {
       throw new IllegalArgumentException("PartitionableOperator must return at least one partition: " + m.logicalOperator);
     }
 
-    int minTps = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_TPS_MIN, 0);
-    int maxTps = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_TPS_MAX, 0);
+    int minTps = m.logicalOperator.attrValue(OperatorContext.PARTITION_TPS_MIN, 0);
+    int maxTps = m.logicalOperator.attrValue(OperatorContext.PARTITION_TPS_MAX, 0);
     if (maxTps > minTps) {
       // monitor load
       if (m.statsHandlers == null) {
@@ -784,7 +785,7 @@ public class PhysicalPlan {
       m.statsHandlers.add(new PartitionLoadWatch(m, minTps, maxTps));
     }
 
-    String handlers = m.logicalOperator.getAttributes().attrValue(OperatorContext.PARTITION_STATS_HANDLER, null);
+    String handlers = m.logicalOperator.attrValue(OperatorContext.PARTITION_STATS_HANDLER, null);
     if (handlers != null) {
       if (m.statsHandlers == null) {
         m.statsHandlers = new ArrayList<StatsHandler>(1);
@@ -1145,7 +1146,7 @@ public class PhysicalPlan {
     PMapping upstream = logicalToPTOperator.get(streamDecl.getSource().getOperatorWrapper());
     Collection<PTOperator> upstreamNodes = upstream.partitions;
 
-    if (inputEntry.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false)) {
+    if (inputEntry.getKey().attrValue(PortContext.PARTITION_PARALLEL, false)) {
       if (upstream.partitions.size() < nodeDecl.partitions.size()) {
         throw new AssertionError("Number of partitions don't match in parallel mapping");
       }
@@ -1166,7 +1167,7 @@ public class PhysicalPlan {
         if (mergeDesc.outputPorts.size() != 1) {
           throw new IllegalArgumentException("Merge operator should have single output port, found: " + mergeDesc.outputPorts);
         }
-        mergeNode = new PTOperator(this, idSequence.incrementAndGet(), upstream.logicalOperator.getId() + "#merge#" + streamDecl.getSource().getPortName());
+        mergeNode = new PTOperator(this, idSequence.incrementAndGet(), upstream.logicalOperator.getName() + "#merge#" + streamDecl.getSource().getPortName());
         mergeNode.logicalNode = upstream.logicalOperator;
         mergeNode.inputs = new ArrayList<PTInput>();
         mergeNode.outputs = new ArrayList<PTOutput>();
@@ -1215,7 +1216,7 @@ public class PhysicalPlan {
   }
 
   private PTOperator createInstance(PMapping mapping, Partition<?> partition) {
-    PTOperator pOperator = new PTOperator(this, idSequence.incrementAndGet(), mapping.logicalOperator.getId());
+    PTOperator pOperator = new PTOperator(this, idSequence.incrementAndGet(), mapping.logicalOperator.getName());
     pOperator.logicalNode = mapping.logicalOperator;
     pOperator.inputs = new ArrayList<PTInput>();
     pOperator.outputs = new ArrayList<PTOutput>();
@@ -1403,13 +1404,13 @@ public class PhysicalPlan {
   public void addLogicalOperator(OperatorMeta om) {
 
     PMapping pnodes = new PMapping(om);
-    localityPrefs.add(pnodes, pnodes.logicalOperator.getAttributes().attrValue(OperatorContext.LOCALITY_HOST, null));
+    localityPrefs.add(pnodes, pnodes.logicalOperator.attrValue(OperatorContext.LOCALITY_HOST, null));
 
     PMapping upstreamPartitioned = null;
 
     for (Map.Entry<LogicalPlan.InputPortMeta, StreamMeta> e : om.getInputStreams().entrySet()) {
       PMapping m = logicalToPTOperator.get(e.getValue().getSource().getOperatorWrapper());
-      if (e.getKey().getAttributes().attrValue(PortContext.PARTITION_PARALLEL, false).equals(true)) {
+      if (e.getKey().attrValue(PortContext.PARTITION_PARALLEL, false).equals(true)) {
         // operator partitioned with upstream
         if (upstreamPartitioned != null) {
           // need to have common root

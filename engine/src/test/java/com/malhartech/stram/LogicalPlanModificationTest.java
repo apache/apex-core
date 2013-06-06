@@ -145,7 +145,7 @@ public class LogicalPlanModificationTest {
     Assert.assertEquals("deploy requests " + c, 1, c.pendingDeploy.size());
 
     PTOperator oper = c.operators.get(0);
-    Assert.assertEquals("operator name", "o1", oper.getOperatorMeta().getId());
+    Assert.assertEquals("operator name", "o1", oper.getOperatorMeta().getName());
     Assert.assertEquals("operator class", GenericTestOperator.class, oper.getOperatorMeta().getOperator().getClass());
 
   }

@@ -29,17 +29,28 @@ import com.malhartech.netlet.EventLoop;
 public class StreamContext extends DefaultAttributeMap<StreamContext> implements Context
 {
   private static final long serialVersionUID = 201212042146L;
-  public static final AttributeKey<InetSocketAddress> BUFFER_SERVER_ADDRESS = new AttributeKey<InetSocketAddress>("BUFFER_SERVER_ADDRESS");
-  public static final AttributeKey<EventLoop> EVENT_LOOP = new AttributeKey<EventLoop>("EVENT_LOOP");
-  public static final AttributeKey<StreamCodec<Object>> CODEC = new AttributeKey<StreamCodec<Object>>("CODEC");
+  public static final AttributeKey<InetSocketAddress> BUFFER_SERVER_ADDRESS = new AttributeKey<InetSocketAddress>(StreamContext.class, "BUFFER_SERVER");
+  public static final AttributeKey<EventLoop> EVENT_LOOP = new AttributeKey<EventLoop>(StreamContext.class, "EVENT_LOOP");
+  public static final AttributeKey<StreamCodec<Object>> CODEC = new AttributeKey<StreamCodec<Object>>(StreamContext.class, "CODEC");
 
-  public static class AttributeKey<T> extends AttributeMap.AttributeKey<StreamContext, T>
+  @Override
+  @SuppressWarnings("unchecked")
+  public AttributeMap<Context> getAttributes()
   {
-    private AttributeKey(String name)
-    {
-      super(StreamContext.class, name);
+    @SuppressWarnings("rawtypes")
+    AttributeMap context = this;
+    return (AttributeMap<Context>)context;
+  }
+
+  @Override
+  public <T> T attrValue(AttributeKey<T> key, T defaultValue)
+  {
+    T retvalue = attr(key).get();
+    if (retvalue == null) {
+      return defaultValue;
     }
 
+    return retvalue;
   }
 
   public InetSocketAddress getBufferServerAddress()

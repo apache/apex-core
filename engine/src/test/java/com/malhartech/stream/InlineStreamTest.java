@@ -3,19 +3,20 @@
  */
 package com.malhartech.stream;
 
-import com.malhartech.api.*;
-import com.malhartech.engine.*;
-import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.tuple.Tuple;
-import com.malhartech.api.AttributeMap;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.*;
+import com.malhartech.api.AttributeMap;
+import com.malhartech.engine.*;
+import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.tuple.Tuple;
 
 /**
  * Test for message flow through DAG
@@ -143,7 +144,7 @@ public class InlineStreamTest
         int id = counter.incrementAndGet();
         OperatorContext ctx = new OperatorContext(id, Thread.currentThread(),
                                                   new AttributeMap.DefaultAttributeMap<Context.OperatorContext>(),
-                                                  new AttributeMap.DefaultAttributeMap<com.malhartech.api.DAGContext>());
+                                                  null);
         activeNodes.put(ctx.getId(), node);
         node.activate(ctx);
         activeNodes.remove(ctx.getId());

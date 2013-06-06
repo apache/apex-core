@@ -7,6 +7,8 @@ package com.malhartech.stram;
 import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.api.AttributeMap;
+import com.malhartech.api.Context;
+import com.malhartech.api.DAGContext.AttributeKey;
 
 import java.io.*;
 import java.lang.reflect.AccessibleObject;
@@ -104,7 +106,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StreamingContainerContext extends WritableAdapter {
+  public static class StreamingContainerContext extends WritableAdapter implements Context {
     private static final long serialVersionUID = 201209071402L;
 
     public AttributeMap<DAGContext> applicationAttributes;
@@ -121,6 +123,27 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
               .append("applicationAttributes", this.applicationAttributes).toString();
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public AttributeMap<Context> getAttributes()
+    {
+      @SuppressWarnings("rawtypes")
+      AttributeMap map = applicationAttributes;
+      return (AttributeMap<Context>)map;
+    }
+
+    @Override
+    public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
+    {
+      T retval = applicationAttributes.attr(key).get();
+      if (retval == null) {
+        return defaultValue;
+      }
+
+      return retval;
+    }
+
   }
 
   /**
