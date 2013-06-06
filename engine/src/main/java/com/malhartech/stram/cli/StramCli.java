@@ -69,6 +69,8 @@ public class StramCli
   private final Map<String, List<String>> macros = new HashMap<String, List<String>>();
   private boolean changingLogicalPlan = false;
   List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
+  History topLevelHistory;
+  History changingLogicalPlanHistory;
 
   private interface Command
   {
@@ -322,8 +324,10 @@ public class StramCli
     File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
     historyFile.getParentFile().mkdirs();
     try {
-      History history = new History(historyFile);
-      reader.setHistory(history);
+      topLevelHistory = new History(historyFile);
+      reader.setHistory(topLevelHistory);
+      historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history-clp");
+      changingLogicalPlanHistory = new History(historyFile);
     }
     catch (IOException ex) {
       System.err.printf("Unable to open %s for writing.", historyFile);
@@ -1358,6 +1362,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       changingLogicalPlan = true;
+      reader.setHistory(changingLogicalPlanHistory);
     }
 
   }
@@ -1526,6 +1531,7 @@ public class StramCli
     {
       logicalPlanRequestQueue.clear();
       changingLogicalPlan = false;
+      reader.setHistory(topLevelHistory);
     }
 
   }
@@ -1563,6 +1569,7 @@ public class StramCli
       }
       logicalPlanRequestQueue.clear();
       changingLogicalPlan = false;
+      reader.setHistory(topLevelHistory);
     }
 
   }
