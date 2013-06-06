@@ -960,7 +960,6 @@ public class PhysicalPlan {
     }
 
     deployOperators = this.getDependents(deployOperators);
-    containers.addAll(newContainers);
     ctx.deploy(releaseContainers, undeployOperators, newContainers, deployOperators);
 
   }
@@ -990,6 +989,7 @@ public class PhysicalPlan {
           // get new container
           LOG.debug("New container for partition: " + oper);
           c = new PTContainer(this);
+          containers.add(c);
           newContainers.add(c);
         }
       }
