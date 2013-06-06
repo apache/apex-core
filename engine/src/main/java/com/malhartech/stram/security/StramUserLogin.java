@@ -21,7 +21,6 @@ public class StramUserLogin
   private static final String STRAM_USER_PRINCIPAL = "stram.user.principal";
   private static final String STRAM_USER_KEYTAB = "stram.user.keytab";
 
-
   public static void attemptAuthentication(Configuration conf) throws IOException {
     if (UserGroupInformation.isSecurityEnabled()) {
       String userPrincipal = conf.get(STRAM_USER_PRINCIPAL);
