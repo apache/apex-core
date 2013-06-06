@@ -605,7 +605,7 @@ public class StramClient
       .toString();
     LOG.info(specStr);
     if (dag.isDebug()) {
-      LOG.info("Full submission context: " + appContext);
+      //LOG.info("Full submission context: " + appContext);
     }
     rmClient.clientRM.submitApplication(appRequest);
 
