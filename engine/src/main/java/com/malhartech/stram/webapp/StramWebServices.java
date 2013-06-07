@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -391,7 +392,11 @@ public class StramWebServices
     catch (Exception ex) {
       LOG.error("Error processing plan change", ex);
       try {
-        response.put("error", ex.toString());
+        if (ex instanceof ExecutionException) {
+          response.put("error", ex.getCause().toString());
+        } else {
+          response.put("error", ex.toString());
+        }
       } catch (Exception e) {
         // ignore
       }

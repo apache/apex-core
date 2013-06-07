@@ -40,6 +40,8 @@ public class LogicalPlanModificationTest {
     ctx.deploy.clear();
     ctx.undeploy.clear();
 
+    Assert.assertEquals("containers", 3, plan.getContainers().size());
+
     PlanModifier pm = new PlanModifier(plan);
     GenericTestOperator added1 = new GenericTestOperator();
     pm.addOperator("added1", added1);
@@ -50,6 +52,8 @@ public class LogicalPlanModificationTest {
     Assert.assertEquals("deploy " + ctx.deploy, 0, ctx.deploy.size());
 
     pm.applyChanges(ctx);
+
+    Assert.assertEquals("containers post change", 4, plan.getContainers().size());
 
     Assert.assertEquals("undeploy " + ctx.undeploy, 1, ctx.undeploy.size());
     Assert.assertEquals("deploy " + ctx.deploy, 2, ctx.deploy.size());

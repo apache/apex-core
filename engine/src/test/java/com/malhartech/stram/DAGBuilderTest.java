@@ -26,6 +26,7 @@ import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import javax.validation.Valid;
 import javax.validation.Validation;
+import javax.validation.ValidationException;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 import javax.validation.constraints.AssertTrue;
@@ -40,8 +41,6 @@ import org.junit.Test;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.google.common.collect.Sets;
-import com.malhartech.api.annotation.InputPortFieldAnnotation;
-import com.malhartech.api.annotation.OutputPortFieldAnnotation;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
@@ -51,6 +50,9 @@ import com.malhartech.api.DefaultOutputPort;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Sink;
 import com.malhartech.api.StreamCodec;
+import com.malhartech.api.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.codec.KryoJdkSerializer;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.engine.TestOutputOperator;
@@ -58,7 +60,6 @@ import com.malhartech.stram.cli.StramClientUtils;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.malhartech.api.codec.KryoJdkSerializer;
 
 public class DAGBuilderTest {
 
@@ -247,7 +248,7 @@ public class DAGBuilderTest {
      try {
        dag.validate();
        fail("validation should fail");
-     } catch (IllegalStateException e) {
+     } catch (ValidationException e) {
        // expected
      }
 
@@ -456,15 +457,23 @@ public class DAGBuilderTest {
     TestGeneratorInputOperator input = dag.addOperator("input1", TestGeneratorInputOperator.class);
 
     try {
-    dag.validate();
-    Assert.fail("should raise port not connected for o1.input1");
-    } catch (IllegalArgumentException e) {
+      dag.validate();
+      Assert.fail("should raise port not connected for input1.outputPort");
+    } catch (ValidationException e) {
       Assert.assertEquals("", "Output port connection required: input1.outputPort", e.getMessage());
     }
 
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     dag.addStream("stream1", input.outport, o1.inport1);
     dag.validate();
+
+    // required input
+    dag.addOperator("counter", CounterOperator.class);
+    try {
+      dag.validate();
+    } catch (ValidationException e) {
+      Assert.assertEquals("", "Input port connection required: counter.countInputPort", e.getMessage());
+    }
 
   }
 
@@ -497,7 +506,7 @@ public class DAGBuilderTest {
     try {
       dag.validate();
       Assert.fail("should raise: port connection required");
-    } catch (IllegalArgumentException e) {
+    } catch (ValidationException e) {
       Assert.assertEquals("", "Output port connection required: testAnnotationsOperator.oport2", e.getMessage());
     }
 
@@ -511,7 +520,7 @@ public class DAGBuilderTest {
     try {
       dag.validate();
       Assert.fail("should raise: At least one output port must be connected");
-    } catch (IllegalArgumentException e) {
+    } catch (ValidationException e) {
       Assert.assertEquals("", "At least one output port must be connected: multiOutputPorts1", e.getMessage());
     }
     TestOutputOperator o3 = dag.addOperator("o3", new TestOutputOperator());

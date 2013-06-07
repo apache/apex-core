@@ -65,7 +65,7 @@ public interface DAG extends DAGContext, Serializable
   }
 
   /**
-   * Add new instance of operator under give name to the DAG.
+   * Add new instance of operator under given name to the DAG.
    * The operator class must have a default constructor.
    * If the class extends {@link BaseOperator}, the name is passed on to the instance.
    * Throws exception if the name is already linked to another operator instance.

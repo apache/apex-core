@@ -7,9 +7,7 @@ package com.malhartech.stram.plan.logical;
 import com.malhartech.api.*;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInput;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -29,6 +27,7 @@ import java.util.Stack;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import javax.validation.Validation;
+import javax.validation.ValidationException;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 
@@ -38,15 +37,16 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.annotation.InputPortFieldAnnotation;
-import com.malhartech.api.annotation.OutputPortFieldAnnotation;
+import com.malhartech.api.AttributeMap;
 import com.malhartech.api.AttributeMap.DefaultAttributeMap;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.api.StreamCodec;
+import com.malhartech.api.annotation.InputPortFieldAnnotation;
+import com.malhartech.api.annotation.OutputPortFieldAnnotation;
 import com.malhartech.engine.Node;
-import com.malhartech.stram.OperatorDeployInfo.OperatorType;
 
 /**
  * DAG contains the logical declarations of operators and streams.
@@ -762,8 +762,8 @@ public class LogicalPlan implements Serializable, DAG
       OperatorMeta.PortMapping portMapping = n.getPortMapping();
       for (InputPortMeta pm: portMapping.inPortMap.values()) {
         if (!n.inputStreams.containsKey(pm)) {
-          if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
-            throw new IllegalArgumentException("Input port connection required: " + n.name + "." + pm.getPortName());
+          if (pm.portAnnotation == null || !pm.portAnnotation.optional()) {
+            throw new ValidationException("Input port connection required: " + n.id + "." + pm.getPortName());
           }
         }
       }
@@ -772,13 +772,13 @@ public class LogicalPlan implements Serializable, DAG
       for (OutputPortMeta pm: portMapping.outPortMap.values()) {
         if (!n.outputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
-            throw new IllegalArgumentException("Output port connection required: " + n.name + "." + pm.getPortName());
+            throw new ValidationException("Output port connection required: " + n.id + "." + pm.getPortName());
           }
         }
         allPortsOptional &= (pm.portAnnotation != null && pm.portAnnotation.optional());
       }
       if (!allPortsOptional && n.outputStreams.isEmpty()) {
-        throw new IllegalArgumentException("At least one output port must be connected: " + n.name);
+        throw new ValidationException("At least one output port must be connected: " + n.id);
       }
     }
     stack = new Stack<OperatorMeta>();
@@ -790,12 +790,12 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     if (!cycles.isEmpty()) {
-      throw new IllegalStateException("Loops in graph: " + cycles);
+      throw new ValidationException("Loops in graph: " + cycles);
     }
 
     for (StreamMeta s: streams.values()) {
       if (s.source == null || (s.sinks.isEmpty())) {
-        throw new IllegalStateException(String.format("stream not connected: %s", s.getId()));
+        throw new ValidationException(String.format("stream not connected: %s", s.getId()));
       }
     }
   }

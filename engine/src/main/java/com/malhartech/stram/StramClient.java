@@ -236,7 +236,10 @@ public class StramClient
       org.eclipse.jetty.websocket.WebSocketFactory.class,
       org.eclipse.jetty.io.nio.SelectorManager.class,
       org.eclipse.jetty.http.HttpParser.class,
-      Kryo.class
+      Kryo.class,
+      org.apache.bval.jsr303.ApacheValidationProvider.class,
+      org.apache.bval.BeanValidationContext.class,
+      org.apache.commons.lang3.ClassUtils.class
     };
     List<Class<?>> jarClasses = new ArrayList<Class<?>>();
     jarClasses.addAll(Arrays.asList(defaultClasses));
