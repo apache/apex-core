@@ -4,7 +4,6 @@
  */
 package com.malhartech.stram.plan.logical;
 
-import com.malhartech.api.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -37,6 +36,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.malhartech.api.*;
 import com.malhartech.api.AttributeMap;
 import com.malhartech.api.AttributeMap.DefaultAttributeMap;
 import com.malhartech.api.Context.OperatorContext;
@@ -763,7 +763,7 @@ public class LogicalPlan implements Serializable, DAG
       for (InputPortMeta pm: portMapping.inPortMap.values()) {
         if (!n.inputStreams.containsKey(pm)) {
           if (pm.portAnnotation == null || !pm.portAnnotation.optional()) {
-            throw new ValidationException("Input port connection required: " + n.id + "." + pm.getPortName());
+            throw new ValidationException("Input port connection required: " + n.name + "." + pm.getPortName());
           }
         }
       }
@@ -772,13 +772,13 @@ public class LogicalPlan implements Serializable, DAG
       for (OutputPortMeta pm: portMapping.outPortMap.values()) {
         if (!n.outputStreams.containsKey(pm)) {
           if (pm.portAnnotation != null && !pm.portAnnotation.optional()) {
-            throw new ValidationException("Output port connection required: " + n.id + "." + pm.getPortName());
+            throw new ValidationException("Output port connection required: " + n.name + "." + pm.getPortName());
           }
         }
         allPortsOptional &= (pm.portAnnotation != null && pm.portAnnotation.optional());
       }
       if (!allPortsOptional && n.outputStreams.isEmpty()) {
-        throw new ValidationException("At least one output port must be connected: " + n.id);
+        throw new ValidationException("At least one output port must be connected: " + n.name);
       }
     }
     stack = new Stack<OperatorMeta>();
