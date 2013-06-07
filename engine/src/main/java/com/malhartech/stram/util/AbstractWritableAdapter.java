@@ -10,6 +10,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 import org.apache.hadoop.io.Writable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * TODO: quick hack to focus on protocol instead of serialization code -
@@ -17,7 +19,7 @@ import org.apache.hadoop.io.Writable;
  */
 public abstract class AbstractWritableAdapter implements Writable, Serializable
 {
-  private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 201306061421L;
 
   @Override
   public void readFields(DataInput arg0) throws IOException
@@ -29,7 +31,7 @@ public abstract class AbstractWritableAdapter implements Writable, Serializable
       ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
       @SuppressWarnings("unchecked")
       Map<String, Object> properties = (Map<String, Object>)ois.readObject();
-      Field[] fields = this.getClass().getDeclaredFields();
+      Field[] fields = this.getClass().getFields();
       AccessibleObject.setAccessible(fields, true);
       for (int i = 0; i < fields.length; i++) {
         Field field = fields[i];
@@ -52,7 +54,7 @@ public abstract class AbstractWritableAdapter implements Writable, Serializable
     ObjectOutputStream oos = new ObjectOutputStream(bos);
     try {
       Map<String, Object> properties = new java.util.HashMap<String, Object>();
-      Field[] fields = this.getClass().getDeclaredFields();
+      Field[] fields = this.getClass().getFields();
       AccessibleObject.setAccessible(fields, true);
       for (int i = 0; i < fields.length; i++) {
         Field field = fields[i];
@@ -74,4 +76,5 @@ public abstract class AbstractWritableAdapter implements Writable, Serializable
     oos.close();
   }
 
+  private static final Logger logger = LoggerFactory.getLogger(AbstractWritableAdapter.class);
 }

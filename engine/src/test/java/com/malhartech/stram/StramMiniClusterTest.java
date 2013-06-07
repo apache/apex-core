@@ -3,8 +3,6 @@
  */
 package com.malhartech.stram;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -12,15 +10,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import static java.lang.Thread.sleep;
 import java.net.URL;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
+import junit.framework.Assert;
 
 import javax.ws.rs.core.MediaType;
-
-import junit.framework.Assert;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -47,17 +45,19 @@ import org.apache.hadoop.yarn.server.MiniYARNCluster;
 import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
 import org.apache.hadoop.yarn.util.Records;
 import org.codehaus.jettison.json.JSONObject;
+import org.junit.*;
 import org.junit.AfterClass;
+import static org.junit.Assert.assertEquals;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.annotation.ShipContainingJars;
 import com.malhartech.api.BaseOperator;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.InputOperator;
+import com.malhartech.api.annotation.ShipContainingJars;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
@@ -66,8 +66,6 @@ import com.malhartech.stram.webapp.StramWebServices;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-import com.malhartech.netlet.DefaultEventLoop;
-import org.junit.*;
 
 /**
  * The purpose of this test is to verify basic streaming application deployment
@@ -161,13 +159,13 @@ public class StramMiniClusterTest
     ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
     GetClusterNodesResponse response = clientRMService.getClusterNodes(request);
     List<NodeReport> nodeReports = response.getNodeReports();
-    System.out.println(nodeReports);
+    LOG.info("{}", nodeReports);
 
     for (NodeReport nr: nodeReports) {
-      System.out.println("Node: " + nr.getNodeId());
-      System.out.println("Total memory: " + nr.getCapability());
-      System.out.println("Used memory: " + nr.getUsed());
-      System.out.println("Number containers: " + nr.getNumContainers());
+      LOG.info("Node: {}", nr.getNodeId());
+      LOG.info("Total memory: {}", nr.getCapability());
+      LOG.info("Used memory: {}", nr.getUsed());
+      LOG.info("Number containers: {}", nr.getNumContainers());
     }
 
     String appMasterJar = JarFinder.getJar(StramAppMaster.class);
@@ -225,7 +223,6 @@ public class StramMiniClusterTest
 
     LOG.info("Client run completed. Result=" + result);
     Assert.assertTrue(result);
-
   }
 
   /**
@@ -357,7 +354,6 @@ public class StramMiniClusterTest
 
   }
 
-  @Ignore
   @Test
   public void testOperatorFailureRecovery() throws Exception
   {
@@ -396,7 +392,6 @@ public class StramMiniClusterTest
   {
   }
 
-  @Ignore
   @Test
   public void testShipContainingJars()
   {
@@ -417,12 +412,13 @@ public class StramMiniClusterTest
     Assert.assertTrue("", jars.contains(JarFinder.getJar(com.esotericsoftware.kryo.Kryo.class)));
   }
 
-  @Ignore
+  @Ignore // thomas knows why this is disabled
   @Test
   public void testUnmanagedAM() throws Exception {
 
     new InlineAM(conf) {
       @Override
+      @SuppressWarnings("SleepWhileInLoop")
       public void runAM(ApplicationAttemptId attemptId) throws Exception {
         LOG.debug("AM running {}", attemptId);
 
@@ -478,7 +474,7 @@ public class StramMiniClusterTest
           req.setResponseId(responseId++);
 
           AllocateResponse ar = resourceManager.allocate(req);
-          Thread.sleep(1000);
+          sleep(1000);
           LOG.debug("allocateResponse: {}" , ar);
         }
 
@@ -532,6 +528,7 @@ public class StramMiniClusterTest
     new InlineAM(conf) {
 
       @Override
+      @SuppressWarnings("SleepWhileInLoop")
       public void runAM(ApplicationAttemptId attemptId) throws Exception {
         LOG.debug("AM running {}", attemptId);
 
@@ -567,7 +564,7 @@ public class StramMiniClusterTest
 */
         for (int i=0; i<100; i++) {
           AllocateResponse ar = amRmClient.allocate(0);
-          Thread.sleep(1000);
+          sleep(1000);
           LOG.debug("allocateResponse: {}" , ar);
           for (Container c : ar.getAMResponse().getAllocatedContainers()) {
             LOG.debug("*** allocated {}", c.getResource());
@@ -580,13 +577,13 @@ public class StramMiniClusterTest
           ClientRMService clientRMService = yarnCluster.getResourceManager().getClientRMService();
           GetClusterNodesResponse response = clientRMService.getClusterNodes(request);
           List<NodeReport> nodeReports = response.getNodeReports();
-          System.out.println(nodeReports);
+          LOG.info(nodeReports);
 
           for (NodeReport nr: nodeReports) {
-            System.out.println("Node: " + nr.getNodeId());
-            System.out.println("Total memory: " + nr.getCapability());
-            System.out.println("Used memory: " + nr.getUsed());
-            System.out.println("Number containers: " + nr.getNumContainers());
+            LOG.info("Node: " + nr.getNodeId());
+            LOG.info("Total memory: " + nr.getCapability());
+            LOG.info("Used memory: " + nr.getUsed());
+            LOG.info("Number containers: " + nr.getNumContainers());
           }
           */
         }

@@ -37,11 +37,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
 import com.malhartech.api.AttributeMap;
-import com.malhartech.api.AttributeMap.AttributeKey;
-import com.malhartech.api.Context;
 import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DAGContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.StorageAgent;
@@ -65,8 +61,8 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeReque
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.malhartech.stram.api.BaseContext;
 import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlanRequest;
 import com.malhartech.stram.plan.logical.Operators;
@@ -85,8 +81,9 @@ import com.malhartech.stram.webapp.PortInfo;
  * <br>
  *
  */
-public class StreamingContainerManager implements PlanContext
+public class StreamingContainerManager extends BaseContext implements PlanContext
 {
+  private static final long serialVersionUID = 201306061743L;
   private final static Logger LOG = LoggerFactory.getLogger(StreamingContainerManager.class);
   private long windowStartMillis = System.currentTimeMillis();
   private int heartbeatTimeoutMillis = 30000;
@@ -95,8 +92,6 @@ public class StreamingContainerManager implements PlanContext
   private long lastRecordStatsTime = 0;
   private HdfsStatsRecorder statsRecorder;
   private final int operatorMaxAttemptCount = 5;
-  private final AttributeMap appAttributes;
-  //private final int checkpointIntervalMillis;
   private final String appPath;
   private final String checkpointFsPath;
   private final String statsFsPath;
@@ -121,13 +116,13 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public AttributeMap getAttributes()
   {
-    return appAttributes;
+    return attributes;
   }
 
   @Override
   public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
   {
-    T retvalue = appAttributes.attr(key).get();
+    T retvalue = attributes.attr(key).get();
     if (retvalue == null) {
       return defaultValue;
     }
@@ -138,29 +133,26 @@ public class StreamingContainerManager implements PlanContext
   @SuppressWarnings("unchecked")
   public StreamingContainerManager(LogicalPlan dag)
   {
+    super(dag.getAttributes(), null);
     this.plan = new PhysicalPlan(dag, this);
-    @SuppressWarnings("rawtypes")
-    AttributeMap attributes = dag.getAttributes();
-    this.appAttributes = attributes;
 
-    appAttributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).setIfAbsent(500);
+    attributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).setIfAbsent(500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
 
-    appAttributes.attr(LogicalPlan.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
-    this.appPath = appAttributes.attr(LogicalPlan.STRAM_APP_PATH).get();
+    attributes.attr(LogicalPlan.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
+    this.appPath = attributes.attr(LogicalPlan.STRAM_APP_PATH).get();
     this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
 
-    appAttributes.attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / appAttributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).get());
-    //this.checkpointIntervalMillis = appAttributes.attr(DAG.STRAM_CHECKPOINT_WINDOW_COUNT).get() * appAttributes.attr(DAG.STRAM_WINDOW_SIZE_MILLIS).get();
+    attributes.attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / attributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).get());
     this.heartbeatTimeoutMillis = this.attrValue(LogicalPlan.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
-    appAttributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
-    this.maxWindowsBehindForStats = appAttributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
+    attributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
+    this.maxWindowsBehindForStats = attributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
 
-    appAttributes.attr(LogicalPlan.STRAM_RECORD_STATS_INTERVAL_MILLIS).setIfAbsent(0);
-    this.recordStatsInterval = appAttributes.attr(LogicalPlan.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
+    attributes.attr(LogicalPlan.STRAM_RECORD_STATS_INTERVAL_MILLIS).setIfAbsent(0);
+    this.recordStatsInterval = attributes.attr(LogicalPlan.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
     if (this.recordStatsInterval > 0) {
       statsRecorder = new HdfsStatsRecorder();
       statsRecorder.setBasePath(this.statsFsPath);
@@ -476,7 +468,7 @@ public class StreamingContainerManager implements PlanContext
 
   private StreamingContainerContext newStreamingContainerContext()
   {
-    StreamingContainerContext scc = new StreamingContainerContext(appAttributes);
+    StreamingContainerContext scc = new StreamingContainerContext(attributes);
     scc.startWindowMillis = this.windowStartMillis;
     return scc;
   }
@@ -1211,8 +1203,7 @@ public class StreamingContainerManager implements PlanContext
   public Map<String, Object> getApplicationAttributes()
   {
     LogicalPlan lp = getLogicalPlan();
-    AttributeMap attributes = lp.getAttributes();
-    return attributes.valueMap();
+    return lp.getAttributes().valueMap();
   }
 
   public Map<String, Object> getOperatorAttributes(String operatorId)

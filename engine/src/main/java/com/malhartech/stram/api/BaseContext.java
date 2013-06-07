@@ -17,8 +17,11 @@ import com.malhartech.stram.util.AbstractWritableAdapter;
 public class BaseContext extends AbstractWritableAdapter implements Context
 {
   private static final long serialVersionUID = 201306060103L;
-  protected final AttributeMap attributes;
-  protected final Context parentContext;
+  /*
+   * the followiing 2 need to be public since otherwise they are not serialized.
+   */
+  public final AttributeMap attributes;
+  public final Context parentContext;
 
   public BaseContext(AttributeMap attributes, Context parentContext)
   {
