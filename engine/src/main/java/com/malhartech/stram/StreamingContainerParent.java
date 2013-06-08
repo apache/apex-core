@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.DAGContext;
+import com.malhartech.stram.util.SecureExecutor;
 import org.apache.hadoop.security.authorize.Service;
 
 /**
@@ -135,7 +136,23 @@ public class StreamingContainerParent extends CompositeService implements Stream
 
   @Override
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) {
-    return dagManager.processHeartbeat(msg);
+    // Change to use some sort of a annotation that developers can use to specify secure code
+    // For now using SecureExecutor work load. All change sig to throw Exception
+    // TODO -- Revisit
+    try {
+      final ContainerHeartbeat fmsg = msg;
+      return SecureExecutor.execute(new SecureExecutor.WorkLoad<ContainerHeartbeatResponse>() {
+        @Override
+        public ContainerHeartbeatResponse run()
+        {
+          return dagManager.processHeartbeat(fmsg);
+        }
+      });
+    } catch (IOException ex) {
+      LOG.error("Error processing heartbeat", ex);
+      return null;
+    }
+    //return dagManager.processHeartbeat(msg);
   }
 
   @Override
