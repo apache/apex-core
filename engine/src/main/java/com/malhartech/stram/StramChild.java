@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.*;
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.bufferserver.server.Server;
@@ -1135,31 +1134,25 @@ public class StramChild
           try {
             failedNodes.remove(ndi.id);
             OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, parentContext);
-            node.getOperator().setup(context);
+            node.setup(context);
 
-            final Map<String, AttributeMap> inputPortAttributes = new HashMap<String, AttributeMap>();
-            final Map<String, AttributeMap> outputPortAttributes = new HashMap<String, AttributeMap>();
+            LinkedHashMap<String, InputPort<?>> inputPorts = node.getPortMappingDescriptor().inputPorts;
             for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
-              inputPortAttributes.put(idi.portName, idi.contextAttributes);
-            }
-            for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
-              outputPortAttributes.put(odi.portName, odi.contextAttributes);
+              PortContext portContext = new PortContext(idi.contextAttributes, context);
+              inputPorts.get(idi.portName).setup(portContext);
+              if (portContext.attrValue(PortContext.AUTO_RECORD, false)) {
+                startRecording(node, ndi.id, idi.portName, true);
+              }
             }
 
-//            for (Map.Entry<String, AttributeMap<PortContext>> entry : inputPortAttributes.entrySet()) {
-//              AttributeMap<PortContext> attrMap = entry.getValue();
-//              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
-//                logger.info("Automatically start recording for operator {}, input port {}", ndi.id, entry.getKey());
-//                startRecording(node, ndi.id, entry.getKey(), true);
-//              }
-//            }
-//            for (Map.Entry<String, AttributeMap<PortContext>> entry : outputPortAttributes.entrySet()) {
-//              AttributeMap<PortContext> attrMap = entry.getValue();
-//              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
-//                logger.info("Automatically start recording for operator {}, output port {}", ndi.id, entry.getKey());
-//                startRecording(node, ndi.id, entry.getKey(), true);
-//              }
-//            }
+            LinkedHashMap<String, OutputPort<?>> outputPorts = node.getPortMappingDescriptor().outputPorts;
+            for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
+              PortContext portContext = new PortContext(odi.contextAttributes, context);
+              outputPorts.get(odi.portName).setup(portContext);
+              if (portContext.attrValue(PortContext.AUTO_RECORD, false)) {
+                startRecording(node, ndi.id, odi.portName, true);
+              }
+            }
 
             activeNodes.put(ndi.id, context);
 
@@ -1174,7 +1167,7 @@ public class StramChild
           finally {
             activatedOrFailed.put(ndi, ndi);
             activeNodes.remove(ndi.id);
-            node.getOperator().teardown();
+            node.teardown();
             logger.info("deactivated {}", node.getId());
           }
         }

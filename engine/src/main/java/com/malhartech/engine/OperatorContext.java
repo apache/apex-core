@@ -15,6 +15,7 @@ import com.malhartech.api.AttributeMap;
 import com.malhartech.api.Context;
 import com.malhartech.api.Operator;
 import com.malhartech.netlet.util.CircularBuffer;
+import com.malhartech.stram.api.BaseContext;
 
 /**
  * The for context for all of the operators<p>
@@ -22,10 +23,10 @@ import com.malhartech.netlet.util.CircularBuffer;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class OperatorContext implements Context.OperatorContext
+public class OperatorContext extends BaseContext implements Context.OperatorContext
 {
+  private static final long serialVersionUID = 2013060671427L;
   private final Thread thread;
-  private final Context parentContext;
 
   /**
    * @return the thread
@@ -37,7 +38,6 @@ public class OperatorContext implements Context.OperatorContext
 
   private long lastProcessedWindowId = -1;
   private final int id;
-  private final AttributeMap attributes;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
@@ -47,6 +47,7 @@ public class OperatorContext implements Context.OperatorContext
   // we should make it configurable somehow.
   private long idleTimeout = 1000L;
 
+  @SuppressWarnings("ReturnOfCollectionOrArrayField")
   public BlockingQueue<NodeRequest> getRequests()
   {
     return requests;
@@ -77,10 +78,9 @@ public class OperatorContext implements Context.OperatorContext
    */
   public OperatorContext(int id, Thread worker, AttributeMap attributes, Context parentContext)
   {
+    super(attributes, parentContext);
     this.id = id;
-    this.attributes = attributes;
     this.thread = worker;
-    this.parentContext = parentContext;
   }
 
   @Override
@@ -121,28 +121,6 @@ public class OperatorContext implements Context.OperatorContext
   {
     //logger.debug("Received request {} for (node={})", request, id);
     requests.add(request);
-  }
-
-  @Override
-  public AttributeMap getAttributes()
-  {
-    return attributes;
-  }
-
-  @Override
-  public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue)
-  {
-    T retvalue = attributes.attr(key).get();
-    if (retvalue == null) {
-      if (parentContext == null) {
-        return defaultValue;
-      }
-      else {
-        return parentContext.attrValue(key, defaultValue);
-      }
-    }
-
-    return retvalue;
   }
 
   public interface NodeRequest

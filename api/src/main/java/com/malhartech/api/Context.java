@@ -49,6 +49,10 @@ public interface Context
      * Whether or not to auto record the tuples
      */
     public static final AttributeKey<Boolean> AUTO_RECORD = new AttributeKey<Boolean>("autoRecord");
+    /**
+     * This attribute indicates the operator to which this port belongs.
+     */
+    public static final AttributeKey<Operator> OPERATOR = new AttributeKey<Operator>("opeator");
   }
 
   public interface OperatorContext extends Context
