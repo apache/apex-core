@@ -13,8 +13,23 @@ package com.malhartech.api;
  */
 public interface Context
 {
+  /**
+   * Get the attributes associated with this context.
+   * The returned map does not contain any attributes that may have been defined in the parent context of this context.
+   *
+   * @return attributes defined for the current context.
+   */
   public AttributeMap getAttributes();
 
+  /**
+   * Get the value of the attribute associated with the current key by recursively traversing the contexts upwards to
+   * the application level. If the attribute is not found, then return the defaultValue.
+   *
+   * @param <T> - Type of the attribute.
+   * @param key - AttributeKey to identify the attribute.
+   * @param defaultValue - Default value if the attribute is not found.
+   * @return The value for the attribute if found or the defaultValue passed in as argument.
+   */
   public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue);
 
   public interface PortContext extends Context
