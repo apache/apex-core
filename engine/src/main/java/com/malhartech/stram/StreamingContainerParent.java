@@ -136,9 +136,9 @@ public class StreamingContainerParent extends CompositeService implements Stream
 
   @Override
   public ContainerHeartbeatResponse processHeartbeat(ContainerHeartbeat msg) {
+    // -- TODO
     // Change to use some sort of a annotation that developers can use to specify secure code
-    // For now using SecureExecutor work load. All change sig to throw Exception
-    // TODO -- Revisit
+    // For now using SecureExecutor work load. Also change sig to throw Exception
     try {
       final ContainerHeartbeat fmsg = msg;
       return SecureExecutor.execute(new SecureExecutor.WorkLoad<ContainerHeartbeatResponse>() {
