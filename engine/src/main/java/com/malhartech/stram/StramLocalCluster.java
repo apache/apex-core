@@ -267,8 +267,8 @@ public class StramLocalCluster implements Runnable, Controller
       throw new RuntimeException("could not cleanup test dir", e);
     }
 
-    dag.getAttributes().attr(LogicalPlan.STRAM_APP_ID).set("app_local_" + System.currentTimeMillis());
-    dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).setIfAbsent(pathUri);
+    dag.getAttributes().attr(LogicalPlan.APPLICATION_ID).set("app_local_" + System.currentTimeMillis());
+    dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).setIfAbsent(pathUri);
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
 

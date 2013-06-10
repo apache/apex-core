@@ -84,11 +84,11 @@ public class CheckpointTest
   public void testBackup() throws Exception
   {
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).set(1);
+    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(1);
     // node with no inputs will be connected to window generator
     TestGeneratorInputOperator m1 = dag.addOperator("node1", TestGeneratorInputOperator.class);
     m1.setMaxTuples(2);
-    dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).set(testWorkDir.getPath());
+    dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).set(testWorkDir.getPath());
     StreamingContainerManager dnm = new StreamingContainerManager(dag);
 
     Assert.assertEquals("number required containers", 1, dnm.getPhysicalPlan().getContainers().size());

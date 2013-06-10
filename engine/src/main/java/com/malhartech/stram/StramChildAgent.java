@@ -462,7 +462,7 @@ public class StramChildAgent {
     }
     StorageAgent agent = node.getOperatorMeta().getAttributes().attr(OperatorContext.STORAGE_AGENT).get();
     if (agent == null) {
-      String appPath = getInitContext().attrValue(LogicalPlan.STRAM_APP_PATH, "app-dfs-path-not-configured");
+      String appPath = getInitContext().attrValue(LogicalPlan.APPLICATION_PATH, "app-dfs-path-not-configured");
       agent = new HdfsStorageAgent(new Configuration(), appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS);
     }
 

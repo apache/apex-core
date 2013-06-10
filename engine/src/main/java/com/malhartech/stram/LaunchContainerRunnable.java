@@ -176,7 +176,7 @@ public class LaunchContainerRunnable implements Runnable
     try {
       // child VM dependencies
       FileSystem fs = FileSystem.get(yarnClient.getConf());
-      addLibJarsToLocalResources(dag.getAttributes().attr(LogicalPlan.STRAM_LIBJARS).get(), localResources, fs);
+      addLibJarsToLocalResources(dag.getAttributes().attr(LogicalPlan.LIBRARY_JARS).get(), localResources, fs);
       ctx.setLocalResources(localResources);
     }
     catch (IOException e) {
@@ -235,7 +235,7 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
 
-    String jvmOpts = dag.getAttributes().attr(LogicalPlan.STRAM_CONTAINER_JVM_OPTS).get();
+    String jvmOpts = dag.getAttributes().attr(LogicalPlan.CONTAINER_JVM_OPTIONS).get();
     if (jvmOpts != null) {
       Map<String, String> params = new HashMap<String, String>();
       params.put("applicationId", Integer.toString(container.getId().getApplicationAttemptId().getApplicationId().getId()));

@@ -98,9 +98,9 @@ public class NodeRecoveryTest
     collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
-    dag.getAttributes().attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).set(300);
-    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(1);
+    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
 
@@ -119,9 +119,9 @@ public class NodeRecoveryTest
     collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
-    dag.getAttributes().attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
-    dag.getAttributes().attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).set(300);
-    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(1);
+    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
 
@@ -144,10 +144,10 @@ public class NodeRecoveryTest
     collection.clear();
     int maxTuples = 30;
     LogicalPlan dag = new LogicalPlan();
-    //dag.getAttributes().attr(DAG.STRAM_HEARTBEAT_INTERVAL_MILLIS).set(400);
-    dag.getAttributes().attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).set(2);
-    dag.getAttributes().attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).set(300);
-    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(1);
+    //dag.getAttributes().attr(DAG.HEARTBEAT_INTERVAL_MILLIS).set(400);
+    dag.getAttributes().attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).set(2);
+    dag.getAttributes().attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).set(300);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(1);
     RecoverableInputOperator rip = dag.addOperator("LongGenerator", RecoverableInputOperator.class);
     rip.setMaximumTuples(maxTuples);
 
