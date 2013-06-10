@@ -2,9 +2,6 @@ package com.malhartech.api;
 
 import java.io.Serializable;
 
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
-
 /**
  * DAG contains the logical declarations of operators and streams.
  * <p>

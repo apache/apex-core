@@ -662,7 +662,7 @@ public class StramCli
 
       boolean connected = false;
       try {
-        LOG.info("Selected {} with tracking url: ", currentApp.getApplicationId(), currentApp.getTrackingUrl());
+        LOG.debug("Selected {} with tracking url {}", currentApp.getApplicationId(), currentApp.getTrackingUrl());
         ClientResponse rsp = getResource(StramWebServices.PATH_INFO);
         JSONObject json = rsp.getEntity(JSONObject.class);
         System.out.println(json.toString(2));

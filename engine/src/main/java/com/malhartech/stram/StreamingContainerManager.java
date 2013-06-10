@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
 import com.malhartech.api.AttributeMap;
-import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.StorageAgent;
@@ -130,7 +129,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     return retvalue;
   }
 
-  @SuppressWarnings("unchecked")
   public StreamingContainerManager(LogicalPlan dag)
   {
     super(dag.getAttributes(), null);
@@ -782,7 +780,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
     long maxCheckpoint = operator.getRecentCheckpoint();
 
-    // find smallest most recent subscriber checkpoint
+    // find smallest of most recent subscriber checkpoints
     for (PTOutput out: operator.outputs) {
       for (PhysicalPlan.PTInput sink: out.sinks) {
         PTOperator sinkOperator = (PTOperator)sink.target;
@@ -790,7 +788,11 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
           // downstream traversal
           updateRecoveryCheckpoints(sinkOperator, visited, committedWindowId);
         }
-        maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.recoveryCheckpoint);
+        // recovery window id cannot move backwards
+        // when dynamically adding new operators
+        if (sinkOperator.recoveryCheckpoint >= operator.recoveryCheckpoint) {
+          maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.recoveryCheckpoint);
+        }
       }
     }
 

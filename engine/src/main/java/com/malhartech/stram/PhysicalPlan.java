@@ -50,7 +50,6 @@ import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
 /**
