@@ -267,7 +267,7 @@ public class StramAppLauncher {
               Class<? extends ApplicationFactory> c = StramUtils.classForName(className, ApplicationFactory.class);
               ApplicationFactory f = StramUtils.newInstance(c);
               LogicalPlan lp = new LogicalPlan(conf);
-              f.getApplication(lp, conf);
+              f.populateDAG(lp, conf);
               return lp;
             }
           });

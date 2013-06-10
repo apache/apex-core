@@ -377,7 +377,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   }
 
   @Override
-  public void getApplication(DAG dag, Configuration appConf) {
+  public void populateDAG(DAG dag, Configuration appConf) {
 
     Configuration conf = new Configuration(appConf);
     for (final String propertyName : this.properties.stringPropertyNames()) {
@@ -435,7 +435,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
     DAGPropertiesBuilder tb = new DAGPropertiesBuilder();
     tb.addFromProperties(topologyProperties);
     LogicalPlan lp = new LogicalPlan();
-    tb.getApplication(lp, conf);
+    tb.populateDAG(lp, conf);
     return lp;
   }
 

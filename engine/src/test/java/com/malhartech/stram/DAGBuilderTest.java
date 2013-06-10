@@ -82,7 +82,7 @@ public class DAGBuilderTest {
     builder.addFromConfiguration(conf);
 
     LogicalPlan dag = new LogicalPlan();
-    builder.getApplication(dag, new Configuration(false));
+    builder.populateDAG(dag, new Configuration(false));
     dag.validate();
 
 //    Map<String, NodeConf> operatorConfs = tb.getAllOperators();
@@ -167,7 +167,7 @@ public class DAGBuilderTest {
         .addFromProperties(props);
 
       LogicalPlan dag = new LogicalPlan();
-      pb.getApplication(dag, new Configuration(false));
+      pb.populateDAG(dag, new Configuration(false));
       dag.validate();
 
       assertEquals("number of operator confs", 5, dag.getAllOperators().size());

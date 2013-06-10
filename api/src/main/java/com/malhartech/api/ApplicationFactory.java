@@ -25,5 +25,5 @@ public interface ApplicationFactory {
     public static final String LAUNCHMODE_YARN = "yarn";
     public static final String LAUNCHMODE_LOCAL = "local";
 
-    void getApplication(DAG dag, Configuration conf);
+    void populateDAG(DAG dag, Configuration conf);
 }

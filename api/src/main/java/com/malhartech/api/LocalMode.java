@@ -38,7 +38,7 @@ public abstract class LocalMode {
    */
   public static void runApp(ApplicationFactory app, int runMillis) {
     LocalMode lma = newInstance();
-    app.getApplication(lma.getDAG(), new Configuration(false));
+    app.populateDAG(lma.getDAG(), new Configuration(false));
     LocalMode.Controller lc = lma.getController();
     lc.run(runMillis);
   }
