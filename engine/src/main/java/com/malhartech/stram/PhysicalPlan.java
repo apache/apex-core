@@ -1400,8 +1400,8 @@ public class PhysicalPlan {
    * Add logical operator to the plan. Assumes that upstream operators have been added before.
    * @param om
    */
-  public void addLogicalOperator(OperatorMeta om) {
-
+  public void addLogicalOperator(OperatorMeta om)
+  {
     PMapping pnodes = new PMapping(om);
     localityPrefs.add(pnodes, pnodes.logicalOperator.attrValue(OperatorContext.LOCALITY_HOST, null));
 

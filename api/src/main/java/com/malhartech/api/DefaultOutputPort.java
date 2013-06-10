@@ -19,7 +19,6 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
   private final Operator operator;
   private transient Sink<Object> sink;
 
-  @SuppressWarnings("unchecked")
   public DefaultOutputPort(Operator operator)
   {
     this.operator = operator;
@@ -48,7 +47,6 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
    * @param s
    */
   @Override
-  @SuppressWarnings("unchecked")
   final public void setSink(Sink<Object> s)
   {
     this.sink = s == null? Sink.BLACKHOLE: s;
