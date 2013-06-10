@@ -39,8 +39,6 @@ import org.slf4j.LoggerFactory;
 import com.malhartech.api.*;
 import com.malhartech.api.AttributeMap;
 import com.malhartech.api.AttributeMap.DefaultAttributeMap;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.StreamCodec;
@@ -603,14 +601,14 @@ public class LogicalPlan implements Serializable, DAG
   }
 
   @Override
-  @SuppressWarnings({"rawtypes", "unchecked"})
+  @SuppressWarnings({"unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1)
   {
     return addStream(id, source, new Operator.InputPort[] {sink1});
   }
 
   @Override
-  @SuppressWarnings({"rawtypes", "unchecked"})
+  @SuppressWarnings({"unchecked"})
   public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<? super T> sink1, Operator.InputPort<? super T> sink2)
   {
     return addStream(id, source, new Operator.InputPort[] {sink1, sink2});

@@ -1238,15 +1238,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     }
   }
 
-  public Map<String, Object> getOperatorProperties(String operatorId)
-  {
-    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
-    if (logicalOperator == null) {
-      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
-    }
-    return DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
-  }
-
   public LogicalPlan getLogicalPlan()
   {
     return plan.getDAG();

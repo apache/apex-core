@@ -1,12 +1,16 @@
 package com.malhartech.stram.plan.physical;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
+
+import javax.validation.ValidationException;
 
 import com.google.common.collect.Sets;
 import com.malhartech.api.Operator;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
+import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.PhysicalPlan;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -33,7 +37,8 @@ public class PlanModifier {
    * For dry run on logical plan only
    * @param logicalPlan
    */
-  public PlanModifier(LogicalPlan logicalPlan) {
+  public PlanModifier(LogicalPlan logicalPlan)
+  {
     this.logicalPlan = logicalPlan;
     this.physicalPlan = null;
   }
@@ -42,13 +47,14 @@ public class PlanModifier {
    * For modification of physical plan
    * @param plan
    */
-  public PlanModifier(PhysicalPlan plan) {
+  public PlanModifier(PhysicalPlan plan)
+  {
     this.physicalPlan = plan;
     this.logicalPlan = plan.getDAG();
   }
 
-  public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<?>... sinks) {
-
+  public <T> StreamMeta addStream(String id, Operator.OutputPort<? extends T> source, Operator.InputPort<?>... sinks)
+  {
     StreamMeta sm = logicalPlan.getStream(id);
     if (sm != null) {
       if (sm.getSource().getOperatorWrapper().getMeta(source) != sm.getSource()) {
@@ -84,11 +90,11 @@ public class PlanModifier {
    * @param targetOperName
    * @param targetPortName
    */
-  public void addStream(String streamName, String sourceOperName, String sourcePortName, String targetOperName, String targetPortName) {
-
+  public void addStream(String streamName, String sourceOperName, String sourcePortName, String targetOperName, String targetPortName)
+  {
     OperatorMeta om = logicalPlan.getOperatorMeta(sourceOperName);
     if (om == null) {
-      throw new AssertionError("Invalid operator name " + sourceOperName);
+      throw new ValidationException("Invalid operator name " + sourceOperName);
     }
 
     Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
@@ -99,15 +105,20 @@ public class PlanModifier {
       throw new AssertionError(String.format("Invalid port %s (%s)", sourcePortName, om));
     }
     addStream(streamName, sourcePort, getInputPort(targetOperName, targetPortName));
-
   }
 
-  private InputPort<?> getInputPort(String operName, String portName) {
+  private OperatorMeta assertGetOperator(String operName)
+  {
     OperatorMeta om = logicalPlan.getOperatorMeta(operName);
     if (om == null) {
       throw new AssertionError("Invalid operator name " + operName);
     }
+    return om;
+  }
 
+  private InputPort<?> getInputPort(String operName, String portName)
+  {
+    OperatorMeta om = assertGetOperator(operName);
     Operators.PortMappingDescriptor portMap = new Operators.PortMappingDescriptor();
     Operators.describe(om.getOperator(), portMap);
 
@@ -122,7 +133,8 @@ public class PlanModifier {
    * Remove the named stream. Ignored when stream does not exist.
    * @param streamName
    */
-  public void removeStream(String streamName) {
+  public void removeStream(String streamName)
+  {
     StreamMeta sm = logicalPlan.getStream(streamName);
     if (sm == null) {
       return;
@@ -161,10 +173,33 @@ public class PlanModifier {
   }
 
   /**
+   * Set the property on a new operator. Since this is only intended to modify
+   * previously added operators, no change to the physical plan is required.
+   *
+   * @param operatorName
+   * @param propertyName
+   * @param propertyValue
+   */
+  public void setOperatorProperty(String operatorName, String propertyName, String propertyValue)
+  {
+    OperatorMeta om = assertGetOperator(operatorName);
+    if (physicalPlan != null)
+    {
+      for (PTOperator oper : physicalPlan.getOperators(om)) {
+        if (!newOperators.contains(oper)) {
+          throw new ValidationException("Properties can only be set on new operators: " + om + " " + propertyName + " " + propertyValue);
+        }
+      }
+    }
+    Map<String, String> props = Collections.singletonMap(propertyName, propertyValue);
+    DAGPropertiesBuilder.setOperatorProperties(om.getOperator(), props);
+  }
+
+  /**
    * Process all changes in the logical plan.
    */
-  public void applyChanges(PhysicalPlan.PlanContext physicalPlanContext) {
-
+  public void applyChanges(PhysicalPlan.PlanContext physicalPlanContext)
+  {
     // assign containers
     Set<PTContainer> newContainers = Sets.newHashSet();
     physicalPlan.assignContainers(newOperators, newContainers);

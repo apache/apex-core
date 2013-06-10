@@ -40,11 +40,13 @@ import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
 import com.malhartech.codec.LogicalPlanSerializer;
+import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramAppContext;
 import com.malhartech.stram.StramChildAgent;
 import com.malhartech.stram.StreamingContainerManager;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlanRequest;
+import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
 
 /**
  *
@@ -335,7 +337,12 @@ public class StramWebServices
   @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
   public JSONObject getOperatorProperties(@PathParam("operatorId") String operatorId, @QueryParam("propertyName") String propertyName)
   {
-    Map<String, Object> m = dagManager.getOperatorProperties(operatorId);
+    OperatorMeta logicalOperator = dagManager.getLogicalPlan().getOperatorMeta(operatorId);
+    if (logicalOperator == null) {
+      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
+    }
+    Map<String, Object> m = DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
+
     if (propertyName == null) {
       return new JSONObject(m);
     } else {
