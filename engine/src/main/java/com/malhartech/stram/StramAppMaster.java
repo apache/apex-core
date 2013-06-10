@@ -195,7 +195,7 @@ public class StramAppMaster //extends License for licensing using native
     public String getApplicationName()
     {
       if (dag != null) {
-        return dag.getAttributes().attr(LogicalPlan.STRAM_APPNAME).get();
+        return dag.getAttributes().attr(LogicalPlan.APPLICATION_NAME).get();
       }
       return "unknown";
     }
@@ -210,7 +210,7 @@ public class StramAppMaster //extends License for licensing using native
     public String getApplicationPath()
     {
       if (dag != null) {
-        return dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).get();
+        return dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).get();
       }
       return "unknown";
     }
@@ -243,7 +243,7 @@ public class StramAppMaster //extends License for licensing using native
     public String getDaemonAddress()
     {
       if (dag != null) {
-        return dag.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
+        return dag.attrValue(LogicalPlan.DAEMON_ADDRESS, null);
       }
       return "unknown";
     }

@@ -102,7 +102,7 @@ public class PhysicalPlanTest {
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
     dag.getMeta(node2).getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(3);
-    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
 
     OperatorMeta node2Decl = dag.getOperatorMeta(node2.getName());
 
@@ -246,7 +246,7 @@ public class PhysicalPlanTest {
     dag.addStream("n1.outport1", node1.outport1, node2.inport1, node2.inport2);
     dag.addStream("mergeStream", node2.outport1, mergeNode.inport1);
 
-    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(node2.getName());
     node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(2);
@@ -308,7 +308,7 @@ public class PhysicalPlanTest {
     dag.setInputPortAttribute(o3parallel.inport1, PortContext.PARTITION_PARALLEL, true);
     dag.addStream("o3parallel_outport1", o3parallel.outport1, mergeNode.inport1);
 
-    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(2);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(2);
 
     OperatorMeta node2Meta = dag.getOperatorMeta(node2.getName());
     node2Meta.getAttributes().attr(OperatorContext.INITIAL_PARTITION_COUNT).set(8);
@@ -513,7 +513,7 @@ public class PhysicalPlanTest {
     dag.addStream("o3_outport1", o3.outport1, partNode.inport2);
 
     int maxContainers = 4;
-    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(maxContainers);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(maxContainers);
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
     Assert.assertEquals("operators container 0", 1, plan.getContainers().get(0).operators.size());
@@ -552,7 +552,7 @@ public class PhysicalPlanTest {
             .setInline(true);
 
     int maxContainers = 5;
-    dag.getAttributes().attr(LogicalPlan.STRAM_MAX_CONTAINERS).set(maxContainers);
+    dag.getAttributes().attr(LogicalPlan.CONTAINERS_MAX_COUNT).set(maxContainers);
 
     PhysicalPlan deployer = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 1, deployer.getContainers().size());
@@ -587,7 +587,7 @@ public class PhysicalPlanTest {
     dag.addStream("partitionedParallel_outport1", partitionedParallel.outport1, single.inport1);
 
     int maxContainers = 7;
-    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, maxContainers);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", maxContainers, plan.getContainers().size());
@@ -662,7 +662,7 @@ public class PhysicalPlanTest {
     dag.addStream("o4outport1", o4.outport1, o5single.inport1);
 
     int maxContainers = 5;
-    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, maxContainers);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());
@@ -732,7 +732,7 @@ public class PhysicalPlanTest {
     dag.addStream("o1.outport1", o1.outport, o2.inport1);
 
     int maxContainers = 10;
-    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, maxContainers);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, maxContainers);
 
     PhysicalPlan plan = new PhysicalPlan(dag, new TestPlanContext());
     Assert.assertEquals("number of containers", 5, plan.getContainers().size());

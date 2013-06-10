@@ -689,22 +689,22 @@ public class LogicalPlan implements Serializable, DAG
 
   public int getMaxContainerCount()
   {
-    return this.attrValue(STRAM_MAX_CONTAINERS, 3);
+    return this.attrValue(CONTAINERS_MAX_COUNT, 3);
   }
 
   public boolean isDebug()
   {
-    return this.attrValue(STRAM_DEBUG, false);
+    return this.attrValue(DEBUG, false);
   }
 
   public int getContainerMemoryMB()
   {
-    return this.attrValue(STRAM_CONTAINER_MEMORY_MB, 1024);
+    return this.attrValue(CONTAINER_MEMORY_MB, 1024);
   }
 
   public int getMasterMemoryMB()
   {
-    return this.attrValue(STRAM_MASTER_MEMORY_MB, 1024);
+    return this.attrValue(MASTER_MEMORY_MB, 1024);
   }
 
   /**

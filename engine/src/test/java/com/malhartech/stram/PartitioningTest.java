@@ -211,7 +211,7 @@ public class PartitioningTest
   {
 
     LogicalPlan dag = new LogicalPlan();
-    dag.setAttribute(LogicalPlan.STRAM_MAX_CONTAINERS, 5);
+    dag.setAttribute(LogicalPlan.CONTAINERS_MAX_COUNT, 5);
     CollectorOperator.receivedTuples.clear();
 
     TestInputOperator<Integer> input = dag.addOperator("input", new TestInputOperator<Integer>());
@@ -333,7 +333,7 @@ public class PartitioningTest
     {
       File checkpointDir = new File(TEST_OUTPUT_DIR, "testInputOperatorPartitioning");
       LogicalPlan dag = new LogicalPlan();
-      dag.getAttributes().attr(LogicalPlan.STRAM_APP_PATH).set(checkpointDir.getPath());
+      dag.getAttributes().attr(LogicalPlan.APPLICATION_PATH).set(checkpointDir.getPath());
 
       PartitionableInputOperator input = dag.addOperator("input", new PartitionableInputOperator());
       dag.setAttribute(input, OperatorContext.PARTITION_STATS_HANDLER, PartitionLoadWatch.class.getName());

@@ -107,16 +107,16 @@ public class StramChild
   {
     parentContext = ctx;
 
-    heartbeatIntervalMillis = ctx.attrValue(DAGContext.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
+    heartbeatIntervalMillis = ctx.attrValue(DAGContext.HEARTBEAT_INTERVAL_MILLIS, 1000);
     firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.attrValue(DAGContext.STRAM_WINDOW_SIZE_MILLIS, 500);
-    checkpointWindowCount = ctx.attrValue(DAGContext.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
+    windowWidthMillis = ctx.attrValue(DAGContext.STREAMING_WINDOW_SIZE_MILLIS, 500);
+    checkpointWindowCount = ctx.attrValue(DAGContext.CHECKPOINT_WINDOW_COUNT, 60);
 
-    appPath = ctx.attrValue(DAGContext.STRAM_APP_PATH, "app-dfs-path-not-configured");
+    appPath = ctx.attrValue(DAGContext.APPLICATION_PATH, "app-dfs-path-not-configured");
     checkpointFsPath = this.appPath + "/" + DAGContext.SUBDIR_CHECKPOINTS;
-    tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
-    daemonAddress = ctx.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
+    tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
+    tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
+    daemonAddress = ctx.attrValue(LogicalPlan.DAEMON_ADDRESS, null);
     fastPublisherSubscriber = ctx.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
 
     try {

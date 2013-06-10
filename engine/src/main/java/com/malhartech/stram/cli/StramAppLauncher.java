@@ -295,18 +295,18 @@ public class StramAppLauncher {
     //  LOG.info("Loading settings from: " + cfgResource.toURI());
     //  conf.addResource(new Path(cfgResource.toURI()));
     //}
-    conf.set(DAG.STRAM_LAUNCH_MODE, launchMode);
+    conf.set(DAG.LAUNCH_MODE, launchMode);
     return conf;
   }
 
   public static LogicalPlan prepareDAG(AppConfig appConfig, String launchMode) {
     Configuration conf = getConfig(launchMode);
     LogicalPlan dag = appConfig.createApp(conf);
-    dag.getAttributes().attr(DAG.STRAM_APPNAME).setIfAbsent(appConfig.getName());
+    dag.getAttributes().attr(DAG.APPLICATION_NAME).setIfAbsent(appConfig.getName());
     // inject external operator configuration
     DAGPropertiesBuilder pb = new DAGPropertiesBuilder();
     pb.addFromConfiguration(conf);
-    pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.STRAM_APPNAME).get());
+    pb.setOperatorProperties(dag, dag.getAttributes().attr(DAG.APPLICATION_NAME).get());
     return dag;
   }
 

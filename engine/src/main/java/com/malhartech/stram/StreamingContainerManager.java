@@ -134,23 +134,23 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
     super(dag.getAttributes(), null);
     this.plan = new PhysicalPlan(dag, this);
 
-    attributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).setIfAbsent(500);
+    attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).setIfAbsent(500);
     // try to align to it pleases eyes.
     windowStartMillis -= (windowStartMillis % 1000);
 
-    attributes.attr(LogicalPlan.STRAM_APP_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
-    this.appPath = attributes.attr(LogicalPlan.STRAM_APP_PATH).get();
+    attributes.attr(LogicalPlan.APPLICATION_PATH).setIfAbsent("stram/" + System.currentTimeMillis());
+    this.appPath = attributes.attr(LogicalPlan.APPLICATION_PATH).get();
     this.checkpointFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_CHECKPOINTS;
     this.statsFsPath = this.appPath + "/" + LogicalPlan.SUBDIR_STATS;
 
-    attributes.attr(LogicalPlan.STRAM_CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / attributes.attr(LogicalPlan.STRAM_WINDOW_SIZE_MILLIS).get());
-    this.heartbeatTimeoutMillis = this.attrValue(LogicalPlan.STRAM_HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
+    attributes.attr(LogicalPlan.CHECKPOINT_WINDOW_COUNT).setIfAbsent(30000 / attributes.attr(LogicalPlan.STREAMING_WINDOW_SIZE_MILLIS).get());
+    this.heartbeatTimeoutMillis = this.attrValue(LogicalPlan.HEARTBEAT_TIMEOUT_MILLIS, this.heartbeatTimeoutMillis);
 
-    attributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).setIfAbsent(100);
-    this.maxWindowsBehindForStats = attributes.attr(LogicalPlan.STRAM_MAX_WINDOWS_BEHIND_FOR_STATS).get();
+    attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).setIfAbsent(100);
+    this.maxWindowsBehindForStats = attributes.attr(LogicalPlan.STATS_MAX_ALLOWABLE_WINDOWS_LAG).get();
 
-    attributes.attr(LogicalPlan.STRAM_RECORD_STATS_INTERVAL_MILLIS).setIfAbsent(0);
-    this.recordStatsInterval = attributes.attr(LogicalPlan.STRAM_RECORD_STATS_INTERVAL_MILLIS).get();
+    attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).setIfAbsent(0);
+    this.recordStatsInterval = attributes.attr(LogicalPlan.STATS_RECORD_INTERVAL_MILLIS).get();
     if (this.recordStatsInterval > 0) {
       statsRecorder = new HdfsStatsRecorder();
       statsRecorder.setBasePath(this.statsFsPath);
@@ -176,7 +176,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       // TODO: single state for resource requested
       if (c.getState() == PTContainer.State.NEW || c.getState() == PTContainer.State.KILLED) {
         // look for resource allocation timeout
-        if (lastResourceRequest + this.attrValue(LogicalPlan.STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_STRAM_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
+        if (lastResourceRequest + this.attrValue(LogicalPlan.RESOURCE_ALLOCATION_TIMEOUT_MILLIS, LogicalPlan.DEFAULT_ALLOCATE_RESOURCE_TIMEOUT_MILLIS) < currentTms) {
           String msg = String.format("Shutdown due to resource allocation timeout (%s ms) with container %s (state is %s)", currentTms - lastResourceRequest, c.containerId, c.getState().name());
           LOG.warn(msg);
           forcedShutdown = true;
