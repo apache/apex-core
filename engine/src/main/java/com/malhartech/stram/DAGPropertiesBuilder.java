@@ -457,7 +457,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   public Map<String, String> getProperties(OperatorMeta ow, String appName) {
     // if there are properties set directly, an entry exists
     // else it will be created so we can evaluate the templates against it
-    NodeConf n = getOrAddNode(ow.getId());
+    NodeConf n = getOrAddNode(ow.getName());
     n.properties.put(OPERATOR_CLASSNAME, ow.getOperator().getClass().getName());
 
     Map<String, String> properties = new HashMap<String, String>();

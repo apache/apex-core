@@ -18,16 +18,12 @@ import com.malhartech.api.Context.PortContext;
  */
 public interface DAG extends DAGContext, Serializable
 {
-  public interface InputPortMeta extends Serializable
+  public interface InputPortMeta extends Serializable, PortContext
   {
-    public AttributeMap<PortContext> getAttributes();
-
   }
 
-  public interface OutputPortMeta extends Serializable
+  public interface OutputPortMeta extends Serializable, PortContext
   {
-    public AttributeMap<PortContext> getAttributes();
-
   }
 
   /**
@@ -59,16 +55,13 @@ public interface DAG extends DAGContext, Serializable
   /**
    * Operator meta object.
    */
-  public interface OperatorMeta extends Serializable
+  public interface OperatorMeta extends Serializable, OperatorContext
   {
     public Operator getOperator();
 
     public InputPortMeta getMeta(Operator.InputPort<?> port);
 
     public OutputPortMeta getMeta(Operator.OutputPort<?> port);
-
-    public AttributeMap<OperatorContext> getAttributes();
-
   }
 
   /**
@@ -128,8 +121,6 @@ public interface DAG extends DAGContext, Serializable
   public abstract <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value);
 
   public abstract <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value);
-
-  public AttributeMap<DAGContext> getAttributes();
 
   public abstract OperatorMeta getOperatorMeta(String operatorId);
 

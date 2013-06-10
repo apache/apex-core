@@ -22,17 +22,15 @@ import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.malhartech.api.AttributeMap.AttributeKey;
+import com.malhartech.api.*;
 import com.malhartech.api.annotation.InputPortFieldAnnotation;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DefaultInputPort;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.Unifier;
-import com.malhartech.api.PartitionableOperator;
 import com.malhartech.api.PartitionableOperator.Partition;
 import com.malhartech.api.PartitionableOperator.PartitionKeys;
-import com.malhartech.api.StorageAgent;
-import com.malhartech.api.StreamCodec;
 import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.GenericTestOperator;
 import com.malhartech.engine.TestGeneratorInputOperator;
@@ -221,6 +219,18 @@ public class PhysicalPlanTest {
     @Override
     public void delete(int operatorId, long windowId) throws IOException {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AttributeMap getAttributes()
+    {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public <T> T attrValue(AttributeKey<T> key, T defaultValue)
+    {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
   }
@@ -659,15 +669,15 @@ public class PhysicalPlanTest {
 
     PTContainer container1 = plan.getContainers().get(0);
     Assert.assertEquals("number operators " + container1, 1, container1.operators.size());
-    Assert.assertEquals("operators " + container1, "o1", container1.operators.get(0).getOperatorMeta().getId());
+    Assert.assertEquals("operators " + container1, "o1", container1.operators.get(0).getOperatorMeta().getName());
 
     for (int i = 1; i < 3; i++) {
       PTContainer container2 = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container2, 5, container2.operators.size());
-      Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3", o3_1Meta.getId(), o3_2Meta.getId(), o4Meta.getId());
+      Set<String> expectedLogicalNames = Sets.newHashSet("o2", "o3", o3_1Meta.getName(), o3_2Meta.getName(), o4Meta.getName());
       Set<String> actualLogicalNames = Sets.newHashSet();
       for (PTOperator p: container2.operators) {
-        actualLogicalNames.add(p.getOperatorMeta().getId());
+        actualLogicalNames.add(p.getOperatorMeta().getName());
       }
       Assert.assertEquals("operator names " + container2, expectedLogicalNames, actualLogicalNames);
     }
@@ -731,22 +741,22 @@ public class PhysicalPlanTest {
     for (int i=0; i<2; i++) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 1, container.operators.size());
-      Assert.assertEquals("operators " + container, o1Meta.getId(), container.operators.get(0).getOperatorMeta().getId());
+      Assert.assertEquals("operators " + container, o1Meta.getName(), container.operators.get(0).getOperatorMeta().getName());
       inputOperators.add(container.operators.get(0));
     }
 
     for (int i=2; i<5; i++) {
       PTContainer container = plan.getContainers().get(i);
       Assert.assertEquals("number operators " + container, 2, container.operators.size());
-      Assert.assertEquals("operators " + container, o2Meta.getId(), container.operators.get(0).getOperatorMeta().getId());
-      Set<String> expectedLogicalNames = Sets.newHashSet(o1Meta.getId(), o2Meta.getId());
+      Assert.assertEquals("operators " + container, o2Meta.getName(), container.operators.get(0).getOperatorMeta().getName());
+      Set<String> expectedLogicalNames = Sets.newHashSet(o1Meta.getName(), o2Meta.getName());
       Map<String, PTOperator> actualOperators = new HashMap<String, PTOperator>();
       for (PTOperator p : container.operators) {
-        actualOperators.put(p.getOperatorMeta().getId(), p);
+        actualOperators.put(p.getOperatorMeta().getName(), p);
       }
       Assert.assertEquals("", expectedLogicalNames, actualOperators.keySet());
 
-      PTOperator pUnifier = actualOperators.get(o1Meta.getId());
+      PTOperator pUnifier = actualOperators.get(o1Meta.getName());
       Assert.assertNotNull("" + pUnifier, pUnifier.container);
       Assert.assertTrue("" + pUnifier, pUnifier.merge instanceof Unifier);
       // input from each upstream partition
@@ -759,9 +769,9 @@ public class PhysicalPlanTest {
       }
       // output to single downstream partition
       Assert.assertEquals("" + pUnifier, 1, pUnifier.outputs.size());
-      Assert.assertTrue(""+actualOperators.get(o2Meta.getId()).getOperatorMeta().getOperator(), actualOperators.get(o2Meta.getId()).getOperatorMeta().getOperator() instanceof GenericTestOperator);
+      Assert.assertTrue(""+actualOperators.get(o2Meta.getName()).getOperatorMeta().getOperator(), actualOperators.get(o2Meta.getName()).getOperatorMeta().getOperator() instanceof GenericTestOperator);
 
-      PTOperator p = actualOperators.get(o2Meta.getId());
+      PTOperator p = actualOperators.get(o2Meta.getName());
       Assert.assertEquals("partition inputs " + p.inputs, 1, p.inputs.size());
       Assert.assertEquals("partition inputs " + p.inputs, pUnifier, p.inputs.get(0).source.source);
       Assert.assertEquals("input partition keys " + p.inputs, null, p.inputs.get(0).partitions);

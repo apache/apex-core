@@ -4,20 +4,17 @@
  */
 package com.malhartech.stram;
 
-import com.malhartech.api.DAGContext;
 import com.malhartech.engine.OperatorStats;
 import com.malhartech.api.AttributeMap;
+import com.malhartech.stram.api.BaseContext;
+import com.malhartech.stram.util.AbstractWritableAdapter;
 
 import java.io.*;
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.*;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.VersionedProtocol;
 
 /**
@@ -38,65 +35,6 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   void log(String containerId, String msg) throws IOException;
 
   /**
-   * TODO: quick hack to focus on protocol instead of serialization code -
-   * replace with PB
-   */
-  public static abstract class WritableAdapter implements Writable, Serializable {
-    private static final long serialVersionUID = 1L;
-
-    @Override
-    public void readFields(DataInput arg0) throws IOException {
-      int len = arg0.readInt();
-      byte[] bytes = new byte[len];
-      arg0.readFully(bytes);
-      try {
-        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> properties = (Map<String, Object>) ois.readObject();
-        Field[] fields = this.getClass().getDeclaredFields();
-        AccessibleObject.setAccessible(fields, true);
-        for (int i = 0; i < fields.length; i++) {
-          Field field = fields[i];
-          String fieldName = field.getName();
-          if (properties.containsKey(fieldName)) {
-            field.set(this, properties.get(fieldName));
-          }
-        }
-        ois.close();
-      } catch (Exception e) {
-        throw new IOException(e);
-      }
-    }
-
-    @Override
-    public void write(DataOutput arg0) throws IOException {
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      ObjectOutputStream oos = new ObjectOutputStream(bos);
-      try {
-        Map<String, Object> properties = new java.util.HashMap<String, Object>();
-        Field[] fields = this.getClass().getDeclaredFields();
-        AccessibleObject.setAccessible(fields, true);
-        for (int i = 0; i < fields.length; i++) {
-          Field field = fields[i];
-          if (!Modifier.isStatic(field.getModifiers())) {
-            String fieldName = field.getName();
-            Object fieldValue = field.get(this);
-            properties.put(fieldName, fieldValue);
-          }
-        }
-        oos.writeObject(properties);
-      } catch (Exception e) {
-        throw new IOException(e);
-      }
-      oos.flush();
-      byte[] bytes = bos.toByteArray();
-      arg0.writeInt(bytes.length);
-      arg0.write(bytes);
-      oos.close();
-    }
-  }
-
-  /**
    * Initialization parameters for StramChild container. Container
    * wide settings remain effective as long as the process is running. Operators can
    * be deployed and removed dynamically.
@@ -104,11 +42,8 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StreamingContainerContext extends WritableAdapter {
+  public static class StreamingContainerContext extends BaseContext {
     private static final long serialVersionUID = 201209071402L;
-
-    public AttributeMap<DAGContext> applicationAttributes;
-
     /**
      * Operators should start processing the initial window at this time.
      */
@@ -116,11 +51,25 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
 
     public boolean deployBufferServer = true;
 
+    /**
+     * Constructor to enable deserialization using Hadoop's Writable interface.
+     */
+    private StreamingContainerContext()
+    {
+      super(null, null);
+    }
+
+    public StreamingContainerContext(AttributeMap map)
+    {
+      super(map, null);
+    }
+
     @Override
     public String toString() {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
-              .append("applicationAttributes", this.applicationAttributes).toString();
+              .append("applicationAttributes", getAttributes()).toString();
     }
+
   }
 
   /**
@@ -145,9 +94,9 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * Hadoop container wraps this together with stats from other operators and sends
    * it to stram <br>
    */
-  public static class StreamingNodeHeartbeat extends WritableAdapter {
+  public static class StreamingNodeHeartbeat extends AbstractWritableAdapter {
     private static final long serialVersionUID = 201208171625L;
-    private ArrayList<OperatorStats> windowStats = new ArrayList<OperatorStats>();
+    public ArrayList<OperatorStats> windowStats = new ArrayList<OperatorStats>();
 
     /**
      * The operator stats for the windows processed during the heartbeat interval.
@@ -175,7 +124,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * The originating node. There can be multiple operators in a container.
      */
-    private int nodeId;
+    public int nodeId;
 
     public int getNodeId() {
       return nodeId;
@@ -188,7 +137,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * Time when the heartbeat was generated by the node.
      */
-    private long generatedTms;
+    public long generatedTms;
 
     public long getGeneratedTms() {
       return generatedTms;
@@ -202,7 +151,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
      * Number of milliseconds elapsed since last heartbeat. Other statistics
      * relative to this interval.
      */
-    private long intervalMs;
+    public long intervalMs;
 
     public long getIntervalMs() {
       return intervalMs;
@@ -215,7 +164,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * State of the operator (processing, idle etc).
      */
-    private String state;
+    public String state;
 
     public String getState() {
       return state;
@@ -225,7 +174,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.state = state;
     }
 
-    private final List<String> recordingNames = new ArrayList<String>();
+    public final List<String> recordingNames = new ArrayList<String>();
 
     public List<String> getRecordingNames() {
       return Collections.unmodifiableList(recordingNames);
@@ -235,7 +184,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
       this.recordingNames.add(recordingName);
     }
 
-    private final Map<String, Long> bufferServerBytes = new HashMap<String, Long>();
+    public final Map<String, Long> bufferServerBytes = new HashMap<String, Long>();
 
     public Map<String, Long> getBufferServerBytes()
     {
@@ -256,9 +205,9 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class ContainerHeartbeat extends WritableAdapter {
+  public static class ContainerHeartbeat extends AbstractWritableAdapter {
     private static final long serialVersionUID = 1L;
-    private String containerId;
+    public String containerId;
 
     /**
      * Buffer server address for this container.
@@ -282,7 +231,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
     /**
      * List with all operators in the container.
      */
-    private List<StreamingNodeHeartbeat> dnodeEntries;
+    public List<StreamingNodeHeartbeat> dnodeEntries;
 
     public List<StreamingNodeHeartbeat> getDnodeEntries() {
       return dnodeEntries;
@@ -304,17 +253,17 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class StramToNodeRequest extends WritableAdapter {
+  public static class StramToNodeRequest extends AbstractWritableAdapter {
     private static final long serialVersionUID = 1L;
 
     enum RequestType {
       START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_PROPERTY
     }
 
-    private int operatorId;
-    private RequestType requestType;
-    private long recoveryCheckpoint;
-    private String portName;
+    public int operatorId;
+    public RequestType requestType;
+    public long recoveryCheckpoint;
+    public String portName;
 
     public String setPropertyKey;
     public String setPropertyValue;
@@ -367,7 +316,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * <br>
    *
    */
-  public static class ContainerHeartbeatResponse extends WritableAdapter {
+  public static class ContainerHeartbeatResponse extends AbstractWritableAdapter {
     private static final long serialVersionUID = 1L;
     /**
      * Indicate container to exit heartbeat loop and shutdown.

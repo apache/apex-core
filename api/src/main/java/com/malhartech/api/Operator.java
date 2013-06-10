@@ -5,6 +5,7 @@
 package com.malhartech.api;
 
 import com.malhartech.api.Context.OperatorContext;
+import com.malhartech.api.Context.PortContext;
 
 
 public interface Operator extends Component<OperatorContext>
@@ -42,7 +43,7 @@ public interface Operator extends Component<OperatorContext>
    * Concrete ports implement derived interfaces. The common characteristic is
    * that ports provide a reference to the operator instance they belong to.
    */
-  public interface Port
+  public interface Port extends Component<PortContext>
   {
     /**
      * Reference to the operator to which this port belongs.

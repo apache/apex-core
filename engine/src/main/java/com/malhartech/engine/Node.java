@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.*;
+import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.api.Operator.Unifier;
 import com.malhartech.debug.MuxSink;
@@ -37,7 +38,7 @@ import java.io.*;
  * @param <OPERATOR>
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class Node<OPERATOR extends Operator> implements Runnable
+public abstract class Node<OPERATOR extends Operator> implements Component<OperatorContext>, Runnable
 {
   /**
    * if the Component is capable of taking only 1 input, call it INPUT.
@@ -79,6 +80,35 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
   public Operator getOperator()
   {
     return operator;
+  }
+
+  @Override
+  public void setup(OperatorContext context)
+  {
+    operator.setup(context);
+//    this is where the ports should be setup but since the
+//    portcontext is not available here, we are doing it in
+//    StramChild. In future version, we should move that code here
+//    for (InputPort<?> port : descriptor.inputPorts.values()) {
+//      port.setup(null);
+//    }
+//
+//    for (OutputPort<?> port : descriptor.outputPorts.values()) {
+//      port.setup(null);
+//    }
+  }
+
+  @Override
+  public void teardown()
+  {
+    for (InputPort<?> port : descriptor.inputPorts.values()) {
+      port.teardown();
+    }
+
+    for (OutputPort<?> port : descriptor.outputPorts.values()) {
+      port.teardown();
+    }
+    operator.teardown();
   }
 
   public PortMappingDescriptor getPortMappingDescriptor()
@@ -171,8 +201,8 @@ public abstract class Node<OPERATOR extends Operator> implements Runnable
     activateSinks();
     alive = true;
     this.context = context;
-    APPLICATION_WINDOW_COUNT = context.getAttributes().attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
-    CHECKPOINT_WINDOW_COUNT = context.getAttributes().attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
+    APPLICATION_WINDOW_COUNT = context.attrValue(OperatorContext.APPLICATION_WINDOW_COUNT, 1);
+    CHECKPOINT_WINDOW_COUNT = context.attrValue(OperatorContext.CHECKPOINT_WINDOW_COUNT, 1);
 
     if (activationListener) {
       ((ActivationListener)operator).activate(context);

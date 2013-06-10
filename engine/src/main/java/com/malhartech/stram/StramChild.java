@@ -6,6 +6,7 @@ package com.malhartech.stram;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.Thread.State;
 import java.net.*;
@@ -25,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.api.*;
-import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 import com.malhartech.api.Operator.OutputPort;
 import com.malhartech.bufferserver.server.Server;
@@ -43,9 +43,8 @@ import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHea
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
-import com.malhartech.stream.*;
 import com.malhartech.stram.util.ScheduledThreadPoolExecutor;
-import java.io.InputStream;
+import com.malhartech.stream.*;
 
 /**
  *
@@ -88,13 +87,13 @@ public class StramChild
   private int windowWidthMillis;
   private InetSocketAddress bufferServerAddress;
   private com.malhartech.bufferserver.server.Server bufferServer;
-  private AttributeMap<DAGContext> applicationAttributes;
   protected HashMap<String, TupleRecorder> tupleRecorders = new HashMap<String, TupleRecorder>();
   private int tupleRecordingPartFileSize;
   private String daemonAddress;
   private long tupleRecordingPartFileTimeMillis;
   private int checkpointWindowCount;
   private boolean fastPublisherSubscriber;
+  private StreamingContainerContext parentContext;
 
   protected StramChild(String containerId, Configuration conf, StreamingContainerUmbilicalProtocol umbilical)
   {
@@ -106,18 +105,19 @@ public class StramChild
 
   public void setup(StreamingContainerContext ctx)
   {
-    applicationAttributes = ctx.applicationAttributes;
-    heartbeatIntervalMillis = ctx.applicationAttributes.attrValue(DAGContext.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
-    firstWindowMillis = ctx.startWindowMillis;
-    windowWidthMillis = ctx.applicationAttributes.attrValue(DAGContext.STRAM_WINDOW_SIZE_MILLIS, 500);
-    checkpointWindowCount = ctx.applicationAttributes.attrValue(DAGContext.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
+    parentContext = ctx;
 
-    appPath = ctx.applicationAttributes.attrValue(DAGContext.STRAM_APP_PATH, "app-dfs-path-not-configured");
+    heartbeatIntervalMillis = ctx.attrValue(DAGContext.STRAM_HEARTBEAT_INTERVAL_MILLIS, 1000);
+    firstWindowMillis = ctx.startWindowMillis;
+    windowWidthMillis = ctx.attrValue(DAGContext.STRAM_WINDOW_SIZE_MILLIS, 500);
+    checkpointWindowCount = ctx.attrValue(DAGContext.STRAM_CHECKPOINT_WINDOW_COUNT, 60);
+
+    appPath = ctx.attrValue(DAGContext.STRAM_APP_PATH, "app-dfs-path-not-configured");
     checkpointFsPath = this.appPath + "/" + DAGContext.SUBDIR_CHECKPOINTS;
-    tupleRecordingPartFileSize = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
-    tupleRecordingPartFileTimeMillis = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
-    daemonAddress = ctx.applicationAttributes.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
-    fastPublisherSubscriber = ctx.applicationAttributes.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
+    tupleRecordingPartFileSize = ctx.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_SIZE, 100 * 1024);
+    tupleRecordingPartFileTimeMillis = ctx.attrValue(LogicalPlan.STRAM_TUPLE_RECORDING_PART_FILE_TIME_MILLIS, 30 * 60 * 60 * 1000);
+    daemonAddress = ctx.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
+    fastPublisherSubscriber = ctx.attrValue(LogicalPlan.FAST_PUBLISHER_SUBSCRIBER, false);
 
     try {
       if (ctx.deployBufferServer) {
@@ -621,7 +621,7 @@ public class StramChild
       if (odi.id == sourceOperatorId) {
         for (OperatorDeployInfo.OutputDeployInfo odiodi : odi.outputs) {
           if (odiodi.portName.equals(sourcePortName)) {
-            return odiodi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+            return odiodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
           }
         }
       }
@@ -843,7 +843,7 @@ public class StramChild
 
       for (OperatorDeployInfo.OutputDeployInfo nodi : ndi.outputs) {
         String sourceIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nodi.portName);
-        int queueCapacity = nodi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+        int queueCapacity = nodi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
         logger.debug("for stream {} the queue capacity is {}", sourceIdentifier, queueCapacity);
 
         ArrayList<String> collection = groupedInputStreams.get(sourceIdentifier);
@@ -969,7 +969,7 @@ public class StramChild
           String sourceIdentifier = Integer.toString(nidi.sourceNodeId).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.sourcePortName);
           String sinkIdentifier = Integer.toString(ndi.id).concat(NODE_PORT_CONCAT_SEPARATOR).concat(nidi.portName);
 
-          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
+          int queueCapacity = nidi.contextAttributes == null ? PORT_QUEUE_CAPACITY : nidi.attrValue(PortContext.QUEUE_CAPACITY, PORT_QUEUE_CAPACITY);
           long finishedWindowId = ndi.checkpointWindowId > 0 ? ndi.checkpointWindowId : 0;
 
           ComponentContextPair<Stream, StreamContext> pair = streams.get(sourceIdentifier);
@@ -1124,16 +1124,7 @@ public class StramChild
     final ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo> activatedOrFailed = new ConcurrentHashMap<OperatorDeployInfo, OperatorDeployInfo>();
     for (final OperatorDeployInfo ndi : nodeList) {
       final Node<?> node = nodes.get(ndi.id);
-      final Map<String, AttributeMap<PortContext>> inputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
-      final Map<String, AttributeMap<PortContext>> outputPortAttributes = new HashMap<String, AttributeMap<PortContext>>();
       assert (!activeNodes.containsKey(ndi.id));
-
-      for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
-        inputPortAttributes.put(idi.portName, idi.contextAttributes);
-      }
-      for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
-        outputPortAttributes.put(odi.portName, odi.contextAttributes);
-      }
 
       new Thread(Integer.toString(ndi.id).concat("/").concat(ndi.declaredId).concat(":").concat(node.getOperator().getClass().getSimpleName()))
       {
@@ -1142,20 +1133,24 @@ public class StramChild
         {
           try {
             failedNodes.remove(ndi.id);
-            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, applicationAttributes, inputPortAttributes, outputPortAttributes);
-            node.getOperator().setup(context);
-            for (Map.Entry<String, AttributeMap<PortContext>> entry : inputPortAttributes.entrySet()) {
-              AttributeMap<PortContext> attrMap = entry.getValue();
-              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
-                logger.info("Automatically start recording for operator {}, input port {}", ndi.id, entry.getKey());
-                startRecording(node, ndi.id, entry.getKey(), true);
+            OperatorContext context = new OperatorContext(new Integer(ndi.id), this, ndi.contextAttributes, parentContext);
+            node.setup(context);
+
+            LinkedHashMap<String, InputPort<?>> inputPorts = node.getPortMappingDescriptor().inputPorts;
+            for (OperatorDeployInfo.InputDeployInfo idi : ndi.inputs) {
+              PortContext portContext = new PortContext(idi.contextAttributes, context);
+              inputPorts.get(idi.portName).setup(portContext);
+              if (portContext.attrValue(PortContext.AUTO_RECORD, false)) {
+                startRecording(node, ndi.id, idi.portName, true);
               }
             }
-            for (Map.Entry<String, AttributeMap<PortContext>> entry : outputPortAttributes.entrySet()) {
-              AttributeMap<PortContext> attrMap = entry.getValue();
-              if (attrMap != null && attrMap.attrValue(PortContext.AUTO_RECORD, false)) {
-                logger.info("Automatically start recording for operator {}, output port {}", ndi.id, entry.getKey());
-                startRecording(node, ndi.id, entry.getKey(), true);
+
+            LinkedHashMap<String, OutputPort<?>> outputPorts = node.getPortMappingDescriptor().outputPorts;
+            for (OperatorDeployInfo.OutputDeployInfo odi : ndi.outputs) {
+              PortContext portContext = new PortContext(odi.contextAttributes, context);
+              outputPorts.get(odi.portName).setup(portContext);
+              if (portContext.attrValue(PortContext.AUTO_RECORD, false)) {
+                startRecording(node, ndi.id, odi.portName, true);
               }
             }
 
@@ -1172,7 +1167,7 @@ public class StramChild
           finally {
             activatedOrFailed.put(ndi, ndi);
             activeNodes.remove(ndi.id);
-            node.getOperator().teardown();
+            node.teardown();
             logger.info("deactivated {}", node.getId());
           }
         }

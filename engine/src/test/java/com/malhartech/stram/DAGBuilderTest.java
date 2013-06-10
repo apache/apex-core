@@ -94,7 +94,7 @@ public class DAGBuilderTest {
     OperatorMeta operator4 = assertNode(dag, "operator4");
 
     assertNotNull("operatorConf for root", operator1);
-    assertEquals("operatorId set", "operator1", operator1.getId());
+    assertEquals("operatorId set", "operator1", operator1.getName());
 
     // verify operator instantiation
     assertEquals(operator1.getOperator().getClass(), GenericTestOperator.class);
@@ -144,7 +144,7 @@ public class DAGBuilderTest {
       if (level > 0) {
         prefix = StringUtils.repeat(" ", 20*(level-1)) + "   |" + StringUtils.repeat("-", 17);
       }
-      System.out.println(prefix + operator.getId());
+      System.out.println(prefix + operator.getName());
       for (StreamMeta downStream : operator.getOutputStreams().values()) {
           if (!downStream.getSinks().isEmpty()) {
             for (LogicalPlan.InputPortMeta targetNode : downStream.getSinks()) {
@@ -289,7 +289,7 @@ public class DAGBuilderTest {
     dag.addStream("badTuplesStream", validationNode.badOutputPort, countBadNode.countInputPort);
 
     Assert.assertEquals("number root operators", 1, dag.getRootOperators().size());
-    Assert.assertEquals("root operator id", "validationNode", dag.getRootOperators().get(0).getId());
+    Assert.assertEquals("root operator id", "validationNode", dag.getRootOperators().get(0).getName());
 
     dag.getContextAttributes(countGoodNode).attr(OperatorContext.SPIN_MILLIS).set(10);
 
@@ -634,6 +634,16 @@ public class DAGBuilderTest {
 
       @Override
       public void setConnected(boolean connected) {
+      }
+
+      @Override
+      public void setup(PortContext context)
+      {
+      }
+
+      @Override
+      public void teardown()
+      {
       }
 
       @Override

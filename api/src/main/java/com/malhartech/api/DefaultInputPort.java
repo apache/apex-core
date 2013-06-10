@@ -4,6 +4,7 @@
  */
 package com.malhartech.api;
 
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.InputPort;
 
 /**
@@ -65,6 +66,16 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
         count = 0;
       }
     }
+  }
+
+  @Override
+  public void setup(PortContext context)
+  {
+  }
+
+  @Override
+  public void teardown()
+  {
   }
 
   public abstract void process(T tuple);

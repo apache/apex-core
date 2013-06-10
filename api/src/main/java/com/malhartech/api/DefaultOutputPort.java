@@ -4,6 +4,7 @@
  */
 package com.malhartech.api;
 
+import com.malhartech.api.Context.PortContext;
 import com.malhartech.api.Operator.Unifier;
 
 /**
@@ -73,6 +74,16 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
   public Unifier<T> getUnifier()
   {
     return null;
+  }
+
+  @Override
+  public void setup(PortContext context)
+  {
+  }
+
+  @Override
+  public void teardown()
+  {
   }
 
 }

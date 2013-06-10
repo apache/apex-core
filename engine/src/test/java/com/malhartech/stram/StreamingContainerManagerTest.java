@@ -4,27 +4,35 @@
  */
 package com.malhartech.stram;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import junit.framework.Assert;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.malhartech.api.AttributeMap;
+import com.malhartech.api.Context;
 import com.malhartech.api.Context.OperatorContext;
 import com.malhartech.api.Context.PortContext;
+import com.malhartech.api.DAGContext;
+import com.malhartech.api.Operator;
 import com.malhartech.codec.DefaultStatefulStreamCodec;
 import com.malhartech.engine.DefaultUnifier;
 import com.malhartech.engine.GenericTestOperator;
+import com.malhartech.engine.Node;
 import com.malhartech.engine.TestGeneratorInputOperator;
-import com.malhartech.tuple.Tuple;
 import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
+import com.malhartech.stram.OperatorDeployInfo.OperatorType;
 import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
 import com.malhartech.stram.PhysicalPlan.PTContainer;
 import com.malhartech.stram.PhysicalPlan.PTOperator;
@@ -34,16 +42,7 @@ import com.malhartech.stram.StreamingContainerManager.ContainerResource;
 import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.DAGContext;
-import com.malhartech.api.Operator;
-import com.malhartech.engine.Node;
-import com.malhartech.stram.OperatorDeployInfo.OperatorType;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import org.apache.hadoop.conf.Configuration;
+import com.malhartech.tuple.Tuple;
 
 public class StreamingContainerManagerTest {
 
@@ -53,7 +52,7 @@ public class StreamingContainerManagerTest {
     ndi.declaredId = "node1";
     ndi.type = OperatorDeployInfo.OperatorType.GENERIC;
     ndi.id = 1;
-    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap<OperatorContext>();
+    ndi.contextAttributes = new AttributeMap.DefaultAttributeMap(Context.OperatorContext.class);
     ndi.contextAttributes.attr(OperatorContext.SPIN_MILLIS).set(100);
 
     OperatorDeployInfo.InputDeployInfo input = new OperatorDeployInfo.InputDeployInfo();
@@ -236,7 +235,7 @@ public class StreamingContainerManagerTest {
       Assert.assertEquals("portName " + nidi, mergePortName, nidi.portName);
       Assert.assertNotNull("sourceNodeId " + nidi, nidi.sourceNodeId);
       Assert.assertNotNull("contextAttributes " + nidi, nidi.contextAttributes);
-      Assert.assertEquals("contextAttributes " , new Integer(1111), nidi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, 0));
+      Assert.assertEquals("contextAttributes " , new Integer(1111), nidi.attrValue(PortContext.QUEUE_CAPACITY, 0));
       sourceNodeIds.add(nidi.sourceNodeId);
     }
     for (PTOperator node : dnm.getPhysicalPlan().getOperators(dag.getMeta(node2))) {
@@ -246,7 +245,7 @@ public class StreamingContainerManagerTest {
     Assert.assertEquals("outputs " + mergeNodeDI, 1, mergeNodeDI.outputs.size());
     for (OutputDeployInfo odi : mergeNodeDI.outputs) {
       Assert.assertNotNull("contextAttributes " + odi, odi.contextAttributes);
-      Assert.assertEquals("contextAttributes " , new Integer(2222), odi.contextAttributes.attrValue(PortContext.QUEUE_CAPACITY, 0));
+      Assert.assertEquals("contextAttributes " , new Integer(2222), odi.attrValue(PortContext.QUEUE_CAPACITY, 0));
     }
 
     try {
@@ -375,7 +374,7 @@ public class StreamingContainerManagerTest {
 
   private static OperatorDeployInfo getNodeDeployInfo(List<OperatorDeployInfo> di, OperatorMeta nodeConf) {
     for (OperatorDeployInfo ndi : di) {
-      if (nodeConf.getId().equals(ndi.declaredId)) {
+      if (nodeConf.getName().equals(ndi.declaredId)) {
         return ndi;
       }
     }

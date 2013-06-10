@@ -10,7 +10,8 @@ import java.util.Set;
 /**
  *
  */
-public interface DAGContext {
+public interface DAGContext extends Context
+{
 
   /**
    * Internal use only, set by application launcher.
@@ -104,7 +105,7 @@ public interface DAGContext {
 
   public final static Set<AttributeKey<?>> ATTRIBUTE_KEYS = AttributeKey.INSTANCES;
 
-  public class AttributeKey<T> extends AttributeMap.AttributeKey<DAGContext, T> {
+  public class AttributeKey<T> extends AttributeMap.AttributeKey<T> {
     public final Class<T> attributeType;
     private final static Set<AttributeKey<?>> INSTANCES = new HashSet<AttributeKey<?>>();
 

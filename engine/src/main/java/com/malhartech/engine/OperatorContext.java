@@ -4,17 +4,18 @@
  */
 package com.malhartech.engine;
 
-import com.malhartech.api.Context;
-import com.malhartech.api.DAGContext;
-import com.malhartech.api.Operator;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.netlet.util.CircularBuffer;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.malhartech.api.AttributeMap;
+import com.malhartech.api.Context;
+import com.malhartech.api.Operator;
+import com.malhartech.netlet.util.CircularBuffer;
+import com.malhartech.stram.api.BaseContext;
 
 /**
  * The for context for all of the operators<p>
@@ -22,8 +23,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class OperatorContext implements Context.OperatorContext
+public class OperatorContext extends BaseContext implements Context.OperatorContext
 {
+  private static final long serialVersionUID = 2013060671427L;
   private final Thread thread;
 
   /**
@@ -34,23 +36,8 @@ public class OperatorContext implements Context.OperatorContext
     return thread;
   }
 
-  public interface NodeRequest
-  {
-    /**
-     * Command to be executed at subsequent end of window.
-     *
-     * @param operator
-     */
-    public void execute(Operator operator, int id, long windowId) throws IOException;
-
-  }
-
   private long lastProcessedWindowId = -1;
   private final int id;
-  private final AttributeMap<OperatorContext> attributes;
-  private final AttributeMap<DAGContext> applicationAttributes;
-  private final Map<String, AttributeMap<PortContext>> inputPortAttributes;
-  private final Map<String, AttributeMap<PortContext>> outputPortAttributes;
   // the size of the circular queue should be configurable. hardcoded to 1024 for now.
   private final CircularBuffer<OperatorStats> statsBuffer = new CircularBuffer<OperatorStats>(1024);
   private final CircularBuffer<NodeRequest> requests = new CircularBuffer<NodeRequest>(4);
@@ -60,6 +47,7 @@ public class OperatorContext implements Context.OperatorContext
   // we should make it configurable somehow.
   private long idleTimeout = 1000L;
 
+  @SuppressWarnings("ReturnOfCollectionOrArrayField")
   public BlockingQueue<NodeRequest> getRequests()
   {
     return requests;
@@ -86,18 +74,12 @@ public class OperatorContext implements Context.OperatorContext
    * @param id the value of id
    * @param worker
    * @param attributes the value of attributes
-   * @param applicationAttributes
-   * @param inputPortAttributes
-   * @param outputPortAttributes
+   * @param parentContext
    */
-  public OperatorContext(int id, Thread worker, AttributeMap<OperatorContext> attributes, AttributeMap<DAGContext> applicationAttributes,
-          Map<String, AttributeMap<PortContext>> inputPortAttributes, Map<String, AttributeMap<PortContext>> outputPortAttributes)
+  public OperatorContext(int id, Thread worker, AttributeMap attributes, Context parentContext)
   {
+    super(attributes, parentContext);
     this.id = id;
-    this.attributes = attributes;
-    this.applicationAttributes = applicationAttributes;
-    this.inputPortAttributes = inputPortAttributes;
-    this.outputPortAttributes = outputPortAttributes;
     this.thread = worker;
   }
 
@@ -107,15 +89,10 @@ public class OperatorContext implements Context.OperatorContext
     return id;
   }
 
-  @Override
-  public AttributeMap<DAGContext> getApplicationAttributes()
-  {
-    return this.applicationAttributes;
-  }
-
   /**
    * Reset counts for next heartbeat interval and return current counts. This is called as part of the heartbeat processing.
    *
+   * @param counters
    * @return int
    */
   public final synchronized int drainHeartbeatCounters(Collection<? super OperatorStats> counters)
@@ -146,22 +123,18 @@ public class OperatorContext implements Context.OperatorContext
     requests.add(request);
   }
 
-  @Override
-  public AttributeMap<OperatorContext> getAttributes()
+  public interface NodeRequest
   {
-    return this.attributes;
-  }
+    /**
+     * Command to be executed at subsequent end of window.
+     *
+     * @param operator
+     * @param id
+     * @param windowId
+     * @throws IOException
+     */
+    public void execute(Operator operator, int id, long windowId) throws IOException;
 
-  @Override
-  public AttributeMap<PortContext> getInputPortAttributes(String portName)
-  {
-    return inputPortAttributes == null ? null : inputPortAttributes.get(portName);
-  }
-
-  @Override
-  public AttributeMap<PortContext> getOutputPortAttributes(String portName)
-  {
-    return outputPortAttributes == null ? null : outputPortAttributes.get(portName);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(OperatorContext.class);

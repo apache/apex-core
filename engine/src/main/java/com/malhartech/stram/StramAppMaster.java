@@ -243,7 +243,7 @@ public class StramAppMaster //extends License for licensing using native
     public String getDaemonAddress()
     {
       if (dag != null) {
-        return dag.getAttributes().attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
+        return dag.attrValue(LogicalPlan.STRAM_DAEMON_ADDRESS, null);
       }
       return "unknown";
     }

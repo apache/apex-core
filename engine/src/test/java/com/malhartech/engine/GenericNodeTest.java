@@ -5,13 +5,11 @@
 package com.malhartech.engine;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.malhartech.api.AttributeMap;
 import com.malhartech.api.AttributeMap.DefaultAttributeMap;
 import com.malhartech.api.Context;
 import com.malhartech.api.DefaultInputPort;
@@ -118,7 +116,10 @@ public class GenericNodeTest
       public void run()
       {
         ab.set(true);
-        gn.activate(new OperatorContext(0, this, new DefaultAttributeMap<com.malhartech.api.Context.OperatorContext>(), new DefaultAttributeMap<com.malhartech.api.DAGContext>(), new HashMap<String, AttributeMap<com.malhartech.api.Context.PortContext>>(), new HashMap<String, AttributeMap<com.malhartech.api.Context.PortContext>>()));
+        gn.activate(new OperatorContext(0,
+                                        this,
+                                        new DefaultAttributeMap(Context.OperatorContext.class),
+                                        null));
       }
 
     };

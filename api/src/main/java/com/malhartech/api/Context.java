@@ -13,9 +13,28 @@ package com.malhartech.api;
  */
 public interface Context
 {
+  /**
+   * Get the attributes associated with this context.
+   * The returned map does not contain any attributes that may have been defined in the parent context of this context.
+   *
+   * @return attributes defined for the current context.
+   */
+  public AttributeMap getAttributes();
+
+  /**
+   * Get the value of the attribute associated with the current key by recursively traversing the contexts upwards to
+   * the application level. If the attribute is not found, then return the defaultValue.
+   *
+   * @param <T> - Type of the attribute.
+   * @param key - AttributeKey to identify the attribute.
+   * @param defaultValue - Default value if the attribute is not found.
+   * @return The value for the attribute if found or the defaultValue passed in as argument.
+   */
+  public <T> T attrValue(AttributeMap.AttributeKey<T> key, T defaultValue);
+
   public interface PortContext extends Context
   {
-    public class AttributeKey<T> extends AttributeMap.AttributeKey<PortContext, T>
+    public class AttributeKey<T> extends AttributeMap.AttributeKey<T>
     {
       private AttributeKey(String name)
       {
@@ -45,14 +64,15 @@ public interface Context
      * Whether or not to auto record the tuples
      */
     public static final AttributeKey<Boolean> AUTO_RECORD = new AttributeKey<Boolean>("autoRecord");
-
-    AttributeMap<PortContext> getAttributes();
-
+    /**
+     * This attribute indicates the operator to which this port belongs.
+     */
+    public static final AttributeKey<Operator> OPERATOR = new AttributeKey<Operator>("opeator");
   }
 
   public interface OperatorContext extends Context
   {
-    public class AttributeKey<T> extends AttributeMap.AttributeKey<OperatorContext, T>
+    public class AttributeKey<T> extends AttributeMap.AttributeKey<T>
     {
       private AttributeKey(String name)
       {
@@ -120,32 +140,6 @@ public interface Context
      * @return String
      */
     int getId();
-
-    AttributeMap<OperatorContext> getAttributes();
-
-    /**
-     * Return the application level attributes.
-     * This will be the same set for all operators in the system.
-     *
-     * @return
-     */
-    AttributeMap<DAGContext> getApplicationAttributes();
-
-    /**
-     * Return the port attributes given the port name
-     *
-     * @param portName
-     * @return
-     */
-    AttributeMap<PortContext> getInputPortAttributes(String portName);
-
-    /**
-     * Return the port attributes given the port name
-     *
-     * @param portName
-     * @return
-     */
-    AttributeMap<PortContext> getOutputPortAttributes(String portName);
 
   }
 

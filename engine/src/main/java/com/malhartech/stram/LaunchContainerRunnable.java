@@ -235,7 +235,7 @@ public class LaunchContainerRunnable implements Runnable
       vargs.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n");
     }
 
-    String jvmOpts = dag.getAttributes().attrValue(LogicalPlan.STRAM_CONTAINER_JVM_OPTS, null);
+    String jvmOpts = dag.getAttributes().attr(LogicalPlan.STRAM_CONTAINER_JVM_OPTS).get();
     if (jvmOpts != null) {
       Map<String, String> params = new HashMap<String, String>();
       params.put("applicationId", Integer.toString(container.getId().getApplicationAttemptId().getApplicationId().getId()));
