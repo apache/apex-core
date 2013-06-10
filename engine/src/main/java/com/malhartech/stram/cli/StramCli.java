@@ -200,7 +200,7 @@ public class StramCli
   /**
    * Why reinvent the wheel?
    * JLine 2.x supports search and more.. but it uses the same package as JLine 0.9.x
-   * Hadoop bundles and forces 0.9.x through zookeeper into our class path (when CLI is launched via hadoop command).
+   * Hadoop as of 2.0.3 bundles and forces 0.9.x through zookeeper into our class path (when CLI is launched via hadoop command).
    * And Jline 0.9.x hijacked Ctrl-R for REDISPLAY
    */
   private class ConsoleReaderExt extends ConsoleReader

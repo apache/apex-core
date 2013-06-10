@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.malhartech.stram.StramAppContext;
+import com.malhartech.stram.util.VersionInfo;
 
 /**
  *
@@ -43,6 +44,7 @@ public class AppInfo {
   protected String appPath;
   protected String daemonAddress;
   public String appMasterTrackingUrl;
+  public String version;
   public AppStats stats;
 
   /**
@@ -93,6 +95,7 @@ public class AppInfo {
     this.appMasterTrackingUrl = context.getAppMasterTrackingUrl();
     this.stats = context.getStats();
     this.daemonAddress = context.getDaemonAddress();
+    this.version = VersionInfo.getBuildVersion();
   }
 
   /**
