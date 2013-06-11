@@ -12,9 +12,11 @@ import com.malhartech.stram.plan.physical.PlanModifier;
  */
 public abstract class LogicalPlanRequest
 {
-  public String getRequestType() {
-    return this.getClass().getName();
+  public String getRequestType()
+  {
+    return this.getClass().getSimpleName();
   }
 
   public abstract void execute(PlanModifier pm);
+
 }
