@@ -61,6 +61,32 @@ public class LogicalPlanModificationTest {
   }
 
   @Test
+  public void testSetOperatorProperty()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    OperatorMeta o1Meta = dag.getMeta(o1);
+
+    TestPlanContext ctx = new TestPlanContext();
+    PhysicalPlan plan = new PhysicalPlan(dag, ctx);
+    ctx.deploy.clear();
+    ctx.undeploy.clear();
+
+    PlanModifier pm = new PlanModifier(plan);
+    try {
+      pm.setOperatorProperty(o1Meta.getName(), "myStringProperty", "propertyValue");
+      Assert.fail("validation error exepected");
+    } catch (javax.validation.ValidationException e) {
+      Assert.assertTrue(e.getMessage().contains(o1Meta.toString()));
+    }
+
+    GenericTestOperator newOperator = new GenericTestOperator();
+    pm.addOperator("newOperator", newOperator);
+    pm.setOperatorProperty("newOperator", "myStringProperty", "propertyValue");
+    Assert.assertEquals("", "propertyValue", newOperator.getMyStringProperty());
+  }
+
+  @Test
   public void testRemoveStream()
   {
     LogicalPlan dag = new LogicalPlan();

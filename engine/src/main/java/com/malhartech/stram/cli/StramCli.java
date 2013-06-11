@@ -108,7 +108,8 @@ public class StramCli
     globalCommands.put("alias", new CommandSpec(new AliasCommand(), new String[] {"alias-name", "command"}, null, "Create a command alias"));
     globalCommands.put("source", new CommandSpec(new SourceCommand(), new String[] {"file"}, null, "Execute the commands in a file"));
     globalCommands.put("exit", new CommandSpec(new ExitCommand(), null, null, "Exit the CLI"));
-    globalCommands.put("begin-macro", new CommandSpec(new BeginMacroCommand(), new String[] {"name"}, null, "Begin Macro Definition (Type 'end' to end the definition)"));
+    globalCommands.put("begin-macro", new CommandSpec(new BeginMacroCommand(), new String[] {"name"}, null, "Begin Macro Definition ($1...$9 to access parameters and type 'end' to end the definition)"));
+    globalCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(), new String[] {"out-file", "jar-file", "class-name"}, null, "Dump the properties file of an app class"));
 
     connectedCommands.put("list-containers", new CommandSpec(new ListContainersCommand(), null, null, "List containers"));
     connectedCommands.put("list-operators", new CommandSpec(new ListOperatorsCommand(), null, new String[] {"pattern"}, "List operators"));
@@ -126,6 +127,7 @@ public class StramCli
     connectedCommands.put("get-port-attributes", new CommandSpec(new GetPortAttributesCommand(), new String[] {"operator-name", "port-name"}, new String[] {"attribute-name"}, "Get attributes of a port"));
     connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(), null, null, "Begin Logical Plan Change"));
     connectedCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), null, new String[] {"jar-file", "class-name"}, "Show logical plan of an app class"));
+    connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(), new String[] {"out-file"}, new String[] {"jar-file", "class-name"}, "Dump the properties file of an app class"));
 
     logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(), new String[] {"operator-name", "class-name"}, null, "Create an operator"));
@@ -311,7 +313,7 @@ public class StramCli
     completors.add(new SimpleCompletor(logicalPlanChangeCommands.keySet().toArray(new String[] {})));
 
     List<Completor> launchCompletors = new LinkedList<Completor>();
-    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local", "show-logical-plan", "source"}));
+    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local", "show-logical-plan", "dump-properties-file", "source"}));
     launchCompletors.add(new FileNameCompletor()); // jarFile
     launchCompletors.add(new FileNameCompletor()); // topology
     completors.add(new ArgumentCompletor(launchCompletors));
@@ -477,6 +479,7 @@ public class StramCli
     }
     catch (Exception e) {
       System.err.println("Unexpected error: " + e);
+      e.printStackTrace();
     }
   }
 
@@ -628,6 +631,32 @@ public class StramCli
     return wsClient.resource("http://" + trackingUrl).path(StramWebServices.PATH);
   }
 
+  private List<AppConfig> getMatchingAppConfigs(StramAppLauncher submitApp, String matchString)
+  {
+    try {
+      List<AppConfig> cfgList = submitApp.getBundledTopologies();
+
+      if (cfgList.isEmpty()) {
+        return null;
+      }
+      else if (matchString == null) {
+        return cfgList;
+      }
+      else {
+        List<AppConfig> result = new ArrayList<AppConfig>();
+        for (AppConfig ac : cfgList) {
+          if (ac.getName().matches(".*" + matchString + ".*")) {
+            result.add(ac);
+          }
+        }
+        return result;
+      }
+    }
+    catch (Exception ex) {
+      return null;
+    }
+  }
+
   /*
    * Below is the implementation of all commands
    */
@@ -690,7 +719,9 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       boolean localMode = "launch-local".equals(args[0]);
-
+      File jf = new File(args[1]);
+      StramAppLauncher submitApp = new StramAppLauncher(jf);
+      submitApp.loadDependencies();
       AppConfig appConfig = null;
       if (args.length == 3) {
         File file = new File(args[2]);
@@ -699,81 +730,64 @@ public class StramCli
         }
       }
 
-      try {
-        StramAppLauncher submitApp = new StramAppLauncher(new File(args[1]));
+      if (appConfig == null) {
+        String matchString = args.length > 2 ? args[2] : null;
 
-        if (appConfig == null) {
-          List<AppConfig> cfgList = submitApp.getBundledTopologies();
-          if (cfgList.isEmpty()) {
-            throw new CliException("No applications bundled in jar, please specify one");
-          }
-          else if (cfgList.size() == 1) {
-            appConfig = cfgList.get(0);
+        List<AppConfig> matchingAppConfigs = getMatchingAppConfigs(submitApp, matchString);
+        if (matchingAppConfigs == null || matchingAppConfigs.isEmpty()) {
+          throw new CliException("No matching applications bundled in jar.");
+        }
+        else if (matchingAppConfigs.size() == 1) {
+          appConfig = matchingAppConfigs.get(0);
+        }
+        else if (matchingAppConfigs.size() > 1) {
+          if (matchString != null) {
+            throw new CliException("More than one application in jar file match '" + matchString + "'");
           }
           else {
-            if (args.length == 3) {
-              int numMatchedAppConfig = 0;
-              for (AppConfig ac : cfgList) {
-                if (ac.getName().matches(".*" + args[2] + ".*")) {
-                  numMatchedAppConfig++;
-                  appConfig = ac;
-                }
-              }
-              if (numMatchedAppConfig == 0) {
-                throw new CliException("No application in jar file matches " + args[2]);
-              }
-              if (numMatchedAppConfig > 1) {
-                throw new CliException("More than one application in jar file match " + args[2]);
+            for (int i = 0; i < matchingAppConfigs.size(); i++) {
+              System.out.printf("%3d. %s\n", i + 1, matchingAppConfigs.get(i).getName());
+            }
+
+            boolean useHistory = reader.getUseHistory();
+            reader.setUseHistory(false);
+            @SuppressWarnings("unchecked")
+            List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
+            for (Completor c : completors) {
+              reader.removeCompletor(c);
+            }
+            String optionLine = reader.readLine("Pick application? ");
+            reader.setUseHistory(useHistory);
+            for (Completor c : completors) {
+              reader.addCompletor(c);
+            }
+
+            try {
+              int option = Integer.parseInt(optionLine);
+              if (0 < option && option <= matchingAppConfigs.size()) {
+                appConfig = matchingAppConfigs.get(option - 1);
               }
             }
-            else {
-              for (int i = 0; i < cfgList.size(); i++) {
-                System.out.printf("%3d. %s\n", i + 1, cfgList.get(i).getName());
-              }
-
-              boolean useHistory = reader.getUseHistory();
-              reader.setUseHistory(false);
-              @SuppressWarnings("unchecked")
-              List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
-              for (Completor c : completors) {
-                reader.removeCompletor(c);
-              }
-              String optionLine = reader.readLine("Pick application? ");
-              reader.setUseHistory(useHistory);
-              for (Completor c : completors) {
-                reader.addCompletor(c);
-              }
-
-              try {
-                int option = Integer.parseInt(optionLine);
-                if (0 < option && option <= cfgList.size()) {
-                  appConfig = cfgList.get(option - 1);
-                }
-              }
-              catch (Exception e) {
-                // ignore
-              }
+            catch (Exception ex) {
+              // ignore
             }
           }
-        }
-
-        if (appConfig != null) {
-          if (!localMode) {
-            ApplicationId appId = submitApp.launchApp(appConfig);
-            currentApp = rmClient.getApplicationReport(appId);
-            System.out.println(appId);
-          }
-          else {
-            submitApp.runLocal(appConfig);
-          }
-        }
-        else {
-          System.err.println("No application specified.");
         }
 
       }
-      catch (Exception e) {
-        throw new CliException("Failed to launch " + args[1] + ": " + e.getMessage(), e);
+
+      if (appConfig != null) {
+        if (!localMode) {
+          ApplicationId appId = submitApp.launchApp(appConfig);
+          currentApp = rmClient.getApplicationReport(appId);
+          System.out.println(appId);
+        }
+        else {
+          submitApp.runLocal(appConfig);
+        }
+      }
+      else {
+        System.err.println("No application specified.");
       }
 
     }
@@ -1231,8 +1245,8 @@ public class StramCli
       }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getAttributes");
-      if (args.length > 1) {
-        r = r.queryParam("attributeName", args[1]);
+      if (args.length > 2) {
+        r = r.queryParam("attributeName", args[2]);
       }
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
@@ -1263,8 +1277,8 @@ public class StramCli
       }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path(args[2]).path("getAttributes");
-      if (args.length > 1) {
-        r = r.queryParam("attributeName", args[1]);
+      if (args.length > 3) {
+        r = r.queryParam("attributeName", args[3]);
       }
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
@@ -1295,8 +1309,8 @@ public class StramCli
       }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getProperties");
-      if (args.length > 1) {
-        r = r.queryParam("propertyName", args[1]);
+      if (args.length > 2) {
+        r = r.queryParam("propertyName", args[2]);
       }
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
@@ -1378,16 +1392,19 @@ public class StramCli
         File jf = new File(jarfile);
         StramAppLauncher submitApp = new StramAppLauncher(jf);
         submitApp.loadDependencies();
-        List<AppConfig> cfgList = submitApp.getBundledTopologies();
-        for (AppConfig appConfig : cfgList) {
-          if (appName.equals(appConfig.getName())) {
-            ObjectMapper mapper = new ObjectMapper();
-            LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
-            System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
-            return;
-          }
+        List<AppConfig> matchingAppConfigs = getMatchingAppConfigs(submitApp, appName);
+        if (matchingAppConfigs == null || matchingAppConfigs.isEmpty()) {
+          throw new CliException("No application in jar file matches '" + appName + "'");
         }
-        System.out.println("Name not found in jar file");
+        else if (matchingAppConfigs.size() > 1) {
+          throw new CliException("More than one application in jar file match '" + appName + "'");
+        }
+        else {
+          AppConfig appConfig = matchingAppConfigs.get(0);
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+          ObjectMapper mapper = new ObjectMapper();
+          System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
+        }
       }
       else {
         if (currentApp == null) {
@@ -1407,6 +1424,63 @@ public class StramCli
         });
         System.out.println(response.toString(2));
       }
+    }
+
+  }
+
+  private class DumpPropertiesFileCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      String outfilename = args[1];
+
+      if (args.length > 3) {
+        String jarfile = args[2];
+        String appName = args[3];
+        File jf = new File(jarfile);
+        StramAppLauncher submitApp = new StramAppLauncher(jf);
+        submitApp.loadDependencies();
+        List<AppConfig> matchingAppConfigs = getMatchingAppConfigs(submitApp, appName);
+        if (matchingAppConfigs == null || matchingAppConfigs.isEmpty()) {
+          throw new CliException("No application in jar file matches '" + appName + "'");
+        }
+        else if (matchingAppConfigs.size() > 1) {
+          throw new CliException("More than one application in jar file match '" + appName + "'");
+        }
+        else {
+          AppConfig appConfig = matchingAppConfigs.get(0);
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+          File file = new File(outfilename);
+          if (!file.exists()) {
+            file.createNewFile();
+          }
+          LogicalPlanSerializer.convertToProperties(logicalPlan).save(file);
+        }
+      }
+      else {
+        if (currentApp == null) {
+          throw new CliException("No application selected");
+        }
+        WebServicesClient webServicesClient = new WebServicesClient();
+        WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN);
+
+        JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+        {
+          @Override
+          public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+          {
+            return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+          }
+
+        });
+        File file = new File(outfilename);
+        if (!file.exists()) {
+          file.createNewFile();
+        }
+        LogicalPlanSerializer.convertToProperties(response).save(file);
+      }
+      System.out.println("Property file is saved at " + outfilename);
     }
 
   }

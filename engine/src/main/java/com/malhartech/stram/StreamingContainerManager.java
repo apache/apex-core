@@ -1042,8 +1042,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       ni.cpuPercentageMA10 = os.cpuPercentageMA10.getAvg();
       ni.latencyMA = os.latencyMA.getAvg();
       ni.failureCount = os.operator.failureCount;
-      ni.recoveryWindowId = os.operator.recoveryCheckpoint & 0xffffffffL;
-      ni.currentWindowId = os.currentWindowId & 0xffffffffL;
+      ni.recoveryWindowId = os.operator.recoveryCheckpoint;
+      ni.currentWindowId = os.currentWindowId;
       ni.recordingNames = os.recordingNames;
       if (os.lastHeartbeat != null) {
         ni.lastHeartbeat = os.lastHeartbeat.getGeneratedTms();
@@ -1236,15 +1236,6 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
       }
       return logicalOperator.getMeta(outputPort).getAttributes().valueMap();
     }
-  }
-
-  public Map<String, Object> getOperatorProperties(String operatorId)
-  {
-    OperatorMeta logicalOperator = plan.getDAG().getOperatorMeta(operatorId);
-    if (logicalOperator == null) {
-      throw new IllegalArgumentException("Invalid operatorId " + operatorId);
-    }
-    return DAGPropertiesBuilder.getOperatorProperties(logicalOperator.getOperator());
   }
 
   public LogicalPlan getLogicalPlan()

@@ -49,7 +49,7 @@ public class SetOperatorPropertyRequest extends LogicalPlanRequest
   @Override
   public void execute(PlanModifier pm)
   {
-    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    pm.setOperatorProperty(operatorName, propertyName, propertyValue);
   }
 
 }

@@ -31,7 +31,6 @@ import com.malhartech.api.Operator;
 import com.malhartech.stram.plan.logical.LogicalPlan;
 import com.malhartech.stram.plan.logical.Operators;
 import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
 import org.apache.commons.beanutils.BeanMap;
 
 /**
@@ -530,7 +529,7 @@ public class DAGPropertiesBuilder implements ApplicationFactory {
   @SuppressWarnings("unchecked")
   public static Map<String, Object> getOperatorProperties(Operator operator)
   {
-    return (Map<String, Object>) new BeanMap(operator);
+    return new BeanMap(operator);
   }
 
   /**
