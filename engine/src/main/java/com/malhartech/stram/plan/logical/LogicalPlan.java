@@ -734,6 +734,8 @@ public class LogicalPlan implements Serializable, DAG
   /**
    * Validate the topology. Includes checks that required ports are connected,
    * required configuration parameters specified, graph free of cycles etc.
+   *
+   * @throws ConstraintViolationException
    */
   public void validate() throws ConstraintViolationException
   {
