@@ -1245,8 +1245,8 @@ public class StramCli
       }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getAttributes");
-      if (args.length > 1) {
-        r = r.queryParam("attributeName", args[1]);
+      if (args.length > 2) {
+        r = r.queryParam("attributeName", args[2]);
       }
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
@@ -1277,8 +1277,8 @@ public class StramCli
       }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path(args[2]).path("getAttributes");
-      if (args.length > 1) {
-        r = r.queryParam("attributeName", args[1]);
+      if (args.length > 3) {
+        r = r.queryParam("attributeName", args[3]);
       }
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
@@ -1309,8 +1309,8 @@ public class StramCli
       }
       WebServicesClient webServicesClient = new WebServicesClient();
       WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getProperties");
-      if (args.length > 1) {
-        r = r.queryParam("propertyName", args[1]);
+      if (args.length > 2) {
+        r = r.queryParam("propertyName", args[2]);
       }
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
