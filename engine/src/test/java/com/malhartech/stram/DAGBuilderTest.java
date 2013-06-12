@@ -272,7 +272,7 @@ public class DAGBuilderTest {
   }
 
   @Test
-  public void testJavaBuilder() throws Exception {
+  public void testLogicalPlan() throws Exception {
 
     LogicalPlan dag = new LogicalPlan();
 
@@ -309,6 +309,22 @@ public class DAGBuilderTest {
     Operator countGoodNodeClone = dagClone.getOperatorMeta("countGoodNode").getOperator();
     Assert.assertEquals("", new Integer(10), dagClone.getContextAttributes(countGoodNodeClone).attr(OperatorContext.SPIN_MILLIS).get());
 
+  }
+
+  @Test
+  public void testDeleteOperator()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    StreamMeta s1 = dag.addStream("s1", o1.outport1, o2.inport1);
+    dag.validate();
+    Assert.assertEquals("", 2, dag.getAllOperators().size());
+
+    dag.removeOperator(o2);
+    s1.remove();
+    dag.validate();
+    Assert.assertEquals("", 1, dag.getAllOperators().size());
   }
 
   public static class ValidationTestOperator extends BaseOperator {

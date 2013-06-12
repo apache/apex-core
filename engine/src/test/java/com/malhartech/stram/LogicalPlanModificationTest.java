@@ -87,6 +87,24 @@ public class LogicalPlanModificationTest {
   }
 
   @Test
+  public void testRemoveOperator()
+  {
+    LogicalPlan dag = new LogicalPlan();
+    GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
+    OperatorMeta o1Meta = dag.getMeta(o1);
+    GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
+    //OperatorMeta o2Meta = dag.getMeta(o2);
+    dag.addStream("s1", o1.outport1, o2.inport1);
+
+    PlanModifier pm = new PlanModifier(dag);
+    pm.removeOperator(o1Meta.getName());
+
+    Assert.assertEquals("streams " + dag.getAllStreams(), 0, dag.getAllStreams().size());
+    Assert.assertEquals("operators " + dag.getAllOperators(), 1, dag.getAllOperators().size());
+    Assert.assertTrue("operators " + dag.getAllOperators(), dag.getAllOperators().contains(o1Meta));
+  }
+
+  @Test
   public void testRemoveStream()
   {
     LogicalPlan dag = new LogicalPlan();

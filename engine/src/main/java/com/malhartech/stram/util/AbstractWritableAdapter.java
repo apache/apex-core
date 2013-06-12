@@ -10,12 +10,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 import org.apache.hadoop.io.Writable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * TODO: quick hack to focus on protocol instead of serialization code -
- * replace with PB
+ * Adapter for Hadoop RPC to implement Writable using Java serialization.
  */
 public abstract class AbstractWritableAdapter implements Writable, Serializable
 {
@@ -76,5 +73,4 @@ public abstract class AbstractWritableAdapter implements Writable, Serializable
     oos.close();
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(AbstractWritableAdapter.class);
 }

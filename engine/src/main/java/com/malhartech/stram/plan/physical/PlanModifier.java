@@ -169,7 +169,26 @@ public class PlanModifier {
    */
   public void removeOperator(String name)
   {
-    throw new UnsupportedOperationException();
+    OperatorMeta om = logicalPlan.getOperatorMeta(name);
+    if (om == null) {
+      return;
+    }
+
+    Map<InputPortMeta, StreamMeta> inputStreams = om.getInputStreams();
+    for (Map.Entry<InputPortMeta, StreamMeta> e : inputStreams.entrySet()) {
+      if (e.getKey().getOperatorWrapper() == om) {
+        if (e.getValue().getSinks().size() == 1) {
+          // drop stream
+          e.getValue().remove();
+        }
+      }
+    }
+
+    logicalPlan.removeOperator(om.getOperator());
+
+    if (physicalPlan != null) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   /**
@@ -196,7 +215,7 @@ public class PlanModifier {
   }
 
   /**
-   * Process all changes in the logical plan.
+   * Deploy plan changes to execution layer..
    */
   public void applyChanges(PhysicalPlan.PlanContext physicalPlanContext)
   {

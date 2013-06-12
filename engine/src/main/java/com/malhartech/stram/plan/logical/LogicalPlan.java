@@ -372,6 +372,7 @@ public class LogicalPlan implements Serializable, DAG
         this.source.getOperatorWrapper().outputStreams.remove(this.source);
       }
       this.source = null;
+      streams.remove(this.id);
     }
 
     @Override
@@ -575,6 +576,22 @@ public class LogicalPlan implements Serializable, DAG
     rootOperators.add(decl);
     operators.put(name, decl);
     return operator;
+  }
+
+  public void removeOperator(Operator operator)
+  {
+    OperatorMeta om = getMeta(operator);
+    if (om == null) {
+      return;
+    }
+
+    Map<InputPortMeta, StreamMeta> inputStreams = om.getInputStreams();
+    for (Map.Entry<InputPortMeta, StreamMeta> e : inputStreams.entrySet()) {
+      if (e.getKey().getOperatorWrapper() == om) {
+         e.getValue().sinks.remove(e.getKey());
+      }
+    }
+    this.operators.remove(om.getName());
   }
 
   @Override

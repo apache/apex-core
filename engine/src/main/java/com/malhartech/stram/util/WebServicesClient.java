@@ -9,7 +9,6 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.client.apache4.ApacheHttpClient4Handler;
 import java.io.IOException;
 import java.security.Principal;
-import java.security.PrivilegedAction;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;

@@ -18,7 +18,7 @@ public class BaseContext extends AbstractWritableAdapter implements Context
 {
   private static final long serialVersionUID = 201306060103L;
   /*
-   * the followiing 2 need to be public since otherwise they are not serialized.
+   * the following 2 need to be public since otherwise they are not serialized.
    */
   public final AttributeMap attributes;
   public final Context parentContext;
