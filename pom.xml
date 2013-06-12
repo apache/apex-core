@@ -4,7 +4,7 @@
 
   <groupId>com.malhartech</groupId>
   <artifactId>malhar-framework</artifactId>
-  <version>0.1-SNAPSHOT</version>
+  <version>0.3.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Realtime Stream Processing Framework</name>
