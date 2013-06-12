@@ -93,11 +93,11 @@ public class LogicalPlanModificationTest {
     GenericTestOperator o1 = dag.addOperator("o1", GenericTestOperator.class);
     OperatorMeta o1Meta = dag.getMeta(o1);
     GenericTestOperator o2 = dag.addOperator("o2", GenericTestOperator.class);
-    //OperatorMeta o2Meta = dag.getMeta(o2);
+    OperatorMeta o2Meta = dag.getMeta(o2);
     dag.addStream("s1", o1.outport1, o2.inport1);
 
     PlanModifier pm = new PlanModifier(dag);
-    pm.removeOperator(o1Meta.getName());
+    pm.removeOperator(o2Meta.getName());
 
     Assert.assertEquals("streams " + dag.getAllStreams(), 0, dag.getAllStreams().size());
     Assert.assertEquals("operators " + dag.getAllOperators(), 1, dag.getAllOperators().size());
