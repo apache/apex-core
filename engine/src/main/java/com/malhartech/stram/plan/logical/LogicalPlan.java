@@ -406,13 +406,6 @@ public class LogicalPlan implements Serializable, DAG
       this.name = name;
     }
 
-    @Override
-    public int getId()
-    {
-      /* since nobody uses it */
-      return 0;
-    }
-
     public String getName()
     {
       return name;

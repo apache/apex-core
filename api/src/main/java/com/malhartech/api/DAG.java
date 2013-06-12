@@ -52,7 +52,7 @@ public interface DAG extends DAGContext, Serializable
   /**
    * Operator meta object.
    */
-  public interface OperatorMeta extends Serializable, OperatorContext
+  public interface OperatorMeta extends Serializable, Context
   {
     public Operator getOperator();
 
