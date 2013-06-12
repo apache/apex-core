@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
+import com.malhartech.api.Operator;
 import com.malhartech.codec.LogicalPlanSerializer;
 import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramAppContext;
@@ -72,12 +73,14 @@ public class StramWebServices
   public static final String PATH_LOGICAL_PLAN = "logicalPlan";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
   public static final String PATH_LOGICAL_PLAN_MODIFICATION = PATH_LOGICAL_PLAN + "/modification";
+  public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
   @Inject
   @Nullable
   private StreamingContainerManager dagManager;
+  private OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
 
   @Inject
   public StramWebServices(final StramAppContext context)
@@ -149,6 +152,29 @@ public class StramWebServices
       throw new WebApplicationException(404);
     }
     return oi;
+  }
+
+  @GET
+  @Path(PATH_OPERATOR_CLASSES)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  public JSONObject getOperatorClasses(@QueryParam("parent") String parent)
+  {
+    JSONObject result = new JSONObject();
+    JSONArray classNames = new JSONArray();
+    try {
+      List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
+
+      for (Class clazz : operatorClasses) {
+        classNames.put(clazz.getName());
+      }
+
+      result.put("classes", classNames);
+    }
+    catch (Exception ex) {
+      throw new WebApplicationException(404);
+    }
+    return result;
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
