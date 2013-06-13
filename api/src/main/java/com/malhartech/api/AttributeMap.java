@@ -91,7 +91,6 @@ public interface AttributeMap
    * Attribute map records values against String keys and can therefore be serialized
    * ({@link AttributeKey} cannot be serialized)
    *
-   * @param <CONTEXT>
    */
   public class DefaultAttributeMap implements AttributeMap, Serializable
   {
