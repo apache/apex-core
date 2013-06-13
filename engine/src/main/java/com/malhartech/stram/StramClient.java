@@ -11,6 +11,7 @@ import com.malhartech.api.annotation.ShipContainingJars;
 import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
 import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
 import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.util.ConfigUtils;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -415,14 +416,17 @@ public class StramClient
     // is also used by ResourceManager to fetch the jars from HDFS and set them up for the
     // application master launch.
     if (UserGroupInformation.isSecurityEnabled()) {
+
+      YarnConfiguration yarnConf = new YarnConfiguration(conf);
+      InetSocketAddress rmAddress = ConfigUtils.getRMAddress(yarnConf);
+      String rmUsername = ConfigUtils.getRMUsername(yarnConf);
+
       // Get the ResourceManager delegation rmToken
       GetDelegationTokenRequest gdtr = Records.newRecord(GetDelegationTokenRequest.class);
       gdtr.setRenewer("yarn");
       GetDelegationTokenResponse gdresp = rmClient.clientRM.getDelegationToken(gdtr);
       DelegationToken rmDelToken = gdresp.getRMDelegationToken();
 
-      YarnConfiguration yarnConf = new YarnConfiguration(conf);
-      InetSocketAddress rmAddress = yarnConf.getSocketAddr(YarnConfiguration.RM_ADDRESS, YarnConfiguration.DEFAULT_RM_ADDRESS, YarnConfiguration.DEFAULT_RM_PORT);
       /*
       String rmStrAddress = rmAddress.getHostName() + ":" + rmAddress.getPort();
       Token<RMDelegationTokenIdentifier> rmToken = new Token<RMDelegationTokenIdentifier>(rmDelToken.getIdentifier().array(), rmDelToken.getPassword().array(),
@@ -432,7 +436,7 @@ public class StramClient
 
       // Get the NameNode delegation rmToken
       FileSystem dfs = FileSystem.get(conf);
-      Token<?> hdfsToken = dfs.getDelegationToken("yarn");
+      Token<?> hdfsToken = dfs.getDelegationToken(rmUsername);
 
       // Setup the credentials to serialize the tokens which can be set on the container.
       Credentials credentials = new Credentials();
