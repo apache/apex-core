@@ -4,10 +4,16 @@
  */
 package com.malhartech.stram.webapp;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlRootElement;
+
 /**
  *
  * @author David Yan <davidyan@malhar-inc.com>
  */
+@XmlRootElement(name = "port")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class PortInfo
 {
   public String name;

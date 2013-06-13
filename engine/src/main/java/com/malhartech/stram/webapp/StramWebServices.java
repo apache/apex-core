@@ -5,11 +5,7 @@
 package com.malhartech.stram.webapp;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -152,6 +148,46 @@ public class StramWebServices
       throw new WebApplicationException(404);
     }
     return oi;
+  }
+
+  @GET
+  @Path(PATH_OPERATORS + "/{operatorId}/ports")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId) throws Exception
+  {
+    init();
+    Map<String, Object> map = new HashMap<String, Object>();
+    OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
+    if (oi == null) {
+      throw new WebApplicationException(404);
+    }
+    ObjectMapper mapper = new ObjectMapper();
+    map.put("inputPorts", oi.inputPorts);
+    map.put("outputPorts", oi.outputPorts);
+    return new JSONObject(mapper.writeValueAsString(map));
+  }
+
+  @GET
+  @Path(PATH_OPERATORS + "/{operatorId}/ports/{portName}")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public PortInfo getPortsInfo(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName) throws Exception
+  {
+    init();
+    OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
+    if (oi == null) {
+      throw new WebApplicationException(404);
+    }
+    for (PortInfo pi : oi.inputPorts) {
+      if (pi.name.equals(portName)) {
+        return pi;
+      }
+    }
+    for (PortInfo pi : oi.inputPorts) {
+      if (pi.name.equals(portName)) {
+        return pi;
+      }
+    }
+    throw new WebApplicationException(404);
   }
 
   @GET
