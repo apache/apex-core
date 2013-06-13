@@ -10,6 +10,7 @@ import com.malhartech.engine.SweepableReservoir;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import junit.framework.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
+@Ignore // ignored since they do not belong here!
 public class FastPublisherTest
 {
   public FastPublisherTest()

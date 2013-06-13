@@ -18,16 +18,14 @@ import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  *
  */
+@Ignore // ignored since they do not belong here!
 public class SocketStreamTest
 {
   private static final Logger LOG = LoggerFactory.getLogger(SocketStreamTest.class);
