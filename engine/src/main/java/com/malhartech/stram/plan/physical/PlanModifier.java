@@ -223,6 +223,10 @@ public class PlanModifier {
     Set<PTContainer> newContainers = Sets.newHashSet();
     physicalPlan.assignContainers(newOperators, newContainers);
 
+    for (PTOperator newOperator : newOperators) {
+      physicalPlan.initCheckpoint(newOperator);
+    }
+
     // existing downstream operators require redeploy
     Set<PTOperator> undeployOperators = physicalPlan.getDependents(newOperators);
     undeployOperators.removeAll(newOperators);

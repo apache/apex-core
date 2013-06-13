@@ -5,11 +5,7 @@
 package com.malhartech.stram.webapp;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
+import com.malhartech.api.Operator;
 import com.malhartech.codec.LogicalPlanSerializer;
 import com.malhartech.stram.DAGPropertiesBuilder;
 import com.malhartech.stram.StramAppContext;
@@ -72,12 +69,14 @@ public class StramWebServices
   public static final String PATH_LOGICAL_PLAN = "logicalPlan";
   public static final String PATH_LOGICAL_PLAN_OPERATORS = PATH_LOGICAL_PLAN + "/operators";
   public static final String PATH_LOGICAL_PLAN_MODIFICATION = PATH_LOGICAL_PLAN + "/modification";
+  public static final String PATH_OPERATOR_CLASSES = "operatorClasses";
   private final StramAppContext appCtx;
   @Context
   private HttpServletResponse response;
   @Inject
   @Nullable
   private StreamingContainerManager dagManager;
+  private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
 
   @Inject
   public StramWebServices(final StramAppContext context)
@@ -149,6 +148,69 @@ public class StramWebServices
       throw new WebApplicationException(404);
     }
     return oi;
+  }
+
+  @GET
+  @Path(PATH_OPERATORS + "/{operatorId}/ports")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public JSONObject getPortsInfo(@PathParam("operatorId") String operatorId) throws Exception
+  {
+    init();
+    Map<String, Object> map = new HashMap<String, Object>();
+    OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
+    if (oi == null) {
+      throw new WebApplicationException(404);
+    }
+    ObjectMapper mapper = new ObjectMapper();
+    map.put("inputPorts", oi.inputPorts);
+    map.put("outputPorts", oi.outputPorts);
+    return new JSONObject(mapper.writeValueAsString(map));
+  }
+
+  @GET
+  @Path(PATH_OPERATORS + "/{operatorId}/ports/{portName}")
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  public PortInfo getPortsInfo(@PathParam("operatorId") String operatorId, @PathParam("portName") String portName) throws Exception
+  {
+    init();
+    OperatorInfo oi = dagManager.getOperatorInfo(operatorId);
+    if (oi == null) {
+      throw new WebApplicationException(404);
+    }
+    for (PortInfo pi : oi.inputPorts) {
+      if (pi.name.equals(portName)) {
+        return pi;
+      }
+    }
+    for (PortInfo pi : oi.inputPorts) {
+      if (pi.name.equals(portName)) {
+        return pi;
+      }
+    }
+    throw new WebApplicationException(404);
+  }
+
+  @GET
+  @Path(PATH_OPERATOR_CLASSES)
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  public JSONObject getOperatorClasses(@QueryParam("parent") String parent)
+  {
+    JSONObject result = new JSONObject();
+    JSONArray classNames = new JSONArray();
+    try {
+      List<Class<? extends Operator>> operatorClasses = operatorDiscoverer.getOperatorClasses(parent);
+
+      for (Class clazz : operatorClasses) {
+        classNames.put(clazz.getName());
+      }
+
+      result.put("classes", classNames);
+    }
+    catch (Exception ex) {
+      throw new WebApplicationException(404);
+    }
+    return result;
   }
 
   @POST // not supported by WebAppProxyServlet, can only be called directly
@@ -378,7 +440,7 @@ public class StramWebServices
       List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
       for (int i = 0; i < jsonArray.length(); i++) {
         JSONObject jsonObj = (JSONObject)jsonArray.get(i);
-        LogicalPlanRequest requestObj = (LogicalPlanRequest)Class.forName(LogicalPlanRequest.class.getPackage() + "." + jsonObj.getString("requestType")).newInstance();
+        LogicalPlanRequest requestObj = (LogicalPlanRequest)Class.forName(LogicalPlanRequest.class.getPackage().getName() + "." + jsonObj.getString("requestType")).newInstance();
         @SuppressWarnings("unchecked")
         Map<String, Object> properties = BeanUtils.describe(requestObj);
         @SuppressWarnings("unchecked")
