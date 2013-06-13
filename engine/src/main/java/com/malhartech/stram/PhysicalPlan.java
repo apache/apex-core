@@ -1011,6 +1011,30 @@ public class PhysicalPlan {
   }
 
   /**
+   * Initialize the activation checkpoint for the given operator.
+   * Recursively traverses inputs until an existing checkpoint or root operator is found.
+   * NoOp when already initialized.
+   * @param oper
+   */
+  public void initCheckpoint(PTOperator oper)
+  {
+    if (oper.checkpointWindows.isEmpty()) {
+      long activationWindowId = 0;
+      for (PTInput input : oper.inputs) {
+        PTOperator sourceOper = (PTOperator)input.source.source;
+        if (sourceOper.checkpointWindows.isEmpty()) {
+          initCheckpoint(sourceOper);
+        }
+        activationWindowId = Math.max(activationWindowId, sourceOper.getRecentCheckpoint());
+      }
+      if (activationWindowId > 0) {
+        Operator oo = oper.partition != null ? oper.partition.getOperator() : oper.logicalNode.getOperator();
+        initCheckpoint(oper, oo, activationWindowId);
+      }
+    }
+  }
+
+  /**
    * Remove the given partition with any associated parallel partitions and
    * per-partition unifiers.
    *
@@ -1117,23 +1141,6 @@ public class PhysicalPlan {
       // dynamically added partitions need to feed into existing unifier
       PTInput input = new PTInput("<merge#" + out.portName + ">", out.logicalStream, merge, null, out);
       merge.inputs.add(input);
-    } else {
-/*
-      // non partitioned operator
-      List<InputPortMeta> inputs = outputEntry.getValue().getSinks();
-      for (InputPortMeta inputMeta : inputs) {
-        PMapping m = this.logicalToPTOperator.get(inputMeta.getOperatorWrapper());
-        if (m != null) {
-          // connect existing operators
-          for (PTOperator downstreamOper : m.partitions) {
-            Map<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = getPartitionKeys(downstreamOper);
-            PartitionKeys pks = partitionKeys.get(inputMeta);
-            PTInput input = new PTInput(inputMeta.getPortName(), outputEntry.getValue(), downstreamOper, pks, out);
-            downstreamOper.inputs.add(input);
-          }
-        }
-      }
-*/
     }
   }
 
@@ -1225,36 +1232,6 @@ public class PhysicalPlan {
     for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
       setupOutput(mapping, pOperator, outputEntry);
     }
-
-/*
-    // output port objects - these could be deferred until inputs are connected
-    for (Map.Entry<LogicalPlan.OutputPortMeta, StreamMeta> outputEntry : mapping.logicalOperator.getOutputStreams().entrySet()) {
-      PTOutput out = new PTOutput(this, outputEntry.getKey().getPortName(), outputEntry.getValue(), pOperator);
-      pOperator.outputs.add(out);
-
-      PTOperator merge = mapping.mergeOperators.get(outputEntry.getKey());
-      if (merge != null) {
-        // dynamically added partitions need to feed into existing unifier
-        PTInput input = new PTInput("<merge#" + out.portName + ">", out.logicalStream, merge, null, out);
-        merge.inputs.add(input);
-      } else {
-        // non partitioned operator
-        List<InputPortMeta> inputs = outputEntry.getValue().getSinks();
-        for (InputPortMeta inputMeta : inputs) {
-          PMapping m = this.logicalToPTOperator.get(inputMeta.getOperatorWrapper());
-          if (m != null) {
-            // connect existing operators
-            for (PTOperator downstreamOper : m.partitions) {
-              Map<LogicalPlan.InputPortMeta, PartitionKeys> partitionKeys = getPartitionKeys(downstreamOper);
-              PartitionKeys pks = partitionKeys.get(inputMeta);
-              PTInput input = new PTInput(inputMeta.getPortName(), outputEntry.getValue(), downstreamOper, pks, out);
-              downstreamOper.inputs.add(input);
-            }
-          }
-        }
-      }
-    }
-*/
     return pOperator;
   }
 

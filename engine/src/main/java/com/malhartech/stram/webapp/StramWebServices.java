@@ -76,7 +76,7 @@ public class StramWebServices
   @Inject
   @Nullable
   private StreamingContainerManager dagManager;
-  private OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
+  private final OperatorDiscoverer operatorDiscoverer = new OperatorDiscoverer();
 
   @Inject
   public StramWebServices(final StramAppContext context)
@@ -440,7 +440,7 @@ public class StramWebServices
       List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
       for (int i = 0; i < jsonArray.length(); i++) {
         JSONObject jsonObj = (JSONObject)jsonArray.get(i);
-        LogicalPlanRequest requestObj = (LogicalPlanRequest)Class.forName(LogicalPlanRequest.class.getPackage() + "." + jsonObj.getString("requestType")).newInstance();
+        LogicalPlanRequest requestObj = (LogicalPlanRequest)Class.forName(LogicalPlanRequest.class.getPackage().getName() + "." + jsonObj.getString("requestType")).newInstance();
         @SuppressWarnings("unchecked")
         Map<String, Object> properties = BeanUtils.describe(requestObj);
         @SuppressWarnings("unchecked")
