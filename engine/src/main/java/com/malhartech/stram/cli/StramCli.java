@@ -110,6 +110,7 @@ public class StramCli
     globalCommands.put("exit", new CommandSpec(new ExitCommand(), null, null, "Exit the CLI"));
     globalCommands.put("begin-macro", new CommandSpec(new BeginMacroCommand(), new String[] {"name"}, null, "Begin Macro Definition ($1...$9 to access parameters and type 'end' to end the definition)"));
     globalCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(), new String[] {"out-file", "jar-file", "class-name"}, null, "Dump the properties file of an app class"));
+    globalCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(), new String[] {"app-id"}, null, "Get the information of an app"));
 
     connectedCommands.put("list-containers", new CommandSpec(new ListContainersCommand(), null, null, "List containers"));
     connectedCommands.put("list-operators", new CommandSpec(new ListOperatorsCommand(), null, new String[] {"pattern"}, "List operators"));
@@ -128,6 +129,7 @@ public class StramCli
     connectedCommands.put("begin-logical-plan-change", new CommandSpec(new BeginLogicalPlanChangeCommand(), null, null, "Begin Logical Plan Change"));
     connectedCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), null, new String[] {"jar-file", "class-name"}, "Show logical plan of an app class"));
     connectedCommands.put("dump-properties-file", new CommandSpec(new DumpPropertiesFileCommand(), new String[] {"out-file"}, new String[] {"jar-file", "class-name"}, "Dump the properties file of an app class"));
+    connectedCommands.put("get-app-info", new CommandSpec(new GetAppInfoCommand(), null, new String[] {"app-id"}, "Get the information of an app"));
 
     logicalPlanChangeCommands.put("help", new CommandSpec(new HelpCommand(), null, null, "Show help"));
     logicalPlanChangeCommands.put("create-operator", new CommandSpec(new CreateOperatorCommand(), new String[] {"operator-name", "class-name"}, null, "Create an operator"));
@@ -579,22 +581,22 @@ public class StramCli
     return r;
   }
 
-  private ClientResponse getResource(String resourcePath)
+  private ClientResponse getResource(String resourcePath, ApplicationReport appReport)
   {
 
-    if (currentApp == null) {
+    if (appReport == null) {
       throw new CliException("No application selected");
     }
 
-    if (StringUtils.isEmpty(currentApp.getTrackingUrl()) || currentApp.getFinalApplicationStatus() != FinalApplicationStatus.UNDEFINED) {
-      currentApp = null;
+    if (StringUtils.isEmpty(appReport.getTrackingUrl()) || appReport.getFinalApplicationStatus() != FinalApplicationStatus.UNDEFINED) {
+      appReport = null;
       throw new CliException("Application terminated.");
     }
 
     WebServicesClient wsClient = new WebServicesClient();
     Client client = wsClient.getClient();
     client.setFollowRedirects(true);
-    WebResource r = client.resource("http://" + currentApp.getTrackingUrl()).path(StramWebServices.PATH).path(resourcePath);
+    WebResource r = client.resource("http://" + appReport.getTrackingUrl()).path(StramWebServices.PATH).path(resourcePath);
     try {
       return wsClient.process(r, ClientResponse.class, new WebServicesClient.WebServicesHandler<ClientResponse>()
       {
@@ -612,19 +614,21 @@ public class StramCli
     }
     catch (Exception e) {
       // check the application status as above may have failed due application termination etc.
-      currentApp = assertRunningApp(currentApp);
+      if (appReport == currentApp) {
+        currentApp = assertRunningApp(appReport);
+      }
       throw new CliException("Failed to request " + r.getURI(), e);
     }
   }
 
-  private WebResource getPostResource(WebServicesClient webServicesClient)
+  private WebResource getPostResource(WebServicesClient webServicesClient, ApplicationReport appReport)
   {
-    if (currentApp == null) {
+    if (appReport == null) {
       throw new CliException("No application selected");
     }
     // YARN-156 WebAppProxyServlet does not support POST - for now bypass it for this request
-    currentApp = assertRunningApp(currentApp); // or else "N/A" might be there..
-    String trackingUrl = currentApp.getOriginalTrackingUrl();
+    appReport = assertRunningApp(appReport); // or else "N/A" might be there..
+    String trackingUrl = appReport.getOriginalTrackingUrl();
 
     Client wsClient = webServicesClient.getClient();
     wsClient.setFollowRedirects(true);
@@ -692,16 +696,13 @@ public class StramCli
       boolean connected = false;
       try {
         LOG.debug("Selected {} with tracking url {}", currentApp.getApplicationId(), currentApp.getTrackingUrl());
-        ClientResponse rsp = getResource(StramWebServices.PATH_INFO);
-        JSONObject json = rsp.getEntity(JSONObject.class);
-        System.out.println(json.toString(2));
+        ClientResponse rsp = getResource(StramWebServices.PATH_INFO, currentApp);
+        rsp.getEntity(JSONObject.class);
+        System.out.println("Connected to application " + currentApp.getApplicationId() + ".");
         connected = true; // set as current only upon successful connection
       }
       catch (CliException e) {
         throw e; // pass on
-      }
-      catch (JSONException e) {
-        throw new CliException("Error connecting to app " + args[1], e);
       }
       finally {
         if (!connected) {
@@ -800,7 +801,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_SHUTDOWN);
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_SHUTDOWN);
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -975,7 +976,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ClientResponse rsp = getResource(StramWebServices.PATH_CONTAINERS);
+      ClientResponse rsp = getResource(StramWebServices.PATH_CONTAINERS, currentApp);
       JSONObject json = rsp.getEntity(JSONObject.class);
       if (args.length == 1) {
         System.out.println(json.toString(2));
@@ -1010,7 +1011,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      ClientResponse rsp = getResource(StramWebServices.PATH_OPERATORS);
+      ClientResponse rsp = getResource(StramWebServices.PATH_OPERATORS, currentApp);
       JSONObject json = rsp.getEntity(JSONObject.class);
 
       if (args.length > 1) {
@@ -1043,7 +1044,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_CONTAINERS).path(args[1]).path("kill");
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_CONTAINERS).path(args[1]).path("kill");
       try {
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -1112,7 +1113,7 @@ public class StramCli
     {
 
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_STARTRECORDING);
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_STARTRECORDING);
       final JSONObject request = new JSONObject();
       try {
         request.put("operId", args[1]);
@@ -1144,7 +1145,7 @@ public class StramCli
     {
 
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_STOPRECORDING);
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_STOPRECORDING);
       final JSONObject request = new JSONObject();
 
       try {
@@ -1177,7 +1178,7 @@ public class StramCli
     {
 
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_SYNCRECORDING);
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_SYNCRECORDING);
       final JSONObject request = new JSONObject();
 
       try {
@@ -1212,7 +1213,7 @@ public class StramCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN).path("getAttributes");
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN).path("getAttributes");
       if (args.length > 1) {
         r = r.queryParam("attributeName", args[1]);
       }
@@ -1244,7 +1245,7 @@ public class StramCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getAttributes");
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getAttributes");
       if (args.length > 2) {
         r = r.queryParam("attributeName", args[2]);
       }
@@ -1276,7 +1277,7 @@ public class StramCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path(args[2]).path("getAttributes");
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path(args[2]).path("getAttributes");
       if (args.length > 3) {
         r = r.queryParam("attributeName", args[3]);
       }
@@ -1308,7 +1309,7 @@ public class StramCli
         throw new CliException("No application selected");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getProperties");
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("getProperties");
       if (args.length > 2) {
         r = r.queryParam("propertyName", args[2]);
       }
@@ -1351,7 +1352,7 @@ public class StramCli
       }
       else {
         WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("setProperty");
+        WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_OPERATORS).path(args[1]).path("setProperty");
         final JSONObject request = new JSONObject();
         request.put("propertyName", args[2]);
         request.put("propertyValue", args[3]);
@@ -1411,7 +1412,7 @@ public class StramCli
           throw new CliException("No application selected");
         }
         WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN);
+        WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -1463,7 +1464,7 @@ public class StramCli
           throw new CliException("No application selected");
         }
         WebServicesClient webServicesClient = new WebServicesClient();
-        WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN);
+        WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN);
 
         JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
         {
@@ -1619,7 +1620,7 @@ public class StramCli
         throw new CliException("Nothing to submit. Type \"abort\" to abort change");
       }
       WebServicesClient webServicesClient = new WebServicesClient();
-      WebResource r = getPostResource(webServicesClient).path(StramWebServices.PATH_LOGICAL_PLAN_MODIFICATION);
+      WebResource r = getPostResource(webServicesClient, currentApp).path(StramWebServices.PATH_LOGICAL_PLAN_MODIFICATION);
       try {
         final Map<String, Object> m = new HashMap<String, Object>();
         ObjectMapper mapper = new ObjectMapper();
@@ -1697,6 +1698,37 @@ public class StramCli
 
   }
 
+  private class GetAppInfoCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      ApplicationReport appReport = currentApp;
+      if (args.length > 1) {
+        appReport = getApplication(Integer.parseInt(args[1]));
+      }
+      else {
+        if (currentApp == null) {
+          throw new CliException("No application selected");
+        }
+        appReport = currentApp;
+      }
+      WebServicesClient webServicesClient = new WebServicesClient();
+      WebResource r = getPostResource(webServicesClient, appReport).path(StramWebServices.PATH_INFO);
+
+      JSONObject response = webServicesClient.process(r, JSONObject.class, new WebServicesClient.WebServicesHandler<JSONObject>()
+      {
+        @Override
+        public JSONObject process(WebResource webResource, Class<JSONObject> clazz)
+        {
+          return webResource.accept(MediaType.APPLICATION_JSON).get(JSONObject.class);
+        }
+
+      });
+      System.out.println(response.toString(2));
+    }
+
+  }
   public static void main(String[] args) throws Exception
   {
     StramCli shell = new StramCli();
