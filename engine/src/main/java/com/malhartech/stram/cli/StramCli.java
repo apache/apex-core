@@ -409,6 +409,12 @@ public class StramCli
   private void processLine(String line, ConsoleReader reader, boolean expandMacroAlias)
   {
     try {
+      line = line.trim();
+      if (line.startsWith("#")) {
+        return;
+      }
+      line = line.replaceFirst("\\s+#.*", "");
+
       String[] commands = line.split("\\s*;\\s*");
 
       for (String command : commands) {
