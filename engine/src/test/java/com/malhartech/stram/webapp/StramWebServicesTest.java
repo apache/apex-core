@@ -35,11 +35,15 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceServletContextListener;
 import com.google.inject.servlet.ServletModule;
-import com.google.inject.util.Providers;
 import com.malhartech.stram.StramAppContext;
 import com.malhartech.stram.StreamingContainerManager;
+import com.malhartech.stram.plan.logical.CreateOperatorRequest;
+import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.malhartech.stram.plan.logical.LogicalPlanRequest;
+import com.malhartech.stram.plan.logical.SetOperatorPropertyRequest;
 import com.malhartech.stram.webapp.StramWebApp.JAXBContextResolver;
 import com.malhartech.stram.support.StramTestSupport;
+import com.malhartech.stram.webapp.StramWebServicesTest.GuiceServletConfig.DummyStreamingContainerManager;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.UniformInterfaceException;
@@ -47,6 +51,13 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
+import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Test the application master web services api's.
@@ -142,6 +153,36 @@ public class StramWebServicesTest extends JerseyTest {
 
   public static class GuiceServletConfig extends GuiceServletContextListener {
     // new instance needs to be created for each test
+
+    public static class DummyStreamingContainerManager extends StreamingContainerManager {
+      private static final long serialVersionUID = 1L;
+      public static List<LogicalPlanRequest> lastRequests;
+
+      DummyStreamingContainerManager() {
+        super(new LogicalPlan());
+      }
+      @Override
+      public FutureTask<Object> logicalPlanModification(final List<LogicalPlanRequest> requests) throws Exception
+      {
+        lastRequests = requests;
+
+        // delegate processing to dispatch thread
+        FutureTask<Object> future = new FutureTask<Object>(new Callable<Object>()
+        {
+          @Override
+          public Object call() throws Exception
+          {
+            return requests;
+          }
+
+        });
+        future.run();
+        //LOG.info("Scheduled plan changes: {}", requests);
+        return future;
+      }
+    }
+
+    private static DummyStreamingContainerManager streamingContainerManager = new DummyStreamingContainerManager();
     private final Injector injector = Guice.createInjector(new ServletModule() {
       @Override
       protected void configureServlets() {
@@ -151,7 +192,7 @@ public class StramWebServicesTest extends JerseyTest {
         bind(StramWebServices.class);
         bind(GenericExceptionHandler.class);
         bind(StramAppContext.class).toInstance(appContext);
-        bind(StreamingContainerManager.class).toProvider(Providers.<StreamingContainerManager>of(null));
+        bind(StreamingContainerManager.class).toInstance(streamingContainerManager);
         bind(Configuration.class).toInstance(conf);
         serve("/*").with(GuiceContainer.class);
       }
@@ -320,6 +361,45 @@ public class StramWebServicesTest extends JerseyTest {
       StramTestSupport.checkStringMatch(
           "error string exists and shouldn't", "", responseStr);
     }
+  }
+
+  @Test
+  public void testSubmitLogicalPlanChange() throws JSONException, Exception {
+    List<LogicalPlanRequest> requests = new ArrayList<LogicalPlanRequest>();
+    WebResource r = resource();
+
+    CreateOperatorRequest request1 = new CreateOperatorRequest();
+    request1.setOperatorName("operatorName");
+    request1.setOperatorFQCN("className");
+    requests.add(request1);
+
+    SetOperatorPropertyRequest request2 = new SetOperatorPropertyRequest();
+    request2.setOperatorName("operatorName");
+    request2.setPropertyName("propertyName");
+    request2.setPropertyValue("propertyValue");
+    requests.add(request2);
+
+    ObjectMapper mapper = new ObjectMapper();
+    final Map<String, Object> m = new HashMap<String, Object>();
+    m.put("requests", requests);
+    final JSONObject jsonRequest = new JSONObject(mapper.writeValueAsString(m));
+
+    ClientResponse response = r.path(StramWebServices.PATH)
+        .path(StramWebServices.PATH_LOGICAL_PLAN_MODIFICATION).accept(MediaType.APPLICATION_JSON)
+        .post(ClientResponse.class, jsonRequest);
+    assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+    assertEquals(DummyStreamingContainerManager.lastRequests.size(), 2);
+    LogicalPlanRequest request = DummyStreamingContainerManager.lastRequests.get(0);
+    assertTrue(request instanceof CreateOperatorRequest);
+    request1 = (CreateOperatorRequest) request;
+    assertEquals(request1.getOperatorName(), "operatorName");
+    assertEquals(request1.getOperatorFQCN(), "className");
+    request = DummyStreamingContainerManager.lastRequests.get(1);
+    assertTrue(request instanceof SetOperatorPropertyRequest);
+    request2 = (SetOperatorPropertyRequest) request;
+    assertEquals(request2.getOperatorName(), "operatorName");
+    assertEquals(request2.getPropertyName(), "propertyName");
+    assertEquals(request2.getPropertyValue(), "propertyValue");
   }
 
   void verifyAMInfo(JSONObject info, TestAppContext ctx)
