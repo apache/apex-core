@@ -38,8 +38,6 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
 import com.datatorrent.stram.plan.logical.SetOperatorPropertyRequest;
 import com.datatorrent.stram.support.StramTestSupport;
-import com.datatorrent.stram.webapp.AppInfo;
-import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.stram.webapp.StramWebApp.JAXBContextResolver;
 import com.datatorrent.stram.webapp.StramWebServicesTest.GuiceServletConfig.DummyStreamingContainerManager;
 import com.google.inject.Guice;
@@ -153,7 +151,7 @@ public class StramWebServicesTest extends JerseyTest {
     public int field1 = 2;
   }
 
-  public static class GuiceServletConfig extends GuiceServletContextListener {
+  public static class GuiceServletConfig extends com.google.inject.servlet.GuiceServletContextListener {
     // new instance needs to be created for each test
 
     public static class DummyStreamingContainerManager extends StreamingContainerManager {
