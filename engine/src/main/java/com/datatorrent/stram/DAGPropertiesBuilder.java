@@ -28,7 +28,7 @@ import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.stram.plan.logical.Operators;
 import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.google.common.collect.Maps;
-import com.datatorrent.api.ApplicationFactory;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 import org.apache.commons.beanutils.BeanMap;
@@ -42,7 +42,7 @@ import org.apache.commons.beanutils.BeanMap;
  *
  */
 
-public class DAGPropertiesBuilder implements ApplicationFactory {
+public class DAGPropertiesBuilder implements StreamingApplication {
 
   private static final Logger LOG = LoggerFactory.getLogger(DAGPropertiesBuilder.class);
 

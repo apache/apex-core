@@ -44,7 +44,7 @@ public class LogicalPlanSerializer extends JsonSerializer<LogicalPlan>
     //result.put("applicationName", appConfig.getName());
     result.put("operators", operatorMap);
     result.put("streams", streamMap);
-    //LogicalPlan dag = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+    //LogicalPlan dag = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
     //
     // should we put the DAGContext info here?
     //

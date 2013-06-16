@@ -12,7 +12,7 @@ import com.datatorrent.stram.security.StramUserLogin;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
-import com.datatorrent.api.ApplicationFactory;
+import com.datatorrent.api.StreamingApplication;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
@@ -1408,7 +1408,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
           ObjectMapper mapper = new ObjectMapper();
           System.out.println(new JSONObject(mapper.writeValueAsString(LogicalPlanSerializer.convertToMap(logicalPlan))).toString(2));
         }
@@ -1457,7 +1457,7 @@ public class StramCli
         }
         else {
           AppConfig appConfig = matchingAppConfigs.get(0);
-          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+          LogicalPlan logicalPlan = StramAppLauncher.prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
           File file = new File(outfilename);
           if (!file.exists()) {
             file.createNewFile();

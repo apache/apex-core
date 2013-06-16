@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration;
  * defaults in the DAG code and supply environment/launch context specific
  * settings through the configuration.
  */
-public interface ApplicationFactory {
+public interface StreamingApplication {
     public static final String LAUNCHMODE_YARN = "yarn";
     public static final String LAUNCHMODE_LOCAL = "local";
 

@@ -36,7 +36,7 @@ public abstract class LocalMode {
    * @param app
    * @param runMillis
    */
-  public static void runApp(ApplicationFactory app, int runMillis) {
+  public static void runApp(StreamingApplication app, int runMillis) {
     LocalMode lma = newInstance();
     app.populateDAG(lma.getDAG(), new Configuration(false));
     LocalMode.Controller lc = lma.getController();

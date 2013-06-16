@@ -34,7 +34,7 @@ import com.datatorrent.stram.StramLocalCluster;
 import com.datatorrent.stram.StramUtils;
 import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.datatorrent.api.annotation.ShipContainingJars;
-import com.datatorrent.api.ApplicationFactory;
+import com.datatorrent.api.StreamingApplication;
 import com.datatorrent.api.DAG;
 
 
@@ -253,7 +253,7 @@ public class StramAppLauncher {
       final String className = classFileName.replace('/', '.').substring(0, classFileName.length() - 6);
       try {
         Class<?> clazz = cl.loadClass(className);
-        if (ApplicationFactory.class.isAssignableFrom(clazz)) {
+        if (StreamingApplication.class.isAssignableFrom(clazz)) {
           configurationList.add(new AppConfig() {
 
             @Override
@@ -264,8 +264,8 @@ public class StramAppLauncher {
             @Override
             public LogicalPlan createApp(Configuration conf) {
               // load class from current context class loader
-              Class<? extends ApplicationFactory> c = StramUtils.classForName(className, ApplicationFactory.class);
-              ApplicationFactory f = StramUtils.newInstance(c);
+              Class<? extends StreamingApplication> c = StramUtils.classForName(className, StreamingApplication.class);
+              StreamingApplication f = StramUtils.newInstance(c);
               LogicalPlan lp = new LogicalPlan(conf);
               f.populateDAG(lp, conf);
               return lp;
@@ -318,7 +318,7 @@ public class StramAppLauncher {
   public void runLocal(AppConfig appConfig) throws Exception {
     // local mode requires custom classes to be resolved through the context class loader
     loadDependencies();
-    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_LOCAL));
+    StramLocalCluster lc = new StramLocalCluster(prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_LOCAL));
     lc.run();
   }
 
@@ -352,7 +352,7 @@ public class StramAppLauncher {
   public static String runApp(AppConfig appConfig) throws Exception {
     LOG.info("Launching configuration: {}", appConfig.getName());
 
-    LogicalPlan dag = prepareDAG(appConfig, ApplicationFactory.LAUNCHMODE_YARN);
+    LogicalPlan dag = prepareDAG(appConfig, StreamingApplication.LAUNCHMODE_YARN);
     StramClient client = new StramClient(dag);
     client.startApplication();
     return client.getApplicationReport().getApplicationId().toString();
