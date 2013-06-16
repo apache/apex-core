@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.security;
+package com.datatorrent.stram.security;
 
 import java.util.Collection;
 import org.apache.hadoop.io.Text;

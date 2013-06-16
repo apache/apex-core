@@ -2,9 +2,9 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.codec;
+package com.datatorrent.codec;
 
-import com.malhartech.api.codec.KryoJdkSerializer;
+import com.datatorrent.api.codec.KryoJdkSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
@@ -12,13 +12,15 @@ import java.io.Serializable;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.datatorrent.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.codec.StatefulStreamCodec;
+import com.datatorrent.codec.DefaultStatefulStreamCodec.ClassIdPair;
+import com.datatorrent.codec.StatefulStreamCodec.DataStatePair;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
-import com.malhartech.codec.DefaultStatefulStreamCodec.ClassIdPair;
-import com.malhartech.common.util.Slice;
+import com.datatorrent.common.util.Slice;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 

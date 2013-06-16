@@ -2,13 +2,15 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.util;
+package com.datatorrent.stram.util;
 
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import static org.junit.Assert.*;
 import org.junit.*;
+
+import com.datatorrent.stram.util.StablePriorityQueue;
 
 /**
  *

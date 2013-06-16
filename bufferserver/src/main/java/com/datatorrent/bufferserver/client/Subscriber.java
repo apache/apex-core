@@ -2,9 +2,10 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.client;
+package com.datatorrent.bufferserver.client;
 
-import com.malhartech.bufferserver.packet.SubscribeRequestTuple;
+import com.datatorrent.bufferserver.packet.SubscribeRequestTuple;
+
 import java.util.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

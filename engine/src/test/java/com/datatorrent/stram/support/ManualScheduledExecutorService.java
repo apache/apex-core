@@ -2,9 +2,10 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.support;
+package com.datatorrent.stram.support;
 
-import com.malhartech.stram.util.ScheduledExecutorService;
+import com.datatorrent.stram.util.ScheduledExecutorService;
+
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.ScheduledFuture;

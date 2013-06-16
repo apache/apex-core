@@ -2,10 +2,11 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.client;
+package com.datatorrent.bufferserver.client;
 
-import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.netlet.DefaultEventLoop;
+import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.netlet.DefaultEventLoop;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -16,7 +17,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public abstract class AbstractClient extends com.malhartech.netlet.AbstractClient
+public abstract class AbstractClient extends com.datatorrent.netlet.AbstractClient
 {
   protected byte[] buffer;
   protected ByteBuffer byteBuffer;

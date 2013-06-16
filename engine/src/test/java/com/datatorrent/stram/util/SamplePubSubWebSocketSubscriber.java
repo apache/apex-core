@@ -2,9 +2,9 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.util;
+package com.datatorrent.stram.util;
 
-import com.malhartech.api.util.PubSubWebSocketClient;
+import com.datatorrent.api.util.PubSubWebSocketClient;
 import java.net.URI;
 import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.eclipse.jetty.websocket.WebSocket;

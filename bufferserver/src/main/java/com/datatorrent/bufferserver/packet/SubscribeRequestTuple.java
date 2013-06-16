@@ -2,9 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.packet;
+package com.datatorrent.bufferserver.packet;
 
-import com.malhartech.bufferserver.util.Codec;
+import com.datatorrent.bufferserver.util.Codec;
+
 import java.util.Arrays;
 import java.util.Collection;
 

@@ -2,9 +2,9 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.debug;
+package com.datatorrent.debug;
 
-import com.malhartech.api.Sink;
+import com.datatorrent.api.Sink;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import org.slf4j.Logger;

@@ -2,12 +2,12 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.engine;
+package com.datatorrent.engine;
 
-import com.malhartech.api.Sink;
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.tuple.EndStreamTuple;
-import com.malhartech.tuple.Tuple;
+import com.datatorrent.tuple.EndStreamTuple;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.api.Sink;
+import com.datatorrent.bufferserver.packet.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

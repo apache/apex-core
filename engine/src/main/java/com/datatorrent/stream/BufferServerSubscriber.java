@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2012 Malhar, Inc. All rights reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
@@ -11,19 +11,19 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.Sink;
-import com.malhartech.codec.StatefulStreamCodec;
-import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.bufferserver.client.Subscriber;
-import com.malhartech.common.util.Slice;
-import com.malhartech.engine.ByteCounterStream;
-import com.malhartech.engine.StreamContext;
-import com.malhartech.engine.SweepableReservoir;
-import com.malhartech.engine.WindowGenerator;
-import com.malhartech.netlet.EventLoop;
-import com.malhartech.tuple.*;
-import com.malhartech.netlet.util.CircularBuffer;
+import com.datatorrent.codec.StatefulStreamCodec;
+import com.datatorrent.codec.StatefulStreamCodec.DataStatePair;
+import com.datatorrent.engine.ByteCounterStream;
+import com.datatorrent.engine.StreamContext;
+import com.datatorrent.engine.SweepableReservoir;
+import com.datatorrent.engine.WindowGenerator;
+import com.datatorrent.tuple.*;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.bufferserver.client.Subscriber;
+import com.datatorrent.common.util.Slice;
+import com.datatorrent.netlet.EventLoop;
+import com.datatorrent.netlet.util.CircularBuffer;
 
 /**
  * Implement tuple flow from buffer server to the node in a logical stream<p>
@@ -46,7 +46,6 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
   private int lastWindowId = WindowGenerator.MAX_WINDOW_ID;
   private AtomicLong readByteCount = new AtomicLong(0);
 
-  @SuppressWarnings("unchecked")
   public BufferServerSubscriber(String id, int queueCapacity)
   {
     super(id);
@@ -252,7 +251,7 @@ public class BufferServerSubscriber extends Subscriber implements ByteCounterStr
 
         while (min-- > 0) {
           Slice fm = polledFragments.pollUnsafe();
-          com.malhartech.bufferserver.packet.Tuple data = com.malhartech.bufferserver.packet.Tuple.getTuple(fm.buffer, fm.offset, fm.length);
+          com.datatorrent.bufferserver.packet.Tuple data = com.datatorrent.bufferserver.packet.Tuple.getTuple(fm.buffer, fm.offset, fm.length);
           Object o;
           switch (data.getType()) {
             case NO_MESSAGE:

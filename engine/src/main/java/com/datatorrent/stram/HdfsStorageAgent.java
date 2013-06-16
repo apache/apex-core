@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,7 +14,7 @@ import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.StorageAgent;
+import com.datatorrent.api.StorageAgent;
 
 public class HdfsStorageAgent implements StorageAgent
 {

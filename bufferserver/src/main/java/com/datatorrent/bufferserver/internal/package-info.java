@@ -9,5 +9,5 @@
  * <br>
  */
 
-package com.malhartech.bufferserver.internal;
+package com.datatorrent.bufferserver.internal;
 

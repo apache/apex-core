@@ -2,11 +2,13 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.packet;
+package com.datatorrent.bufferserver.packet;
 
-import static com.malhartech.bufferserver.packet.Tuple.CLASSIC_VERSION;
-import static com.malhartech.bufferserver.packet.Tuple.writeString;
-import com.malhartech.bufferserver.util.Codec;
+import static com.datatorrent.bufferserver.packet.Tuple.CLASSIC_VERSION;
+import static com.datatorrent.bufferserver.packet.Tuple.writeString;
+
+import com.datatorrent.bufferserver.util.Codec;
+
 import java.util.Arrays;
 
 /**

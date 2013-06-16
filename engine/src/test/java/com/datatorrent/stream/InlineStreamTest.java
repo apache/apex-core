@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,11 +12,17 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.*;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.engine.*;
-import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.tuple.Tuple;
+import com.datatorrent.api.*;
+import com.datatorrent.engine.*;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stream.InlineStream;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Sink;
 
 /**
  * Test for message flow through DAG

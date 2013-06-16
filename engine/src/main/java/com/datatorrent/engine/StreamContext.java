@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.engine;
+package com.datatorrent.engine;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -14,11 +14,11 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.AttributeMap.DefaultAttributeMap;
-import com.malhartech.api.Context;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.netlet.EventLoop;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.netlet.EventLoop;
 
 /**
  * Defines the destination for tuples processed<p>

@@ -2,9 +2,9 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.api;
+package com.datatorrent.api;
 
-import com.malhartech.api.Context.OperatorContext;
+import com.datatorrent.api.Context.OperatorContext;
 
 /**
  * Base class for operator implementations that provides empty implementations

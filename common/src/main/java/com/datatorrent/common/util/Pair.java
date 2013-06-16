@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.common.util;
+package com.datatorrent.common.util;
 
 import java.io.Serializable;
 

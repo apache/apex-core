@@ -2,16 +2,16 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
+import com.datatorrent.stram.cli.StramClientUtils.ClientRMHelper;
+import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.util.ConfigUtils;
 import com.esotericsoftware.kryo.Kryo;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
-import com.malhartech.api.annotation.ShipContainingJars;
-import com.malhartech.stram.cli.StramClientUtils.ClientRMHelper;
-import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.util.ConfigUtils;
+import com.datatorrent.api.annotation.ShipContainingJars;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -228,11 +228,11 @@ public class StramClient
     // platform dependencies that are not part of Hadoop and need to be deployed,
     // entry below will cause containing jar file from client to be copied to cluster
     Class<?>[] defaultClasses = new Class<?>[]{
-      com.malhartech.common.util.Slice.class,
-      com.malhartech.netlet.EventLoop.class,
-      com.malhartech.bufferserver.server.Server.class,
-      com.malhartech.stram.StramAppMaster.class,
-      com.malhartech.api.StreamCodec.class,
+      com.datatorrent.common.util.Slice.class,
+      com.datatorrent.netlet.EventLoop.class,
+      com.datatorrent.bufferserver.server.Server.class,
+      com.datatorrent.stram.StramAppMaster.class,
+      com.datatorrent.api.StreamCodec.class,
       javax.validation.ConstraintViolationException.class,
       org.eclipse.jetty.websocket.WebSocketFactory.class,
       org.eclipse.jetty.io.nio.SelectorManager.class,

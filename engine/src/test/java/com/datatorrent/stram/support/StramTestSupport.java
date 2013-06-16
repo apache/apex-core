@@ -2,16 +2,16 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.support;
+package com.datatorrent.stram.support;
 
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.engine.OperatorContext;
-import com.malhartech.engine.WindowGenerator;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.StramLocalCluster;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.tuple.EndWindowTuple;
-import com.malhartech.tuple.Tuple;
+import com.datatorrent.engine.OperatorContext;
+import com.datatorrent.engine.WindowGenerator;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.tuple.EndWindowTuple;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.bufferserver.packet.MessageType;
 import static java.lang.Thread.sleep;
 import junit.framework.AssertionFailedError;
 import static org.junit.Assert.assertTrue;

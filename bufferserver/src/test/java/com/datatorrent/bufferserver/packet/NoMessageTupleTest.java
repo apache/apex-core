@@ -2,12 +2,16 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.packet;
+package com.datatorrent.bufferserver.packet;
 
 import junit.framework.TestCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
+
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.NoMessageTuple;
+import com.datatorrent.bufferserver.packet.Tuple;
 
 /**
  *

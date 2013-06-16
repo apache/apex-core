@@ -2,17 +2,20 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.engine.GenericTestOperator;
-import com.malhartech.engine.TestGeneratorInputOperator;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.TupleRecorder.PortInfo;
-import com.malhartech.stram.TupleRecorder.RecordInfo;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.stram.support.StramTestSupport.WaitCondition;
-import com.malhartech.stram.util.HdfsPartFileCollection;
+import com.datatorrent.engine.GenericTestOperator;
+import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.TupleRecorder;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.TupleRecorder.PortInfo;
+import com.datatorrent.stram.TupleRecorder.RecordInfo;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
+import com.datatorrent.stram.util.HdfsPartFileCollection;
 import java.io.*;
 import java.util.ArrayList;
 import junit.framework.Assert;

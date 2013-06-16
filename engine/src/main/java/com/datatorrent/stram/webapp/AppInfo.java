@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-package com.malhartech.stram.webapp;
+package com.datatorrent.stram.webapp;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -13,8 +13,8 @@ import org.apache.hadoop.yarn.util.Times;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.stram.StramAppContext;
-import com.malhartech.stram.util.VersionInfo;
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.util.VersionInfo;
 
 /**
  *

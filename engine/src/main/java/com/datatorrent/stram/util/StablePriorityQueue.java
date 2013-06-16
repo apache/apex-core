@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.util;
+package com.datatorrent.stram.util;
 
 import java.lang.reflect.Array;
 import java.util.*;
@@ -22,7 +22,7 @@ public class StablePriorityQueue<E> implements Queue<E>
 
   /**
    * 
-   * Constructs a {@link com.malhartech.util.StablePriorityQueue} class<p>
+   * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class<p>
    * <br>
    * @param initialCapacity The size of the queue to be set up
    * <br>
@@ -34,7 +34,7 @@ public class StablePriorityQueue<E> implements Queue<E>
 
   /**
    * 
-   * Constructs a {@link com.malhartech.util.StablePriorityQueue} class by absorbing all objects from a {@link java.util.Collection} object<p>
+   * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class by absorbing all objects from a {@link java.util.Collection} object<p>
    * <br>
    * @param c a {@link java.util.Collection} object
    * <br>
@@ -49,7 +49,7 @@ public class StablePriorityQueue<E> implements Queue<E>
 
   /**
    * 
-   * Constructs a {@link com.malhartech.util.StablePriorityQueue} class with provided capacity<p>
+   * Constructs a {@link com.datatorrent.util.StablePriorityQueue} class with provided capacity<p>
    * <br>
    * @param initialCapacity Size of the queue to be set up
    * @param comparator {@link java.util.Comparator} object for comparison

@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -46,7 +46,6 @@ import org.apache.hadoop.yarn.server.resourcemanager.ClientRMService;
 import org.apache.hadoop.yarn.util.Records;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.*;
-import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -54,15 +53,19 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.InputOperator;
-import com.malhartech.api.annotation.ShipContainingJars;
-import com.malhartech.engine.GenericTestOperator;
-import com.malhartech.engine.TestGeneratorInputOperator;
-import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.webapp.StramWebServices;
+import com.datatorrent.engine.GenericTestOperator;
+import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.DAGPropertiesBuilder;
+import com.datatorrent.stram.StramAppMaster;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.webapp.StramWebServices;
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.annotation.ShipContainingJars;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;

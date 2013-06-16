@@ -2,10 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.datatorrent.bufferserver.internal;
 
-import com.malhartech.bufferserver.storage.Storage;
-import com.malhartech.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.storage.Storage;
+import com.datatorrent.bufferserver.util.SerializedData;
 
 /**
  *

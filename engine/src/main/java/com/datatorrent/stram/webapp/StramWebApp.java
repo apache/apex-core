@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.webapp;
+package com.datatorrent.stram.webapp;
 
 
 import java.util.Arrays;
@@ -18,8 +18,8 @@ import org.apache.hadoop.yarn.webapp.GenericExceptionHandler;
 import org.apache.hadoop.yarn.webapp.RemoteExceptionData;
 import org.apache.hadoop.yarn.webapp.WebApp;
 
+import com.datatorrent.stram.StreamingContainerManager;
 import com.google.inject.Singleton;
-import com.malhartech.stram.StreamingContainerManager;
 import com.sun.jersey.api.json.JSONConfiguration;
 import com.sun.jersey.api.json.JSONJAXBContext;
 

@@ -2,9 +2,9 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.tuple;
+package com.datatorrent.tuple;
 
-import com.malhartech.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.MessageType;
 
 /**
  *

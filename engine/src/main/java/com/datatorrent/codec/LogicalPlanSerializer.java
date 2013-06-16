@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.codec;
+package com.datatorrent.codec;
 
 import java.io.IOException;
 import java.util.*;
@@ -15,14 +15,14 @@ import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.JsonSerializer;
 import org.codehaus.jackson.map.SerializerProvider;
 
-import com.malhartech.api.Context;
-import com.malhartech.api.Operator;
-import com.malhartech.stram.DAGPropertiesBuilder;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.OutputPortMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.DAGPropertiesBuilder;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.Operator;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;

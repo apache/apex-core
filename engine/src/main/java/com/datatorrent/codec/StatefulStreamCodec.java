@@ -2,10 +2,10 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.malhartech.codec;
+package com.datatorrent.codec;
 
-import com.malhartech.api.StreamCodec;
-import com.malhartech.common.util.Slice;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.common.util.Slice;
 
 /**
  *

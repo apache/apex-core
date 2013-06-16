@@ -2,11 +2,13 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
-import com.malhartech.api.Sink;
-import com.malhartech.codec.DefaultStatefulStreamCodec;
-import com.malhartech.engine.SweepableReservoir;
+import com.datatorrent.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.engine.SweepableReservoir;
+import com.datatorrent.stream.FastPublisher;
+import com.datatorrent.stream.FastSubscriber;
+import com.datatorrent.api.Sink;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import junit.framework.Assert;

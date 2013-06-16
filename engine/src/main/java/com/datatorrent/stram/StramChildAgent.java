@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -18,28 +18,31 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.api.*;
+import com.datatorrent.engine.Node;
+import com.datatorrent.engine.OperatorContext;
+import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
+import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
+import com.datatorrent.stram.PhysicalPlan.PTContainer;
+import com.datatorrent.stram.PhysicalPlan.PTInput;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.PhysicalPlan.PTOutput;
+import com.datatorrent.stram.PhysicalPlan.PTOperator.State;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.webapp.ContainerInfo;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.malhartech.api.*;
-import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.engine.Node;
-import com.malhartech.engine.OperatorContext;
-import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
-import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
-import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTInput;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.PhysicalPlan.PTOperator.State;
-import com.malhartech.stram.PhysicalPlan.PTOutput;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.malhartech.stram.webapp.ContainerInfo;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.bufferserver.util.Codec;
 
 /**
  *
@@ -446,7 +449,7 @@ public class StramChildAgent {
    *
    * @param dnodeId
    * @param nodeDecl
-   * @return {@link com.malhartech.stram.OperatorDeployInfo}
+   * @return {@link com.datatorrent.stram.OperatorDeployInfo}
    *
    */
   private OperatorDeployInfo createOperatorDeployInfo(PTOperator node)

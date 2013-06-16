@@ -2,10 +2,11 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.policy;
+package com.datatorrent.bufferserver.policy;
 
-import com.malhartech.bufferserver.internal.PhysicalNode;
-import com.malhartech.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.internal.PhysicalNode;
+import com.datatorrent.bufferserver.util.SerializedData;
+
 import java.util.Set;
 
 /**
@@ -20,8 +21,8 @@ public interface Policy
   /**
    *
    *
-   * @param nodes Set of downstream {@link com.malhartech.bufferserver.PhysicalNode}s
-   * @param data Opaque {@link com.malhartech.bufferserver.util.SerializedData} to be send
+   * @param nodes Set of downstream {@link com.datatorrent.bufferserver.PhysicalNode}s
+   * @param data Opaque {@link com.datatorrent.bufferserver.util.SerializedData} to be send
    * @throws InterruptedException
    */
 

@@ -2,11 +2,11 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.plan.logical;
+package com.datatorrent.stram.plan.logical;
 
-import com.malhartech.api.Operator;
-import com.malhartech.stram.StramUtils;
-import com.malhartech.stram.plan.physical.PlanModifier;
+import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.plan.physical.PlanModifier;
+import com.datatorrent.api.Operator;
 
 /**
  *

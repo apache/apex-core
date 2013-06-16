@@ -11,4 +11,4 @@
  *
  */
 
-package com.malhartech.bufferserver.policy;
+package com.datatorrent.bufferserver.policy;

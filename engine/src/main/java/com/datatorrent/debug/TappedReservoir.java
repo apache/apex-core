@@ -2,11 +2,11 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.debug;
+package com.datatorrent.debug;
 
-import com.malhartech.api.Sink;
-import com.malhartech.engine.SweepableReservoir;
-import com.malhartech.tuple.Tuple;
+import com.datatorrent.engine.SweepableReservoir;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.api.Sink;
 
 /**
  *

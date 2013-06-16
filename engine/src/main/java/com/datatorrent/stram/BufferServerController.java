@@ -2,9 +2,9 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.bufferserver.client.Controller;
+import com.datatorrent.bufferserver.client.Controller;
 import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

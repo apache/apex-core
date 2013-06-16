@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.util;
+package com.datatorrent.stram.util;
 
 import java.io.IOException;
 import java.security.PrivilegedAction;

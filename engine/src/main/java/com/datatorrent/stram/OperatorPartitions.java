@@ -1,20 +1,20 @@
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.google.common.collect.Sets;
-import com.malhartech.api.InputOperator;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.PartitionableOperator;
-import com.malhartech.api.PartitionableOperator.Partition;
-import com.malhartech.api.PartitionableOperator.PartitionKeys;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.PartitionableOperator.PartitionKeys;
 
 import java.util.*;
 

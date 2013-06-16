@@ -2,15 +2,15 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.api.codec.JsonStreamCodec;
-import com.malhartech.api.annotation.RecordField;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.stram.webapp.ContainerInfo;
-import com.malhartech.stram.webapp.OperatorInfo;
-import com.malhartech.common.util.Slice;
-import com.malhartech.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.webapp.ContainerInfo;
+import com.datatorrent.stram.webapp.OperatorInfo;
+import com.datatorrent.api.codec.JsonStreamCodec;
+import com.datatorrent.api.annotation.RecordField;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.common.util.Slice;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;

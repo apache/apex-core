@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,28 +20,35 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.datatorrent.api.*;
+import com.datatorrent.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.engine.GenericTestOperator;
+import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.OperatorPartitions;
+import com.datatorrent.stram.PhysicalPlan;
+import com.datatorrent.stram.OperatorPartitions.PartitionImpl;
+import com.datatorrent.stram.PhysicalPlan.PTContainer;
+import com.datatorrent.stram.PhysicalPlan.PTInput;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.PhysicalPlan.PTOutput;
+import com.datatorrent.stram.PhysicalPlan.PlanContext;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.malhartech.api.AttributeMap.AttributeKey;
-import com.malhartech.api.*;
-import com.malhartech.api.annotation.InputPortFieldAnnotation;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Operator.Unifier;
-import com.malhartech.api.PartitionableOperator.Partition;
-import com.malhartech.api.PartitionableOperator.PartitionKeys;
-import com.malhartech.codec.DefaultStatefulStreamCodec;
-import com.malhartech.engine.GenericTestOperator;
-import com.malhartech.engine.TestGeneratorInputOperator;
-import com.malhartech.stram.OperatorPartitions.PartitionImpl;
-import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTInput;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.PhysicalPlan.PTOutput;
-import com.malhartech.stram.PhysicalPlan.PlanContext;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.api.AttributeMap.AttributeKey;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.PartitionableOperator.PartitionKeys;
 
 public class PhysicalPlanTest {
   public static class PartitioningTestStreamCodec extends DefaultStatefulStreamCodec<Object> {

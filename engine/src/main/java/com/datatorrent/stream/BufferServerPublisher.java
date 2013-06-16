@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;
@@ -10,16 +10,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.Sink;
-import com.malhartech.codec.StatefulStreamCodec;
-import com.malhartech.codec.StatefulStreamCodec.DataStatePair;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.bufferserver.client.Publisher;
-import com.malhartech.bufferserver.packet.*;
-import com.malhartech.engine.ByteCounterStream;
-import com.malhartech.engine.StreamContext;
-import com.malhartech.netlet.EventLoop;
-import com.malhartech.tuple.Tuple;
+import com.datatorrent.codec.StatefulStreamCodec;
+import com.datatorrent.codec.StatefulStreamCodec.DataStatePair;
+import com.datatorrent.engine.ByteCounterStream;
+import com.datatorrent.engine.StreamContext;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.bufferserver.client.Publisher;
+import com.datatorrent.bufferserver.packet.*;
+import com.datatorrent.netlet.EventLoop;
 
 /**
  * Implements tuple flow of node to then buffer server in a logical stream<p>
@@ -77,7 +77,7 @@ public class BufferServerPublisher extends Publisher implements ByteCounterStrea
           break;
 
         case RESET_WINDOW:
-          com.malhartech.tuple.ResetWindowTuple rwt = (com.malhartech.tuple.ResetWindowTuple)t;
+          com.datatorrent.tuple.ResetWindowTuple rwt = (com.datatorrent.tuple.ResetWindowTuple)t;
           array = ResetWindowTuple.getSerializedTuple(rwt.getBaseSeconds(), rwt.getIntervalMillis());
           break;
 

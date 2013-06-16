@@ -2,13 +2,13 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
-import com.malhartech.api.Sink;
-import com.malhartech.engine.DefaultReservoir;
-import com.malhartech.engine.Stream;
-import com.malhartech.engine.StreamContext;
-import com.malhartech.engine.SweepableReservoir;
+import com.datatorrent.engine.DefaultReservoir;
+import com.datatorrent.engine.Stream;
+import com.datatorrent.engine.StreamContext;
+import com.datatorrent.engine.SweepableReservoir;
+import com.datatorrent.api.Sink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

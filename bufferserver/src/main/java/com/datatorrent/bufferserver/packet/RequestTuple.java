@@ -2,9 +2,9 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.packet;
+package com.datatorrent.bufferserver.packet;
 
-import com.malhartech.common.util.Slice;
+import com.datatorrent.common.util.Slice;
 
 /**
  *

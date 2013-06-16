@@ -2,11 +2,11 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
-import com.malhartech.api.Sink;
-import com.malhartech.engine.Stream;
-import com.malhartech.engine.StreamContext;
+import com.datatorrent.engine.Stream;
+import com.datatorrent.engine.StreamContext;
+import com.datatorrent.api.Sink;
 import java.lang.reflect.Array;
 import java.util.HashMap;
 import org.slf4j.Logger;

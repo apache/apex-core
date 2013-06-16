@@ -2,9 +2,9 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.webapp;
+package com.datatorrent.stram.webapp;
 
-import com.malhartech.api.annotation.RecordField;
+import com.datatorrent.api.annotation.RecordField;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;

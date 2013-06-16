@@ -2,11 +2,11 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
-import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.tuple.Tuple;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
 import java.util.Set;
 
 /**

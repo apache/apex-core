@@ -1,14 +1,14 @@
-package com.malhartech.api.codec;
+package com.datatorrent.api.codec;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
+import com.datatorrent.api.annotation.ShipContainingJars;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.malhartech.api.annotation.ShipContainingJars;
 
 /**
  * Kryo serializer implementation that can be annotated to operator or tuple

@@ -2,17 +2,20 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.codec.DefaultStatefulStreamCodec;
-import com.malhartech.engine.*;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StramLocalCluster.MockComponentFactory;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.support.ManualScheduledExecutorService;
-import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.stream.BufferServerSubscriber;
+import com.datatorrent.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.engine.*;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.StramLocalCluster.MockComponentFactory;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.ManualScheduledExecutorService;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stream.BufferServerSubscriber;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;

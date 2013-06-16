@@ -2,13 +2,16 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.packet;
+package com.datatorrent.bufferserver.packet;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import static org.junit.Assert.*;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import com.datatorrent.bufferserver.packet.SubscribeRequestTuple;
+import com.datatorrent.bufferserver.packet.Tuple;
 
 /**
  *

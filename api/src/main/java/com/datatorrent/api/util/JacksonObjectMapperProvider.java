@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.api.util;
+package com.datatorrent.api.util;
 
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;

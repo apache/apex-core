@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.api.codec;
+package com.datatorrent.api.codec;
 
 import java.io.*;
 
@@ -12,9 +12,9 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.map.ser.impl.RawSerializer;
 
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.util.ObjectMapperString;
-import com.malhartech.common.util.Slice;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.util.ObjectMapperString;
+import com.datatorrent.common.util.Slice;
 
 /**
  *

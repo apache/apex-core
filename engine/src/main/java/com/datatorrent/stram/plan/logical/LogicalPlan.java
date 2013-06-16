@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.plan.logical;
+package com.datatorrent.stram.plan.logical;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,15 +36,19 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.*;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.AttributeMap.DefaultAttributeMap;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.annotation.InputPortFieldAnnotation;
-import com.malhartech.api.annotation.OutputPortFieldAnnotation;
-import com.malhartech.engine.Node;
+import com.datatorrent.api.*;
+import com.datatorrent.engine.Node;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.AttributeMap.DefaultAttributeMap;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
 
 /**
  * DAG contains the logical declarations of operators and streams.

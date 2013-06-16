@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.security;
+package com.datatorrent.stram.security;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -24,7 +24,7 @@ public class KerberosAuth
 
   public static Subject loginUser(String principal, char[] password) throws LoginException, IOException {
     Subject subject = new Subject();
-    LoginContext lc = new LoginContext(com.malhartech.stram.security.KerberosAuth.class.getName(), subject, new AuthenticationHandler(principal, password),
+    LoginContext lc = new LoginContext(com.datatorrent.stram.security.KerberosAuth.class.getName(), subject, new AuthenticationHandler(principal, password),
                                                                             new KerberosConfiguration(principal));
     lc.login();
     return subject;
@@ -67,7 +67,7 @@ public class KerberosAuth
 
     @Override
     public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
-      if (name.equals(com.malhartech.stram.security.KerberosAuth.class.getName())) {
+      if (name.equals(com.datatorrent.stram.security.KerberosAuth.class.getName())) {
         AppConfigurationEntry[] configEntries = new AppConfigurationEntry[1];
         HashMap<String,String> params = new HashMap<String, String>();
         params.put("useTicketCache", "true");

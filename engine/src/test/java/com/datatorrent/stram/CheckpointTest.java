@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,21 +23,26 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.Operator;
-import com.malhartech.engine.GenericTestOperator;
-import com.malhartech.engine.OperatorContext;
-import com.malhartech.engine.OperatorStats;
-import com.malhartech.engine.TestGeneratorInputOperator;
-import com.malhartech.engine.WindowGenerator;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.StreamingContainerManager.ContainerResource;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.support.ManualScheduledExecutorService;
-import com.malhartech.stram.support.StramTestSupport;
+import com.datatorrent.engine.GenericTestOperator;
+import com.datatorrent.engine.OperatorContext;
+import com.datatorrent.engine.OperatorStats;
+import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.engine.WindowGenerator;
+import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.PhysicalPlan;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.ManualScheduledExecutorService;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.api.Operator;
 
 /**
  *

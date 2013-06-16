@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.engine;
+package com.datatorrent.engine;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -11,11 +11,11 @@ import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.Context;
-import com.malhartech.api.Operator;
-import com.malhartech.netlet.util.CircularBuffer;
-import com.malhartech.stram.api.BaseContext;
+import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.Operator;
+import com.datatorrent.netlet.util.CircularBuffer;
 
 /**
  * The for context for all of the operators<p>

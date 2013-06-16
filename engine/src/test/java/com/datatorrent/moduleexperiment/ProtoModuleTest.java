@@ -2,14 +2,14 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.moduleexperiment;
+package com.datatorrent.moduleexperiment;
 
+import com.datatorrent.stram.plan.logical.LogicalPlan;
 import com.google.inject.TypeLiteral;
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.Operator;
-import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Operator;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

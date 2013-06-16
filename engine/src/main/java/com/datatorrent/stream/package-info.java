@@ -6,7 +6,7 @@
 
 /**
  *
- * <b>com.malhartech.stream</b> package contains all code related to various implementations of Stream interface<p>
+ * <b>com.datatorrent.stream</b> package contains all code related to various implementations of Stream interface<p>
  * <br>
  * A stream is a logical unit of a dag that defines the connection between
  * a node and list of listener operators. Stream has the following properties in Malhar's streaming platform<br>
@@ -20,37 +20,37 @@
  * into physical streams. Each physical stream would retain the
  * characteristics of the logical node (one writer, multiple readers, and context).<br>
  * <br>
- * The streams included in com.malhartech.stream include<br>
+ * The streams included in com.datatorrent.stream include<br>
  * <br>
  * <br><b>Buffer Server Streams</b><br>
- * <b>{@link com.malhartech.stream.BufferServerInputStream}</b>: extends {@link com.malhartech.stream.SocketInputStream},
+ * <b>{@link com.datatorrent.stream.BufferServerInputStream}</b>: extends {@link com.datatorrent.stream.SocketInputStream},
  * takes data from buffer server into the node. Every logical stream will have at least two such
- * objects ({@link com.malhartech.stream.BufferServerInputStream}
- *  and {@link com.malhartech.stream.BufferServerOutputStream}). If the logical stream gets partitioned
+ * objects ({@link com.datatorrent.stream.BufferServerInputStream}
+ *  and {@link com.datatorrent.stream.BufferServerOutputStream}). If the logical stream gets partitioned
  * into physical streams then each of these physical streams will have these objects. Inlined version of
  *  a logical stream does not go through the buffer server and hence would not have
- * {@link com.malhartech.stream.BufferServerInputStream} and {@link com.malhartech.stream.BufferServerOutputStream} objects<br>
- * <b>{@link com.malhartech.stream.BufferServerOutputStream}</b>: extends {@link com.malhartech.stream.SocketOutputStream}
- * and in conjunction with {@link com.malhartech.stream.BufferServerInputStream} forms a complete stream
+ * {@link com.datatorrent.stream.BufferServerInputStream} and {@link com.datatorrent.stream.BufferServerOutputStream} objects<br>
+ * <b>{@link com.datatorrent.stream.BufferServerOutputStream}</b>: extends {@link com.datatorrent.stream.SocketOutputStream}
+ * and in conjunction with {@link com.datatorrent.stream.BufferServerInputStream} forms a complete stream
  * in a node->buffer server->node path<br>
  * <br><b>Inline Stream (Within a Hadoop Container)</b><br>
- * <b>{@link com.malhartech.stream.InlineStream}</b>: Streams data between two operators in inline mode. This implementation of
- * {@link com.malhartech.engine.Stream} and {{@link com.malhartech.api.Sink}
+ * <b>{@link com.datatorrent.stream.InlineStream}</b>: Streams data between two operators in inline mode. This implementation of
+ * {@link com.datatorrent.engine.Stream} and {{@link com.datatorrent.api.Sink}
  * interface does not have connection to BufferServer and cannot be persisted.<br>
  *
- * <b>{@link com.malhartech.stream.MuxStream}</b>: <br>
- * <b>{@link com.malhartech.stream.PartitionAwareSink}</b>: <br>
+ * <b>{@link com.datatorrent.stream.MuxStream}</b>: <br>
+ * <b>{@link com.datatorrent.stream.PartitionAwareSink}</b>: <br>
  *
  * <br><b>Socket Interface Streams</b><br>
- * <b>{@link com.malhartech.stream.SocketInputStream}</b>: Implements {@link com.malhartech.engine.Stream} interface and provides
+ * <b>{@link com.datatorrent.stream.SocketInputStream}</b>: Implements {@link com.datatorrent.engine.Stream} interface and provides
  * basic stream connection for a node to read from a socket. Users can use this class if they want to directly connect to
  * a outside socket<br>
- * <b>{@link com.malhartech.stream.SocketOutputStream}</b>: Implements {@link com.malhartech.engine.Stream} interface and provides
+ * <b>{@link com.datatorrent.stream.SocketOutputStream}</b>: Implements {@link com.datatorrent.engine.Stream} interface and provides
  * basic stream connection for a node to write to a socket. Most likely users would not use it to write to a socket by themselves.
- *   Would be used in adapters and via {@link com.malhartech.stream.BufferServerOutputStream}<br>
+ *   Would be used in adapters and via {@link com.datatorrent.stream.BufferServerOutputStream}<br>
  * <br>
  *
  */
 
-package com.malhartech.stream;
+package com.datatorrent.stream;
 

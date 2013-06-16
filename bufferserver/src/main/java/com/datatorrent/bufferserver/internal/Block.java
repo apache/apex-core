@@ -2,15 +2,16 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.datatorrent.bufferserver.internal;
 
-import com.malhartech.bufferserver.packet.BeginWindowTuple;
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.packet.ResetWindowTuple;
-import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.bufferserver.storage.Storage;
-import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.packet.BeginWindowTuple;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.ResetWindowTuple;
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.bufferserver.storage.Storage;
+import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.bufferserver.util.SerializedData;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

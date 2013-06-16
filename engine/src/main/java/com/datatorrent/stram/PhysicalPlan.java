@@ -2,9 +2,9 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.api.StorageAgent;
+import com.datatorrent.api.StorageAgent;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -29,27 +29,27 @@ import org.apache.commons.lang.builder.ToStringStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.engine.DefaultUnifier;
+import com.datatorrent.engine.Node;
+import com.datatorrent.stram.OperatorPartitions.PartitionImpl;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.stram.plan.logical.Operators.PortMappingDescriptor;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.malhartech.api.Context;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Operator.Unifier;
-import com.malhartech.api.PartitionableOperator;
-import com.malhartech.api.PartitionableOperator.Partition;
-import com.malhartech.api.PartitionableOperator.PartitionKeys;
-import com.malhartech.engine.DefaultUnifier;
-import com.malhartech.engine.Node;
-import com.malhartech.stram.OperatorPartitions.PartitionImpl;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.Operators;
-import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.malhartech.stram.plan.logical.Operators.PortMappingDescriptor;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.Unifier;
+import com.datatorrent.api.PartitionableOperator;
+import com.datatorrent.api.PartitionableOperator.Partition;
+import com.datatorrent.api.PartitionableOperator.PartitionKeys;
 import java.io.OutputStream;
 
 /**

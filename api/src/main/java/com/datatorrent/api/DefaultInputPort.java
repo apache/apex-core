@@ -2,10 +2,10 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.api;
+package com.datatorrent.api;
 
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.Operator.InputPort;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.Operator.InputPort;
 
 /**
  * Default abstract implementation for input ports.

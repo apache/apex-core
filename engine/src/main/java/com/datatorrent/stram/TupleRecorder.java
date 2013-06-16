@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.beans.BeanInfo;
 import java.beans.Introspector;
@@ -19,15 +19,15 @@ import org.eclipse.jetty.websocket.WebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.Operator;
-import com.malhartech.api.util.PubSubWebSocketClient;
-import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.api.codec.JsonStreamCodec;
-import com.malhartech.common.util.Slice;
-import com.malhartech.tuple.Tuple;
-import com.malhartech.stram.util.HdfsPartFileCollection;
+import com.datatorrent.stram.util.HdfsPartFileCollection;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.util.PubSubWebSocketClient;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.api.codec.JsonStreamCodec;
+import com.datatorrent.common.util.Slice;
 
 /**
  *

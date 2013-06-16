@@ -2,14 +2,16 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.CheckpointListener;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.engine.RecoverableInputOperator;
-import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.datatorrent.engine.RecoverableInputOperator;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.CheckpointListener;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.DefaultInputPort;
 
 import java.io.IOException;
 import java.util.HashSet;

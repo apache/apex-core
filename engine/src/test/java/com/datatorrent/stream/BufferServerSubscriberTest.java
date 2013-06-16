@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,11 +13,12 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.bufferserver.packet.PayloadTuple;
-import com.malhartech.common.util.Slice;
-import com.malhartech.engine.SweepableReservoir;
+import com.datatorrent.engine.SweepableReservoir;
+import com.datatorrent.stream.BufferServerSubscriber;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.bufferserver.packet.PayloadTuple;
+import com.datatorrent.common.util.Slice;
 
 /**
  *

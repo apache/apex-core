@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.cli;
+package com.datatorrent.stram.cli;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -28,14 +28,14 @@ import org.apache.log4j.lf5.util.StreamUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.annotation.ShipContainingJars;
-import com.malhartech.api.ApplicationFactory;
-import com.malhartech.api.DAG;
-import com.malhartech.stram.DAGPropertiesBuilder;
-import com.malhartech.stram.StramClient;
-import com.malhartech.stram.StramLocalCluster;
-import com.malhartech.stram.StramUtils;
-import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.DAGPropertiesBuilder;
+import com.datatorrent.stram.StramClient;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.StramUtils;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.api.annotation.ShipContainingJars;
+import com.datatorrent.api.ApplicationFactory;
+import com.datatorrent.api.DAG;
 
 
 /**
@@ -337,7 +337,7 @@ public class StramAppLauncher {
   public ApplicationId launchApp(AppConfig appConfig) throws Exception {
 
     URLClassLoader cl = loadDependencies();
-    //Class<?> loadedClass = cl.loadClass("com.malhartech.example.wordcount.WordCountSerDe");
+    //Class<?> loadedClass = cl.loadClass("com.datatorrent.example.wordcount.WordCountSerDe");
     //LOG.info("loaded " + loadedClass);
 
     // below would be needed w/o parent delegation only

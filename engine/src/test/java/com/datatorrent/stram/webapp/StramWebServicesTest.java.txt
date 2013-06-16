@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.webapp;
+package com.datatorrent.stram.webapp;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -31,19 +31,21 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.plan.logical.SetOperatorPropertyRequest;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.webapp.AppInfo;
+import com.datatorrent.stram.webapp.StramWebServices;
+import com.datatorrent.stram.webapp.StramWebApp.JAXBContextResolver;
+import com.datatorrent.stram.webapp.StramWebServicesTest.GuiceServletConfig.DummyStreamingContainerManager;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.servlet.GuiceServletContextListener;
 import com.google.inject.servlet.ServletModule;
-import com.malhartech.stram.StramAppContext;
-import com.malhartech.stram.StreamingContainerManager;
-import com.malhartech.stram.plan.logical.CreateOperatorRequest;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlanRequest;
-import com.malhartech.stram.plan.logical.SetOperatorPropertyRequest;
-import com.malhartech.stram.webapp.StramWebApp.JAXBContextResolver;
-import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.stram.webapp.StramWebServicesTest.GuiceServletConfig.DummyStreamingContainerManager;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.UniformInterfaceException;

@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.storage;
+package com.datatorrent.bufferserver.storage;
 
 import java.io.IOException;
 

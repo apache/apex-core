@@ -2,10 +2,13 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.packet;
+package com.datatorrent.bufferserver.packet;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import com.datatorrent.bufferserver.packet.ResetWindowTuple;
+import com.datatorrent.bufferserver.packet.Tuple;
 
 /**
  *

@@ -2,9 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.debug;
+package com.datatorrent.debug;
 
-import com.malhartech.api.Sink;
+import com.datatorrent.debug.MuxSink;
+import com.datatorrent.api.Sink;
 import junit.framework.Assert;
 import org.junit.Test;
 

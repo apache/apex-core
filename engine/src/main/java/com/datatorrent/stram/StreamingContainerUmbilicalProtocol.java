@@ -2,12 +2,12 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.engine.OperatorStats;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.stram.api.BaseContext;
-import com.malhartech.stram.util.AbstractWritableAdapter;
+import com.datatorrent.engine.OperatorStats;
+import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.util.AbstractWritableAdapter;
+import com.datatorrent.api.AttributeMap;
 
 import java.io.*;
 import java.util.*;
@@ -360,7 +360,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
    * Called to fetch pending request.
    *
    * @param containerId
-   * @return {com.malhartech.stram.ContainerHeartbeatResponse}
+   * @return {com.datatorrent.stram.ContainerHeartbeatResponse}
    */
   ContainerHeartbeatResponse pollRequest(String containerId);
 

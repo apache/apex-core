@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.support;
+package com.datatorrent.bufferserver.support;
 
 import java.util.Arrays;
 import org.slf4j.Logger;
@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class Publisher extends com.malhartech.bufferserver.client.Publisher
+public class Publisher extends com.datatorrent.bufferserver.client.Publisher
 {
   public Publisher(String id)
   {

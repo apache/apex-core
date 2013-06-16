@@ -1,4 +1,4 @@
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.util.Collections;
 import java.util.List;
@@ -9,17 +9,19 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
+import com.datatorrent.engine.GenericTestOperator;
+import com.datatorrent.stram.PhysicalPlan;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.PhysicalPlan.PTContainer;
+import com.datatorrent.stram.PhysicalPlan.PTInput;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.PhysicalPlanTest.TestPlanContext;
+import com.datatorrent.stram.plan.logical.CreateOperatorRequest;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PlanModifier;
 import com.google.common.collect.Sets;
-import com.malhartech.engine.GenericTestOperator;
-import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTInput;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.PhysicalPlanTest.TestPlanContext;
-import com.malhartech.stram.plan.logical.CreateOperatorRequest;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlanRequest;
-import com.malhartech.stram.plan.physical.PlanModifier;
 
 public class LogicalPlanModificationTest {
 

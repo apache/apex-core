@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -59,15 +59,15 @@ import org.apache.hadoop.yarn.webapp.WebApps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.debug.StdOutErrLog;
-import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.StreamingContainerManager.ContainerResource;
-import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.security.StramDelegationTokenManager;
-import com.malhartech.stram.webapp.AppInfo;
-import com.malhartech.stram.webapp.StramWebApp;
-import com.malhartech.stram.util.VersionInfo;
+import com.datatorrent.debug.StdOutErrLog;
+import com.datatorrent.stram.PhysicalPlan.PTContainer;
+import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.security.StramDelegationTokenManager;
+import com.datatorrent.stram.util.VersionInfo;
+import com.datatorrent.stram.webapp.AppInfo;
+import com.datatorrent.stram.webapp.StramWebApp;
 
 /**
  *
@@ -76,8 +76,8 @@ import com.malhartech.stram.util.VersionInfo;
  * As part of initialization the following tasks are done<br>
  * The DAG is parsed, and properties are read to create a physical query map<br>
  * ResourceMgr is queried to get the requisite containers<br>
- * Then {@link com.malhartech.stram.StreamingContainerManager} provisions the DAG into those containers and starts them<br>
- * Once the dag is starts {@link com.malhartech.stram.StramAppMaster} runs the dag on a continual basis<br>
+ * Then {@link com.datatorrent.stram.StreamingContainerManager} provisions the DAG into those containers and starts them<br>
+ * Once the dag is starts {@link com.datatorrent.stram.StramAppMaster} runs the dag on a continual basis<br>
  * Stram can be shut down in the following ways<br>
  * cli command shutdown<br>
  * Currently stram high availability (integration with zookeeper) is not available<br>

@@ -2,10 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
-import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.engine.StreamContext;
+import com.datatorrent.engine.StreamContext;
+import com.datatorrent.bufferserver.packet.Tuple;
 import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -2,9 +2,9 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.util;
+package com.datatorrent.stram.util;
 
-import com.malhartech.bufferserver.util.NameableThreadFactory;
+import com.datatorrent.bufferserver.util.NameableThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

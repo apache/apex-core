@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.moduleexperiment;
+package com.datatorrent.moduleexperiment;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;

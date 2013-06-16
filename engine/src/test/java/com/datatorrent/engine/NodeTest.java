@@ -2,13 +2,13 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.engine;
+package com.datatorrent.engine;
 
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.InputOperator;
-import com.malhartech.api.Operator;
-import com.malhartech.stram.StramLocalCluster;
-import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.Operator;
 
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Ignore;

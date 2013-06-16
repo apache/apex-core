@@ -2,7 +2,7 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.debug;
+package com.datatorrent.debug;
 
 import java.io.PrintStream;
 import org.apache.log4j.Appender;

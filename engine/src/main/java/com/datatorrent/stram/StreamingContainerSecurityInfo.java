@@ -2,9 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.stram.security.StramDelegationTokenSelector;
+import com.datatorrent.stram.security.StramDelegationTokenSelector;
+
 import java.lang.annotation.Annotation;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.KerberosInfo;

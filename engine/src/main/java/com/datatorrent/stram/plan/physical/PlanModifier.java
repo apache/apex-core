@@ -1,4 +1,4 @@
-package com.malhartech.stram.plan.physical;
+package com.datatorrent.stram.plan.physical;
 
 import java.util.Collections;
 import java.util.Map;
@@ -6,19 +6,19 @@ import java.util.Set;
 
 import javax.validation.ValidationException;
 
+import com.datatorrent.stram.DAGPropertiesBuilder;
+import com.datatorrent.stram.PhysicalPlan;
+import com.datatorrent.stram.PhysicalPlan.PTContainer;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.LogicalPlan.InputPortMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.google.common.collect.Sets;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.stram.DAGPropertiesBuilder;
-import com.malhartech.stram.PhysicalPlan;
-import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.InputPortMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
-import com.malhartech.stram.plan.logical.Operators;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
 
 /**
  * Modification of the query plan on running application. Will first apply

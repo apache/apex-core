@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,31 +18,36 @@ import org.apache.hadoop.io.DataInputByteBuffer;
 import org.apache.hadoop.io.DataOutputByteBuffer;
 import org.junit.Test;
 
+import com.datatorrent.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.engine.DefaultUnifier;
+import com.datatorrent.engine.GenericTestOperator;
+import com.datatorrent.engine.Node;
+import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.stram.HdfsStorageAgent;
+import com.datatorrent.stram.OperatorDeployInfo;
+import com.datatorrent.stram.PhysicalPlan;
+import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.OperatorDeployInfo.InputDeployInfo;
+import com.datatorrent.stram.OperatorDeployInfo.OperatorType;
+import com.datatorrent.stram.OperatorDeployInfo.OutputDeployInfo;
+import com.datatorrent.stram.PhysicalPlan.PTContainer;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.PhysicalPlanTest.PartitioningTestOperator;
+import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.tuple.Tuple;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.Context;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DAGContext;
-import com.malhartech.api.Operator;
-import com.malhartech.codec.DefaultStatefulStreamCodec;
-import com.malhartech.engine.DefaultUnifier;
-import com.malhartech.engine.GenericTestOperator;
-import com.malhartech.engine.Node;
-import com.malhartech.engine.TestGeneratorInputOperator;
-import com.malhartech.stram.OperatorDeployInfo.InputDeployInfo;
-import com.malhartech.stram.OperatorDeployInfo.OperatorType;
-import com.malhartech.stram.OperatorDeployInfo.OutputDeployInfo;
-import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.PhysicalPlanTest.PartitioningTestOperator;
-import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
-import com.malhartech.stram.StreamingContainerManager.ContainerResource;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.tuple.Tuple;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Context;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAGContext;
+import com.datatorrent.api.Operator;
 
 public class StreamingContainerManagerTest {
 

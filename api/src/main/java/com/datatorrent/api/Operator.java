@@ -2,10 +2,10 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.api;
+package com.datatorrent.api;
 
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
 
 
 public interface Operator extends Component<OperatorContext>

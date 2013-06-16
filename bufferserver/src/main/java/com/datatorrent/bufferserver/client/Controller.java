@@ -2,13 +2,13 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.client;
+package com.datatorrent.bufferserver.client;
 
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.packet.PurgeRequestTuple;
-import com.malhartech.bufferserver.packet.ResetRequestTuple;
-import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.common.util.Slice;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.PurgeRequestTuple;
+import com.datatorrent.bufferserver.packet.ResetRequestTuple;
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.common.util.Slice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

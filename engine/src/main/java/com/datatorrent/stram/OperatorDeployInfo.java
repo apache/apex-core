@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.Serializable;
 import java.util.List;
@@ -11,8 +11,8 @@ import java.util.Set;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.Context.PortContext;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Context.PortContext;
 
 /**
  * Operator deployment info passed from master to container as part of initialization

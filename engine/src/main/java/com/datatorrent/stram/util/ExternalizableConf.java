@@ -1,4 +1,4 @@
-package com.malhartech.stram.util;
+package com.datatorrent.stram.util;
 
 import java.io.Externalizable;
 import java.io.IOException;

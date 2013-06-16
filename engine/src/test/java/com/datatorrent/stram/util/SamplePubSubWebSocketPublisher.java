@@ -2,10 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.util;
+package com.datatorrent.stram.util;
 
-import com.malhartech.api.util.ObjectMapperString;
-import com.malhartech.api.util.PubSubWebSocketClient;
+import com.datatorrent.api.util.ObjectMapperString;
+import com.datatorrent.api.util.PubSubWebSocketClient;
 import static java.lang.Thread.sleep;
 import java.net.URI;
 import org.eclipse.jetty.websocket.WebSocket;

@@ -2,10 +2,11 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.util;
+package com.datatorrent.bufferserver.util;
 
-import com.malhartech.netlet.DefaultEventLoop;
-import com.malhartech.netlet.EventLoop;
+import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.netlet.EventLoop;
+
 import java.io.IOException;
 import java.util.HashMap;
 

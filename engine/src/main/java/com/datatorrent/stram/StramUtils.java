@@ -2,10 +2,10 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.api.StreamCodec;
-import com.malhartech.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.api.StreamCodec;
 
 /**
  *

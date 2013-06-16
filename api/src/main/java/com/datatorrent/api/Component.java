@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.api;
+package com.datatorrent.api;
 
 /**
  * Basic interface which is implemented by almost all entities in the system.

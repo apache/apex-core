@@ -2,11 +2,11 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.engine;
+package com.datatorrent.engine;
 
-import com.malhartech.api.Sink;
-import com.malhartech.tuple.Tuple;
-import com.malhartech.netlet.util.CircularBuffer;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.api.Sink;
+import com.datatorrent.netlet.util.CircularBuffer;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

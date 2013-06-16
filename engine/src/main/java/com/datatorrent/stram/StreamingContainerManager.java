@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -34,40 +34,40 @@ import org.apache.hadoop.yarn.webapp.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.engine.OperatorStats;
+import com.datatorrent.engine.OperatorStats.PortStats;
+import com.datatorrent.stram.PhysicalPlan.PTContainer;
+import com.datatorrent.stram.PhysicalPlan.PTInput;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.PhysicalPlan.PTOutput;
+import com.datatorrent.stram.PhysicalPlan.PlanContext;
+import com.datatorrent.stram.PhysicalPlan.StatsHandler;
+import com.datatorrent.stram.PhysicalPlan.PTOperator.State;
+import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.StramChildAgent.OperatorStatus;
+import com.datatorrent.stram.StramChildAgent.PortStatus;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
+import com.datatorrent.stram.api.BaseContext;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.physical.PlanModifier;
+import com.datatorrent.stram.webapp.OperatorInfo;
+import com.datatorrent.stram.webapp.PortInfo;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.Operator.InputPort;
-import com.malhartech.api.Operator.OutputPort;
-import com.malhartech.api.StorageAgent;
-import com.malhartech.common.util.Pair;
-import com.malhartech.engine.OperatorStats;
-import com.malhartech.engine.OperatorStats.PortStats;
-import com.malhartech.stram.PhysicalPlan.PTContainer;
-import com.malhartech.stram.PhysicalPlan.PTInput;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.PhysicalPlan.PTOperator.State;
-import com.malhartech.stram.PhysicalPlan.PTOutput;
-import com.malhartech.stram.PhysicalPlan.PlanContext;
-import com.malhartech.stram.PhysicalPlan.StatsHandler;
-import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
-import com.malhartech.stram.StramChildAgent.OperatorStatus;
-import com.malhartech.stram.StramChildAgent.PortStatus;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StramToNodeRequest.RequestType;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingNodeHeartbeat.DNodeState;
-import com.malhartech.stram.api.BaseContext;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlanRequest;
-import com.malhartech.stram.plan.logical.Operators;
-import com.malhartech.stram.plan.physical.PlanModifier;
-import com.malhartech.stram.webapp.OperatorInfo;
-import com.malhartech.stram.webapp.PortInfo;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.Operator.InputPort;
+import com.datatorrent.api.Operator.OutputPort;
+import com.datatorrent.api.StorageAgent;
+import com.datatorrent.common.util.Pair;
 
 /**
  *

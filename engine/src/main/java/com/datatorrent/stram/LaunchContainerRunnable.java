@@ -2,12 +2,13 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.security.StramDelegationTokenManager;
-import com.malhartech.stram.security.StramDelegationTokenIdentifier;
-import com.malhartech.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.cli.StramClientUtils.YarnClientHelper;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.security.StramDelegationTokenIdentifier;
+import com.datatorrent.stram.security.StramDelegationTokenManager;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;

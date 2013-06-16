@@ -2,15 +2,16 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.datatorrent.bufferserver.internal;
 
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.bufferserver.storage.Storage;
-import com.malhartech.bufferserver.util.BitVector;
-import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.bufferserver.util.Codec.MutableInt;
-import com.malhartech.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.bufferserver.storage.Storage;
+import com.datatorrent.bufferserver.util.BitVector;
+import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.util.Codec.MutableInt;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;

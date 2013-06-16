@@ -2,11 +2,12 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.datatorrent.bufferserver.internal;
 
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.bufferserver.util.SerializedData;
+
 import java.io.IOException;
 import java.util.Iterator;
 import org.slf4j.Logger;

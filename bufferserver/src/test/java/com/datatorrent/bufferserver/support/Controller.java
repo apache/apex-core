@@ -2,13 +2,13 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.support;
+package com.datatorrent.bufferserver.support;
 
 /**
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class Controller extends com.malhartech.bufferserver.client.Controller
+public class Controller extends com.datatorrent.bufferserver.client.Controller
 {
   public String data;
 

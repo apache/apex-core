@@ -2,9 +2,10 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.datatorrent.bufferserver.internal;
 
-import com.malhartech.bufferserver.util.BitVector;
+import com.datatorrent.bufferserver.util.BitVector;
+
 import java.util.Collection;
 
 /**

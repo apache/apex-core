@@ -2,17 +2,18 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.datatorrent.bufferserver.internal;
 
-import com.malhartech.bufferserver.client.AbstractClient;
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.packet.Tuple;
-import com.malhartech.bufferserver.policy.GiveAll;
-import com.malhartech.bufferserver.policy.Policy;
-import com.malhartech.bufferserver.util.BitVector;
-import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.bufferserver.util.SerializedData;
-import com.malhartech.netlet.EventLoop;
+import com.datatorrent.bufferserver.client.AbstractClient;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.Tuple;
+import com.datatorrent.bufferserver.policy.GiveAll;
+import com.datatorrent.bufferserver.policy.Policy;
+import com.datatorrent.bufferserver.util.BitVector;
+import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.bufferserver.util.SerializedData;
+import com.datatorrent.netlet.EventLoop;
+
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;

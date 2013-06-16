@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.api;
+package com.datatorrent.api;
 
 /**
  * A utility class to club component along with the entity such as context or configuration.

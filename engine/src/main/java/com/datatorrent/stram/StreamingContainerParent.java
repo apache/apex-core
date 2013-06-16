@@ -2,7 +2,7 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -21,8 +21,8 @@ import org.apache.hadoop.yarn.service.CompositeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.DAGContext;
-import com.malhartech.stram.util.SecureExecutor;
+import com.datatorrent.stram.util.SecureExecutor;
+import com.datatorrent.api.DAGContext;
 import org.apache.hadoop.security.authorize.Service;
 
 /**

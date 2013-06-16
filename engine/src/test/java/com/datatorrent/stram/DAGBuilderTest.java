@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -39,27 +39,28 @@ import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.datatorrent.engine.GenericTestOperator;
+import com.datatorrent.engine.TestGeneratorInputOperator;
+import com.datatorrent.engine.TestOutputOperator;
+import com.datatorrent.stram.DAGPropertiesBuilder;
+import com.datatorrent.stram.cli.StramClientUtils;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.esotericsoftware.kryo.DefaultSerializer;
 import com.google.common.collect.Sets;
-import com.malhartech.api.BaseOperator;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.Context.PortContext;
-import com.malhartech.api.DAG;
-import com.malhartech.api.DefaultInputPort;
-import com.malhartech.api.DefaultOutputPort;
-import com.malhartech.api.Operator;
-import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.api.annotation.InputPortFieldAnnotation;
-import com.malhartech.api.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.codec.KryoJdkSerializer;
-import com.malhartech.engine.GenericTestOperator;
-import com.malhartech.engine.TestGeneratorInputOperator;
-import com.malhartech.engine.TestOutputOperator;
-import com.malhartech.stram.cli.StramClientUtils;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
-import com.malhartech.stram.plan.logical.LogicalPlan.StreamMeta;
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.Context.PortContext;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.api.annotation.InputPortFieldAnnotation;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.api.codec.KryoJdkSerializer;
 
 public class DAGBuilderTest {
 

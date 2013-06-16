@@ -2,9 +2,9 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.api;
+package com.datatorrent.api;
 
-import com.malhartech.common.util.Slice;
+import com.datatorrent.common.util.Slice;
 
 /**
  * Serializing and Deserializing the data tuples and controlling the partitioning

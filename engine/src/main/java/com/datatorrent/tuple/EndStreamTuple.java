@@ -3,9 +3,9 @@
  *  All Rights Reserved.
  */
 
-package com.malhartech.tuple;
+package com.datatorrent.tuple;
 
-import com.malhartech.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.packet.MessageType;
 
 /**
  * Defines end of streaming tuple<p>

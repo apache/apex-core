@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -24,13 +24,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.Operators;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.google.common.collect.Maps;
-import com.malhartech.api.ApplicationFactory;
-import com.malhartech.api.DAG;
-import com.malhartech.api.Operator;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.Operators;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.api.ApplicationFactory;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.Operator;
 import org.apache.commons.beanutils.BeanMap;
 
 /**

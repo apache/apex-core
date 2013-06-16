@@ -2,9 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.util;
+package com.datatorrent.stram.util;
 
-import com.malhartech.stram.TupleRecorder;
+import com.datatorrent.stram.TupleRecorder;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;

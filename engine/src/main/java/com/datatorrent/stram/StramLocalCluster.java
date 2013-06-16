@@ -2,23 +2,23 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
-import com.malhartech.api.DAG;
-import com.malhartech.api.Operator;
-import com.malhartech.api.LocalMode.Controller;
-import com.malhartech.bufferserver.server.Server;
-import com.malhartech.bufferserver.storage.DiskStorage;
-import com.malhartech.engine.Node;
-import com.malhartech.engine.OperatorContext;
-import com.malhartech.engine.WindowGenerator;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.StramChildAgent.ContainerStartRequest;
-import com.malhartech.stram.StreamingContainerManager.ContainerResource;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
-import com.malhartech.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.engine.Node;
+import com.datatorrent.engine.OperatorContext;
+import com.datatorrent.engine.WindowGenerator;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.StramChildAgent.ContainerStartRequest;
+import com.datatorrent.stram.StreamingContainerManager.ContainerResource;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.ContainerHeartbeatResponse;
+import com.datatorrent.stram.StreamingContainerUmbilicalProtocol.StreamingContainerContext;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.LocalMode.Controller;
+import com.datatorrent.bufferserver.server.Server;
+import com.datatorrent.bufferserver.storage.DiskStorage;
 
 import java.io.File;
 import java.io.IOException;

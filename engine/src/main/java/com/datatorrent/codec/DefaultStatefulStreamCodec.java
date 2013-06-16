@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.codec;
+package com.datatorrent.codec;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
@@ -18,8 +18,8 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.MapReferenceResolver;
-import com.malhartech.api.annotation.ShipContainingJars;
-import com.malhartech.common.util.Slice;
+import com.datatorrent.api.annotation.ShipContainingJars;
+import com.datatorrent.common.util.Slice;
 
 /**
  * Default implementation of the StreamCodec.

@@ -2,9 +2,10 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.support;
+package com.datatorrent.bufferserver.support;
 
-import com.malhartech.bufferserver.packet.Tuple;
+import com.datatorrent.bufferserver.packet.Tuple;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -15,7 +16,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Chetan Narsude <chetan@malhar-inc.com>
  */
-public class Subscriber extends com.malhartech.bufferserver.client.Subscriber
+public class Subscriber extends com.datatorrent.bufferserver.client.Subscriber
 {
   public final ArrayList<Object> resetPayloads = new ArrayList<Object>();
   public AtomicInteger tupleCount = new AtomicInteger(0);

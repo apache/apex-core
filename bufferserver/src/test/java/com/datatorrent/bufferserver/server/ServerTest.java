@@ -2,16 +2,18 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.server;
+package com.datatorrent.bufferserver.server;
 
-import com.malhartech.bufferserver.packet.BeginWindowTuple;
-import com.malhartech.bufferserver.packet.EndWindowTuple;
-import com.malhartech.bufferserver.packet.PayloadTuple;
-import com.malhartech.bufferserver.packet.ResetWindowTuple;
-import com.malhartech.bufferserver.support.Controller;
-import com.malhartech.bufferserver.support.Publisher;
-import com.malhartech.bufferserver.support.Subscriber;
-import com.malhartech.netlet.DefaultEventLoop;
+import com.datatorrent.bufferserver.packet.BeginWindowTuple;
+import com.datatorrent.bufferserver.packet.EndWindowTuple;
+import com.datatorrent.bufferserver.packet.PayloadTuple;
+import com.datatorrent.bufferserver.packet.ResetWindowTuple;
+import com.datatorrent.bufferserver.server.Server;
+import com.datatorrent.bufferserver.support.Controller;
+import com.datatorrent.bufferserver.support.Publisher;
+import com.datatorrent.bufferserver.support.Subscriber;
+import com.datatorrent.netlet.DefaultEventLoop;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import org.slf4j.Logger;

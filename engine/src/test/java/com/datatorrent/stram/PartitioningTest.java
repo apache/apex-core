@@ -1,16 +1,26 @@
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
+import com.datatorrent.api.*;
+import com.datatorrent.engine.Node;
+import com.datatorrent.stram.HdfsStorageAgent;
+import com.datatorrent.stram.PhysicalPlan;
+import com.datatorrent.stram.StramChild;
+import com.datatorrent.stram.StramLocalCluster;
+import com.datatorrent.stram.PhysicalPlan.PMapping;
+import com.datatorrent.stram.PhysicalPlan.PTOperator;
+import com.datatorrent.stram.StramLocalCluster.LocalStramChild;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stram.support.StramTestSupport.WaitCondition;
 import com.google.common.collect.Sets;
-import com.malhartech.api.annotation.OutputPortFieldAnnotation;
-import com.malhartech.api.Context.OperatorContext;
-import com.malhartech.api.*;
-import com.malhartech.engine.Node;
-import com.malhartech.stram.PhysicalPlan.PMapping;
-import com.malhartech.stram.PhysicalPlan.PTOperator;
-import com.malhartech.stram.StramLocalCluster.LocalStramChild;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.stram.support.StramTestSupport.WaitCondition;
+import com.datatorrent.api.annotation.OutputPortFieldAnnotation;
+import com.datatorrent.api.Context.OperatorContext;
+import com.datatorrent.api.BaseOperator;
+import com.datatorrent.api.DefaultInputPort;
+import com.datatorrent.api.DefaultOutputPort;
+import com.datatorrent.api.InputOperator;
+import com.datatorrent.api.PartitionableOperator;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;

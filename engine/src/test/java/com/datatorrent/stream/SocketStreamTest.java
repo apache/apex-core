@@ -1,19 +1,21 @@
 /**
  * Copyright (c) 2012-2012 Malhar, Inc. All rights reserved.
  */
-package com.malhartech.stream;
+package com.datatorrent.stream;
 
-import com.malhartech.api.Sink;
-import com.malhartech.api.StreamCodec;
-import com.malhartech.bufferserver.server.Server;
-import com.malhartech.codec.DefaultStatefulStreamCodec;
-import com.malhartech.engine.StreamContext;
-import com.malhartech.engine.SweepableReservoir;
-import com.malhartech.netlet.DefaultEventLoop;
-import com.malhartech.netlet.EventLoop;
-import com.malhartech.stram.support.StramTestSupport;
-import com.malhartech.tuple.EndWindowTuple;
-import com.malhartech.tuple.Tuple;
+import com.datatorrent.codec.DefaultStatefulStreamCodec;
+import com.datatorrent.engine.StreamContext;
+import com.datatorrent.engine.SweepableReservoir;
+import com.datatorrent.stram.support.StramTestSupport;
+import com.datatorrent.stream.BufferServerPublisher;
+import com.datatorrent.stream.BufferServerSubscriber;
+import com.datatorrent.tuple.EndWindowTuple;
+import com.datatorrent.tuple.Tuple;
+import com.datatorrent.api.Sink;
+import com.datatorrent.api.StreamCodec;
+import com.datatorrent.bufferserver.server.Server;
+import com.datatorrent.netlet.DefaultEventLoop;
+import com.datatorrent.netlet.EventLoop;
 import java.io.IOException;
 import static java.lang.Thread.sleep;
 import java.net.InetSocketAddress;

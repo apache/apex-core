@@ -1,4 +1,4 @@
-package com.malhartech.stram;
+package com.datatorrent.stram;
 
 
 import java.io.ByteArrayInputStream;
@@ -7,9 +7,9 @@ import java.io.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.malhartech.api.DAG;
-import com.malhartech.api.LocalMode;
-import com.malhartech.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.LocalMode;
 
 public class LocalModeImpl extends LocalMode {
   private static final Logger LOG = LoggerFactory.getLogger(LocalModeImpl.class);

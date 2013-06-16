@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2012 Malhar, Inc.
  * All rights reserved.
  */
-package com.malhartech.stram.webapp;
+package com.datatorrent.stram.webapp;
 
 import java.io.IOException;
 import java.util.*;
@@ -34,16 +34,16 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datatorrent.codec.LogicalPlanSerializer;
+import com.datatorrent.stram.DAGPropertiesBuilder;
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.StramChildAgent;
+import com.datatorrent.stram.StreamingContainerManager;
+import com.datatorrent.stram.plan.logical.LogicalPlan;
+import com.datatorrent.stram.plan.logical.LogicalPlanRequest;
+import com.datatorrent.stram.plan.logical.LogicalPlan.OperatorMeta;
 import com.google.inject.Inject;
-import com.malhartech.api.Operator;
-import com.malhartech.codec.LogicalPlanSerializer;
-import com.malhartech.stram.DAGPropertiesBuilder;
-import com.malhartech.stram.StramAppContext;
-import com.malhartech.stram.StramChildAgent;
-import com.malhartech.stram.StreamingContainerManager;
-import com.malhartech.stram.plan.logical.LogicalPlan;
-import com.malhartech.stram.plan.logical.LogicalPlanRequest;
-import com.malhartech.stram.plan.logical.LogicalPlan.OperatorMeta;
+import com.datatorrent.api.Operator;
 
 /**
  *

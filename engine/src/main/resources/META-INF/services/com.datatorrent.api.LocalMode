@@ -1,1 +1,1 @@
-com.malhartech.stram.LocalModeImpl
+com.datatorrent.stram.LocalModeImpl

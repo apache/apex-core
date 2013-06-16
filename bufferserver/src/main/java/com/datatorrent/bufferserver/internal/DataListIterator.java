@@ -2,13 +2,14 @@
  *  Copyright (c) 2012 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.bufferserver.internal;
+package com.datatorrent.bufferserver.internal;
 
-import com.malhartech.bufferserver.packet.MessageType;
-import com.malhartech.bufferserver.storage.Storage;
-import com.malhartech.bufferserver.util.Codec;
-import com.malhartech.bufferserver.util.Codec.MutableInt;
-import com.malhartech.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.packet.MessageType;
+import com.datatorrent.bufferserver.storage.Storage;
+import com.datatorrent.bufferserver.util.Codec;
+import com.datatorrent.bufferserver.util.SerializedData;
+import com.datatorrent.bufferserver.util.Codec.MutableInt;
+
 import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,7 +129,7 @@ public class DataListIterator implements Iterator<SerializedData>
 
   /**
    *
-   * @return {@link com.malhartech.bufferserver.util.SerializedData}
+   * @return {@link com.datatorrent.bufferserver.util.SerializedData}
    */
   @Override
   public SerializedData next()

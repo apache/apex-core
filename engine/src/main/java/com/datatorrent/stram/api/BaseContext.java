@@ -2,13 +2,13 @@
  *  Copyright (c) 2012-2013 Malhar, Inc.
  *  All Rights Reserved.
  */
-package com.malhartech.stram.api;
+package com.datatorrent.stram.api;
 
-import com.malhartech.api.AttributeMap;
-import com.malhartech.api.AttributeMap.Attribute;
-import com.malhartech.api.AttributeMap.AttributeKey;
-import com.malhartech.api.Context;
-import com.malhartech.stram.util.AbstractWritableAdapter;
+import com.datatorrent.stram.util.AbstractWritableAdapter;
+import com.datatorrent.api.AttributeMap;
+import com.datatorrent.api.AttributeMap.Attribute;
+import com.datatorrent.api.AttributeMap.AttributeKey;
+import com.datatorrent.api.Context;
 
 /**
  *
