@@ -13,18 +13,13 @@ import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.api.StreamingApplication;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import jline.ArgumentCompletor;
-import jline.Completor;
-import jline.ConsoleReader;
-import jline.FileNameCompletor;
-import jline.History;
-import jline.MultiCompletor;
-import jline.SimpleCompletor;
+import jline.console.completer.*;
+import jline.console.ConsoleReader;
+import jline.console.history.History;
+import jline.console.history.FileHistory;
 
 import javax.ws.rs.core.MediaType;
 
@@ -40,7 +35,6 @@ import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.apache.hadoop.yarn.util.Records;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import jline.console.history.MemoryHistory;
 
 /**
  *
@@ -201,102 +196,6 @@ public class StramCli
     rmClient = new ClientRMHelper(yarnClient);
   }
 
-  /**
-   * Why reinvent the wheel?
-   * JLine 2.x supports search and more.. but it uses the same package as JLine 0.9.x
-   * Hadoop as of 2.0.3 bundles and forces 0.9.x through zookeeper into our class path (when CLI is launched via hadoop command).
-   * And Jline 0.9.x hijacked Ctrl-R for REDISPLAY
-   */
-  private class ConsoleReaderExt extends ConsoleReader
-  {
-    private final char REVERSE_SEARCH_KEY = (char)31;
-
-    ConsoleReaderExt() throws IOException
-    {
-      // CTRL-/ since CTRL-R already mapped to redisplay
-      addTriggeredAction(REVERSE_SEARCH_KEY, new ActionListener()
-      {
-        @Override
-        public void actionPerformed(ActionEvent e)
-        {
-          try {
-            searchHistory();
-          }
-          catch (IOException ex) {
-          }
-        }
-
-      });
-    }
-
-    public int searchBackwards(CharSequence searchTerm, int startIndex)
-    {
-      @SuppressWarnings("unchecked")
-      List<String> history = getHistory().getHistoryList();
-      if (startIndex < 0) {
-        startIndex = history.size();
-      }
-      for (int i = startIndex; --i > 0;) {
-        String line = history.get(i);
-        if (line.contains(searchTerm)) {
-          return i;
-        }
-      }
-      return -1;
-    }
-
-    private void searchHistory() throws IOException
-    {
-      final String prompt = "reverse-search: ";
-      StringBuilder searchTerm = new StringBuilder();
-      String matchingCmd = null;
-      int historyIndex = -1;
-      while (true) {
-        while (backspace()) {
-          continue;
-        }
-        String line = prompt + searchTerm;
-        if (matchingCmd != null) {
-          line = line.concat(": ").concat(matchingCmd);
-        }
-        this.putString(line);
-
-        int c = this.readVirtualKey();
-        if (c == 8) {
-          if (searchTerm.length() > 0) {
-            searchTerm.deleteCharAt(searchTerm.length() - 1);
-          }
-        }
-        else if (c == REVERSE_SEARCH_KEY) {
-          int newIndex = searchBackwards(searchTerm, historyIndex);
-          if (newIndex >= 0) {
-            historyIndex = newIndex;
-            matchingCmd = (String)getHistory().getHistoryList().get(historyIndex);
-          }
-        }
-        else if (!Character.isISOControl(c)) {
-          searchTerm.append(Character.toChars(c));
-          int newIndex = searchBackwards(searchTerm, -1);
-          if (newIndex >= 0) {
-            historyIndex = newIndex;
-            matchingCmd = (String)getHistory().getHistoryList().get(historyIndex);
-          }
-        }
-        else {
-          while (backspace()) {
-            continue;
-          }
-          if (!StringUtils.isBlank(matchingCmd)) {
-            this.putString(matchingCmd);
-            this.flushConsole();
-          }
-          return;
-        }
-      }
-    }
-
-  }
-
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
     BufferedReader br = new BufferedReader(new FileReader(fileName));
@@ -309,18 +208,18 @@ public class StramCli
 
   private void setupCompleter(ConsoleReader reader)
   {
-    List<Completor> completors = new LinkedList<Completor>();
-    completors.add(new SimpleCompletor(connectedCommands.keySet().toArray(new String[] {})));
-    completors.add(new SimpleCompletor(globalCommands.keySet().toArray(new String[] {})));
-    completors.add(new SimpleCompletor(logicalPlanChangeCommands.keySet().toArray(new String[] {})));
+    List<Completer> completers = new LinkedList<Completer>();
+    completers.add(new StringsCompleter(connectedCommands.keySet().toArray(new String[] {})));
+    completers.add(new StringsCompleter(globalCommands.keySet().toArray(new String[] {})));
+    completers.add(new StringsCompleter(logicalPlanChangeCommands.keySet().toArray(new String[] {})));
 
-    List<Completor> launchCompletors = new LinkedList<Completor>();
-    launchCompletors.add(new SimpleCompletor(new String[] {"launch", "launch-local", "show-logical-plan", "dump-properties-file", "source"}));
-    launchCompletors.add(new FileNameCompletor()); // jarFile
-    launchCompletors.add(new FileNameCompletor()); // topology
-    completors.add(new ArgumentCompletor(launchCompletors));
+    List<Completer> launchCompletors = new LinkedList<Completer>();
+    launchCompletors.add(new StringsCompleter(new String[] {"launch", "launch-local", "show-logical-plan", "dump-properties-file", "source"}));
+    launchCompletors.add(new FileNameCompleter()); // jarFile
+    launchCompletors.add(new FileNameCompleter()); // topology
+    completers.add(new ArgumentCompleter(launchCompletors));
 
-    reader.addCompletor(new MultiCompletor(completors));
+    reader.addCompleter(new AggregateCompleter(completers));
   }
 
   private void setupHistory(ConsoleReader reader)
@@ -328,10 +227,10 @@ public class StramCli
     File historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history");
     historyFile.getParentFile().mkdirs();
     try {
-      topLevelHistory = new History(historyFile);
+      topLevelHistory = new FileHistory(historyFile);
       reader.setHistory(topLevelHistory);
       historyFile = new File(StramClientUtils.getSettingsRootDir(), ".history-clp");
-      changingLogicalPlanHistory = new History(historyFile);
+      changingLogicalPlanHistory = new FileHistory(historyFile);
     }
     catch (IOException ex) {
       System.err.printf("Unable to open %s for writing.", historyFile);
@@ -340,7 +239,7 @@ public class StramCli
 
   public void run() throws IOException
   {
-    ConsoleReader reader = new ConsoleReaderExt();
+    ConsoleReader reader = new ConsoleReader();
     reader.setBellEnabled(false);
     try {
       processSourceFile(System.getProperty("user.home") + "/.stram/clirc", reader);
@@ -756,17 +655,21 @@ public class StramCli
               System.out.printf("%3d. %s\n", i + 1, matchingAppConfigs.get(i).getName());
             }
 
-            boolean useHistory = reader.getUseHistory();
-            reader.setUseHistory(false);
+            boolean useHistory = reader.isHistoryEnabled();
+            reader.setHistoryEnabled(false);
+            History previousHistory = reader.getHistory();
+            History dummyHistory = new MemoryHistory();
+            reader.setHistory(dummyHistory);
             @SuppressWarnings("unchecked")
-            List<Completor> completors = new ArrayList<Completor>(reader.getCompletors());
-            for (Completor c : completors) {
-              reader.removeCompletor(c);
+            List<Completer> completors = new ArrayList<Completer>(reader.getCompleters());
+            for (Completer c : completors) {
+              reader.removeCompleter(c);
             }
-            String optionLine = reader.readLine("Pick application? ");
-            reader.setUseHistory(useHistory);
-            for (Completor c : completors) {
-              reader.addCompletor(c);
+            String optionLine = reader.readLine("Choose application: ");
+            reader.setHistoryEnabled(useHistory);
+            reader.setHistory(previousHistory);
+            for (Completer c : completors) {
+              reader.addCompleter(c);
             }
 
             try {
