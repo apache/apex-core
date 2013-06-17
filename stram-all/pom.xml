@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  
+  <parent>
+    <groupId>com.datatorrent</groupId>
+    <artifactId>malhar-framework</artifactId>
+    <version>0.3.2-SNAPSHOT</version>
+  </parent>
+  
+  <artifactId>malhar-stram-all</artifactId>
+
+  <packaging>jar</packaging>
+
+  <name>Implementation Aggregate Jar</name>
+
+  <profiles>
+
+    <profile>
+      <id>release</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+
+      <build>
+	<plugins>
+
+	  <plugin>
+	    <groupId>org.codehaus.mojo</groupId>
+	    <artifactId>exec-maven-plugin</artifactId>
+	    <version>1.2.1</version>
+	    <executions>
+	      <execution>
+                <id>obfuscation</id>
+                <phase>package</phase>
+                <goals>
+	          <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <environmentVariables>
+                    <MALHAR_BUILD_VERSION>${project.version}</MALHAR_BUILD_VERSION>
+                  </environmentVariables>
+                  <skip>${obfuscation.disable}</skip>
+		  <executable>${project.basedir}/src/assemble/run-obfuscation.sh</executable>
+		  <workingDirectory>${project.build.directory}</workingDirectory>
+                </configuration>
+	      </execution>
+	    </executions>  
+	  </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.1</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
+              <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
+              <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
+              <artifactSet>
+                <includes>
+                  <include>${project.groupId}:malhar-netlet</include>
+                  <include>${project.groupId}:malhar-bufferserver</include>
+                  <include>${project.groupId}:malhar-stram</include>
+                  <include>${project.groupId}:malhar-daemon</include>
+                </includes>
+              </artifactSet>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+	</plugins>
+      </build>
+
+    </profile>
+  </profiles>  
+
+    <dependencies>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>malhar-stram</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>malhar-daemon</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+    </dependencies>
+
+</project>
+

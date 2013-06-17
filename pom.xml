@@ -2,13 +2,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.malhartech</groupId>
+  <groupId>com.datatorrent</groupId>
   <artifactId>malhar-framework</artifactId>
   <version>0.3.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Realtime Stream Processing Framework</name>
-  <url>http://malhartech.com</url>
+  <url>http://www.datatorrent.com</url>
 
   <organization>
     <name>Malhar Inc</name>
@@ -49,6 +49,7 @@
     <module>netlet</module>
     <module>bufferserver</module>
     <module>stram</module>
+    <module>stram-all</module>
     <module>library</module>
     <module>demos</module>
     <module>poc</module>
@@ -93,7 +94,13 @@
       <properties>
         <!-- always generate on release build -->
         <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
-      </properties>
+        <!--distMgmtStagingId>github</distMgmtStagingId>
+        <distMgmtStagingName>GitHub ${project.artifactId} Repository</distMgmtStagingName>
+        <distMgmtStagingUrl>https://raw.github.com/DataTorrent/${project.artifactId}/mvn-repo</distMgmtStagingUrl-->
+        <distMgmtStagingId>local-staging</distMgmtStagingId>
+        <distMgmtStagingName>GitHub ${project.artifactId} Repository</distMgmtStagingName>
+        <distMgmtStagingUrl>file:///tmp/mvn-repo</distMgmtStagingUrl>
+    </properties>
       <distributionManagement>
         <repository>
           <id>nexus</id>
