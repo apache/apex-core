@@ -42,7 +42,7 @@
                   <environmentVariables>
                     <MALHAR_BUILD_VERSION>${project.version}</MALHAR_BUILD_VERSION>
                   </environmentVariables>
-                  <skip>${obfuscation.disable}</skip>
+                  <skip>${obfuscation.skip}</skip>
 		  <executable>${project.basedir}/src/assemble/run-obfuscation.sh</executable>
 		  <workingDirectory>${project.build.directory}</workingDirectory>
                 </configuration>
