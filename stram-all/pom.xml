@@ -3,154 +3,152 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  
+
   <parent>
     <groupId>com.datatorrent</groupId>
     <artifactId>malhar-framework</artifactId>
     <version>0.3.2-SNAPSHOT</version>
   </parent>
-  
-  <artifactId>malhar-stram-all</artifactId>
 
+  <artifactId>malhar-stram-all</artifactId>
+  <name>Implementation Aggregate Jar</name>
   <packaging>jar</packaging>
 
-  <name>Implementation Aggregate Jar</name>
+  <profiles>
 
-	<profiles>
+    <profile>
+      <id>release</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <maven.deploy.skip>false</maven.deploy.skip>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>obfuscation</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <environmentVariables>
+                    <MALHAR_BUILD_VERSION>${project.version}</MALHAR_BUILD_VERSION>
+                  </environmentVariables>
+                  <skip>${obfuscation.skip}</skip>
+                  <executable>${project.basedir}/src/assemble/run-obfuscation.sh</executable>
+                  <workingDirectory>${project.build.directory}</workingDirectory>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
 
-		<profile>
-			<id>release</id>
-			<activation>
-				<activeByDefault>false</activeByDefault>
-			</activation>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>2.1</version>
+            <executions>
+              <execution>
+                <id>1</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <configuration>
+                  <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
+                  <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
+                  <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
+                  <artifactSet>
+                    <includes>
+                      <include>${project.groupId}:malhar-netlet</include>
+                      <include>${project.groupId}:malhar-bufferserver</include>
+                      <include>${project.groupId}:malhar-stram</include>
+                      <include>${project.groupId}:malhar-daemon</include>
+                    </includes>
+                  </artifactSet>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
 
-			<build>
-				<plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <id>post-obfuscate</id>
+                <configuration>
+                  <target>
+                    <property name="jar.dev"
+                              value="${project.build.directory}/${project.artifactId}-${project.version}.jar" />
+                    <property name="jar.cluster"
+                              value="${project.build.directory}/${project.artifactId}-cluster.jar" />
+                    <copy
+                      file="${project.build.directory}/${project.artifactId}-${project.version}.jar"
+                      tofile="${jar.cluster}" />
+                    <jar destfile="${jar.dev}">
+                      <zipfileset src="${jar.cluster}" excludes="**/StramAppMaster.class" />
+                    </jar>
+                  </target>
+                </configuration>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
 
-					<plugin>
-						<groupId>org.codehaus.mojo</groupId>
-						<artifactId>exec-maven-plugin</artifactId>
-						<version>1.2.1</version>
-						<executions>
-							<execution>
-								<id>obfuscation</id>
-								<phase>package</phase>
-								<goals>
-									<goal>exec</goal>
-								</goals>
-								<configuration>
-									<environmentVariables>
-										<MALHAR_BUILD_VERSION>${project.version}</MALHAR_BUILD_VERSION>
-									</environmentVariables>
-									<skip>${obfuscation.skip}</skip>
-									<executable>${project.basedir}/src/assemble/run-obfuscation.sh</executable>
-									<workingDirectory>${project.build.directory}</workingDirectory>
-								</configuration>
-							</execution>
-						</executions>
-					</plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>1.7</version>
+            <executions>
+              <execution>
+                <id>attach-artifact</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>attach-artifact</goal>
+                </goals>
+                <configuration>
+                  <artifacts>
+                    <artifact>
+                      <file>${project.build.directory}/${project.artifactId}-cluster.jar</file>
+                      <type>jar</type>
+                      <classifier>cluster</classifier>
+                    </artifact>
+                  </artifacts>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
 
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-shade-plugin</artifactId>
-						<version>2.1</version>
-						<executions>
-							<execution>
-								<id>1</id>
-								<phase>package</phase>
-								<goals>
-									<goal>shade</goal>
-								</goals>
-								<configuration>
-									<keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
-									<promoteTransitiveDependencies>true</promoteTransitiveDependencies>
-									<dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
-									<artifactSet>
-										<includes>
-											<include>${project.groupId}:malhar-netlet</include>
-											<include>${project.groupId}:malhar-bufferserver</include>
-											<include>${project.groupId}:malhar-stram</include>
-											<include>${project.groupId}:malhar-daemon</include>
-										</includes>
-									</artifactSet>
-								</configuration>
-							</execution>
-						</executions>
-					</plugin>
+        </plugins>
+      </build>
 
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-antrun-plugin</artifactId>
-						<version>1.6</version>
-						<executions>
-							<execution>
-								<phase>package</phase>
-								<id>post-obfuscate</id>
-								<configuration>
-									<target>
-										<property name="jar.dev"
-											value="${project.build.directory}/${project.artifactId}-${project.version}.jar" />
-										<property name="jar.cluster"
-											value="${project.build.directory}/${project.artifactId}-cluster.jar" />
-										<copy
-											file="${project.build.directory}/${project.artifactId}-${project.version}.jar"
-											tofile="${jar.cluster}" />
-										<jar destfile="${jar.dev}">
-											<zipfileset src="${jar.cluster}" excludes="**/StramAppMaster.class" />
-										</jar>
-									</target>
-								</configuration>
-								<goals>
-									<goal>run</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
+    </profile>
+  </profiles>
 
-					<plugin>
-						<groupId>org.codehaus.mojo</groupId>
-						<artifactId>build-helper-maven-plugin</artifactId>
-						<version>1.7</version>
-						<executions>
-							<execution>
-								<id>attach-artifact</id>
-								<phase>package</phase>
-								<goals>
-									<goal>attach-artifact</goal>
-								</goals>
-								<configuration>
-									<artifacts>
-										<artifact>
-											<file>${project.build.directory}/${project.artifactId}-cluster.jar</file>
-											<type>jar</type>
-											<classifier>cluster</classifier>
-										</artifact>
-									</artifacts>
-								</configuration>
-							</execution>
-						</executions>
-					</plugin>
+  <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>malhar-stram</artifactId>
+      <version>${project.version}</version>
+    </dependency>
 
-				</plugins>
-			</build>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>malhar-daemon</artifactId>
+      <version>${project.version}</version>
+    </dependency>
 
-		</profile>
-	</profiles>
-
-	<dependencies>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>malhar-stram</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>malhar-daemon</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-
-	</dependencies>
+  </dependencies>
 
 </project>
 
