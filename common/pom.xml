@@ -11,9 +11,6 @@
   <artifactId>malhar-common</artifactId>
   <name>Common Library</name>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
   <dependencies>
     <dependency>
       <groupId>javax.validation</groupId>

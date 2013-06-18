@@ -26,10 +26,10 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.optimize>false</maven.compiler.optimize>
-
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
     <hadoop.version>2.0.4-alpha</hadoop.version>
     <github.global.server>github</github.global.server>
+    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
   </properties>
 
   <dependencies>
@@ -113,6 +113,7 @@
       <properties>
         <maven.compiler.debug>false</maven.compiler.debug>
         <maven.compiler.optimize>true</maven.compiler.optimize>
+        <internal.deploy.skip>true</internal.deploy.skip>
         <!-- always generate on release build -->
         <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
         <!--distMgmtStagingId>github</distMgmtStagingId>

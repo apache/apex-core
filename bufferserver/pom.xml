@@ -14,9 +14,7 @@
   <description>Interface for nodes from 2 different containers to talk to each other.</description>
 
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
-    <maven.deploy.skip>true</maven.deploy.skip>
+    <maven.deploy.skip>${internal.deploy.skip}</maven.deploy.skip>
   </properties>
 
   <name>Buffer Server</name>
