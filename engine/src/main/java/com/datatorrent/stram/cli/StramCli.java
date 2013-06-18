@@ -13,15 +13,17 @@ import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.util.WebServicesClient;
 import com.datatorrent.stram.webapp.StramWebServices;
 import com.datatorrent.api.StreamingApplication;
+
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import javax.ws.rs.core.MediaType;
+
 import jline.console.completer.*;
 import jline.console.ConsoleReader;
 import jline.console.history.History;
 import jline.console.history.FileHistory;
-
-import javax.ws.rs.core.MediaType;
+import jline.console.history.MemoryHistory;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.lang.StringUtils;
@@ -42,7 +44,6 @@ import org.slf4j.LoggerFactory;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-import jline.console.history.MemoryHistory;
 
 /**
  *
