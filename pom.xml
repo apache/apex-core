@@ -11,36 +11,33 @@
   <url>http://www.datatorrent.com</url>
 
   <organization>
-    <name>Malhar Inc</name>
-    <url>http://www.malhar-inc.com/</url>
+    <name>DataTorrent Inc.</name>
+    <url>http://www.datatorrent.com/</url>
   </organization>
 
   <licenses>
     <license>
-      <name>Malhar Inc 0.9</name>
-      <url>http://www.malhar-inc.com/licenses/LICENSE-0.9</url>
+      <name>DataTorrent Inc. 0.9</name>
+      <url>http://www.datatorrent.com/licenses/LICENSE-0.9</url>
     </license>
   </licenses>
   <inceptionYear>2012</inceptionYear>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
     <hadoop.version>2.0.4-alpha</hadoop.version>
     <github.global.server>github</github.global.server>
+    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.8.2</version>
+      <version>4.10</version>
       <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven.wagon</groupId>
-      <artifactId>wagon-webdav-jackrabbit</artifactId>
-      <version>2.2</version>
     </dependency>
   </dependencies>
 
@@ -59,6 +56,82 @@
   </modules>
 
   <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <source>1.6</source>
+          <target>1.6</target>
+          <debug>true</debug>
+          <optimize>true</optimize>
+          <showDeprecation>true</showDeprecation>
+          <showWarnings>true</showWarnings>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>1.0.1</version>
+        <executions>
+          <execution>
+            <id>enforce-tools</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[1.6.0,)</version>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.0.2,)</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.14.1</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-junit47</artifactId>
+            <version>2.14.1</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <excludedGroups>${test.excludedGroups}</excludedGroups>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>animal-sniffer-maven-plugin</artifactId>
+        <version>1.7</version>
+        <configuration>
+          <signature>
+            <groupId>org.codehaus.mojo.signature</groupId>
+            <artifactId>java16</artifactId>
+            <version>1.0</version>
+          </signature>
+          <ignores>
+            <ignore>sun.misc.Unsafe</ignore>
+            <ignore>java.util.zip.Deflater</ignore>
+            <ignore>java.util.concurrent.LinkedTransferQueue</ignore>
+          </ignores>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -91,13 +164,21 @@
       <modules>
         <module>dist</module>
       </modules>
+      <dependencies>
+        <dependency>
+          <groupId>org.apache.maven.wagon</groupId>
+          <artifactId>wagon-webdav-jackrabbit</artifactId>
+          <version>2.2</version>
+          <scope>runtime</scope>
+        </dependency>
+      </dependencies>
       <properties>
         <!-- always generate on release build -->
         <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
         <distMgmtStagingId>local-staging</distMgmtStagingId>
         <distMgmtStagingName>GitHub ${project.artifactId} Repository</distMgmtStagingName>
         <distMgmtStagingUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtStagingUrl>
-    </properties>
+      </properties>
       <distributionManagement>
         <repository>
           <id>nexus</id>
