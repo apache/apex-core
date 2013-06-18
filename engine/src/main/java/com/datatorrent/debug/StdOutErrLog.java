@@ -48,7 +48,7 @@ public class StdOutErrLog
       public void print(final String string)
       {
         realPrintStream.print(string);
-        logger.info(string);
+        //logger.info(string);
       }
 
     };
