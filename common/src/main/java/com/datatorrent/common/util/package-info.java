@@ -4,7 +4,7 @@
  *
  */
 /**
- * <b>{@link com.malhartech.common}</b> is a library of utility classes that are open source and shared by all other malhar libraries<p>
+ * <b>{@link com.datatorrent.common}</b> is a library of utility classes that are open source and shared by all other malhar libraries<p>
  * <br>
  */
 package com.datatorrent.common.util;
