@@ -177,7 +177,7 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-websocket</artifactId>
-      <version>8.1.10.v20130312</version>
+      <version>8.1.11.v20130520</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
