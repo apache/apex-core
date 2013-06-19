@@ -65,8 +65,8 @@ public class StramCli
   private final Map<String, List<String>> macros = new HashMap<String, List<String>>();
   private boolean changingLogicalPlan = false;
   List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
-  History topLevelHistory;
-  History changingLogicalPlanHistory;
+  FileHistory topLevelHistory;
+  FileHistory changingLogicalPlanHistory;
 
   private interface Command
   {
@@ -272,6 +272,8 @@ public class StramCli
       processLine(line, reader, true);
       out.flush();
     }
+    topLevelHistory.flush();
+    changingLogicalPlanHistory.flush();
     System.out.println("exit");
   }
 
@@ -876,6 +878,8 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
+      topLevelHistory.flush();
+      changingLogicalPlanHistory.flush();
       System.exit(0);
     }
 

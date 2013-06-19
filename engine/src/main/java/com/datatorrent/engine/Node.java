@@ -369,7 +369,7 @@ public abstract class Node<OPERATOR extends Operator> implements Component<Opera
     output.flush();
   }
 
-  private static OperatorWrapper retrieveOperatorWrapper(InputStream stream)
+  public static OperatorWrapper retrieveOperatorWrapper(InputStream stream)
   {
     final Kryo k = new Kryo();
     k.setClassLoader(Thread.currentThread().getContextClassLoader());
