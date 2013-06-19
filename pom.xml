@@ -206,7 +206,7 @@
         <snapshotRepository>
           <id>snapshot</id>
           <name>DataTorrent Snapshots</name>
-          <url>dav:http://localhost:8081/nexus/content/repositories/snapshots/</url>
+          <url>dav:http://192.168.1.118:8081/nexus/content/repositories/snapshots/</url>
         </snapshotRepository>
       </distributionManagement>
       <build>
