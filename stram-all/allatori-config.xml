@@ -25,10 +25,10 @@
       <field access="private+"/>
       <method access="private+"/>
     </class>
-    <class template="public class com.datatorrent.stram.StramLocalCluster">
+    <!--class template="public class com.datatorrent.stram.StramLocalCluster">
   <field access="public"/>
   <method access="public"/>
-    </class>
+    </class-->
     <class template="class com.datatorrent.stram.TupleRecorder$*Info">
         <field access="protected+"/>
         <method access="protected+"/>
@@ -45,10 +45,10 @@
       <field access="private+"/>
       <method access="private+"/>
     </class>
-    <class template="public class com.datatorrent.util.VersionInfo">
+    <!--class template="public class com.datatorrent.util.VersionInfo">
       <field access="private+"/>
       <method access="private+"/>
-    </class>
+    </class-->
     <class template="public class com.datatorrent.stram.cli.StramAppLauncher">  
   <method template="public static java.lang.String runApp(**)"/>
     </class>
@@ -66,9 +66,9 @@
     </class>
     <class template="public interface com.datatorrent.stram.cli.StramAppLauncher$AppConfig"/>  
     <!-- List all the classes containing main that are not already listed separately -->
-    <class template="public class com.datatorrent.bufferserver.server.Server">
+    <!--class template="public class com.datatorrent.bufferserver.server.Server">
   <method template="public static void main(java.lang.String[])"/>
-    </class>
+    </class-->
     <class template="public class com.datatorrent.stram.StramChild">
   <method template="public static void main(java.lang.String[])"/>
     </class>
@@ -78,7 +78,7 @@
     <class template="public class com.datatorrent.stram.StramAppMaster">
   <method template="public static void main(java.lang.String[])"/>
     </class>
-    <class template="public class com.datatorrent.stram.StramClient">
+    <!--class template="public class com.datatorrent.stram.StramClient">
   <method template="public static void main(java.lang.String[])"/>
     </class>
     <class template="public class com.datatorrent.util.SamplePubSubWebSocketSubscriber">
@@ -86,7 +86,7 @@
     </class>
     <class template="public class com.datatorrent.util.SamplePubSubWebSocketPublisher">
   <method template="public static void main(java.lang.String[])"/>
-    </class>
+    </class-->
     <class template="class * instanceof java.io.Serializable">
   <field template="static final long serialVersionUID"/>
   <field template="private static final java.io.ObjectStreamField[] serialPersistentFields"/>
