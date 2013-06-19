@@ -6,6 +6,7 @@ package com.datatorrent.stram;
 
 import com.datatorrent.api.StorageAgent;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -834,7 +835,10 @@ public class PhysicalPlan {
       if (pOperator.recoveryCheckpoint != 0) {
         try {
           LOG.debug("Loading state for {}", pOperator);
-          partitionedOperator = (Operator)ctx.getStorageAgent().getLoadStream(pOperator.id, pOperator.recoveryCheckpoint);
+          InputStream is = ctx.getStorageAgent().getLoadStream(pOperator.id, pOperator.recoveryCheckpoint);
+          if (is != null) {
+            partitionedOperator = Node.retrieveOperatorWrapper(is).operator;
+          }
         } catch (IOException e) {
           LOG.warn("Failed to read partition state for " + pOperator, e);
           return; // TODO: emit to event log
