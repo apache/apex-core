@@ -17,16 +17,13 @@
   <name>Implementation Aggregate Jar</name>
 
   <profiles>
-
     <profile>
       <id>release</id>
       <activation>
         <activeByDefault>false</activeByDefault>
       </activation>
-
       <build>
         <plugins>
-
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
@@ -54,36 +51,29 @@
               </execution>
             </executions>
           </plugin>
-
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>1.2.1</version>
-            <executions>
-              <execution>
-                <phase>package</phase>
-                <id>obfuscation</id>
-                <goals>
-                  <goal>exec</goal>
-                </goals>
-                <configuration>
-                  <environmentVariables>
-                    <MALHAR_BUILD_VERSION>${project.version}</MALHAR_BUILD_VERSION>
-                  </environmentVariables>
-                  <!--skip>${obfuscation.skip}</skip -->
-                  <skip>true</skip>
-                  <executable>${project.basedir}/src/assemble/run-obfuscation.sh</executable>
-                  <workingDirectory>${project.build.directory}</workingDirectory>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-antrun-plugin</artifactId>
             <version>1.6</version>
             <executions>
+              <execution>
+                <phase>package</phase>
+                <id>obfuscate2</id>
+                <configuration>
+                  <target>
+                    <echo message="running allatori"/>
+                    <property name="obf.jar" value="target/malhar-stram-all-${project.version}.jar"/>
+                    <property name="env.OBFUSCATION_EXPIRY_DATE" value="2013/12/01"/>
+                    <property name="runtime_classpath" refid="maven.runtime.classpath"/>
+                    <taskdef name="allatori" classname="com.allatori.ant.ObfuscatorTask" classpath="${env.ALLATORI_LIB}/allatori.jar:${runtime_classpath}"/>
+                    <allatori config="allatori-config.xml"/>
+                  </target>
+                  <skip>${obfuscation.skip}</skip>
+                </configuration>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+              </execution>
               <execution>
                 <phase>package</phase>
                 <id>post-obfuscate</id>
@@ -108,7 +98,6 @@
               </execution>
             </executions>
           </plugin>
-
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
@@ -132,10 +121,8 @@
               </execution>
             </executions>
           </plugin>
-
         </plugins>
       </build>
-
     </profile>
   </profiles>
 
