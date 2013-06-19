@@ -272,8 +272,10 @@ public class StramCli
       processLine(line, reader, true);
       out.flush();
     }
-    topLevelHistory.flush();
-    changingLogicalPlanHistory.flush();
+    if (topLevelHistory != null && changingLogicalPlanHistory != null) {
+      topLevelHistory.flush();
+      changingLogicalPlanHistory.flush();
+    }
     System.out.println("exit");
   }
 
@@ -878,8 +880,10 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      topLevelHistory.flush();
-      changingLogicalPlanHistory.flush();
+      if (topLevelHistory != null && changingLogicalPlanHistory != null) {
+        topLevelHistory.flush();
+        changingLogicalPlanHistory.flush();
+      }
       System.exit(0);
     }
 
