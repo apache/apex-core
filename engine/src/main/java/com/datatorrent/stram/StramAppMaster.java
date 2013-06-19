@@ -437,6 +437,7 @@ public class StramAppMaster //extends License for licensing using native
     StramAppContext appContext = new ClusterAppContextImpl();
     // start web service
     try {
+      org.mortbay.log.Log.setLog(null);
       WebApp webApp = WebApps.$for("stram", StramAppContext.class, appContext, "ws").with(conf).
               start(new StramWebApp(this.dnmgr));
       LOG.info("Started web service at port: " + webApp.port());
