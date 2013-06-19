@@ -10,23 +10,9 @@
   </parent>
 
   <artifactId>malhar-bufferserver</artifactId>
-  <packaging>jar</packaging>
   <description>Interface for nodes from 2 different containers to talk to each other.</description>
 
   <name>Buffer Server</name>
-
-  <organization>
-    <name>Malhar Inc</name>
-    <url>http://www.malhar-inc.com/</url>
-  </organization>
-
-  <licenses>
-    <license>
-      <name>Malhar Inc 0.9</name>
-      <url>http://www.malhar-inc.com/licenses/LICENSE-0.9</url>
-    </license>
-  </licenses>
-  <inceptionYear>2012</inceptionYear>
 
   <dependencies>
     <dependency>

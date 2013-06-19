@@ -14,25 +14,6 @@
 
   <name>Streaming Application Manager</name>
 
-  <organization>
-    <name>Malhar Inc</name>
-    <url>http://www.malhar-inc.com/</url>
-  </organization>
-
-  <licenses>
-    <license>
-      <name>Malhar Inc 0.9</name>
-      <url>http://www.malhar-inc.com/licenses/LICENSE-0.9</url>
-    </license>
-  </licenses>
-  <inceptionYear>2012</inceptionYear>
-
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
-    <maven.deploy.skip>true</maven.deploy.skip>
-  </properties>
-
   <build>
     <plugins>
       <!-- plugin> for licensing using native
@@ -171,11 +152,6 @@
       <artifactId>kryo</artifactId>
       <version>2.21-SNAPSHOT</version>
     </dependency-->
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>malhar-netlet</artifactId>
-      <version>${project.version}</version>
-    </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>

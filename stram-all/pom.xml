@@ -14,6 +14,7 @@
   <name>Implementation Aggregate Jar</name>
   <packaging>jar</packaging>
 
+
   <profiles>
 
     <profile>
@@ -21,32 +22,9 @@
       <activation>
         <activeByDefault>false</activeByDefault>
       </activation>
-      <properties>
-        <maven.deploy.skip>false</maven.deploy.skip>
-      </properties>
+
       <build>
         <plugins>
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>obfuscation</id>
-                <phase>package</phase>
-                <goals>
-                  <goal>exec</goal>
-                </goals>
-                <configuration>
-                  <environmentVariables>
-                    <MALHAR_BUILD_VERSION>${project.version}</MALHAR_BUILD_VERSION>
-                  </environmentVariables>
-                  <skip>${obfuscation.skip}</skip>
-                  <executable>${project.basedir}/src/assemble/run-obfuscation.sh</executable>
-                  <workingDirectory>${project.build.directory}</workingDirectory>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
 
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -54,8 +32,8 @@
             <version>2.1</version>
             <executions>
               <execution>
-                <id>1</id>
                 <phase>package</phase>
+                <id>combine-jars</id>
                 <goals>
                   <goal>shade</goal>
                 </goals>
@@ -83,16 +61,29 @@
             <executions>
               <execution>
                 <phase>package</phase>
+                <id>obfuscate2</id>
+                <configuration>
+                  <target unless="${obfuscation.skip}">
+                    <echo message="running allatori"/>
+                    <property name="obf.jar" value="target/malhar-stram-all-${project.version}.jar"/>
+                    <property name="env.OBFUSCATION_EXPIRY_DATE" value="2013/12/01"/>
+                    <property name="runtime_classpath" refid="maven.runtime.classpath"/>
+                    <taskdef name="allatori" classname="com.allatori.ant.ObfuscatorTask" classpath="${env.ALLATORI_LIB}/allatori.jar:${runtime_classpath}"/>
+                    <allatori config="allatori-config.xml"/>
+                  </target>
+                </configuration>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+              </execution>
+              <execution>
+                <phase>package</phase>
                 <id>post-obfuscate</id>
                 <configuration>
                   <target>
-                    <property name="jar.dev"
-                              value="${project.build.directory}/${project.artifactId}-${project.version}.jar" />
-                    <property name="jar.cluster"
-                              value="${project.build.directory}/${project.artifactId}-cluster.jar" />
-                    <copy
-                      file="${project.build.directory}/${project.artifactId}-${project.version}.jar"
-                      tofile="${jar.cluster}" />
+                    <property name="jar.dev" value="${project.build.directory}/${project.artifactId}-${project.version}.jar" />
+                    <property name="jar.cluster" value="${project.build.directory}/${project.artifactId}-cluster.jar" />
+                    <copy file="${project.build.directory}/${project.artifactId}-${project.version}.jar" tofile="${jar.cluster}" />
                     <jar destfile="${jar.dev}">
                       <zipfileset src="${jar.cluster}" excludes="**/StramAppMaster.class" />
                     </jar>
@@ -111,8 +102,8 @@
             <version>1.7</version>
             <executions>
               <execution>
-                <id>attach-artifact</id>
                 <phase>package</phase>
+                <id>attach-artifact</id>
                 <goals>
                   <goal>attach-artifact</goal>
                 </goals>
