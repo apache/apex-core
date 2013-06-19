@@ -60,7 +60,7 @@
                 <phase>package</phase>
                 <id>obfuscate2</id>
                 <configuration>
-                  <target>
+                  <target unless="${obfuscation.skip}">
                     <echo message="running allatori"/>
                     <property name="obf.jar" value="target/malhar-stram-all-${project.version}.jar"/>
                     <property name="env.OBFUSCATION_EXPIRY_DATE" value="2013/12/01"/>
@@ -68,7 +68,6 @@
                     <taskdef name="allatori" classname="com.allatori.ant.ObfuscatorTask" classpath="${env.ALLATORI_LIB}/allatori.jar:${runtime_classpath}"/>
                     <allatori config="allatori-config.xml"/>
                   </target>
-                  <skip>${obfuscation.skip}</skip>
                 </configuration>
                 <goals>
                   <goal>run</goal>
