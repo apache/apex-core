@@ -136,7 +136,7 @@ public class StramCli
     logicalPlanChangeCommands.put("set-operator-attribute", new CommandSpec(new SetOperatorAttributeCommand(), new String[] {"operator-name", "attr-name", "attr-value"}, null, "Set an attribute of an operator"));
     logicalPlanChangeCommands.put("set-port-attribute", new CommandSpec(new SetPortAttributeCommand(), new String[] {"operator-name", "port-name", "attr-name", "attr-value"}, null, "Set an attribute of a port"));
     logicalPlanChangeCommands.put("set-stream-attribute", new CommandSpec(new SetStreamAttributeCommand(), new String[] {"stream-name", "attr-name", "attr-value"}, null, "Set an attribute of a stream"));
-    logicalPlanChangeCommands.put("queue", new CommandSpec(new QueueCommand(), null, null, "Show the queue of the plan change"));
+    logicalPlanChangeCommands.put("show-queue", new CommandSpec(new ShowQueueCommand(), null, null, "Show the queue of the plan change"));
     logicalPlanChangeCommands.put("submit", new CommandSpec(new SubmitCommand(), null, null, "Submit the plan change"));
     logicalPlanChangeCommands.put("abort", new CommandSpec(new AbortCommand(), null, null, "Abort the plan change"));
     StramClientUtils.addStramResources(conf);
@@ -1563,7 +1563,7 @@ public class StramCli
 
   }
 
-  private class QueueCommand implements Command
+  private class ShowQueueCommand implements Command
   {
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
