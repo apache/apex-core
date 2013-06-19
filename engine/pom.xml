@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.malhartech</groupId>
+    <groupId>com.datatorrent</groupId>
     <artifactId>malhar-framework</artifactId>
     <version>0.3.2-SNAPSHOT</version>
   </parent>
@@ -13,7 +13,6 @@
   <packaging>jar</packaging>
 
   <name>Streaming Application Manager</name>
-  <url>http://malhar-inc.com</url>
 
   <organization>
     <name>Malhar Inc</name>
@@ -29,8 +28,7 @@
   <inceptionYear>2012</inceptionYear>
 
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
+    <maven.deploy.skip>${internal.deploy.skip}</maven.deploy.skip>
   </properties>
 
   <build>
@@ -65,19 +63,6 @@
               <malhar-buildversion>${project.version}</malhar-buildversion>
             </manifestEntries>
           </archive>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
-        <configuration>
-          <encoding>UTF-8</encoding>
-          <source>1.6</source>
-          <target>1.6</target>
-          <debug>true</debug>
-          <!--optimize>true</optimize-->
-          <showDeprecation>true</showDeprecation>
-          <showWarnings>true</showWarnings>
         </configuration>
       </plugin>
       <plugin>
@@ -192,7 +177,7 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-websocket</artifactId>
-      <version>8.1.10.v20130312</version>
+      <version>8.1.11.v20130520</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -208,11 +193,6 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>malhar-netlet</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>jline</groupId>
-      <artifactId>jline</artifactId>
-      <version>0.9.94</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
@@ -255,6 +235,11 @@
       <version>${project.version}</version>
       <type>nar</type>
     </dependency -->
+    <dependency>
+      <groupId>jline</groupId>
+      <artifactId>jline</artifactId>
+      <version>2.11</version>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>

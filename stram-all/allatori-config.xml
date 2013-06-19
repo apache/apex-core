@@ -1,0 +1,122 @@
+<config>
+
+<keep-names>
+    <class template="public class com.datatorrent.daemon.Daemon"> 
+  <field access="public"/>
+  <method access="public"/>
+    </class>
+    <class template="public class com.datatorrent.daemon.resources.*">  
+  <field access="protected+"/>
+  <method access="protected+"/>
+    </class>
+    <class template="class com.datatorrent.daemon.RecordingsAgent$*Info">
+        <field access="private+"/>
+        <method access="private+"/>
+    </class>
+    <class template="public class com.datatorrent.stram.LocalModeImpl">
+      <field access="private+"/>
+      <method access="private+"/>
+    </class>
+    <class template="public class com.datatorrent.stram.StreamingContainerSecurityInfo">
+      <field access="private+"/>
+      <method access="private+"/>
+    </class>
+    <class template="public class com.datatorrent.stram.security.StramDelegationTokenIdentifier">
+      <field access="private+"/>
+      <method access="private+"/>
+    </class>
+    <!--class template="public class com.datatorrent.stram.StramLocalCluster">
+  <field access="public"/>
+  <method access="public"/>
+    </class-->
+    <class template="class com.datatorrent.stram.TupleRecorder$*Info">
+        <field access="protected+"/>
+        <method access="protected+"/>
+    </class>
+    <class template="public class com.datatorrent.tuple.*"> 
+  <field access="protected+"/>
+  <method access="protected+"/>
+    </class>
+    <class template="public class com.datatorrent.bufferserver.Buffer"> 
+      <field access="private+"/>
+      <method access="private+"/>
+    </class>
+    <class template="public class com.datatorrent.bufferserver.Buffer$*">  
+      <field access="private+"/>
+      <method access="private+"/>
+    </class>
+    <!--class template="public class com.datatorrent.util.VersionInfo">
+      <field access="private+"/>
+      <method access="private+"/>
+    </class-->
+    <class template="public class com.datatorrent.stram.cli.StramAppLauncher">  
+  <method template="public static java.lang.String runApp(**)"/>
+    </class>
+    <!--class template="public class com.datatorrent.stram.webapp.*Info"> 
+  <field access="protected+"/>
+  <method access="protected+"/>
+    </class>
+    <class template="public class com.datatorrent.stram.webapp.*Info$*"> 
+  <field access="protected+"/>
+  <method access="protected+"/>
+    </class-->
+    <class template="public class com.datatorrent.stram.webapp.*">  
+  <field access="protected+"/>
+  <method access="protected+"/>
+    </class>
+    <class template="public interface com.datatorrent.stram.cli.StramAppLauncher$AppConfig"/>  
+    <!-- List all the classes containing main that are not already listed separately -->
+    <!--class template="public class com.datatorrent.bufferserver.server.Server">
+  <method template="public static void main(java.lang.String[])"/>
+    </class-->
+    <class template="public class com.datatorrent.stram.StramChild">
+  <method template="public static void main(java.lang.String[])"/>
+    </class>
+    <class template="public class com.datatorrent.stram.cli.StramCli">
+  <method template="public static void main(java.lang.String[])"/>
+    </class>
+    <class template="public class com.datatorrent.stram.StramAppMaster">
+  <method template="public static void main(java.lang.String[])"/>
+    </class>
+    <!--class template="public class com.datatorrent.stram.StramClient">
+  <method template="public static void main(java.lang.String[])"/>
+    </class>
+    <class template="public class com.datatorrent.util.SamplePubSubWebSocketSubscriber">
+  <method template="public static void main(java.lang.String[])"/>
+    </class>
+    <class template="public class com.datatorrent.util.SamplePubSubWebSocketPublisher">
+  <method template="public static void main(java.lang.String[])"/>
+    </class-->
+    <class template="class * instanceof java.io.Serializable">
+  <field template="static final long serialVersionUID"/>
+  <field template="private static final java.io.ObjectStreamField[] serialPersistentFields"/>
+  <field access="protected+"/>
+  <method template="private void writeObject(java.io.ObjectOutputStream)"/>
+  <method template="private void readObject(java.io.ObjectInputStream)"/>
+  <method template="java.lang.Object writeReplace()"/>
+  <method template="java.lang.Object readResolve()"/>
+  <method access="protected+"/>
+    </class>
+    <!--class template="class * instanceof java.io.Serializable">
+        <field access="protected+"/>
+        <method access="protected+"/>
+    </class-->
+    <!-- List all the classes containing versionID that are not already listed separately -->
+    <class template="public interface com.datatorrent.stram.StreamingContainerUmbilicalProtocol">
+      <field template="public static final long versionID"/>
+    </class>
+    <class template="class * extends java.lang.Enum">
+      <field access="private+"/>
+      <method access="private+"/>
+    </class>
+    <class template="class * implements java.lang.annotation.Annotation">
+      <field access="private+"/>
+      <method access="private+"/>
+    </class>
+</keep-names>
+<jars>
+<jar in="${obf.jar}" out="${obf.jar}"/>
+</jars>
+<expiry date="${env.OBFUSCATION_EXPIRY_DATE}" string="Your license has expired."/>
+<property name="log-file" value="target/allatori-log.xml"/>
+</config>

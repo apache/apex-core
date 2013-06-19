@@ -2,13 +2,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.malhartech</groupId>
+  <groupId>com.datatorrent</groupId>
   <artifactId>malhar-framework</artifactId>
   <version>0.3.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Realtime Stream Processing Framework</name>
-  <url>http://malhartech.com</url>
+  <url>http://www.datatorrent.com</url>
 
   <organization>
     <name>Malhar Inc</name>
@@ -25,9 +25,11 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.optimize>false</maven.compiler.optimize>
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
     <hadoop.version>2.0.4-alpha</hadoop.version>
     <github.global.server>github</github.global.server>
+    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
   </properties>
 
   <dependencies>
@@ -44,6 +46,7 @@
     <module>netlet</module>
     <module>bufferserver</module>
     <module>stram</module>
+    <module>stram-all</module>
     <module>library</module>
     <module>demos</module>
     <module>poc</module>
@@ -55,6 +58,34 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>2.3.2</version>
+          <configuration>
+            <encoding>UTF-8</encoding>
+            <source>1.6</source>
+            <target>1.6</target>
+            <debug>true</debug>
+            <optimize>false</optimize>
+            <showDeprecation>true</showDeprecation>
+            <showWarnings>true</showWarnings>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>nbm-maven-plugin</artifactId>
+          <version>3.8</version>
+          <extensions>true</extensions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.4</version>
+          <configuration>
+            <!-- to have the jar plugin pickup the nbm generated manifest -->
+            <useDefaultManifestFile>true</useDefaultManifestFile>
+          </configuration>
+        </plugin>
         <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
           <version>2.4</version>
@@ -80,15 +111,29 @@
         <module>dist</module>
       </modules>
       <properties>
+        <maven.compiler.debug>false</maven.compiler.debug>
+        <maven.compiler.optimize>true</maven.compiler.optimize>
+        <internal.deploy.skip>true</internal.deploy.skip>
         <!-- always generate on release build -->
         <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
-      </properties>
+        <!--distMgmtStagingId>github</distMgmtStagingId>
+        <distMgmtStagingName>GitHub ${project.artifactId} Repository</distMgmtStagingName>
+        <distMgmtStagingUrl>https://raw.github.com/DataTorrent/${project.artifactId}/mvn-repo</distMgmtStagingUrl-->
+        <distMgmtStagingId>local-staging</distMgmtStagingId>
+        <distMgmtStagingName>GitHub ${project.artifactId} Repository</distMgmtStagingName>
+        <distMgmtStagingUrl>file:///tmp/mvn-repo</distMgmtStagingUrl>
+    </properties>
       <distributionManagement>
         <repository>
-          <id>github</id>
-          <name>GitHub ${project.artifactId} Repository</name>
-          <url>https://raw.github.com/DataTorrent/${project.artifactId}/mvn-repo</url>
+          <id>${distMgmtStagingId}</id>
+          <name>${distMgmtStagingName}</name>
+          <url>${distMgmtStagingUrl}</url>
         </repository>
+        <!--snapshotRepository>
+          <id>${distMgmtSnapshotsId}</id>
+          <name>${distMgmtSnapshotsName}</name>
+          <url>${distMgmtSnapshotsUrl}</url>
+        </snapshotRepository-->
       </distributionManagement>
       <build>
         <plugins>
@@ -96,41 +141,8 @@
             <artifactId>maven-deploy-plugin</artifactId>
             <version>2.7</version>
             <configuration>
-              <altDeploymentRepository>internal.repo::default::file://${project.build.directory}/mvn-repo</altDeploymentRepository>
+              <!--altDeploymentRepository>internal.repo::default::file://${project.build.directory}/mvn-repo</altDeploymentRepository-->
             </configuration>
-          </plugin>
-          <plugin>
-            <groupId>com.github.github</groupId>
-            <artifactId>site-maven-plugin</artifactId>
-            <version>0.7</version>
-            <configuration>
-              <merge>true</merge>
-              <message>Maven artifacts for ${project.version}</message>  <!-- git commit message -->
-              <noJekyll>true</noJekyll>                                  <!-- disable webpage processing -->
-              <outputDirectory>${project.build.directory}/mvn-repo</outputDirectory> <!-- matches distribution management repository url above -->
-              <branch>refs/heads/mvn-repo</branch>                       <!-- remote branch name -->
-              <includes>
-                <include>**/*</include>
-              </includes>
-              <repositoryName>Core</repositoryName>      <!-- github repo name -->
-              <repositoryOwner>DataTorrent</repositoryOwner>    <!-- github username  -->
-            </configuration>
-            <executions>
-              <!-- run site-maven-plugin's 'site' target as part of the build's normal 'deploy' phase -->
-              <execution>
-                <goals>
-                  <goal>site</goal>
-                </goals>
-                <phase>deploy</phase>
-              </execution>
-            </executions>
-            <dependencies>
-              <dependency>
-                <groupId>org.eclipse.mylyn.github</groupId>
-                <artifactId>org.eclipse.egit.github.core</artifactId>
-                <version>2.0.3</version>
-              </dependency>
-            </dependencies>
           </plugin>
 
           <plugin>

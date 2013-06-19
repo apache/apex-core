@@ -1,0 +1,59 @@
+/*
+ *  Copyright (c) 2012 Malhar, Inc.
+ *  All Rights Reserved.
+ */
+package com.datatorrent.api;
+
+import com.datatorrent.common.util.Slice;
+
+/**
+ * Serializing and Deserializing the data tuples and controlling the partitioning
+ * <p>
+ * Data flows from one Operator to another Operator through a stream.Typically
+ * StreamCodec is defined on each input stream and is able to
+ * serialize/deserialize and partition the data of type supported by the stream.
+ * <br />
+ * <br />
+ * For a few known types, the system is able to determine the StreamCodec. In
+ * all other cases, it would need user to define the codec on each input stream.
+ * <br />
+ * <br />
+ * In the physical layout, each codec has at least 2 instances - serializer
+ * instance which attaches itself to the stream coming out of upstream operator
+ * and deserializer instance which attaches itself to input stream of downstream
+ * operator.
+ *
+ * @param <T> data type of the tuples on the stream
+ *
+ * @author Chetan Narsude <chetan@malhar-inc.com>
+ */
+public interface StreamCodec<T>
+{
+  /**
+   * Create POJO from the byte array for consumption by the downstream.
+   *
+   * @param fragment
+   * @return plain old java object, the type is intentionally not T since the consumer does not care about it.
+   */
+  Object fromByteArray(Slice fragment);
+
+  /**
+   * Serialize the POJO emitted by the upstream node to byte array so that
+   * it can be transmitted or stored in file
+   *
+   * @param o plain old java object
+   * @return serialized representation of the object
+   */
+  Slice toByteArray(T o);
+
+  /**
+   * Get the partition on the object to be delivered to the downstream
+   * so that it can be sent to appropriate downstream node if the load
+   * balancing per partition is in effect.
+   *
+   * @param o object for which the partition has to be determined
+   * @return partition for the object
+   */
+  int getPartition(T o);
+
+}

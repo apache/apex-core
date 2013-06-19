@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.malhartech</groupId>
+    <groupId>com.datatorrent</groupId>
     <artifactId>malhar-framework</artifactId>
     <version>0.3.2-SNAPSHOT</version>
   </parent>
@@ -14,12 +14,10 @@
   <description>Interface for nodes from 2 different containers to talk to each other.</description>
 
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <netbeans.hint.license>malhar-inc</netbeans.hint.license>
+    <maven.deploy.skip>${internal.deploy.skip}</maven.deploy.skip>
   </properties>
 
   <name>Buffer Server</name>
-  <url>http://www.malhartech.com/</url>
 
   <organization>
     <name>Malhar Inc</name>
@@ -33,22 +31,8 @@
     </license>
   </licenses>
   <inceptionYear>2012</inceptionYear>
-  <!-- pluginRepositories>
-    <pluginRepository>
-      <id>dtrott</id>
-      <url>http://maven.davidtrott.com/repository</url>
-    </pluginRepository>
-  </pluginRepositories -->
 
   <dependencies>
-
-    <!-- dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>2.4.1</version>
-      <scope>compile</scope>
-      <optional>true</optional>
-    </dependency -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
@@ -100,19 +84,6 @@
             </configuration>
           </execution>
         </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
-        <configuration>
-          <encoding>UTF-8</encoding>
-          <source>1.6</source>
-          <target>1.6</target>
-          <debug>true</debug>
-          <optimize>true</optimize>
-          <showDeprecation>true</showDeprecation>
-          <showWarnings>true</showWarnings>
-        </configuration>
       </plugin>
       <plugin>
         <!-- ensure that only methods available in java 1.5 can
