@@ -180,14 +180,6 @@
       <modules>
         <module>dist</module>
       </modules>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.maven.wagon</groupId>
-          <artifactId>wagon-webdav-jackrabbit</artifactId>
-          <version>2.2</version>
-          <scope>runtime</scope>
-        </dependency>
-      </dependencies>
       <properties>
         <maven.compiler.debug>false</maven.compiler.debug>
         <maven.compiler.optimize>true</maven.compiler.optimize>
