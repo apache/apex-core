@@ -14,6 +14,10 @@
 
   <name>Buffer Server</name>
 
+  <properties>
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.testng</groupId>

@@ -30,7 +30,6 @@
     <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
     <hadoop.version>2.0.4-alpha</hadoop.version>
     <github.global.server>github</github.global.server>
-    <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
 
   <dependencies>
@@ -185,9 +184,8 @@
         <maven.compiler.optimize>true</maven.compiler.optimize>
         <!-- always generate on release build -->
         <create-git-version-info-phase>generate-resources</create-git-version-info-phase>
-        <distMgmtStagingId>local-staging</distMgmtStagingId>
-        <distMgmtStagingName>GitHub ${project.artifactId} Repository</distMgmtStagingName>
         <distMgmtStagingUrl>internal.repo::default::file://${project.build.directory}/mvn-repo</distMgmtStagingUrl>
+        <distMgmtSnapshotUrl>dav:http://192.168.1.118:8081/nexus/content/repositories/snapshots/</distMgmtSnapshotUrl>
       </properties>
       <distributionManagement>
         <repository>
@@ -198,7 +196,7 @@
         <snapshotRepository>
           <id>snapshot</id>
           <name>DataTorrent Snapshots</name>
-          <url>dav:http://192.168.1.118:8081/nexus/content/repositories/snapshots/</url>
+          <url>${distMgmtSnapshotUrl}</url>
         </snapshotRepository>
       </distributionManagement>
       <build>
