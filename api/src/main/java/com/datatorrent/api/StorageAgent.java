@@ -23,7 +23,7 @@ public interface StorageAgent
    *
    * @param operatorId
    * @param windowId
-   * @return
+   * @return OutputStream
    * @throws IOException
    */
   public OutputStream getSaveStream(int operatorId, long windowId) throws IOException;

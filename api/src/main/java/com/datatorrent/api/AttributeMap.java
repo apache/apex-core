@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Parameterized and scoped context attribute map that supports serialization.
- * Derived from {@link io.netty.util.AttributeMap}
+ * Derived from io.netty.util.AttributeMap
  *
  */
 public interface AttributeMap
@@ -46,7 +46,7 @@ public interface AttributeMap
   /**
    * Return the value map
    *
-   * @return
+   * @return the value map
    */
   Map<String, Object> valueMap();
 

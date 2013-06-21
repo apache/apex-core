@@ -24,7 +24,7 @@ public interface DAG extends DAGContext, Serializable
   }
 
   /**
-   * Representation of streams in the logical layer. Instances are created through {@link DAG.addStream}.
+   * Representation of streams in the logical layer. Instances are created through {@link DAG#addStream}.
    */
   public interface StreamMeta extends Serializable
   {
