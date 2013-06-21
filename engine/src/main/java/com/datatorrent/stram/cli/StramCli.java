@@ -116,7 +116,7 @@ public class StramCli
     globalCommands.put("launch", new CommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app"));
     globalCommands.put("launch-local", new CommandSpec(new LaunchCommand(), new String[] {"jar-file"}, new String[] {"class-name/property-file"}, "Launch an app in local mode"));
     globalCommands.put("shutdown-app", new CommandSpec(new ShutdownAppCommand(), new String[] {"app-id"}, null, "Shutdown an app"));
-    globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(), null, new String[] {"app-id"}, "List applications"));
+    globalCommands.put("list-apps", new CommandSpec(new ListAppsCommand(), null, new String[] {"pattern"}, "List applications"));
     globalCommands.put("kill-app", new CommandSpec(new KillAppCommand(), new String[] {"app-id"}, null, "Kill an app"));
     globalCommands.put("show-logical-plan", new CommandSpec(new ShowLogicalPlanCommand(), new String[] {"jar-file", "class-name"}, null, "Show logical plan of an app class"));
     globalCommands.put("alias", new CommandSpec(new AliasCommand(), new String[] {"alias-name", "command"}, null, "Create a command alias"));
@@ -806,39 +806,37 @@ public class StramCli
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         for (ApplicationReport ar : appList) {
-          boolean show;
-
           /*
            * This is inefficient, but what the heck, if this can be passed through the command line, can anyone notice slowness.
            */
-          if (args.length == 1) {
-            show = true;
+          JSONObject jsonObj = new JSONObject();
+          jsonObj.put("startTime", sdf.format(new java.util.Date(ar.getStartTime())));
+          jsonObj.put("id", ar.getApplicationId().getId());
+          jsonObj.put("name", ar.getName());
+          jsonObj.put("state", ar.getYarnApplicationState().name());
+          jsonObj.put("trackingUrl", ar.getTrackingUrl());
+          jsonObj.put("finalStatus", ar.getFinalApplicationStatus());
+
+          totalCnt++;
+          if (ar.getYarnApplicationState() == YarnApplicationState.RUNNING) {
+            runningCnt++;
           }
-          else {
-            show = false;
-            String appid = String.valueOf(ar.getApplicationId().getId());
-            for (int i = args.length; i-- > 1;) {
-              if (appid.equals(args[i])) {
-                show = true;
-                break;
+
+          if (args.length > 1) {
+            @SuppressWarnings("unchecked")
+            Iterator<String> iterator = jsonObj.keys();
+
+            while (iterator.hasNext()) {
+              Object value = jsonObj.get(iterator.next());
+              if (value.toString().matches("(?i).*" + args[1] + ".*")) {
+                jsonArray.put(jsonObj);
               }
             }
           }
-
-          if (show) {
-            JSONObject jsonObj = new JSONObject();
-            jsonObj.put("startTime", sdf.format(new java.util.Date(ar.getStartTime())));
-            jsonObj.put("id", ar.getApplicationId().getId());
-            jsonObj.put("name", ar.getName());
-            jsonObj.put("state", ar.getYarnApplicationState().name());
-            jsonObj.put("trackingUrl", ar.getTrackingUrl());
-            jsonObj.put("finalStatus", ar.getFinalApplicationStatus());
+          else {
             jsonArray.put(jsonObj);
-            totalCnt++;
-            if (ar.getYarnApplicationState() == YarnApplicationState.RUNNING) {
-              runningCnt++;
-            }
           }
+
         }
         singleKeyObj.put("apps", jsonArray);
         System.out.println(singleKeyObj.toString(2));
@@ -988,7 +986,7 @@ public class StramCli
           @SuppressWarnings("unchecked")
           Iterator<String> keys = oper.keys();
           while (keys.hasNext()) {
-            if (oper.get(keys.next()).toString().matches(".*" + args[1] + ".*")) {
+            if (oper.get(keys.next()).toString().matches("(?i).*" + args[1] + ".*")) {
               matches.put(oper);
               break;
             }
