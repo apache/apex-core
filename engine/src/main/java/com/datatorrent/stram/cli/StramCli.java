@@ -64,13 +64,31 @@ public class StramCli
   private final Map<String, String> aliases = new HashMap<String, String>();
   private final Map<String, List<String>> macros = new HashMap<String, List<String>>();
   private boolean changingLogicalPlan = false;
-  List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
-  FileHistory topLevelHistory;
-  FileHistory changingLogicalPlanHistory;
+  private List<LogicalPlanRequest> logicalPlanRequestQueue = new ArrayList<LogicalPlanRequest>();
+  private FileHistory topLevelHistory;
+  private FileHistory changingLogicalPlanHistory;
+  private boolean licensedVersion = true;
 
   private interface Command
   {
     void execute(String[] args, ConsoleReader reader) throws Exception;
+
+  }
+
+  private abstract class LicensedCommand implements Command
+  {
+    @Override
+    public void execute(String[] args, ConsoleReader reader) throws Exception
+    {
+      if (licensedVersion) {
+        executeLicensed(args, reader);
+      }
+      else {
+        System.out.println("This command is only valid in the licensed version of DataTorrent. Visit http://datatorrent.com for information of obtaining a licensed version.");
+      }
+    }
+
+    public abstract void executeLicensed(String[] args, ConsoleReader reader) throws Exception;
 
   }
 
@@ -195,6 +213,17 @@ public class StramCli
     StramUserLogin.attemptAuthentication(conf);
     YarnClientHelper yarnClient = new YarnClientHelper(conf);
     rmClient = new ClientRMHelper(yarnClient);
+
+    try {
+      com.datatorrent.stram.StramAppMaster.class.getClass();
+    }
+    catch (NoClassDefFoundError ex) {
+      System.out.println();
+      System.out.println("Warning: This version of DataTorrent is free and only valid in local mode.");
+      System.out.println("For information of how to obtain a licensed version to be run in a cluster, please visit http://datatorrent.com");
+      System.out.println();
+      licensedVersion = false;
+    }
   }
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
@@ -630,6 +659,13 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       boolean localMode = "launch-local".equals(args[0]);
+
+      if (!localMode && !licensedVersion) {
+        System.out.println("This free version only supports launching in local mode. Use the command 'launch-local' to launch in local mode.");
+        System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
+        return;
+      }
+
       File jf = new File(args[1]);
       StramAppLauncher submitApp = new StramAppLauncher(jf);
       submitApp.loadDependencies();
@@ -1647,6 +1683,7 @@ public class StramCli
     }
 
   }
+
   public static void main(String[] args) throws Exception
   {
     StramCli shell = new StramCli();
