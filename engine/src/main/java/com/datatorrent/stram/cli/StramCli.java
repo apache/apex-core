@@ -426,11 +426,11 @@ public class StramCli
     }
     catch (CliException e) {
       System.err.println(e.getMessage());
-      LOG.info("Error processing line: " + line, e);
+      LOG.debug("Error processing line: " + line, e);
     }
     catch (Exception e) {
       System.err.println("Unexpected error: " + e);
-      e.printStackTrace();
+      LOG.error("Error processing line: {}", line, e);
     }
   }
 
@@ -554,7 +554,7 @@ public class StramCli
         {
           ClientResponse response = webResource.accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
           if (!MediaType.APPLICATION_JSON_TYPE.equals(response.getType())) {
-            //throw new Exception("Unexpected response type " + response.getType());
+            throw new CliException("Unexpected response type " + response.getType());
           }
           return response;
         }
