@@ -103,13 +103,15 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
   private final Map<String, StramChildAgent> containers = new ConcurrentHashMap<String, StramChildAgent>();
   private final PhysicalPlan plan;
   private final List<Pair<PTOperator, Long>> purgeCheckpoints = new ArrayList<Pair<PTOperator, Long>>();
+
+  // window id to node id to end window stats
   private final ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>> endWindowStatsOperatorMap = new ConcurrentSkipListMap<Long, Map<Integer, EndWindowStats>>();
   private long committedWindowId;
 
   private static class EndWindowStats
   {
     long emitTimestamp = -1;
-    HashMap<String, Long> dequeueTimestamps = new HashMap<String, Long>();
+    HashMap<String, Long> dequeueTimestamps = new HashMap<String, Long>(); // input port name to end window dequeue time
   }
 
   @Override
@@ -239,7 +241,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
             break;
           }
           else {
-            // they are equal.  start latency calculation
+            // collected data from all operators for this window id.  start latency calculation
             List<OperatorMeta> rootOperatorMetas = plan.getRootOperators();
             Set<PTOperator> endWindowStatsVisited = new HashSet<PTOperator>();
             for (OperatorMeta root: rootOperatorMetas) {
@@ -581,8 +583,8 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
 
           /* report all the other stuff */
 
-          endWindowStatsOperatorMap.putIfAbsent(stats.windowId, new ConcurrentHashMap<Integer, EndWindowStats>());
-          EndWindowStats endWindowStats = new EndWindowStats();
+          // calculate the stats related to end window
+          EndWindowStats endWindowStats = new EndWindowStats(); // end window stats for a particular window id for a particular node
           Collection<PortStats> ports = stats.inputPorts;
           if (ports != null) {
             for (PortStats s: ports) {
@@ -634,6 +636,7 @@ public class StreamingContainerManager extends BaseContext implements PlanContex
           }
 
           // for output operator, just take the maximum dequeue time for emit timestamp.
+          // (we don't know the latency for output operators because they don't emit tuples)
           if (endWindowStats.emitTimestamp < 0) {
             endWindowStats.emitTimestamp = maxDequeueTimestamp;
           }
