@@ -161,6 +161,15 @@ public class StramCli
 
   }
 
+  private static String expandFileName(String fileName)
+  {
+    // TODO: need to work with other users
+    if (fileName.startsWith("~" + File.separator)) {
+      fileName = System.getProperty("user.home") + fileName.substring(1);
+    }
+    return fileName;
+  }
+
   protected ApplicationReport getApplication(int appSeq)
   {
     List<ApplicationReport> appList = getApplicationList();
@@ -228,6 +237,7 @@ public class StramCli
 
   private void processSourceFile(String fileName, ConsoleReader reader) throws FileNotFoundException, IOException
   {
+    fileName = expandFileName(fileName);
     BufferedReader br = new BufferedReader(new FileReader(fileName));
     String line;
     while ((line = br.readLine()) != null) {
@@ -665,8 +675,8 @@ public class StramCli
         System.out.println("Visit http://datatorrent.com for information on obtaining a licensed version of this software.");
         return;
       }
-
-      File jf = new File(args[1]);
+      String fileName = expandFileName(args[1]);
+      File jf = new File(fileName);
       StramAppLauncher submitApp = new StramAppLauncher(jf);
       submitApp.loadDependencies();
       AppConfig appConfig = null;
@@ -1342,7 +1352,7 @@ public class StramCli
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
       if (args.length > 2) {
-        String jarfile = args[1];
+        String jarfile = expandFileName(args[1]);
         String appName = args[2];
         File jf = new File(jarfile);
         StramAppLauncher submitApp = new StramAppLauncher(jf);
@@ -1388,7 +1398,7 @@ public class StramCli
     @Override
     public void execute(String[] args, ConsoleReader reader) throws Exception
     {
-      String outfilename = args[1];
+      String outfilename = expandFileName(args[1]);
 
       if (args.length > 3) {
         String jarfile = args[2];
