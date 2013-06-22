@@ -40,18 +40,10 @@ public interface Operator extends Component<OperatorContext>
 
   /**
    * A operator provides ports as a means to consume and produce data tuples.
-   * Concrete ports implement derived interfaces. The common characteristic is
-   * that ports provide a reference to the operator instance they belong to.
+   * Concrete ports implement derived interfaces. 
    */
   public interface Port extends Component<PortContext>
   {
-    /**
-     * Reference to the operator to which this port belongs.
-     *
-     * @return Operator
-     */
-    public Operator getOperator();
-
   }
 
   /**

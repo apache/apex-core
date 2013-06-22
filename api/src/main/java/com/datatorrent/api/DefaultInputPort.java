@@ -24,7 +24,6 @@ public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
     this.operator = operator;
   }
 
-  @Override
   final public Operator getOperator()
   {
     return operator;

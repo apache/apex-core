@@ -36,7 +36,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datatorrent.api.*;
 import com.datatorrent.engine.Node;
 import com.datatorrent.api.AttributeMap;
 import com.datatorrent.api.BaseOperator;
@@ -140,14 +139,14 @@ public class LogicalPlan implements Serializable, DAG
   public final class InputPortMeta implements DAG.InputPortMeta, Serializable
   {
     private static final long serialVersionUID = 1L;
-    private OperatorMeta operatorWrapper;
+    private OperatorMeta operatorMeta;
     private String fieldName;
     private InputPortFieldAnnotation portAnnotation;
     private final AttributeMap attributes = new DefaultAttributeMap(PortContext.class);
 
     public OperatorMeta getOperatorWrapper()
     {
-      return operatorWrapper;
+      return operatorMeta;
     }
 
     public String getPortName()
@@ -156,7 +155,7 @@ public class LogicalPlan implements Serializable, DAG
     }
 
     public InputPort<?> getPortObject() {
-      for (Entry<InputPort<?>, InputPortMeta> e : operatorWrapper.getPortMapping().inPortMap.entrySet()) {
+      for (Entry<InputPort<?>, InputPortMeta> e : operatorMeta.getPortMapping().inPortMap.entrySet()) {
         if (e.getValue() == this) {
           return e.getKey();
         }
@@ -168,7 +167,7 @@ public class LogicalPlan implements Serializable, DAG
     public String toString()
     {
       return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE).
-              append("operator", this.operatorWrapper).
+              append("operator", this.operatorMeta).
               append("portAnnotation", this.portAnnotation).
               append("field", this.fieldName).
               toString();
@@ -257,7 +256,7 @@ public class LogicalPlan implements Serializable, DAG
     private boolean nodeLocal;
     private final List<InputPortMeta> sinks = new ArrayList<InputPortMeta>();
     private OutputPortMeta source;
-    private Class<? extends StreamCodec<?>> serDeClass;
+    private Class<? extends StreamCodec<?>> codecClass;
     private final String id;
 
     private StreamMeta(String id)
@@ -304,7 +303,7 @@ public class LogicalPlan implements Serializable, DAG
 
     public Class<? extends StreamCodec<?>> getCodecClass()
     {
-      return serDeClass;
+      return codecClass;
     }
 
     public OutputPortMeta getSource()
@@ -315,17 +314,14 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public StreamMeta setSource(Operator.OutputPort<?> port)
     {
-      OperatorMeta op = getMeta(port.getOperator());
-      OutputPortMeta portMeta = op.getMeta(port);
-      if (portMeta == null) {
-        throw new IllegalArgumentException("Invalid port reference " + port);
-      }
-      this.source = portMeta;
-      if (op.outputStreams.containsKey(portMeta)) {
-        String msg = String.format("Operator %s already connected to %s", op.name, op.outputStreams.get(portMeta).id);
+      OutputPortMeta portMeta = assertGetPortMeta(port);
+      OperatorMeta om = portMeta.getOperatorWrapper();
+      if (om.outputStreams.containsKey(portMeta)) {
+        String msg = String.format("Operator %s already connected to %s", om.name, om.outputStreams.get(portMeta).id);
         throw new IllegalArgumentException(msg);
       }
-      op.outputStreams.put(portMeta, this);
+      this.source = portMeta;
+      om.outputStreams.put(portMeta, this);
       return this;
     }
 
@@ -337,29 +333,26 @@ public class LogicalPlan implements Serializable, DAG
     @Override
     public StreamMeta addSink(Operator.InputPort<?> port)
     {
-      OperatorMeta op = getMeta(port.getOperator());
-      InputPortMeta portMeta = op.getMeta(port);
-      if (portMeta == null) {
-        throw new IllegalArgumentException("Invalid port reference " + port);
-      }
+      InputPortMeta portMeta = assertGetPortMeta(port);
+      OperatorMeta om = portMeta.getOperatorWrapper();
       String portName = portMeta.getPortName();
-      if (op.inputStreams.containsKey(portMeta)) {
-        throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, op.inputStreams.get(portMeta)));
+      if (om.inputStreams.containsKey(portMeta)) {
+        throw new IllegalArgumentException(String.format("Port %s already connected to stream %s", portName, om.inputStreams.get(portMeta)));
       }
 
       // determine codec for the stream based on what was set on the ports
       Class<? extends StreamCodec<?>> codecClass = port.getStreamCodec();
       if (codecClass != null) {
-        if (this.serDeClass != null && !this.serDeClass.equals(codecClass)) {
-          String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", codecClass, portMeta, this.serDeClass);
+        if (this.codecClass != null && !this.codecClass.equals(codecClass)) {
+          String msg = String.format("Conflicting codec classes set on input port %s (%s) when %s was specified earlier.", codecClass, portMeta, this.codecClass);
           throw new IllegalArgumentException(msg);
         }
-        this.serDeClass = codecClass;
+        this.codecClass = codecClass;
       }
 
       sinks.add(portMeta);
-      op.inputStreams.put(portMeta, this);
-      rootOperators.remove(portMeta.operatorWrapper);
+      om.inputStreams.put(portMeta, this);
+      rootOperators.remove(portMeta.operatorMeta);
 
       return this;
     }
@@ -444,7 +437,7 @@ public class LogicalPlan implements Serializable, DAG
         if (!OperatorMeta.this.inputStreams.isEmpty()) {
           for (Map.Entry<LogicalPlan.InputPortMeta, LogicalPlan.StreamMeta> e : OperatorMeta.this.inputStreams.entrySet()) {
             LogicalPlan.InputPortMeta pm = e.getKey();
-            if (pm.operatorWrapper == OperatorMeta.this && pm.fieldName.equals(field.getName())) {
+            if (pm.operatorMeta == OperatorMeta.this && pm.fieldName.equals(field.getName())) {
               //LOG.debug("Found existing port meta for: " + field);
               inPortMap.put(portObject, pm);
               checkDuplicateName(pm.getPortName(), pm);
@@ -453,7 +446,7 @@ public class LogicalPlan implements Serializable, DAG
           }
         }
         InputPortMeta metaPort = new InputPortMeta();
-        metaPort.operatorWrapper = OperatorMeta.this;
+        metaPort.operatorMeta = OperatorMeta.this;
         metaPort.fieldName = field.getName();
         metaPort.portAnnotation = a;
         inPortMap.put(portObject, metaPort);
@@ -656,16 +649,38 @@ public class LogicalPlan implements Serializable, DAG
     this.getMeta(operator).attributes.attr(key).set(value);
   }
 
+  private OutputPortMeta assertGetPortMeta(Operator.OutputPort<?> port) 
+  {
+    for (OperatorMeta o: getAllOperators()) {
+      OutputPortMeta opm = o.getPortMapping().outPortMap.get(port);
+      if (opm != null) {
+        return opm; 
+      }
+    }
+    throw new IllegalArgumentException("Port is not associated to any operator in the DAG: " + port);
+  }
+  
+  private InputPortMeta assertGetPortMeta(Operator.InputPort<?> port) 
+  {
+    for (OperatorMeta o: getAllOperators()) {
+      InputPortMeta opm = o.getPortMapping().inPortMap.get(port);
+      if (opm != null) {
+        return opm; 
+      }
+    }
+    throw new IllegalArgumentException("Port is not associated to any operator in the DAG: " + port);
+  }
+  
   @Override
   public <T> void setOutputPortAttribute(Operator.OutputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
-    getMeta(port.getOperator()).getPortMapping().outPortMap.get(port).attributes.attr(key).set(value);
+    assertGetPortMeta(port).attributes.attr(key).set(value);
   }
 
   @Override
   public <T> void setInputPortAttribute(Operator.InputPort<?> port, PortContext.AttributeKey<T> key, T value)
   {
-    getMeta(port.getOperator()).getPortMapping().inPortMap.get(port).attributes.attr(key).set(value);
+    assertGetPortMeta(port).attributes.attr(key).set(value);
   }
 
   public List<OperatorMeta> getRootOperators()
@@ -736,8 +751,8 @@ public class LogicalPlan implements Serializable, DAG
       }
     }
     for (StreamMeta n: this.streams.values()) {
-      if (n.serDeClass != null) {
-        classNames.add(n.serDeClass.getName());
+      if (n.codecClass != null) {
+        classNames.add(n.codecClass.getName());
       }
     }
     return classNames;

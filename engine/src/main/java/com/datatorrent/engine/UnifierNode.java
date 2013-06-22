@@ -43,12 +43,6 @@ public class UnifierNode extends GenericNode
     }
 
     @Override
-    public Operator getOperator()
-    {
-      return unifier;
-    }
-
-    @Override
     public final void put(Object tuple)
     {
       count++;

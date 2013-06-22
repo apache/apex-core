@@ -4,7 +4,6 @@
  */
 package com.datatorrent.engine;
 
-import com.datatorrent.api.*;
 import com.datatorrent.debug.MuxSink;
 import com.datatorrent.stram.OperatorDeployInfo;
 import com.datatorrent.stram.plan.logical.Operators;

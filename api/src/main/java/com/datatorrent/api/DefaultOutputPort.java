@@ -25,7 +25,6 @@ public class DefaultOutputPort<T> implements Operator.OutputPort<T>
     this.sink = Sink.BLACKHOLE;
   }
 
-  @Override
   final public Operator getOperator()
   {
     return operator;

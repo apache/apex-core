@@ -640,11 +640,6 @@ public class DAGBuilderTest {
       private static final long serialVersionUID = 1L;
 
       @Override
-      public Operator getOperator() {
-        return JdkSerializableOperator.this;
-      }
-
-      @Override
       public Sink<T> getSink() {
         return this;
       }
@@ -699,8 +694,6 @@ public class DAGBuilderTest {
     LogicalPlan clonedDag = LogicalPlan.read(new ByteArrayInputStream(outStream.toByteArray()));
     JdkSerializableOperator o1Clone = (JdkSerializableOperator)clonedDag.getOperatorMeta("o1").getOperator();
     Assert.assertNotNull("port object null", o1Clone.inport1);
-    Assert.assertEquals("", o1Clone, o1Clone.inport1.getOperator());
-
   }
 
 }
