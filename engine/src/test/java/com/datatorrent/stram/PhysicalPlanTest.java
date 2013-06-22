@@ -63,7 +63,7 @@ public class PhysicalPlanTest {
     final static Integer[] PARTITION_KEYS = {0, 1, 2};
     final static String INPORT_WITH_CODEC = "inportWithCodec";
     @InputPortFieldAnnotation(name = INPORT_WITH_CODEC, optional = true)
-    final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>(this) {
+    final public transient InputPort<Object> inportWithCodec = new DefaultInputPort<Object>() {
       @Override
       public Class<? extends StreamCodec<Object>> getStreamCodec() {
         return PartitioningTestStreamCodec.class;

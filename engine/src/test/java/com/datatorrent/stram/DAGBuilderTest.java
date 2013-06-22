@@ -257,15 +257,15 @@ public class DAGBuilderTest {
 
   public static class ValidationOperator extends BaseOperator {
     @OutputPortFieldAnnotation(name="goodOutputPort")
-    public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>(this);
+    public final transient DefaultOutputPort<Object> goodOutputPort = new DefaultOutputPort<Object>();
 
     @OutputPortFieldAnnotation(name="badOutputPort")
-    public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>(this);
+    public final transient DefaultOutputPort<Object> badOutputPort = new DefaultOutputPort<Object>();
   }
 
   public static class CounterOperator extends BaseOperator {
     @InputPortFieldAnnotation(name="countInputPort")
-    final public transient InputPort<Object> countInputPort = new DefaultInputPort<Object>(this) {
+    final public transient InputPort<Object> countInputPort = new DefaultInputPort<Object>() {
       @Override
       final public void process(Object payload) {
       }
@@ -496,23 +496,23 @@ public class DAGBuilderTest {
 
   private class TestAnnotationsOperator extends BaseOperator {
     @OutputPortFieldAnnotation(name="oport1")
-    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
     @OutputPortFieldAnnotation(name="oport2", optional=false)
-    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>(this);
+    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
   }
 
   private class TestAnnotationsOperator2 extends BaseOperator {
     // multiple ports w/o annotation, one of them must be connected
-    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
   }
 
   private class TestAnnotationsOperator3 extends BaseOperator {
     // multiple ports w/o annotation, one of them must be connected
     @OutputPortFieldAnnotation(name="oport1", optional=true)
-    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
     @OutputPortFieldAnnotation(name="oport2", optional=true)
-    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>(this);
+    final public transient DefaultOutputPort<Object> outport2 = new DefaultOutputPort<Object>();
   }
 
   @Test
@@ -614,7 +614,7 @@ public class DAGBuilderTest {
 
   public class DuplicatePortOperator extends GenericTestOperator {
     @OutputPortFieldAnnotation(name=OPORT1)
-    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+    final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
   }
 
   @Test

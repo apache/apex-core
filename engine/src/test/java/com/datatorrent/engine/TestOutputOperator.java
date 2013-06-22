@@ -30,7 +30,7 @@ public class TestOutputOperator extends BaseOperator
   private transient FileSystem fs;
   private transient Path filepath;
   @InputPortFieldAnnotation(name = "inputPort")
-  final public transient InputPort<Object> inport = new DefaultInputPort<Object>(this)
+  final public transient InputPort<Object> inport = new DefaultInputPort<Object>()
   {
     @Override
     final public void process(Object payload)

@@ -34,8 +34,8 @@ public class InputOperatorTest
 
   public static class EvenOddIntegerGeneratorInputOperator implements InputOperator, ActivationListener<OperatorContext>
   {
-    public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>(this);
-    public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>(this);
+    public final transient DefaultOutputPort<Integer> even = new DefaultOutputPort<Integer>();
+    public final transient DefaultOutputPort<Integer> odd = new DefaultOutputPort<Integer>();
     private final transient CircularBuffer<Integer> evenBuffer = new CircularBuffer<Integer>(1024);
     private final transient CircularBuffer<Integer> oddBuffer = new CircularBuffer<Integer>(1024);
     private volatile Thread dataGeneratorThread;
@@ -143,7 +143,7 @@ public class InputOperatorTest
 
     public CollectorInputPort(String id, Operator module)
     {
-      super(module);
+      super();
       this.id = id;
     }
 

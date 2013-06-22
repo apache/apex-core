@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RecoverableInputOperator implements InputOperator, CheckpointListener
 {
-  public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>(this);
+  public final transient DefaultOutputPort<Long> output = new DefaultOutputPort<Long>();
   long checkpointedWindowId;
   boolean firstRun = true;
   transient boolean first;

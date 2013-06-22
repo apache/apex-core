@@ -100,18 +100,18 @@ public class ProtoModuleTest {
 
   private static class StringOutputPort extends DefaultOutputPort<String> {
     public StringOutputPort(Operator operator) {
-      super(operator);
+      super();
     }
   }
 
   static class ParameterizedOperator<T0, T1 extends Map<String, ? extends T0>, T2 extends Number> extends BaseOperator implements GenericInterface<T1> {
-    final InputPort<T1> inputT1 = new DefaultInputPort<T1>(this) {
+    final InputPort<T1> inputT1 = new DefaultInputPort<T1>() {
       @Override
       public void process(T1 tuple) {
       }
     };
-    final OutputPort<T2> outportT2 = new DefaultOutputPort<T2>(this);
-    final OutputPort<Number> outportNumberParam = new DefaultOutputPort<Number>(this);
+    final OutputPort<T2> outportT2 = new DefaultOutputPort<T2>();
+    final OutputPort<Number> outportNumberParam = new DefaultOutputPort<Number>();
     final StringOutputPort outportString = new StringOutputPort(this);
   }
 

@@ -169,7 +169,7 @@ public class InlineStreamTest
    */
   public static class PassThroughNode<T> extends BaseOperator
   {
-    public final DefaultInputPort<T> input = new DefaultInputPort<T>(this)
+    public final DefaultInputPort<T> input = new DefaultInputPort<T>()
     {
       @Override
       public void process(T tuple)
@@ -178,7 +178,7 @@ public class InlineStreamTest
       }
 
     };
-    public final DefaultOutputPort<T> output = new DefaultOutputPort<T>(this);
+    public final DefaultOutputPort<T> output = new DefaultOutputPort<T>();
     private boolean logMessages = false;
 
     public boolean isLogMessages()

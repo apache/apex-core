@@ -16,18 +16,11 @@ import com.datatorrent.api.Operator.Unifier;
  */
 public class DefaultOutputPort<T> implements Operator.OutputPort<T>
 {
-  private final Operator operator;
   private transient Sink<Object> sink;
 
-  public DefaultOutputPort(Operator operator)
+  public DefaultOutputPort()
   {
-    this.operator = operator;
     this.sink = Sink.BLACKHOLE;
-  }
-
-  final public Operator getOperator()
-  {
-    return operator;
   }
 
   /**

@@ -47,7 +47,7 @@ public class ProtoArithmeticQuotient extends BaseOperator
   private static Logger LOG = LoggerFactory.getLogger(ProtoArithmeticQuotient.class);
 
   @InputPortFieldAnnotation(name="numerator")
-  final public transient InputPort<HashMap<String, Number>> inportNumerator = new DefaultInputPort<HashMap<String, Number>>(this) {
+  final public transient InputPort<HashMap<String, Number>> inportNumerator = new DefaultInputPort<HashMap<String, Number>>() {
     @Override
     final public void process(HashMap<String, Number> payload) {
       processInternal(numerators, payload);
@@ -55,7 +55,7 @@ public class ProtoArithmeticQuotient extends BaseOperator
   };
 
   @InputPortFieldAnnotation(name="denominator")
-  final public transient InputPort<HashMap<String, Number>> inportDenominator = new DefaultInputPort<HashMap<String, Number>>(this) {
+  final public transient InputPort<HashMap<String, Number>> inportDenominator = new DefaultInputPort<HashMap<String, Number>>() {
     @Override
     final public void process(HashMap<String, Number> payload) {
       processInternal(denominators, payload);
@@ -64,7 +64,7 @@ public class ProtoArithmeticQuotient extends BaseOperator
 
   // Note that when not extending DefaultOutputPort we won't have the type info at runtime
   @OutputPortFieldAnnotation(name="quotient")
-  final transient DefaultOutputPort<HashMap<String, Number> > outportQuotient = new DefaultOutputPort<HashMap<String, Number>>(this) {};
+  final transient DefaultOutputPort<HashMap<String, Number> > outportQuotient = new DefaultOutputPort<HashMap<String, Number>>() {};
 
   private int mult_by = 1;
   private final HashMap<String, Number> numerators = new HashMap<String, Number>();

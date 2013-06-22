@@ -16,7 +16,7 @@ import com.datatorrent.api.Operator.Unifier;
 public class DefaultUnifier extends BaseOperator implements Unifier<Object>
 {
   @OutputPortFieldAnnotation(name = "outputPort")
-  final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>(this);
+  final public transient DefaultOutputPort<Object> outputPort = new DefaultOutputPort<Object>();
 
   @Override
   public void process(Object tuple)

@@ -68,7 +68,7 @@ public class PartitioningTest
       this.operatorId = context.getId();
     }
 
-    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>(this)
+    public final transient DefaultInputPort<Object> input = new DefaultInputPort<Object>()
     {
       @Override
       public void process(Object tuple)
@@ -93,12 +93,12 @@ public class PartitioningTest
 
     };
     @OutputPortFieldAnnotation(name = "output", optional = true)
-    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>(this);
+    public final transient DefaultOutputPort<Object> output = new DefaultOutputPort<Object>();
   }
 
   public static class TestInputOperator<T> extends BaseOperator implements InputOperator
   {
-    public final transient DefaultOutputPort<T> output = new DefaultOutputPort<T>(this);
+    public final transient DefaultOutputPort<T> output = new DefaultOutputPort<T>();
     transient boolean first;
     transient long windowId;
     boolean blockEndStream = false;

@@ -239,7 +239,7 @@ public class WindowGeneratorTest
 
   static class RandomNumberGenerator implements InputOperator
   {
-    public final transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>(this);
+    public final transient DefaultOutputPort<Integer> output = new DefaultOutputPort<Integer>();
 
     @Override
     public void emitTuples()
@@ -279,7 +279,7 @@ public class WindowGeneratorTest
 
   static class MyLogger extends BaseOperator
   {
-    public final transient DefaultInputPort<Integer> input = new DefaultInputPort<Integer>(this)
+    public final transient DefaultInputPort<Integer> input = new DefaultInputPort<Integer>()
     {
       @Override
       public void process(Integer tuple)

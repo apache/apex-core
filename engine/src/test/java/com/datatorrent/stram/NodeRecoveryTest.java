@@ -49,7 +49,7 @@ public class NodeRecoveryTest
     private boolean simulateFailure;
     private long checkPointWindowId;
 
-    public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>(this)
+    public final transient DefaultInputPort<Long> input = new DefaultInputPort<Long>()
     {
       @Override
       public void process(Long tuple)

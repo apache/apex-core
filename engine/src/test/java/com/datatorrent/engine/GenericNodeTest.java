@@ -35,7 +35,7 @@ public class GenericNodeTest
 
   class GenericOperator implements Operator
   {
-    DefaultInputPort<Object> ip1 = new DefaultInputPort<Object>(this)
+    DefaultInputPort<Object> ip1 = new DefaultInputPort<Object>()
     {
       @Override
       public void process(Object tuple)
@@ -44,7 +44,7 @@ public class GenericNodeTest
       }
 
     };
-    DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>(this)
+    DefaultInputPort<Object> ip2 = new DefaultInputPort<Object>()
     {
       @Override
       public void process(Object tuple)
@@ -53,7 +53,7 @@ public class GenericNodeTest
       }
 
     };
-    DefaultOutputPort<Object> op = new DefaultOutputPort<Object>(this);
+    DefaultOutputPort<Object> op = new DefaultOutputPort<Object>();
 
     @Override
     public void beginWindow(long windowId)

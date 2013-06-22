@@ -24,7 +24,7 @@ public class TestGeneratorInputOperator extends BaseOperator implements InputOpe
   private final int spinMillis = 50;
   private final ConcurrentLinkedQueue<String> externallyAddedTuples = new ConcurrentLinkedQueue<String>();
   @OutputPortFieldAnnotation(name = "outputPort", optional=false)
-  public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>(this);
+  public final transient DefaultOutputPort<Object> outport = new DefaultOutputPort<Object>();
 
   public int getMaxTuples()
   {

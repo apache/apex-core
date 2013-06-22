@@ -25,7 +25,7 @@ public class GenericTestOperator extends BaseOperator {
   public static final String OPORT1 = "output1";
 
   @InputPortFieldAnnotation(name=IPORT1, optional=true)
-  final public transient InputPort<Object> inport1 = new DefaultInputPort<Object>(this) {
+  final public transient InputPort<Object> inport1 = new DefaultInputPort<Object>() {
     @Override
     final public void process(Object payload) {
       processInternal(payload);
@@ -37,7 +37,7 @@ public class GenericTestOperator extends BaseOperator {
   };
 
   @InputPortFieldAnnotation(name=IPORT2, optional=true)
-  final public transient InputPort<Object> inport2 = new DefaultInputPort<Object>(this) {
+  final public transient InputPort<Object> inport2 = new DefaultInputPort<Object>() {
     @Override
     final public void process(Object payload) {
       processInternal(payload);
@@ -49,7 +49,7 @@ public class GenericTestOperator extends BaseOperator {
   };
 
   @OutputPortFieldAnnotation(name=OPORT1, optional=true)
-  final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>(this);
+  final public transient DefaultOutputPort<Object> outport1 = new DefaultOutputPort<Object>();
 
   private String emitFormat;
 

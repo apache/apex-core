@@ -15,18 +15,11 @@ import com.datatorrent.api.Operator.InputPort;
  */
 public abstract class DefaultInputPort<T> implements InputPort<T>, Sink<T>
 {
-  final private Operator operator;
   private int count;
   protected boolean connected = false;
 
-  public DefaultInputPort(Operator operator)
+  public DefaultInputPort()
   {
-    this.operator = operator;
-  }
-
-  final public Operator getOperator()
-  {
-    return operator;
   }
 
   @Override
