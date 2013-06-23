@@ -1,25 +1,23 @@
 package com.datatorrent.stram.util;
 
 import java.io.IOException;
+import java.net.JarURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.Enumeration;
 import java.util.Properties;
 import java.util.jar.Attributes;
-import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * This class finds the build version info from the jar file manifest.
+ * This class finds the build version info from the jar file.
  */
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
 public class VersionInfo {
-  private static final Logger LOG = LoggerFactory.getLogger(VersionInfo.class);
 
   private static String version = "Unknown";
   private static String user = "Unknown";
@@ -28,19 +26,25 @@ public class VersionInfo {
 
   static {
     try {
-      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources(JarFile.MANIFEST_NAME);
-      while (resources.hasMoreElements()) {
-        Manifest manifest = new Manifest(resources.nextElement().openStream());
-        Attributes mainAttribs = manifest.getMainAttributes();
-        String lversion = mainAttribs.getValue("malhar-buildversion");
-        if(lversion != null) {
-          VersionInfo.version = lversion;
-          VersionInfo.date = mainAttribs.getValue("malhar-buildtime");
-          VersionInfo.user = mainAttribs.getValue("Built-By");
-          break;
+      URL res = VersionInfo.class.getResource(VersionInfo.class.getSimpleName() + ".class");
+      URLConnection conn = (URLConnection) res.openConnection();
+      if (conn instanceof JarURLConnection) {
+        Manifest mf = ((JarURLConnection) conn).getManifest();
+        Attributes mainAttribs = mf.getMainAttributes();
+        String builtBy = mainAttribs.getValue("Built-By");
+        if(builtBy != null) {
+          VersionInfo.user = builtBy;
         }
       }
-
+      
+      Enumeration<URL> resources = VersionInfo.class.getClassLoader().getResources("META-INF/maven/com.datatorrent/malhar-stram/pom.properties");
+      while (resources.hasMoreElements()) {
+        Properties pomInfo = new Properties();
+        pomInfo.load(resources.nextElement().openStream());
+        String v = pomInfo.getProperty("version", "unknown");
+        VersionInfo.version = v;
+      }
+      
       resources = VersionInfo.class.getClassLoader().getResources("malhar-stram-git.properties");
       while (resources.hasMoreElements()) {
         Properties gitInfo = new Properties();
@@ -48,19 +52,21 @@ public class VersionInfo {
         String commitAbbrev = gitInfo.getProperty("git.commit.id.abbrev", "unknown");
         String branch = gitInfo.getProperty("git.branch", "unknown");
         VersionInfo.revision = "rev: " + commitAbbrev + " branch: " + branch;
+        VersionInfo.date = gitInfo.getProperty("git.build.time", VersionInfo.date);
+        VersionInfo.user = gitInfo.getProperty("git.build.user.name", VersionInfo.user);
         break;
       }
 
     }
     catch (IOException e) {
-      LOG.error("Failed to read version info", e);
+      org.slf4j.LoggerFactory.getLogger(VersionInfo.class).error("Failed to read version info", e);
     }
   }
 
   /**
-   * Get the Hadoop version.
+   * Get the version.
    *
-   * @return the version string, e.g. "0.6.3-dev"
+   * @return the version string, e.g. "0.3.2-SNAPSHOT"
    */
   public static String getVersion() {
     return version;
