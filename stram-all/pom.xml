@@ -84,7 +84,7 @@
                     <property name="jar.dev" value="${project.build.directory}/${project.artifactId}-${project.version}.jar" />
                     <property name="jar.cluster" value="${project.build.directory}/${project.artifactId}-cluster.jar" />
                     <copy file="${project.build.directory}/${project.artifactId}-${project.version}.jar" tofile="${jar.cluster}" />
-                    <jar destfile="${jar.dev}">
+                    <jar destfile="${jar.dev}" filesetmanifest="mergewithoutmain">
                       <zipfileset src="${jar.cluster}" excludes="**/StramAppMaster.class" />
                     </jar>
                   </target>
